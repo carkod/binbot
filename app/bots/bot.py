@@ -22,3 +22,7 @@ class Bot:
 
 
   def startDeal(self):
+    self.startCondition = true
+
+
+  
