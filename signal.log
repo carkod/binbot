@@ -1,0 +1,23 @@
+19:42:18,482 root INFO running sell_funds BNBBTC 
+19:42:20,7 root INFO short BNBBTC @ 0.00275420
+19:46:21,154 root INFO found maximum symbol None
+19:46:21,154 root INFO running sell_funds BNBBTC 
+19:46:22,491 root INFO short BNBBTC @ 0.00275480
+19:50:42,313 root INFO found maximum symbol None
+19:50:42,315 root INFO running sell_funds BNBBTC 
+19:50:45,46 root INFO short BNBBTC @ 0.00275300
+19:54:59,493 root INFO found maximum symbol None
+19:54:59,493 root INFO running sell_funds BNBBTC 
+19:55:00,845 root INFO short BNBBTC @ 0.00275310
+19:59:02,900 root INFO found maximum symbol None
+19:59:02,901 root INFO running sell_funds BNBBTC 
+19:59:04,152 root INFO short BNBBTC @ 0.00275170
+20:03:39,178 root INFO found maximum symbol None
+20:03:39,179 root INFO running sell_funds BNBBTC 
+20:03:40,558 root INFO short BNBBTC @ 0.00275320
+20:08:07,96 root INFO found maximum symbol None
+20:08:07,97 root INFO running sell_funds BNBBTC 
+20:08:08,412 root INFO short BNBBTC @ 0.00275950
+20:12:27,433 root INFO found maximum symbol None
+20:12:27,434 root INFO running sell_funds BNBBTC 
+20:12:29,248 root INFO short BNBBTC @ 0.00275820

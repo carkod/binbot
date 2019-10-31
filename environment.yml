@@ -1,0 +1,37 @@
+name: binbot
+channels:
+  - defaults
+dependencies:
+  - asn1crypto=0.24.0
+  - ca-certificates=2019.1.23
+  - certifi=2019.3.9
+  - cffi=1.12.2
+  - chardet=3.0.4
+  - conda=4.6.14
+  - console_shortcut=0.1.1
+  - cryptography=2.6.1
+  - idna=2.8
+  - menuinst=1.4.16
+  - openssl=1.1.1b
+  - pip=19.0.3
+  - powershell_shortcut=0.0.1
+  - pycosat=0.6.3
+  - pycparser=2.19
+  - pyopenssl=19.0.0
+  - pysocks=1.6.8
+  - python=3.7.3
+  - pywin32=223
+  - requests=2.21.0
+  - ruamel_yaml=0.15.46
+  - setuptools=41.0.0
+  - six=1.12.0
+  - sqlite=3.27.2
+  - urllib3=1.24.1
+  - vc=14.1
+  - vs2015_runtime=14.15.26706
+  - wheel=0.33.1
+  - win_inet_pton=1.1.0
+  - wincertstore=0.2
+  - yaml=0.1.7
+prefix: C:\ProgramData\Miniconda3
+
