@@ -21,4 +21,4 @@ class Bot:
     self.percentageAvailableForBot = '> 100%' if balance < amountUsedByBot else ((amountUsedByBot/balance) * 100) + '%'
 
 
-  # def startDeal(self):
+  def startDeal(self):
