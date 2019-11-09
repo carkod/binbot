@@ -1,0 +1,165 @@
+import os
+import sys
+import time
+from threading import Timer
+
+import pandas as pd
+import schedule
+
+from algorithms.safe_than_sorry_strategy import LONG_ALGO
+from launchers.launch_sell import SELL_FUNDS
+from orders.all_orders import ALL_ORDERS
+from orders.new_order import BUY_ORDER, SELL_ORDER
+from utilities.account import get_balances
+from utilities.environment import API_URL
+from utilities.get_data import Account, Exchange_Info, Ticker_Price
+from utilities.log import logger
+
+is_production = API_URL.BINBOARD_PROD_ENV
+is_development = API_URL.BINBOARD_DEV_ENV
+
+def sell_order(symbol, callback=None, arg=None):
+    """Encapsulation new instance of SELL_ORDER
+    
+    Arguments:
+        symbol {Enum String} -- Symbol to sell
+    
+    Keyword Arguments:
+        callback {Func} -- Callback Function to call after sell order, uses sleep to execute after successful call of main function (default: {None})
+        arg {Any} -- Arguments to pass to callback function (default: {None})
+    """
+    order = SELL_ORDER(symbol)
+    order.post_order()
+    if callback:
+        time.sleep(30.0)
+        callback(arg)
+
+def buy_order(symbol, callback=None, arg=None):
+    """Encapsulation new instance of BUY_ORDER
+    
+    Arguments:
+        symbol {Enum String} -- Symbol to buy
+    
+    Keyword Arguments:
+        callback {Func} -- Callback Function to call after sell order, uses sleep to execute after successful call of main function (default: {None})
+        arg {Any} -- Arguments to pass to callback function (default: {None})
+    """
+    order = BUY_ORDER(symbol)
+    order.post_order()
+    if callback:
+        time.sleep(30.0)
+        callback(arg)
+
+def sell_funds(symbol):
+    """Sell current funds according to Keltner channels
+    If no sell signal, schedule to run again in 900 seconds
+    Arguments:
+        symbol {Enum string} -- Symbol matching funds (should be max amount)
+    """
+    sf = SELL_FUNDS(symbol)
+    if sf.launch_kc_sell():
+        # sell_order(symbol)
+        long_algo()
+        
+
+def get_asset_current_price(symbol):
+    tp = Ticker_Price()
+    p = tp.request_data(symbol)['price']
+    return p
+# If long asset return current asset do not buy
+# If current asset has higher strength do not buy
+
+def long_algo():
+    la = LONG_ALGO()
+    ei = Exchange_Info()
+    long_asset = la.run_algo()
+    if long_asset:
+        # highest_balance_asset = find_max_funds()
+        highest_balance_asset = find_max_funds()
+        long_asset_quote = ei.find_quoteAsset(long_asset)
+        highest_asset_quote = ei.find_quoteAsset(highest_balance_asset)
+        if long_asset_quote == highest_asset_quote:
+            if highest_balance_asset == 'BTCBTC':
+                # buy_order(long_asset)
+
+                long_asset_price = get_asset_current_price(long_asset) # testing algo
+                print('Buy order {} @ {}'.format(long_asset, long_asset_price))
+                logger('Buy order {} @ {}'.format(long_asset, long_asset_price))
+            else:
+                # sell_order(highest_balance_asset, buy_order, long_asset)
+                highest_balance_asset_price = get_asset_current_price(highest_balance_asset) # testing algo
+                long_asset_price = get_asset_current_price(long_asset) # testing algo
+                print('Sell order {} @ {}'.format(highest_balance_asset, highest_balance_asset_price))
+                print('... and Buy order {} @ {}'.format(long_asset, long_asset_price))
+                logger('... and Buy order {} @ {}'.format(long_asset, long_asset_price))
+        else:
+            if highest_asset_quote == 'BTC':
+                symbol = long_asset_quote + highest_asset_quote
+                # buy_order(symbol)
+
+                symbol_price = get_asset_current_price(symbol) # testing algo
+                print('Buy order {} @ {}'.format(symbol, symbol_price))
+            else:
+                symbol = highest_asset_quote + long_asset_quote
+                # sell_order(symbol)
+
+                symbol_price = get_asset_current_price(symbol) # testing algo
+                print('Sell order {} @ {}'.format(symbol, symbol_price))
+                logger('Sell order {}'.format(symbol))
+    else:
+        schedule.run_pending()
+
+
+def find_max_funds():
+    """Pick maximum number of funds
+    1. Get all coins (assets) in funds to same base market (BTC)
+        1a. Assume all cyptocurrencies in Binance are based on BTC
+    2. If BTC exists in funds, add the at the end
+    3. Contruct new Data Frame and get highest amount (total) of funds
+    4. Use this highest amount to trade
+    Returns:
+        [DataFrame] -- Funds in DataFrame
+    """
+    balances = get_balances(0.001)
+    btc_symbols = []
+    tp = Ticker_Price()
+    for index, asset in enumerate(balances['asset'].values):
+        if asset != 'BTC':
+            asset_props = tp.request_data(asset+'BTC')
+            asset_props['amount'] = balances.iloc[index]['free']
+            asset_props['total'] = float(asset_props['amount']) * float(asset_props['price'])
+            btc_symbols.append(asset_props)
+
+    if 'BTC' in balances['asset'].values:
+        btc = {
+            'symbol': 'BTCBTC',
+            'amount': balances.loc[balances['asset'] == 'BTC', 'free'].values[-1],
+            'price' : 1,
+            'total': balances.loc[balances['asset'] == 'BTC', 'free'].values[-1],
+        }
+        btc_symbols.append(btc)
+    btc_symbols = pd.DataFrame(btc_symbols)
+    biggest_asset = btc_symbols.loc[btc_symbols['total'].idxmax(), 'symbol']
+    return biggest_asset
+
+def run_programmer():
+    highest_fund = find_max_funds()
+    # highest_fund = 'MITHBNB' # testing
+    if highest_fund != 'BTCBTC':
+        if is_production:
+            schedule.every(5).minutes.do(sell_funds, highest_fund)
+            pass
+        else:
+            schedule.every(1).minutes.do(sell_funds, highest_fund)
+            # sell_funds(highest_fund)
+            pass
+    
+    if is_production:
+        schedule.every(15).minutes.do(long_algo)
+    else:
+        schedule.every(40).seconds.do(long_algo)
+    
+    while True:
+            schedule.run_pending()
+            time.sleep(1)
+
