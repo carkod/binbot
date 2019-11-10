@@ -189,7 +189,7 @@ class Account:
             print('handle_error', e)
             sleep(600.0)
             sys.exit(1)
-        
+
 
 class Exchange_Info:
     base_url = API_URL.BINANCEAPI_BASE

@@ -1,5 +1,5 @@
 {
   "git.ignoreLimitWarning": true,
   "python.terminal.activateEnvironment": false,
-  "python.pythonPath": "/Users/carkod/.local/share/virtualenvs/flask-mongo-api-boilerplate-59Kww5zX/bin/python"
+  "python.pythonPath": "/Users/carkod/miniconda3/envs/binbot/bin/python"
 }

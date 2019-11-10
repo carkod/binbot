@@ -9,6 +9,7 @@
       "type": "python",
       "request": "launch",
       "module": "flask",
+      "console": "internalConsole",
       "env": {
         "FLASK_APP": "api/run.py",
         "FLASK_ENV": "development",
@@ -16,17 +17,10 @@
       },
       "args": [
         "run",
-        "--no-debugger",
-        "--no-reload"
+        "--no-debugger"
       ],
       "jinja": true
     },
-    {
-      "name": "Python: pipenv run",
-      "type": "python",
-      "request": "launch",
-      "program": "${workspaceFolder}/api/run.py",
-      "console": "externalTerminal"
-    }
+    
   ]
 }
