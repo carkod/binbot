@@ -5,8 +5,8 @@ GET http://localhost:5000/bot/ HTTP/1.1
 POST http://localhost:5000/bot/ HTTP/1.1
 
 {
-    "pairs": "BTCUSDT",
-    "name": "Default bot",
+    "pairs": "USDTBTC",
+    "name": "Hedge BTC bot",
     "botType": "long",
     "baseOrderSize": 0.0001,
     "baseOrderType": "limit",

@@ -11,6 +11,8 @@ import hmac
 import hashlib
 from urllib.parse import urlparse, urlencode
 import math
+from flask import current_app as app
+
 
 class Data:
     base_url = API_URL.BINANCEAPI_BASE
@@ -64,8 +66,8 @@ class Data:
 
 class Ticker24Data:
 
-    base_url = API_URL.BINANCEAPI_BASE
-    ticker24_url = API_URL.BINANCEAPI_TICKER24
+    base_url = app.config['BASE']
+    ticker24_url = app.config['TICKER24']
 
     def __init__(self):
         """Request only ticker24 data

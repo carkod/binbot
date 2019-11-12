@@ -2,7 +2,7 @@ from flask import Flask
 from flask import Blueprint
 from flask import current_app as app
 from main.auth import token_required
-from main.account.account_model import Account
+from main.account.models import Account
 from flask_cors import CORS, cross_origin
 
 

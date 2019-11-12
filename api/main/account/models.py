@@ -14,7 +14,7 @@ import time as tm
 from urllib.parse import urlparse
 import requests
 import pandas as pd
-
+from main.tools import handle_error
 
 class Account:
 
@@ -49,25 +49,9 @@ class Account:
 
         # Response after request
         res = requests.get(url=url, params=params, headers=headers)
-        self.handle_error(res)
+        handle_error(res)
         data = res.json()
         return data
-
-    def handle_error(self, req):
-        try:
-            req.raise_for_status()
-        except requests.exceptions.HTTPError as err:
-            print(err)
-        except requests.exceptions.Timeout:
-            # Maybe set up for a retry, or continue in a retry loop
-            print('handle_error: Timeout')
-        except requests.exceptions.TooManyRedirects:
-            # Tell the user their URL was bad and try a different one
-            print('handle_error: Too many Redirects')
-        except requests.exceptions.RequestException as e:
-            # catastrophic error. bail.
-            print('handle_error', e)
-            sys.exit(1)
 
     def get_balances(self):
         data = self.request_data()["balances"]
@@ -85,3 +69,6 @@ class Account:
         resp = tools.JsonResp({"data": jsonResponse}, 200)
 
         return resp
+
+    def get_quote_price(self):
+        pass
