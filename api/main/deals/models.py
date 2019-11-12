@@ -16,7 +16,7 @@ import requests
 import pandas as pd
 
 
-class Account:
+class Deal:
 
     def __init__(self):
         self.timestamp = int(round(tm.time() * 1000))

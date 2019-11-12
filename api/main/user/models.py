@@ -10,11 +10,7 @@ class User:
 
   def __init__(self):
     self.defaults = {
-      "id": tools.randID(),
-      "ip_addresses": [request.remote_addr],
-      "acct_active": True,
-      "date_created": tools.nowDatetimeUTC(),
-      "last_login": tools.nowDatetimeUTC(),
+        
       "email": "",
     }
   
