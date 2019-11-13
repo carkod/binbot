@@ -5,14 +5,22 @@ GET http://localhost:5000/bot/ HTTP/1.1
 POST http://localhost:5000/bot/ HTTP/1.1
 
 {
-    "pairs": "USDTBTC",
-    "name": "Hedge BTC bot",
-    "botType": "long",
-    "baseOrderSize": 0.0001,
+    "pair": "BTCONG",
+    "active": true,
+    "strategy": "long",
+    "name": "ONG long bot",
+    "maxSOCount": 3,
+    "balanceUsage": 1,
+    "baseOrderSize": "0.0001",
     "baseOrderType": "limit",
     "startCondition": true,
-    "maxSOCount": 3,
-    "active": false
+    "soSize": "0.0001",
+    "takeProfit": "0.003",
+    "priceDeviationSO": "0.0063",
+    "trailling": false,
+    "traillingDeviation": "0.0063",
+    "dealMinValue": 0,
+    "cooldown": 0,
 }
 
 ###
