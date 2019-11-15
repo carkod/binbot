@@ -16,7 +16,7 @@ import requests
 import pandas as pd
 from main.tools import handle_error
 
-class Account:
+class Account():
 
     def __init__(self):
         self.timestamp = int(round(tm.time() * 1000))

@@ -18,6 +18,10 @@ bot_blueprint = Blueprint("bot", __name__)
 def get():
 	return Bot().get()
 
+@bot_blueprint.route("/<id>", methods=["GET"])
+def get_one(id):
+	return Bot().get_one()
+
 @bot_blueprint.route("/", methods=["POST"])
 def create():
 	return Bot().create()

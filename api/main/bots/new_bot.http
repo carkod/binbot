@@ -6,21 +6,21 @@ POST http://localhost:5000/bot/ HTTP/1.1
 
 {
     "pair": "BTCONG",
-    "active": true,
+    "active": "true",
     "strategy": "long",
     "name": "ONG long bot",
-    "maxSOCount": 3,
-    "balanceUsage": 1,
+    "maxSOCount": "3",
+    "balanceUsage": "1",
     "baseOrderSize": "0.0001",
     "baseOrderType": "limit",
-    "startCondition": true,
+    "startCondition": "true",
     "soSize": "0.0001",
     "takeProfit": "0.003",
     "priceDeviationSO": "0.0063",
-    "trailling": false,
+    "trailling": "false",
     "traillingDeviation": "0.0063",
-    "dealMinValue": 0,
-    "cooldown": 0,
+    "dealMinValue": "0",
+    "cooldown": "0"
 }
 
 ###
@@ -40,3 +40,6 @@ PUT http://localhost:5000/bot/ HTTP/1.1
 
 ###
 DELETE http://localhost:5000/bot/5dc8b05c123374aa25d873ca HTTP/1.1
+
+###
+

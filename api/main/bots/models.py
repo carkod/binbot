@@ -12,14 +12,14 @@ import math
 import sys
 import time as tm
 from urllib.parse import urlparse
-import requests
 import pandas as pd
 import json
 from main import tools
 from main.account.models import Account
 from main.tools import Ticker24Data
+from main.deals.models import Deal
 
-class Bot(Account, Ticker24Data):
+class Bot(Ticker24Data, Deal):
 
     def __init__(self):
         self.defaults = {
@@ -42,6 +42,7 @@ class Bot(Account, Ticker24Data):
             "cooldown": 0,
         }
         self.balance_division = 0
+        self.active_bot = None
 
     # def get_base_order_size(self, pair, balance_usage=1, max_so_count=5):
     #     df = Ticker24Data(app).api_data()
@@ -59,6 +60,15 @@ class Bot(Account, Ticker24Data):
         
     #     return so_size
 
+    def get_available_btc(self):
+        data = json.loads(Account().get_balances().data)['data']
+        available_balance = 0
+        for i in range(len(data)):
+            if data[i]['asset'] == 'BTC':
+                available_balance = data[i]['free']
+                return available_balance
+        return available_balance
+
     def get_start_condition(self):
         return True
 
@@ -70,10 +80,22 @@ class Bot(Account, Ticker24Data):
         else:
             resp = tools.JsonResp({ "message": "Bots not found" }, 404)
         return resp
+    
+    def get_one(self):
+        resp = tools.JsonResp({ "message": "No bots found" }, 200)
+        findId = request.view_args['id']
+        bot = list(app.db.bots.find_one({ "_id": findId }))
+        
+        if bot:
+            resp = tools.JsonResp({ "data": bot }, 200)
+        else:
+            resp = tools.JsonResp({ "message": "Bots not found" }, 404)
+        return resp
 
     def create(self):
         resp = tools.JsonResp({ "message": "Bot creation not available" }, 400)
         data = json.loads(request.data)
+        btc_balance = self.get_available_btc()
         # base_order_size = self.get_base_order_size(data['pair'], data['maxSOCount'], data['take_profit'])
         new_bot = {
             "pair": data['pair'],
@@ -82,7 +104,7 @@ class Bot(Account, Ticker24Data):
             "name": data['name'] or 'Default Bot',
             "max_so_count": data['maxSOCount'] or 3,
             "balance_usage": data['balanceUsage'], # 100% of All Btc balance
-            "balance_usage_size": data['balanceUsage'] * Account().get_balances(),
+            "balance_usage_size": float(data['balanceUsage']) * btc_balance,
             "base_order_size": data['baseOrderSize'] or 0.0001, # MIN by Binance = 0.0001 BTC
             "base_order_type": data['baseOrderType'], # Market or limit
             "start_condition": True,
@@ -90,14 +112,14 @@ class Bot(Account, Ticker24Data):
             "take_profit": data['takeProfit'] or 0.003,
             "price_deviation_so": data['priceDeviationSO'] or 0.0063, # % percentage
             "trailling": data['trailling'] or False,
-            "trailling_deviation": data['trailling_deviation'] or 0.0063,
+            "trailling_deviation": data['traillingDeviation'] or 0.0063,
             "deal_min_value": data['dealMinValue'] or 0,
             "cooldown": data['cooldown'] or 0,
         }
         self.defaults.update(new_bot)
         botId = app.db.bots.save(new_bot)
         if (botId):
-            resp = tools.JsonResp({"message": "Successfully created new bot", "botId": str(botId)}, 200)
+            resp = tools.JsonResp({ "message": "Successfully created new bot", "botId": str(botId)}, 200)
         else:
             resp = tools.JsonResp({ "message": "Failed to create new bot" }, 400)
             
@@ -110,22 +132,22 @@ class Bot(Account, Ticker24Data):
 
         existent_bot = {
             "pair": data['pair'],
-            "active": data['active'] or False,
+            "active": data['active'],
             "strategy": data['strategy'] or 'long',
             "name": data['name'] or 'Default Bot',
             "max_so_count": data['maxSOCount'] or 3,
             "balance_usage": data['balanceUsage'], # 100% of All Btc balance
-            "balance_usage_size": data['balanceUsage'] * Account().get_balances(),
-            "base_order_size": data['base_order_size'] or 0.0001, # MIN by Binance = 0.0001 BTC
+            "balance_usage_size": data['balanceUsage'],
+            "base_order_size": data['base_order_size'], # MIN by Binance = 0.0001 BTC
             "base_order_type": data['baseOrderType'], # Market or limit
             "start_condition": True,
-            "so_size": data['soSize'] or 0.0001, # Top band 
-            "take_profit": data['takeProfit'] or 0.003,
-            "price_deviation_so": data['priceDeviationSO'] or 0.0063, # % percentage
-            "trailling": data['trailling'] or False,
-            "trailling_deviation": data['trailling_deviation'] or 0.0063,
-            "deal_min_value": data['dealMinValue'] or 0,
-            "cooldown": data['cooldown'] or 0,
+            "so_size": data['soSize'], # Top band 
+            "take_profit": data['takeProfit'],
+            "price_deviation_so": data['priceDeviationSO'], # % percentage
+            "trailling": data['trailling'],
+            "trailling_deviation": data['traillingDeviation'],
+            "deal_min_value": data['dealMinValue'],
+            "cooldown": data['cooldown'],
         }
 
         self.defaults.update(existent_bot)
@@ -143,6 +165,19 @@ class Bot(Account, Ticker24Data):
         delete_action = app.db.bots.delete_one({ "_id": id })
         if (delete_action):
             resp = tools.JsonResp({ "message": "Successfully delete bot", "botId": id }, 200)
+        else:
+            resp = tools.JsonResp({ "message": "Bot deletion is not available" }, 400)
+        return resp
+
+
+    def activate(self):
+        resp = tools.JsonResp({ "message": "Bot activation is not available" }, 400)
+        findId = request.view_args['id']
+        bot = list(app.db.bots.find_one({ "_id": findId }))
+        if (bot):
+            bot.active = True
+            Deal(bot).open_deal()
+            resp = tools.JsonResp({ "message": "Successfully activated bot", "data": bot }, 200)
         else:
             resp = tools.JsonResp({ "message": "Bot deletion is not available" }, 400)
         return resp
