@@ -18,8 +18,10 @@ from main import tools
 from main.account.models import Account
 from main.tools import Ticker24Data
 from main.deals.models import Deal
+from bson.objectid import ObjectId
 
-class Bot(Ticker24Data, Deal):
+
+class Bot(Deal):
 
     def __init__(self):
         self.defaults = {
@@ -172,12 +174,25 @@ class Bot(Ticker24Data, Deal):
 
     def activate(self):
         resp = tools.JsonResp({ "message": "Bot activation is not available" }, 400)
-        findId = request.view_args['id']
-        bot = list(app.db.bots.find_one({ "_id": findId }))
+        findId = request.view_args['botId']
+        bot = app.db.bots.find_one({ "_id": ObjectId(findId) })
         if (bot):
-            bot.active = True
+            bot['active'] = True
+            app.db.bots.save(bot)
             Deal(bot).open_deal()
-            resp = tools.JsonResp({ "message": "Successfully activated bot", "data": bot }, 200)
+            resp = tools.JsonResp({ "message": "Successfully activated bot", "bodId": str(findId) }, 200)
         else:
-            resp = tools.JsonResp({ "message": "Bot deletion is not available" }, 400)
+            resp = tools.JsonResp({ "message": "Bot not found", "botId": findId }, 400)
+        return resp
+
+    def deactivate(self):
+        resp = tools.JsonResp({ "message": "Bot deactivation is not available" }, 400)
+        findId = request.view_args['botId']
+        bot = app.db.bots.find_one({ "_id": ObjectId(findId) })
+        if (bot):
+            bot.active = False
+            # Deal(bot).open_deal()
+            resp = tools.JsonResp({ "message": "Successfully deactivated bot", "data": bot }, 200)
+        else:
+            resp = tools.JsonResp({ "message": "Bot not found", "botId": findId }, 400)
         return resp
