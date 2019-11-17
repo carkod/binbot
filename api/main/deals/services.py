@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 from flask import Flask, request
 from flask import current_app as app
 from passlib.hash import pbkdf2_sha256
@@ -16,9 +17,12 @@ import requests
 import pandas as pd
 from main.tools import EnumDefinitions, handle_error 
 from main.account import Account
+import os
 
 
-class Buy_Order(Account):
+load_dotenv()
+
+class Buy_Order():
     """Post order
 
     Returns:
@@ -29,11 +33,12 @@ class Buy_Order(Account):
     min_funds = 0.000000
 
     def __init__(self, symbol):
-        self.key = app.config['KEY']
-        self.secret = app.config['SECRET']
-        self.base_url = app.config['BASE']
-        self.order_url = app.config['ORDER']
-        self.order_book_url = app.config['ORDER_BOOK']
+        
+        self.key = os.getenv("BINANCE_KEY")
+        self.secret = os.getenv("BINANCE_SECRET")
+        self.base_url = os.getenv("BASE")
+        self.order_url = os.getenv("ORDER")
+        self.order_book_url = os.getenv("ORDER_BOOK")
         self.symbol = symbol
         # Buy order
         self.side = EnumDefinitions.order_side[0]

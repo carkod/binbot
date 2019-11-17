@@ -20,14 +20,13 @@ from main.deals.services import Buy_Order
 class Deal():
 
     def __init__(self, bot):
-
+        self.active_bot = bot
         self.symbol = bot['pairs']
         self.botname = bot['name']
 
     def open_deal(self):
-        # symbol = self.active_bot.pairs
-        # Long bot
-        # buy_order = Buy_Order(self.symbol).last_order_book_price()
-        pass 
+        buy_order = Buy_Order(self.active_bot).last_order_book_price()
+        
+        return buy_order
 
 
