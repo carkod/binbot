@@ -30,7 +30,7 @@ class Bot(Deal):
             "strategy": 'long',
             "name": 'Default Bot',
             "max_so_count": 3,
-            "balance_usage": 1, # 100% of All Btc balance
+            "balance_usage": float(1), # 100% of All Btc balance
             "balance_usage_size": 0.0001,
             "base_order_size": 0.003, # MIN by Binance = 0.0001 BTC
             "base_order_type": 'limit',
@@ -134,14 +134,13 @@ class Bot(Deal):
 
         existent_bot = {
             "pair": data['pair'],
-            "active": data['active'],
-            "strategy": data['strategy'] or 'long',
-            "name": data['name'] or 'Default Bot',
-            "max_so_count": data['maxSOCount'] or 3,
-            "balance_usage": data['balanceUsage'], # 100% of All Btc balance
-            "balance_usage_size": data['balanceUsage'],
-            "base_order_size": data['base_order_size'], # MIN by Binance = 0.0001 BTC
-            "base_order_type": data['baseOrderType'], # Market or limit
+            "active": data['active'] or False,
+            "strategy": data['strategy'] if data.get('strategy') else 'long',
+            "name": data['name'] if data.get('name') else 'Default Bot',
+            "max_so_count": data['maxSOCount'] if data.get('maxSOCount') else 3,
+            "balance_usage": data['balanceUsage'] if data.get('balanceUsage') else 1, # 100% of All Btc balance
+            "base_order_size": data['baseOrderSize'], # MIN by Binance = 0.0001 BTC
+            "base_order_type": data['baseOrderType'] if data.get('baseOrderType') else 'limit', # Market or limit
             "start_condition": True,
             "so_size": data['soSize'], # Top band 
             "take_profit": data['takeProfit'],
@@ -160,6 +159,14 @@ class Bot(Deal):
             resp = tools.JsonResp({ "message": "Failed to update bot" }, 400)
         
         return resp
+
+    def required_field_validation(self, data, key):
+        if key in data:
+            return data[key]
+        else:
+            resp = tools.JsonResp({"message": "Validation failed {} is required".format(key), "botId": data
+            ["_id"]}, 400)
+            return resp
 
     def delete(self, id):
         resp = tools.JsonResp({ "message": "Bot update is not available" }, 400)

@@ -7,3 +7,4 @@ class EnumDefinitions:
     time_in_force = ("GTC","IOC","FOK")
     chart_intervals = ("1m","3m","5m","15m","30m","1h","2h","4h","6h","8h","12h","1d","3d","1w","1M")
     rate_limit_intervals = ("SECOND","MINUTE","DAY")
+    order_book_limits = ("5","10","20","50","100","500","1000","5000")

@@ -21,12 +21,23 @@ class Deal():
 
     def __init__(self, bot):
         self.active_bot = bot
-        self.symbol = bot['pairs']
+        self.symbol = bot['pair']
         self.botname = bot['name']
+        self.base_order_size = bot['base_order_size']
+        self.active = bot['active']
+        self.balance = bot['balance_usage_size']
+        self.base_order_type = bot['base_order_type']
+        self.max_so_count = bot['max_so_count']
+        self.price_deviation_so = bot['price_deviation_so']
+        self.so_size = bot['so_size']
+        self.take_profit = bot['take_profit']
+        self.trailling = bot['trailling']
+        self.trailling_deviation = bot['trailling_deviation']
 
     def open_deal(self):
-        buy_order = Buy_Order(self.active_bot).last_order_book_price()
+        base_order = Buy_Order(symbol=self.symbol, quantity=self.base_order_size, type=self.base_order_type).post_order_limit()
+
         
-        return buy_order
+        return 
 
 

@@ -5,7 +5,7 @@ GET http://localhost:5000/bot/ HTTP/1.1
 POST http://localhost:5000/bot/ HTTP/1.1
 
 {
-    "pair": "BTCONG",
+    "pair": "EOSBTC",
     "active": "true",
     "strategy": "long",
     "name": "ONG long bot",
@@ -27,15 +27,23 @@ POST http://localhost:5000/bot/ HTTP/1.1
 PUT http://localhost:5000/bot/ HTTP/1.1
 
 {
-    "_id": "5dc8b05c123374aa25d873ca",
-    "pairs": "BTCUSDT",
-    "name": "Renamed bot",
-    "botType": "long",
-    "baseOrderSize": 0.0001,
+    "_id": "5dd0950a2c81f3eadaa9c4c2",
+    "pair": "EOSBTC",
+    "active": "true",
+    "strategy": "long",
+    "name": "renamed bot",
+    "maxSOCount": "3",
+    "balanceUsage": "1",
+    "baseOrderSize": "0.0001",
     "baseOrderType": "limit",
-    "startCondition": true,
-    "maxSOCount": 3,
-    "active": true
+    "startCondition": "true",
+    "soSize": "0.0001",
+    "takeProfit": "0.003",
+    "priceDeviationSO": "0.0063",
+    "trailling": "false",
+    "traillingDeviation": "0.0063",
+    "dealMinValue": "0",
+    "cooldown": "0"
 }
 
 ###
@@ -43,4 +51,4 @@ DELETE http://localhost:5000/bot/5dc8b05c123374aa25d873ca HTTP/1.1
 
 ###
 
-GET http://localhost:5000/bot/activate/5dc8be2b7526ea9fbff79be1 HTTP/1.1
+GET http://localhost:5000/bot/activate/5dd0950a2c81f3eadaa9c4c2 HTTP/1.1
