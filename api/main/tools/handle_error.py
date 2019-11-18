@@ -23,3 +23,5 @@ def handle_error(req):
 			# catastrophic error. bail.
 			print('handle_error', e)
 			sys.exit(1)
+	# Binance code errors
+ 

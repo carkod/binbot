@@ -86,12 +86,21 @@ class Buy_Order():
         
         return match_qty['price'][0]
 
-    def post_order_limit(self):
+
+
+    """
+    Returns successful order
+    Returns validation failed order (MIN_NOTIONAL, LOT_SIZE etc..)
+    """
+    def post_order_limit(self, limit_price=None):
         # Limit order
         type = EnumDefinitions.order_types[0]
         timestamp = int(round(tm.time() * 1000))
         url = self.base_url + self.order_url
-        price = self.last_order_book_price(0)
+        if limit_price:
+            price = self.last_order_book_price(0) * (1 + limit_price)
+        else:
+            price = self.last_order_book_price(0)
         qty = round(float(price) / float(self.quantity) , 0)
         # Get data for a single crypto e.g. BTT in BNB market
         params = [
