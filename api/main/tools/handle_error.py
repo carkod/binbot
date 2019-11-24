@@ -12,6 +12,9 @@ def handle_error(req):
 	try:
 			req.raise_for_status()
 	except requests.exceptions.HTTPError as err:
+		if err:
+			print(req.json())
+		else:
 			print(err)
 	except requests.exceptions.Timeout:
 			# Maybe set up for a retry, or continue in a retry loop

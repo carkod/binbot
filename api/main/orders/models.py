@@ -51,7 +51,7 @@ class Buy_Order():
     """
     def post_order_limit(self):
         data = json.loads(request.data)
-        symbol = data['symbol']
+        symbol = data['pair']
         qty = data['qty']
         price = data['price']
 
@@ -102,14 +102,14 @@ class Sell_Order():
     # Min amount to be considered for investing (BNB)
     min_funds = 0.000000
 
-    def __init__(self, symbol):
+    def __init__(self):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.base_url = os.getenv("BASE")
         self.order_url = os.getenv("ORDER")
         self.order_book_url = os.getenv("ORDER_BOOK")
         # Buy order
-        self.side = EnumDefinitions.order_side[0]
+        self.side = EnumDefinitions.order_side[1]
         # Required by API for Limit orders
         self.timeInForce = EnumDefinitions.time_in_force[0]
 
@@ -119,12 +119,12 @@ class Sell_Order():
     """
     def post_order_limit(self):
         data = json.loads(request.data)
-        symbol = data['symbol']
+        symbol = data['pair']
         qty = data['qty']
         price = data['price']
 
         # Limit order
-        type = EnumDefinitions.order_types[1]
+        type = EnumDefinitions.order_types[0]
         timestamp = int(round(tm.time() * 1000))
         url = self.base_url + self.order_url
 
