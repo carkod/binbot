@@ -7,7 +7,6 @@ POST http://localhost:5000/order/buy HTTP/1.1
 {
     "symbol": "EOSBTC",
     "qty": "true",
-    "type": "LIMIT",
     "price": "0.00003",
 }
 
