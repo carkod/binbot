@@ -10,6 +10,7 @@ from main.user.routes import user_blueprint
 from main.account.routes import account_blueprint
 from main.bots.routes import bot_blueprint
 from main.deals.routes import deal_blueprint
+from main.orders.routes import order_blueprint
 
 def create_app():
 
@@ -39,6 +40,7 @@ def create_app():
   app.register_blueprint(account_blueprint, url_prefix="/account")
   app.register_blueprint(bot_blueprint, url_prefix="/bot")
   app.register_blueprint(deal_blueprint, url_prefix="/deal")
+  app.register_blueprint(order_blueprint, url_prefix="/order")
 
   # Index Route
   @app.route("/")

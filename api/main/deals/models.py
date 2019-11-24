@@ -35,13 +35,14 @@ class Deal():
         self.active_bot = bot
         self.symbol = bot['pair']
         self.botname = bot['name']
-        self.base_order_size = bot['base_order_size']
         self.active = bot['active']
         self.balance = bot['balance_usage_size']
         self.base_order_type = bot['base_order_type']
         self.max_so_count = bot['max_so_count']
         self.price_deviation_so = bot['price_deviation_so']
-        self.so_size = bot['so_size']
+        self.division = self.balance / self.max_so_count + 2
+        self.base_order_size = self.division
+        self.so_size = self.division
         self.take_profit = bot['take_profit']
         self.trailling = bot['trailling']
         self.trailling_deviation = bot['trailling_deviation']
@@ -68,24 +69,42 @@ class Deal():
         
         return match_qty['price'][0]
 
-    def execute_base_order(self, order):
+    def execute_base_order(self):
+        # base_order = Buy_Order(symbol=self.symbol, quantity=self.division, type=self.base_order_type).post_order_limit()
         base_order = {
-            'deal_type': 'base_order',
-            'order_id': order['orderId'],
-            'type': order['base_order'],
-            'strategy': 'long', # change accordingly
-            'pair': order['symbol'],
-            'order_side': order['side'],
-            'order_type': order['type'],
-            'price': order['price'],
-            'qty': order['origQty'],
-            'fills': order['fills'],
-            'time_in_force': order['timeInForce']
+            'clientOrderId': 'KxwRuUmnQqgcs5y7KWU77t', 
+            'cummulativeQuoteQty': '0.00000000', 
+            'executedQty': '0.00000000', 
+            'fills': [], 
+            'orderId': 263599681, 
+            'orderListId': -1, 
+            'origQty': '4.00000000', 
+            'price': '0.00039920', 
+            'side': 'BUY', 
+            'status': 'NEW', 
+            'symbol': 'EOSBTC', 
+            'timeInForce': 'GTC', 
+            'transactTime': 1574040139349, 
+            'type': 'LIMIT'
         }
-        if 'code' not in order:
+        base_deal = {
+            'order_id': base_order['orderId'],
+            'type': base_order['base_order'],
+            'strategy': 'long', # change accordingly
+            'pair': base_order['symbol'],
+            'order_side': base_order['side'],
+            'order_type': base_order['type'],
+            'price': base_order['price'],
+            'qty': base_order['origQty'],
+            'fills': base_order['fills'],
+            'time_in_force': base_order['timeInForce']
+        }
+        self.base_order_price = base_order['price']
+        if 'code' not in base_order:
+            # save base deal
             return base_order
         else:
-            print(order)
+            print(base_order)
             exit(1)
 
     def execute_take_profit_order(self, order):
@@ -108,13 +127,52 @@ class Deal():
             print(order)
             exit(1)
 
+    def long_safety_order_generator(self):
+        length = self.max_so_count
+        so_deals = []
+        for index in range(length):
+            # order = Buy_Order(symbol=self.symbol, quantity=self.division, type='LIMIT', price).post_order_limit()
+            order = {
+                'clientOrderId': 'KxwRuUmnQqgcs5y7KWU77t', 
+                'cummulativeQuoteQty': '0.00000000', 
+                'executedQty': '0.00000000', 
+                'fills': [], 
+                'orderId': 263599681, 
+                'orderListId': -1, 
+                'origQty': '4.00000000', 
+                'price': '0.00039920', 
+                'side': 'BUY', 
+                'status': 'NEW', 
+                'symbol': 'EOSBTC', 
+                'timeInForce': 'GTC', 
+                'transactTime': 1574040139349, 
+                'type': 'LIMIT'
+            }
+            safety_orders = {
+                'order_id': order['orderId'],
+                'type': order['base_order'],
+                'strategy': 'long', # change accordingly
+                'pair': order['symbol'],
+                'order_side': order['side'],
+                'order_type': order['type'],
+                'price': order['price'],
+                'qty': order['origQty'],
+                'fills': order['fills'],
+                'time_in_force': order['timeInForce']
+            }
 
     def open_deal(self):
-        new_deal = []
-        # base_order = Buy_Order(symbol=self.symbol, quantity=self.base_order_size, type=self.base_order_type).post_order_limit()
+        new_deal = {
+            'base_order': {},
+            'take_profit_order': {},
+            'so_orders': []
+        }
+        
         # tp_order = Sell_Order(symbol=self.symbol, quantity=self.base_order_size, type=self.base_order_type).post_order_limit()
 
-        base_order = {
+        
+
+        take_profit_order = {
             'clientOrderId': 'KxwRuUmnQqgcs5y7KWU77t', 
             'cummulativeQuoteQty': '0.00000000', 
             'executedQty': '0.00000000', 
@@ -135,13 +193,6 @@ class Deal():
         division = self.balance / (self.max_so_count + 2)
         so_qty = division
         so = []
-        for index in range(self.max_so_count):
-            price = self.last_order_book_price(0, so_qty) * (1 + self.price_deviation_so)
-            so.append(price)
-        for index in range(self.max_so_count):
-            
-
-            safety_order = Buy_Order(symbol=self.symbol, quantity=so_qty, type='LIMIT', limit_price=price).post_order_limit()
         
         return 
 

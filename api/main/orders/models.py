@@ -32,7 +32,7 @@ class Buy_Order():
     # Min amount to be considered for investing (BNB)
     min_funds = 0.000000
 
-    def __init__(self, symbol, quantity, type, price):
+    def __init__(self):
         
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
@@ -44,78 +44,28 @@ class Buy_Order():
         # Required by API for Limit orders
         self.timeInForce = EnumDefinitions.time_in_force[0]
 
-        # Bot details
-        self.symbol = symbol
-        self.quantity = quantity
-        self.type = type
-        self.price = price
-
-    def get_balances(self):
-        data = json.loads(Account().get_balances().data)['data']
-        available_balance = 0
-        for i in range(len(data)):
-            if data[i]['asset'] == 'BTC':
-                available_balance = data[i]['free']
-                return available_balance
-        return available_balance
-        
-
-
-    """
-    Buy order = bids
-    Sell order = ask
-    """
-    def last_order_book_price(self, limit_index, order_side='bids'):
-        url = self.base_url + self.order_book_url
-        limit = EnumDefinitions.order_book_limits[limit_index]
-        params = [
-          ('symbol', self.symbol),
-          ('limit', limit),
-        ]
-        res = requests.get(url=url, params=params)
-        handle_error(res)
-        data = res.json()
-        if order_side == 'bids':
-            df = pd.DataFrame(data['bids'], columns=['price','qty'])
-        elif order_side == 'ask':
-            df = pd.DataFrame(data['ask'], columns=['price','qty'])
-
-        else:
-            print('Incorrect bid/ask keyword for last_order_book_price')
-            exit(1)
-        
-        df['qty'] = df['qty'].astype(float)
-
-        # If quantity matches list
-        match_qty = df[df['qty'] > float(self.quantity)]
-        condition = df['qty'] > float(self.quantity)
-        if condition.any() == False:
-            limit += limit
-            self.last_order_book_price(limit)
-        
-        return match_qty['price'][0]
-
-
 
     """
     Returns successful order
     Returns validation failed order (MIN_NOTIONAL, LOT_SIZE etc..)
     """
-    def post_order_limit(self, limit_price=None):
+    def post_order_limit(self):
+        data = json.loads(request.data)
+        symbol = data['symbol']
+        qty = data['qty']
+        type = data['type']
+        price = data['price']
+
         # Limit order
         type = EnumDefinitions.order_types[0]
         timestamp = int(round(tm.time() * 1000))
         url = self.base_url + self.order_url
-        if limit_price:
-            price = self.last_order_book_price(0) * (1 + limit_price)
-        else:
-            price = self.last_order_book_price(0)
-        qty = round(float(price) / float(self.quantity) , 0)
+
         # Get data for a single crypto e.g. BTT in BNB market
         params = [
             ('recvWindow', self.recvWindow),
             ('timestamp', timestamp),
-            ('symbol', self.symbol),
+            ('symbol', symbol),
             ('side', self.side),
             ('type', type),
             ('timeInForce', self.timeInForce),
