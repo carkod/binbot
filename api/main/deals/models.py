@@ -13,7 +13,7 @@ import time as tm
 from urllib.parse import urlparse
 import requests
 import pandas as pd
-from main.tools import EnumDefinitions, handle_error 
+from main.tools import EnumDefinitions, handle_error, Book_Order
 from main.account import Account
 from main.deals.services import Buy_Order
 from dotenv import load_dotenv
@@ -47,29 +47,15 @@ class Deal():
         self.trailling = bot['trailling']
         self.trailling_deviation = bot['trailling_deviation']
 
-    def last_order_book_price(self, limit_index, quantity):
-        url = self.base_url + self.order_book_url
-        limit = EnumDefinitions.order_book_limits[limit_index]
-        params = [
-          ('symbol', self.symbol),
-          ('limit', limit),
-        ]
-        res = requests.get(url=url, params=params)
-        handle_error(res)
-        data = res.json()
-        df = pd.DataFrame(data['bids'], columns=['price','qty'])
-        df['qty'] = df['qty'].astype(float)
+    def handle_fourofour(self, order):
+        if 'code' not in order:
+            # save base deal
+            return order
+        else:
+            print(order)
+            exit(1)
 
-        # If quantity matches list
-        match_qty = df[df['qty'] > float(quantity)]
-        condition = df['qty'] > float(quantity)
-        if condition.any() == False:
-            limit += limit
-            self.last_order_book_price(limit)
-        
-        return match_qty['price'][0]
-
-    def execute_base_order(self):
+    def long_base_order(self):
         # base_order = Buy_Order(symbol=self.symbol, quantity=self.division, type=self.base_order_type).post_order_limit()
         base_order = {
             'clientOrderId': 'KxwRuUmnQqgcs5y7KWU77t', 
@@ -100,16 +86,14 @@ class Deal():
             'time_in_force': base_order['timeInForce']
         }
         self.base_order_price = base_order['price']
-        if 'code' not in base_order:
-            # save base deal
-            return base_order
-        else:
-            print(base_order)
-            exit(1)
+        return base_deal
+        
 
-    def execute_take_profit_order(self, order):
+    def long_take_profit_order(self):
+        price = self.division * self.max_so_count
+        order = Buy_Order(symbol=self.symbol, quantity=self.division, type='LIMIT', price=price).post_order_limit()
         base_order = {
-            'deal_type': 'take_profit',
+            'deal_type': order['take_profit'],
             'order_id': order['orderId'],
             'type': order['base_order'],
             'strategy': 'long', # change accordingly
@@ -131,7 +115,9 @@ class Deal():
         length = self.max_so_count
         so_deals = []
         for index in range(length):
-            # order = Buy_Order(symbol=self.symbol, quantity=self.division, type='LIMIT', price).post_order_limit()
+            index += 1
+            price = self.division * index
+            # order = Buy_Order(symbol=self.symbol, quantity=self.division, type='LIMIT', price=price).post_order_limit()
             order = {
                 'clientOrderId': 'KxwRuUmnQqgcs5y7KWU77t', 
                 'cummulativeQuoteQty': '0.00000000', 
@@ -161,38 +147,18 @@ class Deal():
                 'time_in_force': order['timeInForce']
             }
 
+            so_deals.append(safety_orders)
+        return safety_orders
+
     def open_deal(self):
         new_deal = {
             'base_order': {},
             'take_profit_order': {},
             'so_orders': []
         }
-        
-        # tp_order = Sell_Order(symbol=self.symbol, quantity=self.base_order_size, type=self.base_order_type).post_order_limit()
-
-        
-
-        take_profit_order = {
-            'clientOrderId': 'KxwRuUmnQqgcs5y7KWU77t', 
-            'cummulativeQuoteQty': '0.00000000', 
-            'executedQty': '0.00000000', 
-            'fills': [], 
-            'orderId': 263599681, 
-            'orderListId': -1, 
-            'origQty': '4.00000000', 
-            'price': '0.00039920', 
-            'side': 'BUY', 
-            'status': 'NEW', 
-            'symbol': 'EOSBTC', 
-            'timeInForce': 'GTC', 
-            'transactTime': 1574040139349, 
-            'type': 'LIMIT'
-        }
-
-        new_deal.append(self.execute_base_order(base_order))
-        division = self.balance / (self.max_so_count + 2)
-        so_qty = division
-        so = []
+        new_deal['base_order'] = self.long_base_order()
+        new_deal['so_orders'] = self.long_safety_order_generator()
+        new_deal['take_profit_order'] = self.long_safety_order_generator()
         
         return 
 
