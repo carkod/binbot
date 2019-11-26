@@ -15,13 +15,13 @@ import requests
 import pandas as pd
 from main.tools import EnumDefinitions, handle_error, Book_Order
 from main.account import Account
-from main.deals.services import Buy_Order
 from dotenv import load_dotenv
 import os
+from main.orders.models import Buy_Order, Sell_Order
 
 load_dotenv()
 
-class Deal():
+class Deal:
 
     def __init__(self, bot):
         self.key = os.getenv("BINANCE_KEY")
@@ -32,17 +32,14 @@ class Deal():
         # Buy order
         self.side = EnumDefinitions.order_side[0]
 
-        self.active_bot = bot
         self.symbol = bot['pair']
         self.botname = bot['name']
         self.active = bot['active']
         self.balance = bot['balance_usage_size']
         self.base_order_type = bot['base_order_type']
-        self.max_so_count = bot['max_so_count']
+        self.max_so_count = int(bot['max_so_count'])
         self.price_deviation_so = bot['price_deviation_so']
         self.division = self.balance / self.max_so_count + 2
-        self.base_order_size = self.division
-        self.so_size = self.division
         self.take_profit = bot['take_profit']
         self.trailling = bot['trailling']
         self.trailling_deviation = bot['trailling_deviation']
@@ -151,6 +148,7 @@ class Deal():
         return safety_orders
 
     def open_deal(self):
+        print('opening deal')
         new_deal = {
             'base_order': {},
             'take_profit_order': {},

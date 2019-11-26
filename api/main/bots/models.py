@@ -21,7 +21,7 @@ from main.deals.models import Deal
 from bson.objectid import ObjectId
 
 
-class Bot(Deal):
+class Bot:
 
     def __init__(self):
         self.defaults = {
@@ -45,22 +45,6 @@ class Bot(Deal):
         }
         self.balance_division = 0
         self.active_bot = None
-
-    # def get_base_order_size(self, pair, balance_usage=1, max_so_count=5):
-    #     df = Ticker24Data(app).api_data()
-    #     available_balance = balance_usage * Account().get_balances()
-    #     self.balance_division = available_balance / max_so_count
-    #     price = Ticker24Data(pair).request_data()
-    #     base_order_size = self.balance_division / price
-    #     return base_order_size
-
-    # def get_so_size(self, base_order_size, index, so_size):
-    #     i = index + 1
-    #     size = base_order_size + self.balance_division
-    #     so_size
-    #     self.get_base_order_size()
-        
-    #     return so_size
 
     def get_available_btc(self):
         data = json.loads(Account().get_balances().data)['data']
@@ -171,7 +155,7 @@ class Bot(Deal):
     def delete(self, id):
         resp = tools.JsonResp({ "message": "Bot update is not available" }, 400)
         id = request.view_args['id']
-        delete_action = app.db.bots.delete_one({ "_id": id })
+        delete_action = app.db.bots.delete_one({ "_id": ObjectId(id) })
         if (delete_action):
             resp = tools.JsonResp({ "message": "Successfully delete bot", "botId": id }, 200)
         else:
@@ -186,8 +170,10 @@ class Bot(Deal):
         if (bot):
             bot['active'] = True
             app.db.bots.save(bot)
-            Deal(bot).open_deal()
-            resp = tools.JsonResp({ "message": "Successfully activated bot", "bodId": str(findId) }, 200)
+            if Deal(bot).open_deal():
+                resp = tools.JsonResp({ "message": "Successfully activated bot", "bodId": str(findId) }, 200)
+            else:
+                resp = tools.JsonResp({ "message": "Deal creation failed", "botId": findId }, 400)    
         else:
             resp = tools.JsonResp({ "message": "Bot not found", "botId": findId }, 400)
         return resp
