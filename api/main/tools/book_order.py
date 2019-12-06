@@ -31,8 +31,8 @@ class Book_Order():
     data = res.json()
     if order_side == 'bids':
         df = pd.DataFrame(data['bids'], columns=['price', 'qty'])
-    elif order_side == 'ask':
-        df = pd.DataFrame(data['ask'], columns=['price', 'qty'])
+    elif order_side == 'asks':
+        df = pd.DataFrame(data['asks'], columns=['price', 'qty'])
 
     else:
         print('Incorrect bid/ask keyword for matching_engine')

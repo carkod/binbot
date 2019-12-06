@@ -2,13 +2,17 @@ GET http://localhost:5000/bot/ HTTP/1.1
 
 ###
 
+GET http://localhost:5000/bot/5de3d4571f30fed6914d2118 HTTP/1.1
+
+###
+
 POST http://localhost:5000/bot/ HTTP/1.1
 
 {
-    "pair": "EOSBTC",
+    "pair": "BTCUSDT",
     "active": "true",
-    "strategy": "long",
-    "name": "ONG long bot",
+    "strategy": "short",
+    "name": "BTC hedging bot",
     "maxSOCount": "3",
     "balanceUsage": "1",
     "baseOrderSize": "0.0001",
@@ -27,12 +31,12 @@ POST http://localhost:5000/bot/ HTTP/1.1
 PUT http://localhost:5000/bot/ HTTP/1.1
 
 {
-    "_id": "5dd0950a2c81f3eadaa9c4c2",
-    "pair": "EOSBTC",
+    "_id": "5de3d4571f30fed6914d2118",
+    "pair": "BTCUSDT",
     "active": "true",
-    "strategy": "long",
-    "name": "renamed bot",
-    "maxSOCount": "3",
+    "strategy": "short",
+    "name": "BTC USDT short bot",
+    "maxSOCount": "2",
     "balanceUsage": "1",
     "baseOrderSize": "0.0001",
     "baseOrderType": "limit",
@@ -51,4 +55,4 @@ DELETE http://localhost:5000/bot/5dc8d91b34ee965b19a4fd4e HTTP/1.1
 
 ###
 
-GET http://localhost:5000/bot/activate/5dcda290852871eabc0921ce HTTP/1.1
+GET http://localhost:5000/bot/activate/5de3d4571f30fed6914d2118 HTTP/1.1

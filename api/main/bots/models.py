@@ -123,13 +123,9 @@ class Bot:
             "strategy": data["strategy"] if data.get("strategy") else "long",
             "name": data["name"] if data.get("name") else "Default Bot",
             "max_so_count": data["maxSOCount"] if data.get("maxSOCount") else 3,
-            "balance_usage": data["balanceUsage"]
-            if data.get("balanceUsage")
-            else 1,  # 100% of All Btc balance
+            "balance_usage": data["balanceUsage"] if data.get("balanceUsage") else 1,  # 100% of All Btc balance
             "base_order_size": data["baseOrderSize"],  # MIN by Binance = 0.0001 BTC
-            "base_order_type": data["baseOrderType"]
-            if data.get("baseOrderType")
-            else "limit",  # Market or limit
+            "base_order_type": data["baseOrderType"] if data.get("baseOrderType") else "limit",  # Market or limit
             "start_condition": True,
             "so_size": data["soSize"],  # Top band
             "take_profit": data["takeProfit"],
@@ -141,7 +137,7 @@ class Bot:
         }
 
         self.defaults.update(existent_bot)
-        botId = app.db.bots.update_one({"_id": data["_id"]}, {"$set": existent_bot}, upsert=False)
+        botId = app.db.bots.update_one({"_id": ObjectId(data["_id"])}, {"$set": existent_bot}, upsert=False)
         if botId.acknowledged:
             resp = tools.JsonResp(
                 {"message": "Successfully updated bot", "botId": data["_id"]}, 200
@@ -182,10 +178,15 @@ class Bot:
                 if 'deals' not in bot.keys():
                     bot["deals"] = []
                 bot["deals"].append(dealId)
-                app.db.bots.save(bot)
-                resp = tools.JsonResp(
-                    {"message": "Successfully activated bot", "bodId": str(findId)}, 200
-                )
+                botId = app.db.bots.save(bot)
+                if botId:
+                    resp = tools.JsonResp(
+                        {"message": "Successfully activated bot", "bodId": str(findId)}, 200
+                    )
+                else:
+                    resp = tools.JsonResp(
+                        {"message": "Bot failed to save", "bodId": str(findId)}, 400
+                    )
                 return resp
             else:
                 resp = tools.JsonResp({"message": "Deal creation failed", "botId": findId}, 400)
