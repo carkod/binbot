@@ -34,7 +34,7 @@ PUT http://localhost:5000/bot/ HTTP/1.1
     "_id": "5de3d4571f30fed6914d2118",
     "pair": "BTCUSDT",
     "active": "true",
-    "strategy": "long",
+    "strategy": "short",
     "name": "BTC USDT long bot",
     "maxSOCount": "2",
     "balanceUsage": "1",

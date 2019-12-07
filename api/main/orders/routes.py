@@ -1,6 +1,6 @@
 from flask import Flask, Blueprint, request, current_app as app
 from main.auth import token_required
-from main.orders.models import Buy_Order, Sell_Order
+from main.orders.models import Buy_Order, Sell_Order, Orders
 from flask_cors import CORS, cross_origin
 
 
@@ -32,6 +32,11 @@ def create_buy_order():
 @order_blueprint.route("/sell", methods=["POST"])
 def create_sell_order():
     return Sell_Order().post_order_limit()
+
+@order_blueprint.route("/open", methods=["GET"])
+def get_open_orders():
+    return Orders().get_open_orders()
+
 
 # @order_blueprint.route("/", methods=["PUT"])
 # def edit():
