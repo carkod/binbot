@@ -14,8 +14,11 @@ def handle_error(req):
 			req.raise_for_status()
 			# Binance code errors
 			if 'code' in json.loads(req.content).keys():
+				code = req.content['code']
 				print(json.loads(req.content))
-				# sys.exit(1)
+				if code == -2010:
+					sys.exit(1)
+				
 	except requests.exceptions.HTTPError as err:
 		if err:
 			print(req.json())

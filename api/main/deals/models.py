@@ -18,6 +18,7 @@ from main.account import Account
 from dotenv import load_dotenv
 import os
 from main.orders.models import Buy_Order, Sell_Order
+from main.tools.round_numbers import round_numbers
 
 load_dotenv()
 
@@ -57,8 +58,9 @@ class Deal:
     def long_base_order(self):
         url = 'http://localhost:5000/order/buy'
         pair = self.active_bot['pair']
-        qty = math.floor(self.division * 1000000) / 1000000
+        qty = round_numbers(self.division)
         price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+        self.long_base_order_price = price
         
         order = {
             "pair": pair,
@@ -110,8 +112,19 @@ class Deal:
             url = 'http://localhost:5000/order/buy'
             pair = self.active_bot['pair']
             qty = math.floor(self.division * 1000000) / 1000000
-            price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
-            
+
+            # SO mark based on take profit
+            increase_from_tp = float(self.take_profit) / int(self.max_so_count)
+
+            # last book order price            
+            market_price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+
+            # final order price. 
+            # Index incrementally increases price added markup
+            # +2 to exclude index 0 and first base order (index 1) from safety order
+            price = market_price * (1 + (increase_from_tp * (index + 2)))
+            # round down number
+            price = round_numbers(price, 2)
             order = {
                 "pair": pair,
                 "qty": qty,
@@ -120,24 +133,7 @@ class Deal:
             res = requests.post(url=url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
-            # End recursive order
-            # Example return
-            # order = {
-            #     "clientOrderId": "KxwRuUmnQqgcs5y7KWU77t",
-            #     "cummulativeQuoteQty": "0.00000000",
-            #     "executedQty": "0.00000000",
-            #     "fills": [],
-            #     "orderId": 263599681,
-            #     "orderListId": -1,
-            #     "origQty": "4.00000000",
-            #     "price": "0.00039920",
-            #     "side": "BUY",
-            #     "status": "NEW",
-            #     "symbol": "EOSBTC",
-            #     "timeInForce": "GTC",
-            #     "transactTime": 1574040139349,
-            #     "type": "LIMIT",
-            # }
+          
             safety_orders = {
                 "order_id": order["orderId"],
                 "deal_type": "safety_order",
@@ -156,11 +152,12 @@ class Deal:
         return so_deals
 
     def long_take_profit_order(self):
-        price = self.division * self.max_so_count
         url = 'http://localhost:5000/order/buy'
         pair = self.active_bot['pair']
         qty = math.floor(self.division * 1000000) / 1000000
-        price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+
+        market_price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+        price =  market_price * (1 + self.take_profit)
         
         order = {
             "pair": pair,
@@ -315,10 +312,10 @@ class Deal:
         new_deal = {"base_order": {}, "take_profit_order": {}, "so_orders": []}
         deal_strategy = self.strategy
         if deal_strategy == "long":
-            long_base_order = self.long_base_order()
-            if not long_base_order:
-                print("Deal: Base order failed")
-            new_deal["base_order"] = long_base_order
+            # long_base_order = self.long_base_order()
+            # if not long_base_order:
+            #     print("Deal: Base order failed")
+            # new_deal["base_order"] = long_base_order
 
             long_safety_order_generator = self.long_safety_order_generator()
             if not long_safety_order_generator:
