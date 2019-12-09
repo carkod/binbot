@@ -18,16 +18,16 @@ from main.tools import handle_error
 
 class Account():
 
+    recvWindow = 10000
+    min_amount = 0.1  # MIN_NOTIONAL restriction by Binance
+
     def __init__(self):
-        self.timestamp = int(round(tm.time() * 1000))
         self.base_url = app.config['BASE']
         self.account_url = app.config['ACCOUNT']
         self.candlestick_url = app.config['CANDLESTICK']
         self.secret = app.config['BINANCE_SECRET']
         self.key = app.config['BINANCE_KEY']
-        self.min_amount = 0.1  # MIN_NOTIONAL restriction by Binance
-        self.recvWindow = 10000
-
+        
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))

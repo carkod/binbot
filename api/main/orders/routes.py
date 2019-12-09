@@ -37,6 +37,10 @@ def create_sell_order():
 def get_open_orders():
     return Orders().get_open_orders()
 
+@order_blueprint.route("/", methods=["DELETE"])
+def delete_order():
+    return Orders().delete_order()
+
 
 # @order_blueprint.route("/", methods=["PUT"])
 # def edit():

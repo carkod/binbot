@@ -73,7 +73,7 @@ class Buy_Order():
         headers = {'X-MBX-APIKEY': self.key}
 
         # Prepare request for signing
-        r = requests.Request('POST', url=url, params=params, headers=headers)
+        r = requests.Request(url=url, params=params, headers=headers)
         prepped = r.prepare()
         query_string = urlparse(prepped.url).query
         total_params = query_string

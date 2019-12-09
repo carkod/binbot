@@ -55,11 +55,30 @@ class Deal:
             print(order)
             exit(1)
 
+    def binance_bug_workaround(self, order):
+        if 'code' in order.keys() and order['code'] == -2010 and self.balance >= 0.001:
+            buy_url = 'http://localhost:5000/order/sell'
+            pair = "BTCUSDT"
+            price = float(Book_Order(pair).last_price('asks'))
+            qty = round_numbers(10.3 / price)
+            unfillable_params = {
+                "pair": pair,
+                "qty": qty,
+                "price": round_numbers(price),
+            }
+            unfillable_order = requests.post(url=buy_url, data=json.dumps(unfillable_params))
+            handle_error(unfillable_order)
+            orderId = unfillable_order.json()['orderId']
+            print('filled small order id: {}'.format(orderId))
+            return True
+        else:
+            return False
+
     def long_base_order(self):
         url = 'http://localhost:5000/order/buy'
         pair = self.active_bot['pair']
         qty = round_numbers(self.division)
-        price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+        price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         self.long_base_order_price = price
         
         order = {
@@ -70,22 +89,12 @@ class Deal:
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         base_order = res.json()
-        # base_order = {
-        #     "clientOrderId": "KxwRuUmnQqgcs5y7KWU77t",
-        #     "cummulativeQuoteQty": "0.00000000",
-        #     "executedQty": "0.00000000",
-        #     "fills": [],
-        #     "orderId": 263599681,
-        #     "orderListId": -1,
-        #     "origQty": "4.00000000",
-        #     "price": "0.00039920",
-        #     "side": "BUY",
-        #     "status": "NEW",
-        #     "symbol": "EOSBTC",
-        #     "timeInForce": "GTC",
-        #     "transactTime": 1574040139349,
-        #     "type": "LIMIT",
-        # }
+        # workaround binance bug
+        if self.binance_bug_workaround(base_order):
+            self.long_base_order()
+        else:
+            return 
+
         base_deal = {
             "order_id": base_order["orderId"],
             "deal_type": "base_order",
@@ -104,9 +113,9 @@ class Deal:
     def long_safety_order_generator(self):
         length = self.max_so_count
         so_deals = []
+        index = 0
         for index in range(length):
             index += 1
-            price = self.division * index
             
             # Recursive order
             url = 'http://localhost:5000/order/buy'
@@ -117,12 +126,12 @@ class Deal:
             increase_from_tp = float(self.take_profit) / int(self.max_so_count)
 
             # last book order price            
-            market_price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+            market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
 
             # final order price. 
             # Index incrementally increases price added markup
-            # +2 to exclude index 0 and first base order (index 1) from safety order
-            price = market_price * (1 + (increase_from_tp * (index + 2)))
+            # +1 to exclude index 0 and first base order (index 1) from safety order
+            price = market_price * (1 + (increase_from_tp * (index + 1)))
             # round down number
             price = round_numbers(price, 2)
             order = {
@@ -133,7 +142,9 @@ class Deal:
             res = requests.post(url=url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
-          
+            if self.binance_bug_workaround(order):
+                self.long_safety_order_generator()
+
             safety_orders = {
                 "order_id": order["orderId"],
                 "deal_type": "safety_order",
@@ -149,6 +160,8 @@ class Deal:
             }
 
             so_deals.append(safety_orders)
+            if index > length:
+                break
         return so_deals
 
     def long_take_profit_order(self):
@@ -156,7 +169,7 @@ class Deal:
         pair = self.active_bot['pair']
         qty = math.floor(self.division * 1000000) / 1000000
 
-        market_price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+        market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         price =  market_price * (1 + self.take_profit)
         
         order = {
@@ -168,22 +181,11 @@ class Deal:
         handle_error(res)
         order = res.json()
 
-        order = {
-            "clientOrderId": "KxwRuUmnQqgcs5y7KWU77t",
-            "cummulativeQuoteQty": "0.00000000",
-            "executedQty": "0.00000000",
-            "fills": [],
-            "orderId": 263599681,
-            "orderListId": -1,
-            "origQty": "4.00000000",
-            "price": "0.00039920",
-            "side": "BUY",
-            "status": "NEW",
-            "symbol": "EOSBTC",
-            "timeInForce": "GTC",
-            "transactTime": 1574040139349,
-            "type": "LIMIT",
-        }
+        if self.binance_bug_workaround(order):
+            self.long_take_profit_order()
+        else:
+            return 
+
         base_order = {
             "deal_type": "take_profit",
             "order_id": order["orderId"],
@@ -207,7 +209,7 @@ class Deal:
         url = 'http://localhost:5000/order/sell'
         pair = self.active_bot['pair']
         qty = math.floor(self.division * 1000000) / 1000000
-        price = float(Book_Order(pair, qty).matching_engine(0, 'asks'))
+        price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
         
         order = {
             "pair": pair,
@@ -242,7 +244,7 @@ class Deal:
             url = 'http://localhost:5000/order/buy'
             pair = self.active_bot['pair']
             qty = math.floor(self.division * 1000000) / 1000000
-            price = float(Book_Order(pair, qty).matching_engine(0, 'asks'))
+            price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
             
             order = {
                 "pair": pair,
@@ -334,16 +336,16 @@ class Deal:
                 print("Deal: Base order failed")
             new_deal["base_order"] = short_base_order
 
-            short_safety_order_generator = self.short_safety_order_generator()
-            if not short_safety_order_generator:
-                print("Deal: Safety orders failed")
-            new_deal["so_orders"] = short_safety_order_generator
+            # short_safety_order_generator = self.short_safety_order_generator()
+            # if not short_safety_order_generator:
+            #     print("Deal: Safety orders failed")
+            # new_deal["so_orders"] = short_safety_order_generator
 
-            short_take_profit_order = self.short_take_profit_order()
-            if not short_take_profit_order:
-                print("Deal: Take profit order failed")
+            # short_take_profit_order = self.short_take_profit_order()
+            # if not short_take_profit_order:
+            #     print("Deal: Take profit order failed")
 
-            new_deal["take_profit_order"] = short_take_profit_order 
+            # new_deal["take_profit_order"] = short_take_profit_order 
 
         dealId = app.db.deals.save(new_deal)
         dealId = str(dealId)
