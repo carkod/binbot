@@ -1,16 +1,16 @@
 POST http://localhost:5000/order/buy HTTP/1.1
 
 {
-    "pair": "BTCUSDT",
-    "qty": "0.001442",
-    "price": "7520.64"
+    "pair": "BNBBTC",
+    "qty": "0.1",
+    "price": "0.0020889"
 }
 
 ###
 POST http://localhost:5000/order/sell HTTP/1.1
 
 {
-    "pair": "BTCUSDT",
-    "qty": "0.001442",
-    "price": "7513.18"
+    "pair": "BNBBTC",
+    "qty": "0.1",
+    "price": "0.0020887"
 }

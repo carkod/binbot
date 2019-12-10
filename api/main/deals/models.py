@@ -55,12 +55,12 @@ class Deal:
             print(order)
             exit(1)
 
-    def binance_bug_workaround(self, order, pair, price):
+    def binance_bug_workaround(self, order):
         if 'code' in order.keys() and order['code'] == -2010 and self.balance >= 0.001:
             buy_url = 'http://localhost:5000/order/sell'
-            pair = "BTCBNB"
-            qty = 0.1
-            price = float(Book_Order(pair, qty).matching_engine(0, 'asks'))
+            pair = "BTCUSDT"
+            price = float(Book_Order(pair).last_price('asks'))
+            qty = round_numbers(10.3 / price)
             unfillable_params = {
                 "pair": pair,
                 "qty": qty,
@@ -78,7 +78,7 @@ class Deal:
         url = 'http://localhost:5000/order/buy'
         pair = self.active_bot['pair']
         qty = round_numbers(self.division)
-        price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+        price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         self.long_base_order_price = price
         
         order = {
@@ -90,7 +90,7 @@ class Deal:
         handle_error(res)
         base_order = res.json()
         # workaround binance bug
-        if self.binance_bug_workaround(base_order, pair, price):
+        if self.binance_bug_workaround(base_order):
             self.long_base_order()
         else:
             return 
@@ -113,6 +113,7 @@ class Deal:
     def long_safety_order_generator(self):
         length = self.max_so_count
         so_deals = []
+        index = 0
         for index in range(length):
             index += 1
             
@@ -125,11 +126,11 @@ class Deal:
             increase_from_tp = float(self.take_profit) / int(self.max_so_count)
 
             # last book order price            
-            market_price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+            market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
 
             # final order price. 
             # Index incrementally increases price added markup
-            # +2 to exclude index 0 and first base order (index 1) from safety order
+            # +1 to exclude index 0 and first base order (index 1) from safety order
             price = market_price * (1 + (increase_from_tp * (index + 1)))
             # round down number
             price = round_numbers(price, 2)
@@ -141,10 +142,8 @@ class Deal:
             res = requests.post(url=url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
-            if self.binance_bug_workaround(order, pair, price):
+            if self.binance_bug_workaround(order):
                 self.long_safety_order_generator()
-            else:
-                return 
 
             safety_orders = {
                 "order_id": order["orderId"],
@@ -161,6 +160,8 @@ class Deal:
             }
 
             so_deals.append(safety_orders)
+            if index > length:
+                break
         return so_deals
 
     def long_take_profit_order(self):
@@ -168,7 +169,7 @@ class Deal:
         pair = self.active_bot['pair']
         qty = math.floor(self.division * 1000000) / 1000000
 
-        market_price = float(Book_Order(pair, qty).matching_engine(0, 'bids'))
+        market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         price =  market_price * (1 + self.take_profit)
         
         order = {
@@ -180,7 +181,7 @@ class Deal:
         handle_error(res)
         order = res.json()
 
-        if self.binance_bug_workaround(order, pair, price):
+        if self.binance_bug_workaround(order):
             self.long_take_profit_order()
         else:
             return 
@@ -208,7 +209,7 @@ class Deal:
         url = 'http://localhost:5000/order/sell'
         pair = self.active_bot['pair']
         qty = math.floor(self.division * 1000000) / 1000000
-        price = float(Book_Order(pair, qty).matching_engine(0, 'asks'))
+        price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
         
         order = {
             "pair": pair,
@@ -243,7 +244,7 @@ class Deal:
             url = 'http://localhost:5000/order/buy'
             pair = self.active_bot['pair']
             qty = math.floor(self.division * 1000000) / 1000000
-            price = float(Book_Order(pair, qty).matching_engine(0, 'asks'))
+            price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
             
             order = {
                 "pair": pair,
