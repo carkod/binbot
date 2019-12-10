@@ -165,7 +165,7 @@ class Deal:
         return so_deals
 
     def long_take_profit_order(self):
-        url = 'http://localhost:5000/order/buy'
+        url = 'http://localhost:5000/order/sell'
         pair = self.active_bot['pair']
         qty = round_numbers(self.division)
 
@@ -267,6 +267,7 @@ class Deal:
         return so_deals
 
     def short_take_profit_order(self):
+        url = 'http://localhost:5000/order/buy'
         price = self.division * self.max_so_count
         # order = Buy_Order(symbol=self.symbol, quantity=self.division, type='LIMIT', price=price).post_order_limit()
         # Make requests as with normal api
