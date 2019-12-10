@@ -167,10 +167,10 @@ class Deal:
     def long_take_profit_order(self):
         url = 'http://localhost:5000/order/buy'
         pair = self.active_bot['pair']
-        qty = math.floor(self.division * 1000000) / 1000000
+        qty = round_numbers(self.division)
 
         market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
-        price =  market_price * (1 + self.take_profit)
+        price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
         
         order = {
             "pair": pair,
@@ -183,8 +183,6 @@ class Deal:
 
         if self.binance_bug_workaround(order):
             self.long_take_profit_order()
-        else:
-            return 
 
         base_order = {
             "deal_type": "take_profit",
@@ -198,11 +196,7 @@ class Deal:
             "fills": order["fills"],
             "time_in_force": order["timeInForce"],
         }
-        if "code" not in order:
-            return base_order
-        else:
-            print(order)
-            exit(1)
+        return base_order
     
 
     def short_base_order(self):
@@ -319,10 +313,10 @@ class Deal:
             #     print("Deal: Base order failed")
             # new_deal["base_order"] = long_base_order
 
-            long_safety_order_generator = self.long_safety_order_generator()
-            if not long_safety_order_generator:
-                print("Deal: Safety orders failed")
-            new_deal["so_orders"] = long_safety_order_generator
+            # long_safety_order_generator = self.long_safety_order_generator()
+            # if not long_safety_order_generator:
+            #     print("Deal: Safety orders failed")
+            # new_deal["so_orders"] = long_safety_order_generator
 
             long_take_profit_order = self.long_take_profit_order()
             if not long_take_profit_order:
