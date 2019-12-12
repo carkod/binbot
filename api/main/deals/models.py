@@ -346,21 +346,21 @@ class Deal:
             new_deal["take_profit_order"] = long_take_profit_order
 
         if deal_strategy == "short":
-            # short_base_order = self.short_base_order()
-            # if not short_base_order:
-            #     print("Deal: Base order failed")
-            # new_deal["base_order"] = short_base_order
+            short_base_order = self.short_base_order()
+            if not short_base_order:
+                print("Deal: Base order failed")
+            new_deal["base_order"] = short_base_order
 
             short_safety_order_generator = self.short_safety_order_generator(0)
             if not short_safety_order_generator:
                 print("Deal: Safety orders failed")
             new_deal["so_orders"] = short_safety_order_generator
 
-            # short_take_profit_order = self.short_take_profit_order()
-            # if not short_take_profit_order:
-            #     print("Deal: Take profit order failed")
+            short_take_profit_order = self.short_take_profit_order()
+            if not short_take_profit_order:
+                print("Deal: Take profit order failed")
 
-            # new_deal["take_profit_order"] = short_take_profit_order 
+            new_deal["take_profit_order"] = short_take_profit_order 
 
         dealId = app.db.deals.save(new_deal)
         dealId = str(dealId)
