@@ -73,7 +73,6 @@ class Deal:
             return True
         else:
             return False
-<<<<<<< HEAD
     
     def binance_bug_workaround_short(self, order):
         if 'code' in order.keys() and order['code'] == -2010 and self.balance >= 0.001:
@@ -93,8 +92,6 @@ class Deal:
             return True
         else:
             return False
-=======
->>>>>>> 76bddd0d13da98f66964d6a83128e22ad80d9ae6
 
     def long_base_order(self):
         url = 'http://localhost:5000/order/buy'
@@ -296,18 +293,12 @@ class Deal:
 
     def short_take_profit_order(self):
         url = 'http://localhost:5000/order/buy'
-<<<<<<< HEAD
         pair = self.active_bot['pair']
         qty = round_numbers(self.division)
 
         market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
         
-=======
-        price = self.division * self.max_so_count
-        # order = Buy_Order(symbol=self.symbol, quantity=self.division, type='LIMIT', price=price).post_order_limit()
-        # Make requests as with normal api
->>>>>>> 76bddd0d13da98f66964d6a83128e22ad80d9ae6
         order = {
             "pair": pair,
             "qty": qty,
@@ -343,10 +334,10 @@ class Deal:
                 print("Deal: Base order failed")
             new_deal["base_order"] = long_base_order
 
-            # long_safety_order_generator = self.long_safety_order_generator()
-            # if not long_safety_order_generator:
-            #     print("Deal: Safety orders failed")
-            # new_deal["so_orders"] = long_safety_order_generator
+            long_safety_order_generator = self.long_safety_order_generator()
+            if not long_safety_order_generator:
+                print("Deal: Safety orders failed")
+            new_deal["so_orders"] = long_safety_order_generator
 
             long_take_profit_order = self.long_take_profit_order()
             if not long_take_profit_order:
