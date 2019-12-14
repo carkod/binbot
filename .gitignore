@@ -10,6 +10,9 @@ Pipfile.lock
 api/main/config/*.cfg
 .env
 
+# temporary key storage
+listenkey.bin
+
 ##
 #
 # REACT APPS

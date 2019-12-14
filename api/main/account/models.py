@@ -45,7 +45,7 @@ class Account():
         # Generate and append signature
         signature = hmac.new(self.secret.encode(
             'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-        params['signature'] = signature
+        params.append(('signature', signature))
 
         # Response after request
         res = requests.get(url=url, params=params, headers=headers)
