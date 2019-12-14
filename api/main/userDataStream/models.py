@@ -9,6 +9,7 @@ import asyncio
 import time
 import socket
 import requests
+from urllib.parse import urlparse
 
 class UserDataStream():
 
