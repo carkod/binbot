@@ -18,12 +18,6 @@ def get():
         # return Buy_Order(symbol, quantity, type, price).get_balances()
     pass
 
-# @order_blueprint.route("/<id>", methods=["GET"])
-# def get_one(id):
-#   # Get single order (id = orderId) from Binance
-# 	return order().get_one()
-
-
 @order_blueprint.route("/buy", methods=["POST"])
 def create_buy_order():
     return Buy_Order().post_order_limit()
@@ -41,11 +35,3 @@ def get_open_orders():
 def delete_order():
     return Orders().delete_order()
 
-
-# @order_blueprint.route("/", methods=["PUT"])
-# def edit():
-# 	return order().edit()
-
-# @order_blueprint.route("/<id>", methods=["DELETE"])
-# def delete(id):
-# 	return order().delete(id)
