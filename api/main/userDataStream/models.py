@@ -10,6 +10,9 @@ import time
 import socket
 import requests
 from urllib.parse import urlparse
+from main.tools import handle_error
+import hmac
+import hashlib
 
 class UserDataStream():
 
@@ -25,7 +28,7 @@ class UserDataStream():
     url = self.base_url + self.user_data_stream
 
     # Get data for a single crypto e.g. BTT in BNB market
-    params = ''
+    params = []
     headers = {'X-MBX-APIKEY': self.key}
 
     # Prepare request for signing
@@ -43,7 +46,7 @@ class UserDataStream():
     res = requests.post(url=url, params=params, headers=headers)
     handle_error(res)
     data = res.json()
-
+    return data
     # @classmethod
     # def recv_frame(self):
     #     frame = super().recv_frame()
