@@ -3,7 +3,7 @@
 <title>WebSocket Test</title>
 <script language="javascript" type="text/javascript">
 
-var wsUri = "wss://stream.binance.com:9443/api/v3/userDataStream";
+var wsUri = "wss://stream.binance.com:9443/ws/btcusdt@depth";
 var output;
 
 function init()
@@ -23,15 +23,8 @@ function testWebSocket()
 
 function onOpen(evt)
 {
-  const subscription = {
-  "method": "SUBSCRIBE",
-  "params": [
-    "btcusdt@aggTrade"
-  ],
-  "id": 1
-}
-  writeToScreen("CONNECTED");
-  doSend(JSON.stringify(subscription));
+  writeToScreen(evt);
+  // doSend(JSON.stringify(subscription));
 }
 
 function onClose(evt)
@@ -41,7 +34,6 @@ function onClose(evt)
 
 function onMessage(evt)
 {
-  console.log(evt);
   writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data+'</span>');
   websocket.close();
 }
@@ -72,7 +64,12 @@ function writeToScreen(message)
   output.appendChild(pre);
 }
 
+function orders(data) {
+  console.log(data.data)
+}
+
 window.addEventListener("load", init, false);
+window.addEventListener("executionReport", orders, false);
 
 </script>
 

@@ -4,7 +4,7 @@ from pymongo import MongoClient
 from main.tools import JsonResp
 from jose import jwt
 import os
-
+from flask_socketio import SocketIO, emit
 # Import Routes
 from main.user.routes import user_blueprint
 from main.account.routes import account_blueprint
@@ -19,7 +19,8 @@ def create_app():
   app = Flask(__name__)
   app.config.from_pyfile("config/config.cfg")
   cors = CORS(app, resources={r"/*": { "origins": app.config["FRONTEND_DOMAIN"] }})
-  
+  socketio = SocketIO(app)
+
   # Misc Config
   os.environ["TZ"] = app.config["TIMEZONE"]
 
@@ -39,6 +40,10 @@ def create_app():
   @app.route("/")
   def index():
     return JsonResp({ "status": "Online" }, 200)
-  
+
+  @socketio.on('executionReport', namespace='/user-data-stream')
+  def test_message(message):
+    print(message)
+    # emit('my response', {'data': message['data']})
 
   return app

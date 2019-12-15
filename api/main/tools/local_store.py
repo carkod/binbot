@@ -9,5 +9,10 @@ def get_listenkey():
 
 def set_listenkey(data):
     data['timestamp'] = int(round(tm() * 1000))
+    data['createdAt'] = int(round(tm() * 1000))
     dump(data, open(filename, "wb"))
 
+def update_listenkey_timestamp():
+    data = get_listenkey()
+    data['timestamp'] = int(round(tm() * 1000))
+    dump(data, open(filename, "wb"))
