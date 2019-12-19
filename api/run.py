@@ -1,6 +1,5 @@
 from main import create_app
 import logging
-from flask_socketio import send, SocketIO
 
 app = create_app()
 

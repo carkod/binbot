@@ -15,7 +15,7 @@ import time as tm
 from urllib.parse import urlparse
 import requests
 import pandas as pd
-from main.tools import EnumDefinitions, handle_error 
+from main.tools import EnumDefinitions, handle_error, timestamp
 from main.account import Account
 import os
 

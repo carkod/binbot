@@ -1,6 +1,6 @@
 from flask import Flask, Blueprint, request, current_app as app
 from main.auth import token_required
-from main.orders.models import Buy_Order, Sell_Order, Orders
+from main.orders.models import Buy_Order, Sell_Order, Orders, OrderUpdates
 from flask_cors import CORS, cross_origin
 
 
@@ -35,3 +35,13 @@ def get_open_orders():
 def delete_order():
     return Orders().delete_order()
 
+
+@order_blueprint.route("/order-updates", methods=["GET"])
+def orders_update():
+    updates = OrderUpdates()
+    listen_key = updates.get_listenkey()['listenKey']
+    stream = updates.open_stream()
+    if stream:
+        result = updates.get_stream(listen_key)
+        print(result)
+    return result
