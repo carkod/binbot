@@ -24,7 +24,7 @@ class OrderUpdates(BaseNamespace):
         self.host = os.getenv('WS_BASE')
         self.port = os.getenv('WS_BASE_PORT')
         self.path = '/ws'
-        
+        self.active_ws = None
 
     def get_listenkey(self):
         url = self.base_url + self.user_datastream_listenkey
@@ -50,6 +50,7 @@ class OrderUpdates(BaseNamespace):
             "id": 1
         }) 
         ws.send(subscribe)
+        self.active_ws = ws
         result =  ws.recv()
         result = json.loads(result)
         if result["result"] == None:
@@ -65,5 +66,24 @@ class OrderUpdates(BaseNamespace):
         ws = create_connection(url)
         result =  ws.recv()
         result = json.loads(result)
-        return result
+        
+        # Parse result. Print result for raw result from Binance
+        client_order_id = result["C"] if result["X"] == "CANCELED" else result["c"]
+        order_result = [
+            ("symbol", result["s"]),
+            ("order_status", result["X"]),
+            ("timestamp", result["E"]),
+            ("client_order_id", client_order_id),
+            ("created_at", result["O"])
+        ]
+
+        print('order result %s', order_result)
+
+        return order_result
+
+
+    def close_stream(self):
+        if self.active_ws:
+            self.active_ws.close()
+            print('Active socket closed')
         
