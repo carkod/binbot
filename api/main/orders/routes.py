@@ -4,13 +4,6 @@ from main.orders.models import Buy_Order, Sell_Order, Orders, OrderUpdates
 from flask_cors import CORS, cross_origin
 
 
-# initialization
-# app = Flask(__name__)
-# app.config['SECRET_KEY'] = 'the quick brown fox jumps over the lazy   dog'
-# app.config['CORS_HEADERS'] = 'Content-Type'
-
-# cors = CORS(app, resources={r"/user": {"origins": "http://localhost:5000"}})
-
 order_blueprint = Blueprint("order", __name__)
 @order_blueprint.route("/", methods=["GET"])
 def get():
@@ -35,7 +28,6 @@ def get_open_orders():
 def delete_order():
     return Orders().delete_order()
 
-
 @order_blueprint.route("/order-updates", methods=["GET"])
 def orders_update():
     updates = OrderUpdates()
@@ -44,4 +36,9 @@ def orders_update():
     if stream:
         result = updates.get_stream(listen_key)
         print(result)
+
+    # Comment out after development is finished
+    updates.close_stream()
     return result
+
+

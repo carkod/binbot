@@ -4,12 +4,11 @@ from jose import jwt
 from main import tools
 from main import auth
 import json
-import time as tm
+from time import time, sleep
 import hashlib
 import hmac
 import math
 import sys
-import time as tm
 from urllib.parse import urlparse
 import requests
 import pandas as pd
@@ -18,7 +17,7 @@ from main.account import Account
 from dotenv import load_dotenv
 import os
 from main.orders.models import Buy_Order, Sell_Order
-from main.tools.round_numbers import round_numbers
+from main.tools.round_numbers import round_numbers, round_numbers_ceiling
 
 load_dotenv()
 
@@ -42,7 +41,9 @@ class Deal:
         self.base_order_type = bot["base_order_type"]
         self.max_so_count = int(bot["max_so_count"])
         self.price_deviation_so = bot["price_deviation_so"]
-        self.division = self.balance / (self.max_so_count + 2)
+        # 2 = base order + take profit
+        # 1.0075 = default commission rate
+        self.division = (self.balance / (self.max_so_count + 2)) * 1.0075
         self.take_profit = bot["take_profit"]
         self.trailling = bot["trailling"]
         self.trailling_deviation = bot["trailling_deviation"]
@@ -97,7 +98,7 @@ class Deal:
         url = 'http://localhost:5000/order/buy'
         pair = self.active_bot['pair']
         qty = round_numbers(self.division)
-        price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
+        price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
         self.long_base_order_price = price
         
         order = {
@@ -110,6 +111,7 @@ class Deal:
         base_order = res.json()
         # workaround binance bug
         if self.binance_bug_workaround(base_order):
+            sleep(5)
             self.long_base_order()
         else:
             return 
@@ -145,7 +147,7 @@ class Deal:
             increase_from_tp = float(self.take_profit) / int(self.max_so_count)
 
             # last book order price            
-            market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
+            market_price = float(Book_Order(pair).ticker_price())
 
             # final order price. 
             # Index incrementally increases price added markup
@@ -219,10 +221,11 @@ class Deal:
     
 
     def short_base_order(self):
-        url = 'http://localhost:5000/order/buy'
+        url = 'http://localhost:5000/order/sell'
         pair = self.active_bot['pair']
         qty = math.floor(self.division * 1000000) / 1000000
-        price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
+        # bids or asks
+        price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         
         order = {
             "pair": pair,
@@ -260,7 +263,7 @@ class Deal:
             url = 'http://localhost:5000/order/buy'
             pair = self.active_bot['pair']
             qty = math.floor(self.division * 1000000) / 1000000
-            price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
+            price = float(Book_Order(pair).ticker_price())
             
             order = {
                 "pair": pair,

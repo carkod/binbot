@@ -11,6 +11,8 @@ class Book_Order:
         self.base_url = os.getenv("BASE")
         self.order_url = os.getenv("ORDER")
         self.order_book_url = os.getenv("ORDER_BOOK")
+        self.price = os.getenv("TICKER_PRICE")
+        self.avg_price = os.getenv("AVERAGE_PRICE")
         self.symbol = symbol
 
     """
@@ -65,3 +67,13 @@ class Book_Order:
             self.matching_engine(limit)
         return match_qty["price"][0]
 
+
+    def ticker_price(self):
+        url = self.base_url + self.ticker_price
+        params = [("symbol", self.symbol)]
+        res = requests.get(url=url, params=params)
+        handle_error(res)
+        data = res.json()
+        df = pd.DataFrame(data["price"], columns=["price"])
+        price = df["price"].astype(float)[0]
+        return price
