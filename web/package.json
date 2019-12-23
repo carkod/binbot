@@ -48,5 +48,9 @@
     "ajv": "6.10.0",
     "jquery": "3.4.1",
     "typescript": "3.4.5"
+  },
+  "nodemonConfig" : {
+    "restartable": "rs",
+    "ignore": ["node_modules/**/node_modules"],
   }
 }
