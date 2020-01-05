@@ -76,12 +76,12 @@ do
   echo
 done
 
-# Rename config.cfg.sample to config.cfg
+# Rename config.cfg.sample to .env
 CONFIG_EXAMPLE_FILE=./api/main/config/config.cfg.sample
-CONFIG_FILE=./api/main/config/config.cfg
+CONFIG_FILE=.env
 mv $CONFIG_EXAMPLE_FILE $CONFIG_FILE
 
-# Save configuration values to config.cfg
+# Save configuration values to config.cfg.sample
 sed -i '' -e "s~##SECRET_KEY##~$SECRET_KEY~g" $CONFIG_FILE
 sed -i '' -e "s~##FLASK_DOMAIN##~$FLASK_DOMAIN~g" $CONFIG_FILE
 sed -i '' -e "s~##FLASK_PORT##~$FLASK_PORT~g" $CONFIG_FILE

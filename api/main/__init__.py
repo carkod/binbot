@@ -17,7 +17,7 @@ def create_app():
 
   # Flask Config
   app = Flask(__name__)
-  app.config.from_pyfile("config/config.cfg")
+  app.config.from_pyfile("../../.env")
   cors = CORS(app, resources={r"/*": { "origins": app.config["FRONTEND_DOMAIN"] }})
 
   # Misc Config
