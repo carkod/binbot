@@ -7,7 +7,7 @@ import json
 import os
 import asyncio
 import time
-from flask_socketio import SocketIO, emit
+
 import requests
 from urllib.parse import urlparse
 from main.tools import handle_error, set_listenkey, get_listenkey, update_listenkey_timestamp
@@ -78,7 +78,4 @@ class UserDataStream:
     update_listenkey_timestamp()
     return data
 
-  
-  def order_update(self):
-    emit('my response')
 

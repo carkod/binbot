@@ -1,24 +1,25 @@
-from flask import Flask, request
-from flask_cors import CORS
-from pymongo import MongoClient
-from main.tools import JsonResp
-from jose import jwt
 import os
-from flask_socketio import SocketIO, emit
-# Import Routes
-from main.user.routes import user_blueprint
+
+from flask import Flask, request
+
+from jose import jwt
 from main.account.routes import account_blueprint
 from main.bots.routes import bot_blueprint
 from main.deals.routes import deal_blueprint
 from main.orders.routes import order_blueprint
+from main.tools import JsonResp
+# Import Routes
+from main.user.routes import user_blueprint
 from main.userDataStream.routes import user_datastream_blueprint
+from pymongo import MongoClient
+
 
 def create_app():
 
   # Flask Config
   app = Flask(__name__)
   app.config.from_pyfile("../../.env")
-  cors = CORS(app, resources={r"/*": { "origins": app.config["FRONTEND_DOMAIN"] }})
+  # cors = CORS(app, resources={r"/*": { "origins": app.config["FRONTEND_DOMAIN"] }})
 
   # Misc Config
   os.environ["TZ"] = app.config["TIMEZONE"]

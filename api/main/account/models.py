@@ -1,20 +1,43 @@
-from flask import current_app as app
-from flask import Flask, request
-from passlib.hash import pbkdf2_sha256
-from jose import jwt
-from main import tools
-from main import auth
-import json
-import time as tm
 import hashlib
 import hmac
+import json
 import math
 import sys
+import os
 import time as tm
 from urllib.parse import urlparse
-import requests
+
 import pandas as pd
+import requests
+from flask import Flask
+from flask import current_app as app
+from flask import request
+
+from jose import jwt
+from main import auth, tools
 from main.tools import handle_error
+from passlib.hash import pbkdf2_sha256
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Balances:
+
+  def __init__(self, app):
+    self.key = os.getenv("BINANCE_KEY")
+    self.secret = os.getenv("BINANCE_SECRET")
+    self.base_url = os.getenv("BASE")
+    self.order_url = os.getenv("TICKER24")
+
+  def get_balances(self):
+      data = json.loads(Account().get_balances().data)['data']
+      available_balance = 0
+      for i in range(len(data)):
+          if data[i]['asset'] == 'BTC':
+              available_balance = data[i]['free']
+              return available_balance
+      return available_balance
+
 
 class Account():
 
@@ -72,3 +95,4 @@ class Account():
 
     def get_quote_price(self):
         pass
+
