@@ -1,4 +1,3 @@
-from socketIO_client import SocketIO, BaseNamespace
 import os
 import logging
 from websocket import create_connection
@@ -10,7 +9,7 @@ from urllib.parse import urlparse
 import hmac
 from main.tools import handle_error
 
-class OrderUpdates(BaseNamespace):
+class OrderUpdates():
     def __init__(self):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")

@@ -2,23 +2,13 @@
  
 - MongoDB
 - Python 3 (defaults to Python 3.7, but you can change this in the Pipfile before setup)
+- Docker
+- Filled `.env` file
 
-## Setup instructions
+## Running API
 
-1. Clone this repo to your local web server
-2. `cd` into the directory within the terminal
-3. Run `./setup` to setup pipenv and configure the Flask app
-
-Here's a quick video of the setup process (no audio): [flask-mongo-api-boilerplate-setup.mp4](https://img.lukepeters.me/flask-mongo-api-boilerplate-setup.mp4)
-
-## Running the app
-
-1. Create a virtual environment with conda
-2. Run `./run` to start the Flask application
-
-## Further configuration
-
-You can configure the app manually by editing the `.env` file.
+1. Build image `docker build --tag binbot .`
+3. Run container `docker run -p 5000:5000 -ti binbot`
 
 ## Auth tokens
 

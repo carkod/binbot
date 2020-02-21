@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'the quick brown fox jumps over the lazy dog'
 app.config['CORS_HEADERS'] = 'Content-Type'
 
-cors = CORS(app, resources={r"/user": {"origins": "http://localhost:5000"}})
+# cors = CORS(app, resources={r"/user": {"origins": "http://localhost:5000"}})
 
 account_blueprint = Blueprint("account", __name__)
 # @token_required
