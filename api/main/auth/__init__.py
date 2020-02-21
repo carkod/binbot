@@ -4,7 +4,6 @@ from functools import wraps
 from main.tools import JsonResp
 from jose import jwt
 import datetime
-from bson.json_util import dumps
 
 # Auth Decorator
 def token_required(f):
@@ -34,7 +33,7 @@ def encodeAccessToken(user_id, email):
 def encodeRefreshToken(user_id, email):
 
 	refreshToken = jwt.encode({
-		"user_id": dumps(user_id),
+		"user_id": user_id,
 		"email": email,
 		"exp": datetime.datetime.utcnow() + datetime.timedelta(weeks=4) # The token will expire in 4 weeks
 	}, app.config["SECRET_KEY"], algorithm="HS256")

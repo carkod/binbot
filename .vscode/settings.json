@@ -3,5 +3,5 @@
   "python.terminal.activateEnvironment": true,
   "python.pythonPath": "/Users/carkod/miniconda3/envs/flask-mongodb/bin/python",
   "python.formatting.provider":"black",
-  "python.formatting.blackArgs": ["--line-length", "100"]
+  "python.formatting.blackArgs": ["--line-length", "79"]
 }
