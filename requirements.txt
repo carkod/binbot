@@ -13,3 +13,4 @@ requests==2.22.0
 socketIO-client==0.7.2
 websocket-client==0.56.0
 Werkzeug==0.16.0
+uwsgi==2.0.18

@@ -13,6 +13,9 @@ api/main/config/*.cfg
 # temporary key storage
 listenkey.bin
 
+# logs
+api/trace.log
+
 ##
 #
 # REACT APPS
