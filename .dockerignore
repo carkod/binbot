@@ -1,7 +1,6 @@
 .vscode
 .devcontainer
 .ini
-.env
 .git
 .github
 .gitignore

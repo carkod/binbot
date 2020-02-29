@@ -21,7 +21,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 class Balances:
     def __init__(self, app):
         self.key = os.getenv("BINANCE_KEY")

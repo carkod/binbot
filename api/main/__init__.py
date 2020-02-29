@@ -13,17 +13,12 @@ from main.tools import JsonResp
 from main.user.routes import user_blueprint
 from main.userDataStream.routes import user_datastream_blueprint
 from pymongo import MongoClient
-from dotenv import load_dotenv
 import os
 
-load_dotenv()
-
 def create_app():
-    
     # Flask Config
     app = Flask(__name__)
     # cors = CORS(app, resources={r"/*": { "origins": os.environ["FRONTEND_DOMAIN"] }})
-
     mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
     mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(
         os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"]

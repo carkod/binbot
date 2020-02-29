@@ -13,10 +13,8 @@ RUN apt-get -y install nginx \
     && apt-get -y install build-essential
 WORKDIR /app
 COPY --from=build-stage /app/ /app/web/build
-COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+COPY ./nginx.conf /etc/nginx/sites-enabled/default
 ADD . .
-# COPY nginx.conf /etc/nginx
-
 RUN pip install --upgrade pip
 RUN pip3 install -r requirements.txt
 RUN chmod +x ./start
