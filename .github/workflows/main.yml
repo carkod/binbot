@@ -21,7 +21,7 @@ jobs:
       uses: stefanoeb/eslint-action@1.0.2
       with:
         # Blob of files to lint
-        files: web # optional, default is .
+        files: . # optional, default is .
       
      
   build:
