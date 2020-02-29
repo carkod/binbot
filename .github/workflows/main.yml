@@ -17,13 +17,7 @@ jobs:
       with:
         # File or directory to run black on
         path: . # optional, default is .:
-    - name: Run ESLint
-      uses: stefanoeb/eslint-action@1.0.2
-      with:
-        # Blob of files to lint
-        files: . # optional, default is .
-      
-     
+
   build:
     runs-on: ubuntu-latest
     steps:
