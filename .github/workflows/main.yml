@@ -16,7 +16,7 @@ jobs:
       uses: jpetrucciani/black-check@19.10b0
       with:
         # File or directory to run black on
-        path: api # optional, default is .:
+        path: ./api # optional, default is .:
     - name: Run ESLint
       uses: stefanoeb/eslint-action@1.0.2
       with:
