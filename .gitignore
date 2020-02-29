@@ -1,3 +1,6 @@
+.vscode/settings.json
+.devcontainer
+
 ##
 #
 # PYTHON APPS
@@ -9,12 +12,11 @@
 Pipfile.lock
 api/main/config/*.cfg
 .env
-
 # temporary key storage
 listenkey.bin
-
 # logs
 api/trace.log
+
 
 ##
 #
