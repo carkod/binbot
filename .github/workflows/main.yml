@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+    branches: 
+      - master
+  push:
+    branches: 
+      - master
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Black Check
+      uses: jpetrucciani/black-check@19.10b0
+      with:
+        # File or directory to run black on
+        path: . # optional, default is .:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build React web app
+      working-directory: web
+      run: | 
+        npm install
+        npm run build
