@@ -9,6 +9,11 @@ on:
       - master
 
 jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test application
+        run: ./run
   lint:
     runs-on: ubuntu-latest
     steps:
