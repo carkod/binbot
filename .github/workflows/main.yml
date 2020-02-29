@@ -23,7 +23,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build React web app
-      working-directory: /web/
       run: | 
         npm install
         npm run build
