@@ -16,7 +16,7 @@ jobs:
       uses: jpetrucciani/black-check@19.10b0
       with:
         # File or directory to run black on
-        path: api app # optional, default is .:
+        path: api # optional, default is .:
      
   build:
     runs-on: ubuntu-latest
