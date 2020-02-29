@@ -6,10 +6,12 @@ from main.userDataStream.models import UserDataStream
 
 user_datastream_blueprint = Blueprint("user-data-stream", __name__)
 
+
 @user_datastream_blueprint.route("/", methods=["GET"])
 def get():
-  return UserDataStream().post_user_datastream()
+    return UserDataStream().post_user_datastream()
+
 
 @user_datastream_blueprint.route("/update-orders", methods=["GET"])
 def order_update():
-  return UserDataStream().order_update()
+    return UserDataStream().order_update()

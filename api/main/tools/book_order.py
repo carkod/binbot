@@ -18,6 +18,7 @@ class Book_Order:
     """
     Simpler matching engine, no need for quantity
     """
+
     def last_price(self, order_side="bids"):
         url = self.base_url + self.order_book_url
         limit = EnumDefinitions.order_book_limits[0]
@@ -41,6 +42,7 @@ class Book_Order:
     Buy order = bids
     Sell order = ask
     """
+
     def matching_engine(self, limit_index=0, order_side="bids", qty=0):
         url = self.base_url + self.order_book_url
         limit = EnumDefinitions.order_book_limits[limit_index]
@@ -66,7 +68,6 @@ class Book_Order:
             limit += limit
             self.matching_engine(limit)
         return match_qty["price"][0]
-
 
     def ticker_price(self):
         url = self.base_url + self.ticker_price

@@ -9,7 +9,8 @@ from urllib.parse import urlparse
 import hmac
 from main.tools import handle_error
 
-class OrderUpdates():
+
+class OrderUpdates:
     def __init__(self):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
@@ -20,9 +21,9 @@ class OrderUpdates():
         self.order_url = os.getenv("ORDER")
 
         # streams
-        self.host = os.getenv('WS_BASE')
-        self.port = os.getenv('WS_BASE_PORT')
-        self.path = '/ws'
+        self.host = os.getenv("WS_BASE")
+        self.port = os.getenv("WS_BASE_PORT")
+        self.path = "/ws"
         self.active_ws = None
 
     def get_listenkey(self):
@@ -30,7 +31,7 @@ class OrderUpdates():
 
         # Get data for a single crypto e.g. BTT in BNB market
         params = []
-        headers = {'X-MBX-APIKEY': self.key}
+        headers = {"X-MBX-APIKEY": self.key}
         url = self.base_url + self.user_datastream_listenkey
 
         # Response after request
@@ -39,18 +40,15 @@ class OrderUpdates():
         data = res.json()
         return data
 
-    
     def open_stream(self):
-        url = self.host + ':' + self.port + self.path
+        url = self.host + ":" + self.port + self.path
         ws = create_connection(url)
-        subscribe = json.dumps({
-            "method": "SUBSCRIBE",
-            "params": ['executionReport'],
-            "id": 1
-        }) 
+        subscribe = json.dumps(
+            {"method": "SUBSCRIBE", "params": ["executionReport"], "id": 1}
+        )
         ws.send(subscribe)
         self.active_ws = ws
-        result =  ws.recv()
+        result = ws.recv()
         result = json.loads(result)
         if result["result"] == None:
             print("Received '%s'" % result)
@@ -58,14 +56,13 @@ class OrderUpdates():
         # ws.close()
         return False
         # data = ws.recv_data()
-        
 
     def get_stream(self, listenkey):
-        url = self.host + ':' + self.port + self.path + '/' + listenkey
+        url = self.host + ":" + self.port + self.path + "/" + listenkey
         ws = create_connection(url)
-        result =  ws.recv()
+        result = ws.recv()
         result = json.loads(result)
-        
+
         # Parse result. Print result for raw result from Binance
         client_order_id = result["C"] if result["X"] == "CANCELED" else result["c"]
         order_result = [
@@ -73,16 +70,14 @@ class OrderUpdates():
             ("order_status", result["X"]),
             ("timestamp", result["E"]),
             ("client_order_id", client_order_id),
-            ("created_at", result["O"])
+            ("created_at", result["O"]),
         ]
 
-        print('order result %s', order_result)
+        print("order result %s", order_result)
 
         return order_result
-
 
     def close_stream(self):
         if self.active_ws:
             self.active_ws.close()
-            print('Active socket closed')
-        
+            print("Active socket closed")

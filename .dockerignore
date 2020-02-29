@@ -7,3 +7,5 @@
 .gitignore
 docs/
 ecosystem.config.js
+*.md
+__pycache__

@@ -5,11 +5,14 @@ from flask_cors import CORS, cross_origin
 
 
 order_blueprint = Blueprint("order", __name__)
+
+
 @order_blueprint.route("/", methods=["GET"])
 def get():
     # Get all orders from Binance? Might be too expensive
-        # return Buy_Order(symbol, quantity, type, price).get_balances()
+    # return Buy_Order(symbol, quantity, type, price).get_balances()
     pass
+
 
 @order_blueprint.route("/buy", methods=["POST"])
 def create_buy_order():
@@ -20,18 +23,21 @@ def create_buy_order():
 def create_sell_order():
     return Sell_Order().post_order_limit()
 
+
 @order_blueprint.route("/open", methods=["GET"])
 def get_open_orders():
     return Orders().get_open_orders()
+
 
 @order_blueprint.route("/", methods=["DELETE"])
 def delete_order():
     return Orders().delete_order()
 
+
 @order_blueprint.route("/order-updates", methods=["GET"])
 def orders_update():
     updates = OrderUpdates()
-    listen_key = updates.get_listenkey()['listenKey']
+    listen_key = updates.get_listenkey()["listenKey"]
     stream = updates.open_stream()
     if stream:
         result = updates.get_stream(listen_key)
@@ -40,5 +46,3 @@ def orders_update():
     # Comment out after development is finished
     updates.close_stream()
     return result
-
-

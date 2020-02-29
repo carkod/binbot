@@ -21,79 +21,80 @@ import os
 
 load_dotenv()
 
-class Orders():
 
-  recvWindow = 10000
+class Orders:
 
-  def __init__(self):
-        
-    self.key = os.getenv("BINANCE_KEY")
-    self.secret = os.getenv("BINANCE_SECRET")
-    self.base_url = os.getenv("BASE")
-    self.open_orders = os.getenv("OPEN_ORDERS")
-    self.all_orders_url = os.getenv("ALL_ORDERS")
-    self.order_url = os.getenv("ORDER")
-    # Buy order
-    self.side = EnumDefinitions.order_side[0]
-    # Required by API for Limit orders
-    self.timeInForce = EnumDefinitions.time_in_force[0]
+    recvWindow = 10000
 
-  def get_open_orders(self):
-    timestamp = int(round(tm.time() * 1000))
-    url = self.base_url + self.open_orders
-    symbol = request.view_args["symbol"]
-    params = [
-        ('symbol', symbol),
-        ('timestamp', timestamp),
-        ('recvWindow', self.recvWindow)
-    ]
-    res = requests.get(url=url, params=params)
-    handle_error(res)
-    data = res.json()
-    return data
+    def __init__(self):
 
+        self.key = os.getenv("BINANCE_KEY")
+        self.secret = os.getenv("BINANCE_SECRET")
+        self.base_url = os.getenv("BASE")
+        self.open_orders = os.getenv("OPEN_ORDERS")
+        self.all_orders_url = os.getenv("ALL_ORDERS")
+        self.order_url = os.getenv("ORDER")
+        # Buy order
+        self.side = EnumDefinitions.order_side[0]
+        # Required by API for Limit orders
+        self.timeInForce = EnumDefinitions.time_in_force[0]
 
-  def delete_order(self):
-    timestamp = int(round(tm.time() * 1000))
-    url = self.base_url + self.order_url
-    # query params -> args
-    # path params -> view_args
-    symbol = request.args["symbol"]
-    orderId = request.args["orderId"]
-    params = [
-        ('symbol', symbol),
-        ('timestamp', timestamp),
-        ('recvWindow', self.recvWindow),
-        ('orderId', orderId),
-    ]
+    def get_open_orders(self):
+        timestamp = int(round(tm.time() * 1000))
+        url = self.base_url + self.open_orders
+        symbol = request.view_args["symbol"]
+        params = [
+            ("symbol", symbol),
+            ("timestamp", timestamp),
+            ("recvWindow", self.recvWindow),
+        ]
+        res = requests.get(url=url, params=params)
+        handle_error(res)
+        data = res.json()
+        return data
 
-    headers = {'X-MBX-APIKEY': self.key}
+    def delete_order(self):
+        timestamp = int(round(tm.time() * 1000))
+        url = self.base_url + self.order_url
+        # query params -> args
+        # path params -> view_args
+        symbol = request.args["symbol"]
+        orderId = request.args["orderId"]
+        params = [
+            ("symbol", symbol),
+            ("timestamp", timestamp),
+            ("recvWindow", self.recvWindow),
+            ("orderId", orderId),
+        ]
 
-    # Prepare request for signing
-    r = requests.Request(url=url, params=params, headers=headers)
-    prepped = r.prepare()
-    query_string = urlparse(prepped.url).query
-    total_params = query_string
+        headers = {"X-MBX-APIKEY": self.key}
 
-    # Generate and append signature
-    signature = hmac.new(self.secret.encode(
-        'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-    params.append(('signature', signature))
+        # Prepare request for signing
+        r = requests.Request(url=url, params=params, headers=headers)
+        prepped = r.prepare()
+        query_string = urlparse(prepped.url).query
+        total_params = query_string
 
-    # Response after request
-    res = requests.delete(url=url, params=params, headers=headers)
-    handle_error(res)
-    data = res.json()
-    return data
+        # Generate and append signature
+        signature = hmac.new(
+            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        params.append(("signature", signature))
 
-  def get_single_order(self):
-    pass
+        # Response after request
+        res = requests.delete(url=url, params=params, headers=headers)
+        handle_error(res)
+        data = res.json()
+        return data
 
+    def get_single_order(self):
+        pass
 
-  """
+    """
   This Binance API is not very useful
   As it doesn't return all orders (higher weight, risk of ban)
   Think of a way to return all orders that have been held as an asset
   """
-  def get_all_orders(self):
-    pass
+
+    def get_all_orders(self):
+        pass

@@ -57,55 +57,55 @@ class Deal:
             exit(1)
 
     def binance_bug_workaround(self, order):
-        if 'code' in order.keys() and order['code'] == -2010 and self.balance >= 0.001:
-            buy_url = 'http://localhost:5000/order/sell'
+        if "code" in order.keys() and order["code"] == -2010 and self.balance >= 0.001:
+            buy_url = "http://localhost:5000/order/sell"
             pair = "BTCUSDT"
-            price = float(Book_Order(pair).last_price('asks'))
+            price = float(Book_Order(pair).last_price("asks"))
             qty = round_numbers(10.3 / price)
             unfillable_params = {
                 "pair": pair,
                 "qty": qty,
                 "price": round_numbers(price),
             }
-            unfillable_order = requests.post(url=buy_url, data=json.dumps(unfillable_params))
+            unfillable_order = requests.post(
+                url=buy_url, data=json.dumps(unfillable_params)
+            )
             handle_error(unfillable_order)
-            orderId = unfillable_order.json()['orderId']
-            print('filled small order id: {}'.format(orderId))
+            orderId = unfillable_order.json()["orderId"]
+            print("filled small order id: {}".format(orderId))
             return True
         else:
             return False
-    
+
     def binance_bug_workaround_short(self, order):
-        if 'code' in order.keys() and order['code'] == -2010 and self.balance >= 0.001:
-            buy_url = 'http://localhost:5000/order/sell'
+        if "code" in order.keys() and order["code"] == -2010 and self.balance >= 0.001:
+            buy_url = "http://localhost:5000/order/sell"
             pair = "BTCUSDT"
-            price = float(Book_Order(pair).last_price('bids'))
+            price = float(Book_Order(pair).last_price("bids"))
             qty = round_numbers(10.3 / price)
             unfillable_params = {
                 "pair": pair,
                 "qty": qty,
                 "price": round_numbers(price, 2),
             }
-            unfillable_order = requests.post(url=buy_url, data=json.dumps(unfillable_params))
+            unfillable_order = requests.post(
+                url=buy_url, data=json.dumps(unfillable_params)
+            )
             handle_error(unfillable_order)
-            orderId = unfillable_order.json()['orderId']
-            print('filled small order id: {}'.format(orderId))
+            orderId = unfillable_order.json()["orderId"]
+            print("filled small order id: {}".format(orderId))
             return True
         else:
             return False
 
     def long_base_order(self):
-        url = 'http://localhost:5000/order/buy'
-        pair = self.active_bot['pair']
+        url = "http://localhost:5000/order/buy"
+        pair = self.active_bot["pair"]
         qty = round_numbers(self.division)
-        price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
+        price = float(Book_Order(pair).matching_engine(0, "asks", qty))
         self.long_base_order_price = price
-        
-        order = {
-            "pair": pair,
-            "qty": qty,
-            "price": price,
-        }
+
+        order = {"pair": pair, "qty": qty, "price": price}
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         base_order = res.json()
@@ -114,7 +114,7 @@ class Deal:
             sleep(5)
             self.long_base_order()
         else:
-            return 
+            return
 
         base_deal = {
             "order_id": base_order["orderId"],
@@ -137,29 +137,25 @@ class Deal:
         index = 0
         for index in range(length):
             index += 1
-            
+
             # Recursive order
-            url = 'http://localhost:5000/order/buy'
-            pair = self.active_bot['pair']
+            url = "http://localhost:5000/order/buy"
+            pair = self.active_bot["pair"]
             qty = math.floor(self.division * 1000000) / 1000000
 
             # SO mark based on take profit
             increase_from_tp = float(self.take_profit) / int(self.max_so_count)
 
-            # last book order price            
+            # last book order price
             market_price = float(Book_Order(pair).ticker_price())
 
-            # final order price. 
+            # final order price.
             # Index incrementally increases price added markup
             # +1 to exclude index 0 and first base order (index 1) from safety order
             price = market_price * (1 + (increase_from_tp * (index + 1)))
             # round down number
             price = round_numbers(price, 2)
-            order = {
-                "pair": pair,
-                "qty": qty,
-                "price": price,
-            }
+            order = {"pair": pair, "qty": qty, "price": price}
             res = requests.post(url=url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
@@ -177,7 +173,7 @@ class Deal:
                 "qty": order["origQty"],
                 "fills": order["fills"],
                 "time_in_force": order["timeInForce"],
-                "so_count": index
+                "so_count": index,
             }
 
             so_deals.append(safety_orders)
@@ -186,18 +182,14 @@ class Deal:
         return so_deals
 
     def long_take_profit_order(self):
-        url = 'http://localhost:5000/order/sell'
-        pair = self.active_bot['pair']
+        url = "http://localhost:5000/order/sell"
+        pair = self.active_bot["pair"]
         qty = round_numbers(self.division)
 
-        market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
+        market_price = float(Book_Order(pair).matching_engine(0, "bids", qty))
         price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
-        
-        order = {
-            "pair": pair,
-            "qty": qty,
-            "price": price,
-        }
+
+        order = {"pair": pair, "qty": qty, "price": price}
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         order = res.json()
@@ -218,20 +210,15 @@ class Deal:
             "time_in_force": order["timeInForce"],
         }
         return base_order
-    
 
     def short_base_order(self):
-        url = 'http://localhost:5000/order/sell'
-        pair = self.active_bot['pair']
+        url = "http://localhost:5000/order/sell"
+        pair = self.active_bot["pair"]
         qty = math.floor(self.division * 1000000) / 1000000
         # bids or asks
-        price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
-        
-        order = {
-            "pair": pair,
-            "qty": qty,
-            "price": price,
-        }
+        price = float(Book_Order(pair).matching_engine(0, "bids", qty))
+
+        order = {"pair": pair, "qty": qty, "price": price}
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         res_order = res.json()
@@ -260,23 +247,19 @@ class Deal:
         so_deals = []
         while index < length:
             index += 1
-            url = 'http://localhost:5000/order/buy'
-            pair = self.active_bot['pair']
+            url = "http://localhost:5000/order/buy"
+            pair = self.active_bot["pair"]
             qty = math.floor(self.division * 1000000) / 1000000
             price = float(Book_Order(pair).ticker_price())
-            
-            order = {
-                "pair": pair,
-                "qty": qty,
-                "price": price,
-            }
+
+            order = {"pair": pair, "qty": qty, "price": price}
             res = requests.post(url=url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
 
             if self.binance_bug_workaround_short(order):
                 self.short_safety_order_generator(index)
-            
+
             safety_orders = {
                 "order_id": order["orderId"],
                 "deal_type": "safety_order",
@@ -288,25 +271,21 @@ class Deal:
                 "qty": order["origQty"],
                 "fills": order["fills"],
                 "time_in_force": order["timeInForce"],
-                "so_count": index
+                "so_count": index,
             }
 
             so_deals.append(safety_orders)
         return so_deals
 
     def short_take_profit_order(self):
-        url = 'http://localhost:5000/order/buy'
-        pair = self.active_bot['pair']
+        url = "http://localhost:5000/order/buy"
+        pair = self.active_bot["pair"]
         qty = round_numbers(self.division)
 
-        market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
+        market_price = float(Book_Order(pair).matching_engine(0, "bids", qty))
         price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
-        
-        order = {
-            "pair": pair,
-            "qty": qty,
-            "price": price,
-        }
+
+        order = {"pair": pair, "qty": qty, "price": price}
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         order = res.json()
@@ -363,7 +342,7 @@ class Deal:
             if not short_take_profit_order:
                 print("Deal: Take profit order failed")
 
-            new_deal["take_profit_order"] = short_take_profit_order 
+            new_deal["take_profit_order"] = short_take_profit_order
 
         dealId = app.db.deals.save(new_deal)
         dealId = str(dealId)

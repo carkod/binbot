@@ -11,7 +11,23 @@
       "module": "flask",
       "console": "internalConsole",
       "env": {
-        "FLASK_APP": "api/run.py",
+        "FLASK_APP": "api/app.py",
+        "FLASK_ENV": "development",
+        "FLASK_DEBUG": "1"
+      },
+      "args": [
+        "run",
+      ],
+      "jinja": true
+    },
+    {
+      "name": "Python: Flask",
+      "type": "python",
+      "request": "launch",
+      "module": "flask",
+      "console": "internalConsole",
+      "env": {
+        "FLASK_APP": "api/app.py",
         "FLASK_ENV": "development",
         "FLASK_DEBUG": "1"
       },

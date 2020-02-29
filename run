@@ -1,0 +1,16 @@
+#!/bin/bash
+app="binbot"
+port="5001"
+active_containers() {
+  docker ps -qa --filter ancestor=${app}
+}
+
+echo "Building new ${app} image"
+docker build --tag ${app} . 
+
+if active_containers; then 
+  echo "Removing active containers named ${app}"
+  docker rm -f $(active_containers);
+fi
+
+docker run -p ${port}:80 -it ${app}
