@@ -34,7 +34,7 @@ def create_app():
     app.register_blueprint(user_datastream_blueprint, url_prefix="/user-data-stream")
 
     # Index Route
-    @app.route("/api")
+    @app.route("/api/")
     def index():
         return JsonResp({"status": "Online"}, 200)
 

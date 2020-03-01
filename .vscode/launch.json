@@ -2,24 +2,24 @@
   // Use IntelliSense to learn about possible attributes.
   // Hover to view descriptions of existing attributes.
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-  "version": "0.0.2",
+  "version": "0.0.3",
   "configurations": [
     {
-      "name": "Python: Flask",
-      "type": "python",
+      "type": "node",
       "request": "launch",
-      "module": "flask",
-      "console": "internalConsole",
-      "env": {
-        "FLASK_APP": "api/app.py",
-        "FLASK_ENV": "development",
-        "FLASK_DEBUG": "1"
-      },
-      "args": [
+      "name": "Launch via NPM",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
         "run",
+        "start"
       ],
-      "jinja": true
+      "cwd": "${workspaceFolder}/web/",
+      "port": 3000,
+      "skipFiles": [
+        "node_modules/**"
+      ]
     },
+
     {
       "name": "Python: Flask",
       "type": "python",
@@ -35,7 +35,6 @@
         "run",
       ],
       "jinja": true
-    },
-    
+    }
   ]
 }
