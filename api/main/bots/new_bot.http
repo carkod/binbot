@@ -2,17 +2,17 @@ GET http://localhost:5000/bot/ HTTP/1.1
 
 ###
 
-GET http://localhost:5000/bot/5de3d4571f30fed6914d2118 HTTP/1.1
+GET http://localhost:5000/api/v1/bot/5dd0950a2c81f3eadaa9c4c2 HTTP/1.1
 
 ###
 
-POST http://localhost:5000/bot/ HTTP/1.1
+POST http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 {
     "pair": "BTCUSDT",
     "active": "true",
     "strategy": "short",
-    "name": "BTC hedging bot",
+    "name": "Tester",
     "maxSOCount": "3",
     "balanceUsage": "1",
     "baseOrderSize": "0.0001",

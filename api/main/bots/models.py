@@ -24,7 +24,7 @@ from bson.objectid import ObjectId
 class Bot:
     def __init__(self):
         self.defaults = {
-            "pair": "",
+            "pair": "BTCUSDT",
             "active": False,
             "strategy": "long",
             "name": "Default Bot",
@@ -69,7 +69,7 @@ class Bot:
 
     def get_one(self):
         resp = tools.JsonResp({"message": "No bots found"}, 200)
-        findId = request.view_args["id"]
+        findId = ObjectId(request.view_args["id"])
         bot = list(app.db.bots.find_one({"_id": findId}))
 
         if bot:
@@ -91,8 +91,7 @@ class Bot:
             "max_so_count": data["maxSOCount"] or 3,
             "balance_usage": data["balanceUsage"],  # 100% of All Btc balance
             "balance_usage_size": float(data["balanceUsage"]) * btc_balance,
-            "base_order_size": data["baseOrderSize"]
-            or 0.0001,  # MIN by Binance = 0.0001 BTC
+            "base_order_size": data["baseOrderSize"] or 0.0001,  # MIN by Binance = 0.0001 BTC
             "base_order_type": data["baseOrderType"],  # Market or limit
             "start_condition": True,
             "so_size": data["soSize"] or 0.0001,  # Top band
@@ -125,12 +124,10 @@ class Bot:
             "name": data["name"] if data.get("name") else "Default Bot",
             "max_so_count": data["maxSOCount"] if data.get("maxSOCount") else 3,
             "balance_usage": data["balanceUsage"]
-            if data.get("balanceUsage")
-            else 1,  # 100% of All Btc balance
+            if data.get("balanceUsage") else 1,  # 100% of All Btc balance
             "base_order_size": data["baseOrderSize"],  # MIN by Binance = 0.0001 BTC
             "base_order_type": data["baseOrderType"]
-            if data.get("baseOrderType")
-            else "limit",  # Market or limit
+            if data.get("baseOrderType") else "limit",  # Market or limit
             "start_condition": True,
             "so_size": data["soSize"],  # Top band
             "take_profit": data["takeProfit"],
@@ -181,8 +178,8 @@ class Bot:
 
     def activate(self):
         resp = tools.JsonResp({"message": "Bot activation is not available"}, 400)
-        findId = request.view_args["botId"]
-        bot = app.db.bots.find_one({"_id": ObjectId(findId)})
+        findId = ObjectId(request.view_args["botId"])
+        bot = app.db.bots.find_one({"_id": findId})
         if bot:
             bot["active"] = True
             dealId = Deal(bot, app).open_deal()
@@ -192,13 +189,14 @@ class Bot:
                 bot["deals"].append(dealId)
                 botId = app.db.bots.save(bot)
                 if botId:
+                    botId = ObjectId(botId)
                     resp = tools.JsonResp(
-                        {"message": "Successfully activated bot", "bodId": str(findId)},
+                        {"message": "Successfully activated bot", "bodId": botId},
                         200,
                     )
                 else:
                     resp = tools.JsonResp(
-                        {"message": "Bot failed to save", "bodId": str(findId)}, 400
+                        {"message": "Bot failed to save", "bodId": findId}, 400
                     )
                 return resp
             else:
@@ -211,11 +209,10 @@ class Bot:
 
     def deactivate(self):
         resp = tools.JsonResp({"message": "Bot deactivation is not available"}, 400)
-        findId = request.view_args["botId"]
-        bot = app.db.bots.find_one({"_id": ObjectId(findId)})
+        findId = ObjectId(request.view_args["botId"])
+        bot = app.db.bots.find_one({"_id":findId })
         if bot:
             bot.active = False
-            # Deal(bot).open_deal()
             resp = tools.JsonResp(
                 {"message": "Successfully deactivated bot", "data": bot}, 200
             )

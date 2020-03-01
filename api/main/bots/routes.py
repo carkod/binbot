@@ -7,14 +7,10 @@ from flask_cors import CORS, cross_origin
 
 
 # initialization
-# app = Flask(__name__)
-# os.environ['SECRET_KEY'] = 'the quick brown fox jumps over the lazy   dog'
 # os.environ['CORS_HEADERS'] = 'Content-Type'
-
 # cors = CORS(app, resources={r"/user": {"origins": "http://localhost:5000"}})
 
 bot_blueprint = Blueprint("bot", __name__)
-
 
 @bot_blueprint.route("/", methods=["GET"])
 def get():
