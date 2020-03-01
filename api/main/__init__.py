@@ -24,17 +24,19 @@ def create_app():
         os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"]
     )
     app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
+    root_route = "/api/v1/"
+
 
     # Register Blueprints
-    app.register_blueprint(user_blueprint, url_prefix="/user")
-    app.register_blueprint(account_blueprint, url_prefix="/account")
-    app.register_blueprint(bot_blueprint, url_prefix="/bot")
-    app.register_blueprint(deal_blueprint, url_prefix="/deal")
-    app.register_blueprint(order_blueprint, url_prefix="/order")
-    app.register_blueprint(user_datastream_blueprint, url_prefix="/user-data-stream")
+    app.register_blueprint(user_blueprint, url_prefix=f"{root_route}user")
+    app.register_blueprint(account_blueprint, url_prefix=f"{root_route}account")
+    app.register_blueprint(bot_blueprint, url_prefix=f"{root_route}bot")
+    app.register_blueprint(deal_blueprint, url_prefix=f"{root_route}deal")
+    app.register_blueprint(order_blueprint, url_prefix=f"{root_route}order")
+    app.register_blueprint(user_datastream_blueprint, url_prefix=f"{root_route}user-data-stream")
 
     # Index Route
-    @app.route("/api/")
+    @app.route(f"{root_route}")
     def index():
         return JsonResp({"status": "Online"}, 200)
 

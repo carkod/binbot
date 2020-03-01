@@ -6,10 +6,7 @@ from main.account.models import Account
 import os
 
 # initialization
-app = Flask(__name__)
-os.environ["SECRET_KEY"] = "the quick brown fox jumps over the lazy dog"
 os.environ["CORS_HEADERS"] = "Content-Type"
-
 # cors = CORS(app, resources={r"/user": {"origins": "http://localhost:5000"}})
 
 account_blueprint = Blueprint("account", __name__)

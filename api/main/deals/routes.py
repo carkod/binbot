@@ -7,10 +7,7 @@ from main.deals.models import Deal
 
 
 # initialization
-# app = Flask(__name__)
-# os.environ['SECRET_KEY'] = 'the quick brown fox jumps over the lazy   dog'
 # os.environ['CORS_HEADERS'] = 'Content-Type'
-
 # cors = CORS(app, resources={r"/user": {"origins": "http://localhost:5000"}})
 
 deal_blueprint = Blueprint("deal", __name__)
