@@ -1,4 +1,4 @@
-GET http://localhost:5000/bot/ HTTP/1.1
+GET http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 ###
 
@@ -28,7 +28,7 @@ POST http://localhost:5000/api/v1/bot/ HTTP/1.1
 }
 
 ###
-PUT http://localhost:5000/bot/ HTTP/1.1
+PUT http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 {
     "_id": "5de3d4571f30fed6914d2118",
@@ -51,8 +51,8 @@ PUT http://localhost:5000/bot/ HTTP/1.1
 }
 
 ###
-DELETE http://localhost:5000/bot/5dc8d91b34ee965b19a4fd4e HTTP/1.1
+DELETE http://localhost:5000/api/v1/bot/5dd091a349340c4c0d49752c HTTP/1.1
 
 ###
 
-GET http://localhost:5000/bot/activate/5de3d4571f30fed6914d2118 HTTP/1.1
+PATCH http://localhost:5000/api/v1/bot/activate/5e62e0fc5cf0e7c359ad836d HTTP/1.1

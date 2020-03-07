@@ -5,6 +5,13 @@
   "version": "0.0.3",
   "configurations": [
     {
+      "name": "API",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/api/app.py",
+      "console": "internalConsole",
+    },
+    {
       "type": "node",
       "request": "launch",
       "name": "Launch via NPM",
@@ -18,23 +25,6 @@
       "skipFiles": [
         "node_modules/**"
       ]
-    },
-
-    {
-      "name": "Python: Flask",
-      "type": "python",
-      "request": "launch",
-      "module": "flask",
-      "console": "internalConsole",
-      "env": {
-        "FLASK_APP": "api/app.py",
-        "FLASK_ENV": "development",
-        "FLASK_DEBUG": "1"
-      },
-      "args": [
-        "run",
-      ],
-      "jinja": true
     }
   ]
 }
