@@ -166,8 +166,8 @@ class Bot:
 
     def delete(self, id):
         resp = tools.JsonResp({"message": "Bot update is not available"}, 400)
-        id = request.view_args["id"]
-        delete_action = app.db.bots.delete_one({"_id": ObjectId(id)})
+        id = ObjectId(request.view_args["id"])
+        delete_action = app.db.bots.delete_one({"_id": id})
         if delete_action:
             resp = tools.JsonResp(
                 {"message": "Successfully delete bot", "botId": id}, 200
@@ -219,3 +219,10 @@ class Bot:
         else:
             resp = tools.JsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp
+
+
+    # @app.errorhandler(200)
+    # def page_not_found(e):
+    #     if e["msg"]:
+    #         print(e["msg"])
+    #         flask.abort(404)

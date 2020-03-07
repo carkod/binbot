@@ -28,6 +28,7 @@ class Deal:
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.base_url = os.getenv("BASE")
+        self.binbot_base_url = f'http://{os.getenv("FLASK_DOMAIN")}:{os.getenv("FLASK_PORT")}/api/v1/'
         self.order_url = os.getenv("ORDER")
         self.order_book_url = os.getenv("ORDER_BOOK")
         # Buy order
@@ -56,53 +57,12 @@ class Deal:
             print(order)
             exit(1)
 
-    def binance_bug_workaround(self, order):
-        if "code" in order.keys() and order["code"] == -2010 and self.balance >= 0.001:
-            buy_url = "http://localhost:5000/order/sell"
-            pair = "BTCUSDT"
-            price = float(Book_Order(pair).last_price("asks"))
-            qty = round_numbers(10.3 / price)
-            unfillable_params = {
-                "pair": pair,
-                "qty": qty,
-                "price": round_numbers(price),
-            }
-            unfillable_order = requests.post(
-                url=buy_url, data=json.dumps(unfillable_params)
-            )
-            handle_error(unfillable_order)
-            orderId = unfillable_order.json()["orderId"]
-            print("filled small order id: {}".format(orderId))
-            return True
-        else:
-            return False
-
-    def binance_bug_workaround_short(self, order):
-        if "code" in order.keys() and order["code"] == -2010 and self.balance >= 0.001:
-            buy_url = "http://localhost:5000/order/sell"
-            pair = "BTCUSDT"
-            price = float(Book_Order(pair).last_price("bids"))
-            qty = round_numbers(10.3 / price)
-            unfillable_params = {
-                "pair": pair,
-                "qty": qty,
-                "price": round_numbers(price, 2),
-            }
-            unfillable_order = requests.post(
-                url=buy_url, data=json.dumps(unfillable_params)
-            )
-            handle_error(unfillable_order)
-            orderId = unfillable_order.json()["orderId"]
-            print("filled small order id: {}".format(orderId))
-            return True
-        else:
-            return False
-
+    
     def long_base_order(self):
-        url = "http://localhost:5000/order/buy"
+        url = self.binbot_base_url + os.getenv("BINBOT_SELL")
         pair = self.active_bot["pair"]
         qty = round_numbers(self.division)
-        price = float(Book_Order(pair).matching_engine(0, "asks", qty))
+        price = float(Book_Order(pair).matching_engine(0, "ask", qty))
         self.long_base_order_price = price
 
         order = {"pair": pair, "qty": qty, "price": price}
@@ -139,7 +99,7 @@ class Deal:
             index += 1
 
             # Recursive order
-            url = "http://localhost:5000/order/buy"
+            url = os.getenv
             pair = self.active_bot["pair"]
             qty = math.floor(self.division * 1000000) / 1000000
 
@@ -182,7 +142,7 @@ class Deal:
         return so_deals
 
     def long_take_profit_order(self):
-        url = "http://localhost:5000/order/sell"
+        url = self.binbot_base_url + os.getenv("BINBOT_SELL")
         pair = self.active_bot["pair"]
         qty = round_numbers(self.division)
 
@@ -212,7 +172,7 @@ class Deal:
         return base_order
 
     def short_base_order(self):
-        url = "http://localhost:5000/order/sell"
+        url = self.binbot_base_url + os.getenv("BINBOT_SELL")
         pair = self.active_bot["pair"]
         qty = math.floor(self.division * 1000000) / 1000000
         # bids or asks
@@ -222,9 +182,6 @@ class Deal:
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         res_order = res.json()
-
-        if self.binance_bug_workaround_short(res_order):
-            self.short_base_order()
 
         base_deal = {
             "order_id": res_order["orderId"],
@@ -247,7 +204,7 @@ class Deal:
         so_deals = []
         while index < length:
             index += 1
-            url = "http://localhost:5000/order/buy"
+            url = self.binbot_base_url + os.getenv("BINBOT_BUY")
             pair = self.active_bot["pair"]
             qty = math.floor(self.division * 1000000) / 1000000
             price = float(Book_Order(pair).ticker_price())
@@ -278,7 +235,7 @@ class Deal:
         return so_deals
 
     def short_take_profit_order(self):
-        url = "http://localhost:5000/order/buy"
+        url = self.binbot_base_url + os.getenv("BINBOT_BUY")
         pair = self.active_bot["pair"]
         qty = round_numbers(self.division)
 
@@ -315,7 +272,6 @@ class Deal:
             if not long_base_order:
                 print("Deal: Base order failed")
             new_deal["base_order"] = long_base_order
-
             long_safety_order_generator = self.long_safety_order_generator()
             if not long_safety_order_generator:
                 print("Deal: Safety orders failed")

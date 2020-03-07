@@ -37,11 +37,11 @@ def delete(id):
     return Bot().delete(id)
 
 
-@bot_blueprint.route("/activate/<botId>", methods=["GET"])
+@bot_blueprint.route("/activate/<botId>", methods=["PATCH"])
 def activate(botId):
     return Bot().activate()
 
 
-@bot_blueprint.route("/deactivate/<botId>", methods=["GET"])
+@bot_blueprint.route("/deactivate/<botId>", methods=["PATCH"])
 def deactivate(botId):
     return Bot().deactivate()

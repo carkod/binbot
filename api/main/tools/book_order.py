@@ -70,7 +70,7 @@ class Book_Order:
         return match_qty["price"][0]
 
     def ticker_price(self):
-        url = self.base_url + self.ticker_price
+        url = self.base_url + self.price
         params = [("symbol", self.symbol)]
         res = requests.get(url=url, params=params)
         handle_error(res)

@@ -17,5 +17,5 @@ def get():
 
 
 @account_blueprint.route("/balance", methods=["GET"])
-def getAuth():
+def balance():
     return Account().get_balances()
