@@ -109,5 +109,18 @@ class Account:
 
         return resp
 
-    def get_quote_price(self):
-        pass
+    def search_pair(self):
+        query = request.view_args["query"].lower()
+        res = requests.get(self.base_url + os.getenv("EXCHANGE_INFO"))
+        body = res.json()
+        matched_coins = []
+        for element in body["symbols"]:
+            result = element["symbol"].lower().find(query)
+            if result > -1:
+                matched_coins.append(element["symbol"])
+        if len(matched_coins) > 0:
+            resp = tools.JsonResp(matched_coins, 200)
+            return resp
+        else:
+            resp = tools.JsonResp({"message": "search_pair: symbol pair not found"}, 400)
+            return resp

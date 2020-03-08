@@ -1,1 +1,4 @@
 GET http://localhost:5000/api/v1/account HTTP/1.1
+
+### Find a pair
+GET http://localhost:5000/api/v1/account/search/BTCBNB HTTP/1.1
