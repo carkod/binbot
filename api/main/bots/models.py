@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 import pandas as pd
 import json
 from main import tools
-from main.account.models import Account
+from main.account.models import Account, Balances
 from main.tools import Ticker24Data
 from main.deals.models import Deal
 from bson.objectid import ObjectId
@@ -46,15 +46,6 @@ class Bot:
         self.balance_division = 0
         self.active_bot = None
 
-    def get_available_btc(self):
-        data = json.loads(Account().get_balances().data)["data"]
-        available_balance = 0
-        for i in range(len(data)):
-            if data[i]["asset"] == "BTC":
-                available_balance = data[i]["free"]
-                return available_balance
-        return available_balance
-
     def get_start_condition(self):
         return True
 
@@ -81,25 +72,25 @@ class Bot:
     def create(self):
         resp = tools.JsonResp({"message": "Bot creation not available"}, 400)
         data = json.loads(request.data)
-        btc_balance = self.get_available_btc()
-        # base_order_size = self.get_base_order_size(data['pair'], data['maxSOCount'], data['take_profit'])
+        get_available_funds = Balances().get_base_balance(data["pair"])
+        
         new_bot = {
             "pair": data["pair"],
             "active": data["active"] or False,
             "strategy": data["strategy"] or "long",
             "name": data["name"] or "Default Bot",
-            "max_so_count": data["maxSOCount"] or 3,
-            "balance_usage": data["balanceUsage"],  # 100% of All Btc balance
-            "balance_usage_size": float(data["balanceUsage"]) * btc_balance,
-            "base_order_size": data["baseOrderSize"] or 0.0001,  # MIN by Binance = 0.0001 BTC
-            "base_order_type": data["baseOrderType"],  # Market or limit
+            "max_so_count": data["max_so_count"] or 3,
+            "balance_usage": data["balance_usage"],  # 100% of All Btc balance
+            "balance_usage_size": float(data["balance_usage_size"]) * get_available_funds,
+            "base_order_size": data["base_order_size"] or 0.0001,  # MIN by Binance = 0.0001 BTC
+            "base_order_type": data["base_order_type"],  # Market or limit
             "start_condition": True,
-            "so_size": data["soSize"] or 0.0001,  # Top band
-            "take_profit": data["takeProfit"] or 0.003,
-            "price_deviation_so": data["priceDeviationSO"] or 0.0063,  # % percentage
+            "so_size": data["so_size"] or 0.0001,  # Top band
+            "take_profit": data["take_profit"] or 0.003,
+            "price_deviation_so": data["price_deviation_so"] or 0.0063,  # % percentage
             "trailling": data["trailling"] or False,
-            "trailling_deviation": data["traillingDeviation"] or 0.0063,
-            "deal_min_value": data["dealMinValue"] or 0,
+            "trailling_deviation": data["trailling_deviation"] or 0.0063,
+            "deal_min_value": data["deal_min_value"] or 0,
             "cooldown": data["cooldown"] or 0,
         }
         self.defaults.update(new_bot)
@@ -116,25 +107,27 @@ class Bot:
     def edit(self):
         resp = tools.JsonResp({"message": "Bot update is not available"}, 400)
         data = json.loads(request.data)
+        get_available_funds = Balances().get_base_balance(data["pair"])
 
         existent_bot = {
             "pair": data["pair"],
             "active": data["active"] or False,
             "strategy": data["strategy"] if data.get("strategy") else "long",
             "name": data["name"] if data.get("name") else "Default Bot",
-            "max_so_count": data["maxSOCount"] if data.get("maxSOCount") else 3,
-            "balance_usage": data["balanceUsage"]
-            if data.get("balanceUsage") else 1,  # 100% of All Btc balance
-            "base_order_size": data["baseOrderSize"],  # MIN by Binance = 0.0001 BTC
-            "base_order_type": data["baseOrderType"]
-            if data.get("baseOrderType") else "limit",  # Market or limit
+            "max_so_count": data["max_so_count"] if data.get("max_so_count") else 3,
+            "balance_usage": data["balance_usage"]
+            if data.get("balance_usage") else 1,  # 100% of All Btc balance
+            "balance_usage_size": float(data["balance_usage"]) * get_available_funds,
+            "base_order_size": data["base_order_size"],  # MIN by Binance = 0.0001 BTC
+            "base_order_type": data["base_order_type"]
+            if data.get("base_order_type") else "limit",  # Market or limit
             "start_condition": True,
-            "so_size": data["soSize"],  # Top band
-            "take_profit": data["takeProfit"],
-            "price_deviation_so": data["priceDeviationSO"],  # % percentage
+            "so_size": data["so_size"],  # Top band
+            "take_profit": data["take_profit"],
+            "price_deviation_so": data["price_deviation_so"],  # % percentage
             "trailling": data["trailling"],
-            "trailling_deviation": data["traillingDeviation"],
-            "deal_min_value": data["dealMinValue"],
+            "trailling_deviation": data["trailling_deviation"],
+            "deal_min_value": data["deal_min_value"],
             "cooldown": data["cooldown"],
         }
 
@@ -181,8 +174,7 @@ class Bot:
         findId = ObjectId(request.view_args["botId"])
         bot = app.db.bots.find_one({"_id": findId})
         if bot:
-            bot["active"] = True
-            dealId = Deal(bot, app).open_deal()
+            dealId = Deal(bot).open_deal()
             if dealId:
                 if "deals" not in bot.keys():
                     bot["deals"] = []
@@ -190,6 +182,8 @@ class Bot:
                 botId = app.db.bots.save(bot)
                 if botId:
                     botId = ObjectId(botId)
+                    # Only flag active if everything went well
+                    bot["active"] = True
                     resp = tools.JsonResp(
                         {"message": "Successfully activated bot", "bodId": botId},
                         200,

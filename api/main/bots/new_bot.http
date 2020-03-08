@@ -2,28 +2,28 @@ GET http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 ###
 
-GET http://localhost:5000/api/v1/bot/5dd0950a2c81f3eadaa9c4c2 HTTP/1.1
+GET http://localhost:5000/api/v1/bot/5e64370d064f74585bd1ab85 HTTP/1.1
 
 ###
 
 POST http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 {
-    "pair": "BTCUSDT",
-    "active": "true",
-    "strategy": "short",
-    "name": "Tester",
-    "maxSOCount": "3",
-    "balanceUsage": "1",
-    "baseOrderSize": "0.0001",
-    "baseOrderType": "limit",
-    "startCondition": "true",
-    "soSize": "0.0001",
-    "takeProfit": "0.003",
-    "priceDeviationSO": "0.0063",
+    "pair": "BTCBAND",
+    "active": "false",
+    "strategy": "long",
+    "name": "Band uptrend",
+    "max_so_count": "3",
+    "balance_usage": "1",
+    "base_order_size": "0.0001",
+    "base_order_type": "limit",
+    "start_condition": "true",
+    "so_size": "0.0001",
+    "take_profit": "0.003",
+    "price_deviation_so": "0.0063",
     "trailling": "false",
-    "traillingDeviation": "0.0063",
-    "dealMinValue": "0",
+    "trailling_deviation": "0.0063",
+    "deal_min_value": "0",
     "cooldown": "0"
 }
 
@@ -31,28 +31,28 @@ POST http://localhost:5000/api/v1/bot/ HTTP/1.1
 PUT http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 {
-    "_id": "5de3d4571f30fed6914d2118",
-    "pair": "BTCUSDT",
-    "active": "true",
+    "_id": "5e653e64411981926aa400f2",
+    "pair": "BANDBTC",
+    "active": "false",
     "strategy": "long",
-    "name": "BTC USDT long bot",
-    "maxSOCount": "2",
-    "balanceUsage": "1",
-    "baseOrderSize": "0.0001",
-    "baseOrderType": "limit",
-    "startCondition": "true",
-    "soSize": "0.0001",
-    "takeProfit": "0.006",
-    "priceDeviationSO": "0.01",
+    "name": "Band uptrend",
+    "max_so_count": "3",
+    "balance_usage": "1",
+    "base_order_size": "0.0001",
+    "base_order_type": "limit",
+    "start_condition": "true",
+    "so_size": "0.0001",
+    "take_profit": "0.003",
+    "price_deviation_so": "0.0063",
     "trailling": "false",
-    "traillingDeviation": "0.0063",
-    "dealMinValue": "0",
+    "trailling_deviation": "0.0063",
+    "deal_min_value": "0",
     "cooldown": "0"
 }
 
 ###
-DELETE http://localhost:5000/api/v1/bot/5dd091a349340c4c0d49752c HTTP/1.1
+DELETE http://localhost:5000/api/v1/bot/5dd0950a2c81f3eadaa9c4c2 HTTP/1.1
 
 ###
 
-PATCH http://localhost:5000/api/v1/bot/activate/5e62e0fc5cf0e7c359ad836d HTTP/1.1
+PATCH http://localhost:5000/api/v1/bot/activate/5e6553e9715ec9ff42a0a46a HTTP/1.1

@@ -1,20 +1,20 @@
-POST http://localhost:5000/order/buy HTTP/1.1
+### Simple Binance buy order
+POST http://localhost:5000/api/v1/order/buy HTTP/1.1
 
 {
     "pair": "BTCUSDT",
-    "qty": "0.001442",
-    "price": "7145"
+    "qty": "0.005463",
+    "price": "9099.81"
+}
+
+### Simple Binance sell order
+POST http://localhost:5000/api/v1/order/sell HTTP/1.1
+
+{
+    "pair": "BTCUSDT",
+    "qty": "0.003291",
+    "price": "9099.81"
 }
 
 ###
-POST http://localhost:5000/order/sell HTTP/1.1
-
-{
-    "pair": "BTCUSDT",
-    "qty": "0.001442",
-    "price": "7132.09"
-}
-
-### 
-
-GET http://localhost:5000/order/order-updates HTTP/1.1
+GET http://localhost:5000/api/v1/order/order-updates HTTP/1.1

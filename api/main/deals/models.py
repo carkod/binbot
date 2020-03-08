@@ -23,8 +23,7 @@ load_dotenv()
 
 
 class Deal:
-    def __init__(self, bot, app):
-        self.app = app
+    def __init__(self, bot):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.base_url = os.getenv("BASE")
@@ -34,20 +33,19 @@ class Deal:
         # Buy order
         self.active_bot = bot
         self.side = EnumDefinitions.order_side[0]
-        self.strategy = bot["strategy"]
-        self.symbol = bot["pair"]
-        self.botname = bot["name"]
-        self.active = bot["active"]
-        self.balance = bot["balance_usage_size"]
-        self.base_order_type = bot["base_order_type"]
-        self.max_so_count = int(bot["max_so_count"])
-        self.price_deviation_so = bot["price_deviation_so"]
+        self.strategy = self.active_bot["strategy"]
+        self.symbol = self.active_bot["pair"]
+        self.botname = self.active_bot["name"]
+        self.active = self.active_bot["active"]
+        self.base_order_type = self.active_bot["base_order_type"]
+        self.max_so_count = int(self.active_bot["max_so_count"])
+        self.price_deviation_so = self.active_bot["price_deviation_so"]
         # 2 = base order + take profit
         # 1.0075 = default commission rate
-        self.division = (self.balance / (self.max_so_count + 2)) * 1.0075
-        self.take_profit = bot["take_profit"]
-        self.trailling = bot["trailling"]
-        self.trailling_deviation = bot["trailling_deviation"]
+        self.division = (self.active_bot["balance_usage_size"] / (self.max_so_count + 2)) * 1.0075
+        self.take_profit = self.active_bot["take_profit"]
+        self.trailling = self.active_bot["trailling"]
+        self.trailling_deviation = self.active_bot["trailling_deviation"]
 
     def handle_fourofour(self, order):
         if "code" not in order:
@@ -67,15 +65,9 @@ class Deal:
 
         order = {"pair": pair, "qty": qty, "price": price}
         res = requests.post(url=url, data=json.dumps(order))
+        # bot is empty
         handle_error(res)
         base_order = res.json()
-        # workaround binance bug
-        if self.binance_bug_workaround(base_order):
-            sleep(5)
-            self.long_base_order()
-        else:
-            return
-
         base_deal = {
             "order_id": base_order["orderId"],
             "deal_type": "base_order",

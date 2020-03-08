@@ -52,7 +52,7 @@ class Book_Order:
         data = res.json()
         if order_side == "bids":
             df = pd.DataFrame(data["bids"], columns=["price", "qty"])
-        elif order_side == "asks":
+        elif order_side == "ask":
             df = pd.DataFrame(data["asks"], columns=["price", "qty"])
 
         else:
@@ -70,11 +70,9 @@ class Book_Order:
         return match_qty["price"][0]
 
     def ticker_price(self):
-        url = self.base_url + self.price
+        url = self.base_url + self.ticker_price
         params = [("symbol", self.symbol)]
         res = requests.get(url=url, params=params)
         handle_error(res)
-        data = res.json()
-        df = pd.DataFrame(data["price"], columns=["price"])
-        price = df["price"].astype(float)[0]
+        price = res.json()["price"]
         return price

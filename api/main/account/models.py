@@ -22,17 +22,34 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Balances:
-    def __init__(self, app):
+    def __init__(self):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.base_url = os.getenv("BASE")
         self.order_url = os.getenv("TICKER24")
+
+    def get_base_asset(self, pair):
+        res = requests.get(self.base_url + os.getenv("EXCHANGE_INFO"))
+        body = res.json()
+        for element in body["symbols"]:
+            if pair in element["symbol"]:
+                return element["baseAsset"]
+        print("get_base_asset: symbol pair not found")
 
     def get_balances(self):
         data = json.loads(Account().get_balances().data)["data"]
         available_balance = 0
         for i in range(len(data)):
             if data[i]["asset"] == "BTC":
+                available_balance = data[i]["free"]
+                return available_balance
+        return available_balance
+
+    def get_base_balance(self, pair):
+        data = json.loads(Account().get_balances().data)["data"]
+        available_balance = 0
+        for i in range(len(data)):
+            if data[i]["asset"] == self.get_base_asset(pair):
                 available_balance = data[i]["free"]
                 return available_balance
         return available_balance
