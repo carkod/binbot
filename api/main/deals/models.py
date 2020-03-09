@@ -17,7 +17,8 @@ from main.account import Account
 from dotenv import load_dotenv
 import os
 from main.orders.models import Buy_Order, Sell_Order
-from main.tools.round_numbers import round_numbers, round_numbers_ceiling
+from main.tools.round_numbers import round_numbers, round_numbers_ceiling, floatify
+from decimal import Decimal
 
 load_dotenv()
 
@@ -60,12 +61,11 @@ class Deal:
         url = self.binbot_base_url + os.getenv("BINBOT_SELL")
         pair = self.active_bot["pair"]
         qty = round_numbers(self.division)
-        price = float(Book_Order(pair).matching_engine(0, "ask", qty))
+        price = floatify(Book_Order(pair).matching_engine(0, "ask", qty))
         self.long_base_order_price = price
 
-        order = {"pair": pair, "qty": qty, "price": price}
+        order = {"pair": pair, "qty": "0.001", "price": "0.003"}
         res = requests.post(url=url, data=json.dumps(order))
-        # bot is empty
         handle_error(res)
         base_order = res.json()
         base_deal = {

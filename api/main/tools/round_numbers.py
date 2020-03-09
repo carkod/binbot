@@ -17,3 +17,10 @@ def proper_round(num, dec=6):
     if num[-1]>='5':
         return float(num[:-2-(not dec)]+str(int(num[-2-(not dec)])+1))
     return float(num[:-1])
+
+# Turn float string into float and prevent exponentialization
+# 8f means 8 decimals - binance default
+def floatify(string):
+  fl = float(string)
+  full_float = f"{fl:8f}"
+  return full_float

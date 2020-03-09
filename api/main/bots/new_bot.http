@@ -38,6 +38,7 @@ PUT http://localhost:5000/api/v1/bot/ HTTP/1.1
     "name": "Band uptrend",
     "max_so_count": "3",
     "balance_usage": "1",
+    "balance_usage_size": "0.0001",
     "base_order_size": "0.0001",
     "base_order_type": "limit",
     "start_condition": "true",
@@ -55,4 +56,4 @@ DELETE http://localhost:5000/api/v1/bot/5dd0950a2c81f3eadaa9c4c2 HTTP/1.1
 
 ###
 
-PATCH http://localhost:5000/api/v1/bot/activate/5e6553e9715ec9ff42a0a46a HTTP/1.1
+PATCH http://localhost:5000/api/v1/bot/activate/5e653e64411981926aa400f2 HTTP/1.1
