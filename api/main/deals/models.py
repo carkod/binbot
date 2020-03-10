@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import requests
 import pandas as pd
 from main.tools import EnumDefinitions, handle_error, Book_Order
-from main.account import Account
+from main.account import Account, Balances
 from dotenv import load_dotenv
 import os
 from main.orders.models import Buy_Order, Sell_Order
@@ -24,6 +24,17 @@ load_dotenv()
 
 
 class Deal:
+
+    @classmethod
+    def check_funds(self, bot):
+        balances = Balances()
+        funds = balances.get_base_balance(bot["pair"])
+        asset = balances.get_quote_asset(bot["pair"])
+        if float(funds) == 0.0:
+            print("Not enough {} to buy {}".format(asset, bot["pair"]))
+            sys.exit(1)
+        return funds
+
     def __init__(self, bot):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
@@ -43,7 +54,9 @@ class Deal:
         self.price_deviation_so = self.active_bot["price_deviation_so"]
         # 2 = base order + take profit
         # 1.0075 = default commission rate
-        self.division = (self.active_bot["balance_usage_size"] / (self.max_so_count + 2)) * 1.0075
+        self.get_available_funds = self.check_funds(bot)
+        self.balance_usage_size = str(float(self.active_bot["balance_usage"]) * self.get_available_funds)
+        self.division = str((float(self.balance_usage_size) / (self.max_so_count + 2)) * 1.0075)
         self.take_profit = self.active_bot["take_profit"]
         self.trailling = self.active_bot["trailling"]
         self.trailling_deviation = self.active_bot["trailling_deviation"]
@@ -58,13 +71,14 @@ class Deal:
 
     
     def long_base_order(self):
-        url = self.binbot_base_url + os.getenv("BINBOT_SELL")
+        url = self.binbot_base_url + os.getenv("BINBOT_BUY")
         pair = self.active_bot["pair"]
         qty = round_numbers(self.division)
-        price = floatify(Book_Order(pair).matching_engine(0, "ask", qty))
+        price = float(Book_Order(pair).matching_engine(0, "ask", qty))
+        buy_qty = str(round_numbers(qty / price, 0))
         self.long_base_order_price = price
 
-        order = {"pair": pair, "qty": "0.001", "price": "0.003"}
+        order = {"pair": pair, "qty": buy_qty, "price": price}
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         base_order = res.json()

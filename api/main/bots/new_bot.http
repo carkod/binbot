@@ -2,17 +2,17 @@ GET http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 ###
 
-GET http://localhost:5000/api/v1/bot/5e64370d064f74585bd1ab85 HTTP/1.1
+GET http://localhost:5000/api/v1/bot/5e66d4e09f2674dddecc7eb2 HTTP/1.1
 
 ###
 
 POST http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 {
-    "pair": "BTCBAND",
+    "pair": "XRPBNB",
     "active": "false",
     "strategy": "long",
-    "name": "Band uptrend",
+    "name": "XRP uptrend with BNB",
     "max_so_count": "3",
     "balance_usage": "1",
     "base_order_size": "0.0001",
@@ -38,7 +38,6 @@ PUT http://localhost:5000/api/v1/bot/ HTTP/1.1
     "name": "Band uptrend",
     "max_so_count": "3",
     "balance_usage": "1",
-    "balance_usage_size": "0.0001",
     "base_order_size": "0.0001",
     "base_order_type": "limit",
     "start_condition": "true",
@@ -56,4 +55,4 @@ DELETE http://localhost:5000/api/v1/bot/5dd0950a2c81f3eadaa9c4c2 HTTP/1.1
 
 ###
 
-PATCH http://localhost:5000/api/v1/bot/activate/5e653e64411981926aa400f2 HTTP/1.1
+PATCH http://localhost:5000/api/v1/bot/activate/5e66d4e09f2674dddecc7eb2 HTTP/1.1

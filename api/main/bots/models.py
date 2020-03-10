@@ -61,7 +61,7 @@ class Bot:
     def get_one(self):
         resp = tools.JsonResp({"message": "No bots found"}, 200)
         findId = ObjectId(request.view_args["id"])
-        bot = list(app.db.bots.find_one({"_id": findId}))
+        bot = app.db.bots.find_one({"_id": findId})
 
         if bot:
             resp = tools.JsonResp({"data": bot}, 200)
@@ -81,15 +81,15 @@ class Bot:
             "name": data["name"] or "Default Bot",
             "max_so_count": data["max_so_count"] or 3,
             "balance_usage": data["balance_usage"],  # 100% of All Btc balance
-            "balance_usage_size": float(data["balance_usage_size"]) * get_available_funds,
-            "base_order_size": data["base_order_size"] or 0.0001,  # MIN by Binance = 0.0001 BTC
+            "balance_usage_size": str(float(data["balance_usage"]) * get_available_funds),
+            "base_order_size": data["base_order_size"] or "0.0001",  # MIN by Binance = 0.0001 BTC
             "base_order_type": data["base_order_type"],  # Market or limit
             "start_condition": True,
-            "so_size": data["so_size"] or 0.0001,  # Top band
-            "take_profit": data["take_profit"] or 0.003,
-            "price_deviation_so": data["price_deviation_so"] or 0.0063,  # % percentage
+            "so_size": data["so_size"] or "0.0001",  # Top band
+            "take_profit": data["take_profit"] or "0.003",
+            "price_deviation_so": data["price_deviation_so"] or "0.0063",  # % percentage
             "trailling": data["trailling"] or False,
-            "trailling_deviation": data["trailling_deviation"] or 0.0063,
+            "trailling_deviation": data["trailling_deviation"] or "0.0063",
             "deal_min_value": data["deal_min_value"] or 0,
             "cooldown": data["cooldown"] or 0,
         }
@@ -117,7 +117,7 @@ class Bot:
             "max_so_count": data["max_so_count"] if data.get("max_so_count") else 3,
             "balance_usage": data["balance_usage"]
             if data.get("balance_usage") else 1,  # 100% of All Btc balance
-            "balance_usage_size": float(data["balance_usage"]) * get_available_funds,
+            "balance_usage_size": str(float(data["balance_usage"]) * get_available_funds),
             "base_order_size": data["base_order_size"],  # MIN by Binance = 0.0001 BTC
             "base_order_type": data["base_order_type"]
             if data.get("base_order_type") else "limit",  # Market or limit
