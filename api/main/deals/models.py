@@ -78,7 +78,7 @@ class Deal:
         buy_qty = str(round_numbers(qty / price, 0))
         self.long_base_order_price = price
 
-        order = {"pair": pair, "qty": buy_qty, "price": price}
+        order = {"pair": pair, "qty": buy_qty, "price": f"{price:8f}"}
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         base_order = res.json()
@@ -105,9 +105,9 @@ class Deal:
             index += 1
 
             # Recursive order
-            url = os.getenv
+            url = self.base_url + os.getenv("BINBOT_BUY")
             pair = self.active_bot["pair"]
-            qty = math.floor(self.division * 1000000) / 1000000
+            qty = math.floor(float(self.division) * 1000000) / 1000000
 
             # SO mark based on take profit
             increase_from_tp = float(self.take_profit) / int(self.max_so_count)

@@ -9,10 +9,10 @@ GET http://localhost:5000/api/v1/bot/5e66d4e09f2674dddecc7eb2 HTTP/1.1
 POST http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 {
-    "pair": "XRPBNB",
+    "pair": "BATBTC",
     "active": "false",
     "strategy": "long",
-    "name": "XRP uptrend with BNB",
+    "name": "BAT uptread",
     "max_so_count": "3",
     "balance_usage": "1",
     "base_order_size": "0.0001",
@@ -55,4 +55,4 @@ DELETE http://localhost:5000/api/v1/bot/5dd0950a2c81f3eadaa9c4c2 HTTP/1.1
 
 ###
 
-PATCH http://localhost:5000/api/v1/bot/activate/5e66d4e09f2674dddecc7eb2 HTTP/1.1
+PATCH http://localhost:5000/api/v1/bot/activate/5e682b1dcb87f5f7f33c0df7 HTTP/1.1
