@@ -78,7 +78,7 @@ class Deal:
         buy_qty = str(round_numbers(qty / price, 0))
         self.long_base_order_price = price
 
-        order = {"pair": pair, "qty": buy_qty, "price": f"{price:8f}"}
+        order = {"pair": pair, "qty": buy_qty, "price": floatify(price)}
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         base_order = res.json()
@@ -105,7 +105,7 @@ class Deal:
             index += 1
 
             # Recursive order
-            url = self.base_url + os.getenv("BINBOT_BUY")
+            url = self.binbot_base_url + os.getenv("BINBOT_BUY")
             pair = self.active_bot["pair"]
             qty = math.floor(float(self.division) * 1000000) / 1000000
 
@@ -120,14 +120,12 @@ class Deal:
             # +1 to exclude index 0 and first base order (index 1) from safety order
             price = market_price * (1 + (increase_from_tp * (index + 1)))
             # round down number
-            price = round_numbers(price, 2)
-            order = {"pair": pair, "qty": qty, "price": price}
+            buy_qty = floatify(qty / price)
+            buy_price = floatify(price)
+            order = {"pair": pair, "qty": buy_qty, "price": buy_price}
             res = requests.post(url=url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
-            if self.binance_bug_workaround(order):
-                self.long_safety_order_generator()
-
             safety_orders = {
                 "order_id": order["orderId"],
                 "deal_type": "safety_order",
@@ -159,9 +157,6 @@ class Deal:
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         order = res.json()
-
-        if self.binance_bug_workaround(order):
-            self.long_take_profit_order()
 
         base_order = {
             "deal_type": "take_profit",
@@ -219,10 +214,6 @@ class Deal:
             res = requests.post(url=url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
-
-            if self.binance_bug_workaround_short(order):
-                self.short_safety_order_generator(index)
-
             safety_orders = {
                 "order_id": order["orderId"],
                 "deal_type": "safety_order",
@@ -252,10 +243,6 @@ class Deal:
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         order = res.json()
-
-        if self.binance_bug_workaround(order):
-            self.short_take_profit_order()
-
         tp_order = {
             "deal_type": "take_profit",
             "order_id": order["orderId"],
