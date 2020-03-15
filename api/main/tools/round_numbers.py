@@ -20,7 +20,11 @@ def proper_round(num, dec=6):
 
 # Turn float string into float and prevent exponentialization
 # 8f means 8 decimals - binance default
-def floatify(string):
-  fl = float(string)
-  full_float = f"{fl:8f}"
+def floatify(string, decimals=6):
+  fl = round_numbers(float(string), decimals)
+  full_float = f"{fl:{decimals}f}"
+  return full_float
+
+def stringify_float(num, decimals=6):
+  full_float = f"{num:{decimals}f}"
   return full_float

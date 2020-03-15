@@ -17,7 +17,7 @@ from main.account import Account, Balances
 from dotenv import load_dotenv
 import os
 from main.orders.models import Buy_Order, Sell_Order
-from main.tools.round_numbers import round_numbers, round_numbers_ceiling, floatify
+from main.tools.round_numbers import round_numbers, round_numbers_ceiling, floatify, stringify_float
 from decimal import Decimal
 
 load_dotenv()
@@ -31,7 +31,7 @@ class Deal:
         funds = balances.get_base_balance(bot["pair"])
         asset = balances.get_quote_asset(bot["pair"])
         if float(funds) == 0.0:
-            print("Not enough {} to buy {}".format(asset, bot["pair"]))
+            print("[BINBOT] Not enough {} to buy {}".format(asset, bot["pair"]))
             sys.exit(1)
         return funds
 
@@ -66,7 +66,7 @@ class Deal:
             # save base deal
             return order
         else:
-            print(order)
+            print(f"[BINBOT] {order}")
             exit(1)
 
     
@@ -120,10 +120,54 @@ class Deal:
             # +1 to exclude index 0 and first base order (index 1) from safety order
             price = market_price * (1 + (increase_from_tp * (index + 1)))
             # round down number
-            buy_qty = floatify(qty / price)
-            buy_price = floatify(price)
-            order = {"pair": pair, "qty": buy_qty, "price": buy_price}
-            res = requests.post(url=url, data=json.dumps(order))
+            buy_qty = str(int(qty / price))
+            buy_price = str(round_numbers(price, 5))
+            data = {"pair": pair, "qty": buy_qty, "price": buy_price}
+
+            # Rate limit check
+            url = self.base_url + os.getenv("EXCHANGE_INFO")
+            req = requests.get(url=url).json()
+            limits = next((item["filters"] for item in req["symbols"] if item["symbol"] == pair), False)
+            # Price limits
+            # price >= minPrice
+            # (price-minPrice) % tickSize == 0
+            min_price = float(next((item["minPrice"] for item in limits if item["filterType"] == "PRICE_FILTER"), 0))
+            tick_size = float(next((item["tickSize"] for item in limits if item["filterType"] == "PRICE_FILTER"), 0))
+
+            # Qty limits
+            # quantity >= minQty
+            # (quantity-minQty) % stepSize == 0
+            min_qty = float(next((item["minQty"] for item in limits if item["filterType"] == "LOT_SIZE"), 0))
+            step_size = float(next((item["stepSize"] for item in limits if item["filterType"] == "LOT_SIZE"), 0))
+
+            # Min notional = price x quantity
+            # p x qty > min_notional
+            min_pxq = float(next((item["minNotional"] for item in limits if item["filterType"] == "MIN_NOTIONAL"), 0))
+
+
+            if float(buy_price) <= min_price:
+                print("[BINBOT] Order cannot be carried: price {} Did not pass min price rate limit {}".format(buy_price, min_price))
+                sys.exit(1)
+
+            # if (float(buy_price)-min_price) % tick_size != 0:
+            #     print("[BINBOT] Order cannot be carried: price {} Did not pass min price rate limit {} - ticksize".format(buy_price, tick_size))
+            #     sys.exit(1)
+
+            if float(buy_qty) <= min_qty:
+                print("[BINBOT] Order cannot be carried: quantity {} Did not pass min quantity rate limit {}".format(buy_price, min_price))
+                sys.exit(1)
+
+            # if (float(buy_qty)-min_qty) % step_size != 0:
+            #     print("[BINBOT] Order cannot be carried: quantity {} Did not pass min quantity rate limit {} - stepsize".format(buy_price, step_size))
+            #     sys.exit(1)
+
+            if (float(buy_price) * float(buy_qty)) > min_pxq:
+                print("[BINBOT] Order cannot be carried: price x quantity {} Did not pass min prices x quantity (min notional) rate limit {}".format(buy_price, min_pxq))
+                sys.exit(1)
+
+            print("[BINBOT] All Binance rate limits passed!")
+
+            res = requests.post(url=url, data=json.dumps(data))
             handle_error(res)
             order = res.json()
             safety_orders = {
@@ -180,6 +224,7 @@ class Deal:
         price = float(Book_Order(pair).matching_engine(0, "bids", qty))
 
         order = {"pair": pair, "qty": qty, "price": price}
+        check_rate_limit
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         res_order = res.json()
@@ -261,35 +306,35 @@ class Deal:
         new_deal = {"base_order": {}, "take_profit_order": {}, "so_orders": []}
         deal_strategy = self.strategy
         if deal_strategy == "long":
-            long_base_order = self.long_base_order()
-            if not long_base_order:
-                print("Deal: Base order failed")
-            new_deal["base_order"] = long_base_order
+            # long_base_order = self.long_base_order()
+            # if not long_base_order:
+            #     print("[BINBOT] Deal: Base order failed")
+            # new_deal["base_order"] = long_base_order
             long_safety_order_generator = self.long_safety_order_generator()
             if not long_safety_order_generator:
-                print("Deal: Safety orders failed")
+                print("[BINBOT] Deal: Safety orders failed")
             new_deal["so_orders"] = long_safety_order_generator
 
             long_take_profit_order = self.long_take_profit_order()
             if not long_take_profit_order:
-                print("Deal: Take profit order failed")
+                print("[BINBOT] Deal: Take profit order failed")
 
             new_deal["take_profit_order"] = long_take_profit_order
 
         if deal_strategy == "short":
             short_base_order = self.short_base_order()
             if not short_base_order:
-                print("Deal: Base order failed")
+                print("[BINBOT] Deal: Base order failed")
             new_deal["base_order"] = short_base_order
 
             short_safety_order_generator = self.short_safety_order_generator(0)
             if not short_safety_order_generator:
-                print("Deal: Safety orders failed")
+                print("[BINBOT] Deal: Safety orders failed")
             new_deal["so_orders"] = short_safety_order_generator
 
             short_take_profit_order = self.short_take_profit_order()
             if not short_take_profit_order:
-                print("Deal: Take profit order failed")
+                print("[BINBOT] Deal: Take profit order failed")
 
             new_deal["take_profit_order"] = short_take_profit_order
 
