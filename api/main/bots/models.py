@@ -175,6 +175,9 @@ class Bot:
         bot = app.db.bots.find_one({"_id": findId})
         if bot:
             dealId = Deal(bot).open_deal()
+            if dealId["code"]:
+                resp = tools.JsonResp(dealId, 200)
+                return dealId
             if dealId:
                 if "deals" not in bot.keys():
                     bot["deals"] = []

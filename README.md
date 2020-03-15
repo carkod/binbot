@@ -17,3 +17,8 @@ There is front-end example with React in place within the `/web` directory. It d
 A successful login request will return two tokens: `AccessToken` and `RefreshToken`. These should be saved to localStorage and used to set the `AccessToken` and `RefreshToken` request headers for all protected routes (e.g. `GET /user/`).
 
 You can refresh the `AccessToken` when it returns as expired by submitting a request to `GET /user/auth/`.
+
+## Error codes
+
+### Bot `-11XX`
+`-1100` `Binance min_notional violation`

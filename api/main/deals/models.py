@@ -125,8 +125,8 @@ class Deal:
             data = {"pair": pair, "qty": buy_qty, "price": buy_price}
 
             # Rate limit check
-            url = self.base_url + os.getenv("EXCHANGE_INFO")
-            req = requests.get(url=url).json()
+            info_url = self.base_url + os.getenv("EXCHANGE_INFO")
+            req = requests.get(url=info_url).json()
             limits = next((item["filters"] for item in req["symbols"] if item["symbol"] == pair), False)
             # Price limits
             # price >= minPrice
@@ -161,9 +161,10 @@ class Deal:
             #     print("[BINBOT] Order cannot be carried: quantity {} Did not pass min quantity rate limit {} - stepsize".format(buy_price, step_size))
             #     sys.exit(1)
 
-            if (float(buy_price) * float(buy_qty)) > min_pxq:
-                print("[BINBOT] Order cannot be carried: price x quantity {} Did not pass min prices x quantity (min notional) rate limit {}".format(buy_price, min_pxq))
-                sys.exit(1)
+            if (float(buy_price) * float(buy_qty)) < min_pxq:
+                error_msg = "[BINBOT] Order cannot be carried: price x quantity {} Did not pass min prices x quantity (min notional) rate limit {}".format(buy_price, min_pxq)
+                object = { "code": -1100, "msg": error_msg }
+                return object
 
             print("[BINBOT] All Binance rate limits passed!")
 
@@ -311,6 +312,9 @@ class Deal:
             #     print("[BINBOT] Deal: Base order failed")
             # new_deal["base_order"] = long_base_order
             long_safety_order_generator = self.long_safety_order_generator()
+            if long_safety_order_generator["code"]:
+                # Returned error code to interface
+                return long_safety_order_generator
             if not long_safety_order_generator:
                 print("[BINBOT] Deal: Safety orders failed")
             new_deal["so_orders"] = long_safety_order_generator

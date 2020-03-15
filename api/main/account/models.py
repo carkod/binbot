@@ -27,9 +27,10 @@ class Balances:
         self.secret = os.getenv("BINANCE_SECRET")
         self.base_url = os.getenv("BASE")
         self.order_url = os.getenv("TICKER24")
+        self.info_url = self.base_url + os.getenv("EXCHANGE_INFO")
 
     def get_quote_asset(self, pair):
-        res = requests.get(self.base_url + os.getenv("EXCHANGE_INFO"))
+        res = requests.get(self.info_url)
         body = res.json()
         for element in body["symbols"]:
             if pair in element["symbol"]:
@@ -111,7 +112,7 @@ class Account:
 
     def search_pair(self):
         query = request.view_args["query"].lower()
-        res = requests.get(self.base_url + os.getenv("EXCHANGE_INFO"))
+        res = requests.get(self.info_url)
         body = res.json()
         matched_coins = []
         for element in body["symbols"]:
