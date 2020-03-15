@@ -19,6 +19,7 @@ import os
 from main.orders.models import Buy_Order, Sell_Order
 from main.tools.round_numbers import round_numbers, round_numbers_ceiling, floatify, stringify_float
 from decimal import Decimal
+from main.tools.rate_limits import order_rate_limit
 
 load_dotenv()
 
@@ -124,49 +125,7 @@ class Deal:
             buy_price = str(round_numbers(price, 5))
             data = {"pair": pair, "qty": buy_qty, "price": buy_price}
 
-            # Rate limit check
-            info_url = self.base_url + os.getenv("EXCHANGE_INFO")
-            req = requests.get(url=info_url).json()
-            limits = next((item["filters"] for item in req["symbols"] if item["symbol"] == pair), False)
-            # Price limits
-            # price >= minPrice
-            # (price-minPrice) % tickSize == 0
-            min_price = float(next((item["minPrice"] for item in limits if item["filterType"] == "PRICE_FILTER"), 0))
-            tick_size = float(next((item["tickSize"] for item in limits if item["filterType"] == "PRICE_FILTER"), 0))
-
-            # Qty limits
-            # quantity >= minQty
-            # (quantity-minQty) % stepSize == 0
-            min_qty = float(next((item["minQty"] for item in limits if item["filterType"] == "LOT_SIZE"), 0))
-            step_size = float(next((item["stepSize"] for item in limits if item["filterType"] == "LOT_SIZE"), 0))
-
-            # Min notional = price x quantity
-            # p x qty > min_notional
-            min_pxq = float(next((item["minNotional"] for item in limits if item["filterType"] == "MIN_NOTIONAL"), 0))
-
-
-            if float(buy_price) <= min_price:
-                print("[BINBOT] Order cannot be carried: price {} Did not pass min price rate limit {}".format(buy_price, min_price))
-                sys.exit(1)
-
-            # if (float(buy_price)-min_price) % tick_size != 0:
-            #     print("[BINBOT] Order cannot be carried: price {} Did not pass min price rate limit {} - ticksize".format(buy_price, tick_size))
-            #     sys.exit(1)
-
-            if float(buy_qty) <= min_qty:
-                print("[BINBOT] Order cannot be carried: quantity {} Did not pass min quantity rate limit {}".format(buy_price, min_price))
-                sys.exit(1)
-
-            # if (float(buy_qty)-min_qty) % step_size != 0:
-            #     print("[BINBOT] Order cannot be carried: quantity {} Did not pass min quantity rate limit {} - stepsize".format(buy_price, step_size))
-            #     sys.exit(1)
-
-            if (float(buy_price) * float(buy_qty)) < min_pxq:
-                error_msg = "[BINBOT] Order cannot be carried: price x quantity {} Did not pass min prices x quantity (min notional) rate limit {}".format(buy_price, min_pxq)
-                object = { "code": -1100, "msg": error_msg }
-                return object
-
-            print("[BINBOT] All Binance rate limits passed!")
+            order_rate_limit(pair, buy_qty, buy_price)
 
             res = requests.post(url=url, data=json.dumps(data))
             handle_error(res)
