@@ -2,27 +2,27 @@ GET http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 ###
 
-GET http://localhost:5000/api/v1/bot/5e66d4e09f2674dddecc7eb2 HTTP/1.1
+GET http://localhost:5000/api/v1/bot/5e6e98a0f9f37dda9bc40c05 HTTP/1.1
 
 ###
 
 POST http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 {
-    "pair": "BATBTC",
+    "pair": "XRPUSDT",
     "active": "false",
-    "strategy": "long",
-    "name": "BAT uptread",
-    "max_so_count": "3",
+    "strategy": "short",
+    "name": "short XRP downtrend",
+    "max_so_count": "1",
     "balance_usage": "1",
     "base_order_size": "0.0001",
     "base_order_type": "limit",
-    "start_condition": "true",
+    "start_condition": true,
     "so_size": "0.0001",
     "take_profit": "0.003",
-    "price_deviation_so": "0.0063",
+    "price_deviation_so": "0.0070",
     "trailling": "false",
-    "trailling_deviation": "0.0063",
+    "trailling_deviation": "0.0070",
     "deal_min_value": "0",
     "cooldown": "0"
 }
@@ -31,21 +31,21 @@ POST http://localhost:5000/api/v1/bot/ HTTP/1.1
 PUT http://localhost:5000/api/v1/bot/ HTTP/1.1
 
 {
-    "_id": "5e653e64411981926aa400f2",
-    "pair": "BANDBTC",
+    "_id": "5e6e98a0f9f37dda9bc40c05",
+    "pair": "XRPUSDT",
     "active": "false",
-    "strategy": "long",
-    "name": "Band uptrend",
-    "max_so_count": "3",
+    "strategy": "short",
+    "name": "short XRP downtrend",
+    "max_so_count": "1",
     "balance_usage": "1",
     "base_order_size": "0.0001",
     "base_order_type": "limit",
-    "start_condition": "true",
+    "start_condition": true,
     "so_size": "0.0001",
     "take_profit": "0.003",
-    "price_deviation_so": "0.0063",
+    "price_deviation_so": "0.0070",
     "trailling": "false",
-    "trailling_deviation": "0.0063",
+    "trailling_deviation": "0.0070",
     "deal_min_value": "0",
     "cooldown": "0"
 }
@@ -54,4 +54,4 @@ PUT http://localhost:5000/api/v1/bot/ HTTP/1.1
 DELETE http://localhost:5000/api/v1/bot/5dd0950a2c81f3eadaa9c4c2 HTTP/1.1
 
 ###
-PATCH http://localhost:5000/api/v1/bot/activate/5e66d4e09f2674dddecc7eb2 HTTP/1.1
+PATCH http://localhost:5000/api/v1/bot/activate/5e6e98a0f9f37dda9bc40c05 HTTP/1.1

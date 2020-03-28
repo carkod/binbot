@@ -29,13 +29,22 @@ class Balances:
         self.order_url = os.getenv("TICKER24")
         self.info_url = self.base_url + os.getenv("EXCHANGE_INFO")
 
+
+    def get_base_asset(self, pair):
+        res = requests.get(self.info_url)
+        body = res.json()
+        for element in body["symbols"]:
+            if pair in element["symbol"]:
+                return element["baseAsset"]
+        print("get_base_asset: symbol pair not found")
+
     def get_quote_asset(self, pair):
         res = requests.get(self.info_url)
         body = res.json()
         for element in body["symbols"]:
             if pair in element["symbol"]:
                 return element["quoteAsset"]
-        print("get_base_asset: symbol pair not found")
+        print("get_quote_asset: symbol pair not found")
 
     def get_balances(self):
         data = json.loads(Account().get_balances().data)["data"]
@@ -50,11 +59,19 @@ class Balances:
         data = json.loads(Account().get_balances().data)["data"]
         available_balance = 0
         for i in range(len(data)):
-            if data[i]["asset"] == self.get_quote_asset(pair):
+            if data[i]["asset"] == self.get_base_asset(pair):
                 available_balance = data[i]["free"]
                 return available_balance
         return available_balance
 
+    def get_quote_balance(self, pair):
+        data = json.loads(Account().get_balances().data)["data"]
+        available_balance = 0
+        for i in range(len(data)):
+            if data[i]["asset"] == self.get_base_asset(pair):
+                available_balance = data[i]["free"]
+                return available_balance
+        return available_balance
 
 class Account:
 

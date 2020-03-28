@@ -29,11 +29,19 @@ class Deal:
     @classmethod
     def check_funds(self, bot):
         balances = Balances()
-        funds = balances.get_base_balance(bot["pair"])
-        asset = balances.get_quote_asset(bot["pair"])
+        asset = 0
+        funds = 0
+        if bot["strategy"] == "long":
+            asset = balances.get_quote_asset(bot["pair"])
+            funds = balances.get_quote_balance(bot["pair"])
+        else:
+            asset = balances.get_base_asset(bot["pair"])
+            funds = balances.get_base_balance(bot["pair"])
+
         if float(funds) == 0.0:
-            print("[BINBOT] Not enough {} to buy {}".format(asset, bot["pair"]))
-            sys.exit(1)
+            msg = "[BINBOT] Not enough {} to buy {}".format(asset, bot["pair"])
+            object =  {"code": -1103, "message": msg}
+            return object
         return funds
 
     def __init__(self, bot):
@@ -53,15 +61,11 @@ class Deal:
         self.base_order_type = self.active_bot["base_order_type"]
         self.max_so_count = int(self.active_bot["max_so_count"])
         self.price_deviation_so = self.active_bot["price_deviation_so"]
-        # 2 = base order + take profit
-        # 1.0075 = default commission rate
-        self.get_available_funds = self.check_funds(bot)
-        self.balance_usage_size = str(float(self.active_bot["balance_usage"]) * self.get_available_funds)
-        self.division = str((float(self.balance_usage_size) / (self.max_so_count + 2)) * 1.0075)
         self.take_profit = self.active_bot["take_profit"]
         self.trailling = self.active_bot["trailling"]
         self.trailling_deviation = self.active_bot["trailling_deviation"]
 
+        
     def handle_fourofour(self, order):
         if "code" not in order:
             # save base deal
@@ -71,6 +75,17 @@ class Deal:
             exit(1)
 
     
+    def initial_computations(self):
+        # 2 = base order + take profit
+        # 1.0075 = default commission rate
+        get_available_funds = self.check_funds(self.active_bot)
+        if isinstance(get_available_funds, dict):
+            return get_available_funds
+
+        self.balance_usage_size = str(float(self.active_bot["balance_usage"]) * get_available_funds)
+        self.division = (float(self.balance_usage_size) / (self.max_so_count + 1)) * 1.0075
+        return
+
     def long_base_order(self):
         url = self.binbot_base_url + os.getenv("BINBOT_BUY")
         pair = self.active_bot["pair"]
@@ -125,7 +140,10 @@ class Deal:
             buy_price = str(round_numbers(price, 5))
             data = {"pair": pair, "qty": buy_qty, "price": buy_price}
 
-            order_rate_limit(pair, buy_qty, buy_price)
+            # Check rate limits before making order
+            check_limits = order_rate_limit(pair, buy_price, buy_qty)
+            if isinstance(check_limits, dict):
+                return check_limits
 
             res = requests.post(url=url, data=json.dumps(data))
             handle_error(res)
@@ -156,8 +174,11 @@ class Deal:
 
         market_price = float(Book_Order(pair).matching_engine(0, "bids", qty))
         price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
-
         order = {"pair": pair, "qty": qty, "price": price}
+
+        # Check rate limits before making order
+        order_rate_limit(pair, pair, qty)
+
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         order = res.json()
@@ -184,7 +205,10 @@ class Deal:
         price = float(Book_Order(pair).matching_engine(0, "bids", qty))
 
         order = {"pair": pair, "qty": qty, "price": price}
-        check_rate_limit
+
+
+        rate_limits(pair, price, qty)
+
         res = requests.post(url=url, data=json.dumps(order))
         handle_error(res)
         res_order = res.json()
@@ -263,6 +287,9 @@ class Deal:
         return tp_order
 
     def open_deal(self):
+        balance = self.initial_computations()
+        if isinstance(balance, dict):
+            return balance
         new_deal = {"base_order": {}, "take_profit_order": {}, "so_orders": []}
         deal_strategy = self.strategy
         if deal_strategy == "long":
@@ -271,7 +298,7 @@ class Deal:
             #     print("[BINBOT] Deal: Base order failed")
             # new_deal["base_order"] = long_base_order
             long_safety_order_generator = self.long_safety_order_generator()
-            if long_safety_order_generator["code"]:
+            if isinstance(long_safety_order_generator, dict):
                 # Returned error code to interface
                 return long_safety_order_generator
             if not long_safety_order_generator:
