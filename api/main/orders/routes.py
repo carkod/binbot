@@ -1,6 +1,6 @@
 from flask import Flask, Blueprint, request, current_app as app
 from main.auth import token_required
-from main.orders.models import Buy_Order, Sell_Order, Orders, OrderUpdates
+from main.orders.controllers import Buy_Order, Sell_Order, Orders, OrderUpdates
 from flask_cors import CORS, cross_origin
 
 

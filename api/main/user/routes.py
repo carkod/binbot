@@ -2,7 +2,7 @@ from flask import Flask
 from flask import Blueprint
 from flask import current_app as app
 from main.auth import token_required
-from main.user.models import User
+from main.user.controllers import User
 from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 import os

@@ -16,7 +16,7 @@ from main.tools import EnumDefinitions, handle_error, Book_Order
 from main.account import Account, Balances
 from dotenv import load_dotenv
 import os
-from main.orders.models import Buy_Order, Sell_Order
+from main.orders.controllers import Buy_Order, Sell_Order
 from main.tools.round_numbers import round_numbers, round_numbers_ceiling, floatify, stringify_float
 from decimal import Decimal
 from main.tools.rate_limits import order_rate_limit
