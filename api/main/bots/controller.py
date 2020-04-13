@@ -15,9 +15,9 @@ from urllib.parse import urlparse
 import pandas as pd
 import json
 from main import tools
-from main.account.controllers import Account, Balances
+from main.account.controller import Account, Balances
 from main.tools import Ticker24Data
-from main.deals.controllers import Deal
+from main.deals.controller import Deal
 from bson.objectid import ObjectId
 
 

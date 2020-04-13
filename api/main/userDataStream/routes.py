@@ -2,7 +2,7 @@ from flask import Blueprint, Flask
 from flask import current_app as app
 from flask_cors import CORS, cross_origin
 
-from main.userDataStream.controllers import UserDataStream
+from main.userDataStream.controller import UserDataStream
 
 user_datastream_blueprint = Blueprint("user-data-stream", __name__)
 

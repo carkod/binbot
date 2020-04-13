@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, request
+from flask_api import FlaskAPI, request
 
 from jose import jwt
 from main.account.routes import account_blueprint
@@ -17,7 +17,7 @@ import os
 
 def create_app():
     # Flask Config
-    app = Flask(__name__)
+    app = FlaskAPI(__name__)
     # cors = CORS(app, resources={r"/*": { "origins": os.environ["FRONTEND_DOMAIN"] }})
     mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
     mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(

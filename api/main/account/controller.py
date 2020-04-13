@@ -84,6 +84,7 @@ class Account:
         self.candlestick_url = os.environ["CANDLESTICK"]
         self.secret = os.environ["BINANCE_SECRET"]
         self.key = os.environ["BINANCE_KEY"]
+        self.info_url = self.base_url + os.getenv("EXCHANGE_INFO")
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))

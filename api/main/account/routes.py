@@ -2,7 +2,7 @@ from flask import Flask
 from flask import Blueprint
 from flask import current_app as app
 from main.auth import token_required
-from main.account.controllers import Account
+from main.account.controller import Account
 import os
 
 # initialization
