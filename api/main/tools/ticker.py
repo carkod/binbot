@@ -6,8 +6,8 @@ import pandas as pd
 class Ticker24Data():
 
     def __init__(self, app):
-        self.base_url = app.config['BASE']    
-        self.ticker24_url = app.config['TICKER24']
+        self.base_url =  os.environ['BASE']    
+        self.ticker24_url =  os.environ['TICKER24']
 
     def request_data(self):
         r = requests.get(self.base_url + self.ticker24_url)
@@ -25,7 +25,7 @@ class Ticker24Data():
 
 # class Ticker_Price:
 
-#     ticker_price = app.config['TICKER_PRICE']
+#     ticker_price =  os.environ['TICKER_PRICE']
 
 #     def __init__(self):
 #         """Request only ticker24 data
@@ -48,7 +48,7 @@ class Ticker24Data():
 
 # class Average_price:
 
-#     average_price = app.config['AVERAGE_PRICE']
+#     average_price =  os.environ['AVERAGE_PRICE']
 
 #     def __init__(self):
 #         """Request only ticker24 data

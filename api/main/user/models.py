@@ -15,7 +15,7 @@ class User:
     }
   
   def get(self):
-    token_data = jwt.decode(request.headers.get('AccessToken'), app.config['SECRET_KEY'])
+    token_data = jwt.decode(request.headers.get('AccessToken'),  os.environ['SECRET_KEY'])
 
     user = app.db.users.find_one({ "id": token_data['userid'] }, {
       "id": 0,
@@ -37,7 +37,7 @@ class User:
 
     if access_token:
       try:
-        decoded = jwt.decode(access_token, app.config["SECRET_KEY"])
+        decoded = jwt.decode(access_token,  os.environ["SECRET_KEY"])
         resp = tools.JsonResp(decoded, 200)
       except:
         # If the access_token has expired, get a new access_token - so long as the refresh_token hasn't expired yet
@@ -76,7 +76,7 @@ class User:
   
   def logout(self):
     try:
-      tokenData = jwt.decode(request.headers.get("AccessToken"), app.config["SECRET_KEY"])
+      tokenData = jwt.decode(request.headers.get("AccessToken"),  os.environ["SECRET_KEY"])
       app.db.users.update({ "id": tokenData["userid"] }, { '$unset': { "refresh_token": "" } })
       # Note: At some point I need to implement Token Revoking/Blacklisting
       # General info here: https://flask-jwt-extended.readthedocs.io/en/latest/blacklist_and_token_revoking.html

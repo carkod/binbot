@@ -13,7 +13,7 @@ def token_required(f):
 		access_token = request.headers.get('AccessToken')
 
 		try:
-			data = jwt.decode(access_token, app.config['SECRET_KEY'])
+			data = jwt.decode(access_token,  os.environ['SECRET_KEY'])
 		except Exception as e:
 			return JsonResp({ "message": "Token is invalid", "exception": str(e) }, 401)
 
@@ -27,7 +27,7 @@ def encodeAccessToken(user_id, email):
 		"user_id": user_id,
 		"email": email,
 		"exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=15) # The token will expire in 15 minutes
-	}, app.config["SECRET_KEY"], algorithm="HS256")
+	},  os.environ["SECRET_KEY"], algorithm="HS256")
 
 	return accessToken
 
@@ -37,7 +37,7 @@ def encodeRefreshToken(user_id, email):
 		"user_id": dumps(user_id),
 		"email": email,
 		"exp": datetime.datetime.utcnow() + datetime.timedelta(weeks=4) # The token will expire in 4 weeks
-	}, app.config["SECRET_KEY"], algorithm="HS256")
+	},  os.environ["SECRET_KEY"], algorithm="HS256")
 
 	return refreshToken
 
@@ -48,9 +48,9 @@ def refreshAccessToken(refresh_token):
 		user = app.db.users.find_one({ "refresh_token": refresh_token }, { "_id": 0, "id": 1, "email": 1, "plan": 1 })
 
 		if user:
-			decoded = jwt.decode(refresh_token, app.config["SECRET_KEY"])
+			decoded = jwt.decode(refresh_token,  os.environ["SECRET_KEY"])
 			new_access_token = encodeAccessToken(decoded["user_id"], decoded["email"])
-			result = jwt.decode(new_access_token, app.config["SECRET_KEY"])
+			result = jwt.decode(new_access_token,  os.environ["SECRET_KEY"])
 			result["new_access_token"] = new_access_token
 			resp = JsonResp(result, 200)
 		else:

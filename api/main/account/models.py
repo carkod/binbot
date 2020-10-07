@@ -22,11 +22,11 @@ class Account():
     min_amount = 0.1  # MIN_NOTIONAL restriction by Binance
 
     def __init__(self):
-        self.base_url = app.config['BASE']
-        self.account_url = app.config['ACCOUNT']
-        self.candlestick_url = app.config['CANDLESTICK']
-        self.secret = app.config['BINANCE_SECRET']
-        self.key = app.config['BINANCE_KEY']
+        self.base_url =  os.environ['BASE']
+        self.account_url =  os.environ['ACCOUNT']
+        self.candlestick_url =  os.environ['CANDLESTICK']
+        self.secret =  os.environ['BINANCE_SECRET']
+        self.key =  os.environ['BINANCE_KEY']
         
 
     def request_data(self):

@@ -9,24 +9,16 @@ black = "*"
 
 [packages]
 flask = "*"
-flask-cors = "*"
+flask_cors = "*"
 pymongo = "*"
 python-jose = "*"
 passlib = "*"
 pytz = "*"
-dotenv = "*"
-dotenv-python = "*"
-pipenv = "*"
-install = "*"
 pandas = "*"
 requests = "*"
-hashlib = "*"
-hmac = "*"
-math = "*"
-python-dotenv = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"
 
 [pipenv]
-allow_prereleases = true
+allow_prereleases = false

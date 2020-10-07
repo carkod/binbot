@@ -1,4 +1,4 @@
-from dotenv import load_dotenv
+ 
 from flask import Flask, request
 from flask import current_app as app
 from passlib.hash import pbkdf2_sha256
@@ -20,7 +20,7 @@ from main.account import Account
 import os
 
 
-load_dotenv()
+ 
 
 
 class Sell_Order():

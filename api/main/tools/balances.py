@@ -1,9 +1,9 @@
-from dotenv import load_dotenv
+ 
 import json
 from main.account.models import Account
 import os
 
-load_dotenv()
+ 
 
 class Balances:
 

@@ -66,8 +66,8 @@ class Data:
 
 class Ticker24Data:
 
-    base_url = app.config['BASE']
-    ticker24_url = app.config['TICKER24']
+    base_url =  os.environ['BASE']
+    ticker24_url =  os.environ['TICKER24']
 
     def __init__(self):
         """Request only ticker24 data

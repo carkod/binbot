@@ -1,4 +1,4 @@
-from dotenv import load_dotenv
+ 
 from flask import Flask, request
 from flask import current_app as app
 from passlib.hash import pbkdf2_sha256
@@ -20,7 +20,7 @@ from main.account import Account
 import os
 
 
-load_dotenv()
+ 
 
 class Buy_Order():
     """Post order
@@ -154,10 +154,10 @@ class Buy_Order():
 #     min_funds = 0.000000
 
 #     def __init__(self, symbol):
-#         self.key = app.config['KEY']
-#         self.secret = app.config['SECRET']
-#         self.base_url = app.config['BASE']
-#         self.order_url = app.config['ORDER']
+#         self.key =  os.environ['KEY']
+#         self.secret =  os.environ['SECRET']
+#         self.base_url =  os.environ['BASE']
+#         self.order_url =  os.environ['ORDER']
 
 #         self.symbol = symbol
 #         # Sell order

@@ -8,8 +8,8 @@ from flask_cors import CORS, cross_origin
 
 # initialization
 # app = Flask(__name__)
-# app.config['SECRET_KEY'] = 'the quick brown fox jumps over the lazy   dog'
-# app.config['CORS_HEADERS'] = 'Content-Type'
+#  os.environ['SECRET_KEY'] = 'the quick brown fox jumps over the lazy   dog'
+#  os.environ['CORS_HEADERS'] = 'Content-Type'
 
 # cors = CORS(app, resources={r"/user": {"origins": "http://localhost:5000"}})
 

@@ -1,5 +1,6 @@
-from flask import Flask
-from flask import Blueprint
+import os
+
+from flask import Flask, Blueprint
 from flask import current_app as app
 from main.auth import token_required
 from main.account.models import Account
@@ -8,10 +9,8 @@ from flask_cors import CORS, cross_origin
 
 # initialization
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'the quick brown fox jumps over the lazy dog'
-app.config['CORS_HEADERS'] = 'Content-Type'
-
-cors = CORS(app, resources={r"/user": {"origins": "http://localhost:5000"}})
+os.environ['SECRET_KEY'] = 'the quick brown fox jumps over the lazy dog'
+os.environ['CORS_HEADERS'] = 'Content-Type'
 
 account_blueprint = Blueprint("account", __name__)
 # @token_required

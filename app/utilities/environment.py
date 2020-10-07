@@ -1,7 +1,7 @@
 import os
 
-from dotenv import load_dotenv
-load_dotenv()
+ 
+ 
 
 class API_URL:
     BINANCEAPI_BASE = 'https://api.binance.com'

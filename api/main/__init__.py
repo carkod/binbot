@@ -1,5 +1,4 @@
 from flask import Flask, request
-from flask_cors import CORS
 from pymongo import MongoClient
 from main.tools import JsonResp
 from jose import jwt
@@ -16,24 +15,22 @@ def create_app():
 
   # Flask Config
   app = Flask(__name__)
-  app.config.from_pyfile("config/config.cfg")
-  cors = CORS(app, resources={r"/*": { "origins": app.config["FRONTEND_DOMAIN"] }})
 
   # Misc Config
-  os.environ["TZ"] = app.config["TIMEZONE"]
+  os.environ["TZ"] =  os.environ["TIMEZONE"]
 
   # Database Config
-  # if app.config["ENVIRONMENT"] == "development":
-    # mongo = MongoClient(app.config["MONGO_HOSTNAME"], app.config["MONGO_PORT"])
-    # app.db = mongo[app.config["MONGO_APP_DATABASE"]]
+  # if  os.environ["ENVIRONMENT"] == "development":
+    # mongo = MongoClient( os.environ["MONGO_HOSTNAME"],  os.environ["MONGO_PORT"])
+    # app.db = mongo[ os.environ["MONGO_APP_DATABASE"]]
   # else:
   #   mongo = MongoClient("localhost")
-  #   mongo[app.config["MONGO_AUTH_DATABASE"]].authenticate(app.config["MONGO_AUTH_USERNAME"], app.config["MONGO_AUTH_PASSWORD"])
-  #   app.db = mongo[app.config["MONGO_APP_DATABASE"]]
+  #   mongo[ os.environ["MONGO_AUTH_DATABASE"]].authenticate( os.environ["MONGO_AUTH_USERNAME"],  os.environ["MONGO_AUTH_PASSWORD"])
+  #   app.db = mongo[ os.environ["MONGO_APP_DATABASE"]]
 
-  mongo = MongoClient(app.config["MONGO_HOSTNAME"], app.config["MONGO_PORT"])
-  mongo[app.config["MONGO_AUTH_DATABASE"]].authenticate(app.config["MONGO_AUTH_USERNAME"], app.config["MONGO_AUTH_PASSWORD"])
-  app.db = mongo[app.config["MONGO_APP_DATABASE"]]
+  mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
+  mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"])
+  app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
 
   # Register Blueprints
   app.register_blueprint(user_blueprint, url_prefix="/user")

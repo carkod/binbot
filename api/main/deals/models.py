@@ -9,19 +9,16 @@ import hashlib
 import hmac
 import math
 import sys
+import os
 import time as tm
 from urllib.parse import urlparse
 import requests
 import pandas as pd
 from main.tools import EnumDefinitions, handle_error, Book_Order
 from main.account import Account
-from dotenv import load_dotenv
 import os
 from main.orders.models import Buy_Order, Sell_Order
 from main.tools.round_numbers import round_numbers
-
-load_dotenv()
-
 
 class Deal:
     def __init__(self, bot, app):
