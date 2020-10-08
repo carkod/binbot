@@ -1,20 +1,13 @@
-from flask import current_app as app
-from flask import Flask, request
-from passlib.hash import pbkdf2_sha256
-from jose import jwt
 from main import tools
-from main import auth
-import json
 import time as tm
 import hashlib
 import hmac
-import math
-import sys
-import time as tm
 from urllib.parse import urlparse
 import requests
 import pandas as pd
 from main.tools import handle_error
+import os
+
 
 class Account():
 
@@ -22,12 +15,11 @@ class Account():
     min_amount = 0.1  # MIN_NOTIONAL restriction by Binance
 
     def __init__(self):
-        self.base_url =  os.environ['BASE']
-        self.account_url =  os.environ['ACCOUNT']
-        self.candlestick_url =  os.environ['CANDLESTICK']
-        self.secret =  os.environ['BINANCE_SECRET']
-        self.key =  os.environ['BINANCE_KEY']
-        
+        self.base_url = os.environ['BASE']
+        self.account_url = os.environ['ACCOUNT']
+        self.candlestick_url = os.environ['CANDLESTICK']
+        self.secret = os.environ['BINANCE_SECRET']
+        self.key = os.environ['BINANCE_KEY']        
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
@@ -67,8 +59,4 @@ class Account():
         # filter out empty
         # Return response
         resp = tools.JsonResp({"data": jsonResponse}, 200)
-
         return resp
-
-    def get_quote_price(self):
-        pass

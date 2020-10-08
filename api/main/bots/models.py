@@ -1,22 +1,8 @@
+import json
 from flask import current_app as app
-from flask import Flask, request
-from passlib.hash import pbkdf2_sha256
-from jose import jwt
-from main import tools
-from main import auth
-import json
-import time as tm
-import hashlib
-import hmac
-import math
-import sys
-import time as tm
-from urllib.parse import urlparse
-import pandas as pd
-import json
+from flask import request
 from main import tools
 from main.account.models import Account
-from main.tools import Ticker24Data
 from main.deals.models import Deal
 from bson.objectid import ObjectId
 
@@ -41,7 +27,7 @@ class Bot:
             "trailling_deviation": 0.0063,
             "deal_min_value": 0,
             "cooldown": 0,
-            "deals": []
+            "deals": [],
         }
         self.balance_division = 0
         self.active_bot = None
@@ -123,9 +109,13 @@ class Bot:
             "strategy": data["strategy"] if data.get("strategy") else "long",
             "name": data["name"] if data.get("name") else "Default Bot",
             "max_so_count": data["maxSOCount"] if data.get("maxSOCount") else 3,
-            "balance_usage": data["balanceUsage"] if data.get("balanceUsage") else 1,  # 100% of All Btc balance
+            "balance_usage": data["balanceUsage"]
+            if data.get("balanceUsage")
+            else 1,  # 100% of All Btc balance
             "base_order_size": data["baseOrderSize"],  # MIN by Binance = 0.0001 BTC
-            "base_order_type": data["baseOrderType"] if data.get("baseOrderType") else "limit",  # Market or limit
+            "base_order_type": data["baseOrderType"]
+            if data.get("baseOrderType")
+            else "limit",  # Market or limit
             "start_condition": True,
             "so_size": data["soSize"],  # Top band
             "take_profit": data["takeProfit"],
@@ -137,7 +127,9 @@ class Bot:
         }
 
         self.defaults.update(existent_bot)
-        botId = app.db.bots.update_one({"_id": ObjectId(data["_id"])}, {"$set": existent_bot}, upsert=False)
+        botId = app.db.bots.update_one(
+            {"_id": ObjectId(data["_id"])}, {"$set": existent_bot}, upsert=False
+        )
         if botId.acknowledged:
             resp = tools.JsonResp(
                 {"message": "Successfully updated bot", "botId": data["_id"]}, 200
@@ -152,7 +144,10 @@ class Bot:
             return data[key]
         else:
             resp = tools.JsonResp(
-                {"message": "Validation failed {} is required".format(key), "botId": data["_id"]},
+                {
+                    "message": "Validation failed {} is required".format(key),
+                    "botId": data["_id"],
+                },
                 400,
             )
             return resp
@@ -162,7 +157,9 @@ class Bot:
         id = request.view_args["id"]
         delete_action = app.db.bots.delete_one({"_id": ObjectId(id)})
         if delete_action:
-            resp = tools.JsonResp({"message": "Successfully delete bot", "botId": id}, 200)
+            resp = tools.JsonResp(
+                {"message": "Successfully delete bot", "botId": id}, 200
+            )
         else:
             resp = tools.JsonResp({"message": "Bot deletion is not available"}, 400)
         return resp
@@ -175,13 +172,14 @@ class Bot:
             bot["active"] = True
             dealId = Deal(bot, app).open_deal()
             if dealId:
-                if 'deals' not in bot.keys():
+                if "deals" not in bot.keys():
                     bot["deals"] = []
                 bot["deals"].append(dealId)
                 botId = app.db.bots.save(bot)
                 if botId:
                     resp = tools.JsonResp(
-                        {"message": "Successfully activated bot", "bodId": str(findId)}, 200
+                        {"message": "Successfully activated bot", "bodId": str(findId)},
+                        200,
                     )
                 else:
                     resp = tools.JsonResp(
@@ -189,7 +187,9 @@ class Bot:
                     )
                 return resp
             else:
-                resp = tools.JsonResp({"message": "Deal creation failed", "botId": findId}, 400)
+                resp = tools.JsonResp(
+                    {"message": "Deal creation failed", "botId": findId}, 400
+                )
         else:
             resp = tools.JsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp
@@ -201,8 +201,9 @@ class Bot:
         if bot:
             bot.active = False
             # Deal(bot).open_deal()
-            resp = tools.JsonResp({"message": "Successfully deactivated bot", "data": bot}, 200)
+            resp = tools.JsonResp(
+                {"message": "Successfully deactivated bot", "data": bot}, 200
+            )
         else:
             resp = tools.JsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp
-
