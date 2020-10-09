@@ -2,6 +2,7 @@ from main import tools
 import time as tm
 import hashlib
 import hmac
+import json
 from urllib.parse import urlparse
 import requests
 import pandas as pd
@@ -9,17 +10,15 @@ from main.tools import handle_error
 import os
 
 
-class Account():
+class Account:
 
     recvWindow = 10000
     min_amount = 0.1  # MIN_NOTIONAL restriction by Binance
-
-    def __init__(self):
-        self.base_url = os.environ['BASE']
-        self.account_url = os.environ['ACCOUNT']
-        self.candlestick_url = os.environ['CANDLESTICK']
-        self.secret = os.environ['BINANCE_SECRET']
-        self.key = os.environ['BINANCE_KEY']        
+    base_url = os.environ['BASE']
+    account_url = os.environ['ACCOUNT']
+    candlestick_url = os.environ['CANDLESTICK']
+    secret = os.environ['BINANCE_SECRET']
+    key = os.environ['BINANCE_KEY']
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
@@ -58,5 +57,9 @@ class Account():
 
         # filter out empty
         # Return response
-        resp = tools.JsonResp({"data": jsonResponse}, 200)
+        resp = tools.JsonResp(jsonResponse, 200)
         return resp
+
+    def get_one_balance(self, symbol="BTC"):
+        data = json.loads(self.get_balances().data)
+        return next((x["free"] for x in data if x["asset"] == "BTC"), None)

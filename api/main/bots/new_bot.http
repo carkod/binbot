@@ -9,22 +9,13 @@ GET http://localhost:5000/bot/5de3d4571f30fed6914d2118 HTTP/1.1
 POST http://localhost:5000/bot/ HTTP/1.1
 
 {
-    "pair": "BTCUSDT",
-    "active": "true",
-    "strategy": "short",
-    "name": "BTC hedging bot",
-    "maxSOCount": "3",
-    "balanceUsage": "1",
-    "baseOrderSize": "0.0001",
-    "baseOrderType": "limit",
-    "startCondition": "true",
-    "soSize": "0.0001",
-    "takeProfit": "0.003",
-    "priceDeviationSO": "0.0063",
-    "trailling": "false",
-    "traillingDeviation": "0.0063",
-    "dealMinValue": "0",
-    "cooldown": "0"
+    "pair": "",
+    "active": "false",
+    "strategy": "long",
+    "name": "Default Bot",
+    "so_size": "0.0001",
+    "take_profit": "0.003",
+    "price_deviation_so": "0.0063",
 }
 
 ###
@@ -33,7 +24,6 @@ PUT http://localhost:5000/bot/ HTTP/1.1
 {
     "_id": "5de3d4571f30fed6914d2118",
     "pair": "BTCUSDT",
-    "active": "true",
     "strategy": "short",
     "name": "BTC USDT long bot",
     "maxSOCount": "2",

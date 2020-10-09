@@ -21,13 +21,15 @@ from main.orders.models import Buy_Order, Sell_Order
 from main.tools.round_numbers import round_numbers
 
 class Deal:
+    key = os.getenv("BINANCE_KEY")
+    secret = os.getenv("BINANCE_SECRET")
+    base_url = os.getenv("BASE")
+    order_url = os.getenv("ORDER")
+    order_book_url = os.getenv("ORDER_BOOK")
+
     def __init__(self, bot, app):
         self.app = app
-        self.key = os.getenv("BINANCE_KEY")
-        self.secret = os.getenv("BINANCE_SECRET")
-        self.base_url = os.getenv("BASE")
-        self.order_url = os.getenv("ORDER")
-        self.order_book_url = os.getenv("ORDER_BOOK")
+        
         # Buy order
         self.active_bot = bot
         self.side = EnumDefinitions.order_side[0]
@@ -44,51 +46,14 @@ class Deal:
         self.trailling = bot["trailling"]
         self.trailling_deviation = bot["trailling_deviation"]
 
-    def handle_fourofour(self, order):
+    @staticmethod
+    def handle_fourofour(order):
         if "code" not in order:
             # save base deal
             return order
         else:
             print(order)
             exit(1)
-
-    def binance_bug_workaround(self, order):
-        if 'code' in order.keys() and order['code'] == -2010 and self.balance >= 0.001:
-            buy_url = 'http://localhost:5000/order/sell'
-            pair = "BTCUSDT"
-            price = float(Book_Order(pair).last_price('asks'))
-            qty = round_numbers(10.3 / price)
-            unfillable_params = {
-                "pair": pair,
-                "qty": qty,
-                "price": round_numbers(price),
-            }
-            unfillable_order = requests.post(url=buy_url, data=json.dumps(unfillable_params))
-            handle_error(unfillable_order)
-            orderId = unfillable_order.json()['orderId']
-            print('filled small order id: {}'.format(orderId))
-            return True
-        else:
-            return False
-    
-    def binance_bug_workaround_short(self, order):
-        if 'code' in order.keys() and order['code'] == -2010 and self.balance >= 0.001:
-            buy_url = 'http://localhost:5000/order/sell'
-            pair = "BTCUSDT"
-            price = float(Book_Order(pair).last_price('bids'))
-            qty = round_numbers(10.3 / price)
-            unfillable_params = {
-                "pair": pair,
-                "qty": qty,
-                "price": round_numbers(price, 2),
-            }
-            unfillable_order = requests.post(url=buy_url, data=json.dumps(unfillable_params))
-            handle_error(unfillable_order)
-            orderId = unfillable_order.json()['orderId']
-            print('filled small order id: {}'.format(orderId))
-            return True
-        else:
-            return False
 
     def long_base_order(self):
         url = 'http://localhost:5000/order/buy'
@@ -132,7 +97,7 @@ class Deal:
         index = 0
         for index in range(length):
             index += 1
-            
+
             # Recursive order
             url = 'http://localhost:5000/order/buy'
             pair = self.active_bot['pair']
@@ -141,10 +106,10 @@ class Deal:
             # SO mark based on take profit
             increase_from_tp = float(self.take_profit) / int(self.max_so_count)
 
-            # last book order price            
+            # last book order price
             market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
 
-            # final order price. 
+            # final order price.
             # Index incrementally increases price added markup
             # +1 to exclude index 0 and first base order (index 1) from safety order
             price = market_price * (1 + (increase_from_tp * (index + 1)))

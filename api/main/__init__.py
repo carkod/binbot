@@ -1,7 +1,6 @@
-from flask import Flask, request
+from flask import Flask
 from pymongo import MongoClient
 from main.tools import JsonResp
-from jose import jwt
 import os
 
 # Import Routes
@@ -13,35 +12,35 @@ from main.orders.routes import order_blueprint
 
 def create_app():
 
-  # Flask Config
-  app = Flask(__name__)
+    # Flask Config
+    app = Flask(__name__)
 
-  # Misc Config
-  os.environ["TZ"] =  os.environ["TIMEZONE"]
+    # Misc Config
+    os.environ["TZ"] = os.environ["TIMEZONE"]
 
-  # Database Config
-  # if  os.environ["ENVIRONMENT"] == "development":
+    # Database Config
+    # if  os.environ["ENVIRONMENT"] == "development":
     # mongo = MongoClient( os.environ["MONGO_HOSTNAME"],  os.environ["MONGO_PORT"])
     # app.db = mongo[ os.environ["MONGO_APP_DATABASE"]]
-  # else:
-  #   mongo = MongoClient("localhost")
-  #   mongo[ os.environ["MONGO_AUTH_DATABASE"]].authenticate( os.environ["MONGO_AUTH_USERNAME"],  os.environ["MONGO_AUTH_PASSWORD"])
-  #   app.db = mongo[ os.environ["MONGO_APP_DATABASE"]]
+    # else:
+    #   mongo = MongoClient("localhost")
+    #   mongo[ os.environ["MONGO_AUTH_DATABASE"]].authenticate( os.environ["MONGO_AUTH_USERNAME"],  os.environ["MONGO_AUTH_PASSWORD"])
+    #   app.db = mongo[ os.environ["MONGO_APP_DATABASE"]]
 
-  mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
-  mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"])
-  app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
+    mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
+    mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"])
+    app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
 
-  # Register Blueprints
-  app.register_blueprint(user_blueprint, url_prefix="/user")
-  app.register_blueprint(account_blueprint, url_prefix="/account")
-  app.register_blueprint(bot_blueprint, url_prefix="/bot")
-  app.register_blueprint(deal_blueprint, url_prefix="/deal")
-  app.register_blueprint(order_blueprint, url_prefix="/order")
+    # Register Blueprints
+    app.register_blueprint(user_blueprint, url_prefix="/user")
+    app.register_blueprint(account_blueprint, url_prefix="/account")
+    app.register_blueprint(bot_blueprint, url_prefix="/bot")
+    app.register_blueprint(deal_blueprint, url_prefix="/deal")
+    app.register_blueprint(order_blueprint, url_prefix="/order")
 
-  # Index Route
-  @app.route("/")
-  def index():
-    return JsonResp({ "status": "Online" }, 200)
-  
-  return app
+    # Index Route
+    @app.route("/")
+    def index():
+        return JsonResp({"status": "Online"}, 200)
+
+    return app
