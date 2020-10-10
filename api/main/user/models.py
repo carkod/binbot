@@ -23,9 +23,9 @@ class User:
     })
 
     if user:
-      resp = tools.JsonResp(user, 200)
+      resp = json.jsonResp(user, 200)
     else:
-      resp = tools.JsonResp({ "message": "User not found" }, 404)
+      resp = json.jsonResp({ "message": "User not found" }, 404)
 
     return resp
   
@@ -33,12 +33,12 @@ class User:
     access_token = request.headers.get("AccessToken")
     refresh_token = request.headers.get("RefreshToken")
 
-    resp = tools.JsonResp({ "message": "User not logged in" }, 401)
+    resp = json.jsonResp({ "message": "User not logged in" }, 401)
 
     if access_token:
       try:
         decoded = jwt.decode(access_token,  os.environ["SECRET_KEY"])
-        resp = tools.JsonResp(decoded, 200)
+        resp = json.jsonResp(decoded, 200)
       except:
         # If the access_token has expired, get a new access_token - so long as the refresh_token hasn't expired yet
         resp = auth.refreshAccessToken(refresh_token)
@@ -46,7 +46,7 @@ class User:
     return resp
 
   def login(self):
-    resp = tools.JsonResp({ "message": "Invalid user credentials" }, 403)
+    resp = json.jsonResp({ "message": "Invalid user credentials" }, 403)
     
     try:
       data = json.loads(request.data)
@@ -62,7 +62,7 @@ class User:
           "last_login": tools.nowDatetimeUTC()
         } })
 
-        resp = tools.JsonResp({
+        resp = json.jsonResp({
           "id": user["id"],
           "email": user["email"],
           "access_token": access_token,
@@ -83,7 +83,7 @@ class User:
     except:
       pass
     
-    resp = tools.JsonResp({ "message": "User logged out" }, 200)
+    resp = json.jsonResp({ "message": "User logged out" }, 200)
 
     return resp
   
@@ -107,7 +107,7 @@ class User:
     existing_email = app.db.users.find_one({ "email": user["email"] })
 
     if existing_email:
-      resp = tools.JsonResp({
+      resp = json.jsonResp({
         "message": "There's already an account with this email address",
         "error": "email_exists"
       }, 400)
@@ -125,7 +125,7 @@ class User:
           }
         })
         
-        resp = tools.JsonResp({
+        resp = json.jsonResp({
           "id": user["id"],
           "email": user["email"],
           "access_token": access_token,
@@ -133,6 +133,6 @@ class User:
         }, 200)
 
       else:
-        resp = tools.JsonResp({ "message": "User could not be added" }, 400)
+        resp = json.jsonResp({ "message": "User could not be added" }, 400)
 
     return resp

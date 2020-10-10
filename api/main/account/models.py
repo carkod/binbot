@@ -1,4 +1,3 @@
-from main import tools
 import time as tm
 import hashlib
 import hmac
@@ -6,9 +5,9 @@ import json
 from urllib.parse import urlparse
 import requests
 import pandas as pd
-from main.tools import handle_error
+from main.tools.handle_error import handle_error
+from main.tools.jsonresp import jsonResp
 import os
-
 
 class Account:
 
@@ -52,12 +51,11 @@ class Account:
         df.drop('locked', axis=1, inplace=True)
         df.reset_index(drop=True, inplace=True)
         # Get table with > 0
-        balances = df[df['free'] > 0.000000]
-        jsonResponse = balances.to_dict('records')
+        balances = df[df['free'] > 0.000000].to_dict('records')
 
         # filter out empty
         # Return response
-        resp = tools.JsonResp(jsonResponse, 200)
+        resp = jsonResp(balances, 200)
         return resp
 
     def get_one_balance(self, symbol="BTC"):

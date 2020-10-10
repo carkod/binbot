@@ -1,18 +1,11 @@
-from flask import Blueprint, Flask
-from flask import current_app as app
-from flask import request
-from flask_cors import CORS, cross_origin
-from main.auth import token_required
-from main.orders.models import Buy_Order, Orders, Sell_Order
-
-# initialization
-# app = Flask(__name__)
-#  os.environ['SECRET_KEY'] = 'the quick brown fox jumps over the lazy   dog'
-#  os.environ['CORS_HEADERS'] = 'Content-Type'
-
-# cors = CORS(app, resources={r"/user": {"origins": "http://localhost:5000"}})
+from flask import Blueprint
+from main.orders.models.orders import Orders
+from main.orders.models.book_order import Book_Order
+from main.orders.models.buy import Buy_Order
+from main.orders.models.sell import Sell_Order
 
 order_blueprint = Blueprint("order", __name__)
+
 @order_blueprint.route("/", methods=["GET"])
 def get():
     # Get all orders from Binance? Might be too expensive

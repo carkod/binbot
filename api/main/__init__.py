@@ -1,7 +1,7 @@
 from flask import Flask
 from pymongo import MongoClient
-from main.tools import JsonResp
 import os
+import json
 
 # Import Routes
 from main.user.routes import user_blueprint
@@ -41,6 +41,6 @@ def create_app():
     # Index Route
     @app.route("/")
     def index():
-        return JsonResp({"status": "Online"}, 200)
+        return json.dumps({"status": "Online"}, 200)
 
     return app

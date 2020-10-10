@@ -3,15 +3,15 @@ import math
 import os
 
 import requests
-from flask import current_app as app
-from main.tools import Book_Order, handle_error
+from flask import Response, current_app as app
+from main.orders.models.book_order import Book_Order, handle_error
 from main.tools.round_numbers import round_numbers
-
+from main.tools.jsonresp import jsonResp_message
 
 class Deal():
-    MIN_QTY = os.getenv("MIN_QTY")
-    MIN_PRICE = os.getenv("MIN_PRICE")
-    MIN_NOTIONAL = os.getenv("MIN_NOTIONAL")
+    MIN_QTY = float(os.getenv("MIN_QTY"))
+    MIN_PRICE = float(os.getenv("MIN_PRICE"))
+    MIN_NOTIONAL = float(os.getenv("MIN_NOTIONAL"))
     order_book_url = os.getenv("ORDER_BOOK")
     bb_base_url = os.getenv("FLASK_DOMAIN") + os.getenv("FLASK_PORT")
     bb_buy_order_url = f'{bb_base_url}/order/buy'
@@ -174,13 +174,15 @@ class Deal():
     def short_base_order(self):
         pair = self.active_bot['pair']
         qty = math.floor(float(self.division) * 1000000) / 1000000
+
+        # Avoid common rate limits
         if qty <= self.MIN_QTY:
-            return "[Base order error] Quantity too low"
+            return jsonResp_message("[Base order error] Quantity too low", 422)
         price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
         if price <= self.MIN_PRICE:
-            return "[Base order error] Price too low"
+            return jsonResp_message("[Base order error] Price too low", 422)
         if (float(qty) * float(price)) <= self.MIN_NOTIONAL:
-            return "[Base order error] Price x Quantity too low"
+            return jsonResp_message("[Base order error] Price x Quantity too low", 422)
 
         order = {
             "pair": pair,
@@ -294,8 +296,9 @@ class Deal():
 
         if deal_strategy == "short":
             short_base_order = self.short_base_order()
-            if not short_base_order:
-                print("Deal: Base order failed")
+            # Check if error
+            if isinstance(short_base_order, Response):
+                return short_base_order
             new_deal["base_order"] = short_base_order
 
             short_safety_order_generator = self.short_safety_order_generator(0)

@@ -5,6 +5,10 @@ import pandas as pd
 
 
 class Book_Order:
+    """
+    Buy order = bids
+    Sell order = ask
+    """
     def __init__(self, symbol):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
@@ -13,10 +17,10 @@ class Book_Order:
         self.order_book_url = os.getenv("ORDER_BOOK")
         self.symbol = symbol
 
-    """
-    Simpler matching engine, no need for quantity
-    """
     def last_price(self, order_side="bids"):
+        """
+        Simpler matching engine, no need for quantity
+        """
         url = self.base_url + self.order_book_url
         limit = EnumDefinitions.order_book_limits[0]
         params = [("symbol", self.symbol), ("limit", limit)]
@@ -35,10 +39,6 @@ class Book_Order:
         price = df["price"].astype(float)[0]
         return price
 
-    """
-    Buy order = bids
-    Sell order = ask
-    """
     def matching_engine(self, limit_index=0, order_side="bids", qty=0):
         url = self.base_url + self.order_book_url
         limit = EnumDefinitions.order_book_limits[limit_index]
@@ -60,8 +60,7 @@ class Book_Order:
         # If quantity matches list
         match_qty = df[df["qty"] > float(qty)]
         condition = df["qty"] > float(qty)
-        if condition.any() == False:
+        if not condition.any():
             limit += limit
             self.matching_engine(limit)
         return match_qty["price"][0]
-
