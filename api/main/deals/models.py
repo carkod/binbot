@@ -1,21 +1,17 @@
 import json
 import math
 import os
+
 import requests
 from flask import current_app as app
-from main.orders.models import Buy_Order, Sell_Order
-from main.tools import Book_Order, EnumDefinitions, handle_error
+from main.tools import Book_Order, handle_error
 from main.tools.round_numbers import round_numbers
 
 
-class Deal:
+class Deal():
     MIN_QTY = os.getenv("MIN_QTY")
     MIN_PRICE = os.getenv("MIN_PRICE")
     MIN_NOTIONAL = os.getenv("MIN_NOTIONAL")
-    key = os.getenv("BINANCE_KEY")
-    secret = os.getenv("BINANCE_SECRET")
-    base_url = os.getenv("BASE")
-    order_url = os.getenv("ORDER")
     order_book_url = os.getenv("ORDER_BOOK")
     bb_base_url = os.getenv("FLASK_DOMAIN") + os.getenv("FLASK_PORT")
     bb_buy_order_url = f'{bb_base_url}/order/buy'
@@ -66,7 +62,7 @@ class Deal:
         qty = round_numbers(self.division)
         price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         self.long_base_order_price = price
-        
+
         order = {
             "pair": pair,
             "qty": qty,
@@ -122,8 +118,6 @@ class Deal:
             res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
-            if self.binance_bug_workaround(order):
-                self.long_safety_order_generator()
 
             safety_orders = {
                 "order_id": order["orderId"],
@@ -200,7 +194,7 @@ class Deal:
         base_deal = {
             "order_id": res_order["orderId"],
             "deal_type": "base_order",
-            "active": True,
+            "active": "true",
             "strategy": "long",  # change accordingly
             "pair": res_order["symbol"],
             "order_side": res_order["side"],

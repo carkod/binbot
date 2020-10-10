@@ -1,61 +1,41 @@
- 
-from flask import Flask, request
-from flask import current_app as app
-from passlib.hash import pbkdf2_sha256
-from jose import jwt
-from main import tools
-from main import auth
-import json
-import time as tm
 import hashlib
 import hmac
-import math
-import sys
-import time as tm
-from urllib.parse import urlparse
-import requests
-import pandas as pd
-from main.tools import EnumDefinitions, handle_error 
-from main.account import Account
 import os
+import time as tm
+from flask import request
+from urllib.parse import urlparse
 
- 
+import requests
+from main.tools import EnumDefinitions, handle_error
+
 
 class Buy_Order():
-    """Post order
-
-    Returns:
-        [type] -- [description]
     """
-    recvWindow = 10000
-    # Min amount to be considered for investing (BNB)
-    min_funds = 0.000000
+    Binance Post order
+    """
+    recvWindow = os.getenv("RECV_WINDOW")
+    min_funds = os.getenv("MIN_QTY")
+    key = os.getenv("BINANCE_KEY")
+    secret = os.getenv("BINANCE_SECRET")
+    base_url = os.getenv("BASE")
+    order_url = os.getenv("ORDER")
+    order_book_url = os.getenv("ORDER_BOOK")
 
     def __init__(self):
-        
-        self.key = os.getenv("BINANCE_KEY")
-        self.secret = os.getenv("BINANCE_SECRET")
-        self.base_url = os.getenv("BASE")
-        self.order_url = os.getenv("ORDER")
-        self.order_book_url = os.getenv("ORDER_BOOK")
+
         # Buy order
         self.side = EnumDefinitions.order_side[0]
         # Required by API for Limit orders
         self.timeInForce = EnumDefinitions.time_in_force[0]
 
-
-    """
-    Returns successful order
-    Returns validation failed order (MIN_NOTIONAL, LOT_SIZE etc..)
-    """
     def post_order_limit(self):
-        data = json.loads(request.data)
+        data = request.json
         symbol = data['pair']
         qty = data['qty']
         price = data['price']
 
         # Limit order
-        type = EnumDefinitions.order_types[0]
+        order_type = EnumDefinitions.order_types[0]
         timestamp = int(round(tm.time() * 1000))
         url = self.base_url + self.order_url
 
@@ -65,7 +45,7 @@ class Buy_Order():
             ('timestamp', timestamp),
             ('symbol', symbol),
             ('side', self.side),
-            ('type', type),
+            ('type', order_type),
             ('timeInForce', self.timeInForce),
             ('price', price),
             ('quantity', qty)
@@ -88,4 +68,3 @@ class Buy_Order():
         handle_error(res)
         data = res.json()
         return data
-

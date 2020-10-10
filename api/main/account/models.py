@@ -12,18 +12,18 @@ import os
 
 class Account:
 
-    recvWindow = 10000
+    recvWindow = os.getenv("RECV_WINDOW")
     min_amount = 0.1  # MIN_NOTIONAL restriction by Binance
-    base_url = os.environ['BASE']
-    account_url = os.environ['ACCOUNT']
-    candlestick_url = os.environ['CANDLESTICK']
-    secret = os.environ['BINANCE_SECRET']
-    key = os.environ['BINANCE_KEY']
+    base_url = os.getenv('BASE')
+    account_url = os.getenv('ACCOUNT')
+    candlestick_url = os.getenv('CANDLESTICK')
+    secret = os.getenv('BINANCE_SECRET')
+    key = os.getenv('BINANCE_KEY')
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
         # Get data for a single crypto e.g. BTT in BNB market
-        params = {'recvWindow': 10000, 'timestamp': timestamp}
+        params = {'recvWindow': self.recvWindow, 'timestamp': timestamp}
         headers = {'X-MBX-APIKEY': self.key}
         url = self.base_url + self.account_url
 
