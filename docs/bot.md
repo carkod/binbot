@@ -1,5 +1,6 @@
 # Bot parameters
 
+Create, Edit body
 
 ```
 "pair": "", # Required

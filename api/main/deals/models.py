@@ -1,50 +1,56 @@
-from flask import Flask, request, current_app as app
-from passlib.hash import pbkdf2_sha256
-from jose import jwt
-from main import tools
-from main import auth
 import json
-import time as tm
-import hashlib
-import hmac
 import math
-import sys
 import os
-import time as tm
-from urllib.parse import urlparse
 import requests
-import pandas as pd
-from main.tools import EnumDefinitions, handle_error, Book_Order
-from main.account import Account
-import os
+from flask import current_app as app
 from main.orders.models import Buy_Order, Sell_Order
+from main.tools import Book_Order, EnumDefinitions, handle_error
 from main.tools.round_numbers import round_numbers
 
+
 class Deal:
+    MIN_QTY = os.getenv("MIN_QTY")
+    MIN_PRICE = os.getenv("MIN_PRICE")
+    MIN_NOTIONAL = os.getenv("MIN_NOTIONAL")
     key = os.getenv("BINANCE_KEY")
     secret = os.getenv("BINANCE_SECRET")
     base_url = os.getenv("BASE")
     order_url = os.getenv("ORDER")
     order_book_url = os.getenv("ORDER_BOOK")
+    bb_base_url = os.getenv("FLASK_DOMAIN") + os.getenv("FLASK_PORT")
+    bb_buy_order_url = f'{bb_base_url}/order/buy'
+    bb_sell_order_url = f'{bb_base_url}/order/sell'
 
     def __init__(self, bot, app):
-        self.app = app
-        
-        # Buy order
         self.active_bot = bot
-        self.side = EnumDefinitions.order_side[0]
-        self.strategy = bot["strategy"]
-        self.symbol = bot["pair"]
-        self.botname = bot["name"]
-        self.active = bot["active"]
-        self.balance = bot["balance_usage_size"]
-        self.base_order_type = bot["base_order_type"]
-        self.max_so_count = int(bot["max_so_count"])
-        self.price_deviation_so = bot["price_deviation_so"]
-        self.division = self.balance / (self.max_so_count + 2)
-        self.take_profit = bot["take_profit"]
-        self.trailling = bot["trailling"]
-        self.trailling_deviation = bot["trailling_deviation"]
+        self.app = app
+        self.default_deal = {
+            "order_id": "",
+            "deal_type": "base_order",
+            "active": "true",
+            "strategy": "long",  # change accordingly
+            "pair": "",
+            "order_side": "BUY",
+            "order_type": "LIMIT",
+            "price": "0",
+            "qty": "0",
+            "fills": "0",
+            "time_in_force": "GTC",
+        }
+        self.division = bot["balance_usage_size"] / (int(bot["max_so_count"]) + 2)
+
+        # self.side = EnumDefinitions.order_side[0]
+        # self.strategy = bot["strategy"]
+        # self.symbol = bot["pair"]
+        # self.botname = bot["name"]
+        # self.active = bot["active"]
+        # self.balance = bot["balance_usage_size"]
+        # self.base_order_type = bot["base_order_type"]
+        # self.max_so_count = int(bot["max_so_count"])
+        # self.price_deviation_so = bot["price_deviation_so"]
+        # self.take_profit = bot["take_profit"]
+        # self.trailling = bot["trailling"]
+        # self.trailling_deviation = bot["trailling_deviation"]
 
     @staticmethod
     def handle_fourofour(order):
@@ -56,7 +62,6 @@ class Deal:
             exit(1)
 
     def long_base_order(self):
-        url = 'http://localhost:5000/order/buy'
         pair = self.active_bot['pair']
         qty = round_numbers(self.division)
         price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
@@ -67,14 +72,9 @@ class Deal:
             "qty": qty,
             "price": price,
         }
-        res = requests.post(url=url, data=json.dumps(order))
+        res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
         handle_error(res)
         base_order = res.json()
-        # workaround binance bug
-        if self.binance_bug_workaround(base_order):
-            self.long_base_order()
-        else:
-            return 
 
         base_deal = {
             "order_id": base_order["orderId"],
@@ -99,7 +99,6 @@ class Deal:
             index += 1
 
             # Recursive order
-            url = 'http://localhost:5000/order/buy'
             pair = self.active_bot['pair']
             qty = math.floor(self.division * 1000000) / 1000000
 
@@ -120,7 +119,7 @@ class Deal:
                 "qty": qty,
                 "price": price,
             }
-            res = requests.post(url=url, data=json.dumps(order))
+            res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
             if self.binance_bug_workaround(order):
@@ -146,19 +145,18 @@ class Deal:
         return so_deals
 
     def long_take_profit_order(self):
-        url = 'http://localhost:5000/order/sell'
         pair = self.active_bot['pair']
         qty = round_numbers(self.division)
 
         market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
-        
+
         order = {
             "pair": pair,
             "qty": qty,
             "price": price,
         }
-        res = requests.post(url=url, data=json.dumps(order))
+        res = requests.post(url=self.bb_sell_order_url, data=json.dumps(order))
         handle_error(res)
         order = res.json()
 
@@ -177,26 +175,27 @@ class Deal:
             "fills": order["fills"],
             "time_in_force": order["timeInForce"],
         }
-        return base_order
-    
+        return base_order    
 
     def short_base_order(self):
-        url = 'http://localhost:5000/order/buy'
         pair = self.active_bot['pair']
-        qty = math.floor(self.division * 1000000) / 1000000
+        qty = math.floor(float(self.division) * 1000000) / 1000000
+        if qty <= self.MIN_QTY:
+            return "[Base order error] Quantity too low"
         price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
-        
+        if price <= self.MIN_PRICE:
+            return "[Base order error] Price too low"
+        if (float(qty) * float(price)) <= self.MIN_NOTIONAL:
+            return "[Base order error] Price x Quantity too low"
+
         order = {
             "pair": pair,
             "qty": qty,
             "price": price,
         }
-        res = requests.post(url=url, data=json.dumps(order))
+        res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
         handle_error(res)
         res_order = res.json()
-
-        if self.binance_bug_workaround_short(res_order):
-            self.short_base_order()
 
         base_deal = {
             "order_id": res_order["orderId"],
@@ -219,22 +218,18 @@ class Deal:
         so_deals = []
         while index < length:
             index += 1
-            url = 'http://localhost:5000/order/buy'
             pair = self.active_bot['pair']
             qty = math.floor(self.division * 1000000) / 1000000
             price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
-            
+
             order = {
                 "pair": pair,
                 "qty": qty,
                 "price": price,
             }
-            res = requests.post(url=url, data=json.dumps(order))
+            res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
-
-            if self.binance_bug_workaround_short(order):
-                self.short_safety_order_generator(index)
             
             safety_orders = {
                 "order_id": order["orderId"],
@@ -254,7 +249,6 @@ class Deal:
         return so_deals
 
     def short_take_profit_order(self):
-        url = 'http://localhost:5000/order/buy'
         pair = self.active_bot['pair']
         qty = round_numbers(self.division)
 
@@ -266,12 +260,9 @@ class Deal:
             "qty": qty,
             "price": price,
         }
-        res = requests.post(url=url, data=json.dumps(order))
+        res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
         handle_error(res)
         order = res.json()
-
-        if self.binance_bug_workaround(order):
-            self.short_take_profit_order()
 
         tp_order = {
             "deal_type": "take_profit",
@@ -289,7 +280,7 @@ class Deal:
 
     def open_deal(self):
         new_deal = {"base_order": {}, "take_profit_order": {}, "so_orders": []}
-        deal_strategy = self.strategy
+        deal_strategy = self.active_bot["strategy"]
         if deal_strategy == "long":
             long_base_order = self.long_base_order()
             if not long_base_order:

@@ -7,8 +7,6 @@ from main import tools
 from main.account.models import Account
 from main.deals.models import Deal
 from bson.objectid import ObjectId
-from main.account import Account
-
 
 class Bot(Account):
     def __init__(self):
@@ -32,8 +30,6 @@ class Bot(Account):
             "cooldown": 0,
             "deals": [],
         }
-        self.balance_division = 0
-        self.active_bot = None
 
     def get(self):
         resp = tools.JsonResp({"message": "No bots found"}, 200)
@@ -57,18 +53,11 @@ class Bot(Account):
 
     def create(self):
         resp = tools.JsonResp({"message": "Bot creation not available"}, 400)
-        data = json.loads(request.data)
-        btc_balance = self.get_one_balance()
+        data = request.json
         # base_order_size = self.get_base_order_size(data['pair'], data['maxSOCount'], data['take_profit'])
 
-        # Setup calculated (non-given) parameters for bot
         data["name"] = data["name"] if data["name"] != "" else f"Bot-{date.today()}"
-        calc_usage = float(data["balanceUsage"]) * btc_balance
-        if calc_usage < 0.0001:
-            resp = tools.JsonResp({"message": f"Not enough balance, using {calc_usage}"}, 400)
         self.defaults.update(data)
-
-        # Save to db
         botId = app.db.bots.save(data)
         if botId:
             resp = tools.JsonResp(
@@ -81,7 +70,7 @@ class Bot(Account):
 
     def edit(self):
         resp = tools.JsonResp({"message": "Bot update is not available"}, 400)
-        data = json.loads(request.data)
+        data = request.json
         self.defaults.update(data)
         botId = app.db.bots.update_one(
             {"_id": ObjectId(data["_id"])}, {"$set": self.defaults}, upsert=False
@@ -95,6 +84,18 @@ class Bot(Account):
 
         return resp
 
+    def delete(self, id):
+        resp = tools.JsonResp({"message": "Bot update is not available"}, 400)
+        id = request.view_args["id"]
+        delete_action = app.db.bots.delete_one({"_id": ObjectId(id)})
+        if delete_action:
+            resp = tools.JsonResp(
+                {"message": "Successfully delete bot", "botId": id}, 200
+            )
+        else:
+            resp = tools.JsonResp({"message": "Bot deletion is not available"}, 400)
+        return resp
+    
     def required_field_validation(self, data, key):
         if key in data:
             return data[key]
@@ -108,24 +109,13 @@ class Bot(Account):
             )
             return resp
 
-    def delete(self, id):
-        resp = tools.JsonResp({"message": "Bot update is not available"}, 400)
-        id = request.view_args["id"]
-        delete_action = app.db.bots.delete_one({"_id": ObjectId(id)})
-        if delete_action:
-            resp = tools.JsonResp(
-                {"message": "Successfully delete bot", "botId": id}, 200
-            )
-        else:
-            resp = tools.JsonResp({"message": "Bot deletion is not available"}, 400)
-        return resp
-
     def activate(self):
         resp = tools.JsonResp({"message": "Bot activation is not available"}, 400)
         findId = request.view_args["botId"]
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
+        btc_balance = self.get_one_balance()
         if bot:
-            bot["active"] = True
+            # bot["active"] = "true"
             dealId = Deal(bot, app).open_deal()
             if dealId:
                 if "deals" not in bot.keys():

@@ -5,10 +5,9 @@ verify_ssl = true
 
 [dev-packages]
 pylint = "*"
-black = "*"
 flake8 = "*"
-mypy = "*"
 autopep8 = "*"
+isort = "*"
 
 [packages]
 flask = "*"

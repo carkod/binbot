@@ -1,8 +1,9 @@
-from flask import Flask, Blueprint, request, current_app as app
-from main.auth import token_required
-from main.orders.models import Buy_Order, Sell_Order, Orders
+from flask import Blueprint, Flask
+from flask import current_app as app
+from flask import request
 from flask_cors import CORS, cross_origin
-
+from main.auth import token_required
+from main.orders.models import Buy_Order, Orders, Sell_Order
 
 # initialization
 # app = Flask(__name__)

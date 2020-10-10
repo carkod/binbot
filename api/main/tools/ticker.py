@@ -2,12 +2,13 @@
 import requests
 import sys
 import pandas as pd
+import os
 
 class Ticker24Data():
 
     def __init__(self, app):
-        self.base_url =  os.environ['BASE']    
-        self.ticker24_url =  os.environ['TICKER24']
+        self.base_url = os.environ['BASE']    
+        self.ticker24_url = os.environ['TICKER24']
 
     def request_data(self):
         r = requests.get(self.base_url + self.ticker24_url)
