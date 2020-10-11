@@ -66,8 +66,8 @@ class Data:
 
 class Ticker24Data:
 
-    base_url =  os.environ['BASE']
-    ticker24_url =  os.environ['TICKER24']
+    base_url = os.environ['BASE']
+    ticker24_url = os.environ['TICKER24']
 
     def __init__(self):
         """Request only ticker24 data
@@ -97,7 +97,7 @@ class Ticker_Price:
 
     def request_data(self, symbol=None):
         url = self.base_url + self.ticker_price
-        params = {'symbol': symbol }
+        params = {'symbol': symbol}
         r = requests.get(url=url, params=params)
         data = r.json()
         return data
@@ -121,7 +121,7 @@ class AVERAGE_PRICE:
 
     def request_data(self, symbol=None):
         url = self.base_url + self.average_price
-        params = {'symbol': symbol }
+        params = {'symbol': symbol}
         r = requests.get(url=url, params=params)
         data = r.json()
         return data
@@ -146,12 +146,12 @@ class Account:
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
         # Get data for a single crypto e.g. BTT in BNB market
-        params = {'recvWindow': 10000, 'timestamp': timestamp }
-        headers = { 'X-MBX-APIKEY': self.key }
+        params = {'recvWindow': 10000, 'timestamp': timestamp}
+        headers = {'X-MBX-APIKEY': self.key}
         url = self.base_url + self.account_url
 
         # Prepare request for signing
-        r =  requests.Request('GET', url=url, params=params, headers=headers)
+        r = requests.Request('GET', url=url, params=params, headers=headers)
         prepped = r.prepare()
         query_string = urlparse(prepped.url).query
         total_params = query_string
@@ -181,13 +181,13 @@ class Account:
         except requests.exceptions.HTTPError as err:
             print(err)
         except requests.exceptions.Timeout:
-        # Maybe set up for a retry, or continue in a retry loop
+            # Maybe set up for a retry, or continue in a retry loop
             print('handle_error: Timeout')
         except requests.exceptions.TooManyRedirects:
-        # Tell the user their URL was bad and try a different one
+            # Tell the user their URL was bad and try a different one
             print('handle_error: Too many Redirects')
         except requests.exceptions.RequestException as e:
-        # catastrophic error. bail.
+            # catastrophic error. bail.
             print('handle_error', e)
             sleep(600.0)
             sys.exit(1)
@@ -196,7 +196,6 @@ class Account:
 class Exchange_Info:
     base_url = API_URL.BINANCEAPI_BASE
     info_url = API_URL.BINANCEAPI_EXCHANGE_INFO
-
 
     def __init__(self):
         """Request only ticker24 data
@@ -225,7 +224,7 @@ class Exchange_Info:
         rateLimits = self.request_data().rateLimits
         df = pd.DataFrame(rateLimits)
         return df
-    
+
     def server_time(self):
         serverTime = self.request_data().serverTime
         df = pd.DataFrame(serverTime)
@@ -240,7 +239,7 @@ class Exchange_Info:
         symbols = self.request_data()['symbols']
         df = pd.DataFrame(symbols)
         return df
-    
+
     def find_quoteAsset(self, symbol):
         symbols = pd.DataFrame(self.get_symbols())
         quoteAsset = symbols.loc[symbols['symbol'] == symbol, 'quoteAsset']
@@ -248,7 +247,7 @@ class Exchange_Info:
             return 'BTC'
         else:
             return quoteAsset.values[-1]
-    
+
     def find_baseAsset(self, symbol):
         symbols = pd.DataFrame(self.get_symbols())
         baseAsset = symbols.loc[symbols['symbol'] == symbol, 'baseAsset']
@@ -260,13 +259,12 @@ class Exchange_Info:
         except requests.exceptions.HTTPError as err:
             print(err)
         except requests.exceptions.Timeout:
-        # Maybe set up for a retry, or continue in a retry loop
+            # Maybe set up for a retry, or continue in a retry loop
             print('handle_error: Timeout')
         except requests.exceptions.TooManyRedirects:
-        # Tell the user their URL was bad and try a different one
+            # Tell the user their URL was bad and try a different one
             print('handle_error: Too many Redirects')
         except requests.exceptions.RequestException as e:
-        # catastrophic error. bail.
+            # catastrophic error. bail.
             print('handle_error', e)
             sys.exit(1)
-

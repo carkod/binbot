@@ -19,14 +19,14 @@ def create():
     return Bot().create()
 
 
-@bot_blueprint.route("/", methods=["PUT"])
-def edit():
+@bot_blueprint.route("/<id>", methods=["PUT"])
+def edit(id):
     return Bot().edit()
 
 
 @bot_blueprint.route("/<id>", methods=["DELETE"])
 def delete(id):
-    return Bot().delete(id)
+    return Bot().delete()
 
 
 @bot_blueprint.route("/activate/<botId>", methods=["GET"])

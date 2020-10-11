@@ -2,7 +2,7 @@ GET http://localhost:5000/bot/ HTTP/1.1
 
 ###
 
-GET http://localhost:5000/bot/5de3d4571f30fed6914d2118 HTTP/1.1
+GET http://localhost:5000/bot/5f82420dad1307fd880ca7f2 HTTP/1.1
 
 ###
 
@@ -10,27 +10,22 @@ POST http://localhost:5000/bot/ HTTP/1.1
 content-Type: application/json
 
 {
-    "pair": "BNBUSDT",
+    "pair": "BUSDSTORJ",
     "active": "false",
     "strategy": "long",
-    "name": "Default Bot",
-    "so_size": "0.0001",
+    "name": "Initial BUSD",
+    "so_size": "0",
     "take_profit": "0.003",
-    "price_deviation_so": "0.0063"
+    "price_deviation_so": "0"
 }
 
 ###
-PUT http://localhost:5000/bot/ HTTP/1.1
+PUT http://localhost:5000/bot/5f82420dad1307fd880ca7f2 HTTP/1.1
 content-Type: application/json
 
 {
-    "_id": "5de3d4571f30fed6914d2118",
-    "pair": "BTCUSDT",
-    "strategy": "short",
-    "name": "Pepe",
-    "maxSOCount": "2",
-    "balanceUsage": "1",
-    "baseOrderSize": "0.0001"
+    "pair": "STORJBUSD",
+    "name": "Initial BUSD"
 }
 
 ###
@@ -38,4 +33,4 @@ DELETE http://localhost:5000/bot/5dc8d91b34ee965b19a4fd4e HTTP/1.1
 
 ###
 
-GET http://localhost:5000/bot/activate/5f7fa3d0b01710bad6564eda HTTP/1.1
+GET http://localhost:5000/bot/activate/5f82420dad1307fd880ca7f2 HTTP/1.1

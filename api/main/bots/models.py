@@ -21,7 +21,7 @@ class Bot(Account):
             "base_order_type": "limit",
             "start_condition": "true",
             "so_size": "0.0001",  # Top band
-            "take_profit": "0.003", # 30% take profit
+            "take_profit": "0.003",  # 30% take profit
             "price_deviation_so": "0.0063",  # % percentage
             "trailling": "false",
             "trailling_deviation": "0.0063",
@@ -42,10 +42,9 @@ class Bot(Account):
     def get_one(self):
         resp = jsonResp({"message": "No bots found"}, 200)
         findId = request.view_args["id"]
-        bot = list(app.db.bots.find_one({"_id": findId}))
-
+        bot = app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
-            resp = jsonResp({"data": bot}, 200)
+            resp = jsonResp({"message": "Bot found", "data": bot}, 200)
         else:
             resp = jsonResp({"message": "Bots not found"}, 404)
         return resp
@@ -70,26 +69,27 @@ class Bot(Account):
     def edit(self):
         resp = jsonResp({"message": "Bot update is not available"}, 400)
         data = request.json
+        findId = request.view_args["id"]
         self.defaults.update(data)
         botId = app.db.bots.update_one(
-            {"_id": ObjectId(data["_id"])}, {"$set": self.defaults}, upsert=False
+            {"_id": ObjectId(findId)}, {"$set": self.defaults}, upsert=False
         )
         if botId.acknowledged:
             resp = jsonResp(
-                {"message": "Successfully updated bot", "botId": data["_id"]}, 200
+                {"message": "Successfully updated bot", "botId": botId}, 200
             )
         else:
             resp = jsonResp({"message": "Failed to update bot"}, 400)
 
         return resp
 
-    def delete(self, id):
+    def delete(self):
         resp = jsonResp({"message": "Bot update is not available"}, 400)
-        id = request.view_args["id"]
-        delete_action = app.db.bots.delete_one({"_id": ObjectId(id)})
+        findId = request.view_args["id"]
+        delete_action = app.db.bots.delete_one({"_id": ObjectId(findId)})
         if delete_action:
             resp = jsonResp(
-                {"message": "Successfully delete bot", "botId": id}, 200
+                {"message": "Successfully delete bot", "botId": findId}, 200
             )
         else:
             resp = jsonResp({"message": "Bot deletion is not available"}, 400)
@@ -112,29 +112,23 @@ class Bot(Account):
         resp = jsonResp({"message": "Bot activation is not available"}, 400)
         findId = request.view_args["botId"]
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
-        btc_balance = self.get_one_balance()
+
         if bot:
-            # bot["active"] = "true"
             dealId = Deal(bot, app).open_deal()
 
             # If error
             if isinstance(dealId, Response):
-                response = dealId
-                return response
+                resp = dealId
+                return resp
 
             if dealId:
-                if "deals" not in bot.keys():
-                    bot["deals"] = []
+                bot["active"] = "true"
                 bot["deals"].append(dealId)
                 botId = app.db.bots.save(bot)
                 if botId:
                     resp = jsonResp(
-                        {"message": "Successfully activated bot", "bodId": str(findId)},
+                        {"message": "Successfully activated bot and triggered deals", "bodId": str(findId)},
                         200,
-                    )
-                else:
-                    resp = jsonResp(
-                        {"message": "Bot failed to save", "bodId": str(findId)}, 400
                     )
                 return resp
             else:
@@ -150,11 +144,20 @@ class Bot(Account):
         findId = request.view_args["botId"]
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
-            bot["active"] = "false"
-            # Deal(bot).open_deal()
-            resp = jsonResp(
-                {"message": "Successfully deactivated bot", "data": bot}, 200
-            )
+
+            dealId = Deal(bot).close_deals()
+
+            # If error
+            if isinstance(dealId, Response):
+                resp = dealId
+                return resp
+
+            if dealId:
+                bot["active"] = "false"
+                bot["deals"] = []
+                resp = jsonResp(
+                    {"message": "Successfully deactivated bot", "data": bot}, 200
+                )
         else:
             resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp

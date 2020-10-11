@@ -97,7 +97,7 @@ class WITHDRAWAL_ORDER:
     def compute_stop_price(self):
         pass
     
-    def convert_symbol_asset():
+    def convert_symbol_asset(self):
         ie = Exchange_Info()
         asset = ie.find_quoteAsset(self.symbol)
         return asset
@@ -105,7 +105,7 @@ class WITHDRAWAL_ORDER:
     def post_order(self):
         """Post Order: Market
         """
-        type = EnumDefinitions.order_types[1]
+        order_type = EnumDefinitions.order_types[1]
         timestamp = int(round(tm.time() * 1000))
         url = base_url + withdraw_url
         # price = self.compute_price()

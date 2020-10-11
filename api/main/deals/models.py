@@ -7,15 +7,17 @@ from flask import Response, current_app as app
 from main.orders.models.book_order import Book_Order, handle_error
 from main.tools.round_numbers import round_numbers
 from main.tools.jsonresp import jsonResp_message
+from main.account.models import Account
 
-class Deal():
+class Deal(Account):
     MIN_QTY = float(os.getenv("MIN_QTY"))
     MIN_PRICE = float(os.getenv("MIN_PRICE"))
     MIN_NOTIONAL = float(os.getenv("MIN_NOTIONAL"))
     order_book_url = os.getenv("ORDER_BOOK")
-    bb_base_url = os.getenv("FLASK_DOMAIN") + os.getenv("FLASK_PORT")
+    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}:{os.getenv("FLASK_PORT")}'
     bb_buy_order_url = f'{bb_base_url}/order/buy'
     bb_sell_order_url = f'{bb_base_url}/order/sell'
+    bb_opened_orders_url = f'{bb_base_url}/open'
 
     def __init__(self, bot, app):
         self.active_bot = bot
@@ -27,13 +29,12 @@ class Deal():
             "strategy": "long",  # change accordingly
             "pair": "",
             "order_side": "BUY",
-            "order_type": "LIMIT",
+            "order_type": "LIMIT",  # always limit orders
             "price": "0",
             "qty": "0",
             "fills": "0",
             "time_in_force": "GTC",
         }
-        self.division = bot["balance_usage_size"] / (int(bot["max_so_count"]) + 2)
 
         # self.side = EnumDefinitions.order_side[0]
         # self.strategy = bot["strategy"]
@@ -57,10 +58,32 @@ class Deal():
             print(order)
             exit(1)
 
+    def initialization(self):
+        """
+        Initial checks to see if the deal is possible
+        - Do we have enough balance?
+        - If we have enough balance allocate division
+        """
+
+        quote_asset = self.find_quoteAsset(self.active_bot["pair"])
+        balance = self.get_one_balance(quote_asset)
+        if not balance:
+            return jsonResp_message(f"[Deal init error] No {quote_asset} balance", 200)
+        self.active_bot["balance_usage_size"] = self.get_one_balance(quote_asset)
+        self.division = self.active_bot["balance_usage_size"] / (int(self.active_bot["max_so_count"]) + 2)
+
     def long_base_order(self):
         pair = self.active_bot['pair']
-        qty = round_numbers(self.division)
+        qty = round_numbers(self.division, 0)
         price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
+        # Avoid common rate limits
+        if qty <= self.MIN_QTY:
+            return jsonResp_message("[Base order error] Quantity too low", 200)
+        if price <= self.MIN_PRICE:
+            return jsonResp_message("[Base order error] Price too low", 200)
+        if (float(qty) * float(price)) <= self.MIN_NOTIONAL:
+            return jsonResp_message("[Base order error] Price x Quantity too low", 200)
+
         self.long_base_order_price = price
 
         order = {
@@ -68,7 +91,7 @@ class Deal():
             "qty": qty,
             "price": price,
         }
-        res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
+        res = requests.post(url=self.bb_buy_order_url, json=order)
         handle_error(res)
         base_order = res.json()
 
@@ -140,8 +163,7 @@ class Deal():
 
     def long_take_profit_order(self):
         pair = self.active_bot['pair']
-        qty = round_numbers(self.division)
-
+        qty = round_numbers(self.division, 0)
         market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
 
@@ -150,12 +172,9 @@ class Deal():
             "qty": qty,
             "price": price,
         }
-        res = requests.post(url=self.bb_sell_order_url, data=json.dumps(order))
+        res = requests.post(url=self.bb_sell_order_url, json=order)
         handle_error(res)
         order = res.json()
-
-        if self.binance_bug_workaround(order):
-            self.long_take_profit_order()
 
         base_order = {
             "deal_type": "take_profit",
@@ -169,20 +188,20 @@ class Deal():
             "fills": order["fills"],
             "time_in_force": order["timeInForce"],
         }
-        return base_order    
+        return base_order
 
     def short_base_order(self):
         pair = self.active_bot['pair']
-        qty = math.floor(float(self.division) * 1000000) / 1000000
-
+        qty = round_numbers(self.division)
+        price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
         # Avoid common rate limits
         if qty <= self.MIN_QTY:
-            return jsonResp_message("[Base order error] Quantity too low", 422)
-        price = float(Book_Order(pair).matching_engine(0, 'asks', qty))
+            return jsonResp_message("[Base order error] Quantity too low", 200)
+
         if price <= self.MIN_PRICE:
-            return jsonResp_message("[Base order error] Price too low", 422)
+            return jsonResp_message("[Base order error] Price too low", 200)
         if (float(qty) * float(price)) <= self.MIN_NOTIONAL:
-            return jsonResp_message("[Base order error] Price x Quantity too low", 422)
+            return jsonResp_message("[Base order error] Price x Quantity too low", 200)
 
         order = {
             "pair": pair,
@@ -226,7 +245,7 @@ class Deal():
             res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
             handle_error(res)
             order = res.json()
-            
+
             safety_orders = {
                 "order_id": order["orderId"],
                 "deal_type": "safety_order",
@@ -246,11 +265,10 @@ class Deal():
 
     def short_take_profit_order(self):
         pair = self.active_bot['pair']
-        qty = round_numbers(self.division)
-
+        qty = round_numbers(self.division, 0)
         market_price = float(Book_Order(pair).matching_engine(0, 'bids', qty))
         price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
-        
+
         order = {
             "pair": pair,
             "qty": qty,
@@ -276,22 +294,31 @@ class Deal():
 
     def open_deal(self):
         new_deal = {"base_order": {}, "take_profit_order": {}, "so_orders": []}
+        can_initialize = self.initialization()
+        if isinstance(can_initialize, Response):
+            return can_initialize
         deal_strategy = self.active_bot["strategy"]
+
         if deal_strategy == "long":
             long_base_order = self.long_base_order()
-            if not long_base_order:
-                print("Deal: Base order failed")
+            if isinstance(long_base_order, Response):
+                response = long_base_order
+                return response
             new_deal["base_order"] = long_base_order
 
-            long_safety_order_generator = self.long_safety_order_generator()
-            if not long_safety_order_generator:
-                print("Deal: Safety orders failed")
-            new_deal["so_orders"] = long_safety_order_generator
+            # Only do Safety orders if required
+            if int(self.active_bot["max_so_count"]) > 0:
+                long_safety_order_generator = self.long_safety_order_generator(0)
+                if isinstance(long_safety_order_generator, Response):
+                    response = long_safety_order_generator
+                    return response
+
+                new_deal["so_orders"] = long_safety_order_generator
 
             long_take_profit_order = self.long_take_profit_order()
-            if not long_take_profit_order:
-                print("Deal: Take profit order failed")
-
+            if isinstance(long_take_profit_order, Response):
+                response = long_take_profit_order
+                return response
             new_deal["take_profit_order"] = long_take_profit_order
 
         if deal_strategy == "short":
@@ -301,17 +328,34 @@ class Deal():
                 return short_base_order
             new_deal["base_order"] = short_base_order
 
-            short_safety_order_generator = self.short_safety_order_generator(0)
-            if not short_safety_order_generator:
-                print("Deal: Safety orders failed")
-            new_deal["so_orders"] = short_safety_order_generator
+            # Only do Safety orders if required
+            if int(self.active_bot["max_so_count"]) > 0:
+                short_safety_order_generator = self.short_safety_order_generator(0)
+                if not short_safety_order_generator:
+                    print("Deal: Safety orders failed")
+                new_deal["so_orders"] = short_safety_order_generator
 
             short_take_profit_order = self.short_take_profit_order()
             if not short_take_profit_order:
                 print("Deal: Take profit order failed")
 
-            new_deal["take_profit_order"] = short_take_profit_order 
+            new_deal["take_profit_order"] = short_take_profit_order
 
         dealId = app.db.deals.save(new_deal)
         dealId = str(dealId)
         return dealId
+
+    def close_deals(self):
+        """
+        Close all deals
+        - Find all opened orders (positions)
+        Filled orders cannot be closed
+        - Close them
+        """
+        res = requests.get(url=self.bb_opened_orders_url)
+        handle_error(res)
+        opened_orders = res.json()
+        response = jsonResp_message("Unable to close deals", 200)
+        if opened_orders:
+            response = jsonResp_message("Deals closed successfully", 200)
+        return response

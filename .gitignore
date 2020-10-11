@@ -9,6 +9,7 @@
 Pipfile.lock
 api/main/config/*.cfg
 .env
+.mypy_cache
 
 ##
 #

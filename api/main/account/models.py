@@ -13,11 +13,12 @@ class Account:
 
     recvWindow = os.getenv("RECV_WINDOW")
     min_amount = 0.1  # MIN_NOTIONAL restriction by Binance
+    secret = os.getenv('BINANCE_SECRET')
+    key = os.getenv('BINANCE_KEY')
     base_url = os.getenv('BASE')
     account_url = os.getenv('ACCOUNT')
     candlestick_url = os.getenv('CANDLESTICK')
-    secret = os.getenv('BINANCE_SECRET')
-    key = os.getenv('BINANCE_KEY')
+    exchangeinfo_url = os.getenv('EXCHANGE_INFO')
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
@@ -43,6 +44,11 @@ class Account:
         data = res.json()
         return data
 
+    def _exchange_info(self):
+        url = self.base_url + self.exchangeinfo_url
+        r = requests.get(url=url)
+        return r.json()
+
     def get_balances(self):
         data = self.request_data()["balances"]
         df = pd.DataFrame(data)
@@ -60,4 +66,14 @@ class Account:
 
     def get_one_balance(self, symbol="BTC"):
         data = json.loads(self.get_balances().data)
-        return next((x["free"] for x in data if x["asset"] == "BTC"), None)
+        return next((x["free"] for x in data if x["asset"] == symbol), None)
+
+    def find_quoteAsset(self, symbol):
+        symbols = self._exchange_info()["symbols"]
+        quote_asset = next((s for s in symbols if s["symbol"] == symbol), None)["quoteAsset"]
+        return quote_asset
+
+    def find_baseAsset(self, symbol):
+        symbols = self._exchange_info()["symbols"]
+        base_asset = next((s for s in symbols if s["symbol"] == symbol), None)["baseAsset"]
+        return base_asset

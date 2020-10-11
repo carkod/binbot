@@ -20,8 +20,6 @@ from main.account import Account
 import os
 
 
- 
-
 class Buy_Order():
     """Post order
 
