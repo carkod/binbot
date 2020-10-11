@@ -5,22 +5,21 @@ import pandas as pd
 
 
 class Book_Order:
-    """
-    Buy order = bids
-    Sell order = ask
-    """
     def __init__(self, symbol):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.base_url = os.getenv("BASE")
         self.order_url = os.getenv("ORDER")
         self.order_book_url = os.getenv("ORDER_BOOK")
+        self.price = os.getenv("TICKER_PRICE")
+        self.avg_price = os.getenv("AVERAGE_PRICE")
         self.symbol = symbol
 
+    """
+    Simpler matching engine, no need for quantity
+    """
+
     def last_price(self, order_side="bids"):
-        """
-        Simpler matching engine, no need for quantity
-        """
         url = self.base_url + self.order_book_url
         limit = EnumDefinitions.order_book_limits[0]
         params = [("symbol", self.symbol), ("limit", limit)]
@@ -39,6 +38,11 @@ class Book_Order:
         price = df["price"].astype(float)[0]
         return price
 
+    """
+    Buy order = bids
+    Sell order = ask
+    """
+
     def matching_engine(self, limit_index=0, order_side="bids", qty=0):
         url = self.base_url + self.order_book_url
         limit = EnumDefinitions.order_book_limits[limit_index]
@@ -48,7 +52,7 @@ class Book_Order:
         data = res.json()
         if order_side == "bids":
             df = pd.DataFrame(data["bids"], columns=["price", "qty"])
-        elif order_side == "asks":
+        elif order_side == "ask":
             df = pd.DataFrame(data["asks"], columns=["price", "qty"])
 
         else:
@@ -64,3 +68,11 @@ class Book_Order:
             limit += limit
             self.matching_engine(limit)
         return match_qty["price"][0]
+
+    def ticker_price(self):
+        url = self.base_url + self.price
+        params = [("symbol", self.symbol)]
+        res = requests.get(url=url, params=params)
+        handle_error(res)
+        price = res.json()["price"]
+        return price

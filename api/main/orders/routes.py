@@ -3,20 +3,9 @@ from main.orders.models.orders import Orders
 from main.orders.models.book_order import Book_Order
 from main.orders.models.buy import Buy_Order
 from main.orders.models.sell import Sell_Order
+from main.orders.models.order_sockets import OrderUpdates
 
 order_blueprint = Blueprint("order", __name__)
-
-@order_blueprint.route("/", methods=["GET"])
-def get():
-    # Get all orders from Binance? Might be too expensive
-        # return Buy_Order(symbol, quantity, type, price).get_balances()
-    pass
-
-# @order_blueprint.route("/<id>", methods=["GET"])
-# def get_one(id):
-#   # Get single order (id = orderId) from Binance
-# 	return order().get_one()
-
 
 @order_blueprint.route("/buy", methods=["POST"])
 def create_buy_order():
@@ -35,11 +24,15 @@ def get_open_orders():
 def delete_order():
     return Orders().delete_order()
 
+@order_blueprint.route("/order-updates", methods=["GET"])
+def orders_update():
+    updates = OrderUpdates()
+    listen_key = updates.get_listenkey()["listenKey"]
+    stream = updates.open_stream()
+    if stream:
+        result = updates.get_stream(listen_key)
+        print(result)
 
-# @order_blueprint.route("/", methods=["PUT"])
-# def edit():
-# 	return order().edit()
-
-# @order_blueprint.route("/<id>", methods=["DELETE"])
-# def delete(id):
-# 	return order().delete(id)
+    # Comment out after development is finished
+    updates.close_stream()
+    return result
