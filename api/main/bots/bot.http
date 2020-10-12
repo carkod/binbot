@@ -2,7 +2,7 @@ GET http://localhost:5000/bot/ HTTP/1.1
 
 ###
 
-GET http://localhost:5000/bot/5f82420dad1307fd880ca7f2 HTTP/1.1
+GET http://localhost:5000/bot/5f830e226b57f6eba97d93f6 HTTP/1.1
 
 ###
 
@@ -10,27 +10,28 @@ POST http://localhost:5000/bot/ HTTP/1.1
 content-Type: application/json
 
 {
-    "pair": "BUSDSTORJ",
+    "pair": "BNBBUSD",
     "active": "false",
-    "strategy": "long",
-    "name": "Initial BUSD",
+    "strategy": "short",
+    "name": "Test short take profit",
     "so_size": "0",
     "take_profit": "0.003",
     "price_deviation_so": "0"
 }
 
 ###
-PUT http://localhost:5000/bot/5f82420dad1307fd880ca7f2 HTTP/1.1
+PUT http://localhost:5000/bot/5f830e226b57f6eba97d93f6 HTTP/1.1
 content-Type: application/json
 
 {
-    "pair": "STORJBUSD",
-    "name": "Initial BUSD"
+    "pair": "BNBBUSD",
+    "name": "Test take profit",
+    "strategy": "short"
 }
 
 ###
-DELETE http://localhost:5000/bot/5dc8d91b34ee965b19a4fd4e HTTP/1.1
+DELETE http://localhost:5000/bot/5f830c917cb67ea5d0bd5972 HTTP/1.1
 
 ###
 
-GET http://localhost:5000/bot/activate/5f82420dad1307fd880ca7f2 HTTP/1.1
+GET http://localhost:5000/bot/activate/5f837dd146148214845cb32b HTTP/1.1

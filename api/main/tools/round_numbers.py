@@ -10,7 +10,7 @@ def round_numbers_ceiling(value, decimals=6):
     decimal_points = 10 ** int(decimals)
     number = float(value)
     result = math.ceil(number * decimal_points) / decimal_points
-    return result
+    return float(result)
 
 def proper_round(num, dec=6):
     num = str(num)[:str(num).index('.')+dec+2]

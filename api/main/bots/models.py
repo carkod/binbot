@@ -56,7 +56,7 @@ class Bot(Account):
 
         data["name"] = data["name"] if data["name"] != "" else f"Bot-{date.today()}"
         self.defaults.update(data)
-        botId = app.db.bots.save(data)
+        botId = app.db.bots.save(self.defaults)
         if botId:
             resp = jsonResp(
                 {"message": "Successfully created new bot", "botId": str(botId)}, 200

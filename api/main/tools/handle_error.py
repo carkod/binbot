@@ -11,6 +11,7 @@ def handle_error(req):
 
     except requests.exceptions.HTTPError as err:
         if err:
+            print(req.json())
             return jsonResp_message(req.json(), 200)
         else:
             return err

@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask import current_app as app
 from main.auth import token_required
-from main.user.models import User
+from main.user.models.user import User
 
 user_blueprint = Blueprint("user", __name__)
 

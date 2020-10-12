@@ -2,7 +2,7 @@ import os
 import requests
 from main.tools import handle_error, EnumDefinitions
 import pandas as pd
-
+from main.tools.round_numbers import round_numbers
 
 class Book_Order:
     def __init__(self, symbol):
@@ -38,36 +38,35 @@ class Book_Order:
         price = df["price"].astype(float)[0]
         return price
 
-    """
-    Buy order = bids
-    Sell order = ask
-    """
+    def matching_engine(self, order_side, qty, limit_index=0):
+        """
+        Buy order = bids = True
+        Sell order = ask = False
+        """
 
-    def matching_engine(self, limit_index=0, order_side="bids", qty=0):
         url = self.base_url + self.order_book_url
         limit = EnumDefinitions.order_book_limits[limit_index]
         params = [("symbol", self.symbol), ("limit", limit)]
         res = requests.get(url=url, params=params)
         handle_error(res)
         data = res.json()
-        if order_side == "bids":
+        if order_side:
             df = pd.DataFrame(data["bids"], columns=["price", "qty"])
-        elif order_side == "ask":
-            df = pd.DataFrame(data["asks"], columns=["price", "qty"])
-
         else:
-            print("Incorrect bid/ask keyword for matching_engine")
-            exit(1)
+            df = pd.DataFrame(data["asks"], columns=["price", "qty"])
 
         df["qty"] = df["qty"].astype(float)
 
         # If quantity matches list
-        match_qty = df[df["qty"] > float(qty)]
+        match_qty = df[df.qty > float(qty)]
         condition = df["qty"] > float(qty)
         if not condition.any():
-            limit += limit
-            self.matching_engine(limit)
-        return match_qty["price"][0]
+            limit_index += limit_index
+            if limit_index == 4:
+                return None
+            self.matching_engine(order_side, qty, limit_index)
+        final_qty = round_numbers(match_qty["price"].iloc[0], 0)
+        return final_qty
 
     def ticker_price(self):
         url = self.base_url + self.price
