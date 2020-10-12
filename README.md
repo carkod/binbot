@@ -1,7 +1,13 @@
-## Running the app
+## Running back-end api
 
 1. Run `pipenv shell` to activate the virtual environment
 2. Run `./run` to start the Flask application
+
+## Running front-end web app
+
+1. Run `npm run install:clean` and `npm install`
+2. Run `npm start`
+
 
 ## Requirements
  

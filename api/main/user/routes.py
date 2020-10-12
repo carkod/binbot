@@ -1,14 +1,16 @@
 from flask import Blueprint
-from flask import current_app as app
-from main.auth import token_required
+# from main.auth import token_required
 from main.user.models.user import User
 
 user_blueprint = Blueprint("user", __name__)
 
 @user_blueprint.route("/", methods=["GET"])
-@token_required
 def get():
     return User().get()
+
+@user_blueprint.route("/<id>", methods=["GET"])
+def get_one(id):
+    return User().get_one()
 
 @user_blueprint.route("/auth/", methods=["GET"])
 def getAuth():
@@ -23,11 +25,14 @@ def logout():
     return User().logout()
 
 @user_blueprint.route("/register", methods=["POST"])
-# @cross_origin() # allow all origins all methods.
 def add():
     return User().add()
 
-@user_blueprint.route("/user", methods=["GET"])
+@user_blueprint.route("/<id>", methods=["DELETE"])
+def delete(id):
+    return User().delete()
+
+@user_blueprint.route("/datastream", methods=["GET"])
 def post():
     return User().post_user_datastream()
 

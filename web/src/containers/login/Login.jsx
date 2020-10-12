@@ -7,7 +7,11 @@ import { login } from './actions';
 
 class Login extends Component {
 
-  handleSubmit = (data) => {
+  
+
+  handleSubmit = async (data) => {
+    let response = await fetch('http://localhost:3000/api/');
+
     this.props.login(data);
     this.props.history.push('/');
   }
@@ -28,7 +32,6 @@ class Login extends Component {
 }
 
 const mapStateToProps = (state) => {
-  console.log(state);
   return {}
 }
 

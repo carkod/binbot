@@ -50,7 +50,7 @@ class LoginForm extends Component {
 
   handleSubmit = (e) => {
     e.preventDefault();
-    // this.requiredinValidation();
+    this.requiredinValidation();
     this.passwordMatchinValidation();
     this.props.onSubmit(this.state);
   }
