@@ -13,3 +13,13 @@ content-Type: application/json
 ###
 
 DELETE http://localhost:5000/user/5f84e7d5602ada0fd7601243 HTTP/1.1
+
+
+###
+POST http://localhost:5000/user/login HTTP/1.1
+content-Type: application/json
+
+{
+    "email": "carkodw@gmail.com",
+    "password": "carlitos"
+}

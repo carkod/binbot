@@ -2,7 +2,7 @@ from flask import Flask
 from pymongo import MongoClient
 import os
 import json
-
+from flask_cors import CORS
 # Import Routes
 from main.user.routes import user_blueprint
 from main.account.routes import account_blueprint
@@ -14,7 +14,8 @@ def create_app():
 
     # Flask Config
     app = Flask(__name__)
-
+    # Enable CORS for all routes
+    CORS(app)
     # Misc Config
     os.environ["TZ"] = os.environ["TIMEZONE"]
 

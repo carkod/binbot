@@ -47,7 +47,7 @@ export default function request(url, options) {
     .then(parseJSON);
 }
 
-const tokenName = 'binmasbotToken';
+const tokenName = 'binbot-token';
 
 export function getToken() {
   const parsedToken = JSON.parse(localStorage.getItem(tokenName));

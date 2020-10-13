@@ -10,7 +10,6 @@ class LoginForm extends Component {
     username: '',
     usernameIsRequiredError: false,
     password: '',
-    confirmPassword: '',
     email: '',
     emailIsRequiredError: false,
     description: '',
@@ -19,43 +18,38 @@ class LoginForm extends Component {
   }
 
   requiredinValidation = () => {
-    const { username, password } = this.state;
-    if (username === '' || username === null || username === undefined) {
-      this.setState({ usernameIsRequiredError: true });
+    const { email, password } = this.state;
+    if (email === '' || email === null || email === undefined) {
+      this.setState({ emailIsRequiredError: true, formIsValid: false });
     } else {
-      this.setState({ usernameIsRequiredError: false });
+      this.setState({ emailIsRequiredError: false });
     }
 
     if (password === '' || password === null || password === undefined) {
-      this.setState({ passwordIsRequiredError: true });
+      this.setState({ passwordIsRequiredError: true, formIsValid: false });
     } else {
       this.setState({ passwordIsRequiredError: false });
     }
 
+    this.setState({ formIsValid: true });
   }
 
-  passwordMatchinValidation = () => {
-    if (this.state.confirmPassword !== this.state.password) {
-      this.setState({ passwordNotMatch: true });
-    } else {
-      this.setState({ passwordNotMatch: false });
-    }
-  }
 
   handleChange = (e) => {
     this.requiredinValidation();
-    this.passwordMatchinValidation();
     this.setState({ [e.target.name]: e.target.value });
   }
 
   handleSubmit = (e) => {
     e.preventDefault();
-    this.requiredinValidation();
-    this.passwordMatchinValidation();
-    this.props.onSubmit(this.state);
+    this.requiredinValidation()
+    if (this.state.formIsValid) {
+      this.props.onSubmit(this.state);
+    }
   }
 
   render() {
+    const { passwordIsRequiredError, emailIsRequiredError } = this.state;
     return (
       <Card className="card-user">
         <CardHeader>
@@ -67,17 +61,17 @@ class LoginForm extends Component {
               <Col className="pr-1" md="12">
                 <FormGroup>
                   <label htmlFor="email">Email address</label>
-                  <Input placeholder="Email" type="email" name="email" onChange={this.handleChange} />
-                  {this.state.emailIsRequiredError && <FormFeedback className="register-form__error">Email is required</FormFeedback>}
+                  <Input invalid={emailIsRequiredError} placeholder="Email" type="email" name="email" onChange={this.handleChange} />
+                  <FormFeedback>Email is required</FormFeedback>
                 </FormGroup>
               </Col>
             </Row>
             <Row>
               <Col className="pr-1" md="12">
                 <FormGroup>
-                  <label>Password</label>
-                  <Input type="password" name="password" onChange={this.handleChange} />
-                  {/* <FormFeedback invalid className="register-form__error">Password is required</FormFeedback> */}
+                  <label htmlFor="password">Password</label>
+                  <Input invalid={passwordIsRequiredError} type="password" name="password" onChange={this.handleChange} />
+                  <FormFeedback className="register-form__error">Password is required</FormFeedback>
                 </FormGroup>
               </Col>
             </Row>

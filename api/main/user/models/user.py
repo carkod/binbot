@@ -5,7 +5,6 @@ from main import auth
 import os
 from main.tools.dates import nowDatetimeUTC
 from main.tools.jsonresp import jsonResp_message, jsonResp
-import json
 from bson.objectid import ObjectId
 
 class User:
@@ -17,7 +16,8 @@ class User:
             "username": "",
             "description": "",
             "access_token": "",
-            "refresh_token": ""
+            "last_login": "",
+            "created_at": "",
         }
 
     def get(self):
@@ -40,54 +40,31 @@ class User:
             resp = jsonResp({"message": "User not found"}, 404)
         return resp
 
-    def getAuth(self):
-        access_token = request.headers.get("AccessToken")
-        refresh_token = request.headers.get("RefreshToken")
-        resp = jsonResp_message({"message": "User not logged in"}, 401)
-
-        if access_token:
-            try:
-                decoded = jwt.decode(access_token, os.environ["SECRET_KEY"])
-                resp = jsonResp_message(decoded, 200)
-            except:
-                # If the access_token has expired, get a new access_token - so long as the refresh_token hasn't expired yet
-                resp = auth.refreshAccessToken(refresh_token)
-
-        return resp
-
     def login(self):
-        resp = jsonResp_message("Invalid user credentials", 403)
+        data = request.json
+        email = data["email"].lower()
+        user = app.db.users.find_one({"email": email})
+        verify = pbkdf2_sha256.verify(data["password"], user["password"])
+        if user and verify:
+            access_token = auth.encodeAccessToken(user["password"], user["email"])
 
-        try:
-            data = json.loads(request.data)
-            email = data["email"].lower()
-            user = app.db.users.find_one({"email": email})
+            app.db.users.update_one({"_id": user["_id"]}, {"$set": {
+                "access_token": access_token,
+                "last_login": nowDatetimeUTC()
+            }})
 
-            if user and pbkdf2_sha256.verify(data["password"], user["password"]):
-                access_token = auth.encodeAccessToken(user["id"], user["email"])
-                refresh_token = auth.encodeRefreshToken(user["id"], user["email"])
-
-                app.db.users.update({"id": user["id"]}, {"$set": {
-                    "refresh_token": refresh_token,
-                    "last_login": nowDatetimeUTC()
-                }})
-
-                resp = jsonResp({
-                    "id": user["id"],
-                    "email": user["email"],
-                    "access_token": access_token,
-                    "refresh_token": refresh_token
-                }, 200)
-
-        except Exception:
-            pass
+            resp = jsonResp({
+                "_id": user["_id"],
+                "email": user["email"],
+                "access_token": access_token,
+            }, 200)
 
         return resp
 
     def logout(self):
         try:
             tokenData = jwt.decode(request.headers.get("AccessToken"), os.environ["SECRET_KEY"])
-            app.db.users.update({"id": tokenData["userid"]}, {'$unset': {"refresh_token": ""}})
+            app.db.users.update({"id": tokenData["userid"]}, {'$unset': {"access_token": ""}})
             # Note: At some point I need to implement Token Revoking/Blacklisting
             # General info here: https://flask-jwt-extended.readthedocs.io/en/latest/blacklist_and_token_revoking.html
         except:

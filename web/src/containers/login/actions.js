@@ -36,8 +36,7 @@ export function loginSucceeded(res) {
     isError: false,
     message: res,
     accessToken: res.access_token,
-    refreshToken: res.refresh_token,
-    userId: res.id,
+    userId: res._id,
     userEmail: res.email,
   };
 }
