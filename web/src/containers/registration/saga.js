@@ -1,5 +1,5 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
-import request from '../request';
+import request from '../../request';
 import { registerUserFailed, registerUserSucceded, REGISTER_USER } from './actions';
 
 
@@ -12,7 +12,6 @@ export function* postRegistration(body) {
   const { data } = body;
   const requestURL = `${host}user/register`;
   try {
-    // Call our request helper (see 'utils/request')
     yield call(request, requestURL, { method: 'POST', body: JSON.stringify(data)});
     yield put(registerUserSucceded(body));
   } catch (err) {

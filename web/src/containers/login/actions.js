@@ -1,5 +1,3 @@
-import { getToken } from '../request';
-
 export const LOGIN = 'LOGIN';
 export const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
 export const LOGIN_ERROR = 'LOGIN_ERROR';
@@ -16,7 +14,6 @@ export function login(body) {
     type: LOGIN,
     isLoading: true,
     isError: false,
-    token: getToken(),
     data: body
   };
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import { Collapse, Container, Dropdown, DropdownItem, DropdownMenu, DropdownToggle, Input, InputGroup, InputGroupAddon, InputGroupText, Nav, Navbar, NavbarBrand, NavbarToggler, NavItem } from "reactstrap";
 import routes from "router/routes";
-import { removeToken } from "containers/request";
+import { removeToken } from "../../request";
 import { withRouter } from "react-router-dom";
 
 

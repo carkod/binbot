@@ -1,16 +1,13 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
-import request, { setToken } from '../request';
+import request, { setToken } from '../../request';
 import { loginFailed, loginSucceeded, LOGIN } from './actions';
 
-
-const host = 'http://localhost:5000/';
-
 /**
- * Github repos request/response handler
+ * Login request/response handler
  */
 export function* postLogin(body) {
   const { data } = body;
-  const requestURL = `${host}user/login`;
+  const requestURL = process.env.REACT_APP_LOGIN;
   try {
     // Call our request helper (see 'utils/request')
     const res = yield call(request, requestURL, { method: 'POST', body: JSON.stringify(data)});
@@ -23,11 +20,11 @@ export function* postLogin(body) {
 
 /**
  * Root saga manages watcher lifecycle
+ * Watches for LOAD_REPOS actions and calls getRepos when one comes in.
+ * By using `takeLatest` only the result of the latest API call is applied.
+ * It returns task descriptor (just like fork) so we can continue execution
+ * It will be cancelled automatically on component unmount
  */
 export default function* watchPostLogin() {
-  // Watches for LOAD_REPOS actions and calls getRepos when one comes in.
-  // By using `takeLatest` only the result of the latest API call is applied.
-  // It returns task descriptor (just like fork) so we can continue execution
-  // It will be cancelled automatically on component unmount
   yield takeLatest(LOGIN, postLogin);
 }

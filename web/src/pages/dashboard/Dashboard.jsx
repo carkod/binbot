@@ -1,43 +1,46 @@
 import React from "react";
-// react plugin used to create charts
 import { Line, Pie } from "react-chartjs-2";
-// reactstrap components
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
-  CardTitle,
-  Row,
-  Col
-} from "reactstrap";
-// core components
-import {
-  dashboard24HoursPerformanceChart,
-  dashboardEmailStatisticsChart,
-  dashboardNASDAQChart
-} from "variables/charts.jsx";
+import { Card, CardHeader, CardBody, CardFooter, CardTitle, Row, Col, Button } from "reactstrap";
+import { dashboard24HoursPerformanceChart, dashboardEmailStatisticsChart, dashboardNASDAQChart } from "variables/charts.jsx";
+import { getBalance } from "./actions";
+import { connect } from "react-redux";
 
 class Dashboard extends React.Component {
+
+  constructor(props) {
+    super(props);
+    this.state = {}
+  }
+
+  componentDidMount = () => {
+    this.props.getBalance();
+  }
+
   render() {
+    const { balances } = this.props
     return (
       <>
         <div className="content">
           <Row>
-            <Col lg="3" md="6" sm="6">
+            <Col lg="4" md="6" sm="6">
               <Card className="card-stats">
                 <CardBody>
                   <Row>
-                    <Col md="4" xs="5">
-                      <div className="icon-big text-center icon-warning">
-                        <i className="nc-icon nc-globe text-warning" />
+                    <Col md="8" xs="12">
+                      <div className="stats">
+                        <p className="card-category">Balance</p>
+                        {balances && balances.map((x, i) =>
+                          <CardTitle key={i} tag="h5" className="card-title">{x.free}</CardTitle>
+                        )}
+                        
                       </div>
                     </Col>
-                    <Col md="8" xs="7">
-                      <div className="numbers">
-                        <p className="card-category">Capacity</p>
-                        <CardTitle tag="p">150GB</CardTitle>
-                        <p />
+                    <Col md="4" xs="12">
+                      <div className="stats">
+                        <p className="card-category">Asset</p>
+                        {balances && balances.map((x, i) =>
+                          <CardTitle key={i} tag="h5" className="card-title">{x.asset}</CardTitle>
+                        )}
                       </div>
                     </Col>
                   </Row>
@@ -45,12 +48,12 @@ class Dashboard extends React.Component {
                 <CardFooter>
                   <hr />
                   <div className="stats">
-                    <i className="fas fa-sync-alt" /> Update Now
+                    <Button color="link"><i className="fas fa-sync-alt" /> Update Now</Button>
                   </div>
                 </CardFooter>
               </Card>
             </Col>
-            <Col lg="3" md="6" sm="6">
+            <Col lg="4" md="6" sm="6">
               <Card className="card-stats">
                 <CardBody>
                   <Row>
@@ -76,7 +79,7 @@ class Dashboard extends React.Component {
                 </CardFooter>
               </Card>
             </Col>
-            <Col lg="3" md="6" sm="6">
+            <Col lg="4" md="6" sm="6">
               <Card className="card-stats">
                 <CardBody>
                   <Row>
@@ -98,32 +101,6 @@ class Dashboard extends React.Component {
                   <hr />
                   <div className="stats">
                     <i className="far fa-clock" /> In the last hour
-                  </div>
-                </CardFooter>
-              </Card>
-            </Col>
-            <Col lg="3" md="6" sm="6">
-              <Card className="card-stats">
-                <CardBody>
-                  <Row>
-                    <Col md="4" xs="5">
-                      <div className="icon-big text-center icon-warning">
-                        <i className="nc-icon nc-favourite-28 text-primary" />
-                      </div>
-                    </Col>
-                    <Col md="8" xs="7">
-                      <div className="numbers">
-                        <p className="card-category">Followers</p>
-                        <CardTitle tag="p">+45K</CardTitle>
-                        <p />
-                      </div>
-                    </Col>
-                  </Row>
-                </CardBody>
-                <CardFooter>
-                  <hr />
-                  <div className="stats">
-                    <i className="fas fa-sync-alt" /> Update now
                   </div>
                 </CardFooter>
               </Card>
@@ -213,4 +190,16 @@ class Dashboard extends React.Component {
   }
 }
 
-export default Dashboard;
+const mapStateToProps = (state) => {
+  if (state.balanceReducer.data) {
+    const balances = state.balanceReducer.data;
+    return {
+      ...state.balanceReducer,
+      balances: state.balanceReducer.data,
+    }
+  }
+  return state;
+  
+}
+
+export default connect(mapStateToProps, { getBalance })(Dashboard);

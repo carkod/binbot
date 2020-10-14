@@ -1,4 +1,4 @@
-import { REGISTER_USER, REGISTER_USER_SUCCESS, REGISTER_USER_ERROR } from './actions';
+import { GET_BALANCE, BALANCE_SUCCESS, BALANCE_ERROR } from './actions';
 
 // The initial state of the App
 export const initialState = {
@@ -8,9 +8,9 @@ export const initialState = {
   message: null,
 };
 
-function registrationReducer(state = initialState, action) {
+function balanceReducer(state = initialState, action) {
   switch (action.type) {
-    case REGISTER_USER: {
+    case GET_BALANCE: {
       const newState = {
         ...state,
         isLoading: true,
@@ -20,21 +20,27 @@ function registrationReducer(state = initialState, action) {
 
       return newState;
     }
-    case REGISTER_USER_SUCCESS: {
+    case BALANCE_SUCCESS: {
       const newState = {
         ...state,
-        loading: false,
+        isLoading: false,
+        isError: false,
         data: action.data
       };
       return newState;
     }
 
-    case REGISTER_USER_ERROR: {
-      return { ...state, error: action.error, loading: false };
+    case BALANCE_ERROR: {
+      return { 
+        ...state, 
+        error: action.error, 
+        isLoading: false, 
+        isError: true,
+      };
     }
     default:
       return state;
   }
 }
 
-export default registrationReducer;
+export default balanceReducer;

@@ -47,7 +47,7 @@ class Sidebar extends Component {
         <div className="logo">
           <a href="/" className="logo__link">
             <i className="nc-icon nc-sound-wave logo__icon" />
-            <h1 className="logo__heading-1">Binmasbot</h1>
+            <h1 className="logo__heading-1">Binbot</h1>
           </a>
         </div>
         <div className="sidebar-wrapper" ref={this.sidebar}>
