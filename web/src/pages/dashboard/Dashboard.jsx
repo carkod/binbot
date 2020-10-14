@@ -192,7 +192,6 @@ class Dashboard extends React.Component {
 
 const mapStateToProps = (state) => {
   if (state.balanceReducer.data) {
-    const balances = state.balanceReducer.data;
     return {
       ...state.balanceReducer,
       balances: state.balanceReducer.data,
