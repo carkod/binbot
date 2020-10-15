@@ -8,7 +8,6 @@ import { postLogin } from './saga';
 class Login extends Component {
 
   handleSubmit = async (data) => {
-    this.props.login(data);
     const credentials = {
       email: data.email,
       password: data.password,

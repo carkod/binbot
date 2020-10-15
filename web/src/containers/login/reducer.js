@@ -15,7 +15,6 @@ function loginReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
-        token: '',
         data: action.data
       };
 
@@ -26,7 +25,6 @@ function loginReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        token: action.token,
         data: action.data
       };
       return newState;
@@ -38,7 +36,6 @@ function loginReducer(state = initialState, action) {
         error: action.error, 
         isLoading: false, 
         isError: true,
-        token: '',
       };
     }
     default:
