@@ -148,3 +148,19 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
     }
   }
 }
+
+.u-uppercase {
+  text-transform: uppercase;
+}
+
+.u-capitalize {
+  text-transform: capitalize;
+}
+
+.u-center {
+  text-align: center;
+}
+
+.u-align-baseline {
+  align-items: baseline;
+}

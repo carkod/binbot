@@ -2,6 +2,7 @@ import Dashboard from "../pages/dashboard/Dashboard";
 import TableList from "components/Tables.jsx";
 import UserPage from "components/User.jsx";
 import Registration from "containers/registration/Registration";
+import Bots from "pages/bots/Bots";
 
 var routes = [
   {
@@ -17,7 +18,7 @@ var routes = [
     path: "/bots",
     name: "Bots",
     icon: "nc-icon nc-tile-56",
-    component: TableList,
+    component: Bots,
     layout: "/admin",
     nav: true,
     private: true
