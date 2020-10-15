@@ -206,11 +206,12 @@ export function editBotFailed(error) {
  *
  * @return {object} An action object with a type of BOT
  */
-export function deleteBot() {
+export function deleteBot(id) {
   return {
     type: DELETE_BOT,
     isLoading: true,
     isError: false,
+    data: id
   };
 }
 
@@ -227,7 +228,8 @@ export function deleteBotSucceeded(res) {
     type: DELETE_BOT_SUCCESS,
     isLoading: false,
     isError: false,
-    bots: res
+    data: res.botId,
+    message: res.message
   };
 }
 
@@ -243,6 +245,6 @@ export function deleteBotFailed(error) {
     type: DELETE_BOT_SUCCESS,
     isLoading: false,
     isError: true,
-    data: error,
+    error: error.message,
   };
 }

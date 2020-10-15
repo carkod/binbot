@@ -82,7 +82,8 @@ export function* editBot(id, body) {
 /**
  * Get single bot
  */
-export function* deleteBot(id) {
+export function* deleteBot(payload) {
+  const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
   const options = {
     method: 'DELETE',

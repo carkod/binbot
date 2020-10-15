@@ -1,7 +1,7 @@
 import React from "react";
 import { connect } from "react-redux";
 import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Jumbotron, Row, ButtonToggle } from "reactstrap";
-import { getBots } from "./actions";
+import { getBots, deleteBot } from "./actions";
 class Bots extends React.Component {
 
   constructor(props) {
@@ -15,6 +15,10 @@ class Bots extends React.Component {
 
   convertPercent = (stringNum) => {
     return `${parseFloat(stringNum) * 100}%`
+  }
+
+  handleDelete = (id) => {
+    this.props.deleteBot(id);
   }
 
   render() {
@@ -104,8 +108,9 @@ class Bots extends React.Component {
                   </CardBody>
                   <CardFooter>
                     <hr />
-                    <div className="stats">
-                      <Button color="link"><i className="fas fa-sync-alt" /> Update Now</Button>
+                    <div className="u-space-between">
+                      <Button color="info"><i className="fas fa-edit" /></Button>
+                      <Button color="danger" onClick={() => this.handleDelete(x._id.$oid)}><i className="fas fa-trash" /></Button>
                     </div>
                   </CardFooter>
                 </Card>
@@ -138,4 +143,4 @@ const mapStateToProps = (state) => {
   
 }
 
-export default connect(mapStateToProps, { getBots })(Bots);
+export default connect(mapStateToProps, { getBots, deleteBot })(Bots);

@@ -164,3 +164,8 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
 .u-align-baseline {
   align-items: baseline;
 }
+
+.u-space-between {
+  display: flex;
+  justify-content: space-between;
+}

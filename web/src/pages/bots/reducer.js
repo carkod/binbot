@@ -128,10 +128,9 @@ function botReducer(state = initialState, action) {
 
     case DELETE_BOT: {
       const newState = {
-        ...state,
         isLoading: true,
         isError: false,
-        data: action.data
+        data: state.data
       };
 
       return newState;
@@ -141,7 +140,7 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: action.data
+        data: state.data.filter(x => x._id.$oid !== action.data)
       };
       return newState;
     }
