@@ -77,3 +77,7 @@ class Account:
         symbols = self._exchange_info()["symbols"]
         base_asset = next((s for s in symbols if s["symbol"] == symbol), None)["baseAsset"]
         return base_asset
+
+    def get_symbols(self):
+        symbols = self._exchange_info()["symbols"]
+        return jsonResp(symbols, 200)

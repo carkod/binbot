@@ -15,7 +15,7 @@
   top: 0;
   height: 100%;
   bottom: 0;
-  width: 260px;
+  width: $navbar-width;
   left: 0;
   z-index: 1030;
   border-right: 1px solid #ddd;
@@ -24,7 +24,7 @@
     position: relative;
     height: calc(100vh - 75px);
     overflow: auto;
-    width: 260px;
+    width: $navbar-width;
     z-index: 4;
     padding-bottom: 100px;
 
@@ -322,7 +322,7 @@
 }
 
 .panel-header {
-  height: 260px;
+  height: $navbar-width;
   padding-top: 80px;
   padding-bottom: 45px;
   background: #141e30; /* fallback for old browsers */

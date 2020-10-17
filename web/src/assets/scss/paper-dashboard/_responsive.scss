@@ -125,7 +125,7 @@
     .nav-open{
         .main-panel{
             right: 0;
-            @include transform-translate-x(260px);
+            @include transform-translate-x($navbar-width);
         }
 
         .sidebar{
@@ -139,7 +139,7 @@
 
         .menu-on-right{
             .main-panel{
-                @include transform-translate-x(-260px);
+                @include transform-translate-x(-$navbar-width);
             }
 
             .navbar-collapse,
@@ -152,7 +152,7 @@
             }
 
             #bodyClick{
-                right: 260px;
+                right: $navbar-width;
                 left: auto;
             }
         }
@@ -162,7 +162,7 @@
         .sidebar{
             left: auto;
             right:0;
-            @include transform-translate-x(260px);
+            @include transform-translate-x($navbar-width);
         }
     }
 
@@ -219,7 +219,7 @@
         opacity: 1;
         top: 0;
         right: 0;
-        left: 260px;
+        left: $navbar-width;
         content: "";
         z-index: 9999;
         overflow-x: hidden;
@@ -252,7 +252,7 @@
         display: block;
         top: 0;
         height: 100%;
-        width: 260px;
+        width: $navbar-width;
         right: auto;
         left: 0;
         z-index: 1032;
@@ -261,7 +261,7 @@
         padding: 0;
         @include transition (0.50s, cubic-bezier(0.685, 0.0473, 0.346, 1));
 
-        @include transform-translate-x(-260px);
+        @include transform-translate-x(-$navbar-width);
     }
 
 

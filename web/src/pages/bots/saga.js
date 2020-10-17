@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { getBotsSucceeded, getBotsFailed, deleteBotFailed, deleteBotSucceeded, editBotSucceeded, editBotFailed, createBotSucceeded, createBotFailed, getBotSucceeded, getBotFailed, GET_BOT, CREATE_BOT, EDIT_BOT, DELETE_BOT, GET_BOTS } from './actions';
+import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getExchangeInfoFailed, getExchangeInfoSucceeded, GET_BOT, GET_BOTS, GET_EXCHANGE_INFO } from './actions';
 
 /**
  * Bots request/response handler
@@ -99,6 +99,22 @@ export function* deleteBot(payload) {
 }
 
 
+
+export function* getExchangeInfo() {
+  const requestURL = `${process.env.REACT_APP_EXCHANGE_INFO}`;
+  const options = {
+    method: 'GET',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  }
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(getExchangeInfoSucceeded(res));
+  } catch (err) {
+    yield put(getExchangeInfoFailed(err));
+  }
+}
+
 /**
  * Root saga manages watcher lifecycle
  * Watches for LOAD_REPOS actions and calls getRepos when one comes in.
@@ -112,4 +128,5 @@ export default function* watchBot() {
   yield takeLatest(CREATE_BOT, createBot);
   yield takeLatest(EDIT_BOT, editBot);
   yield takeLatest(DELETE_BOT, deleteBot);
+  yield takeLatest(GET_EXCHANGE_INFO, getExchangeInfo);
 }

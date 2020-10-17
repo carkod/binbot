@@ -1,4 +1,4 @@
-import { CREATE_BOT, CREATE_BOT_ERROR, CREATE_BOT_SUCCESS, DELETE_BOT, DELETE_BOT_ERROR, DELETE_BOT_SUCCESS, EDIT_BOT, EDIT_BOT_ERROR, EDIT_BOT_SUCCESS, GET_BOT, GET_BOTS, GET_BOTS_ERROR, GET_BOTS_SUCCESS, GET_BOT_ERROR, GET_BOT_SUCCESS } from './actions';
+import { CREATE_BOT, CREATE_BOT_ERROR, CREATE_BOT_SUCCESS, DELETE_BOT, DELETE_BOT_ERROR, DELETE_BOT_SUCCESS, EDIT_BOT, EDIT_BOT_ERROR, EDIT_BOT_SUCCESS, GET_BOT, GET_BOTS, GET_BOTS_ERROR, GET_BOTS_SUCCESS, GET_BOT_ERROR, GET_BOT_SUCCESS, GET_EXCHANGE_INFO, GET_EXCHANGE_INFO_SUCCESS, GET_EXCHANGE_INFO_ERROR } from './actions';
 
 // The initial state of the App
 export const initialState = {
@@ -83,7 +83,7 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: action.data
+        data: state.data.concat(x => x._id.$oid === action.data)
       };
       return newState;
     }
@@ -94,6 +94,7 @@ function botReducer(state = initialState, action) {
         error: action.error, 
         isLoading: false, 
         isError: true,
+        data: action.data
       };
     }
 
@@ -153,6 +154,36 @@ function botReducer(state = initialState, action) {
         isError: true,
       };
     }
+
+    case GET_EXCHANGE_INFO: {
+      const newState = {
+        isLoading: true,
+        isError: false,
+        data: state.data
+      };
+
+      return newState;
+    }
+    case GET_EXCHANGE_INFO_SUCCESS: {
+      const newState = {
+        ...state,
+        isLoading: false,
+        isError: false,
+        data: action.data
+      };
+      return newState;
+    }
+
+    case GET_EXCHANGE_INFO_ERROR: {
+      return { 
+        ...state, 
+        error: action.error, 
+        isLoading: false, 
+        isError: true,
+        data: action.data
+      };
+    }
+
     default:
       return state;
   }

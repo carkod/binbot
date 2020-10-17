@@ -17,6 +17,10 @@ class Bots extends React.Component {
     return `${parseFloat(stringNum) * 100}%`
   }
 
+  handleNew = () => {
+    this.props.handleNew();
+  }
+
   handleDelete = (id) => {
     this.props.deleteBot(id);
   }
@@ -49,7 +53,11 @@ class Bots extends React.Component {
           <Row>
             <Col md="12">
               <Jumbotron>
-                <h2 className="display-5">All bots</h2>
+                <div className="u-space-between">
+                  <h2 className="display-5">All bots</h2>
+                  <Button color="link" onClick={this.handleNew}>New bot</Button>
+                </div>
+                
                 <p className="lead">Ordered by active and creation date</p>
               </Jumbotron>
             </Col>
@@ -116,7 +124,6 @@ class Bots extends React.Component {
                 </Card>
               </Col>
             )}
-            
           </Row>
         </div>
       </>

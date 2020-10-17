@@ -169,3 +169,11 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
   display: flex;
   justify-content: space-between;
 }
+
+.u-margin-bottom {
+  margin-bottom: 2em;
+}
+
+.u-primary-color {
+  color: $primary-color;
+}

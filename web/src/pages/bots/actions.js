@@ -13,6 +13,9 @@ export const EDIT_BOT_ERROR = 'EDIT_BOT_ERROR';
 export const DELETE_BOT = 'DELETE_BOT';
 export const DELETE_BOT_SUCCESS = 'DELETE_BOT_SUCCESS';
 export const DELETE_BOT_ERROR = 'DELETE_BOT_ERROR';
+export const GET_EXCHANGE_INFO = 'GET_EXCHANGE_INFO';
+export const GET_EXCHANGE_INFO_SUCCESS = 'GET_EXCHANGE_INFO_SUCCESS';
+export const GET_EXCHANGE_INFO_ERROR = 'GET_EXCHANGE_INFO_ERROR';
 export const DEFAULT_LOCALE = 'en';
 
 
@@ -246,5 +249,32 @@ export function deleteBotFailed(error) {
     isLoading: false,
     isError: true,
     error: error.message,
+  };
+}
+
+
+export function getExchangeInfo() {
+  return {
+    type: GET_EXCHANGE_INFO,
+    isLoading: false,
+    isError: false,
+  };
+}
+
+export function getExchangeInfoSucceeded(res) {
+  return {
+    type: GET_EXCHANGE_INFO_SUCCESS,
+    isLoading: false,
+    isError: false,
+    data: res.data
+  };
+}
+
+export function getExchangeInfoFailed(error) {
+  return {
+    type: GET_EXCHANGE_INFO_ERROR,
+    isLoading: false,
+    isError: true,
+    error: error,
   };
 }

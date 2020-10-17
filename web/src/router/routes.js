@@ -3,6 +3,7 @@ import TableList from "components/Tables.jsx";
 import UserPage from "components/User.jsx";
 import Registration from "containers/registration/Registration";
 import Bots from "pages/bots/Bots";
+import BotForm from "pages/bots/BotForm";
 
 var routes = [
   {
@@ -16,11 +17,31 @@ var routes = [
   },
   {
     path: "/bots",
+    exact: true,
     name: "Bots",
     icon: "nc-icon nc-tile-56",
     component: Bots,
     layout: "/admin",
     nav: true,
+    private: true,
+  },
+  {
+    path: "/bots-create",
+    exact: true,
+    name: "Create new Bot",
+    icon: "nc-icon nc-tile-56",
+    component: BotForm,
+    layout: "/admin",
+    nav: false,
+    private: true
+  },
+  {
+    path: "/bots-edit/:id",
+    name: "Edit Bot",
+    icon: "nc-icon nc-tile-56",
+    component: BotForm,
+    layout: "/admin",
+    nav: false,
     private: true
   },
   {

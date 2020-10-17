@@ -19,3 +19,7 @@ def get():
 @account_blueprint.route("/balance", methods=["GET"])
 def getAuth():
 	return Account().get_balances()
+
+@account_blueprint.route("/symbols", methods=["GET"])
+def get_symbols():
+	return Account().get_symbols()
