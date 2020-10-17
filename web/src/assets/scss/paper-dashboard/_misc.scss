@@ -177,3 +177,7 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
 .u-primary-color {
   color: $primary-color;
 }
+
+.u-required {
+  color: $danger-color;
+}

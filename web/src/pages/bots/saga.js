@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getExchangeInfoFailed, getExchangeInfoSucceeded, GET_BOT, GET_BOTS, GET_EXCHANGE_INFO } from './actions';
+import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolsFailed, getSymbolsSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS } from './actions';
 
 /**
  * Bots request/response handler
@@ -100,8 +100,8 @@ export function* deleteBot(payload) {
 
 
 
-export function* getExchangeInfo() {
-  const requestURL = `${process.env.REACT_APP_EXCHANGE_INFO}`;
+export function* getSymbols() {
+  const requestURL = `${process.env.REACT_APP_SYMBOLS}`;
   const options = {
     method: 'GET',
     mode: 'cors', // no-cors, *cors, same-origin
@@ -109,9 +109,9 @@ export function* getExchangeInfo() {
   }
   try {
     const res = yield call(request, requestURL, options);
-    yield put(getExchangeInfoSucceeded(res));
+    yield put(getSymbolsSucceeded(res));
   } catch (err) {
-    yield put(getExchangeInfoFailed(err));
+    yield put(getSymbolsFailed(err));
   }
 }
 
@@ -128,5 +128,5 @@ export default function* watchBot() {
   yield takeLatest(CREATE_BOT, createBot);
   yield takeLatest(EDIT_BOT, editBot);
   yield takeLatest(DELETE_BOT, deleteBot);
-  yield takeLatest(GET_EXCHANGE_INFO, getExchangeInfo);
+  yield takeLatest(GET_SYMBOLS, getSymbols);
 }

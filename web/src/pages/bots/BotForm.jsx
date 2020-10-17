@@ -1,8 +1,9 @@
 import React from "react";
 import { connect } from "react-redux";
-import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Container, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane, Badge } from "reactstrap";
-import { getBalance }  from "../dashboard/actions";
-import { getExchangeInfo } from "./actions";
+import { Badge, Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Container, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from "reactstrap";
+import { getBalance } from "../dashboard/actions";
+import { getSymbols } from "./actions";
+import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance, percentageToFloat } from "./validations.js";
 
 class BotForm extends React.Component {
 
@@ -12,25 +13,27 @@ class BotForm extends React.Component {
       _id: null,
       active: false,
       balance_available: "0",
+      balance_available_asset: "",
+      balanceAvailableError: false,
       balance_usage: '1',
       balanceUsageError: false,
       balance_usage_size: '', // Computed
       base_order_size: '',
+      baseOrderSizeError: false,
       cooldown: '0',
       deal_min_value: '0.001',
       max_so_count: '3',
       maxSOCountError: false,
       name: 'Default bot',
       nameError: false,
-      pair: 'BTCUSDT',
-      pairError: false,
+      pair: '',
       price_deviation_so: '0.0063',
       priceDevSoError: false,
       so_size: '0.0001',
       soSizeError: false,
       start_condition: true,
       strategy: 'long',
-      take_profit: '0.003',
+      take_profit: '0.03',
       takeProfitError: false,
       trailling: 'false',
       trailling_deviation: '0.0',
@@ -41,38 +44,18 @@ class BotForm extends React.Component {
 
   componentDidMount = () => {
     this.props.getBalance();
-    this.props.getExchangeInfo();
-  }
-
-  checkValue = (value) => {
-    if (value === '' || value === null || value === undefined) {
-      return true;
-    }
-    return false;
-  }
-
-  checkMinValue = (value) => {
-    /**
-     * Check float value reaches minimum
-     */
-    const a = parseFloat(value)
-    // Min required to operate
-    const b = parseFloat("0.001")
-    if (a > b) {
-      return true;
-    }
-    return false;
+    this.props.getSymbols();
   }
 
   requiredinValidation = () => {
     const { balance_usage, pair } = this.state;
-    if (this.checkValue(balance_usage) && this.checkMinValue(balance_usage)) {
+    if (checkValue(balance_usage) && checkMinValue(balance_usage)) {
       this.setState({ balanceUsageError: true, formIsValid: false });
     } else {
       this.setState({ balanceUsageError: false });
     }
 
-    if (this.checkValue(pair)) {
+    if (checkValue(pair)) {
       this.setState({ pairError: true, formIsValid: false });
     } else {
       this.setState({ pairError: false });
@@ -82,7 +65,6 @@ class BotForm extends React.Component {
   }
 
   handleChange = (e) => {
-    this.requiredinValidation();
     this.setState({ [e.target.name]: e.target.value });
   }
 
@@ -99,10 +81,65 @@ class BotForm extends React.Component {
     if (activeTab !== tab) this.setState({ activeTab: tab })
   }
 
-  handleBaseOrder = () => {
-    const balance = "0.003"
-    this.setState({ base_order_size: balance })
+  computeAvailableBalance = () => {
+    const { pair } = this.state;
+    const { balances } = this.props;
+    let value = "0";
+    let name = "";
+    balances.forEach(x => {
+      if (pair.includes(x.asset)) {
+        value = x.free
+        name = x.asset
+      }
+    })
+    this.setState({ balance_available: value, balance_available_asset: name });
+
   }
+
+  handlePairChange = (e) => {
+    this.setState({ [e.target.name]: e.target.value }, () => {
+      this.computeAvailableBalance();
+    });
+  }
+
+  handlePairBlur = () => {
+    if (this.state.balance_available === "0" || this.state.balance_available === 0) {
+      this.setState({ balanceAvailableError: true });
+    } else {
+      this.setState({ balanceAvailableError: false });
+    }
+  }
+
+  handleBaseChange = (e) => {
+    const { balance_available_asset } = this.state;
+    const qty = getCurrentPairBalance(this.props.balances, balance_available_asset);
+    if (!checkValue(qty) && !checkBalance(qty)) {
+      const updatedValue = qty - (e.target.value * 1)
+
+      // Check that we have enough funds
+      // If not return error
+      if (parseFloat(updatedValue) >= 0) {
+        this.setState({ [e.target.name]: e.target.value, balance_available: updatedValue, baseOrderSizeError: false })
+      } else {
+        this.setState({ [e.target.name]: e.target.value, baseOrderSizeError: true, formIsValid: false })
+      }
+
+    }
+  }
+
+  addAll = () => {
+    const { balance_available_asset } = this.state;
+    const qty = getCurrentPairBalance(this.props.balances, balance_available_asset);
+    if (!checkValue(qty) && !checkBalance(qty)) {
+      this.setState({ base_order_size: String(qty) })
+    }
+  }
+
+  handlePercentageChanges = (e) => {
+    const value = percentageToFloat(e.target.value);
+    this.setState({ [e.target.name]: value });
+  }
+
 
   render() {
     return (
@@ -172,14 +209,15 @@ class BotForm extends React.Component {
                     <TabPane tabId="main">
                       <Row className="u-margin-bottom">
                         <Col md="6" sm="12">
-                          <Label for="pair">Select Pair</Label>
-                          <Input invalid={this.state.pairError} type="select" name="pair" id="pair" onChange={this.handleChange} value={this.state.pair}>
-                            <option value="BTCUSDT">BTCUSDT</option>
-                            <option value="STORJBUSD">STORJBUSD</option>
-                            <option value="BNBBUSD">BNBBUSD</option>
-                            <option value="BNBBUSD">BNBBUSD</option>
+                          <Label for="pair">Pair<span className="u-required">*</span></Label>
+                          <Input invalid={this.state.balanceAvailableError} type="select" name="pair" id="pair" onChange={this.handlePairChange} onBlur={this.handlePairBlur} value={this.state.pair}>
+                            <option value="" defaultChecked>Select pair</option>
+                            {this.props.symbols && this.props.symbols.map((x, i) => (
+                              <option key={i} value={x}>{x}</option>
+                            ))}
+
                           </Input>
-                          <FormFeedback><strong>Pair</strong> is required.</FormFeedback>
+                          <FormFeedback valid={!this.state.balanceAvailableError}><strong>Balance</strong> is not available for this pair.</FormFeedback>
                         </Col>
                         <Col md="6" sm="12">
                           <Label htmlFor="name">Name</Label>
@@ -188,7 +226,7 @@ class BotForm extends React.Component {
                       </Row>
                       <Row className="u-margin-bottom">
                         <Col md="6" sm="12">
-                          <Label htmlFor="strategy">Strategy</Label>
+                          <Label htmlFor="strategy">Strategy<span className="u-required">*</span></Label>
                           <Input type="select" name="strategy" onChange={this.handleChange} value={this.state.strategy}>
                             <option defaultChecked value="long">Long</option>
                             <option value="short">Short</option>
@@ -196,9 +234,10 @@ class BotForm extends React.Component {
                           <small>Long for trends. Short for vertical movement.</small>
                         </Col>
                         <Col md="6" sm="12">
-                          <label htmlFor="base_order_size">Base order size</label>
-                          <Input type="number" step="0.001" name="base_order_size" onChange={this.handleChange} value={this.state.base_order_size} />
-                          <Badge color="secondary" onClick={this.handleBaseOrder}>All</Badge>
+                          <label htmlFor="base_order_size">Base order size<span className="u-required">*</span></label>
+                          <Input invalid={this.state.baseOrderSizeError} type="text" name="base_order_size" onChange={this.handleBaseChange} value={this.state.base_order_size} />
+                          <FormFeedback valid={!this.state.baseOrderSizeError} >Not enough balance</FormFeedback>
+                          <Badge color="secondary" onClick={this.addAll}>All</Badge>
                         </Col>
                       </Row>
                       <Row className="u-margin-bottom">
@@ -227,14 +266,14 @@ class BotForm extends React.Component {
                         </Col>
                         <Col md="6" sm="12">
                           <Label for="so_size">Safety order size</Label>
-                          <Input invalid={this.state.soSizeError} type="number" name="so_size" id="so_size" onChange={this.handleChange} value={this.state.so_size} />
+                          <Input invalid={this.state.soSizeError} type="number" name="so_size" id="so_size" onChange={this.handleChange} onBlur={() => this.updateBalance(this.state.so_size, this.state.max_so_count)} value={this.state.so_size} />
                           <FormFeedback><strong>Safety order size</strong> is required.</FormFeedback>
                         </Col>
                       </Row>
                       <Row className="u-margin-bottom">
                         <Col md="10" sm="12">
                           <Label htmlFor="price_deviation_so">Price deviation</Label>
-                          <Input invalid={this.state.priceDevSoError} type="number" name="price_deviation_so" id="price_deviation_so" onChange={this.handleChange} value={this.state.price_deviation_so} />
+                          <Input invalid={this.state.priceDevSoError} type="number" name="price_deviation_so" id="price_deviation_so" onChange={this.handlePercentageChanges} value={this.state.price_deviation_so} />
                           <FormFeedback><strong>Price deviation</strong> is required.</FormFeedback>
                           <small>How much does the price have to drop to create a Safety Order?</small>
                         </Col>
@@ -248,7 +287,7 @@ class BotForm extends React.Component {
                       <Container>
                         <Row className="u-margin-bottom">
                           <Col md="8" sm="12">
-                            <Label for="take_profit">Take profit at:</Label>
+                            <Label for="take_profit">Take profit at: <span className="u-required">*</span></Label>
                             <Input invalid={this.state.takeProfitError} type="number" name="take_profit" id="take_profit" onChange={this.handleChange} value={this.state.take_profit} />
                             <FormFeedback><strong>Take profit</strong> is required.</FormFeedback>
                           </Col>
@@ -264,7 +303,7 @@ class BotForm extends React.Component {
                           {this.state.trailling === "true" &&
                             <Col md="6" sm="12">
                               <Label htmlFor="trailling_deviation">Trailling deviation</Label>
-                              <Input type="text" name="trailling_deviation" onChange={this.handleChange} value={this.state.trailling_deviation} />
+                              <Input type="text" name="trailling_deviation" onChange={this.handlePercentageChanges} value={this.state.trailling_deviation} />
                             </Col>
                           }
                         </Row>
@@ -272,15 +311,9 @@ class BotForm extends React.Component {
                     </TabPane>
 
                   </TabContent>
-
-
                   <Row>
                     <div className="update ml-auto mr-auto">
-                      <Button
-                        className="btn-round"
-                        color="primary"
-                        type="submit"
-                      >Save</Button>
+                      <Button className="btn-round" color="primary" type="submit" >Save</Button>
                     </div>
                   </Row>
 
@@ -298,8 +331,8 @@ class BotForm extends React.Component {
                       Balance usage ({100 * this.state.balance_usage}%)
                     </Col>
                     <Col md="4" sm="12">
-                      {this.props.balances && this.props.balances.map((e, i) => 
-                          <div key={i} className="u-primary-color"><strong>{`${e.free} ${e.asset}`}</strong></div>
+                      {this.props.balances && this.props.balances.map((e, i) =>
+                        <div key={i} className="u-primary-color"><strong>{`${e.free} ${e.asset}`}</strong></div>
                       )}
                     </Col>
                   </Row>
@@ -308,7 +341,7 @@ class BotForm extends React.Component {
                       Balance available for Safety Orders
                     </Col>
                     <Col md="4" sm="12">
-                      0.003 BNB
+                      <div className="u-primary-color"><strong>{`${this.state.balance_available} ${this.state.balance_available_asset}`}</strong></div>
                     </Col>
                   </Row>
                 </CardBody>
@@ -324,10 +357,12 @@ class BotForm extends React.Component {
 
 const mapStateToProps = (state) => {
   const { data: balances } = state.balanceReducer;
+  const { data: symbols } = state.botReducer;
 
   return {
     balances: balances,
+    symbols: symbols,
   }
 }
 
-export default connect(mapStateToProps, { getBalance, getExchangeInfo })(BotForm);
+export default connect(mapStateToProps, { getBalance, getSymbols })(BotForm);

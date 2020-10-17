@@ -1,13 +1,16 @@
-import time as tm
 import hashlib
 import hmac
 import json
-from urllib.parse import urlparse
-import requests
-import pandas as pd
-from main.tools.handle_error import handle_error
-from main.tools.jsonresp import jsonResp
 import os
+import time as tm
+from urllib.parse import urlparse
+
+import pandas as pd
+import requests
+from flask import request
+from main.tools.handle_error import handle_error
+from main.tools.jsonresp import jsonResp, jsonResp_message
+
 
 class Account:
 
@@ -19,6 +22,7 @@ class Account:
     account_url = os.getenv('ACCOUNT')
     candlestick_url = os.getenv('CANDLESTICK')
     exchangeinfo_url = os.getenv('EXCHANGE_INFO')
+    ticker_price = os.getenv('TICKER_PRICE')
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
@@ -46,6 +50,11 @@ class Account:
 
     def _exchange_info(self):
         url = self.base_url + self.exchangeinfo_url
+        r = requests.get(url=url)
+        return r.json()
+
+    def _ticker_price(self):
+        url = self.base_url + self.ticker_price
         r = requests.get(url=url)
         return r.json()
 
@@ -78,6 +87,16 @@ class Account:
         base_asset = next((s for s in symbols if s["symbol"] == symbol), None)["baseAsset"]
         return base_asset
 
-    def get_symbols(self):
+    def get_symbol_info(self):
         symbols = self._exchange_info()["symbols"]
-        return jsonResp(symbols, 200)
+        pair = request.view_args["pair"]
+        symbol = next((s for s in symbols if s["symbol"] == pair), None)
+        if symbol:
+            return jsonResp({"data": symbol}, 200)
+        else:
+            return jsonResp_message("Pair not found", 200)
+
+    def get_symbols(self):
+        symbols = self._ticker_price()
+        symbols_list = [x["symbol"] for x in symbols]
+        return jsonResp({"data": symbols_list}, 200)
