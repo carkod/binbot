@@ -99,4 +99,5 @@ class Account:
     def get_symbols(self):
         symbols = self._ticker_price()
         symbols_list = [x["symbol"] for x in symbols]
+        symbols_list.sort()
         return jsonResp({"data": symbols_list}, 200)

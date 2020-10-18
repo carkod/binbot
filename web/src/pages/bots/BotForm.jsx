@@ -1,9 +1,10 @@
+import BalanceAnalysis from "components/BalanceAnalysis";
 import React from "react";
 import { connect } from "react-redux";
-import { Badge, Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Container, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from "reactstrap";
+import { Badge, Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Container, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane, Alert } from "reactstrap";
 import { getBalance } from "../dashboard/actions";
 import { getSymbols, getSymbolInfo } from "./actions";
-import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance, percentageToFloat, toPercentage } from "./validations.js";
+import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance } from "./validations.js";
 
 class BotForm extends React.Component {
 
@@ -17,7 +18,7 @@ class BotForm extends React.Component {
       balanceAvailableError: false,
       balance_usage: '1',
       balanceUsageError: false,
-      balance_usage_size: '', // Computed
+      balance_usage_size: '0', // Computed
       base_order_size: '',
       baseOrderSizeError: false,
       cooldown: '0',
@@ -37,6 +38,7 @@ class BotForm extends React.Component {
       takeProfitError: false,
       trailling: 'false',
       trailling_deviation: '0.63',
+      traillingDeviationError: false,
       formIsValid: false,
       activeTab: 'main'
     }
@@ -57,7 +59,7 @@ class BotForm extends React.Component {
   }
 
   requiredinValidation = () => {
-    const { balance_usage, pair, take_profit, base_order_size } = this.state;
+    const { balance_usage, pair, take_profit, base_order_size, max_so_count, so_size, trailling, trailling_deviation } = this.state;
     if (checkValue(balance_usage) && checkMinValue(balance_usage)) {
       this.setState({ balanceUsageError: true, formIsValid: false });
     } else {
@@ -70,16 +72,32 @@ class BotForm extends React.Component {
       this.setState({ pairError: false });
     }
 
-    if (checkValue(base_order_size)) {
+    if (checkValue(base_order_size) && checkBalance(base_order_size)) {
       this.setState({ baseOrderSizeError: true, formIsValid: false });
     } else {
       this.setState({ baseOrderSizeError: false });
     }
 
-    if (checkValue(take_profit)) {
+    if (checkValue(take_profit) && checkBalance(take_profit)) {
       this.setState({ takeProfitError: true, formIsValid: false });
     } else {
       this.setState({ takeProfitError: false });
+    }
+
+    if (checkValue(max_so_count)) {
+      if (checkBalance(so_size) && checkBalance(so_size)) {
+        this.setState({ soSizeError: true, formIsValid: false });
+      } else {
+        this.setState({ soSizeError: false });
+      }
+    }
+
+    if (trailling === "true") {
+      if (checkBalance(trailling_deviation) && checkBalance(trailling_deviation)) {
+        this.setState({ traillingDeviationError: true, formIsValid: false });
+      } else {
+        this.setState({ traillingDeviationError: false });
+      }
     }
 
     this.setState({ formIsValid: true });
@@ -93,7 +111,7 @@ class BotForm extends React.Component {
     e.preventDefault();
     this.requiredinValidation()
     if (this.state.formIsValid) {
-      this.props.onSubmit(this.state);
+      // this.props.onSubmit(this.state);
     }
   }
 
@@ -186,7 +204,6 @@ class BotForm extends React.Component {
   }
 
   handlePercentageChanges = (e) => {
-    const value = percentageToFloat(e.target.value);
     this.setState({ [e.target.name]: e.target.value });
   }
 
@@ -369,36 +386,28 @@ class BotForm extends React.Component {
                       <Button className="btn-round" color="primary" type="submit" >Save</Button>
                     </div>
                   </Row>
-
+                  {!this.state.formIsValid &&
+                  <Row>
+                    <Col md="12">
+                      <Alert color="danger">
+                        <p>There are fields with errors</p>
+                        <ul>
+                          {this.state.pairError && <li>Pair</li> }
+                          {this.state.baseOrderSizeError && <li>Base order size</li> }
+                          {this.state.soSizeError && <li>Safety order size</li> }
+                          {this.state.priceDevSoError && <li>Price deviation</li> }
+                          {this.state.takeProfitError && <li>Take profit</li> }
+                          {this.state.traillingDeviationError && <li>Trailling deviation</li> }
+                        </ul>
+                      </Alert>
+                    </Col>
+                  </Row>
+                  }
                 </CardBody>
               </Card>
             </Col>
             <Col md="5" sm="12">
-              <Card>
-                <CardHeader>
-                  <CardTitle tag="h5">Balance Analysis</CardTitle>
-                </CardHeader>
-                <CardBody>
-                  <Row className="u-margin-bottom">
-                    <Col md="8" sm="12">
-                      Balance usage ({100 * this.state.balance_usage}%)
-                    </Col>
-                    <Col md="4" sm="12">
-                      {this.props.balances && this.props.balances.map((e, i) =>
-                        <div key={i} className="u-primary-color"><strong>{`${e.free} ${e.asset}`}</strong></div>
-                      )}
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col md="8" sm="12">
-                      Balance available for Safety Orders
-                    </Col>
-                    <Col md="4" sm="12">
-                      <div className="u-primary-color"><strong>{`${this.state.balance_available} ${this.state.balance_available_asset}`}</strong></div>
-                    </Col>
-                  </Row>
-                </CardBody>
-              </Card>
+              <BalanceAnalysis balances={this.props.balances} balance_usage={this.state.balance_usage} balance_available={this.state.balance_available} balance_available_asset={this.state.balance_available_asset} />
             </Col>
 
           </Row>

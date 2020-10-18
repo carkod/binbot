@@ -13,17 +13,16 @@ account_blueprint = Blueprint("account", __name__)
 
 @account_blueprint.route("/", methods=["GET"])
 def get():
-	return Account().get_balances()
-
+    return Account().get_balances()
 
 @account_blueprint.route("/balance", methods=["GET"])
 def getAuth():
-	return Account().get_balances()
+    return Account().get_balances()
 
 @account_blueprint.route("/symbols/", methods=["GET"])
 def get_symbols():
-	return Account().get_symbols()
+    return Account().get_symbols()
 
 @account_blueprint.route("/symbol/<pair>", methods=["GET"])
 def get_symbol_info(pair):
-	return Account().get_symbol_info()
+    return Account().get_symbol_info()
