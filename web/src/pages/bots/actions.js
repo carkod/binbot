@@ -16,6 +16,9 @@ export const DELETE_BOT_ERROR = 'DELETE_BOT_ERROR';
 export const GET_SYMBOLS = 'GET_SYMBOLS';
 export const GET_SYMBOLS_SUCCESS = 'GET_SYMBOLS_SUCCESS';
 export const GET_SYMBOLS_ERROR = 'GET_SYMBOLS_ERROR';
+export const GET_SYMBOL_INFO = 'GET_SYMBOL_INFO';
+export const GET_SYMBOL_INFO_SUCCESS = 'GET_SYMBOL_INFO_SUCCESS';
+export const GET_SYMBOL_INFO_ERROR = 'GET_SYMBOL_INFO_ERROR';
 export const DEFAULT_LOCALE = 'en';
 
 
@@ -273,6 +276,33 @@ export function getSymbolsSucceeded(res) {
 export function getSymbolsFailed(error) {
   return {
     type: GET_SYMBOLS_ERROR,
+    isLoading: false,
+    isError: true,
+    error: error.message,
+  };
+}
+
+export function getSymbolInfo(pair) {
+  return {
+    type: GET_SYMBOL_INFO,
+    isLoading: false,
+    isError: false,
+    data: pair,
+  };
+}
+
+export function getSymbolInfoSucceeded(res) {
+  return {
+    type: GET_SYMBOL_INFO_SUCCESS,
+    isLoading: false,
+    isError: false,
+    data: res.data
+  };
+}
+
+export function getSymbolInfoFailed(error) {
+  return {
+    type: GET_SYMBOL_INFO_ERROR,
     isLoading: false,
     isError: true,
     error: error.message,

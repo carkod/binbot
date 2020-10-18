@@ -36,11 +36,17 @@ const getCurrentPairBalance = (balances, currentAsset) => {
 }
 
 const toPercentage = (value) => {
+    if (checkValue(value)) {
+        return null;
+    }
     const decimal = parseFloat(value) * 100;
-    return decimal + "%";
+    return decimal;
 }
 
 const percentageToFloat = (value) => {
+    if (checkValue(value)) {
+        return null;
+    }
     const tofloat = parseFloat(value) / 100;
     return tofloat;
 }

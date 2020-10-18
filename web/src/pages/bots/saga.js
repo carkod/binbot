@@ -1,6 +1,6 @@
-import { call, put, takeLatest } from 'redux-saga/effects';
+import { call, put, takeLatest, all } from 'redux-saga/effects';
 import request from '../../request';
-import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolsFailed, getSymbolsSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS } from './actions';
+import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolsFailed, getSymbolsSucceeded, getSymbolInfoFailed, getSymbolInfoSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS, GET_SYMBOL_INFO } from './actions';
 
 /**
  * Bots request/response handler
@@ -99,7 +99,6 @@ export function* deleteBot(payload) {
 }
 
 
-
 export function* getSymbols() {
   const requestURL = `${process.env.REACT_APP_SYMBOLS}`;
   const options = {
@@ -115,6 +114,22 @@ export function* getSymbols() {
   }
 }
 
+export function* getSymbolInfo(payload) {
+  const pair = payload.data;
+  const requestURL = `${process.env.REACT_APP_SYMBOL_INFO}/${pair}`;
+  const options = {
+    method: 'GET',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  }
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(getSymbolInfoSucceeded(res));
+  } catch (err) {
+    yield put(getSymbolInfoFailed(err));
+  }
+}
+
 /**
  * Root saga manages watcher lifecycle
  * Watches for LOAD_REPOS actions and calls getRepos when one comes in.
@@ -123,10 +138,13 @@ export function* getSymbols() {
  * It will be cancelled automatically on component unmount
  */
 export default function* watchBot() {
-  yield takeLatest(GET_BOT, getBot);
-  yield takeLatest(GET_BOTS, getBots);
-  yield takeLatest(CREATE_BOT, createBot);
-  yield takeLatest(EDIT_BOT, editBot);
-  yield takeLatest(DELETE_BOT, deleteBot);
-  yield takeLatest(GET_SYMBOLS, getSymbols);
+  yield all([
+    takeLatest(GET_SYMBOL_INFO, getSymbolInfo),
+    takeLatest(GET_BOT, getBot),
+    takeLatest(GET_BOTS, getBots),
+    takeLatest(CREATE_BOT, createBot),
+    takeLatest(EDIT_BOT, editBot),
+    takeLatest(DELETE_BOT, deleteBot),
+    takeLatest(GET_SYMBOLS, getSymbols),
+  ])
 }
