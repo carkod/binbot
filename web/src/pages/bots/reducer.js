@@ -73,7 +73,7 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
-        data: action.data
+        data: state.data
       };
 
       return newState;
@@ -155,6 +155,14 @@ function botReducer(state = initialState, action) {
       };
     }
 
+    default:
+      return state;
+  }
+}
+
+function symbolReducer(state=initialState, action) {
+  switch (action.type) {
+
     case GET_SYMBOLS: {
       const newState = {
         isLoading: true,
@@ -188,7 +196,6 @@ function botReducer(state = initialState, action) {
       return state;
   }
 }
-
 
 function symbolInfoReducer(state=initialState, action) {
   switch (action.type) {
@@ -226,4 +233,5 @@ function symbolInfoReducer(state=initialState, action) {
   }
 }
 
-export { botReducer, symbolInfoReducer };
+
+export { botReducer, symbolInfoReducer, symbolReducer };

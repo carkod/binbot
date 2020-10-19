@@ -1,6 +1,6 @@
-import { call, put, takeLatest, all } from 'redux-saga/effects';
+import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolsFailed, getSymbolsSucceeded, getSymbolInfoFailed, getSymbolInfoSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS, GET_SYMBOL_INFO } from './actions';
+import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolInfoFailed, getSymbolInfoSucceeded, getSymbolsFailed, getSymbolsSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS, GET_SYMBOL_INFO } from './actions';
 
 /**
  * Bots request/response handler
@@ -43,11 +43,12 @@ export function* getBot(id) {
  */
 export function* createBot(body) {
   const { data } = body;
-  const requestURL = `${process.env.REACT_APP_GET_BOTS}`;
+  const requestURL = `${process.env.REACT_APP_GET_BOTS}/`;
   const options = {
     method: 'POST',
     mode: 'cors', // no-cors, *cors, same-origin
     cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+    headers: new Headers({"content-type": "application/json", "accept": "application/json"}),
     body: JSON.stringify(data)
   }
   try {
@@ -58,6 +59,9 @@ export function* createBot(body) {
   }
 }
 
+export function* watchCreateBot() {
+  yield takeLatest(CREATE_BOT, createBot)
+}
 
 /**
  * Get single bot
@@ -77,6 +81,10 @@ export function* editBot(id, body) {
   } catch (err) {
     yield put(editBotFailed(err));
   }
+}
+
+export function* watchEditBot() {
+  yield takeLatest(EDIT_BOT, editBot)
 }
 
 /**
@@ -138,13 +146,9 @@ export function* getSymbolInfo(payload) {
  * It will be cancelled automatically on component unmount
  */
 export default function* watchBot() {
-  yield all([
-    takeLatest(GET_SYMBOL_INFO, getSymbolInfo),
-    takeLatest(GET_BOT, getBot),
-    takeLatest(GET_BOTS, getBots),
-    takeLatest(CREATE_BOT, createBot),
-    takeLatest(EDIT_BOT, editBot),
-    takeLatest(DELETE_BOT, deleteBot),
-    takeLatest(GET_SYMBOLS, getSymbols),
-  ])
+  yield takeLatest(GET_SYMBOL_INFO, getSymbolInfo)
+  yield takeLatest(GET_BOT, getBot)
+  yield takeLatest(GET_BOTS, getBots)
+  yield takeLatest(DELETE_BOT, deleteBot)
+  yield takeLatest(GET_SYMBOLS, getSymbols)
 }

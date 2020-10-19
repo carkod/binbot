@@ -8,9 +8,15 @@ import { loginFailed, loginSucceeded, LOGIN } from './actions';
 export function* postLogin(body) {
   const { data } = body;
   const requestURL = process.env.REACT_APP_LOGIN;
+  const options = {
+    method: 'POST',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+    body: JSON.stringify(data)
+  }
   try {
     // Call our request helper (see 'utils/request')
-    const res = yield call(request, requestURL, { method: 'POST', body: JSON.stringify(data)});
+    const res = yield call(request, requestURL, options);
     setToken(res.access_token)
     yield put(loginSucceeded(res));
   } catch (err) {

@@ -119,11 +119,12 @@ export function getBotFailed(error) {
  *
  * @return {object} An action object with a type of BOT
  */
-export function createBot() {
+export function createBot(body) {
   return {
     type: CREATE_BOT,
     isLoading: true,
     isError: false,
+    data: body
   };
 }
 
@@ -140,7 +141,8 @@ export function createBotSucceeded(res) {
     type: CREATE_BOT_SUCCESS,
     isLoading: false,
     isError: false,
-    bots: res
+    bots: res.botId,
+    message: res.message
   };
 }
 
@@ -157,6 +159,7 @@ export function createBotFailed(error) {
     isLoading: false,
     isError: true,
     data: error,
+    message: error.message
   };
 }
 

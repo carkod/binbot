@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Col, Row } from "reactstrap";
 import { login, loginSucceeded, loginFailed } from './actions';
-import { postLogin } from './saga';
 
 class Login extends Component {
 
@@ -14,7 +13,7 @@ class Login extends Component {
       username: data.username,
       description: data.description
     }
-    this.props.postLogin(credentials);
+    this.props.login(credentials);
     this.props.history.push('/');
   }
 
@@ -37,4 +36,4 @@ const mapStateToProps = (state) => {
   return {}
 }
 
-export default connect(mapStateToProps, { login, loginSucceeded, loginFailed, postLogin })(Login);
+export default connect(mapStateToProps, { login, loginSucceeded, loginFailed })(Login);

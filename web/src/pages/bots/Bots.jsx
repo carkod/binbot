@@ -18,7 +18,7 @@ class Bots extends React.Component {
   }
 
   handleNew = () => {
-    this.props.handleNew();
+    this.props.history.replace("/admin/bots-create");
   }
 
   handleDelete = (id) => {

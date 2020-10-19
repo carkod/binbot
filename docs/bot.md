@@ -20,5 +20,6 @@ Create, Edit body
 "trailling_deviation": 0.0063,
 "deal_min_value": 0,
 "cooldown": 0,
+"auto_strategy": "false", # Flip strategy automatically
 "deals": [],
 ```
