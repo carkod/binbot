@@ -44,21 +44,28 @@ class User:
         data = request.json
         email = data["email"].lower()
         user = app.db.users.find_one({"email": email})
-        verify = pbkdf2_sha256.verify(data["password"], user["password"])
-        if user and verify:
-            access_token = auth.encodeAccessToken(user["password"], user["email"])
+        if user:
+            verify = pbkdf2_sha256.verify(data["password"], user["password"])
+            if verify:
+                access_token = auth.encodeAccessToken(user["password"], user["email"])
 
-            app.db.users.update_one({"_id": user["_id"]}, {"$set": {
-                "access_token": access_token,
-                "last_login": nowDatetimeUTC()
-            }})
+                app.db.users.update_one({"_id": user["_id"]}, {"$set": {
+                    "access_token": access_token,
+                    "last_login": nowDatetimeUTC()
+                }})
 
-            resp = jsonResp({
-                "_id": user["_id"],
-                "email": user["email"],
-                "access_token": access_token,
-            }, 200)
+                resp = jsonResp({
+                    "_id": user["_id"],
+                    "email": user["email"],
+                    "access_token": access_token,
+                }, 200)
 
+                return resp
+            else:
+                resp = jsonResp({"message": "Password verification failed"}, 200)
+                return resp
+        else:
+            resp = jsonResp({"message": "User not found"}, 200)
         return resp
 
     def logout(self):
