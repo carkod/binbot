@@ -27,7 +27,6 @@ class Bots extends React.Component {
 
   render() {
     const { bots } = this.props;
-    console.log(bots)
     return (
       <>
         <div className="content">
@@ -117,7 +116,7 @@ class Bots extends React.Component {
                   <CardFooter>
                     <hr />
                     <div className="u-space-between">
-                      <Button color="info"><i className="fas fa-edit" /></Button>
+                      <Button color="info" onClick={() => this.props.history.push(`/admin/bots-edit/${x._id.$oid}`)}><i className="fas fa-edit" /></Button>
                       <Button color="danger" onClick={() => this.handleDelete(x._id.$oid)}><i className="fas fa-trash" /></Button>
                     </div>
                   </CardFooter>

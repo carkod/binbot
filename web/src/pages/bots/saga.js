@@ -23,7 +23,8 @@ export function* getBots() {
 /**
  * Get single bot
  */
-export function* getBot(id) {
+export function* getBot(payload) {
+  const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
   const options = {
     method: 'GET',
@@ -38,6 +39,10 @@ export function* getBot(id) {
   }
 }
 
+export function* watchGetBot() {
+  yield takeLatest(GET_BOT, getBot);
+}
+
 /**
  * Create bot
  */
@@ -48,7 +53,7 @@ export function* createBot(body) {
     method: 'POST',
     mode: 'cors', // no-cors, *cors, same-origin
     cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-    headers: new Headers({"content-type": "application/json", "accept": "application/json"}),
+    headers: {"content-type": "application/json", "accept": "application/json"},
     body: JSON.stringify(data)
   }
   try {
@@ -66,13 +71,14 @@ export function* watchCreateBot() {
 /**
  * Get single bot
  */
-export function* editBot(id, body) {
-  const { data } = body;
+export function* editBot(payload) {
+  const { data, id } = payload;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
   const options = {
     method: 'PUT',
     mode: 'cors', // no-cors, *cors, same-origin
     cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+    headers: {"content-type": "application/json", "accept": "application/json"},
     body: JSON.stringify(data)
   }
   try {
@@ -147,7 +153,6 @@ export function* getSymbolInfo(payload) {
  */
 export default function* watchBot() {
   yield takeLatest(GET_SYMBOL_INFO, getSymbolInfo)
-  yield takeLatest(GET_BOT, getBot)
   yield takeLatest(GET_BOTS, getBots)
   yield takeLatest(DELETE_BOT, deleteBot)
   yield takeLatest(GET_SYMBOLS, getSymbols)

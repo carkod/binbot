@@ -76,7 +76,7 @@ class Bot(Account):
         )
         if botId.acknowledged:
             resp = jsonResp(
-                {"message": "Successfully updated bot", "botId": botId}, 200
+                {"message": "Successfully updated bot", "botId": findId}, 200
             )
         else:
             resp = jsonResp({"message": "Failed to update bot"}, 400)

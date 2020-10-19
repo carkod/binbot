@@ -2,7 +2,7 @@ import { combineReducers } from 'redux';
 import registrationReducer from './containers/registration/reducer';
 import loginReducer from './containers/login/reducer';
 import balanceReducer from './pages/dashboard/reducer';
-import { botReducer, symbolInfoReducer, symbolReducer } from './pages/bots/reducer';
+import { botReducer, symbolInfoReducer, symbolReducer, getSingleBotReducer, editBotReducer } from './pages/bots/reducer';
 
 const rootReducer = combineReducers({
   registrationReducer,
@@ -10,6 +10,8 @@ const rootReducer = combineReducers({
   balanceReducer,
   botReducer,
   symbolInfoReducer,
-  symbolReducer
+  symbolReducer,
+  getSingleBotReducer,
+  editBotReducer,
 })
 export default rootReducer

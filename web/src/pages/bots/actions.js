@@ -73,11 +73,12 @@ export function getBotsFailed(error) {
  *
  * @return {object} An action object with a type of BOT
  */
-export function getBot() {
+export function getBot(id) {
   return {
     type: GET_BOT,
     isLoading: true,
     isError: false,
+    data: id
   };
 }
 
@@ -94,7 +95,8 @@ export function getBotSucceeded(res) {
     type: GET_BOT_SUCCESS,
     isLoading: false,
     isError: false,
-    bots: res
+    bots: res.data,
+    message: res.message
   };
 }
 
@@ -169,11 +171,13 @@ export function createBotFailed(error) {
  *
  * @return {object} An action object with a type of BOT
  */
-export function editBot() {
+export function editBot(id, body) {
   return {
     type: EDIT_BOT,
     isLoading: true,
     isError: false,
+    data: body,
+    id: id,
   };
 }
 

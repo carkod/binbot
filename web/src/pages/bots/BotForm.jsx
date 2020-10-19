@@ -3,7 +3,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { Alert, Badge, Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from "reactstrap";
 import { getBalance } from "../dashboard/actions";
-import { createBot, getSymbolInfo, getSymbols } from "./actions";
+import { createBot, getSymbolInfo, getSymbols, getBot, editBot } from "./actions";
 import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance, percentageToFloat } from "./validations.js";
 
 class BotForm extends React.Component {
@@ -11,7 +11,7 @@ class BotForm extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      _id: null,
+      _id: props.match.params.id ? props.match.params.id : null,
       active: false,
       balance_available: "0",
       balance_available_asset: "",
@@ -40,7 +40,7 @@ class BotForm extends React.Component {
       trailling_deviation: '0.63',
       traillingDeviationError: false,
       auto_strategy: "true",
-      formIsValid: false,
+      formIsValid: true,
       activeTab: 'main',
     }
   }
@@ -48,6 +48,9 @@ class BotForm extends React.Component {
   componentDidMount = () => {
     this.props.getBalance();
     this.props.getSymbols();
+    if (this.props.match.params.id !== null) {
+      this.props.getBot(this.props.match.params.id);
+    }
   }
 
   componentDidUpdate = (p, s) => {
@@ -56,6 +59,24 @@ class BotForm extends React.Component {
     }
     if (s.strategy !== this.state.strategy) {
       this.computeAvailableBalance();
+    }
+    if (p.bot !== this.props.bot) {
+      this.setState({
+        active: this.props.bot.active,
+        balance_usage: this.props.bot.balance_usage,
+        balance_usage_size: this.props.bot.balance_usage_size,
+        base_order_size: this.props.bot.base_order_size,
+        deal_min_value: this.props.bot.deal_min_value,
+        max_so_count: this.props.bot.max_so_count,
+        name: this.props.bot.name,
+        pair: this.props.bot.pair,
+        price_deviation_so: this.props.bot.price_deviation_so,
+        so_size: this.props.bot.so_size,
+        start_condition: this.props.bot.start_condition,
+        strategy: this.props.bot.strategy,
+        trailling: this.props.bot.trailling,
+        trailling_deviation: this.props.bot.trailling_deviation,
+      });
     }
   }
 
@@ -140,7 +161,12 @@ class BotForm extends React.Component {
         trailling: this.state.trailling,
         trailling_deviation: percentageToFloat(this.state.trailling_deviation),
       }
-      this.props.createBot(form);
+      if (this.state._id === null) {
+        this.props.createBot(form);  
+      } else {
+        this.props.editBot(this.state._id, form);
+      }
+      this.props.history.push("/admin/bots");
     }
   }
 
@@ -459,12 +485,14 @@ const mapStateToProps = (state) => {
   const { data: balances } = state.balanceReducer;
   const { data: symbols } = state.symbolReducer;
   const { data: symbolInfo } = state.symbolInfoReducer;
+  const { data: bot } = state.getSingleBotReducer;
 
   return {
     balances: balances,
     symbols: symbols,
-    symbolInfo: symbolInfo
+    symbolInfo: symbolInfo,
+    bot: bot
   }
 }
 
-export default connect(mapStateToProps, { getBalance, getSymbols, getSymbolInfo, createBot })(BotForm);
+export default connect(mapStateToProps, { getBalance, getSymbols, getSymbolInfo, createBot, getBot, editBot })(BotForm);
