@@ -17,7 +17,6 @@ class Buy_Order():
     min_funds = os.getenv("MIN_QTY")
     key = os.getenv("BINANCE_KEY")
     secret = os.getenv("BINANCE_SECRET")
-    base_url = os.getenv("BASE")
     order_url = os.getenv("ORDER")
     order_book_url = os.getenv("ORDER_BOOK")
 
@@ -37,7 +36,7 @@ class Buy_Order():
         # Limit order
         order_type = EnumDefinitions.order_types[0]
         timestamp = int(round(tm.time() * 1000))
-        url = self.base_url + self.order_url
+        url = self.order_url
 
         # Get data for a single crypto e.g. BTT in BNB market
         params = [
@@ -77,7 +76,7 @@ class Buy_Order():
         # Limit order
         order_type = EnumDefinitions.order_types[1]
         timestamp = int(round(tm.time() * 1000))
-        url = self.base_url + self.order_url
+        url = self.order_url
 
         # Get data for a single crypto e.g. BTT in BNB market
         params = [

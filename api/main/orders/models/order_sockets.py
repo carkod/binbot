@@ -10,7 +10,6 @@ class OrderUpdates:
     def __init__(self):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
-        self.base_url = os.getenv("BASE")
         self.ws_base_url = os.getenv("WS_BASE")
         self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
         self.all_orders_url = os.getenv("ALL_ORDERS")
@@ -23,12 +22,12 @@ class OrderUpdates:
         self.active_ws = None
 
     def get_listenkey(self):
-        url = self.base_url + self.user_datastream_listenkey
+        url = self.user_datastream_listenkey
 
         # Get data for a single crypto e.g. BTT in BNB market
         params = []
         headers = {"X-MBX-APIKEY": self.key}
-        url = self.base_url + self.user_datastream_listenkey
+        url = self.user_datastream_listenkey
 
         # Response after request
         res = requests.post(url=url, params=params, headers=headers)

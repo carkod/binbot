@@ -18,7 +18,6 @@ class Account:
     min_amount = 0.1  # MIN_NOTIONAL restriction by Binance
     secret = os.getenv('BINANCE_SECRET')
     key = os.getenv('BINANCE_KEY')
-    base_url = os.getenv('BASE')
     account_url = os.getenv('ACCOUNT')
     candlestick_url = os.getenv('CANDLESTICK')
     exchangeinfo_url = os.getenv('EXCHANGE_INFO')
@@ -29,7 +28,7 @@ class Account:
         # Get data for a single crypto e.g. BTT in BNB market
         params = {'recvWindow': self.recvWindow, 'timestamp': timestamp}
         headers = {'X-MBX-APIKEY': self.key}
-        url = self.base_url + self.account_url
+        url = self.account_url
 
         # Prepare request for signing
         r = requests.Request('GET', url=url, params=params, headers=headers)
@@ -49,12 +48,12 @@ class Account:
         return data
 
     def _exchange_info(self):
-        url = self.base_url + self.exchangeinfo_url
+        url = self.exchangeinfo_url
         r = requests.get(url=url)
         return r.json()
 
     def _ticker_price(self):
-        url = self.base_url + self.ticker_price
+        url = self.ticker_price
         r = requests.get(url=url)
         return r.json()
 

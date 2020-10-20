@@ -8,7 +8,6 @@ class Book_Order:
     def __init__(self, symbol):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
-        self.base_url = os.getenv("BASE")
         self.order_url = os.getenv("ORDER")
         self.order_book_url = os.getenv("ORDER_BOOK")
         self.price = os.getenv("TICKER_PRICE")
@@ -20,7 +19,7 @@ class Book_Order:
     """
 
     def last_price(self, order_side="bids"):
-        url = self.base_url + self.order_book_url
+        url = self.order_book_url
         limit = EnumDefinitions.order_book_limits[0]
         params = [("symbol", self.symbol), ("limit", limit)]
         res = requests.get(url=url, params=params)
@@ -44,7 +43,7 @@ class Book_Order:
         Sell order = ask = False
         """
 
-        url = self.base_url + self.order_book_url
+        url = self.order_book_url
         limit = EnumDefinitions.order_book_limits[limit_index]
         params = [("symbol", self.symbol), ("limit", limit)]
         res = requests.get(url=url, params=params)
@@ -69,7 +68,7 @@ class Book_Order:
         return final_qty
 
     def ticker_price(self):
-        url = self.base_url + self.price
+        url = self.price
         params = [("symbol", self.symbol)]
         res = requests.get(url=url, params=params)
         handle_error(res)

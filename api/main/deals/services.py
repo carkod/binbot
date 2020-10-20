@@ -1,4 +1,4 @@
- 
+
 from flask import Flask, request
 from flask import current_app as app
 from passlib.hash import pbkdf2_sha256
@@ -15,7 +15,7 @@ import time as tm
 from urllib.parse import urlparse
 import requests
 import pandas as pd
-from main.tools import EnumDefinitions, handle_error 
+from main.tools import EnumDefinitions, handle_error
 from main.account import Account
 import os
 
@@ -30,11 +30,10 @@ class Buy_Order():
     # Min amount to be considered for investing (BNB)
     min_funds = 0.000000
 
-    def __init__(self, symbol, quantity, type, price):
-        
+    def __init__(self, symbol, quantity, order_type, price):
+
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
-        self.base_url = os.getenv("BASE")
         self.order_url = os.getenv("ORDER")
         self.order_book_url = os.getenv("ORDER_BOOK")
         # Buy order
@@ -45,7 +44,7 @@ class Buy_Order():
         # Bot details
         self.symbol = symbol
         self.quantity = quantity
-        self.type = type
+        self.type = order_type
         self.price = price
 
     def get_balances(self):
@@ -56,59 +55,57 @@ class Buy_Order():
                 available_balance = data[i]['free']
                 return available_balance
         return available_balance
-        
-
 
     """
     Buy order = bids
     Sell order = ask
     """
+
     def last_order_book_price(self, limit_index, order_side='bids'):
-        url = self.base_url + self.order_book_url
+        url = self.order_book_url
         limit = EnumDefinitions.order_book_limits[limit_index]
         params = [
-          ('symbol', self.symbol),
-          ('limit', limit),
+            ('symbol', self.symbol),
+            ('limit', limit),
         ]
         res = requests.get(url=url, params=params)
         handle_error(res)
         data = res.json()
         if order_side == 'bids':
-            df = pd.DataFrame(data['bids'], columns=['price','qty'])
+            df = pd.DataFrame(data['bids'], columns=['price', 'qty'])
         elif order_side == 'ask':
-            df = pd.DataFrame(data['ask'], columns=['price','qty'])
+            df = pd.DataFrame(data['ask'], columns=['price', 'qty'])
 
         else:
             print('Incorrect bid/ask keyword for last_order_book_price')
             exit(1)
-        
+
         df['qty'] = df['qty'].astype(float)
 
         # If quantity matches list
         match_qty = df[df['qty'] > float(self.quantity)]
         condition = df['qty'] > float(self.quantity)
-        if condition.any() == False:
+        if not condition.any():
             limit += limit
             self.last_order_book_price(limit)
-        
+
         return match_qty['price'][0]
-
-
 
     """
     Returns successful order
     Returns validation failed order (MIN_NOTIONAL, LOT_SIZE etc..)
     """
+
     def post_order_limit(self, limit_price=None):
         # Limit order
         type = EnumDefinitions.order_types[0]
         timestamp = int(round(tm.time() * 1000))
-        url = self.base_url + self.order_url
+        url = self.order_url
         if limit_price:
             price = self.last_order_book_price(0) * (1 + limit_price)
         else:
             price = self.last_order_book_price(0)
-        qty = round(float(price) / float(self.quantity) , 0)
+        qty = round(float(price) / float(self.quantity), 0)
         # Get data for a single crypto e.g. BTT in BNB market
         params = [
             ('recvWindow', self.recvWindow),
@@ -262,5 +259,3 @@ class Buy_Order():
 #         # Response after request
 #         res = requests.post(url=url, params=params, headers=headers)
 #         self.handle_error(res)
-
-    

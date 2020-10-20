@@ -8,13 +8,12 @@ class UserDataStream:
     def __init__(self):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
-        self.base_url = os.getenv("BASE")
         self.base_ws_url = os.getenv("WS_BASE")
         self.user_data_stream = os.getenv("USER_DATA_STREAM")
         self.listenkey = None
 
     def post_user_datastream(self):
-        url = self.base_url + self.user_data_stream
+        url = self.user_data_stream
 
         # Get data for a single crypto e.g. BTT in BNB market
         params = []
@@ -32,7 +31,7 @@ class UserDataStream:
         Keep alive data stream every 30 min
         Expires every 60 minutes by Binance
         """
-        url = self.base_url + self.user_data_stream
+        url = self.user_data_stream
         params = [("listenKey", listenkey)]
         headers = {"X-MBX-APIKEY": self.key}
 
@@ -48,7 +47,7 @@ class UserDataStream:
         Close user data stream
         """
 
-        url = self.base_url + self.user_data_stream
+        url = self.user_data_stream
 
         params = [("listenKey", listenkey)]
         headers = {"X-MBX-APIKEY": self.key}

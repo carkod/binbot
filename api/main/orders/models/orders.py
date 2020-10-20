@@ -15,7 +15,6 @@ class Orders():
     recvWindow = os.getenv("RECV_WINDOW")
     key = os.getenv("BINANCE_KEY")
     secret = os.getenv("BINANCE_SECRET")
-    base_url = os.getenv("BASE")
     open_orders = os.getenv("OPEN_ORDERS")
     all_orders_url = os.getenv("ALL_ORDERS")
     order_url = os.getenv("ORDER")
@@ -29,7 +28,7 @@ class Orders():
 
     def get_open_orders(self):
         timestamp = int(round(tm.time() * 1000))
-        url = self.base_url + self.open_orders
+        url = self.open_orders
         symbol = request.view_args["symbol"]
         params = [
             ('symbol', symbol),
@@ -43,7 +42,7 @@ class Orders():
 
     def delete_order(self):
         timestamp = int(round(tm.time() * 1000))
-        url = self.base_url + self.order_url
+        url = self.order_url
         # query params -> args
         # path params -> view_args
         symbol = request.args["symbol"]

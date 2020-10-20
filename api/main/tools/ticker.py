@@ -7,11 +7,10 @@ import os
 class Ticker24Data():
 
     def __init__(self, app):
-        self.base_url = os.environ['BASE']    
         self.ticker24_url = os.environ['TICKER24']
 
     def request_data(self):
-        r = requests.get(self.base_url + self.ticker24_url)
+        r = requests.get(self.ticker24_url)
         data = r.json()
         return data
 
@@ -21,7 +20,6 @@ class Ticker24Data():
 
     def api_data(self):
         return self.formatData(self.request_data())
-
 
 
 # class Ticker_Price:
