@@ -15,11 +15,9 @@ from main.tools.jsonresp import jsonResp, jsonResp_message
 class Account:
 
     recvWindow = os.getenv("RECV_WINDOW")
-    min_amount = 0.1  # MIN_NOTIONAL restriction by Binance
     secret = os.getenv('BINANCE_SECRET')
     key = os.getenv('BINANCE_KEY')
     account_url = os.getenv('ACCOUNT')
-    candlestick_url = os.getenv('CANDLESTICK')
     exchangeinfo_url = os.getenv('EXCHANGE_INFO')
     ticker_price = os.getenv('TICKER_PRICE')
 
