@@ -19,6 +19,10 @@ export const GET_SYMBOLS_ERROR = 'GET_SYMBOLS_ERROR';
 export const GET_SYMBOL_INFO = 'GET_SYMBOL_INFO';
 export const GET_SYMBOL_INFO_SUCCESS = 'GET_SYMBOL_INFO_SUCCESS';
 export const GET_SYMBOL_INFO_ERROR = 'GET_SYMBOL_INFO_ERROR';
+
+export const LOAD_CANDLESTICK = 'LOAD_CANDLESTICK';
+export const LOAD_CANDLESTICK_SUCCESS = 'LOAD_CANDLESTICK_SUCCESS';
+export const LOAD_CANDLESTICK_ERROR = 'LOAD_CANDLESTICK_ERROR';
 export const DEFAULT_LOCALE = 'en';
 
 
@@ -313,5 +317,39 @@ export function getSymbolInfoFailed(error) {
     isLoading: false,
     isError: true,
     error: error.message,
+  };
+}
+
+
+export function loadCandlestick(pair, interval) {
+  return {
+    type: LOAD_CANDLESTICK,
+    isLoading: true,
+    isError: false,
+    trace: null,
+    layout: null,
+    pair,
+    interval,
+  };
+}
+
+export function loadCandlestickSucceeded(payload) {
+  return {
+    type: LOAD_CANDLESTICK_SUCCESS,
+    isLoading: true,
+    isError: false,
+    payload: {
+      trace: [JSON.parse(payload.trace)],
+      layout: JSON.parse(payload.layout)
+    }
+  };
+}
+
+export function loadCandlestickFailed(payload) {
+  return {
+    type: LOAD_CANDLESTICK_ERROR,
+    isLoading: true,
+    isError: false,
+    payload
   };
 }

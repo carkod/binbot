@@ -1,9 +1,10 @@
 import BalanceAnalysis from "components/BalanceAnalysis";
+import Candlestick from "components/Candlestick";
 import React from "react";
 import { connect } from "react-redux";
-import { Alert, Badge, Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from "reactstrap";
+import { Alert, Badge, Button, Card, CardBody, CardHeader, CardTitle, Col, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from "reactstrap";
 import { getBalance } from "../dashboard/actions";
-import { createBot, getSymbolInfo, getSymbols, getBot, editBot } from "./actions";
+import { createBot, editBot, getBot, getSymbolInfo, getSymbols, loadCandlestick } from "./actions";
 import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance, percentageToFloat } from "./validations.js";
 
 class BotForm extends React.Component {
@@ -42,13 +43,15 @@ class BotForm extends React.Component {
       auto_strategy: "true",
       formIsValid: true,
       activeTab: 'main',
+      candlestick_interval: "5m",
     }
   }
 
   componentDidMount = () => {
     this.props.getBalance();
     this.props.getSymbols();
-    if (this.props.match.params.id !== null) {
+    this.props.loadCandlestick("BNBBTC", this.state.candlestick_interval);
+    if (this.props.match.params.id !== undefined) {
       this.props.getBot(this.props.match.params.id);
     }
   }
@@ -265,26 +268,12 @@ class BotForm extends React.Component {
   }
 
   render() {
+
     return (
       <div className="content">
         <Row>
           <Col md="12">
-            <Card>
-              <CardHeader>
-                <CardTitle tag="h5">Users Behavior</CardTitle>
-                <p className="card-category">24 Hours performance</p>
-              </CardHeader>
-              <CardBody>
-                GRAPH GOES HERE
-                {JSON.stringify(this.state)}
-              </CardBody>
-              <CardFooter>
-                <hr />
-                <div className="stats">
-                  <i className="fa fa-history" /> Updated 3 minutes ago
-              </div>
-              </CardFooter>
-            </Card>
+            {this.props.candlestick && <Candlestick title={"BNBBTC"} data={this.props.candlestick} /> }
           </Col>
         </Row>
         <Form onSubmit={this.handleSubmit}>
@@ -486,13 +475,14 @@ const mapStateToProps = (state) => {
   const { data: symbols } = state.symbolReducer;
   const { data: symbolInfo } = state.symbolInfoReducer;
   const { data: bot } = state.getSingleBotReducer;
-
+  const { data: candlestick } = state.candlestickReducer;
   return {
     balances: balances,
     symbols: symbols,
     symbolInfo: symbolInfo,
-    bot: bot
-  }
+    bot: bot,
+    candlestick: candlestick,
+  };
 }
 
-export default connect(mapStateToProps, { getBalance, getSymbols, getSymbolInfo, createBot, getBot, editBot })(BotForm);
+export default connect(mapStateToProps, { getBalance, getSymbols, getSymbolInfo, createBot, getBot, editBot, loadCandlestick })(BotForm);

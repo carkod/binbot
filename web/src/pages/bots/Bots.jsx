@@ -1,7 +1,8 @@
+import Candlestick from "components/Candlestick";
 import React from "react";
 import { connect } from "react-redux";
-import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Jumbotron, Row, ButtonToggle } from "reactstrap";
-import { getBots, deleteBot } from "./actions";
+import { Button, ButtonToggle, Card, CardBody, CardFooter, CardTitle, Col, Jumbotron, Row } from "reactstrap";
+import { deleteBot, getBots } from "./actions";
 class Bots extends React.Component {
 
   constructor(props) {
@@ -32,21 +33,8 @@ class Bots extends React.Component {
         <div className="content">
           <Row>
             <Col md="12">
-              <Card>
-                <CardHeader>
-                  <CardTitle tag="h5">Users Behavior</CardTitle>
-                  <p className="card-category">24 Hours performance</p>
-                </CardHeader>
-                <CardBody>
-                  GRAPH GOES HERE
-                </CardBody>
-                <CardFooter>
-                  <hr />
-                  <div className="stats">
-                    <i className="fa fa-history" /> Updated 3 minutes ago
-                  </div>
-                </CardFooter>
-              </Card>
+              {"Candlestick goes here"}
+              {/* <Candlestick title={"BNBBTC"} /> */}
             </Col>
           </Row>
           <Row>

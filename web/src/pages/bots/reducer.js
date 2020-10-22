@@ -1,4 +1,5 @@
-import { CREATE_BOT, CREATE_BOT_ERROR, CREATE_BOT_SUCCESS, DELETE_BOT, DELETE_BOT_ERROR, DELETE_BOT_SUCCESS, EDIT_BOT, EDIT_BOT_ERROR, EDIT_BOT_SUCCESS, GET_BOT, GET_BOTS, GET_BOTS_ERROR, GET_BOTS_SUCCESS, GET_BOT_ERROR, GET_BOT_SUCCESS, GET_SYMBOLS, GET_SYMBOLS_SUCCESS, GET_SYMBOLS_ERROR, GET_SYMBOL_INFO, GET_SYMBOL_INFO_SUCCESS, GET_SYMBOL_INFO_ERROR } from './actions';
+import { CREATE_BOT, CREATE_BOT_ERROR, CREATE_BOT_SUCCESS, DELETE_BOT, DELETE_BOT_ERROR, DELETE_BOT_SUCCESS, EDIT_BOT, EDIT_BOT_ERROR, EDIT_BOT_SUCCESS, GET_BOT, GET_BOTS, GET_BOTS_ERROR, GET_BOTS_SUCCESS, GET_BOT_ERROR, GET_BOT_SUCCESS, GET_SYMBOLS, GET_SYMBOLS_SUCCESS, GET_SYMBOLS_ERROR, GET_SYMBOL_INFO, GET_SYMBOL_INFO_SUCCESS, GET_SYMBOL_INFO_ERROR, LOAD_CANDLESTICK, LOAD_CANDLESTICK_ERROR, LOAD_CANDLESTICK_SUCCESS } from './actions';
+
 
 // The initial state of the App
 export const initialState = {
@@ -251,4 +252,41 @@ function editBotReducer(state = initialState, action) {
   }
 }
 
-export { botReducer, symbolInfoReducer, symbolReducer, getSingleBotReducer, editBotReducer };
+function candlestickReducer(state = initialState, action) {
+  switch (action.type) {
+
+    case LOAD_CANDLESTICK: {
+      const newState = {
+        ...state,
+        isLoading: true,
+        isError: false,
+        data: action.data
+      };
+
+      return newState;
+    }
+    case LOAD_CANDLESTICK_SUCCESS: {
+      const newState = {
+        isLoading: false,
+        isError: false,
+        data: action.payload
+      };
+      return newState;
+    }
+
+    case LOAD_CANDLESTICK_ERROR: {
+      return {
+        ...state,
+        error: action.error,
+        isLoading: false,
+        isError: true,
+        data: state.data,
+      };
+    }
+
+    default:
+      return state;
+  }
+}
+
+export { botReducer, symbolInfoReducer, symbolReducer, getSingleBotReducer, editBotReducer, candlestickReducer };

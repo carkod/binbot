@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolInfoFailed, getSymbolInfoSucceeded, getSymbolsFailed, getSymbolsSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS, GET_SYMBOL_INFO } from './actions';
+import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolInfoFailed, getSymbolInfoSucceeded, getSymbolsFailed, getSymbolsSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS, GET_SYMBOL_INFO, loadCandlestickFailed, loadCandlestickSucceeded, LOAD_CANDLESTICK } from './actions';
 
 /**
  * Bots request/response handler
@@ -156,4 +156,27 @@ export default function* watchBot() {
   yield takeLatest(GET_BOTS, getBots)
   yield takeLatest(DELETE_BOT, deleteBot)
   yield takeLatest(GET_SYMBOLS, getSymbols)
+}
+
+
+/**
+ * Get single bot
+ */
+export function* getCandlestick({pair, interval}) {
+  const requestURL = `${process.env.REACT_APP_CANDLESTICK}/${pair}/${interval}`;
+  const options = {
+    method: 'GET',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  }
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(loadCandlestickSucceeded(res));
+  } catch (err) {
+    yield put(loadCandlestickFailed(err));
+  }
+}
+
+export function* watchGetCandlestick() {
+  yield takeLatest(LOAD_CANDLESTICK, getCandlestick);
 }
