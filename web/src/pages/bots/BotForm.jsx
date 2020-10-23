@@ -44,6 +44,7 @@ class BotForm extends React.Component {
       formIsValid: true,
       activeTab: 'main',
       candlestick_interval: "5m",
+      
     }
   }
 
@@ -273,7 +274,9 @@ class BotForm extends React.Component {
       <div className="content">
         <Row>
           <Col md="12">
-            {this.props.candlestick && <Candlestick title={"BNBBTC"} data={this.props.candlestick} /> }
+            {this.props.candlestick && this.state.pair !== '' ? 
+              <Candlestick title={"BNBBTC"} data={this.props.candlestick} bot={this.state} />  : ""
+            }
           </Col>
         </Row>
         <Form onSubmit={this.handleSubmit}>
