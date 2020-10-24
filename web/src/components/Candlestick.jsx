@@ -82,7 +82,7 @@ const generateOrders = (data, bot) => {
             y: traillingPrice,
             xref: 'x',
             yref: 'y',
-            text: 'Take profit order',
+            text: 'Trailling order',
             font: { color:'green' },
             showarrow: false,
             xanchor: 'left',
@@ -94,7 +94,7 @@ const generateOrders = (data, bot) => {
             x0: takeProfitTime,
             y0: traillingPrice,
             x1: data.trace[0].x[150],
-            y1: data.trace[0].close[0],
+            y1: traillingPrice,
             line: {
                 color: "green",
                 width: 4
@@ -107,7 +107,7 @@ const generateOrders = (data, bot) => {
     const maxSoCount = parseInt(bot.max_so_count)
     if (maxSoCount > 0) {
         let i = 0
-        while (i < maxSoCount) {
+        while (i <= maxSoCount) {
             const price = (currentPrice - (currentPrice * (bot.price_deviation_so / 100))).toFixed(process.env.REACT_APP_DECIMALS)
             const safetyOrderA = {
                 x: currentTime,
@@ -131,7 +131,7 @@ const generateOrders = (data, bot) => {
             }
             annotations.push(safetyOrderA);
             shapes.push(safetyOrderS);
-    
+            i++
         }
     }
     return {
@@ -145,7 +145,6 @@ const generateOrders = (data, bot) => {
 function Candlestick({ title, data, bot }) {
 
     const { annotations, shapes } = generateOrders(data, bot);
-
     const layout = {
         dragmode: 'zoom',
         autosize: true,

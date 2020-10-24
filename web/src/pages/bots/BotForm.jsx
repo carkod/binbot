@@ -51,7 +51,6 @@ class BotForm extends React.Component {
   componentDidMount = () => {
     this.props.getBalance();
     this.props.getSymbols();
-    this.props.loadCandlestick("BNBBTC", this.state.candlestick_interval);
     if (this.props.match.params.id !== undefined) {
       this.props.getBot(this.props.match.params.id);
     }
@@ -78,9 +77,14 @@ class BotForm extends React.Component {
         so_size: this.props.bot.so_size,
         start_condition: this.props.bot.start_condition,
         strategy: this.props.bot.strategy,
+        take_profit: this.props.bot.take_profit,
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
       });
+    }
+
+    if (s.pair !== this.state.pair) {
+      this.props.loadCandlestick(this.state.pair, this.state.candlestick_interval);
     }
   }
 
@@ -139,9 +143,6 @@ class BotForm extends React.Component {
 
   }
 
-  handleChange = (e) => {
-    this.setState({ [e.target.name]: e.target.value });
-  }
 
   handleSubmit = (e) => {
     e.preventDefault();
@@ -260,12 +261,13 @@ class BotForm extends React.Component {
 
   handleSafety = (e) => {
     const { pair } = this.state;
-    this.setState({ [e.target.name]: e.target.value })
     this.props.getSymbolInfo(pair);
+    this.setState({ [e.target.name]: e.target.value })
   }
 
-  handlePercentageChanges = (e) => {
-    this.setState({ [e.target.name]: e.target.value });
+  handleChange = (e) => {
+    e.preventDefault();
+    setTimeout(this.setState({ [e.target.name]: e.target.value }), 3000);
   }
 
   render() {
@@ -275,7 +277,9 @@ class BotForm extends React.Component {
         <Row>
           <Col md="12">
             {this.props.candlestick && this.state.pair !== '' ? 
-              <Candlestick title={"BNBBTC"} data={this.props.candlestick} bot={this.state} />  : ""
+              <Candlestick
+                data={this.props.candlestick}
+                bot={this.state} />  : ""
             }
           </Col>
         </Row>
@@ -383,7 +387,7 @@ class BotForm extends React.Component {
                     <TabPane tabId="safety-orders">
                       <Row className="u-margin-bottom">
                         <Col md="6" sm="12">
-                          <Label htmlFor="strategy">Maximum number of Safety Orders</Label>
+                          <Label htmlFor="max_so_count">Maximum number of Safety Orders</Label>
                           <Input invalid={this.state.maxSOCountError} type="text" name="max_so_count" onChange={this.handleChange} value={this.state.max_so_count} />
                           <FormFeedback><strong>Safety order size</strong> is required.</FormFeedback>
                           <small>If value = 0, Safety orders will be turned off</small>
@@ -400,7 +404,7 @@ class BotForm extends React.Component {
                         {parseInt(this.state.max_so_count) > 0 &&
                           <Col md="10" sm="12">
                             <Label htmlFor="price_deviation_so">Price deviation (%)</Label>
-                            <Input invalid={this.state.priceDevSoError} type="text" name="price_deviation_so" id="price_deviation_so" onChange={this.handlePercentageChanges} value={this.state.price_deviation_so} />
+                            <Input invalid={this.state.priceDevSoError} type="text" name="price_deviation_so" id="price_deviation_so" onChange={this.handleChange} value={this.state.price_deviation_so} />
                             <FormFeedback><strong>Price deviation</strong> is required.</FormFeedback>
                             <small>How much does the price have to drop to create a Safety Order?</small>
                           </Col>
@@ -415,7 +419,7 @@ class BotForm extends React.Component {
                       <Row className="u-margin-bottom">
                         <Col md="8" sm="12">
                           <Label for="take_profit">Take profit at (%): <span className="u-required">*</span></Label>
-                          <Input invalid={this.state.takeProfitError} type="text" name="take_profit" id="take_profit" onChange={this.handlePercentageChanges} value={this.state.take_profit} />
+                          <Input invalid={this.state.takeProfitError} type="text" name="take_profit" id="take_profit" onChange={this.handleChange} value={this.state.take_profit} />
                           <FormFeedback><strong>Take profit</strong> is required.</FormFeedback>
                         </Col>
                       </Row>
@@ -430,7 +434,7 @@ class BotForm extends React.Component {
                         {this.state.trailling === "true" &&
                           <Col md="6" sm="12">
                             <Label htmlFor="trailling_deviation">Trailling deviation (%)</Label>
-                            <Input type="text" name="trailling_deviation" onChange={this.handlePercentageChanges} value={this.state.trailling_deviation} />
+                            <Input type="text" name="trailling_deviation" onChange={this.handleChange} value={this.state.trailling_deviation} />
                           </Col>
                         }
                       </Row>
