@@ -6,11 +6,13 @@ import time as tm
 from urllib.parse import urlparse
 
 import requests
-from flask import request
-from main.tools import EnumDefinitions, handle_error
+from flask import request, current_app as app
+from main.tools.enum_definitions import EnumDefinitions
+from main.tools.handle_error import handle_error
+from main.tools.jsonresp import jsonResp
+from main.account.models import Account
 
-
-class Orders():
+class Orders(Account):
 
     recvWindow = os.getenv("RECV_WINDOW")
     key = os.getenv("BINANCE_KEY")
@@ -25,6 +27,50 @@ class Orders():
         self.side = EnumDefinitions.order_side[0]
         # Required by API for Limit orders
         self.timeInForce = EnumDefinitions.time_in_force[0]
+
+    def get_all_orders(self):
+        orders = list(app.db.orders.find({}))
+        if orders:
+            resp = jsonResp({"data": orders}, 200)
+        else:
+            resp = jsonResp({"message": "Orders not found!"}, 404)
+        return resp
+
+    def poll_historical_orders(self):
+        url = self.all_orders_url
+        symbols = self._exchange_info()["symbols"]
+        for s in symbols:
+            timestamp = int(round(tm.time() * 1000))
+            params = [
+                ('symbol', s["symbol"]),
+                ('timestamp', timestamp),
+                ('recvWindow', self.recvWindow)
+            ]
+            headers = {'X-MBX-APIKEY': self.key}
+
+            # Prepare request for signing
+            r = requests.Request(url=url, params=params, headers=headers)
+            prepped = r.prepare()
+            query_string = urlparse(prepped.url).query
+            total_params = query_string
+
+            # Generate and append signature
+            signature = hmac.new(self.secret.encode(
+                'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
+            params.append(('signature', signature))
+
+            res = requests.get(url=url, params=params, headers=headers)
+            handle_error(res)
+            data = res.json()
+
+            # Empty collection first
+            app.db.orders.remove()
+
+            # Check that we have no empty orders
+            if (len(data) > 0):
+                for o in data:
+                    # Save in the DB
+                    historical_orders = app.db.orders.save(o, {"$currentDate": {"createdAt": "true"}})
 
     def get_open_orders(self):
         timestamp = int(round(tm.time() * 1000))

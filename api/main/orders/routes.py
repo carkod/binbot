@@ -19,6 +19,14 @@ def buy_order_market():
 def create_sell_order():
     return Sell_Order().post_order_limit()
 
+@order_blueprint.route("/poll", methods=["GET"])
+def poll_historical_orders():
+    return Orders().poll_historical_orders()
+
+@order_blueprint.route("/all", methods=["GET"])
+def get_all_orders():
+    return Orders().get_all_orders()
+
 @order_blueprint.route("/open", methods=["GET"])
 def get_open_orders():
     return Orders().get_open_orders()
