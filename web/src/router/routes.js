@@ -1,9 +1,9 @@
-import Dashboard from "../pages/dashboard/Dashboard";
-import TableList from "components/Tables.jsx";
 import UserPage from "components/User.jsx";
 import Registration from "containers/registration/Registration";
-import Bots from "pages/bots/Bots";
 import BotForm from "pages/bots/BotForm";
+import Bots from "pages/bots/Bots";
+import Orders from "pages/orders/Orders";
+import Dashboard from "../pages/dashboard/Dashboard";
 
 var routes = [
   {
@@ -48,7 +48,7 @@ var routes = [
     path: "/orders",
     name: "Orders",
     icon: "nc-icon nc-tile-56",
-    component: TableList,
+    component: Orders,
     layout: "/admin",
     nav: true,
     private: true

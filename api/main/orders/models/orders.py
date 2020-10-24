@@ -29,9 +29,13 @@ class Orders(Account):
         self.timeInForce = EnumDefinitions.time_in_force[0]
 
     def get_all_orders(self):
-        orders = list(app.db.orders.find({}))
+        # here we want to get the value of user (i.e. ?user=some-value)
+        limit = int(request.args.get('limit'))
+        offset = int(request.args.get('offset'))
+        pages = app.db.orders.count()
+        orders = list(app.db.orders.find({}).sort([("updateTime", -1)]).skip(offset).limit(limit))
         if orders:
-            resp = jsonResp({"data": orders}, 200)
+            resp = jsonResp({"data": orders, "pages": pages}, 200)
         else:
             resp = jsonResp({"message": "Orders not found!"}, 404)
         return resp

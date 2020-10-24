@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { Alert, Badge, Button, Card, CardBody, CardHeader, CardTitle, Col, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from "reactstrap";
 import { getBalance } from "../dashboard/actions";
 import { createBot, editBot, getBot, getSymbolInfo, getSymbols, loadCandlestick } from "./actions";
-import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance, percentageToFloat } from "./validations.js";
+import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance, percentageToFloat } from "../../validations.js";
 
 class BotForm extends React.Component {
 
