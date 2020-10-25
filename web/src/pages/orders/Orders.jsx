@@ -27,7 +27,6 @@ class Orders extends React.Component {
 
 
   render() {
-    console.log(this.props)
     return (
       <>
         <div className="content">
@@ -38,7 +37,6 @@ class Orders extends React.Component {
                 data={this.props.orders}
                 pages={this.props.pages}
                 limit={this.state.limit}
-                offset={this.state.offset}
                 loadPage={this.handleLoadPage}
                 />
             </Col>
