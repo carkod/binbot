@@ -376,11 +376,10 @@ class Deal(Account):
     def close_deals(self):
         """
         Close all deals
-        - Find all opened orders (positions)
-        Filled orders cannot be closed
-        - Close them
+        - Deals should be stored as an array of orderIds
+        - Delete (cancel) endpoint, with symbold and orderId
         """
-        res = requests.get(url=self.bb_opened_orders_url)
+        res = requests.delete(url=self.bb_opened_orders_url)
         handle_error(res)
         opened_orders = res.json()
         response = jsonResp_message("Unable to close deals", 200)

@@ -31,6 +31,10 @@ def get_all_orders():
 def get_open_orders():
     return Orders().get_open_orders()
 
+@order_blueprint.route("/open/<symbol>", methods=["DELETE"])
+def delete_all_orders():
+    return Orders().delete_all_orders()
+
 @order_blueprint.route("/", methods=["DELETE"])
 def delete_order():
     return Orders().delete_order()

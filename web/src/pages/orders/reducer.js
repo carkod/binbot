@@ -75,13 +75,7 @@ function ordersReducer(state = initialState, action) {
     }
 
     case POLL_ORDERS: {
-      const newState = {
-        isLoading: true,
-        isError: false,
-        data: state.data
-      };
-
-      return newState;
+      return state;
     }
     case POLL_ORDERS_SUCCESS: {
       const newState = {

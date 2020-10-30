@@ -9,7 +9,7 @@ import requests
 from flask import request, current_app as app
 from main.tools.enum_definitions import EnumDefinitions
 from main.tools.handle_error import handle_error
-from main.tools.jsonresp import jsonResp
+from main.tools.jsonresp import jsonResp, jsonResp_message
 from main.account.models import Account
 
 class Orders(Account):
@@ -18,6 +18,7 @@ class Orders(Account):
     key = os.getenv("BINANCE_KEY")
     secret = os.getenv("BINANCE_SECRET")
     open_orders = os.getenv("OPEN_ORDERS")
+    delete_open_orders = os.getenv("ALL_OPEN_ORDERS")
     all_orders_url = os.getenv("ALL_ORDERS")
     order_url = os.getenv("ORDER")
 
@@ -74,23 +75,43 @@ class Orders(Account):
             if (len(data) > 0):
                 for o in data:
                     # Save in the DB
-                    historical_orders = app.db.orders.save(o, {"$currentDate": {"createdAt": "true"}})
+                    app.db.orders.save(o, {"$currentDate": {"createdAt": "true"}})
 
     def get_open_orders(self):
         timestamp = int(round(tm.time() * 1000))
         url = self.open_orders
-        symbol = request.view_args["symbol"]
         params = [
-            ('symbol', symbol),
             ('timestamp', timestamp),
             ('recvWindow', self.recvWindow)
         ]
-        res = requests.get(url=url, params=params)
+        headers = {'X-MBX-APIKEY': self.key}
+
+        # Prepare request for signing
+        r = requests.Request(url=url, params=params, headers=headers)
+        prepped = r.prepare()
+        query_string = urlparse(prepped.url).query
+        total_params = query_string
+
+        # Generate and append signature
+        signature = hmac.new(self.secret.encode(
+            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
+        params.append(('signature', signature))
+
+        res = requests.get(url=url, params=params, headers=headers)
         handle_error(res)
         data = res.json()
-        return data
+
+        if (len(data) > 0):
+            resp = jsonResp({"message": "Open orders found!", "data": data}, 200)
+        else:
+            resp = jsonResp_message("No open orders found!", 200)
+        return resp
 
     def delete_order(self):
+        """
+        Cancels single order by symbol
+        - Optimal for open orders table
+        """
         timestamp = int(round(tm.time() * 1000))
         url = self.order_url
         # query params -> args
@@ -121,4 +142,50 @@ class Orders(Account):
         res = requests.delete(url=url, params=params, headers=headers)
         handle_error(res)
         data = res.json()
-        return data
+
+        if (len(data) > 0):
+            resp = jsonResp({"message": "Open orders found!", "data": data}, 200)
+        else:
+            resp = jsonResp_message("No open orders found!", 200)
+        return resp
+
+    def delete_all_orders(self):
+        """
+        Delete All orders by symbol
+        - Optimal for open orders table
+        """
+        symbol = request.args["symbol"]
+        timestamp = int(round(tm.time() * 1000))
+        url = self.open_orders
+        # query params -> args
+        # path params -> view_args
+        symbol = request.args["symbol"]
+        params = [
+            ('symbol', symbol),
+            ('timestamp', timestamp),
+            ('recvWindow', self.recvWindow),
+        ]
+
+        headers = {'X-MBX-APIKEY': self.key}
+
+        # Prepare request for signing
+        r = requests.Request(url=url, params=params, headers=headers)
+        prepped = r.prepare()
+        query_string = urlparse(prepped.url).query
+        total_params = query_string
+
+        # Generate and append signature
+        signature = hmac.new(self.secret.encode(
+            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
+        params.append(('signature', signature))
+
+        # Response after request
+        res = requests.delete(url=url, params=params, headers=headers)
+        handle_error(res)
+        data = res.json()
+
+        if (len(data) > 0):
+            resp = jsonResp({"message": "Orders deleted", "data": data}, 200)
+        else:
+            resp = jsonResp_message("No open orders found!", 200)
+        return resp

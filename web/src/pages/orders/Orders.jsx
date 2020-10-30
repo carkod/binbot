@@ -1,4 +1,5 @@
 import CardTable from "components/CardTable";
+import Tables from "components/Tables";
 import React from "react";
 import { connect } from "react-redux";
 import { Col, Row } from "reactstrap";
@@ -25,11 +26,27 @@ class Orders extends React.Component {
     this.props.getOrders(limit, offset);
   }
 
+  updateHistoricalOrders = (e) => {
+    e.preventDefault();
+    this.props.pollOrders();
+  }
+
 
   render() {
     return (
       <>
         <div className="content">
+          <Row>
+            <Col md="12">
+              {/* <Tables 
+                title={"Historical orders"}
+                data={this.props.orders}
+                pages={this.props.pages}
+                limit={this.state.limit}
+                loadPage={this.handleLoadPage}
+                /> */}
+            </Col>
+          </Row>
           <Row>
             <Col md="12">
               <CardTable 
@@ -38,6 +55,7 @@ class Orders extends React.Component {
                 pages={this.props.pages}
                 limit={this.state.limit}
                 loadPage={this.handleLoadPage}
+                updateData={this.updateHistoricalOrders}
                 />
             </Col>
           </Row>

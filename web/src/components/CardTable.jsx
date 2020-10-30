@@ -1,7 +1,7 @@
-import React , { useState, useEffect } from "react";
-import { Card, CardBody, CardHeader, CardTitle, Table, Pagination, PaginationItem, PaginationLink, Col, Row } from "reactstrap";
+import React, { useState, useEffect } from "react";
+import { Card, CardBody, CardHeader, CardTitle, Table, Pagination, PaginationItem, PaginationLink, Col, Row, Button } from "reactstrap";
 
-function CardTable({ title, data, pages, limit=10, loadPage }) {
+function CardTable({ title, data, pages, limit = 10, loadPage, updateData }) {
 
     const [totalPages, setTotalPages] = useState(1);
     const [displayedPages, setdisplayedPages] = useState([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, "..."]);
@@ -11,7 +11,7 @@ function CardTable({ title, data, pages, limit=10, loadPage }) {
 
     useEffect(() => {
         getTotalPages(pages, limit);
-        
+
     }, [pages, limit]);
 
     const getTotalPages = (pages, limit) => {
@@ -22,7 +22,7 @@ function CardTable({ title, data, pages, limit=10, loadPage }) {
     const goToPage = (num) => {
         navigationDisabilityChecks(num);
         setCurrentPage(num);
-        const newOffset = (num - 1)  * limit;
+        const newOffset = (num - 1) * limit;
         if (num === displayedPages[displayedPages.length - 2]) {
             expandPages();
         }
@@ -36,7 +36,7 @@ function CardTable({ title, data, pages, limit=10, loadPage }) {
         if (currentPage < totalPages) {
             const newCurrentPage = currentPage + 1;
             navigationDisabilityChecks(newCurrentPage);
-            const newOffset = (newCurrentPage - 1)  * limit;
+            const newOffset = (newCurrentPage - 1) * limit;
             setCurrentPage(newCurrentPage);
             if (newCurrentPage === displayedPages[displayedPages.length - 2]) {
                 expandPages();
@@ -47,13 +47,13 @@ function CardTable({ title, data, pages, limit=10, loadPage }) {
             loadPage(limit, newOffset);
         }
     }
-    
+
     const previousPage = () => {
         if (currentPage > 1) {
             const newCurrentPage = currentPage - 1;
             navigationDisabilityChecks(newCurrentPage);
             setCurrentPage(newCurrentPage);
-            const newOffset = (newCurrentPage - 1)  * limit;
+            const newOffset = (newCurrentPage - 1) * limit;
             if (newCurrentPage === displayedPages[displayedPages.length - 2]) {
                 expandPages();
             }
@@ -63,18 +63,18 @@ function CardTable({ title, data, pages, limit=10, loadPage }) {
             loadPage(limit, newOffset);
         }
     }
-        
+
     const firstPage = () => {
         const newCurrentPage = 1
         setCurrentPage(newCurrentPage);
-        const newOffset = (newCurrentPage - 1)  * limit;
+        const newOffset = (newCurrentPage - 1) * limit;
         loadPage(limit, newOffset);
     }
 
     const lastPage = () => {
         const newCurrentPage = totalPages;
         setCurrentPage(newCurrentPage);
-        const newOffset = (newCurrentPage - 1)  * limit;
+        const newOffset = (newCurrentPage - 1) * limit;
         loadPage(limit, newOffset);
     }
 
@@ -108,7 +108,7 @@ function CardTable({ title, data, pages, limit=10, loadPage }) {
     const navigationDisabilityChecks = (num) => {
         if (num > 1 && firstNavigationDisabled) {
             setFirstNavigationDisabled(false);
-        } 
+        }
         if (num === 1 && !firstNavigationDisabled) {
             setFirstNavigationDisabled(true);
         }
@@ -123,10 +123,13 @@ function CardTable({ title, data, pages, limit=10, loadPage }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle tag="h4">{title}</CardTitle>
+                <CardTitle tag="h4">
+                    <span>{title}</span>
+                    <Button className="u-title-btn" onClick={updateData}>Poll order data</Button>
+                </CardTitle>
             </CardHeader>
             <CardBody>
-                <Table responsive>
+                <Table>
                     <thead className="text-primary">
                         <tr>
                             <th>Date</th>
@@ -164,22 +167,22 @@ function CardTable({ title, data, pages, limit=10, loadPage }) {
                                 <PaginationLink previous href="#" onClick={previousPage} />
                             </PaginationItem>
 
-                            {displayedPages && displayedPages.map((x,i) => (
+                            {displayedPages && displayedPages.map((x, i) => (
                                 <PaginationItem key={i} active={currentPage === x}>
-                                    {x === "..." ? <span className="page-link">{x}</span> : 
+                                    {x === "..." ? <span className="page-link">{x}</span> :
                                         <PaginationLink href="#" onClick={() => goToPage(x)}>
                                             {x}
                                         </PaginationLink>
                                     }
                                 </PaginationItem>
-                                )
+                            )
                             )}
-                            
+
                             <PaginationItem disabled={lastNavigationDisabled}>
                                 <PaginationLink next href="#" onClick={nextPage} />
                             </PaginationItem>
                             <PaginationItem disabled={lastNavigationDisabled}>
-                                <PaginationLink last href="#" onClick={lastPage}/>
+                                <PaginationLink last href="#" onClick={lastPage} />
                             </PaginationItem>
                         </Pagination>
                     </Col>

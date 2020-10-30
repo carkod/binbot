@@ -115,12 +115,11 @@ export function getOpenOrdersFailed(error) {
  *
  * @return {object} An action object with a type of BOT
  */
-export function pollOrders(body) {
+export function pollOrders() {
   return {
     type: POLL_ORDERS,
     isLoading: true,
     isError: false,
-    data: body
   };
 }
 

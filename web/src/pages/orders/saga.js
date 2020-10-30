@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { getOpenOrdersFailed, getOpenOrdersSucceeded, getOrdersFailed, getOrdersSucceeded, GET_ALL_ORDERS, GET_OPEN_ORDERS } from './actions';
+import { getOpenOrdersFailed, getOpenOrdersSucceeded, getOrdersFailed, getOrdersSucceeded, GET_ALL_ORDERS, GET_OPEN_ORDERS, POLL_ORDERS } from './actions';
 
 /**
  * Bots request/response handler
@@ -51,20 +51,22 @@ export function* watchOpenOrders() {
 /**
  * Create bot
  */
-export function* pollOrders(body) {
-  const { data } = body;
-  const requestURL = `${process.env.REACT_APP_POLL}/`;
+export function* pollOrders() {
+  const requestURL = `${process.env.REACT_APP_POLL}`;
   const options = {
-    method: 'POST',
+    method: 'GET',
     mode: 'cors', // no-cors, *cors, same-origin
     cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
     headers: { "content-type": "application/json", "accept": "application/json" },
-    body: JSON.stringify(data)
   }
   try {
-    yield call(request, requestURL, options);
-    // yield put(pollOrders(res));
+    const res = yield call(request, requestURL, options);
+    yield put(pollOrders(res));
   } catch (err) {
     // yield put(createBotFailed(err));
   }
+}
+
+export function* watchPollOrders() {
+  yield takeLatest(POLL_ORDERS, pollOrders);
 }
