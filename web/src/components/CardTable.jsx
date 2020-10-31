@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardBody, CardHeader, CardTitle, Table, Pagination, PaginationItem, PaginationLink, Col, Row, Button, Input, Label, FormGroup } from "reactstrap";
+import React, { useEffect, useState } from "react";
+import { Button, Card, CardBody, CardHeader, CardTitle, Col, Input, Label, Pagination, PaginationItem, PaginationLink, Row, Table } from "reactstrap";
 
 function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filter }) {
 
     const [totalPages, setTotalPages] = useState(1);
     const [displayedPages, setdisplayedPages] = useState([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, "..."]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [status] = useState("FILLED");
     const [firstNavigationDisabled, setFirstNavigationDisabled] = useState(true);
     const [lastNavigationDisabled, setLastNavigationDisabled] = useState(false);
 
@@ -29,7 +30,7 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filte
         if (num === displayedPages[0]) {
             retractPages();
         }
-        loadPage(limit, newOffset);
+        loadPage(limit, newOffset, status);
     }
 
     const nextPage = () => {
@@ -44,7 +45,7 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filte
             if (newCurrentPage === displayedPages[0]) {
                 retractPages();
             }
-            loadPage(limit, newOffset);
+            loadPage(limit, newOffset, status);
         }
     }
 
@@ -60,7 +61,7 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filte
             if (newCurrentPage === displayedPages[0]) {
                 retractPages();
             }
-            loadPage(limit, newOffset);
+            loadPage(limit, newOffset, status);
         }
     }
 
@@ -68,14 +69,14 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filte
         const newCurrentPage = 1
         setCurrentPage(newCurrentPage);
         const newOffset = (newCurrentPage - 1) * limit;
-        loadPage(limit, newOffset);
+        loadPage(limit, newOffset, status);
     }
 
     const lastPage = () => {
         const newCurrentPage = totalPages;
         setCurrentPage(newCurrentPage);
         const newOffset = (newCurrentPage - 1) * limit;
-        loadPage(limit, newOffset);
+        loadPage(limit, newOffset, status);
     }
 
     const expandPages = () => {
@@ -128,7 +129,7 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filte
                     <Button className="u-title-btn" onClick={updateData}>Poll order data</Button>
                 </CardTitle>
                     <Label for="status">Status filter</Label>
-                    <Input type="select" name="status" id="status" onChange={(e) => filter(e)}>
+                    <Input type="select" name="status" id="status" onChange={(e) => filter(e)} defaultValue={status}>
                         <option value="FILLED">Filled</option>
                         <option value="CANCELED">Canceled</option>
                         <option value="">All</option>
@@ -144,8 +145,8 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filte
                             <th>Type</th>
                             <th>Status</th>
                             <th className="text-right">Price</th>
-                            <th className="text-right">Original Quantity</th>
-                            <th className="text-right">Executed Quantity</th>
+                            <th className="text-right">Quantity</th>
+                            <th className="text-right">Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -156,13 +157,11 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filte
                                 <td>{x.side}</td>
                                 <td>{x.type}</td>
                                 <td>{x.status}</td>
-                                <td className="text-right">{x.price}</td>
-                                <td className="text-right">{x.origQty}</td>
-                                <td className="text-right">{x.executedQty}</td>
+                                <td className="text-right">{parseFloat(x.price)}</td>
+                                <td className="text-right">{parseFloat(x.executedQty)}</td>
+                                <td className="text-right">{parseFloat((x.price) * (x.executedQty))}</td>
                             </tr>
                         )}
-
-
                     </tbody>
                 </Table>
                 <Row>

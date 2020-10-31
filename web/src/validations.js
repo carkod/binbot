@@ -53,4 +53,8 @@ const percentageToFloat = (value) => {
 
 const dataHeaders = ["Date", "Symbol", "Side", "Type", "Price", "Original Quantity", "Executed Quantity"]
 
-export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders };
+const replaceZeros = (value) => {
+    return value.replace(/^0+/, '');
+}
+
+export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders, replaceZeros };

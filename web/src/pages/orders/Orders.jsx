@@ -23,8 +23,10 @@ class Orders extends React.Component {
   }
 
   handleLoadPage = (limit, offset, status) => {
-    if (status === "") status = null;
-    this.setState({ offset: offset, limit: limit, status: status }, () => this.props.getOrders(this.state));
+    if (status === "" || status === undefined) status = null;
+    this.setState({ offset: offset, limit: limit, status: status }, () => 
+      this.props.getOrders(this.state)
+    );
   }
 
   updateHistoricalOrders = (e) => {
