@@ -3,8 +3,8 @@ import Tables from "components/Tables";
 import React from "react";
 import { connect } from "react-redux";
 import { Col, Row } from "reactstrap";
-import { getOrders, getOpenOrders, pollOrders, deleteOpenOrders } from "./actions";
 import { dataHeaders } from "../../validations";
+import { deleteOpenOrders, getOpenOrders, getOrders, pollOrders } from "./actions";
 
 class Orders extends React.Component {
 
@@ -12,19 +12,19 @@ class Orders extends React.Component {
     super(props);
     this.state = {
       limit: 10,
-      offset: 0
+      offset: 0,
+      status: "FILLED"
     }
   }
 
   componentDidMount = () => {
-    const { limit, offset } = this.state;
-    this.props.getOrders(limit, offset);
+    this.props.getOrders(this.state);
     this.props.getOpenOrders();
   }
 
-  handleLoadPage = (limit, offset) => {
-    this.setState({ offset: offset });
-    this.props.getOrders(limit, offset);
+  handleLoadPage = (limit, offset, status) => {
+    if (status === "") status = null;
+    this.setState({ offset: offset, limit: limit, status: status }, () => this.props.getOrders(this.state));
   }
 
   updateHistoricalOrders = (e) => {
@@ -34,6 +34,14 @@ class Orders extends React.Component {
 
   handleDeleteOrder = (element) => {
     this.props.deleteOpenOrders(element);
+  }
+
+  handleFilter = (e) => {
+    let stateName = e.target.name;
+    if (stateName === "") stateName = null;
+    this.setState({ [stateName]: e.target.value }, () => {
+      this.props.getOrders(this.state);
+    });
   }
 
 
@@ -60,6 +68,7 @@ class Orders extends React.Component {
                 limit={this.state.limit}
                 loadPage={this.handleLoadPage}
                 updateData={this.updateHistoricalOrders}
+                filter={this.handleFilter}
                 />
             </Col>
           </Row>

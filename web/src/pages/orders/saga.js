@@ -6,8 +6,8 @@ import { deleteOpenOrdersFailed, deleteOpenOrdersSucceeded, DELETE_OPEN_ORDERS, 
  * Bots request/response handler
  */
 export function* getAllOrders(payload) {
-  const { limit, offset } = payload.data;
-  const requestURL = `${process.env.REACT_APP_ALL_ORDERS}?limit=${limit}&offset=${offset}`;
+  const { limit, offset, status } = payload.data;
+  const requestURL = `${process.env.REACT_APP_ALL_ORDERS}?limit=${limit}&offset=${offset}&status=${status}`;
   const options = {
     method: 'GET',
     mode: 'cors', // no-cors, *cors, same-origin

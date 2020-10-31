@@ -20,14 +20,15 @@ export const DEFAULT_LOCALE = 'en';
  *
  * @return {object} An action object with a type of BOT
  */
-export function getOrders(limit, offset) {
+export function getOrders({limit, offset, status}) {
   return {
     type: GET_ALL_ORDERS,
     isLoading: true,
     isError: false,
     data: {
       limit: limit,
-      offset: offset
+      offset: offset,
+      status: status
     }
   };
 }
@@ -46,7 +47,8 @@ export function getOrdersSucceeded(res) {
     isLoading: false,
     isError: false,
     orders: res.data,
-    pages: res.pages
+    pages: res.pages,
+    status: res.status
   };
 }
 

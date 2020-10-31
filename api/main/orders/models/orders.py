@@ -24,7 +24,7 @@ class Orders(Account):
     delete_open_orders = os.getenv("ALL_OPEN_ORDERS")
     all_orders_url = os.getenv("ALL_ORDERS")
     order_url = os.getenv("ORDER")
-    
+
     def __init__(self):
 
         # Buy order
@@ -37,7 +37,14 @@ class Orders(Account):
         limit = int(request.args.get('limit'))
         offset = int(request.args.get('offset'))
         pages = app.db.orders.count()
-        orders = list(app.db.orders.find({}).sort([("updateTime", -1)]).skip(offset).limit(limit))
+        status = request.args.get('status', None)
+
+        # Filters
+        args = {}
+        if status:
+            args["status"] = status
+
+        orders = list(app.db.orders.find(args).sort([("updateTime", -1)]).skip(offset).limit(limit))
         if orders:
             resp = jsonResp({"data": orders, "pages": pages}, 200)
         else:

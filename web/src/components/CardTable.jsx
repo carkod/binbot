@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardBody, CardHeader, CardTitle, Table, Pagination, PaginationItem, PaginationLink, Col, Row, Button } from "reactstrap";
+import { Card, CardBody, CardHeader, CardTitle, Table, Pagination, PaginationItem, PaginationLink, Col, Row, Button, Input, Label, FormGroup } from "reactstrap";
 
-function CardTable({ title, data, pages, limit = 10, loadPage, updateData }) {
+function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filter }) {
 
     const [totalPages, setTotalPages] = useState(1);
     const [displayedPages, setdisplayedPages] = useState([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, "..."]);
@@ -127,6 +127,12 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData }) {
                     <span>{title}</span>
                     <Button className="u-title-btn" onClick={updateData}>Poll order data</Button>
                 </CardTitle>
+                    <Label for="status">Status filter</Label>
+                    <Input type="select" name="status" id="status" onChange={(e) => filter(e)}>
+                        <option value="FILLED">Filled</option>
+                        <option value="CANCELED">Canceled</option>
+                        <option value="">All</option>
+                    </Input>
             </CardHeader>
             <CardBody>
                 <Table>
@@ -136,6 +142,7 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData }) {
                             <th>Symbol</th>
                             <th>Side</th>
                             <th>Type</th>
+                            <th>Status</th>
                             <th className="text-right">Price</th>
                             <th className="text-right">Original Quantity</th>
                             <th className="text-right">Executed Quantity</th>
@@ -148,6 +155,7 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData }) {
                                 <td>{x.symbol}</td>
                                 <td>{x.side}</td>
                                 <td>{x.type}</td>
+                                <td>{x.status}</td>
                                 <td className="text-right">{x.price}</td>
                                 <td className="text-right">{x.origQty}</td>
                                 <td className="text-right">{x.executedQty}</td>

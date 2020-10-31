@@ -24,7 +24,7 @@ DELETE http://localhost:5000/order/BTCBNB/1234 HTTP/1.1
 GET http://localhost:5000/order/poll HTTP/1.1
 
 ###
-GET http://localhost:5000/order/all?limit=50&offset=10 HTTP/1.1
+GET http://localhost:5000/order/all?limit=50&offset=10&status=FILLED HTTP/1.1
 
 ###
 GET http://localhost:5000/order/open HTTP/1.1
