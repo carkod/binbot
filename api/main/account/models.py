@@ -3,11 +3,12 @@ import hmac
 import json
 import os
 import time as tm
+from datetime import datetime
 from urllib.parse import urlparse
 
 import pandas as pd
 import requests
-from flask import request
+from flask import current_app as app, request
 from main.tools.handle_error import handle_error
 from main.tools.jsonresp import jsonResp, jsonResp_message
 
@@ -98,3 +99,37 @@ class Account:
         symbols_list = [x["symbol"] for x in symbols]
         symbols_list.sort()
         return jsonResp({"data": symbols_list}, 200)
+
+
+class Balances(Account):
+
+    def store_balance(self):
+        """
+        Cronjob that stores balances with its approximate current value in BTC
+        """
+        balances = self.get_balances().json
+        ticker_price = self._ticker_price()
+        total_btc = 0
+        for b in balances:
+            symbol = f"{b['asset']}BTC"
+            price = next((x for x in ticker_price if x["symbol"] == symbol), None)
+            if price:
+                total_btc += b["free"]
+
+        update_balances = {
+            "balances": balances,
+            "total_btc_value": total_btc
+        }
+        db = app.db.balances.save(update_balances, {"$currentDate": {"createdAt": "true"}})
+        if request:
+            resp = jsonResp({"message": "Balances updated!", "_id": db}, 200)
+            return resp
+        else:
+            pass
+
+    def get_value(self):
+        resp = jsonResp({"message": "No balance found"}, 200)
+        balance = list(app.db.balances.find({}))
+        if balance:
+            resp = jsonResp({"data": balance}, 200)
+        return resp

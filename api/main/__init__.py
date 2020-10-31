@@ -3,6 +3,11 @@ from pymongo import MongoClient
 import os
 from main.tools.jsonresp import jsonResp
 from flask_cors import CORS
+import atexit
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from main.account.models import Balances
+
 # Import Routes
 from main.user.routes import user_blueprint
 from main.account.routes import account_blueprint
@@ -20,18 +25,16 @@ def create_app():
     # Misc Config
     os.environ["TZ"] = os.environ["TIMEZONE"]
 
-    # Database Config
-    # if  os.environ["ENVIRONMENT"] == "development":
-    # mongo = MongoClient( os.environ["MONGO_HOSTNAME"],  os.environ["MONGO_PORT"])
-    # app.db = mongo[ os.environ["MONGO_APP_DATABASE"]]
-    # else:
-    #   mongo = MongoClient("localhost")
-    #   mongo[ os.environ["MONGO_AUTH_DATABASE"]].authenticate( os.environ["MONGO_AUTH_USERNAME"],  os.environ["MONGO_AUTH_PASSWORD"])
-    #   app.db = mongo[ os.environ["MONGO_APP_DATABASE"]]
-
     mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
     mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"])
     app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
+
+    # Cronjob
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(func=Balances().store_balance, trigger="cron", hour="21", minute="0")
+    scheduler.start()
+    # Shut down the scheduler when exiting the app
+    atexit.register(lambda: scheduler.shutdown(wait=False))
 
     # Register Blueprints
     app.register_blueprint(user_blueprint, url_prefix="/user")
