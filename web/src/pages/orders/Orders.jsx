@@ -43,12 +43,12 @@ class Orders extends React.Component {
         <div className="content">
           <Row>
             <Col md="12">
-              <Tables 
+              {this.props.openOrders && <Tables 
                 title={"Opened orders"}
                 headers={dataHeaders}
                 data={this.props.openOrders}
                 action={this.handleDeleteOrder}
-                />
+                />}
             </Col>
           </Row>
           <Row>

@@ -11,6 +11,7 @@ from main.tools.enum_definitions import EnumDefinitions
 from main.tools.handle_error import handle_error
 from main.tools.jsonresp import jsonResp, jsonResp_message
 from main.account.models import Account
+from main.tools.round_numbers import round_numbers
 
 poll_percentage = 0
 
@@ -48,6 +49,11 @@ class Orders(Account):
         url = self.all_orders_url
         symbols = self._exchange_info()["symbols"]
         symbols_count = len(symbols)
+
+        # Empty collection first
+        app.db.orders.remove()
+
+        # Check if there are any polls in progress
         if poll_percentage > 0:
             resp = jsonResp({"message": "Polling in progress", "progress": f"{poll_percentage}"}, 200)
             return resp
@@ -76,9 +82,6 @@ class Orders(Account):
             handle_error(res)
             data = res.json()
 
-            # Empty collection first
-            app.db.orders.remove()
-
             # Check that we have no empty orders
             if (len(data) > 0):
                 for o in data:
@@ -87,8 +90,10 @@ class Orders(Account):
                     if i == (symbols_count - 1):
                         poll_percentage = 0
                     else:
-                        poll_percentage = (i/symbols_count) * 100
-            # return resp
+                        poll_percentage = round_numbers((i/symbols_count) * 100, 0)
+            print(poll_percentage)
+        resp = jsonResp({"message": "Polling finished!"}, 200)
+        return resp
 
     def get_open_orders(self):
         timestamp = int(round(tm.time() * 1000))
