@@ -3,7 +3,7 @@ import registrationReducer from './containers/registration/reducer';
 import loginReducer from './containers/login/reducer';
 import balanceReducer from './pages/dashboard/reducer';
 import { botReducer, symbolInfoReducer, symbolReducer, getSingleBotReducer, editBotReducer, candlestickReducer } from './pages/bots/reducer';
-import { ordersReducer } from 'pages/orders/reducer'
+import { ordersReducer, openOrdersReducer } from 'pages/orders/reducer'
 
 const rootReducer = combineReducers({
   registrationReducer,
@@ -16,5 +16,6 @@ const rootReducer = combineReducers({
   editBotReducer,
   candlestickReducer,
   ordersReducer,
+  openOrdersReducer,
 })
 export default rootReducer

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardBody, CardHeader, CardTitle, Table, Pagination, PaginationItem, PaginationLink, Col, Row } from "reactstrap";
+import { Card, CardBody, CardHeader, CardTitle, Table, Pagination, PaginationItem, PaginationLink, Col, Row, Modal, ModalHeader, ModalBody,ModalFooter, Button } from "reactstrap";
 
-function Tables({ title, data, pages, limit = 10, loadPage }) {
+function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
 
   const [totalPages, setTotalPages] = useState(1);
   const [displayedPages, setdisplayedPages] = useState([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, "..."]);
   const [currentPage, setCurrentPage] = useState(1);
   const [firstNavigationDisabled, setFirstNavigationDisabled] = useState(true);
   const [lastNavigationDisabled, setLastNavigationDisabled] = useState(false);
-
+  const [modal, setModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(false);
 
   useEffect(() => {
     getTotalPages(pages, limit);
@@ -121,6 +122,8 @@ function Tables({ title, data, pages, limit = 10, loadPage }) {
     }
   }
 
+  const toggle = () => setModal(!modal);
+
   return (
     <>
       <div className="content">
@@ -129,68 +132,33 @@ function Tables({ title, data, pages, limit = 10, loadPage }) {
             <Card className="card-plain">
               <CardHeader>
                 <CardTitle tag="h4">{title}</CardTitle>
-                <p className="card-category">
-                  Here is a subtitle for this table
-                  </p>
               </CardHeader>
               <CardBody>
-                <Table responsive>
+                <Table>
                   <thead className="text-primary">
                     <tr>
-                      <th>Name</th>
-                      <th>Country</th>
-                      <th>City</th>
-                      <th className="text-right">Salary</th>
+                      {headers !== undefined && headers.map((x,i) => 
+                        <th key={i} >{x}</th> 
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td>Dakota Rice</td>
-                      <td>Niger</td>
-                      <td>Oud-Turnhout</td>
-                      <td className="text-right">$36,738</td>
-                    </tr>
-                    <tr>
-                      <td>Minerva Hooper</td>
-                      <td>Curaçao</td>
-                      <td>Sinaai-Waas</td>
-                      <td className="text-right">$23,789</td>
-                    </tr>
-                    <tr>
-                      <td>Sage Rodriguez</td>
-                      <td>Netherlands</td>
-                      <td>Baileux</td>
-                      <td className="text-right">$56,142</td>
-                    </tr>
-                    <tr>
-                      <td>Philip Chaney</td>
-                      <td>Korea, South</td>
-                      <td>Overland Park</td>
-                      <td className="text-right">$38,735</td>
-                    </tr>
-                    <tr>
-                      <td>Doris Greene</td>
-                      <td>Malawi</td>
-                      <td>Feldkirchen in Kärnten</td>
-                      <td className="text-right">$63,542</td>
-                    </tr>
-                    <tr>
-                      <td>Mason Porter</td>
-                      <td>Chile</td>
-                      <td>Gloucester</td>
-                      <td className="text-right">$78,615</td>
-                    </tr>
-                    <tr>
-                      <td>Jon Porter</td>
-                      <td>Portugal</td>
-                      <td>Gloucester</td>
-                      <td className="text-right">$98,615</td>
-                    </tr>
+                    {data && data.map(x =>
+                      <tr key={x.clientOrderId} onClick={() => { setSelectedOrder(x); toggle(!modal)}}>
+                        <td>{new Date(x.updateTime).toLocaleDateString('en-gb', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                        <td>{x.symbol}</td>
+                        <td>{x.side}</td>
+                        <td>{x.type}</td>
+                        <td>{x.price}</td>
+                        <td>{x.origQty}</td>
+                        <td>{x.executedQty}</td>
+                      </tr>
+                    )}
                   </tbody>
                 </Table>
                 <Row>
                   <Col md="12" >
-                    <Pagination aria-label="Page navigation example">
+                    {pages !== undefined && <Pagination aria-label="Page navigation example">
                       <PaginationItem disabled={firstNavigationDisabled}>
                         <PaginationLink first href="#" onClick={firstPage} />
                       </PaginationItem>
@@ -216,12 +184,23 @@ function Tables({ title, data, pages, limit = 10, loadPage }) {
                         <PaginationLink last href="#" onClick={lastPage} />
                       </PaginationItem>
                     </Pagination>
+                    }
                   </Col>
                 </Row>
               </CardBody>
             </Card>
           </Col>
         </Row>
+        <Modal isOpen={modal} toggle={toggle} zIndex="99999">
+        <ModalHeader toggle={toggle}>Delete item</ModalHeader>
+        <ModalBody>
+          Are you sure you want to delete?
+        </ModalBody>
+        <ModalFooter>
+          <Button color="primary" onClick={() => { action(selectedOrder); toggle(!modal) }}>Accept</Button>
+          <Button color="secondary" onClick={toggle}>Cancel</Button>
+        </ModalFooter>
+      </Modal>
       </div>
     </>
   );

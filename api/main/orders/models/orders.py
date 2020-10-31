@@ -12,6 +12,8 @@ from main.tools.handle_error import handle_error
 from main.tools.jsonresp import jsonResp, jsonResp_message
 from main.account.models import Account
 
+poll_percentage = 0
+
 class Orders(Account):
 
     recvWindow = os.getenv("RECV_WINDOW")
@@ -21,7 +23,7 @@ class Orders(Account):
     delete_open_orders = os.getenv("ALL_OPEN_ORDERS")
     all_orders_url = os.getenv("ALL_ORDERS")
     order_url = os.getenv("ORDER")
-
+    
     def __init__(self):
 
         # Buy order
@@ -42,12 +44,18 @@ class Orders(Account):
         return resp
 
     def poll_historical_orders(self):
+        global poll_percentage
         url = self.all_orders_url
         symbols = self._exchange_info()["symbols"]
-        for s in symbols:
+        symbols_count = len(symbols)
+        if poll_percentage > 0:
+            resp = jsonResp({"message": "Polling in progress", "progress": f"{poll_percentage}"}, 200)
+            return resp
+        for i in range(symbols_count):
+
             timestamp = int(round(tm.time() * 1000))
             params = [
-                ('symbol', s["symbol"]),
+                ('symbol', symbols[i]["symbol"]),
                 ('timestamp', timestamp),
                 ('recvWindow', self.recvWindow)
             ]
@@ -76,6 +84,11 @@ class Orders(Account):
                 for o in data:
                     # Save in the DB
                     app.db.orders.save(o, {"$currentDate": {"createdAt": "true"}})
+                    if i == (symbols_count - 1):
+                        poll_percentage = 0
+                    else:
+                        poll_percentage = (i/symbols_count) * 100
+            # return resp
 
     def get_open_orders(self):
         timestamp = int(round(tm.time() * 1000))
@@ -114,10 +127,8 @@ class Orders(Account):
         """
         timestamp = int(round(tm.time() * 1000))
         url = self.order_url
-        # query params -> args
-        # path params -> view_args
-        symbol = request.args["symbol"]
-        orderId = request.args["orderId"]
+        symbol = request.view_args["symbol"]
+        orderId = request.view_args["orderid"]
         params = [
             ('symbol', symbol),
             ('timestamp', timestamp),
@@ -144,9 +155,9 @@ class Orders(Account):
         data = res.json()
 
         if (len(data) > 0):
-            resp = jsonResp({"message": "Open orders found!", "data": data}, 200)
+            resp = jsonResp({"message": "Order deleted!", "data": data}, 200)
         else:
-            resp = jsonResp_message("No open orders found!", 200)
+            resp = jsonResp_message("Failed to delete order", 200)
         return resp
 
     def delete_all_orders(self):

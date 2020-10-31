@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { getOpenOrdersFailed, getOpenOrdersSucceeded, getOrdersFailed, getOrdersSucceeded, GET_ALL_ORDERS, GET_OPEN_ORDERS, POLL_ORDERS } from './actions';
+import { deleteOpenOrdersFailed, deleteOpenOrdersSucceeded, DELETE_OPEN_ORDERS, getOpenOrdersFailed, getOpenOrdersSucceeded, getOrdersFailed, getOrdersSucceeded, GET_ALL_ORDERS, GET_OPEN_ORDERS, POLL_ORDERS } from './actions';
 
 /**
  * Bots request/response handler
@@ -26,11 +26,10 @@ export function* watchGetOrders() {
 }
 
 /**
- * Get single bot
+ * Open orders
  */
-export function* getAllOpenOrders(payload) {
-  const id = payload.data;
-  const requestURL = `${process.env.REACT_APP_OPEN_ORDERS}/${id}`;
+export function* getAllOpenOrders() {
+  const requestURL = `${process.env.REACT_APP_OPEN_ORDERS}`;
   const options = {
     method: 'GET',
     mode: 'cors', // no-cors, *cors, same-origin
@@ -46,6 +45,26 @@ export function* getAllOpenOrders(payload) {
 
 export function* watchOpenOrders() {
   yield takeLatest(GET_OPEN_ORDERS, getAllOpenOrders);
+}
+
+export function* deleteOpenOrders(payload) {
+  const {symbol, orderId} = payload.data;
+  const requestURL = `${process.env.REACT_APP_OPEN_ORDERS}/${symbol}/${orderId}`;
+  const options = {
+    method: 'DELETE',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  }
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(deleteOpenOrdersSucceeded(res));
+  } catch (err) {
+    yield put(deleteOpenOrdersFailed(err));
+  }
+}
+
+export function* watchDeleteOpenOrders() {
+  yield takeLatest(DELETE_OPEN_ORDERS, deleteOpenOrders);
 }
 
 /**

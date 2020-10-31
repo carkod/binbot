@@ -51,4 +51,6 @@ const percentageToFloat = (value) => {
     return tofloat;
 }
 
-export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat };
+const dataHeaders = ["Date", "Symbol", "Side", "Type", "Price", "Original Quantity", "Executed Quantity"]
+
+export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders };

@@ -3,7 +3,8 @@ import Tables from "components/Tables";
 import React from "react";
 import { connect } from "react-redux";
 import { Col, Row } from "reactstrap";
-import { getOrders, getOpenOrders, pollOrders } from "./actions";
+import { getOrders, getOpenOrders, pollOrders, deleteOpenOrders } from "./actions";
+import { dataHeaders } from "../../validations";
 
 class Orders extends React.Component {
 
@@ -18,7 +19,7 @@ class Orders extends React.Component {
   componentDidMount = () => {
     const { limit, offset } = this.state;
     this.props.getOrders(limit, offset);
-    // this.props.getOpenOrders();
+    this.props.getOpenOrders();
   }
 
   handleLoadPage = (limit, offset) => {
@@ -31,6 +32,10 @@ class Orders extends React.Component {
     this.props.pollOrders();
   }
 
+  handleDeleteOrder = (element) => {
+    this.props.deleteOpenOrders(element);
+  }
+
 
   render() {
     return (
@@ -38,13 +43,12 @@ class Orders extends React.Component {
         <div className="content">
           <Row>
             <Col md="12">
-              {/* <Tables 
-                title={"Historical orders"}
-                data={this.props.orders}
-                pages={this.props.pages}
-                limit={this.state.limit}
-                loadPage={this.handleLoadPage}
-                /> */}
+              <Tables 
+                title={"Opened orders"}
+                headers={dataHeaders}
+                data={this.props.openOrders}
+                action={this.handleDeleteOrder}
+                />
             </Col>
           </Row>
           <Row>
@@ -67,11 +71,13 @@ class Orders extends React.Component {
 
 const mapStateToProps = (state) => {
   const { pages, data: orders } = state.ordersReducer;
+  const { data: openOrders } = state.openOrdersReducer;
   return {
     orders: orders,
-    pages: pages
+    pages: pages,
+    openOrders: openOrders
   };
 
 }
 
-export default connect(mapStateToProps, { getOrders, getOpenOrders, pollOrders })(Orders);
+export default connect(mapStateToProps, { getOrders, getOpenOrders, pollOrders, deleteOpenOrders })(Orders);

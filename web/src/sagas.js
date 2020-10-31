@@ -7,6 +7,7 @@ import watchBot, { watchCreateBot, watchEditBot, watchGetBot, watchGetCandlestic
 import { watchGetOrders } from 'pages/orders/saga';
 import { watchOpenOrders } from 'pages/orders/saga';
 import { watchPollOrders } from 'pages/orders/saga';
+import { watchDeleteOpenOrders } from 'pages/orders/saga';
 
 export default function* rootSaga() {
   yield all([
@@ -21,5 +22,6 @@ export default function* rootSaga() {
     watchGetOrders(),
     watchOpenOrders(),
     watchPollOrders(),
+    watchDeleteOpenOrders(),
   ])
 }
