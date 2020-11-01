@@ -1,4 +1,4 @@
-import { GET_BALANCE, BALANCE_SUCCESS, BALANCE_ERROR, GET_ASSETS, GET_ASSETS_SUCCESS, GET_ASSETS_ERROR } from './actions';
+import { GET_BALANCE, BALANCE_SUCCESS, BALANCE_ERROR, GET_ASSETS, GET_ASSETS_SUCCESS, GET_ASSETS_ERROR, UPDATE_ASSETS, UPDATE_ASSETS_SUCCESS, UPDATE_ASSETS_ERROR } from './actions';
 
 // The initial state of the App
 export const initialState = {
@@ -66,6 +66,33 @@ function assetsReducer(state = initialState, action) {
     }
 
     case GET_ASSETS_ERROR: {
+      return { 
+        ...state, 
+        error: action.error, 
+        isLoading: false, 
+        isError: true,
+      };
+    }
+
+    case UPDATE_ASSETS: {
+      const newState = {
+        ...state,
+        isLoading: true,
+        isError: false,
+      };
+
+      return newState;
+    }
+    case UPDATE_ASSETS_SUCCESS: {
+      const newState = {
+        ...state,
+        isLoading: false,
+        isError: false,
+      };
+      return newState;
+    }
+
+    case UPDATE_ASSETS_ERROR: {
       return { 
         ...state, 
         error: action.error, 

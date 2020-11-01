@@ -6,6 +6,7 @@ import watchGetAccount from 'pages/dashboard/saga';
 import watchBot, { watchCreateBot, watchEditBot, watchGetBot, watchGetCandlestick } from 'pages/bots/saga';
 import { watchGetOrders, watchOpenOrders, watchPollOrders, watchDeleteOpenOrders } from 'pages/orders/saga';
 import { watchAssetsValue } from 'pages/dashboard/saga';
+import { watchUpdateAssets } from 'pages/dashboard/saga';
 
 export default function* rootSaga() {
   yield all([
@@ -22,5 +23,6 @@ export default function* rootSaga() {
     watchPollOrders(),
     watchDeleteOpenOrders(),
     watchAssetsValue(),
+    watchUpdateAssets(),
   ])
 }

@@ -86,3 +86,32 @@ export function getAssetsFailed(error) {
     data: error,
   };
 }
+
+/**
+ * Update assets
+ * /account/update-assets
+ * @return {object} An action object with a type of BALANCE
+ */
+export function updateAssets() {
+  return {
+    type: UPDATE_ASSETS,
+    isLoading: true,
+    isError: false,
+  };
+}
+
+export function updateAssetsSucceeded(res) {
+  return {
+    type: UPDATE_ASSETS_SUCCESS,
+    isLoading: false,
+    isError: false,
+  };
+}
+
+export function updateAssetsFailed(error) {
+  return {
+    type: UPDATE_ASSETS_ERROR,
+    isLoading: false,
+    isError: true,
+  };
+}

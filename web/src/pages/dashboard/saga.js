@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { balanceFailed, balanceSucceeded, getAssetsFailed, getAssetsSucceeded, GET_ASSETS, GET_BALANCE } from './actions';
+import { balanceFailed, balanceSucceeded, getAssetsFailed, getAssetsSucceeded, GET_ASSETS, GET_BALANCE, updateAssetsFailed, updateAssetsSucceeded, UPDATE_ASSETS } from './actions';
 
 /**
  * Account request/response handler
@@ -46,4 +46,28 @@ export function* getAssetsValue() {
 
 export function* watchAssetsValue() {
   yield takeLatest(GET_ASSETS, getAssetsValue);
+}
+
+
+/**
+ * Update Portolio of assets balance
+ * /account/update-balance
+ */
+export function* updateAssetsValue() {
+  const requestURL = process.env.REACT_APP_ASSETS_UPDATE;
+  const options = {
+    method: 'GET',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  }
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(updateAssetsSucceeded(res));
+  } catch (err) {
+    yield put(updateAssetsFailed(err));
+  }
+}
+
+export function* watchUpdateAssets() {
+  yield takeLatest(UPDATE_ASSETS, updateAssetsValue);
 }

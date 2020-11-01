@@ -2,7 +2,7 @@ import React from "react";
 import { Line, Pie } from "react-chartjs-2";
 import { Card, CardHeader, CardBody, CardFooter, CardTitle, Row, Col, Button } from "reactstrap";
 import { dashboard24HoursPerformanceChart, dashboardEmailStatisticsChart, dashboardNASDAQChart } from "variables/charts.jsx";
-import { getBalance, getAssets } from "./actions";
+import { getBalance, getAssets, updateAssets } from "./actions";
 import { connect } from "react-redux";
 import { checkValue } from "validations";
 
@@ -32,9 +32,12 @@ class Dashboard extends React.Component {
     this.setState({ revenue: diff, percentageRevenue: result })
   }
 
+  updateAssets = () => {
+    this.props.updateAssets();
+  }
+
   render() {
     const { balances, assets } = this.props
-    console.log(assets)
     return (
       <>
         <div className="content">
@@ -95,7 +98,7 @@ class Dashboard extends React.Component {
                 <CardFooter>
                   <hr />
                   <div className="stats">
-                    <Button color="link" title="Click to store balance"><i className="fas fa-sync" /> Last 24 hours</Button>
+                    <Button color="link" title="Click to store balance" onClick={this.updateAssets}><i className="fas fa-sync" /> Last 24 hours</Button>
                   </div>
                 </CardFooter>
               </Card>
@@ -221,4 +224,4 @@ const mapStateToProps = (state) => {
 
 }
 
-export default connect(mapStateToProps, { getBalance, getAssets })(Dashboard);
+export default connect(mapStateToProps, { getBalance, getAssets, updateAssets })(Dashboard);
