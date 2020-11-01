@@ -146,13 +146,19 @@ class Assets(Account):
 
     def get_value(self):
         resp = jsonResp({"message": "No balance found"}, 200)
-        last_24 = {
-            "updatedTime": {
-                "$lt": datetime.now().timestamp(),
-                "$gte": (datetime.now() - timedelta(days=1)).timestamp()
+        interval = request.view_args["interval"]
+        filter = {}
+
+        # last 24 hours
+        if interval == "1d":
+            filter = {
+                "updatedTime": {
+                    "$lt": datetime.now().timestamp(),
+                    "$gte": (datetime.now() - timedelta(days=1)).timestamp()
+                }
             }
-        }
-        balance = list(app.db.assets.find(last_24).sort([("_id", -1)]))
+
+        balance = list(app.db.assets.find(filter).sort([("_id", -1)]))
         if balance:
             resp = jsonResp({"data": balance}, 200)
         return resp

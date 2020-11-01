@@ -1,17 +1,19 @@
+import LineChart from "components/LineChart";
+import PieChart from "components/PieChart";
 import React from "react";
-import { Line, Pie } from "react-chartjs-2";
-import { Card, CardHeader, CardBody, CardFooter, CardTitle, Row, Col, Button } from "reactstrap";
-import { dashboard24HoursPerformanceChart, dashboardEmailStatisticsChart, dashboardNASDAQChart } from "variables/charts.jsx";
-import { getBalance, getAssets, updateAssets } from "./actions";
 import { connect } from "react-redux";
+import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Row } from "reactstrap";
 import { checkValue } from "validations";
+import { getAssets, getBalance, updateAssets } from "./actions";
 
 class Dashboard extends React.Component {
 
   constructor(props) {
     super(props);
     this.state = {
-      revenue: 0
+      revenue: 0,
+      lineChartData: null,
+      pieChartData: null,
     }
   }
 
@@ -22,7 +24,11 @@ class Dashboard extends React.Component {
 
   componentDidUpdate = (p, s) => {
     if (!checkValue(this.props.assets) && p.assets !== this.props.assets) {
-      this.computeDiffAssets(this.props.assets)
+      this.computeLineChart(this.props.assets);
+      this.computePieChart(this.props.assets);
+    }
+    if (!checkValue(this.props.assets24) && p.assets24 !== this.props.assets24) {
+      this.computeDiffAssets(this.props.assets24);
     }
   }
 
@@ -30,6 +36,35 @@ class Dashboard extends React.Component {
     const diff = assets[0].total_btc_value - assets[assets.length - 1].total_btc_value;
     const result = Math.floor(diff / assets[assets.length - 1].total_btc_value)
     this.setState({ revenue: diff, percentageRevenue: result })
+  }
+
+  computeLineChart = (assets) => {
+    const trace1 = {
+      x: [1, 2, 3, 4],
+      y: [10, 15, 13, 17],
+      type: 'scatter'
+    };
+    
+    const trace2 = {
+      x: [1, 2, 3, 4],
+      y: [16, 5, 11, 9],
+      type: 'scatter'
+    };
+    
+    const data = [trace1, trace2];
+    this.setState({ lineChartData: data })
+    console.log(assets);
+    
+  }
+
+  computePieChart = (assets) => {
+    var data = [{
+      values: [19, 26, 55],
+      labels: ['Residential', 'Non-Residential', 'Utility'],
+      type: 'pie'
+    }];
+    this.setState({ pieChartData: data });
+    console.log(assets);
   }
 
   updateAssets = () => {
@@ -131,49 +166,16 @@ class Dashboard extends React.Component {
             </Col>
           </Row>
           <Row>
-            <Col md="12">
-              <Card>
-                <CardHeader>
-                  <CardTitle tag="h5">Users Behavior</CardTitle>
-                  <p className="card-category">24 Hours performance</p>
-                </CardHeader>
-                <CardBody>
-                  <Line
-                    data={dashboard24HoursPerformanceChart.data}
-                    options={dashboard24HoursPerformanceChart.options}
-                    width={400}
-                    height={100}
-                  />
-                </CardBody>
-                <CardFooter>
-                  <hr />
-                  <div className="stats">
-                    <i className="fa fa-history" /> Updated 3 minutes ago
-                  </div>
-                </CardFooter>
-              </Card>
-            </Col>
-          </Row>
-          <Row>
             <Col md="4">
               <Card>
                 <CardHeader>
-                  <CardTitle tag="h5">Email Statistics</CardTitle>
-                  <p className="card-category">Last Campaign Performance</p>
+                  <CardTitle tag="h5">Portfolio distribution</CardTitle>
+                  {/* <p className="card-category">Last Campaign Performance</p> */}
                 </CardHeader>
                 <CardBody>
-                  <Pie
-                    data={dashboardEmailStatisticsChart.data}
-                    options={dashboardEmailStatisticsChart.options}
-                  />
+                  { this.state.pieChartData && <PieChart data={this.state.pieChartData} /> }
                 </CardBody>
                 <CardFooter>
-                  <div className="legend">
-                    <i className="fa fa-circle text-primary" /> Opened{" "}
-                    <i className="fa fa-circle text-warning" /> Read{" "}
-                    <i className="fa fa-circle text-danger" /> Deleted{" "}
-                    <i className="fa fa-circle text-gray" /> Unopened
-                  </div>
                   <hr />
                   <div className="stats">
                     <i className="fa fa-calendar" /> Number of emails sent
@@ -184,22 +186,13 @@ class Dashboard extends React.Component {
             <Col md="8">
               <Card className="card-chart">
                 <CardHeader>
-                  <CardTitle tag="h5">NASDAQ: AAPL</CardTitle>
+                  <CardTitle tag="h5">Portfolio plot</CardTitle>
                   <p className="card-category">Line Chart with Points</p>
                 </CardHeader>
                 <CardBody>
-                  <Line
-                    data={dashboardNASDAQChart.data}
-                    options={dashboardNASDAQChart.options}
-                    width={400}
-                    height={100}
-                  />
+                    {this.state.lineChartData && <LineChart data={this.state.lineChartData} /> }
                 </CardBody>
                 <CardFooter>
-                  <div className="chart-legend">
-                    <i className="fa fa-circle text-info" /> Tesla Model S{" "}
-                    <i className="fa fa-circle text-warning" /> BMW 5 Series
-                  </div>
                   <hr />
                   <div className="card-stats">
                     <i className="fa fa-check" /> Data information certified
@@ -214,13 +207,34 @@ class Dashboard extends React.Component {
   }
 }
 
-const mapStateToProps = (state) => {
-  const { data: balances } = state.balanceReducer;
-  const { data: assets } = state.assetsReducer;
-  return {
+const twenty4assets = (assets) => {
+  let filterAssets = assets.filter((x) => {
+    const date = new Date();
+    const yesterday = date.setDate(date.getDate() - 1)
+    const updatedTime = x.updatedTime * 1000
+    if ((updatedTime < new Date().getTime()) && (updatedTime > yesterday)) {
+      return true
+    }
+    return false;
+  })
+  let sortAsset = filterAssets.sort((a,b) => b.updatedTime - a.updatedTime);
+  return sortAsset;
+}
+    
+
+const mapStateToProps = (s) => {
+  const { data: balances } = s.balanceReducer;
+  const { data: assets } = s.assetsReducer;
+  let props = {
     balances: balances,
-    assets: assets
+    assets: assets,
+    assets24: null,
   }
+  if (!checkValue(assets)) {
+    const assets24 = twenty4assets(assets);
+    props.assets24 = assets24;
+  }
+  return props;
 
 }
 

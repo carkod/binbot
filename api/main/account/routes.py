@@ -31,6 +31,6 @@ def get_symbol_info(pair):
 def store_balance():
     return Assets().store_balance()
 
-@account_blueprint.route("/assets/", methods=["GET"])
-def get_value():
+@account_blueprint.route("/assets/<interval>", methods=["GET"])
+def get_value(interval):
     return Assets().get_value()
