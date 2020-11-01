@@ -4,12 +4,15 @@ import { Card, CardHeader, CardBody, CardFooter, CardTitle, Row, Col, Button } f
 import { dashboard24HoursPerformanceChart, dashboardEmailStatisticsChart, dashboardNASDAQChart } from "variables/charts.jsx";
 import { getBalance, getAssets } from "./actions";
 import { connect } from "react-redux";
+import { checkValue } from "validations";
 
 class Dashboard extends React.Component {
 
   constructor(props) {
     super(props);
-    this.state = {}
+    this.state = {
+      revenue: 0
+    }
   }
 
   componentDidMount = () => {
@@ -17,9 +20,21 @@ class Dashboard extends React.Component {
     this.props.getAssets();
   }
 
+  componentDidUpdate = (p, s) => {
+    if (!checkValue(this.props.assets) && p.assets !== this.props.assets) {
+      this.computeDiffAssets(this.props.assets)
+    }
+  }
+
+  computeDiffAssets = (assets) => {
+    const diff = assets[0].total_btc_value - assets[assets.length - 1].total_btc_value;
+    const result = Math.floor(diff / assets[assets.length - 1].total_btc_value)
+    this.setState({ revenue: diff, percentageRevenue: result })
+  }
+
   render() {
     const { balances, assets } = this.props
-
+    console.log(assets)
     return (
       <>
         <div className="content">
@@ -54,7 +69,7 @@ class Dashboard extends React.Component {
                 <CardFooter>
                   <hr />
                   <div className="stats">
-                    { assets && `Total ${assets[0].total_btc_value} BTC` }
+                    { assets && `Total ${ parseFloat(assets[0].total_btc_value).toFixed(6)} BTC` }
                   </div>
                 </CardFooter>
               </Card>
@@ -71,7 +86,7 @@ class Dashboard extends React.Component {
                     <Col md="8" xs="7">
                       <div className="numbers">
                         <p className="card-category">Revenue</p>
-                        <CardTitle tag="p">$ 1,345</CardTitle>
+                        <CardTitle tag="p" className={this.state.revenue > 0 ? "text-success" : "text-danger"}>{this.state.percentageRevenue && this.state.percentageRevenue + " %"}</CardTitle>
                         <p />
                       </div>
                     </Col>
@@ -80,7 +95,7 @@ class Dashboard extends React.Component {
                 <CardFooter>
                   <hr />
                   <div className="stats">
-                    <i className="far fa-calendar" /> Last day
+                    <Button color="link" title="Click to store balance"><i className="fas fa-sync" /> Last 24 hours</Button>
                   </div>
                 </CardFooter>
               </Card>

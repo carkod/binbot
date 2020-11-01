@@ -10,7 +10,7 @@ import requests
 from flask import current_app as app, request
 from main.tools.handle_error import handle_error
 from main.tools.jsonresp import jsonResp, jsonResp_message
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class Account:
 
@@ -146,7 +146,13 @@ class Assets(Account):
 
     def get_value(self):
         resp = jsonResp({"message": "No balance found"}, 200)
-        balance = list(app.db.assets.find({}).sort([("_id", -1)]))
+        last_24 = {
+            "updatedTime": {
+                "$lt": datetime.now().timestamp(),
+                "$gte": (datetime.now() - timedelta(days=1)).timestamp()
+            }
+        }
+        balance = list(app.db.assets.find(last_24).sort([("_id", -1)]))
         if balance:
             resp = jsonResp({"data": balance}, 200)
         return resp
