@@ -3,9 +3,8 @@ GET http://localhost:5000/account HTTP/1.1
 ###
 GET http://localhost:5000/account/symbols HTTP/1.1
 
+###
+GET http://localhost:5000/account/update-assets HTTP/1.1
 
 ###
-GET http://localhost:5000/account/update-balance HTTP/1.1
-
-###
-GET http://localhost:5000/account/portfolio HTTP/1.1
+GET http://localhost:5000/account/assets HTTP/1.1

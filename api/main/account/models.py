@@ -3,7 +3,6 @@ import hmac
 import json
 import os
 import time as tm
-from datetime import datetime
 from urllib.parse import urlparse
 
 import pandas as pd
@@ -11,7 +10,7 @@ import requests
 from flask import current_app as app, request
 from main.tools.handle_error import handle_error
 from main.tools.jsonresp import jsonResp, jsonResp_message
-
+from datetime import datetime
 
 class Account:
 
@@ -101,7 +100,7 @@ class Account:
         return jsonResp({"data": symbols_list}, 200)
 
 
-class Balances(Account):
+class Assets(Account):
 
     def store_balance(self):
         """
@@ -111,25 +110,43 @@ class Balances(Account):
         ticker_price = self._ticker_price()
         total_btc = 0
         for b in balances:
+
+            # Ordinary coins found in balance
             symbol = f"{b['asset']}BTC"
             price = next((x for x in ticker_price if x["symbol"] == symbol), None)
             if price:
-                total_btc += b["free"]
+                btc = b["free"] * float(price["price"])
+
+            # USD tether coins found in balance
+            if b["asset"].find("USD") > -1:
+                symbol = f"BTC{b['asset']}"
+                price = next((x for x in ticker_price if x["symbol"] == symbol), None)
+                btc = b["free"] / float(price["price"])
+
+            # BTC found in balance
+            if b["asset"] == "BTC":
+                btc = b["free"]
+
+            total_btc += btc
 
         update_balances = {
             "balances": balances,
-            "total_btc_value": total_btc
+            "total_btc_value": total_btc,
+            "updatedTime": datetime.now().timestamp()
         }
-        db = app.db.balances.save(update_balances, {"$currentDate": {"createdAt": "true"}})
-        if request:
-            resp = jsonResp({"message": "Balances updated!", "_id": db}, 200)
+        db = app.db.assets.insert_one(update_balances)
+        if request and db:
+            resp = jsonResp({"message": "Balances updated!"}, 200)
+            return resp
+        if not db:
+            resp = jsonResp({"message": "Failed to update Balance", "error": db}, 200)
             return resp
         else:
             pass
 
     def get_value(self):
         resp = jsonResp({"message": "No balance found"}, 200)
-        balance = list(app.db.balances.find({}))
+        balance = list(app.db.assets.find({}).sort([("_id", -1)]))
         if balance:
             resp = jsonResp({"data": balance}, 200)
         return resp

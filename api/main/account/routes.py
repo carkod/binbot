@@ -1,7 +1,7 @@
 import os
 
 from flask import Blueprint
-from main.account.models import Account, Balances
+from main.account.models import Account, Assets
 
 
 # initialization
@@ -27,10 +27,10 @@ def get_symbols():
 def get_symbol_info(pair):
     return Account().get_symbol_info()
 
-@account_blueprint.route("/update-balance", methods=["GET"])
+@account_blueprint.route("/update-assets", methods=["GET"])
 def store_balance():
-    return Balances().store_balance()
+    return Assets().store_balance()
 
-@account_blueprint.route("/portfolio/", methods=["GET"])
+@account_blueprint.route("/assets/", methods=["GET"])
 def get_value():
-    return Balances().get_value()
+    return Assets().get_value()

@@ -6,7 +6,7 @@ from flask_cors import CORS
 import atexit
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from main.account.models import Balances
+from main.account.models import Assets
 
 # Import Routes
 from main.user.routes import user_blueprint
@@ -31,7 +31,7 @@ def create_app():
 
     # Cronjob
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=Balances().store_balance, trigger="cron", hour="21", minute="0")
+    scheduler.add_job(func=Assets().store_balance, trigger="cron", hour="21", minute="0")
     scheduler.start()
     # Shut down the scheduler when exiting the app
     atexit.register(lambda: scheduler.shutdown(wait=False))

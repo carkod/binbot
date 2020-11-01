@@ -190,3 +190,9 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
   font-size: 0.58em;
   margin-left: 0.5em;
 }
+
+.u-green-badge {
+  color: $white-color;
+  background-color: $success-color;
+  padding: 0.3em;
+}

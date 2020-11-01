@@ -2,7 +2,7 @@ import React from "react";
 import { Line, Pie } from "react-chartjs-2";
 import { Card, CardHeader, CardBody, CardFooter, CardTitle, Row, Col, Button } from "reactstrap";
 import { dashboard24HoursPerformanceChart, dashboardEmailStatisticsChart, dashboardNASDAQChart } from "variables/charts.jsx";
-import { getBalance } from "./actions";
+import { getBalance, getAssets } from "./actions";
 import { connect } from "react-redux";
 
 class Dashboard extends React.Component {
@@ -14,10 +14,12 @@ class Dashboard extends React.Component {
 
   componentDidMount = () => {
     this.props.getBalance();
+    this.props.getAssets();
   }
 
   render() {
-    const { balances } = this.props
+    const { balances, assets } = this.props
+
     return (
       <>
         <div className="content">
@@ -30,9 +32,13 @@ class Dashboard extends React.Component {
                       <div className="stats">
                         <p className="card-category">Balance</p>
                         {balances && balances.map((x, i) =>
-                          <CardTitle key={i} tag="h5" className="card-title">{x.free}</CardTitle>
+                          <CardTitle key={i} tag="h5" className={`card-title`} >
+                            <span className={Math.max.apply(Math, balances.map((o) => o.free)) === x.free ? "u-green-badge" : ""} >
+                              {x.free}
+                            </span>
+                          </CardTitle>
                         )}
-                        
+
                       </div>
                     </Col>
                     <Col md="4" xs="12">
@@ -48,7 +54,7 @@ class Dashboard extends React.Component {
                 <CardFooter>
                   <hr />
                   <div className="stats">
-                    <Button color="link"><i className="fas fa-sync-alt" /> Update Now</Button>
+                    { assets && `Total ${assets[0].total_btc_value} BTC` }
                   </div>
                 </CardFooter>
               </Card>
@@ -191,14 +197,13 @@ class Dashboard extends React.Component {
 }
 
 const mapStateToProps = (state) => {
-  if (state.balanceReducer.data) {
-    return {
-      ...state.balanceReducer,
-      balances: state.balanceReducer.data,
-    }
+  const { data: balances } = state.balanceReducer;
+  const { data: assets } = state.assetsReducer;
+  return {
+    balances: balances,
+    assets: assets
   }
-  return state;
-  
+
 }
 
-export default connect(mapStateToProps, { getBalance })(Dashboard);
+export default connect(mapStateToProps, { getBalance, getAssets })(Dashboard);
