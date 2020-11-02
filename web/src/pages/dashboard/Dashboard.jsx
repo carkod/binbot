@@ -41,20 +41,19 @@ class Dashboard extends React.Component {
   }
 
   computeLineChart = (assets) => {
-    const trace1 = {
-      x: [1, 2, 3, 4],
-      y: [10, 15, 13, 17],
+    const dates = []
+    const values = []
+    assets.forEach(x => {
+      dates.push(x.updatedTime)
+      values.push(x.total_btc_value)
+    })
+    const trace = {
+      x: dates,
+      y: values,
       type: 'scatter'
-    };
-    
-    const trace2 = {
-      x: [1, 2, 3, 4],
-      y: [16, 5, 11, 9],
-      type: 'scatter'
-    };
-    
-    const data = [trace1, trace2];
-    this.setState({ lineChartData: data })
+    }
+
+    this.setState({ lineChartData: [trace] })
     console.log(assets);
     
   }
@@ -184,7 +183,7 @@ class Dashboard extends React.Component {
             <Col md="4">
               <Card>
                 <CardHeader>
-                  <CardTitle tag="h5">Portfolio distribution</CardTitle>
+                  <CardTitle tag="h5">Portfolio allocation</CardTitle>
                   {/* <p className="card-category">Last Campaign Performance</p> */}
                 </CardHeader>
                 <CardBody>
@@ -212,8 +211,8 @@ class Dashboard extends React.Component {
             <Col md="8">
               <Card className="card-chart">
                 <CardHeader>
-                  <CardTitle tag="h5">Portfolio plot</CardTitle>
-                  <p className="card-category">Line Chart with Points</p>
+                  <CardTitle tag="h5">Portfolio benchmarking</CardTitle>
+                  <p className="card-category">Compare Portfolio against BTC and USDT</p>
                 </CardHeader>
                 <CardBody>
                     {this.state.lineChartData && <LineChart data={this.state.lineChartData} /> }

@@ -55,6 +55,18 @@ class Account:
         r = requests.get(url=url)
         return r.json()
 
+    def ticker(self):
+        url = self.ticker_price
+        symbol = request.view_args["symbol"]
+        params = {}
+        if symbol:
+            params = {'symbol': symbol}
+        res = requests.get(url=url, params=params)
+        handle_error(res)
+        data = res.json()
+        resp = jsonResp({"data": data}, 200)
+        return resp
+
     def get_balances(self):
         data = self.request_data()["balances"]
         df = pd.DataFrame(data)

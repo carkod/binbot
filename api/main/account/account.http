@@ -8,3 +8,6 @@ GET http://localhost:5000/account/update-assets HTTP/1.1
 
 ###
 GET http://localhost:5000/account/assets HTTP/1.1
+
+### With or without symbol
+GET http://localhost:5000/account/ticker/BTCUSDT HTTP/1.1

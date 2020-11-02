@@ -27,11 +27,16 @@ def get_symbols():
 def get_symbol_info(pair):
     return Account().get_symbol_info()
 
+@account_blueprint.route("/ticker", defaults={'symbol': None})
+@account_blueprint.route("/ticker/<symbol>", methods=["GET"])
+def ticker(symbol=None):
+    return Account().ticker()
+
 @account_blueprint.route("/update-assets", methods=["GET"])
 def store_balance():
     return Assets().store_balance()
 
 @account_blueprint.route("/assets", defaults={'interval': None})
-@account_blueprint.route("/assets/<interval>", defaults={'interval': None}, methods=["GET"])
+@account_blueprint.route("/assets/<interval>", methods=["GET"])
 def get_value(interval):
     return Assets().get_value()
