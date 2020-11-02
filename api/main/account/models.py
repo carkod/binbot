@@ -116,16 +116,19 @@ class Assets(Account):
             price = next((x for x in ticker_price if x["symbol"] == symbol), None)
             if price:
                 btc = b["free"] * float(price["price"])
+                b["btc_value"] = btc
 
             # USD tether coins found in balance
             if b["asset"].find("USD") > -1:
                 symbol = f"BTC{b['asset']}"
                 price = next((x for x in ticker_price if x["symbol"] == symbol), None)
                 btc = b["free"] / float(price["price"])
+                b["btc_value"] = btc
 
             # BTC found in balance
             if b["asset"] == "BTC":
                 btc = b["free"]
+                b["btc_value"] = btc
 
             total_btc += btc
 

@@ -57,4 +57,6 @@ const replaceZeros = (value) => {
     return value.replace(/^0+/, '');
 }
 
-export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders, replaceZeros };
+const listCssColors = ['#51cbce', '#fbc658', '#ef8157', '#E3E3E3', '#51bcda', '#c178c1', '#dcb285', '#f96332']
+
+export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders, replaceZeros, listCssColors };

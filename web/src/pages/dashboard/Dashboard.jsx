@@ -3,7 +3,7 @@ import PieChart from "components/PieChart";
 import React from "react";
 import { connect } from "react-redux";
 import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Row } from "reactstrap";
-import { checkValue } from "validations";
+import { checkValue, listCssColors } from "validations";
 import { getAssets, getBalance, updateAssets } from "./actions";
 
 class Dashboard extends React.Component {
@@ -13,7 +13,9 @@ class Dashboard extends React.Component {
     this.state = {
       revenue: 0,
       lineChartData: null,
+      lineChartLegend: null,
       pieChartData: null,
+      pieChartLegend: null,
     }
   }
 
@@ -58,13 +60,26 @@ class Dashboard extends React.Component {
   }
 
   computePieChart = (assets) => {
-    var data = [{
-      values: [19, 26, 55],
-      labels: ['Residential', 'Non-Residential', 'Utility'],
-      type: 'pie'
+    let values = [];
+    let labels = [];
+    let pieChartLegend = [];
+    assets[0].balances.map((x, i) => {
+      values.push(x.free)
+      labels.push(x.asset)
+      pieChartLegend.push({
+        name: x.asset,
+        color: listCssColors[i]
+      })
+    });
+    const data = [{
+      values: values,
+      labels: labels,
+      type: 'pie',
+      marker: {
+        colors: listCssColors
+      },
     }];
-    this.setState({ pieChartData: data });
-    console.log(assets);
+    this.setState({ pieChartData: data, pieChartLegend: pieChartLegend });
   }
 
   updateAssets = () => {
@@ -176,6 +191,17 @@ class Dashboard extends React.Component {
                   { this.state.pieChartData && <PieChart data={this.state.pieChartData} /> }
                 </CardBody>
                 <CardFooter>
+                <div className="legend">
+                  { this.state.pieChartLegend && this.state.pieChartLegend.map((x, i) => {
+                    return (
+                      <span key={i} className="u-text-margin-left">
+                        <i className="fa fa-circle" style={{"color": x.color}} />
+                        {x.name}
+                      </span>
+                    )
+                  })}
+                    
+                  </div>
                   <hr />
                   <div className="stats">
                     <i className="fa fa-calendar" /> Number of emails sent
