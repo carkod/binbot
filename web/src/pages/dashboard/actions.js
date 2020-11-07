@@ -1,7 +1,6 @@
 export const GET_BALANCE = 'GET_BALANCE';
 export const BALANCE_SUCCESS = 'BALANCE_SUCCESS';
 export const BALANCE_ERROR = 'BALANCE_ERROR';
-export const DEFAULT_LOCALE = 'en';
 
 export const GET_ASSETS = 'GET_ASSETS';
 export const GET_ASSETS_SUCCESS = 'GET_ASSETS_SUCCESS';
@@ -10,6 +9,11 @@ export const GET_ASSETS_ERROR = 'GET_ASSETS_ERROR';
 export const UPDATE_ASSETS = 'UPDATE_ASSETS';
 export const UPDATE_ASSETS_SUCCESS = 'UPDATE_ASSETS_SUCCESS';
 export const UPDATE_ASSETS_ERROR = 'UPDATE_ASSETS_ERROR';
+
+export const GET_BTC_CHANGE = 'GET_BTC_CHANGE';
+export const GET_BTC_CHANGE_SUCCESS = 'GET_BTC_CHANGE_SUCCESS';
+export const GET_BTC_CHANGE_ERROR = 'GET_BTC_CHANGE_ERROR';
+
 
 /**
  * Create new user
@@ -113,5 +117,42 @@ export function updateAssetsFailed(error) {
     type: UPDATE_ASSETS_ERROR,
     isLoading: false,
     isError: true,
+    error: error
+  };
+}
+
+/**
+ * Update assets
+ * /account/update-assets
+ * @return {object} An action object with a type of BALANCE
+ */
+export function getBtcChange(symbol, interval) {
+  return {
+    type: GET_BTC_CHANGE,
+    isLoading: true,
+    isError: false,
+    data: {
+      symbol: symbol,
+      interval: interval
+    }
+  };
+}
+
+export function getBtcChangeSucceeded(res) {
+  return {
+    type: GET_BTC_CHANGE_SUCCESS,
+    isLoading: false,
+    isError: false,
+    message: res.message,
+    data: res.data
+  };
+}
+
+export function getBtcChangeFailed(error) {
+  return {
+    type: GET_BTC_CHANGE_ERROR,
+    isLoading: false,
+    isError: true,
+    message: error.message
   };
 }

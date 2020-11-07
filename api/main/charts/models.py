@@ -3,9 +3,10 @@ import os
 
 import pandas as pd
 import requests
+from datetime import datetime, timedelta
 from flask import request
 from main.tools.jsonresp import jsonResp
-
+from main.tools.handle_error import handle_error
 
 class Candlestick:
     """
@@ -69,35 +70,39 @@ class Candlestick:
         }
         return defaults
 
-    def layout(self):
-        defaults = {
-            "dragmode": 'zoom',
-            "autosize": "true",
-            "line_width": 50,
-            "margin": {
-                "r": 10,
-                "t": 25,
-                "b": 40,
-                "l": 60
-            },
-            "showlegend": "false",
-            "xaxis": {
-                "autorange": "true",
-                "title": 'Date',
-                "type": 'date'
-            },
-            "yaxis": {
-                "domain": [0, 1],
-                "tickformat": '.10f',
-                "type": 'linear',
-                "maxPoints": 50
-            }
-        }
-        return defaults
-
     def get(self):
         trace = json.dumps(self.candlestick_trace())
-        layout = json.dumps(self.layout())
 
-        resp = jsonResp({"trace": trace, "layout": layout}, 200)
+        resp = jsonResp({"trace": trace}, 200)
+        return resp
+
+    def get_diff(self):
+        today = datetime.today()
+        first = today.replace(day=1)
+        lastMonth = first - timedelta(days=1)
+        # One month from today
+        first_lastMonth = today - timedelta(days=lastMonth.day)
+        startTime = int(round(first_lastMonth.timestamp() * 1000))
+
+        pair = request.view_args["pair"]
+        interval = request.view_args["interval"]
+        params = {'symbol': pair, 'interval': interval, "limit": lastMonth.day, "startTime": startTime}
+        url = self.candlestick_url
+        res = requests.get(url=url, params=params)
+        handle_error(res)
+        data = res.json()
+        df = pd.DataFrame(data)
+
+        # New df with dates and close
+        df_new = df[[0, 3]]
+        df_new[3].astype(float)
+        close_prices = df_new[3].astype(float).pct_change().iloc[1:].values.tolist()
+        dates = df_new[0].iloc[1:].values.tolist()
+        trace = {
+            "x": dates,
+            "y": close_prices,
+            "type": 'scatter',
+            "mode": 'lines+markers'
+        }
+        resp = jsonResp({"message": "Successfully retrieved data", "data": trace}, 200)
         return resp

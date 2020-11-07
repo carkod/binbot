@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { balanceFailed, balanceSucceeded, getAssetsFailed, getAssetsSucceeded, GET_ASSETS, GET_BALANCE, updateAssetsFailed, updateAssetsSucceeded, UPDATE_ASSETS } from './actions';
+import { balanceFailed, balanceSucceeded, getAssetsFailed, getAssetsSucceeded, getBtcChangeFailed, getBtcChangeSucceeded, GET_ASSETS, GET_BALANCE, GET_BTC_CHANGE, updateAssetsFailed, updateAssetsSucceeded, UPDATE_ASSETS } from './actions';
 
 /**
  * Account request/response handler
@@ -70,4 +70,29 @@ export function* updateAssetsValue() {
 
 export function* watchUpdateAssets() {
   yield takeLatest(UPDATE_ASSETS, updateAssetsValue);
+}
+
+
+/**
+ * Update Portolio of assets balance
+ * /account/ticker23/<symbol>
+ */
+export function* getBtcChange(payload) {
+  const { symbol, interval } = payload.data;
+  const requestURL = `${process.env.REACT_APP_CHANGE}/${symbol}/${interval}`;
+  const options = {
+    method: 'GET',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  }
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(getBtcChangeSucceeded(res));
+  } catch (err) {
+    yield put(getBtcChangeFailed(err));
+  }
+}
+
+export function* watchgetBtcChange() {
+  yield takeLatest(GET_BTC_CHANGE, getBtcChange);
 }

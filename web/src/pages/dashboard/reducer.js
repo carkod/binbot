@@ -1,4 +1,4 @@
-import { GET_BALANCE, BALANCE_SUCCESS, BALANCE_ERROR, GET_ASSETS, GET_ASSETS_SUCCESS, GET_ASSETS_ERROR, UPDATE_ASSETS, UPDATE_ASSETS_SUCCESS, UPDATE_ASSETS_ERROR } from './actions';
+import { GET_BALANCE, BALANCE_SUCCESS, BALANCE_ERROR, GET_ASSETS, GET_ASSETS_SUCCESS, GET_ASSETS_ERROR, UPDATE_ASSETS, UPDATE_ASSETS_SUCCESS, UPDATE_ASSETS_ERROR, GET_BTC_CHANGE, GET_BTC_CHANGE_SUCCESS, GET_BTC_CHANGE_ERROR } from './actions';
 
 // The initial state of the App
 export const initialState = {
@@ -105,4 +105,40 @@ function assetsReducer(state = initialState, action) {
   }
 }
 
-export { balanceReducer, assetsReducer };
+
+function btcChangeReducer(state = initialState, action) {
+  switch (action.type) {
+    case GET_BTC_CHANGE: {
+      const newState = {
+        isLoading: true,
+        isError: false,
+        payload: action.data,
+      };
+
+      return newState;
+    }
+    case GET_BTC_CHANGE_SUCCESS: {
+      const newState = {
+        ...state,
+        isLoading: false,
+        isError: false,
+        data: action.data
+      };
+      return newState;
+    }
+
+    case GET_BTC_CHANGE_ERROR: {
+      return { 
+        ...state, 
+        error: action.error, 
+        isLoading: false, 
+        isError: true,
+      };
+    }
+
+    default:
+      return state;
+  }
+}
+
+export { balanceReducer, assetsReducer, btcChangeReducer };

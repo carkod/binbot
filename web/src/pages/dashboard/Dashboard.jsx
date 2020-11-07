@@ -4,7 +4,8 @@ import React from "react";
 import { connect } from "react-redux";
 import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Row } from "reactstrap";
 import { checkValue, listCssColors } from "validations";
-import { getAssets, getBalance, updateAssets } from "./actions";
+import { getAssets, getBalance, getBtcChange, updateAssets } from "./actions";
+import { btcChangeReducer } from "./reducer";
 
 class Dashboard extends React.Component {
 
@@ -22,15 +23,19 @@ class Dashboard extends React.Component {
   componentDidMount = () => {
     this.props.getBalance();
     this.props.getAssets();
+    this.props.getBtcChange("BTCUSDT", "1d");
   }
 
   componentDidUpdate = (p, s) => {
     if (!checkValue(this.props.assets) && p.assets !== this.props.assets) {
-      this.computeLineChart(this.props.assets);
       this.computePieChart(this.props.assets);
     }
     if (!checkValue(this.props.assets24) && p.assets24 !== this.props.assets24) {
-      this.computeDiffAssets(this.props.assets24);
+      this.computeDiffAssets(this.props.assets24, this.props.btcChange);
+    }
+
+    if (!checkValue(this.props.btcChange) && p.btcChange !== this.props.btcChange) {
+      this.computeLineChart(this.props.assets, this.props.btcChange);
     }
   }
 
@@ -40,29 +45,68 @@ class Dashboard extends React.Component {
     this.setState({ revenue: diff, percentageRevenue: result })
   }
 
-  computeLineChart = (assets) => {
+  computeLineChart = (assets, btcChange) => {
+    /**
+     * Compute percentage increases benchmark
+     * BTC vs Portfolio
+     * 
+     */
     const dates = []
     const values = []
-    assets.forEach(x => {
-      dates.push(x.updatedTime)
-      values.push(x.total_btc_value)
+    assets.forEach((a,i) => {
+      const b = assets[i + 1]
+      if (b !== undefined) {
+        const date = new Date(b.updatedTime * 1000)
+        const value = [(a.total_btc_value - b.total_btc_value) / a.total_btc_value] * 100
+        dates.push(date)
+        values.push(value)
+      }
+      
     })
     const trace = {
       x: dates,
       y: values,
-      type: 'scatter'
+      type: 'scatter',
+      mode: 'lines+markers',
+      connectgaps: true,
+      line: {
+        color: listCssColors[0],
+        width: 1
+      },
+      marker: {
+        color: listCssColors[0],
+        size: 8
+      }
+    }
+    const assetsLegend = {
+      name: "Portfolio",
+      color: listCssColors[0]
     }
 
-    this.setState({ lineChartData: [trace] })
-    console.log(assets);
+
+    // Trace 2
+    btcChange.line = {
+      color: listCssColors[1],
+      width: 1
+    };
+    btcChange.marker = {
+      color: listCssColors[1],
+      size: 8
+    };
+    const btcChangeLegend = {
+      name: "BTC on USDT",
+      color: listCssColors[1]
+    }
     
+    this.setState({ lineChartData: [trace, btcChange], lineChartLegend: [assetsLegend, btcChangeLegend] })
+
   }
 
   computePieChart = (assets) => {
     let values = [];
     let labels = [];
     let pieChartLegend = [];
-    assets[0].balances.map((x, i) => {
+    assets[0].balances.forEach((x, i) => {
       values.push(x.free)
       labels.push(x.asset)
       pieChartLegend.push({
@@ -218,6 +262,17 @@ class Dashboard extends React.Component {
                     {this.state.lineChartData && <LineChart data={this.state.lineChartData} /> }
                 </CardBody>
                 <CardFooter>
+                <div className="legend">
+                  { this.state.lineChartLegend && this.state.lineChartLegend.map((x, i) => {
+                    return (
+                      <span key={i} className="u-text-margin-left">
+                        <i className="fa fa-circle" style={{"color": x.color}} />
+                        {x.name}
+                      </span>
+                    )
+                  })}
+                    
+                  </div>
                   <hr />
                   <div className="card-stats">
                     <i className="fa fa-check" /> Data information certified
@@ -250,10 +305,12 @@ const twenty4assets = (assets) => {
 const mapStateToProps = (s) => {
   const { data: balances } = s.balanceReducer;
   const { data: assets } = s.assetsReducer;
+  const { data: btcChange } = s.btcChangeReducer;
   let props = {
     balances: balances,
     assets: assets,
     assets24: null,
+    btcChange: btcChange,
   }
   if (!checkValue(assets)) {
     const assets24 = twenty4assets(assets);
@@ -263,4 +320,4 @@ const mapStateToProps = (s) => {
 
 }
 
-export default connect(mapStateToProps, { getBalance, getAssets, updateAssets })(Dashboard);
+export default connect(mapStateToProps, { getBalance, getAssets, updateAssets, getBtcChange })(Dashboard);

@@ -20,6 +20,7 @@ class Account:
     account_url = os.getenv('ACCOUNT')
     exchangeinfo_url = os.getenv('EXCHANGE_INFO')
     ticker_price = os.getenv('TICKER_PRICE')
+    ticker24_url = os.getenv('TICKER24')
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
@@ -61,6 +62,16 @@ class Account:
         params = {}
         if symbol:
             params = {'symbol': symbol}
+        res = requests.get(url=url, params=params)
+        handle_error(res)
+        data = res.json()
+        resp = jsonResp({"data": data}, 200)
+        return resp
+
+    def ticker_24(self):
+        url = self.ticker24_url
+        symbol = request.view_args["symbol"]
+        params = {'symbol': symbol}
         res = requests.get(url=url, params=params)
         handle_error(res)
         data = res.json()

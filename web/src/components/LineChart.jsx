@@ -10,7 +10,7 @@ function LineChart({ data }) {
         margin: {
             r: 10,
             t: 10,
-            b: 20,
+            b: 35,
             l: 20,
         },
         showlegend: false,
@@ -18,7 +18,7 @@ function LineChart({ data }) {
             autorange: true,
             title: 'Date',
             type: 'date',
-            tickformat: '%y/%m'
+            tickformat: '%d/%m'
         },
         yaxis: {
             // domain: [0, 1],
