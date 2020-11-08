@@ -1,8 +1,8 @@
-import UserPage from "components/User.jsx";
-import Registration from "containers/registration/Registration";
-import BotForm from "pages/bots/BotForm";
-import Bots from "pages/bots/Bots";
-import Orders from "pages/orders/Orders";
+import UserPage from "../components/User.jsx";
+import Registration from "../containers/registration/Registration";
+import BotForm from "../pages/bots/BotForm";
+import Bots from "../pages/bots/Bots";
+import Orders from "../pages/orders/Orders";
 import Dashboard from "../pages/dashboard/Dashboard";
 
 var routes = [

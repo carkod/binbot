@@ -1,4 +1,4 @@
-import LoginForm from "components/LoginForm";
+import LoginForm from "../../components/LoginForm";
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Col, Row } from "reactstrap";

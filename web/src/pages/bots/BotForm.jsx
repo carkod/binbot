@@ -1,5 +1,5 @@
-import BalanceAnalysis from "components/BalanceAnalysis";
-import Candlestick from "components/Candlestick";
+import BalanceAnalysis from "../../components/BalanceAnalysis";
+import Candlestick from "../../components/Candlestick";
 import React from "react";
 import { connect } from "react-redux";
 import { Alert, Badge, Button, Card, CardBody, CardHeader, CardTitle, Col, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from "reactstrap";

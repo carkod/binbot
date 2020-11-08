@@ -1,11 +1,10 @@
-import LineChart from "components/LineChart";
-import PieChart from "components/PieChart";
 import React from "react";
 import { connect } from "react-redux";
 import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Row } from "reactstrap";
-import { checkValue, listCssColors } from "validations";
+import LineChart from "../../components/LineChart";
+import PieChart from "../../components/PieChart";
+import { checkValue, listCssColors } from "../../validations";
 import { getAssets, getBalance, getBtcChange, updateAssets } from "./actions";
-import { btcChangeReducer } from "./reducer";
 
 class Dashboard extends React.Component {
 
@@ -13,6 +12,7 @@ class Dashboard extends React.Component {
     super(props);
     this.state = {
       revenue: 0,
+      percentageRevenue: "0%",
       lineChartData: null,
       lineChartLegend: null,
       pieChartData: null,

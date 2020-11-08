@@ -1,6 +1,6 @@
 #!/bin/bash
 app="binbot"
-port="5001"
+port="8006"
 active_containers() {
   docker ps -qa --filter ancestor=${app}
 }

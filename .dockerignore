@@ -1,0 +1,6 @@
+node_modules
+build
+__pycache__
+jsconfig.jsson
+.eslintrc.js
+*.md

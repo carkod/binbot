@@ -2,6 +2,7 @@ version: '3.7'
 services:
   mongodb_container:
     image: mongo:latest
+    container_name: binbot_db
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: rootpassword
@@ -9,6 +10,17 @@ services:
       - 27017:27017
     volumes:
       - mongodb_data_container:/data/db
+  
+  # api:
+  #   image: carloswufei/binbot
+  #   restart: on-failure
+  #   container_name: binbot_api
+  #   depends_on:
+  #     - db
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "8007:82"
 
 volumes:
   mongodb_data_container:

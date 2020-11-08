@@ -1,17 +1,16 @@
 
-import Footer from "containers/footer/Footer.jsx";
-import Header from "containers/header/Header.jsx";
-import Sidebar from "containers/sidebar/Sidebar";
-// javascript plugin used to create scrollbars on windows
 import PerfectScrollbar from "perfect-scrollbar";
 import React from "react";
 import { Route, Switch } from "react-router-dom";
-import routes from "router/routes";
+import Footer from "../containers/footer/Footer.jsx";
+import Header from "../containers/header/Header.jsx";
+import Sidebar from "../containers/sidebar/Sidebar";
+import routes from "../router/routes";
 
 
 var ps;
 
-class Dashboard extends React.Component {
+class Admin extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -70,4 +69,4 @@ class Dashboard extends React.Component {
   }
 }
 
-export default Dashboard;
+export default Admin;

@@ -1,5 +1,5 @@
-import CardTable from "components/CardTable";
-import Tables from "components/Tables";
+import CardTable from "../../components/CardTable";
+import Tables from "../../components/Tables";
 import React from "react";
 import { connect } from "react-redux";
 import { Col, Row } from "reactstrap";
