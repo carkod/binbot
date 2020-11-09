@@ -12,7 +12,7 @@ RUN apt-get update -y && apt-get install nginx -y
 COPY --from=build-stage /app/ /web/build
 COPY ./nginx.conf /etc/nginx/sites-enabled/default
 WORKDIR /app
-COPY api/main ./
+COPY api ./api
 COPY .env Pipfile Pipfile.lock run start uwsgi.ini ./
 RUN pip install --upgrade pip && pip install pipenv
 RUN pipenv install --system --deploy --ignore-pipfile
