@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-pipenv shell
-service nginx start
-uwsgi --ini uwsgi.ini

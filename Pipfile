@@ -20,6 +20,7 @@ pandas = "*"
 requests = "*"
 websocket_client = "*"
 APScheduler = "*"
+gunicorn = "*"
 
 [requires]
 python_version = "3.8"
