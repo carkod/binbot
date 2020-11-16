@@ -2,20 +2,19 @@ version: '3.7'
 services:
   db:
     image: mongo:latest
-    container_name: docker-demo_db
+    container_name: binbot-db
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: rootpassword
     ports:
-      - 27017:27017
+      - 27018:27017
     volumes:
       - mongodb_data_container:/data/db
   
   api:
-    build: .
-    image: docker-demo
+    image: carloswufei/binbot
     restart: on-failure
-    container_name: docker-demo
+    container_name: binbot
     depends_on:
       - db
     env_file:

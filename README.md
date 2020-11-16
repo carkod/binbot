@@ -1,29 +1,31 @@
+## Requirements
+ 
+- Docker and docker-compose
+- Python 3
+- Pipenv. If not installed, run `pip install pipenv`
+
 ## Running back-end api
 
 1. Run `pipenv shell` to activate the virtual environment
-2. Run `./run` to start the Flask application
+2. Run vscode debugger to start the Flask application
 
 ## Running front-end web app
 
 1. Run `npm run install:clean` and `npm install`
 2. Run `npm start`
+3. Attach vscode debugger if needed
 
+## Deployment
 
-## Requirements
- 
-- MongoDB
-- Python 3 (defaults to Python 3.7, but you can change this in the Pipfile before setup)
+1. Merge changes to master
+2. Checkout master in local
+3. Run `deploy.sh`
+4. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com`
+In production:
+5. `docker pull carloswufei/binbot`
+6. `docker-compose up -d`
 
-## Setup instructions
+## Test production
 
-1. Clone this repo to your local web server
-2. `cd` into the directory within the terminal
-3. Run `./setup` to setup pipenv and configure the Flask app
-
-## Auth tokens
-
-There is a very basic front-end example in place within the `/web` directory. It demonstrates making a few API calls (User Add and User Login).
-
-A successful login request will return two tokens: `AccessToken` and `RefreshToken`. These should be saved to localStorage and used to set the `AccessToken` and `RefreshToken` request headers for all protected routes (e.g. `GET /user/`).
-
-You can refresh the `AccessToken` when it returns as expired by submitting a request to `GET /user/auth/`.
+1. Run `docker build --tag binbot .`
+2. Run `docker-compose up`

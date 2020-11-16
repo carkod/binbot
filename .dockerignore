@@ -1,6 +1,13 @@
 node_modules
-build
 __pycache__
-jsconfig.jsson
+jsconfig.json
 .eslintrc.js
 *.md
+.vscode
+.devcontainer
+.ini
+.git
+.github
+.gitignore
+docs/
+ecosystem.config.js

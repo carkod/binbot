@@ -11,7 +11,7 @@
       "module": "flask",
       "console": "internalConsole",
       "env": {
-        "FLASK_APP": "api/run.py",
+        "FLASK_APP": "api/main.py",
         "FLASK_ENV": "development",
         "FLASK_DEBUG": "1"
       },
