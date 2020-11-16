@@ -21,6 +21,7 @@ node_modules/
 .dockerenv
 coverage/
 build/
+mongo_data
 
 .DS_Store
 .env.local

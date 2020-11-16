@@ -2,14 +2,17 @@ version: '3.7'
 services:
   db:
     image: mongo:latest
-    container_name: binbot-db
+    container_name: binbot_db
+    restart: on-failure
+    env_file: .env
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_AUTH_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_AUTH_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_APP_DATABASE}
     ports:
       - 27018:27017
     volumes:
-      - mongodb_data_container:/data/db
+      - ./mongo_data:/data/db
   
   api:
     image: carloswufei/binbot
@@ -24,4 +27,4 @@ services:
       - 8008:8006
 
 volumes:
-  mongodb_data_container:
+  mongo_data:

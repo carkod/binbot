@@ -11,7 +11,7 @@
 
 ## Running front-end web app
 
-1. Run `npm run install:clean` and `npm install`
+1. Run `npm run install:clean`
 2. Run `npm start`
 3. Attach vscode debugger if needed
 
@@ -23,9 +23,11 @@
 4. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com`
 In production:
 5. `docker pull carloswufei/binbot`
-6. `docker-compose up -d`
+6. If `.env.prod` is modified, scp to remote server and replace `.env` in production with new `.env.prod`
+7. `docker-compose up -d`
 
 ## Test production
 
 1. Run `docker build --tag binbot .`
 2. Run `docker-compose up`
+
