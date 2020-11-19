@@ -125,50 +125,52 @@ class Account:
 
 class Assets(Account):
 
-    def store_balance(self):
+    def store_balance(self, application):
         """
         Cronjob that stores balances with its approximate current value in BTC
         """
-        balances = self.get_balances().json
-        ticker_price = self._ticker_price()
-        total_btc = 0
-        for b in balances:
+        with application.app_context():
+            print("Store balance job starting...", flush=True)
+            balances = self.get_balances().json
+            ticker_price = self._ticker_price()
+            total_btc = 0
+            for b in balances:
 
-            # Ordinary coins found in balance
-            symbol = f"{b['asset']}BTC"
-            price = next((x for x in ticker_price if x["symbol"] == symbol), None)
-            if price:
-                btc = b["free"] * float(price["price"])
-                b["btc_value"] = btc
-
-            # USD tether coins found in balance
-            if b["asset"].find("USD") > -1:
-                symbol = f"BTC{b['asset']}"
+                # Ordinary coins found in balance
+                symbol = f"{b['asset']}BTC"
                 price = next((x for x in ticker_price if x["symbol"] == symbol), None)
-                btc = b["free"] / float(price["price"])
-                b["btc_value"] = btc
+                if price:
+                    btc = b["free"] * float(price["price"])
+                    b["btc_value"] = btc
 
-            # BTC found in balance
-            if b["asset"] == "BTC":
-                btc = b["free"]
-                b["btc_value"] = btc
+                # USD tether coins found in balance
+                if b["asset"].find("USD") > -1:
+                    symbol = f"BTC{b['asset']}"
+                    price = next((x for x in ticker_price if x["symbol"] == symbol), None)
+                    btc = b["free"] / float(price["price"])
+                    b["btc_value"] = btc
 
-            total_btc += btc
+                # BTC found in balance
+                if b["asset"] == "BTC":
+                    btc = b["free"]
+                    b["btc_value"] = btc
 
-        update_balances = {
-            "balances": balances,
-            "total_btc_value": total_btc,
-            "updatedTime": datetime.now().timestamp()
-        }
-        db = app.db.assets.insert_one(update_balances)
-        if request and db:
-            resp = jsonResp({"message": "Balances updated!"}, 200)
-            return resp
-        if not db:
-            resp = jsonResp({"message": "Failed to update Balance", "error": db}, 200)
-            return resp
-        else:
-            pass
+                total_btc += btc
+
+            update_balances = {
+                "balances": balances,
+                "total_btc_value": total_btc,
+                "updatedTime": datetime.now().timestamp()
+            }
+            db = app.db.assets.insert_one(update_balances)
+            if request and db:
+                resp = jsonResp({"message": "Balances updated!"}, 200)
+                return resp
+            if not db:
+                resp = jsonResp({"message": "Failed to update Balance", "error": db}, 200)
+                return resp
+            else:
+                pass
 
     def get_value(self):
         resp = jsonResp({"message": "No balance found"}, 200)
