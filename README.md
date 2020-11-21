@@ -16,6 +16,7 @@
 3. Attach vscode debugger if needed
 
 ## Deployment
+Docker compose use different manifests for prod and local
 
 1. Merge changes to master
 2. Checkout master in local
