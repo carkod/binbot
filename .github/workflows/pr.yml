@@ -18,3 +18,22 @@ jobs:
           docker run --detach --network host binbot
           sleep 1
           curl --head --fail --retry-delay 1 --retry 30 --retry-connrefused http://localhost:8006
+  
+  push_to_registry:
+    name: Push Docker image to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Build Web
+        run: cd web && npm install && npm run build
+      - name: Build image
+        run: cd .. && docker build -t binbot .
+      - name: Tag image
+        run: docker tag binbot carloswufei/binbot
+      - name: Push to Docker Hub
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: carloswufei/binbot
