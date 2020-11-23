@@ -79,7 +79,7 @@ export function* watchUpdateAssets() {
  */
 export function* getBtcChange(payload) {
   const { symbol, interval } = payload.data;
-  const requestURL = `${process.env.REACT_APP_CHANGE}/${symbol}/${interval}`;
+  const requestURL = `${process.env.REACT_APP_CHANGE}${symbol}/${interval}`;
   const options = {
     method: 'GET',
     mode: 'cors', // no-cors, *cors, same-origin

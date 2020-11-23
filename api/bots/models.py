@@ -31,12 +31,12 @@ class Bot(Account):
         }
 
     def get(self):
-        resp = jsonResp({"message": "No bots found"}, 200)
+        resp = jsonResp({"message": "Endpoint failed"}, 200)
         bot = list(app.db.bots.find())
         if bot:
             resp = jsonResp({"data": bot}, 200)
         else:
-            resp = jsonResp({"message": "Bots not found"}, 404)
+            resp = jsonResp({"message": "Bots not found", "data": []}, 200)
         return resp
 
     def get_one(self):

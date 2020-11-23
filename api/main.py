@@ -30,7 +30,7 @@ app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
 # Cronjob
 scheduler = BackgroundScheduler()
 assets = Assets()
-scheduler.add_job(assets.store_balance, 'interval', [app], hours=1)
+scheduler.add_job(assets.store_balance, 'interval', [app], hours=23)
 scheduler.start()
 atexit.register(lambda: scheduler.shutdown(wait=False))
 

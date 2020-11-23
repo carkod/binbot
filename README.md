@@ -16,12 +16,14 @@
 3. Attach vscode debugger if needed
 
 ## Deployment
-Docker compose use different manifests for prod and local
 
 1. Merge changes to master
-2. Checkout master in local
-3. Run `deploy.sh`
-4. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com`
+2. Wait for check to pass. Github action will publish to Docker Hub
+
+If docker-compose doesn't exist:
+3. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com`
+4. Modify details to match production needs
+
 In production:
 5. `docker pull carloswufei/binbot`
 6. If `.env.prod` is modified, scp to remote server and replace `.env` in production with new `.env.prod`
