@@ -1,4 +1,3 @@
-import Candlestick from "../../components/Candlestick";
 import React from "react";
 import { connect } from "react-redux";
 import { Button, ButtonToggle, Card, CardBody, CardFooter, CardTitle, Col, Jumbotron, Row } from "reactstrap";

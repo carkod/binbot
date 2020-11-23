@@ -44,7 +44,7 @@ class BotForm extends React.Component {
       formIsValid: true,
       activeTab: 'main',
       candlestick_interval: "5m",
-      
+
     }
   }
 
@@ -167,7 +167,7 @@ class BotForm extends React.Component {
         trailling_deviation: percentageToFloat(this.state.trailling_deviation),
       }
       if (this.state._id === null) {
-        this.props.createBot(form);  
+        this.props.createBot(form);
       } else {
         this.props.editBot(this.state._id, form);
       }
@@ -193,7 +193,7 @@ class BotForm extends React.Component {
       } else {
         asset = symbolInfo.quoteAsset;
       }
-  
+
       let value = "0";
       let name = "";
       balances.forEach(x => {
@@ -202,10 +202,10 @@ class BotForm extends React.Component {
           name = x.asset
         }
       });
-  
+
       if (!checkValue(value) && !checkBalance(value)) {
         const updatedValue = value - ((base_order_size * 1) + (so_size * max_so_count))
-  
+
         // Check that we have enough funds
         // If not return error
         if (parseFloat(updatedValue) >= 0) {
@@ -216,7 +216,7 @@ class BotForm extends React.Component {
       } else {
         this.setState({ balance_available: value, balance_available_asset: name, balanceAvailableError: true, formIsValid: false })
       }
-    }     
+    }
   }
 
   handlePairChange = (e) => {
@@ -276,16 +276,15 @@ class BotForm extends React.Component {
       <div className="content">
         <Row>
           <Col md="12">
-            {this.props.candlestick && this.state.pair !== '' ? 
+            {this.props.candlestick && this.state.pair !== '' ?
               <Candlestick
                 data={this.props.candlestick}
-                bot={this.state} />  : ""
+                bot={this.state} /> : ""
             }
           </Col>
         </Row>
         <Form onSubmit={this.handleSubmit}>
           <Row>
-
             <Col md="7" sm="12">
               <Card>
                 <CardHeader>
