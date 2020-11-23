@@ -6,6 +6,7 @@ import { Alert, Badge, Button, Card, CardBody, CardHeader, CardTitle, Col, Form,
 import { getBalance } from "../dashboard/actions";
 import { createBot, editBot, getBot, getSymbolInfo, getSymbols, loadCandlestick } from "./actions";
 import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance, percentageToFloat } from "../../validations.js";
+import SymbolSearch from "../../components/SymbolSearch";
 
 class BotForm extends React.Component {
 
@@ -219,10 +220,10 @@ class BotForm extends React.Component {
     }
   }
 
-  handlePairChange = (e) => {
+  handlePairChange = (value) => {
     // Get pair base or quote asset and set new pair
-    this.props.getSymbolInfo(e.target.value);
-    this.setState({ [e.target.name]: e.target.value });
+    this.props.getSymbolInfo(value[0]);
+    this.setState({ pair: value[0] });
   }
 
   handleStrategy = (e) => {
@@ -246,7 +247,10 @@ class BotForm extends React.Component {
         this.setState({ [e.target.name]: e.target.value, baseOrderSizeError: true, formIsValid: false })
       }
 
+    } else {
+      this.setState({ baseOrderSizeError: true })
     }
+    
   }
 
   addAll = () => {
@@ -327,15 +331,17 @@ class BotForm extends React.Component {
                     <TabPane tabId="main">
                       <Row className="u-margin-bottom">
                         <Col md="6" sm="12">
-                          <Label for="pair">Pair<span className="u-required">*</span></Label>
-                          <Input invalid={this.state.balanceAvailableError} type="select" name="pair" id="pair" onChange={this.handlePairChange} onBlur={this.handlePairBlur} value={this.state.pair}>
-                            <option value="" defaultChecked>Select pair</option>
-                            {this.props.symbols && this.props.symbols.map((x, i) => (
-                              <option key={i} value={x}>{x}</option>
-                            ))}
 
-                          </Input>
-                          <FormFeedback valid={!this.state.balanceAvailableError}><strong>Balance</strong> is not available for this pair.</FormFeedback>
+                          { this.props.symbols &&
+                          
+                          <SymbolSearch 
+                            name="Pair"
+                            label="Select pair"
+                            options={this.props.symbols} selected={this.state.pair} handleChange={this.handlePairChange}
+                            handleBlur={this.handlePairBlur}
+                          />
+                          }
+
                         </Col>
                         <Col md="6" sm="12">
                           <Label htmlFor="name">Name</Label>
