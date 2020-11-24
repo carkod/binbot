@@ -126,7 +126,7 @@ class Bots extends React.Component {
 }
 
 const mapStateToProps = (state) => {
-  if (state.botReducer.data) {
+  if (state.botReducer.data && state.botReducer.data.length > 0) {
     // Sort active status first
     const bots = state.botReducer.data.sort((a,b) => {
       if (a.active === "true") {

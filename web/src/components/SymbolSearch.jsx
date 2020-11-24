@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { Typeahead } from 'react-bootstrap-typeahead';
 import Form from 'react-bootstrap/Form';
+import { checkValue } from "../validations.js";
 import 'react-bootstrap-typeahead/css/Typeahead.css';
 
 export default function SymbolSearch ({ name, label, options, selected, handleChange, handleBlur, required = false, errorMsg = "" }) {
@@ -15,7 +15,7 @@ export default function SymbolSearch ({ name, label, options, selected, handleCh
 					id={name}
 					labelKey={name}
 					onChange={handleChange}
-					options={options}
+					options={!checkValue(options) ? options : []}
 					selected={selected ? [selected] : []}
 					onBlur={handleBlur}
 					className={ errorMsg !== "" ? "is-invalid" : "" }
