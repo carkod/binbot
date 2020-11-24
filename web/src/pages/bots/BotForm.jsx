@@ -332,15 +332,12 @@ class BotForm extends React.Component {
                       <Row className="u-margin-bottom">
                         <Col md="6" sm="12">
 
-                          { this.props.symbols &&
-                          
                           <SymbolSearch 
                             name="Pair"
                             label="Select pair"
                             options={this.props.symbols} selected={this.state.pair} handleChange={this.handlePairChange}
                             handleBlur={this.handlePairBlur}
                           />
-                          }
 
                         </Col>
                         <Col md="6" sm="12">
