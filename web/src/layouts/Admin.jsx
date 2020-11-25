@@ -6,7 +6,7 @@ import Footer from "../containers/footer/Footer.jsx";
 import Header from "../containers/header/Header.jsx";
 import Sidebar from "../containers/sidebar/Sidebar";
 import routes from "../router/routes";
-
+import ReduxToastr from 'react-redux-toastr'
 
 var ps;
 
@@ -46,6 +46,17 @@ class Admin extends React.Component {
   render() {
     return (
       <div className="wrapper">
+        <ReduxToastr
+          timeOut={4000}
+          newestOnTop={true}
+          preventDuplicates
+          position="top-right"
+          getState={(state) => state.toastr} // This is the default
+          transitionIn="fadeIn"
+          transitionOut="fadeOut"
+          progressBar
+          closeOnToastrClick
+        />
         <Sidebar
           {...this.props}
           routes={routes}

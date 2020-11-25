@@ -1,3 +1,5 @@
+import { addNotification } from "../../validations";
+
 export const GET_BOTS = 'GET_BOTS';
 export const GET_BOTS_SUCCESS = 'GET_BOTS_SUCCESS';
 export const GET_BOTS_ERROR = 'GET_BOTS_ERROR';
@@ -292,12 +294,12 @@ export function activateBot(id) {
 }
 
 export function activateBotSucceeded(res) {
+  addNotification(ACTIVATE_BOT_SUCCESS, res.message)
   return {
     type: ACTIVATE_BOT_SUCCESS,
     isLoading: false,
     isError: false,
     data: res.botId,
-    message: res.message
   };
 }
 
