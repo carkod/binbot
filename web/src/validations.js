@@ -1,3 +1,5 @@
+import { toastr } from 'react-redux-toastr';
+
 const checkValue = (value) => {
     if (value === '' || value === null || value === undefined) {
         return true;
@@ -59,4 +61,13 @@ const replaceZeros = (value) => {
 
 const listCssColors = ['#51cbce', '#fbc658', '#ef8157', '#E3E3E3', '#51bcda', '#c178c1', '#dcb285', '#f96332']
 
-export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders, replaceZeros, listCssColors };
+const addNotification = (name, message, type = "success") => {
+    /**
+     * @param name title
+     * @param message content of the notification
+     * @param type ["success", "info", "warning", "error", "removeByType", "remove"]
+     */
+    toastr[type](name, message);
+}
+
+export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders, replaceZeros, listCssColors, addNotification };

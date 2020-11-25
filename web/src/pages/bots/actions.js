@@ -1,3 +1,5 @@
+import { addNotification } from "../../validations";
+
 export const GET_BOTS = 'GET_BOTS';
 export const GET_BOTS_SUCCESS = 'GET_BOTS_SUCCESS';
 export const GET_BOTS_ERROR = 'GET_BOTS_ERROR';
@@ -292,21 +294,23 @@ export function activateBot(id) {
 }
 
 export function activateBotSucceeded(res) {
+  if (res.message) {
+    addNotification(ACTIVATE_BOT_SUCCESS, res.message, "error");
+  }
   return {
     type: ACTIVATE_BOT_SUCCESS,
     isLoading: false,
     isError: false,
     data: res.botId,
-    message: res.message
   };
 }
 
 export function activateBotFailed(error) {
+  addNotification(ACTIVATE_BOT_SUCCESS, error.message, "error");
   return {
     type: ACTIVATE_BOT_SUCCESS,
     isLoading: false,
     isError: true,
-    error: error.message,
   };
 }
 
@@ -325,6 +329,9 @@ export function deactivateBot(id) {
 }
 
 export function deactivateBotSucceeded(res) {
+  if (res.message) {
+    addNotification(DEACTIVATE_BOT_SUCCESS, res.message, "error");
+  }
   return {
     type: DEACTIVATE_BOT_SUCCESS,
     isLoading: false,
