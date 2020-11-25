@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { createBotFailed, createBotSucceeded, CREATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolInfoFailed, getSymbolInfoSucceeded, getSymbolsFailed, getSymbolsSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS, GET_SYMBOL_INFO, loadCandlestickFailed, loadCandlestickSucceeded, LOAD_CANDLESTICK } from './actions';
+import { activateBotFailed, activateBotSucceeded, ACTIVATE_BOT, createBotFailed, createBotSucceeded, CREATE_BOT, deactivateBotFailed, deactivateBotSucceeded, DEACTIVATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolInfoFailed, getSymbolInfoSucceeded, getSymbolsFailed, getSymbolsSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS, GET_SYMBOL_INFO, loadCandlestickFailed, loadCandlestickSucceeded, LOAD_CANDLESTICK } from './actions';
 
 /**
  * Bots request/response handler
@@ -94,7 +94,7 @@ export function* watchEditBot() {
 }
 
 /**
- * Get single bot
+ * DELETE bot
  */
 export function* deleteBot(payload) {
   const id = payload.data;
@@ -156,6 +156,47 @@ export default function* watchBot() {
   yield takeLatest(GET_BOTS, getBots)
   yield takeLatest(DELETE_BOT, deleteBot)
   yield takeLatest(GET_SYMBOLS, getSymbols)
+}
+
+export function* activateBot(payload) {
+  const id = payload.data;
+  const requestURL = `${process.env.REACT_APP_ACTIVATE_BOT}/${id}`;
+  const options = {
+    method: 'GET',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  }
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(activateBotSucceeded(res));
+  } catch (err) {
+    yield put(activateBotFailed(err));
+  }
+}
+
+export function* watchActivateBot() {
+  yield takeLatest(ACTIVATE_BOT, activateBot)
+}
+
+
+export function* deactivateBot(payload) {
+  const id = payload.data;
+  const requestURL = `${process.env.REACT_APP_DEACTIVATE_BOT}/${id}`;
+  const options = {
+    method: 'GET',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  }
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(deactivateBotSucceeded(res));
+  } catch (err) {
+    yield put(deactivateBotFailed(err));
+  }
+}
+
+export function* watchDeactivateBot() {
+  yield takeLatest(DEACTIVATE_BOT, deactivateBot)
 }
 
 
