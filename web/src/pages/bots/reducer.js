@@ -1,4 +1,4 @@
-import { CREATE_BOT, CREATE_BOT_ERROR, CREATE_BOT_SUCCESS, DELETE_BOT, DELETE_BOT_ERROR, DELETE_BOT_SUCCESS, EDIT_BOT, EDIT_BOT_ERROR, EDIT_BOT_SUCCESS, GET_BOT, GET_BOTS, GET_BOTS_ERROR, GET_BOTS_SUCCESS, GET_BOT_ERROR, GET_BOT_SUCCESS, GET_SYMBOLS, GET_SYMBOLS_SUCCESS, GET_SYMBOLS_ERROR, GET_SYMBOL_INFO, GET_SYMBOL_INFO_SUCCESS, GET_SYMBOL_INFO_ERROR, LOAD_CANDLESTICK, LOAD_CANDLESTICK_ERROR, LOAD_CANDLESTICK_SUCCESS } from './actions';
+import { CREATE_BOT, CREATE_BOT_ERROR, CREATE_BOT_SUCCESS, DELETE_BOT, DELETE_BOT_ERROR, DELETE_BOT_SUCCESS, EDIT_BOT, EDIT_BOT_ERROR, EDIT_BOT_SUCCESS, GET_BOT, GET_BOTS, GET_BOTS_ERROR, GET_BOTS_SUCCESS, GET_BOT_ERROR, GET_BOT_SUCCESS, GET_SYMBOLS, GET_SYMBOLS_SUCCESS, GET_SYMBOLS_ERROR, GET_SYMBOL_INFO, GET_SYMBOL_INFO_SUCCESS, GET_SYMBOL_INFO_ERROR, LOAD_CANDLESTICK, LOAD_CANDLESTICK_ERROR, LOAD_CANDLESTICK_SUCCESS, ACTIVATE_BOT, ACTIVATE_BOT_SUCCESS, ACTIVATE_BOT_ERROR, DEACTIVATE_BOT, DEACTIVATE_BOT_SUCCESS, DEACTIVATE_BOT_ERROR } from './actions';
 
 
 // The initial state of the App
@@ -95,6 +95,60 @@ function botReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
+      };
+    }
+
+    case ACTIVATE_BOT: {
+      const newState = {
+        ...state,
+        isLoading: true,
+        isError: false,
+      };
+
+      return newState;
+    }
+    case ACTIVATE_BOT_SUCCESS: {
+      const newState = {
+        ...state,
+        isLoading: false,
+        isError: false,
+        message: action.message
+      };
+      return newState;
+    }
+
+    case ACTIVATE_BOT_ERROR: {
+      return {
+        error: action.error,
+        isLoading: false,
+        isError: true,
+        data: action.state
+      };
+    }
+
+    case DEACTIVATE_BOT: {
+      const newState = {
+        isLoading: true,
+        isError: false,
+      };
+
+      return newState;
+    }
+    case DEACTIVATE_BOT_SUCCESS: {
+      const newState = {
+        isLoading: false,
+        isError: false,
+        data: action.state
+      };
+      return newState;
+    }
+
+    case DEACTIVATE_BOT_ERROR: {
+      return {
+        error: action.error,
+        isLoading: false,
+        isError: true,
+        data: action.state
       };
     }
 

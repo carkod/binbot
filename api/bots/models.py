@@ -118,7 +118,7 @@ class Bot(Account):
 
             # If error
             if isinstance(dealId, Response):
-                resp = dealId
+                resp = jsonResp(dealId.json, 200)
                 return resp
 
             if dealId:

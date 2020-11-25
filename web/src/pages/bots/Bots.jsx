@@ -1,12 +1,15 @@
 import React from "react";
 import { connect } from "react-redux";
 import { Button, ButtonToggle, Card, CardBody, CardFooter, CardTitle, Col, Jumbotron, Row } from "reactstrap";
-import { deleteBot, getBots } from "./actions";
+import { deleteBot, getBots, activateBot, deactivateBot } from "./actions";
+import { checkValue } from "../../validations";
+
 class Bots extends React.Component {
 
   constructor(props) {
     super(props);
-    this.state = {}
+    this.state = {
+    }
   }
 
   componentDidMount = () => {
@@ -25,11 +28,12 @@ class Bots extends React.Component {
     this.props.deleteBot(id);
   }
 
-  handleActivation = (activate) => {
+  handleActivation = async (activate, id) => {
     if (activate) {
-      console.log("Call activate API")
+      this.props.activateBot(id);
     } else {
       console.log("Call deactivate API")
+      this.props.deactivateBot(id);
     }
   }
 
@@ -83,7 +87,7 @@ class Bots extends React.Component {
                       </div>
                     </Col>
                     <Col md="4" xs="12">
-                        {x.active === "true" ? <ButtonToggle color="success" onClick={() => this.handleActivation(false)}>On</ButtonToggle> : <ButtonToggle color="secondary" onClick={() => this.handleActivation(true)}>Off</ButtonToggle>}
+                        {x.active === "true" ? <ButtonToggle color="success" onClick={() => this.handleActivation(false, x._id.$oid)}>On</ButtonToggle> : <ButtonToggle color="secondary" onClick={() => this.handleActivation(true, x._id.$oid)}>Off</ButtonToggle>}
                     </Col>
                   </Row>
                   <hr />
@@ -126,6 +130,7 @@ class Bots extends React.Component {
 }
 
 const mapStateToProps = (state) => {
+  const { message } = state.botReducer;
   if (state.botReducer.data && state.botReducer.data.length > 0) {
     // Sort active status first
     const bots = state.botReducer.data.sort((a,b) => {
@@ -138,10 +143,12 @@ const mapStateToProps = (state) => {
     return {
       ...state.botReducer,
       bots: bots,
+      message: message
     }
   }
+  
   return state;
   
 }
 
-export default connect(mapStateToProps, { getBots, deleteBot })(Bots);
+export default connect(mapStateToProps, { getBots, deleteBot, activateBot, deactivateBot })(Bots);
