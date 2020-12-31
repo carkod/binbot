@@ -7,7 +7,8 @@
 ## Running back-end api
 
 1. Run `pipenv shell` to activate the virtual environment
-2. Run vscode debugger to start the Flask application
+2. Comment out api service and `docker-compose up -d`
+3. Run vscode debugger to start the Flask application
 
 ## Running front-end web app
 

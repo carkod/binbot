@@ -17,14 +17,14 @@ class Bot(Account):
             "max_so_count": "0",
             "balance_usage": "1",  # 100% of All Btc balance
             "balance_usage_size": "0.0001",
-            "base_order_size": "0.003",  # MIN by Binance = 0.0001 BTC
+            "base_order_size": "3",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
             "start_condition": "true",
             "so_size": "0.0001",  # Top band
             "take_profit": "0.003",  # 30% take profit
-            "price_deviation_so": "0.0063",  # % percentage
+            "price_deviation_so": "0.63",  # % percentage
             "trailling": "false",
-            "trailling_deviation": "0.0063",
+            "trailling_deviation": "0.63",
             "deal_min_value": "0",
             "cooldown": "0",
             "deals": [],

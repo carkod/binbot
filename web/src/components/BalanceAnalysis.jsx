@@ -27,6 +27,14 @@ export default function BalanceAnalysis({ balances , balance_usage, balance_avai
                         <div className="u-primary-color"><strong>{`${balance_available} ${balance_available_asset}`}</strong></div>
                     </Col>
                 </Row>
+                <Row>
+                    <Col md="8" sm="12">
+                        Total Base Order
+                    </Col>
+                    <Col md="4" sm="12">
+                        <div className="u-primary-color"><strong>{`${balance_available} ${balance_available_asset}`}</strong></div>
+                    </Col>
+                </Row>
             </CardBody>
         </Card>
 

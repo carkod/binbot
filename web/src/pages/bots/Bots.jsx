@@ -103,11 +103,11 @@ class Bots extends React.Component {
                     </Col>
                     <Col md="4" xs="12">
                       <div className="stats">
-                        <p className="card-category">{this.convertPercent(x.balance_usage)}</p>
+                        <p className="card-category">{x.balance_usage + "%"}</p>
                         <p className="card-category">{x.so_size}</p>
-                        <p className="card-category">{this.convertPercent(x.price_deviation_so)}</p>
-                        <p className="card-category">{this.convertPercent(x.take_profit)}</p>
-                        { x.trailling === "true" && <p className="card-category">{x.trailling_deviation}</p> }
+                        <p className="card-category">{x.price_deviation_so + "%"}</p>
+                        <p className="card-category">{x.take_profit + "%"}</p>
+                        { x.trailling === "true" && <p className="card-category">{x.trailling_deviation + "%"}</p> }
                       </div>
                     </Col>
                   </Row>

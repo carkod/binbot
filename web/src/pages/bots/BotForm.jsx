@@ -1,12 +1,12 @@
-import BalanceAnalysis from "../../components/BalanceAnalysis";
-import Candlestick from "../../components/Candlestick";
 import React from "react";
 import { connect } from "react-redux";
 import { Alert, Badge, Button, Card, CardBody, CardHeader, CardTitle, Col, Form, FormFeedback, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from "reactstrap";
+import BalanceAnalysis from "../../components/BalanceAnalysis";
+import Candlestick from "../../components/Candlestick";
+import SymbolSearch from "../../components/SymbolSearch";
+import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance } from "../../validations.js";
 import { getBalance } from "../dashboard/actions";
 import { createBot, editBot, getBot, getSymbolInfo, getSymbols, loadCandlestick } from "./actions";
-import { checkBalance, checkMinValue, checkValue, getCurrentPairBalance, percentageToFloat } from "../../validations.js";
-import SymbolSearch from "../../components/SymbolSearch";
 
 class BotForm extends React.Component {
 
@@ -159,13 +159,13 @@ class BotForm extends React.Component {
         max_so_count: this.state.max_so_count,
         name: this.state.name,
         pair: this.state.pair,
-        price_deviation_so: percentageToFloat(this.state.price_deviation_so),
+        price_deviation_so: this.state.price_deviation_so,
         so_size: this.state.so_size,
         start_condition: this.state.start_condition,
         strategy: this.state.strategy,
-        take_profit: percentageToFloat(this.state.take_profit),
+        take_profit: this.state.take_profit,
         trailling: this.state.trailling,
-        trailling_deviation: percentageToFloat(this.state.trailling_deviation),
+        trailling_deviation: this.state.trailling_deviation,
       }
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -275,7 +275,6 @@ class BotForm extends React.Component {
   }
 
   render() {
-
     return (
       <div className="content">
         <Row>
@@ -469,7 +468,12 @@ class BotForm extends React.Component {
               </Card>
             </Col>
             <Col md="5" sm="12">
-              <BalanceAnalysis balances={this.props.balances} balance_usage={this.state.balance_usage} balance_available={this.state.balance_available} balance_available_asset={this.state.balance_available_asset} />
+              <BalanceAnalysis 
+                balances={this.props.balances}
+                balance_usage={this.state.balance_usage}
+                balance_available={this.state.balance_available}
+                balance_available_asset={this.state.balance_available_asset}
+              />
             </Col>
 
           </Row>
