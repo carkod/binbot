@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from flask import request
 from api.tools.jsonresp import jsonResp
 from api.tools.handle_error import handle_error
+from api.account.models import Account
 
 class Candlestick:
     """

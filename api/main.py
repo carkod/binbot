@@ -28,15 +28,15 @@ mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(os.environ["MONGO_AUTH_USE
 app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
 
 # Cronjob
-scheduler = BackgroundScheduler()
-assets = Assets()
-scheduler.add_job(assets.store_balance, 'interval', [app], hours=23)
-scheduler.start()
-atexit.register(lambda: scheduler.shutdown(wait=False))
+# scheduler = BackgroundScheduler()
+# assets = Assets()
+# scheduler.add_job(assets.store_balance, 'interval', [app], hours=23)
+# scheduler.start()
+# atexit.register(lambda: scheduler.shutdown(wait=False))
 
-# Logging to debug pascheduler
-logging.basicConfig()
-logging.getLogger('apscheduler').setLevel(logging.DEBUG)
+# # Logging to debug pascheduler
+# logging.basicConfig()
+# logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 
 # Register Blueprints
 app.register_blueprint(user_blueprint, url_prefix="/user")

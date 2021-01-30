@@ -10,7 +10,9 @@ import requests
 from flask import current_app as app, request
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
-from datetime import datetime, timedelta
+from api.tools.round_numbers import proper_round
+from api.tools.ticker import Conversion
+from datetime import datetime, timedelta, date, time
 
 class Account:
 
@@ -123,54 +125,99 @@ class Account:
         return jsonResp({"data": symbols_list}, 200)
 
 
-class Assets(Account):
+class Assets(Account, Conversion):
 
-    def store_balance(self, application):
+    def __init__(self):
+        self.usd_balance = 0
+
+    def get_btc_balance(self):
         """
         Cronjob that stores balances with its approximate current value in BTC
         """
-        with application.app_context():
-            print("Store balance job starting...", flush=True)
-            balances = self.get_balances().json
-            ticker_price = self._ticker_price()
-            total_btc = 0
-            for b in balances:
+        balances = self.get_balances().json
+        ticker_price = self._ticker_price()
+        total_btc = 0
+        for b in balances:
 
-                # Ordinary coins found in balance
-                symbol = f"{b['asset']}BTC"
+            # Ordinary coins found in balance
+            symbol = f"{b['asset']}BTC"
+            price = next((x for x in ticker_price if x["symbol"] == symbol), None)
+            if price:
+                btc = b["free"] * float(price["price"])
+                b["btc_value"] = btc
+
+            # USD tether coins found in balance
+            if b["asset"].find("USD") > -1:
+                symbol = f"BTC{b['asset']}"
                 price = next((x for x in ticker_price if x["symbol"] == symbol), None)
-                if price:
-                    btc = b["free"] * float(price["price"])
-                    b["btc_value"] = btc
+                btc = b["free"] / float(price["price"])
+                b["btc_value"] = btc
 
-                # USD tether coins found in balance
-                if b["asset"].find("USD") > -1:
-                    symbol = f"BTC{b['asset']}"
-                    price = next((x for x in ticker_price if x["symbol"] == symbol), None)
-                    btc = b["free"] / float(price["price"])
-                    b["btc_value"] = btc
+            # BTC found in balance
+            if b["asset"] == "BTC":
+                btc = b["free"]
+                b["btc_value"] = btc
 
-                # BTC found in balance
-                if b["asset"] == "BTC":
-                    btc = b["free"]
-                    b["btc_value"] = btc
+            total_btc += btc
 
-                total_btc += btc
+        update_balances = {
+            "date": datetime.now(),
+            "total_btc_value": proper_round(total_btc, 8)
+        }
 
-            update_balances = {
-                "balances": balances,
-                "total_btc_value": total_btc,
-                "updatedTime": datetime.now().timestamp()
-            }
-            db = app.db.assets.insert_one(update_balances)
-            if request and db:
-                resp = jsonResp({"message": "Balances updated!"}, 200)
-                return resp
-            if not db:
-                resp = jsonResp({"message": "Failed to update Balance", "error": db}, 200)
-                return resp
-            else:
-                pass
+        return update_balances
+
+    def get_pnl(self):
+        index = int(request.args["days"])
+        update_balances = self.get_btc_balance()
+        self.btc_balance = update_balances["total_btc_value"]
+
+        if index:
+            dates = []
+            for i in range(index - 1):
+
+                if i == 0:
+                    start_date = datetime.combine(datetime.now().date(), time(00, 1))
+                    end_date = datetime.now()
+                else:
+                    current_date = datetime.now().date() - timedelta(days=i)
+                    start_date = datetime.combine(current_date, time(00, 1))
+                    end_date = datetime.combine(current_date, time(23, 59))
+
+                dates.append(tuple((start_date, end_date)))
+
+            data = []
+            if len(dates) > 0:
+                for start, end in dates:
+                    conversion_0 = self.get_conversion(start)
+                    conversion_1 = self.get_conversion(end)
+                    start_usd_balance = self.btc_balance * conversion_0
+                    self.usd_balance = start_usd_balance
+                    orders = list(app.db.orders.find({
+                        "time": {"$gte": start.timestamp() * 1000, "$lte": end.timestamp() * 1000},
+                        "status": {"$eq": "FILLED"}
+                    }))
+                    if len(orders) > 0:
+                        for transaction in orders:
+                            if transaction["side"] == "BUY":
+                                # If non-btc
+                                # Check exchange info for asset market
+                                # Convert value into btc
+
+                                # else: Asumming always BTC
+                                self.btc_balance = float(self.btc_balance) + float(transaction["price"])
+                            if transaction["side"] == "SELL":
+                                # If non-btc, convert to btc
+                                # Asumming always BTC
+                                self.btc_balance = float(self.btc_balance) - float(transaction["price"])
+                    end_usd_balance = self.btc_balance * conversion_1
+                    data.append({
+                        "date": start.timestamp() * 1000,
+                        "value": proper_round(end_usd_balance - start_usd_balance, 4)
+                    })
+
+        resp = jsonResp({"data": data}, 200)
+        return resp
 
     def get_value(self):
         resp = jsonResp({"message": "No balance found"}, 200)

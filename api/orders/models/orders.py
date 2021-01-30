@@ -34,21 +34,27 @@ class Orders(Account):
 
     def get_all_orders(self):
         # here we want to get the value of user (i.e. ?user=some-value)
-        limit = int(request.args.get('limit'))
-        offset = int(request.args.get('offset'))
+        limit = 50 if not request.args.get('limit') else int(request.args.get('limit'))
+        offset = 0 if not request.args.get('offset') else int(request.args.get('offset'))
         pages = app.db.orders.count()
         status = request.args.get('status', None)
+        startTime = int(request.args.get('start-time', None)) if request.args.get('start-time') else None
 
         # Filters
         args = {}
         if status:
             args["status"] = status
 
+        if startTime:
+            args["time"] = {
+                "$gte": startTime
+            }
+
         orders = list(app.db.orders.find(args).sort([("updateTime", -1)]).skip(offset).limit(limit))
         if orders:
             resp = jsonResp({"data": orders, "pages": pages}, 200)
         else:
-            resp = jsonResp({"message": "Orders not found!"}, 404)
+            resp = jsonResp({"message": "Orders not found!"}, 200)
         return resp
 
     def poll_historical_orders(self):

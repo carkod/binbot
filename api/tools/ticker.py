@@ -3,8 +3,9 @@ import requests
 import sys
 import pandas as pd
 import os
+from datetime import timedelta
 
-class Ticker24Data():
+class Ticker24Data:
 
     def __init__(self, app):
         self.ticker24_url = os.environ['TICKER24']
@@ -21,48 +22,17 @@ class Ticker24Data():
     def api_data(self):
         return self.formatData(self.request_data())
 
+class Conversion:
+    nomics_key = os.environ['COINAPI_KEY']
+    url = os.environ['COINAPI_EXG_URL']
 
-# class Ticker_Price:
+    def get_conversion(self, time):
 
-#     ticker_price =  os.environ['TICKER_PRICE']
-
-#     def __init__(self):
-#         """Request only ticker24 data
-#         """
-
-#     def request_data(self, symbol=None):
-#         url = base_url + self.ticker_price
-#         params = {'symbol': symbol }
-#         r = requests.get(url=url, params=params)
-#         data = r.json()
-#         return data
-
-#     def formatData(self, data):
-#         df = pd.DataFrame(data)
-#         return df
-
-#     def api_data(self):
-#         return self.formatData(self.request_data())
-
-
-# class Average_price:
-
-#     average_price =  os.environ['AVERAGE_PRICE']
-
-#     def __init__(self):
-#         """Request only ticker24 data
-#         """
-
-#     def request_data(self, symbol=None):
-#         url = base_url + self.average_price
-#         params = {'symbol': symbol }
-#         r = requests.get(url=url, params=params)
-#         data = r.json()
-#         return data
-
-#     def formatData(self, data):
-#         df = pd.DataFrame(data)
-#         return df
-
-#     def api_data(self):
-#         return self.formatData(self.request_data())
+        params = {
+            "apikey": self.nomics_key,
+            "time": time.replace(microsecond=0).isoformat(),
+        }
+        r = requests.get(self.url, params)
+        data = r.json()
+        rate = float(data["rate"])
+        return rate
