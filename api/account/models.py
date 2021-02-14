@@ -70,6 +70,16 @@ class Account:
         resp = jsonResp({"data": data}, 200)
         return resp
 
+    def get_ticker_price(self, symbol):
+        url = self.ticker_price
+        params = None
+        if symbol:
+            params = {'symbol': symbol}
+        res = requests.get(url=url, params=params)
+        handle_error(res)
+        data = res.json()
+        return data["price"]
+
     def ticker_24(self):
         url = self.ticker24_url
         symbol = request.view_args["symbol"]
@@ -109,6 +119,11 @@ class Account:
         base_asset = next((s for s in symbols if s["symbol"] == symbol), None)["baseAsset"]
         return base_asset
 
+    def find_market(self, quote):
+        symbols = self._exchange_info()["symbols"]
+        market = next((s for s in symbols if s["baseAsset"] == quote), None)["symbol"]
+        return market
+
     def get_symbol_info(self):
         symbols = self._exchange_info()["symbols"]
         pair = request.view_args["pair"]
@@ -127,97 +142,80 @@ class Account:
 
 class Assets(Account, Conversion):
 
-    def __init__(self):
+    def __init__(self, app=None):
         self.usd_balance = 0
+        self.app = app
 
-    def get_btc_balance(self):
+    def get_usd_balance(self):
         """
         Cronjob that stores balances with its approximate current value in BTC
         """
         balances = self.get_balances().json
-        ticker_price = self._ticker_price()
-        total_btc = 0
+        current_time = datetime.now()
+        total_usd = 0
         for b in balances:
 
             # Ordinary coins found in balance
-            symbol = f"{b['asset']}BTC"
-            price = next((x for x in ticker_price if x["symbol"] == symbol), None)
-            if price:
-                btc = b["free"] * float(price["price"])
-                b["btc_value"] = btc
+            price = self.get_conversion(current_time, b["asset"])
+            usd = b["free"] * float(price)
+            total_usd += usd
 
-            # USD tether coins found in balance
-            if b["asset"].find("USD") > -1:
-                symbol = f"BTC{b['asset']}"
-                price = next((x for x in ticker_price if x["symbol"] == symbol), None)
-                btc = b["free"] / float(price["price"])
-                b["btc_value"] = btc
-
-            # BTC found in balance
-            if b["asset"] == "BTC":
-                btc = b["free"]
-                b["btc_value"] = btc
-
-            total_btc += btc
-
-        update_balances = {
-            "date": datetime.now(),
-            "total_btc_value": proper_round(total_btc, 8)
-        }
-
-        return update_balances
+        return proper_round(total_usd, 8)
 
     def get_pnl(self):
         index = int(request.args["days"])
-        update_balances = self.get_btc_balance()
-        self.btc_balance = update_balances["total_btc_value"]
+        current_time = datetime.now()
+        start = current_time - timedelta(days=7)
 
         if index:
-            dates = []
-            for i in range(index - 1):
-
-                if i == 0:
-                    start_date = datetime.combine(datetime.now().date(), time(00, 1))
-                    end_date = datetime.now()
-                else:
-                    current_date = datetime.now().date() - timedelta(days=i)
-                    start_date = datetime.combine(current_date, time(00, 1))
-                    end_date = datetime.combine(current_date, time(23, 59))
-
-                dates.append(tuple((start_date, end_date)))
-
-            data = []
-            if len(dates) > 0:
-                for start, end in dates:
-                    conversion_0 = self.get_conversion(start)
-                    conversion_1 = self.get_conversion(end)
-                    start_usd_balance = self.btc_balance * conversion_0
-                    self.usd_balance = start_usd_balance
-                    orders = list(app.db.orders.find({
-                        "time": {"$gte": start.timestamp() * 1000, "$lte": end.timestamp() * 1000},
-                        "status": {"$eq": "FILLED"}
-                    }))
-                    if len(orders) > 0:
-                        for transaction in orders:
-                            if transaction["side"] == "BUY":
-                                # If non-btc
-                                # Check exchange info for asset market
-                                # Convert value into btc
-
-                                # else: Asumming always BTC
-                                self.btc_balance = float(self.btc_balance) + float(transaction["price"])
-                            if transaction["side"] == "SELL":
-                                # If non-btc, convert to btc
-                                # Asumming always BTC
-                                self.btc_balance = float(self.btc_balance) - float(transaction["price"])
-                    end_usd_balance = self.btc_balance * conversion_1
-                    data.append({
-                        "date": start.timestamp() * 1000,
-                        "value": proper_round(end_usd_balance - start_usd_balance, 4)
-                    })
+            # data = list(app.db.balances.find({
+            #     "time": {"$gte": start.timestamp() * 1000, "$lte": current_time.timestamp() * 1000},
+            # }))
+            data = list(app.db.balances.find({}))
 
         resp = jsonResp({"data": data}, 200)
         return resp
+
+    def store_balance(self):
+        """
+        Alternative PnL data that runs as a cronjob everyday once at 1200
+        Store current balance in Db
+        """
+
+        balances = self.get_balances().json
+        current_time = current_time = datetime.now()
+        total_btc = 0
+        for b in balances:
+            symbol = self.find_market(b["asset"])
+            market = self.find_quoteAsset(symbol)
+            if b["asset"] != "BTC":
+                rate = self.get_ticker_price(symbol)
+                if market != "BTC":
+                    rate = self.get_ticker_price(market+"BTC")
+
+            if "locked" in b:
+                qty = b["free"] + b["locked"]
+            else:
+                qty = b["free"]
+
+            btc_value = float(qty) * float(rate)
+
+            # Only tether coins for hedging
+            if b["asset"] == "USDT":
+                rate = self.get_ticker_price("BTCUSDT")
+                btc_value = float(qty) / float(rate)
+
+            total_btc += btc_value
+
+        total_usd = self.get_conversion(current_time, "BTC", "USD")
+        balance = {
+            "time": current_time,
+            "estimated_total_btc": total_btc,
+            "estimated_total_usd": total_usd
+        }
+        balanceId = self.app.db.balances.insert_one(balance, {"$currentDate": {"createdAt": "true"}})
+        if balanceId:
+            print(f"Balance stored! {current_time}")
 
     def get_value(self):
         resp = jsonResp({"message": "No balance found"}, 200)

@@ -1,6 +1,7 @@
 import os
 import atexit
 import logging
+import time
 
 from flask import Flask
 from flask_cors import CORS
@@ -28,15 +29,13 @@ mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(os.environ["MONGO_AUTH_USE
 app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
 
 # Cronjob
-# scheduler = BackgroundScheduler()
-# assets = Assets()
-# scheduler.add_job(assets.store_balance, 'interval', [app], hours=23)
+scheduler = BackgroundScheduler()
+assets = Assets(app)
+assets.store_balance()
+# scheduler.add_job(func=assets.store_balance, trigger='cron', timezone="UTC", hour=16, minute=14)
+
 # scheduler.start()
 # atexit.register(lambda: scheduler.shutdown(wait=False))
-
-# # Logging to debug pascheduler
-# logging.basicConfig()
-# logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 
 # Register Blueprints
 app.register_blueprint(user_blueprint, url_prefix="/user")

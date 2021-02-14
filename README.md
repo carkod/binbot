@@ -10,6 +10,10 @@
 2. Comment out api service and `docker-compose up -d`
 3. Run vscode debugger to start the Flask application
 
+New packages or installing from scratch:
+- `pipenv lock --clear`
+- `pipenv install`
+
 ## Running front-end web app
 
 1. Run `npm run install:clean`

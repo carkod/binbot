@@ -36,10 +36,6 @@ def ticker(symbol=None):
 def ticker_24(symbol):
     return Account().ticker_24()
 
-@account_blueprint.route("/update-assets", methods=["GET"])
-def store_balance():
-    return Assets().get_btc_balance()
-
 @account_blueprint.route("/assets", defaults={'interval': None})
 @account_blueprint.route("/assets/<interval>", methods=["GET"])
 def get_value(interval):

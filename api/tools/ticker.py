@@ -23,16 +23,17 @@ class Ticker24Data:
         return self.formatData(self.request_data())
 
 class Conversion:
-    nomics_key = os.environ['COINAPI_KEY']
+    coin_api_key = os.environ['COINAPI_KEY']
     url = os.environ['COINAPI_EXG_URL']
 
-    def get_conversion(self, time):
+    def get_conversion(self, time, base="BTC", quote="USD"):
 
         params = {
-            "apikey": self.nomics_key,
+            "apikey": self.coin_api_key,
             "time": time.replace(microsecond=0).isoformat(),
         }
-        r = requests.get(self.url, params)
+        url = f"{self.url}/{base}/{quote}"
+        r = requests.get(url, params)
         data = r.json()
         rate = float(data["rate"])
         return rate
