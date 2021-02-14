@@ -30,9 +30,8 @@ If docker-compose doesn't exist:
 4. Modify details to match production needs
 
 In production:
-5. `docker pull carloswufei/binbot`
+5. `docker-compose pull && docker-compose up -d`
 6. If `.env.prod` is modified, scp to remote server and replace `.env` in production with new `.env.prod`
-7. `docker-compose up -d`
 
 ## Test production
 

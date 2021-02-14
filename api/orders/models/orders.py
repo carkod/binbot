@@ -25,12 +25,14 @@ class Orders(Account):
     all_orders_url = os.getenv("ALL_ORDERS")
     order_url = os.getenv("ORDER")
 
-    def __init__(self):
+    def __init__(self, app=None):
 
         # Buy order
         self.side = EnumDefinitions.order_side[0]
         # Required by API for Limit orders
         self.timeInForce = EnumDefinitions.time_in_force[0]
+        # Instance of app for cron jobs
+        self.app = app
 
     def get_all_orders(self):
         # here we want to get the value of user (i.e. ?user=some-value)
@@ -66,10 +68,6 @@ class Orders(Account):
         # Empty collection first
         app.db.orders.remove()
 
-        # Check if there are any polls in progress
-        if poll_percentage > 0:
-            resp = jsonResp({"message": "Polling in progress", "progress": f"{poll_percentage}"}, 200)
-            return resp
         for i in range(symbols_count):
 
             timestamp = int(round(tm.time() * 1000))
@@ -96,17 +94,15 @@ class Orders(Account):
             data = res.json()
 
             # Check that we have no empty orders
-            if (len(data) > 0):
+            if (len(data) > 0) and self.app:
                 for o in data:
                     # Save in the DB
-                    app.db.orders.save(o, {"$currentDate": {"createdAt": "true"}})
+                    self.app.db.orders.save(o, {"$currentDate": {"createdAt": "true"}})
                     if i == (symbols_count - 1):
                         poll_percentage = 0
                     else:
                         poll_percentage = round_numbers((i/symbols_count) * 100, 0)
-            print(poll_percentage)
-        resp = jsonResp({"message": "Polling finished!"}, 200)
-        return resp
+            print(f"Polling historical orders: {poll_percentage}")
 
     def get_open_orders(self):
         timestamp = int(round(tm.time() * 1000))

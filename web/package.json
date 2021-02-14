@@ -23,7 +23,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "npm run clean && react-scripts build",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "install:clean": "npm run clean && npm install && npm start",
@@ -36,8 +36,8 @@
     "@testing-library/jest-dom": "^5.11.6",
     "@testing-library/react": "^11.2.2",
     "@testing-library/user-event": "^12.2.2",
-    "node-sass": "^4.13.1",
-    "react-scripts": "4.0.0",
+    "node-sass": "^5.0.0",
+    "react-scripts": "^4.0.2",
     "web-vitals": "^0.2.4"
   },
   "eslintConfig": {
