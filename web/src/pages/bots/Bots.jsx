@@ -1,13 +1,15 @@
-import Candlestick from "../../components/Candlestick";
 import React from "react";
 import { connect } from "react-redux";
 import { Button, ButtonToggle, Card, CardBody, CardFooter, CardTitle, Col, Jumbotron, Row } from "reactstrap";
-import { deleteBot, getBots } from "./actions";
+import { deleteBot, getBots, activateBot, deactivateBot } from "./actions";
+import { checkValue } from "../../validations";
+
 class Bots extends React.Component {
 
   constructor(props) {
     super(props);
-    this.state = {}
+    this.state = {
+    }
   }
 
   componentDidMount = () => {
@@ -24,6 +26,15 @@ class Bots extends React.Component {
 
   handleDelete = (id) => {
     this.props.deleteBot(id);
+  }
+
+  handleActivation = async (activate, id) => {
+    if (activate) {
+      this.props.activateBot(id);
+    } else {
+      console.log("Call deactivate API")
+      this.props.deactivateBot(id);
+    }
   }
 
   render() {
@@ -76,7 +87,7 @@ class Bots extends React.Component {
                       </div>
                     </Col>
                     <Col md="4" xs="12">
-                        {x.active === "true" ? <ButtonToggle color="success">On</ButtonToggle> : <ButtonToggle color="secondary">Off</ButtonToggle>}
+                        {x.active === "true" ? <ButtonToggle color="success" onClick={() => this.handleActivation(false, x._id.$oid)}>On</ButtonToggle> : <ButtonToggle color="secondary" onClick={() => this.handleActivation(true, x._id.$oid)}>Off</ButtonToggle>}
                     </Col>
                   </Row>
                   <hr />
@@ -92,11 +103,11 @@ class Bots extends React.Component {
                     </Col>
                     <Col md="4" xs="12">
                       <div className="stats">
-                        <p className="card-category">{this.convertPercent(x.balance_usage)}</p>
+                        <p className="card-category">{x.balance_usage + "%"}</p>
                         <p className="card-category">{x.so_size}</p>
-                        <p className="card-category">{this.convertPercent(x.price_deviation_so)}</p>
-                        <p className="card-category">{this.convertPercent(x.take_profit)}</p>
-                        { x.trailling === "true" && <p className="card-category">{x.trailling_deviation}</p> }
+                        <p className="card-category">{x.price_deviation_so + "%"}</p>
+                        <p className="card-category">{x.take_profit + "%"}</p>
+                        { x.trailling === "true" && <p className="card-category">{x.trailling_deviation + "%"}</p> }
                       </div>
                     </Col>
                   </Row>
@@ -119,7 +130,8 @@ class Bots extends React.Component {
 }
 
 const mapStateToProps = (state) => {
-  if (state.botReducer.data) {
+  const { message } = state.botReducer;
+  if (state.botReducer.data && state.botReducer.data.length > 0) {
     // Sort active status first
     const bots = state.botReducer.data.sort((a,b) => {
       if (a.active === "true") {
@@ -131,10 +143,12 @@ const mapStateToProps = (state) => {
     return {
       ...state.botReducer,
       bots: bots,
+      message: message
     }
   }
+  
   return state;
   
 }
 
-export default connect(mapStateToProps, { getBots, deleteBot })(Bots);
+export default connect(mapStateToProps, { getBots, deleteBot, activateBot, deactivateBot })(Bots);

@@ -1,6 +1,5 @@
 import os
 import atexit
-import logging
 
 from flask import Flask
 from flask_cors import CORS
@@ -9,6 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # Import Routes
 from api.account.models import Assets
+from api.orders.models.orders import Orders
 from api.tools.jsonresp import jsonResp
 from api.user.routes import user_blueprint
 from api.account.routes import account_blueprint
@@ -29,14 +29,12 @@ app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
 
 # Cronjob
 scheduler = BackgroundScheduler()
-assets = Assets()
-scheduler.add_job(assets.store_balance, 'interval', [app], hours=1)
+assets = Assets(app)
+orders = Orders(app)
+scheduler.add_job(func=assets.store_balance, trigger='cron', timezone="UTC", hour=0, minute=1)
+scheduler.add_job(func=orders.poll_historical_orders, trigger='cron', timezone="UTC", hour=1, minute=1)
 scheduler.start()
 atexit.register(lambda: scheduler.shutdown(wait=False))
-
-# Logging to debug pascheduler
-logging.basicConfig()
-logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 
 # Register Blueprints
 app.register_blueprint(user_blueprint, url_prefix="/user")

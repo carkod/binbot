@@ -394,4 +394,7 @@ $social-behance-state-color:       lighten(#1769ff, 6%) !default;
 // Placeholder text color
 $input-color-placeholder: #999 !default;
 
+
 $zindex-select-dropdown: 1060 !default; // must be higher than a modal background (1050)
+$zindex-notification: 1070 !default; // must be higher than a modal background (1050)
+$zindex-modal: 1080 !default; // must be higher than a modal background (1050)

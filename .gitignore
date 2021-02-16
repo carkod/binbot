@@ -7,7 +7,6 @@
 .DS_Store
 *.pyc
 api/main/config/*.cfg
-.env
 .mypy_cache
 
 ##
@@ -28,6 +27,8 @@ mongo_data
 .env.development.local
 .env.test.local
 .env.production.local
+web/.env.production
+/.env
 .vscode/settings.json
 
 npm-debug.log*

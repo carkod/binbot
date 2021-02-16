@@ -1,8 +1,0 @@
-#!/bin/bash	
-
-cd web	
-npm install && npm run build	
-cd ..	
-docker build -t binbot .	
-docker tag binbot carloswufei/binbot	
-docker push carloswufei/binbot 

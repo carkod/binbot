@@ -21,6 +21,7 @@ requests = "*"
 websocket_client = "*"
 APScheduler = "*"
 gunicorn = "*"
+schedule = "*"
 
 [requires]
 python_version = "3.8"

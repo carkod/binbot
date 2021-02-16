@@ -4,6 +4,7 @@
 // Plugins CSS
 @import "paper-dashboard/plugins/plugin-animate-bootstrap-notify";
 @import "paper-dashboard/plugins/plugin-perfect-scrollbar";
+@import 'react-redux-toastr/src/styles/index';
 
 // Core CSS
 @import "paper-dashboard/buttons";
@@ -32,6 +33,7 @@
 @import "paper-dashboard/cards/card-user";
 @import "paper-dashboard/cards/card-map";
 @import "paper-dashboard/cards/card-stats";
-
 @import "paper-dashboard/responsive";
 
+// Overrides
+@import "paper-dashboard/utilities";

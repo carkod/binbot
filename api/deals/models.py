@@ -37,19 +37,6 @@ class Deal(Account):
             "time_in_force": "GTC",
         }
 
-        # self.side = EnumDefinitions.order_side[0]
-        # self.strategy = bot["strategy"]
-        # self.symbol = bot["pair"]
-        # self.botname = bot["name"]
-        # self.active = bot["active"]
-        # self.balance = bot["balance_usage_size"]
-        # self.base_order_type = bot["base_order_type"]
-        # self.max_so_count = int(bot["max_so_count"])
-        # self.price_deviation_so = bot["price_deviation_so"]
-        # self.take_profit = bot["take_profit"]
-        # self.trailling = bot["trailling"]
-        # self.trailling_deviation = bot["trailling_deviation"]
-
     @staticmethod
     def handle_fourofour(order):
         if "code" not in order:
@@ -84,7 +71,7 @@ class Deal(Account):
     def long_base_order(self):
         pair = self.active_bot['pair']
         # Long position does not need qty in take_profit
-        qty = round_numbers(self.division, 0)
+        qty = round_numbers(self.division, 2)
         price = float(Book_Order(pair).matching_engine(True, qty))
         if price:
             if price <= self.MIN_PRICE:
@@ -212,7 +199,7 @@ class Deal(Account):
 
     def short_base_order(self):
         pair = self.active_bot['pair']
-        qty = round_numbers(self.division, 0)
+        qty = round_numbers(self.division, 2)
         price = float(Book_Order(pair).matching_engine(False, qty))
 
         # Avoid common rate limits
@@ -332,41 +319,43 @@ class Deal(Account):
         if deal_strategy == "long":
             long_base_order = self.long_base_order()
             if isinstance(long_base_order, Response):
-                response = long_base_order
-                return response
+                msg = long_base_order.json["message"]
+                return jsonResp_message(msg, 200)
             new_deal["base_order"] = long_base_order
 
             # Only do Safety orders if required
             if int(self.active_bot["max_so_count"]) > 0:
                 long_safety_order_generator = self.long_safety_order_generator(0)
                 if isinstance(long_safety_order_generator, Response):
-                    response = long_safety_order_generator
-                    return response
+                    msg = long_safety_order_generator.json["msg"]
+                    return jsonResp_message(msg, 200)
                 new_deal["so_orders"] = long_safety_order_generator
 
             long_take_profit_order = self.long_take_profit_order()
             if isinstance(long_take_profit_order, Response):
-                response = long_take_profit_order
-                return response
+                msg = long_take_profit_order.json["message"]
+                return jsonResp_message(msg, 200)
             new_deal["take_profit_order"] = long_take_profit_order
 
         if deal_strategy == "short":
             short_base_order = self.short_base_order()
             # Check if error
             if isinstance(short_base_order, Response):
-                return short_base_order
+                msg = short_base_order.json["message"]
+                return jsonResp_message(msg, 200)
             new_deal["base_order"] = short_base_order
 
             # Only do Safety orders if required
             if int(self.active_bot["max_so_count"]) > 0:
                 short_safety_order_generator = self.short_safety_order_generator(0)
                 if not short_safety_order_generator:
-                    print("Deal: Safety orders failed")
+                    return jsonResp_message("Deal: Safety orders failed", 200)
                 new_deal["so_orders"] = short_safety_order_generator
 
             short_take_profit_order = self.short_take_profit_order()
             if isinstance(short_take_profit_order, Response):
-                return short_take_profit_order
+                msg = short_take_profit_order.json["msg"]
+                return jsonResp_message(msg, 200)
             new_deal["take_profit_order"] = short_take_profit_order
 
         dealId = app.db.deals.save(new_deal)

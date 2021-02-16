@@ -65,7 +65,7 @@ class Book_Order:
             if limit_index == 4:
                 return None
             self.matching_engine(order_side, qty, limit_index)
-        final_qty = round_numbers(match_qty["price"].iloc[0], 0)
+        final_qty = round_numbers(match_qty["price"].iloc[0], 4)
         return final_qty
 
     def ticker_price(self):

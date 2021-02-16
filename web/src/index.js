@@ -1,16 +1,13 @@
+import "bootstrap/dist/css/bootstrap.css";
 import React from "react";
 import ReactDOM from "react-dom";
+import App from "./App.jsx"
+import configureStore from './store';
+import reportWebVitals from './reportWebVitals';
+import { Provider } from "react-redux";
+import { Router, Switch } from "react-router-dom";
 import { createBrowserHistory } from "history";
-import { Router, Route, Switch, Redirect } from "react-router-dom";
-import { Provider } from "react-redux"
-import configureStore from './store'
-
-import "bootstrap/dist/css/bootstrap.css";
 import "./assets/scss/paper-dashboard.scss";
-
-import Admin from "./layouts/Admin.jsx";
-import Login from './containers/login/Login'
-import { getToken } from "./request";
 
 const hist = createBrowserHistory();
 const store = configureStore({});
@@ -19,16 +16,15 @@ ReactDOM.render(
   <Provider store={store}>
     <Router history={hist}>
       <Switch>
-        <Route exact path="/login" component={Login} />
-        <Route exact path="/" render={() => <Redirect to="/admin/dashboard" />} />
-        <Route render={props => 
-          !!getToken() ?
-          <Admin path="/admin/dashboard" {...props} /> :
-          <Redirect to="/login" {...props} />
-        } />
-        </Switch>
+        <App />
+      </Switch>
     </Router>
   </Provider>
   ,
   document.getElementById("root")
 );
+
+// If you want to start measuring performance in your app, pass a function
+// to log results (for example: reportWebVitals(console.log))
+// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+reportWebVitals();
