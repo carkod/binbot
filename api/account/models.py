@@ -12,7 +12,8 @@ from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.tools.round_numbers import proper_round
 from api.tools.ticker import Conversion
-from datetime import datetime, timedelta, date, time
+from datetime import datetime, timedelta
+from bson.objectid import ObjectId
 
 class Account:
 
@@ -163,16 +164,18 @@ class Assets(Account, Conversion):
         return proper_round(total_usd, 8)
 
     def get_pnl(self):
-        index = int(request.args["days"])
         current_time = datetime.now()
-        start = current_time - timedelta(days=7)
+        days = 7
+        if "days" in request.args:
+            days = int(request.args["days"])
 
-        if index:
-            # data = list(app.db.balances.find({
-            #     "time": {"$gte": start.timestamp() * 1000, "$lte": current_time.timestamp() * 1000},
-            # }))
-            data = list(app.db.balances.find({}))
-
+        start = current_time - timedelta(days=days)
+        dummy_id = ObjectId.from_datetime(start)
+        data = list(app.db.balances.find({
+            "_id": {
+                "$gte": dummy_id,
+            }
+        }))
         resp = jsonResp({"data": data}, 200)
         return resp
 
@@ -183,15 +186,13 @@ class Assets(Account, Conversion):
         """
 
         balances = self.get_balances().json
-        current_time = current_time = datetime.now()
+        current_time = datetime.utcnow()
         total_btc = 0
         for b in balances:
             symbol = self.find_market(b["asset"])
             market = self.find_quoteAsset(symbol)
             if b["asset"] != "BTC":
                 rate = self.get_ticker_price(symbol)
-                if market != "BTC":
-                    rate = self.get_ticker_price(market+"BTC")
 
             if "locked" in b:
                 qty = b["free"] + b["locked"]
@@ -199,6 +200,12 @@ class Assets(Account, Conversion):
                 qty = b["free"]
 
             btc_value = float(qty) * float(rate)
+
+            # Non-btc markets
+            if market != "BTC":
+                x_rate = self.get_ticker_price(market+"BTC")
+                x_value = float(qty) * float(rate)
+                btc_value = float(x_value) * float(x_rate)
 
             # Only tether coins for hedging
             if b["asset"] == "USDT":
@@ -209,7 +216,7 @@ class Assets(Account, Conversion):
 
         total_usd = self.get_conversion(current_time, "BTC", "USD")
         balance = {
-            "time": current_time,
+            "time": current_time.strftime('%Y-%m-%d'),
             "estimated_total_btc": total_btc,
             "estimated_total_usd": total_usd
         }

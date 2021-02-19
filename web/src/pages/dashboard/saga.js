@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { balanceFailed, balanceSucceeded, getAssetsFailed, getAssetsSucceeded, getBtcChangeFailed, getBtcChangeSucceeded, GET_ASSETS, GET_BALANCE, GET_BTC_CHANGE, updateAssetsFailed, updateAssetsSucceeded, UPDATE_ASSETS } from './actions';
+import { balanceFailed, balanceSucceeded, BALANCE_DIFF, getAssetsFailed, getAssetsSucceeded, getBalanceDiffFailed, getBalanceDiffSucceeded, GET_ASSETS, GET_BALANCE } from './actions';
 
 /**
  * Account request/response handler
@@ -48,38 +48,12 @@ export function* watchAssetsValue() {
   yield takeLatest(GET_ASSETS, getAssetsValue);
 }
 
-
-/**
- * Update Portolio of assets balance
- * /account/update-balance
- */
-export function* updateAssetsValue() {
-  const requestURL = process.env.REACT_APP_ASSETS_UPDATE;
-  const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
-  try {
-    const res = yield call(request, requestURL, options);
-    yield put(updateAssetsSucceeded(res));
-  } catch (err) {
-    yield put(updateAssetsFailed(err));
-  }
-}
-
-export function* watchUpdateAssets() {
-  yield takeLatest(UPDATE_ASSETS, updateAssetsValue);
-}
-
-
 /**
  * Update Portolio of assets balance
  * /account/ticker23/<symbol>
  */
-export function* getBtcChange(payload) {
-  const { symbol, interval } = payload.data;
-  const requestURL = `${process.env.REACT_APP_CHANGE}${symbol}/${interval}`;
+export function* getBalanceDiffApi({days}) {
+  const requestURL = `${process.env.REACT_APP_BALANCE_DIFF}?days=${days}`;
   const options = {
     method: 'GET',
     mode: 'cors', // no-cors, *cors, same-origin
@@ -87,12 +61,12 @@ export function* getBtcChange(payload) {
   }
   try {
     const res = yield call(request, requestURL, options);
-    yield put(getBtcChangeSucceeded(res));
+    yield put(getBalanceDiffSucceeded(res));
   } catch (err) {
-    yield put(getBtcChangeFailed(err));
+    yield put(getBalanceDiffFailed(err));
   }
 }
 
-export function* watchgetBtcChange() {
-  yield takeLatest(GET_BTC_CHANGE, getBtcChange);
+export function* watchGetBalanceDiff() {
+  yield takeLatest(BALANCE_DIFF, getBalanceDiffApi);
 }

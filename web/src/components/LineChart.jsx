@@ -1,7 +1,7 @@
 import React from "react";
 import Plot from 'react-plotly.js';
 
-function LineChart({ data }) {
+function LineChart({ data, width="100%", height="100%" }) {
 
     const layout = {
         dragmode: 'zoom',
@@ -34,7 +34,7 @@ function LineChart({ data }) {
                 data={data}
                 layout={layout}
                 useResizeHandler={true}
-                style={{ "width": "100%", "height": "100%" }}
+                style={{ "width": width, "height": height }}
             />
         </>
 
