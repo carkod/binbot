@@ -15,6 +15,9 @@ import LineChart from "../../components/LineChart";
 import { checkValue, listCssColors } from "../../validations";
 import { getAssets, getBalanceInBtc, getBalanceDiff } from "./actions";
 import { AssetsPie } from "./AssetsPie";
+import { NetWorthChart } from "./NetWorthChart";
+import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
+import { roundDecimals } from "../../validations";
 
 class Dashboard extends React.Component {
   constructor(props) {
@@ -39,7 +42,12 @@ class Dashboard extends React.Component {
   };
 
   componentDidUpdate = (p, s) => {
-    if ((!checkValue(this.props.balances) && p.balances !== this.props.balances) && (!checkValue(this.props.totalBtcBalance) && p.totalBtcBalance !== this.props.totalBtcBalance)) {
+    if (
+      !checkValue(this.props.balances) &&
+      p.balances !== this.props.balances &&
+      !checkValue(this.props.totalBtcBalance) &&
+      p.totalBtcBalance !== this.props.totalBtcBalance
+    ) {
       this.computePieChart(this.props.balances, this.props.totalBtcBalance);
     }
     if (
@@ -59,13 +67,14 @@ class Dashboard extends React.Component {
   };
 
   computeDiffAssets = (assets) => {
-    const diff =
-      assets[0].estimated_total_usd -
-      assets[assets.length - 1].estimated_total_usd;
-    const result = Math.floor(
-      diff / assets[assets.length - 1].estimated_total_usd
-    );
-    this.setState({ revenue: diff, percentageRevenue: result });
+    const balances = assets.reverse();
+    const yesterday = balances[0].estimated_total_usd * balances[0].estimated_total_btc;
+    const previousYesterday = balances[1].estimated_total_usd * balances[1].estimated_total_btc;
+    const diff = yesterday - previousYesterday;
+    const revenue = roundDecimals(diff, 4);
+    const percentage = roundDecimals(diff / previousYesterday, 4) * 100
+    
+    this.setState({ revenue: revenue, percentageRevenue: percentage });
   };
 
   computeLineChart = (assets, btcChange) => {
@@ -250,7 +259,7 @@ class Dashboard extends React.Component {
                     </Col>
                     <Col md="8" xs="7">
                       <div className="numbers">
-                        <p className="card-category">Revenue</p>
+                        <p className="card-category">P&L</p>
                         <CardTitle
                           tag="p"
                           className={
@@ -259,8 +268,13 @@ class Dashboard extends React.Component {
                               : "text-danger"
                           }
                         >
-                          {this.state.percentageRevenue &&
-                            this.state.percentageRevenue + " %"}
+                          <p>{this.state.percentageRevenue &&
+                            `${this.state.percentageRevenue}%`}
+                          </p>
+                          <p>
+                          {this.state.revenue &&
+                            `$${this.state.revenue}`}
+                          </p>
                         </CardTitle>
                         <p />
                       </div>
@@ -269,15 +283,7 @@ class Dashboard extends React.Component {
                 </CardBody>
                 <CardFooter>
                   <hr />
-                  <div className="stats">
-                    <Button
-                      color="link"
-                      title="Click to store balance"
-                      onClick={this.updateAssets}
-                    >
-                      <i className="fas fa-sync" /> Last 24 hours
-                    </Button>
-                  </div>
+                  <i className="fas fa-sync" /> Yesterday
                 </CardFooter>
               </Card>
             </Col>
@@ -316,80 +322,21 @@ class Dashboard extends React.Component {
               />
             </Col>
             <Col md="8">
-              <Card className="card-chart">
-                <CardHeader>
-                  <CardTitle tag="h5">Portfolio benchmarking</CardTitle>
-                  <p className="card-category">
-                    Compare Portfolio against BTC and USDT
-                  </p>
-                </CardHeader>
-                <CardBody>
-                  {this.state.lineChartData && (
-                    <LineChart data={this.state.lineChartData} />
-                  )}
-                </CardBody>
-                <CardFooter>
-                  <div className="legend">
-                    {this.state.lineChartLegend &&
-                      this.state.lineChartLegend.map((x, i) => {
-                        return (
-                          <span key={i} className="u-text-margin-left">
-                            <i
-                              className="fa fa-circle"
-                              style={{ color: x.color }}
-                            />
-                            {x.name}
-                          </span>
-                        );
-                      })}
-                  </div>
-                  <hr />
-                  <div className="card-stats">
-                    <i className="fa fa-check" /> Data information certified
-                  </div>
-                </CardFooter>
-              </Card>
+              { this.state.lineChartData && 
+                <PortfolioBenchmarkChart
+                  data={this.state.lineChartData}
+                  legend={this.state.lineChartLegend}
+                />
+              }
             </Col>
           </Row>
           <Row>
-            <Col md="6">
-              <Card className="card-chart">
-                <CardHeader>
-                  <CardTitle tag="h5">Net Worth</CardTitle>
-                  <p className="card-category">
-                    Compare Portfolio against BTC and USDT
-                  </p>
-                </CardHeader>
-                <CardBody>
-                  {this.state.netWorth && (
-                    <LineChart
-                      data={this.state.netWorth}
-                      width="500px"
-                      height="250px"
-                    />
-                  )}
-                </CardBody>
-                <CardFooter>
-                  <div className="legend">
-                    {this.state.netWorthLegend &&
-                      this.state.lineChartLegend.map((x, i) => {
-                        return (
-                          <span key={i} className="u-text-margin-left">
-                            <i
-                              className="fa fa-circle"
-                              style={{ color: x.color }}
-                            />
-                            {x.name}
-                          </span>
-                        );
-                      })}
-                  </div>
-                  <hr />
-                  <div className="card-stats">
-                    <i className="fa fa-check" /> Data information certified
-                  </div>
-                </CardFooter>
-              </Card>
+            <Col md="4">
+              {this.state.netWorth && (
+                <NetWorthChart data={this.state.netWorth} />
+              )}
+            </Col>
+            <Col md="8">
             </Col>
           </Row>
         </div>

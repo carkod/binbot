@@ -70,4 +70,9 @@ const addNotification = (name, message, type = "success") => {
     toastr[type](name, message);
 }
 
-export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders, replaceZeros, listCssColors, addNotification };
+const roundDecimals = (num, decimals = 2) => {
+    const number = Math.round(((num) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+    return number;
+}
+
+export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders, replaceZeros, listCssColors, addNotification, roundDecimals };

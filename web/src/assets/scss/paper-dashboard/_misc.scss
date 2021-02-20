@@ -178,6 +178,14 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
   margin-bottom: 0.5em;
 }
 
+.u-legend-text {
+  margin-bottom: 0.5em;
+  margin-right: 1em;
+  i {
+    margin-right: 0.2em;
+  }
+}
+
 .u-primary-color {
   color: $primary-color;
 }
