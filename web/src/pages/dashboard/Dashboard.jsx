@@ -11,9 +11,10 @@ import {
   Row,
 } from "reactstrap";
 import LineChart from "../../components/LineChart";
-import PieChart from "../../components/PieChart";
+
 import { checkValue, listCssColors } from "../../validations";
-import { getAssets, getBalance, getBalanceDiff } from "./actions";
+import { getAssets, getBalanceInBtc, getBalanceDiff } from "./actions";
+import { AssetsPie } from "./AssetsPie";
 
 class Dashboard extends React.Component {
   constructor(props) {
@@ -32,14 +33,14 @@ class Dashboard extends React.Component {
   }
 
   componentDidMount = () => {
-    this.props.getBalance();
+    this.props.getBalanceInBtc();
     this.props.getAssets();
     this.props.getBalanceDiff("7");
   };
 
   componentDidUpdate = (p, s) => {
-    if (!checkValue(this.props.assets) && p.assets !== this.props.assets) {
-      this.computePieChart(this.props.assets);
+    if ((!checkValue(this.props.balances) && p.balances !== this.props.balances) && (!checkValue(this.props.totalBtcBalance) && p.totalBtcBalance !== this.props.totalBtcBalance)) {
+      this.computePieChart(this.props.balances, this.props.totalBtcBalance);
     }
     if (
       !checkValue(this.props.balanceDiff) &&
@@ -124,12 +125,13 @@ class Dashboard extends React.Component {
     });
   };
 
-  computePieChart = (assets) => {
+  computePieChart = (assets, total) => {
     let values = [];
     let labels = [];
     let pieChartLegend = [];
-    assets[0].balances.forEach((x, i) => {
-      values.push(x.free);
+    assets.forEach((x, i) => {
+      const percent = (x.btc_value / total).toFixed(4);
+      values.push(percent);
       labels.push(x.asset);
       pieChartLegend.push({
         name: x.asset,
@@ -201,7 +203,7 @@ class Dashboard extends React.Component {
                                 className={
                                   Math.max.apply(
                                     Math,
-                                    balances.map((o) => o.free)
+                                    balances.map((o) => o.total_btc_value)
                                   ) === x.free
                                     ? "u-green-badge"
                                     : ""
@@ -308,32 +310,10 @@ class Dashboard extends React.Component {
           </Row>
           <Row>
             <Col md="4">
-              <Card>
-                <CardHeader>
-                  <CardTitle tag="h5">Assets</CardTitle>
-                </CardHeader>
-                <CardBody>
-                  {this.state.pieChartData && (
-                    <PieChart data={this.state.pieChartData} />
-                  )}
-                </CardBody>
-                <CardFooter>
-                  <div className="legend">
-                    {this.state.pieChartLegend &&
-                      this.state.pieChartLegend.map((x, i) => {
-                        return (
-                          <span key={i} className="u-text-margin-left">
-                            <i
-                              className="fa fa-circle"
-                              style={{ color: x.color }}
-                            />
-                            {x.name}
-                          </span>
-                        );
-                      })}
-                  </div>
-                </CardFooter>
-              </Card>
+              <AssetsPie
+                data={this.state.pieChartData}
+                legend={this.state.pieChartLegend}
+              />
             </Col>
             <Col md="8">
               <Card className="card-chart">
@@ -419,11 +399,12 @@ class Dashboard extends React.Component {
 }
 
 const mapStateToProps = (s) => {
-  const { data: balances } = s.balanceReducer;
+  const { data: account } = s.balanceInBtcReducer;
   const { data: assets } = s.assetsReducer;
   const { data: balanceDiff } = s.balanceDiffReducer;
   let props = {
-    balances: balances,
+    balances: !checkValue(account) ? account.balances : null,
+    totalBtcBalance: !checkValue(account) ? account.total_btc : null,
     assets: assets,
     balanceDiff: balanceDiff,
   };
@@ -431,7 +412,7 @@ const mapStateToProps = (s) => {
 };
 
 export default connect(mapStateToProps, {
-  getBalance,
+  getBalanceInBtc,
   getAssets,
   getBalanceDiff,
 })(Dashboard);

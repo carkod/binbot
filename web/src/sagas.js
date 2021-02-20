@@ -13,6 +13,7 @@ import watchBot, {
 import watchGetAccount, {
   watchAssetsValue,
   watchGetBalanceDiff,
+  watchGetBalanceInBtc,
 } from "./pages/dashboard/saga";
 import {
   watchDeleteOpenOrders,
@@ -39,5 +40,6 @@ export default function* rootSaga() {
     watchActivateBot(),
     watchDeactivateBot(),
     watchGetBalanceDiff(),
+    watchGetBalanceInBtc(),
   ]);
 }

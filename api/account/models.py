@@ -105,6 +105,55 @@ class Account:
         # Return response
         resp = jsonResp(balances, 200)
         return resp
+    
+    def get_balances_btc(self):
+        data = self.request_data()["balances"]
+        df = pd.DataFrame(data)
+        df['free'] = pd.to_numeric(df['free'])
+        df['asset'] = df['asset'].astype(str)
+        df.drop('locked', axis=1, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        # Get table with > 0
+        balances = df[df['free'] > 0.000000].to_dict('records')
+        data = {
+            "total_btc": 0,
+            "balances": []
+        }
+        for b in balances:
+            symbol = self.find_market(b["asset"])
+            market = self.find_quoteAsset(symbol)
+            if b["asset"] != "BTC":
+                rate = self.get_ticker_price(symbol)
+
+            if "locked" in b:
+                qty = b["free"] + b["locked"]
+            else:
+                qty = b["free"]
+
+            btc_value = float(qty) * float(rate)
+
+            # Non-btc markets
+            if market != "BTC":
+                x_rate = self.get_ticker_price(market+"BTC")
+                x_value = float(qty) * float(rate)
+                btc_value = float(x_value) * float(x_rate)
+
+            # Only tether coins for hedging
+            if b["asset"] == "USDT":
+                rate = self.get_ticker_price("BTCUSDT")
+                btc_value = float(qty) / float(rate)
+
+            data["total_btc"] += btc_value
+            assets = {
+                "asset": b["asset"],
+                "btc_value": btc_value
+            }
+            data["balances"].append(assets)
+
+        # filter out empty
+        # Return response
+        resp = jsonResp(data, 200)
+        return resp
 
     def get_one_balance(self, symbol="BTC"):
         data = json.loads(self.get_balances().data)

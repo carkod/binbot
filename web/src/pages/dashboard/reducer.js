@@ -8,12 +8,12 @@ import {
   UPDATE_ASSETS,
   UPDATE_ASSETS_SUCCESS,
   UPDATE_ASSETS_ERROR,
-  GET_BTC_CHANGE,
-  GET_BTC_CHANGE_SUCCESS,
-  GET_BTC_CHANGE_ERROR,
   BALANCE_DIFF,
   BALANCE_DIFF_SUCCESS,
   BALANCE_DIFF_ERROR,
+  GET_BALANCE_IN_BTC,
+  GET_BALANCE_IN_BTC_SUCCESS,
+  GET_BALANCE_IN_BTC_ERROR,
 } from "./actions";
 
 // The initial state of the App
@@ -27,14 +27,7 @@ export const initialState = {
 function balanceReducer(state = initialState, action) {
   switch (action.type) {
     case GET_BALANCE: {
-      const newState = {
-        ...state,
-        isLoading: true,
-        isError: false,
-        data: action.data,
-      };
-
-      return newState;
+     return state
     }
     case BALANCE_SUCCESS: {
       const newState = {
@@ -148,4 +141,32 @@ function balanceDiffReducer(state = initialState, action) {
   }
 }
 
-export { balanceReducer, assetsReducer, balanceDiffReducer };
+function balanceInBtcReducer(state = initialState, action) {
+  switch (action.type) {
+    case GET_BALANCE_IN_BTC: {
+     return state
+    }
+    case GET_BALANCE_IN_BTC_SUCCESS: {
+      const newState = {
+        ...state,
+        isLoading: false,
+        isError: false,
+        data: action.data,
+      };
+      return newState;
+    }
+
+    case GET_BALANCE_IN_BTC_ERROR: {
+      return {
+        ...state,
+        error: action.error,
+        isLoading: false,
+        isError: true,
+      };
+    }
+    default:
+      return state;
+  }
+}
+
+export { balanceReducer, assetsReducer, balanceDiffReducer, balanceInBtcReducer };

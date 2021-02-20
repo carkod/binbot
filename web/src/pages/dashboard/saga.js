@@ -1,12 +1,12 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import request from '../../request';
-import { balanceFailed, balanceSucceeded, BALANCE_DIFF, getAssetsFailed, getAssetsSucceeded, getBalanceDiffFailed, getBalanceDiffSucceeded, GET_ASSETS, GET_BALANCE } from './actions';
+import { balanceFailed, balanceSucceeded, BALANCE_DIFF, getAssetsFailed, getAssetsSucceeded, getBalanceDiffFailed, getBalanceDiffSucceeded, getBalanceInBtcFailed, getBalanceInBtcSucceeded, GET_ASSETS, GET_BALANCE, GET_BALANCE_IN_BTC } from './actions';
 
 /**
  * Account request/response handler
  */
 export function* getAccount() {
-  const requestURL = process.env.REACT_APP_ACCOUNT;
+  const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE;
   const options = {
     method: 'GET',
     mode: 'cors', // no-cors, *cors, same-origin
@@ -69,4 +69,27 @@ export function* getBalanceDiffApi({days}) {
 
 export function* watchGetBalanceDiff() {
   yield takeLatest(BALANCE_DIFF, getBalanceDiffApi);
+}
+
+
+/**
+ * Account request/response handler
+ */
+export function* getBalanceInBtcApi() {
+  const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE_BTC;
+  const options = {
+    method: 'GET',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  }
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(getBalanceInBtcSucceeded(res));
+  } catch (err) {
+    yield put(getBalanceInBtcFailed(err));
+  }
+}
+
+export function* watchGetBalanceInBtc() {
+  yield takeLatest(GET_BALANCE_IN_BTC, getBalanceInBtcApi);
 }
