@@ -1,23 +1,20 @@
 import React from "react";
 import { connect } from "react-redux";
 import {
-  Button,
   Card,
   CardBody,
   CardFooter,
-  CardHeader,
   CardTitle,
   Col,
-  Row,
+  Row
 } from "reactstrap";
-import LineChart from "../../components/LineChart";
-
-import { checkValue, listCssColors } from "../../validations";
-import { getAssets, getBalanceInBtc, getBalanceDiff } from "./actions";
+import { checkValue, listCssColors, roundDecimals } from "../../validations";
+import { getAssets, getBalanceDiff, getBalanceInBtc } from "./actions";
 import { AssetsPie } from "./AssetsPie";
 import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
-import { roundDecimals } from "../../validations";
+import { ProfitLossBars } from "./ProfitLossBars";
+
 
 class Dashboard extends React.Component {
   constructor(props) {
@@ -32,6 +29,7 @@ class Dashboard extends React.Component {
       netWorth: null,
       netWorthLegend: null,
       networthLayout: null,
+      dailyPnL: null,
     };
   }
 
@@ -55,15 +53,11 @@ class Dashboard extends React.Component {
       p.balanceDiff !== this.props.balanceDiff
     ) {
       this.computeDiffAssets(this.props.balanceDiff);
-      this.netWorth(this.props.balanceDiff);
+      this.computeNetWorth(this.props.balanceDiff);
+      this.computeLineChart(this.props.balanceDiff);
+      this.computeDailyPnL(this.props.balanceDiff)
     }
 
-    if (
-      !checkValue(this.props.btcChange) &&
-      p.btcChange !== this.props.btcChange
-    ) {
-      this.computeLineChart(this.props.assets, this.props.btcChange);
-    }
   };
 
   computeDiffAssets = (assets) => {
@@ -77,7 +71,7 @@ class Dashboard extends React.Component {
     this.setState({ revenue: revenue, percentageRevenue: percentage });
   };
 
-  computeLineChart = (assets, btcChange) => {
+  computeLineChart = (assets) => {
     /**
      * Compute percentage increases benchmark
      * BTC vs Portfolio
@@ -85,16 +79,17 @@ class Dashboard extends React.Component {
      */
     const dates = [];
     const values = [];
-    assets.forEach((a, i) => {
-      const b = assets[i + 1];
-      if (b !== undefined) {
-        const date = new Date(b.updatedTime * 1000);
-        const value =
-          [(a.total_btc_value - b.total_btc_value) / a.total_btc_value] * 100;
-        dates.push(date);
-        values.push(value);
-      }
-    });
+    let value = 0;
+    for (let i = 0; i < assets.length; i++) {
+      if (i === 0) continue;
+      const previous = assets[i - 1].estimated_total_btc * assets[i - 1].estimated_total_usd;
+      const current = assets[i].estimated_total_btc * assets[i].estimated_total_usd;
+      value += ((previous - current) / previous) * 100;
+      const date = assets[i].time;
+      dates.push(date);
+      values.push(value);
+    }
+
     const trace = {
       x: dates,
       y: values,
@@ -115,22 +110,22 @@ class Dashboard extends React.Component {
       color: listCssColors[0],
     };
 
-    // Trace 2
-    btcChange.line = {
-      color: listCssColors[1],
-      width: 1,
-    };
-    btcChange.marker = {
-      color: listCssColors[1],
-      size: 8,
-    };
-    const btcChangeLegend = {
-      name: "BTC on USDT",
-      color: listCssColors[1],
-    };
+    // // Trace 2
+    // btcChange.line = {
+    //   color: listCssColors[1],
+    //   width: 1,
+    // };
+    // btcChange.marker = {
+    //   color: listCssColors[1],
+    //   size: 8,
+    // };
+    // const btcChangeLegend = {
+    //   name: "BTC on USDT",
+    //   color: listCssColors[1],
+    // };
     this.setState({
-      lineChartData: [trace, btcChange],
-      lineChartLegend: [assetsLegend, btcChangeLegend],
+      lineChartData: [trace],
+      lineChartLegend: [assetsLegend],
     });
   };
 
@@ -160,7 +155,7 @@ class Dashboard extends React.Component {
     this.setState({ pieChartData: data, pieChartLegend: pieChartLegend });
   };
 
-  netWorth = (data) => {
+  computeNetWorth = (data) => {
     let dates = [];
     let values = [];
     if (!checkValue(data)) {
@@ -187,6 +182,37 @@ class Dashboard extends React.Component {
 
     this.setState({ netWorth: [trace] });
   };
+
+  computeDailyPnL = (data) => {
+    let dates = [];
+    let values = [];
+    let colors = [];
+    for (let i = 0; i < data.length; i++) {
+      if (i === 0) continue;
+      const previous = data[i - 1].estimated_total_btc * data[i - 1].estimated_total_usd;
+      const current = data[i].estimated_total_btc * data[i].estimated_total_usd;
+      const value = roundDecimals(previous - current, 4);
+      const date = data[i].time;
+      dates.push(date);
+      values.push(value);
+      if (parseFloat(value) > 0) {
+        colors.push(listCssColors[0]);
+      } else {
+        colors.push(listCssColors[7]);
+      }
+    }
+    const trace = {
+      x: dates,
+      y: values,
+      type: "bar",
+      marker: {
+        color: colors,
+        size: 8,
+      },
+    };
+
+    this.setState({ dailyPnL: [trace] });
+  }
 
   render() {
     const { balances, assets } = this.props;
@@ -259,9 +285,9 @@ class Dashboard extends React.Component {
                     </Col>
                     <Col md="8" xs="7">
                       <div className="numbers">
-                        <p className="card-category">P&L</p>
+                        <p className="card-category">Profit &amp; Loss</p>
                         <CardTitle
-                          tag="p"
+                          tag="div"
                           className={
                             this.state.revenue > 0
                               ? "text-success"
@@ -337,6 +363,9 @@ class Dashboard extends React.Component {
               )}
             </Col>
             <Col md="8">
+              {this.state.dailyPnL && (
+                <ProfitLossBars data={this.state.dailyPnL} />
+              )}
             </Col>
           </Row>
         </div>

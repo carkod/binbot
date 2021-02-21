@@ -40,6 +40,7 @@ export function AssetsPie({ data, legend }) {
     <Card>
       <CardHeader>
         <CardTitle tag="h5">Assets</CardTitle>
+        <p className="card-category">Proportion of cryptoassets over estimated BTC value</p>
       </CardHeader>
       <CardBody>
         {data && <PieChart data={data} />}

@@ -58,7 +58,7 @@ export function PortfolioBenchmarkChart({ data, legend }) {
           {legend &&
             legend.map((x, i) => {
               return (
-                <span key={i} className="u-text-margin-left">
+                <span key={i} className="u-legend-text">
                   <i className="fa fa-circle" style={{ color: x.color }} />
                   {x.name}
                 </span>
@@ -67,7 +67,7 @@ export function PortfolioBenchmarkChart({ data, legend }) {
         </div>
         <hr />
         <div className="card-stats">
-          <i className="fa fa-check" /> Data information certified
+          <i className="fa fa-check" /> Updated everyday at 00:01
         </div>
       </CardFooter>
     </Card>
