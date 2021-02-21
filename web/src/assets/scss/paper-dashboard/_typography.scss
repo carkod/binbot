@@ -171,3 +171,18 @@ a.text-gray:focus, a.text-gray:hover{
         }
     }
 }
+
+.t-jumbotron {
+    padding: 2rem;
+    margin-bottom: 2rem;
+    background-color: #e9ecef;
+    border-radius: 0.3rem;
+    h2 {
+        color: #66615B;
+        text-transform: capitalize;
+        font-size: 20px;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        line-height: 1.625rem;
+    }
+}

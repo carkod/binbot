@@ -361,11 +361,14 @@ class Dashboard extends React.Component {
               {this.state.netWorth && (
                 <NetWorthChart data={this.state.netWorth} />
               )}
-            </Col>
-            <Col md="8">
               {this.state.dailyPnL && (
                 <ProfitLossBars data={this.state.dailyPnL} />
               )}
+            </Col>
+            <Col md="8">
+                <div className="t-jumbotron">
+                  <h2>Failed bots</h2>
+                </div>
             </Col>
           </Row>
         </div>

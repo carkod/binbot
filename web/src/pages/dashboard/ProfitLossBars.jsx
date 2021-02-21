@@ -18,6 +18,8 @@ function BarChart({ data, width = "100%", height = "100%" }) {
       l: 35,
     },
     showlegend: false,
+    width: width,
+    height: height,
     xaxis: {
       autorange: true,
       title: "Date",
@@ -48,7 +50,7 @@ export function ProfitLossBars({ data }) {
         <p className="card-category">Daily profit or loss in USD</p>
       </CardHeader>
       <CardBody>
-        <BarChart data={data} />
+        <BarChart data={data} width="300" height="200"/>
       </CardBody>
       <CardFooter>
         <hr />
