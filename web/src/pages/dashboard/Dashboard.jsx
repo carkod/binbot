@@ -1,21 +1,13 @@
 import React from "react";
 import { connect } from "react-redux";
-import {
-  Card,
-  CardBody,
-  CardFooter,
-  CardTitle,
-  Col,
-  Row
-} from "reactstrap";
+import { Card, CardBody, CardFooter, CardTitle, Col, Row } from "reactstrap";
 import { checkValue, listCssColors, roundDecimals } from "../../validations";
 import { getAssets, getBalanceDiff, getBalanceInBtc } from "./actions";
 import { AssetsPie } from "./AssetsPie";
 import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
-
-
+import request from "../../request";
 class Dashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -30,6 +22,7 @@ class Dashboard extends React.Component {
       netWorthLegend: null,
       networthLayout: null,
       dailyPnL: null,
+      usdBalance: 0, // Does not rely on cronjob totalBtcBalance
     };
   }
 
@@ -47,6 +40,7 @@ class Dashboard extends React.Component {
       p.totalBtcBalance !== this.props.totalBtcBalance
     ) {
       this.computePieChart(this.props.balances, this.props.totalBtcBalance);
+      this.computeUsdBalance(this.props.balances);
     }
     if (
       !checkValue(this.props.balanceDiff) &&
@@ -55,19 +49,20 @@ class Dashboard extends React.Component {
       this.computeDiffAssets(this.props.balanceDiff);
       this.computeNetWorth(this.props.balanceDiff);
       this.computeLineChart(this.props.balanceDiff);
-      this.computeDailyPnL(this.props.balanceDiff)
+      this.computeDailyPnL(this.props.balanceDiff);
     }
-
   };
 
   computeDiffAssets = (assets) => {
     const balances = assets.reverse();
-    const yesterday = balances[0].estimated_total_usd * balances[0].estimated_total_btc;
-    const previousYesterday = balances[1].estimated_total_usd * balances[1].estimated_total_btc;
+    const yesterday =
+      balances[0].estimated_total_usd * balances[0].estimated_total_btc;
+    const previousYesterday =
+      balances[1].estimated_total_usd * balances[1].estimated_total_btc;
     const diff = yesterday - previousYesterday;
     const revenue = roundDecimals(diff, 4);
-    const percentage = roundDecimals(diff / previousYesterday, 4) * 100
-    
+    const percentage = roundDecimals(diff / previousYesterday, 4) * 100;
+
     this.setState({ revenue: revenue, percentageRevenue: percentage });
   };
 
@@ -82,8 +77,10 @@ class Dashboard extends React.Component {
     let value = 0;
     for (let i = 0; i < assets.length; i++) {
       if (i === 0) continue;
-      const previous = assets[i - 1].estimated_total_btc * assets[i - 1].estimated_total_usd;
-      const current = assets[i].estimated_total_btc * assets[i].estimated_total_usd;
+      const previous =
+        assets[i - 1].estimated_total_btc * assets[i - 1].estimated_total_usd;
+      const current =
+        assets[i].estimated_total_btc * assets[i].estimated_total_usd;
       value += ((previous - current) / previous) * 100;
       const date = assets[i].time;
       dates.push(date);
@@ -110,19 +107,6 @@ class Dashboard extends React.Component {
       color: listCssColors[0],
     };
 
-    // // Trace 2
-    // btcChange.line = {
-    //   color: listCssColors[1],
-    //   width: 1,
-    // };
-    // btcChange.marker = {
-    //   color: listCssColors[1],
-    //   size: 8,
-    // };
-    // const btcChangeLegend = {
-    //   name: "BTC on USDT",
-    //   color: listCssColors[1],
-    // };
     this.setState({
       lineChartData: [trace],
       lineChartLegend: [assetsLegend],
@@ -189,7 +173,8 @@ class Dashboard extends React.Component {
     let colors = [];
     for (let i = 0; i < data.length; i++) {
       if (i === 0) continue;
-      const previous = data[i - 1].estimated_total_btc * data[i - 1].estimated_total_usd;
+      const previous =
+        data[i - 1].estimated_total_btc * data[i - 1].estimated_total_usd;
       const current = data[i].estimated_total_btc * data[i].estimated_total_usd;
       const value = roundDecimals(previous - current, 4);
       const date = data[i].time;
@@ -212,10 +197,25 @@ class Dashboard extends React.Component {
     };
 
     this.setState({ dailyPnL: [trace] });
+  };
+
+  
+  computeUsdBalance = async (balances) => {
+    /**
+    * As opposed to totalBtcBalance, this balance does not rely on cronjob 
+    */
+    const value = balances.reduce((accumulator, current) => parseFloat(accumulator) + parseFloat(current.btc_value), 0) 
+    const url = `https://api.alternative.me/v2/ticker/bitcoin/?convert=USD`;
+    const response = await request(url);
+    const conversionRate = parseFloat(response["data"]["1"]["quotes"]["USD"]["price"])
+    this.setState({
+      usdBalance: roundDecimals(conversionRate * value, 4)
+    });
   }
 
   render() {
-    const { balances, assets } = this.props;
+    const { balances } = this.props;
+    
     return (
       <>
         <div className="content">
@@ -224,53 +224,31 @@ class Dashboard extends React.Component {
               <Card className="card-stats">
                 <CardBody>
                   <Row>
-                    <Col md="8" xs="12">
+                    <Col md="12">
                       <div className="stats">
                         <p className="card-category">Balance</p>
                         {balances &&
-                          balances.map((x, i) => (
                             <CardTitle
-                              key={i}
                               tag="h5"
                               className={`card-title`}
                             >
-                              <span
-                                className={
-                                  Math.max.apply(
-                                    Math,
-                                    balances.map((o) => o.total_btc_value)
-                                  ) === x.free
-                                    ? "u-green-badge"
-                                    : ""
-                                }
-                              >
-                                {x.free}
-                              </span>
+                              {`${roundDecimals(balances.reduce((accumulator, current) => parseFloat(accumulator) + parseFloat(current.btc_value), 0), 6)} BTC`}
+                              <br />
+                              {`$${this.state.usdBalance}`}
                             </CardTitle>
-                          ))}
-                      </div>
-                    </Col>
-                    <Col md="4" xs="12">
-                      <div className="stats">
-                        <p className="card-category">Asset</p>
-                        {balances &&
-                          balances.map((x, i) => (
-                            <CardTitle key={i} tag="h5" className="card-title">
-                              {x.asset}
-                            </CardTitle>
-                          ))}
+                          }
                       </div>
                     </Col>
                   </Row>
                 </CardBody>
                 <CardFooter>
                   <hr />
-                  <div className="stats">
+                  {/* <div className="stats">
                     {assets &&
                       `Total ${parseFloat(assets[0].total_btc_value).toFixed(
                         6
                       )} BTC`}
-                  </div>
+                  </div> */}
                 </CardFooter>
               </Card>
             </Col>
@@ -294,12 +272,12 @@ class Dashboard extends React.Component {
                               : "text-danger"
                           }
                         >
-                          <p>{this.state.percentageRevenue &&
-                            `${this.state.percentageRevenue}%`}
+                          <p>
+                            {this.state.percentageRevenue &&
+                              `${this.state.percentageRevenue}%`}
                           </p>
                           <p>
-                          {this.state.revenue &&
-                            `$${this.state.revenue}`}
+                            {this.state.revenue && `$${this.state.revenue}`}
                           </p>
                         </CardTitle>
                         <p />
@@ -348,12 +326,12 @@ class Dashboard extends React.Component {
               />
             </Col>
             <Col md="8">
-              { this.state.lineChartData && 
+              {this.state.lineChartData && (
                 <PortfolioBenchmarkChart
                   data={this.state.lineChartData}
                   legend={this.state.lineChartLegend}
                 />
-              }
+              )}
             </Col>
           </Row>
           <Row>
@@ -366,9 +344,9 @@ class Dashboard extends React.Component {
               )}
             </Col>
             <Col md="8">
-                <div className="t-jumbotron">
-                  <h2>Failed bots</h2>
-                </div>
+              <div className="t-jumbotron">
+                <h2>Failed bots</h2>
+              </div>
             </Col>
           </Row>
         </div>
