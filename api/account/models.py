@@ -105,7 +105,7 @@ class Account:
         # Return response
         resp = jsonResp(balances, 200)
         return resp
-    
+
     def get_balances_btc(self):
         data = self.request_data()["balances"]
         df = pd.DataFrame(data)
@@ -122,6 +122,7 @@ class Account:
         for b in balances:
             symbol = self.find_market(b["asset"])
             market = self.find_quoteAsset(symbol)
+            rate = 0
             if b["asset"] != "BTC":
                 rate = self.get_ticker_price(symbol)
 
@@ -237,29 +238,36 @@ class Assets(Account, Conversion):
         balances = self.get_balances().json
         current_time = datetime.utcnow()
         total_btc = 0
+        rate = 0
         for b in balances:
-            symbol = self.find_market(b["asset"])
-            market = self.find_quoteAsset(symbol)
             if b["asset"] != "BTC":
-                rate = self.get_ticker_price(symbol)
+                symbol = self.find_market(b["asset"])
+                market = self.find_quoteAsset(symbol)
+                if b["asset"] != "BTC":
+                    rate = self.get_ticker_price(symbol)
 
-            if "locked" in b:
-                qty = b["free"] + b["locked"]
+                if "locked" in b:
+                    qty = b["free"] + b["locked"]
+                else:
+                    qty = b["free"]
+
+                btc_value = float(qty) * float(rate)
+
+                # Non-btc markets
+                if market != "BTC":
+                    x_rate = self.get_ticker_price(market+"BTC")
+                    x_value = float(qty) * float(rate)
+                    btc_value = float(x_value) * float(x_rate)
+
+                # Only tether coins for hedging
+                if "USD" in b["asset"]:
+                    rate = self.get_ticker_price("BTC"+b["asset"])
+                    btc_value = float(qty) / float(rate)
             else:
-                qty = b["free"]
-
-            btc_value = float(qty) * float(rate)
-
-            # Non-btc markets
-            if market != "BTC":
-                x_rate = self.get_ticker_price(market+"BTC")
-                x_value = float(qty) * float(rate)
-                btc_value = float(x_value) * float(x_rate)
-
-            # Only tether coins for hedging
-            if b["asset"] == "USDT":
-                rate = self.get_ticker_price("BTCUSDT")
-                btc_value = float(qty) / float(rate)
+                if "locked" in b:
+                    btc_value = b["free"] + b["locked"]
+                else:
+                    btc_value = b["free"]
 
             total_btc += btc_value
 
