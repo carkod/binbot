@@ -10,10 +10,13 @@ export const UPDATE_ASSETS = 'UPDATE_ASSETS';
 export const UPDATE_ASSETS_SUCCESS = 'UPDATE_ASSETS_SUCCESS';
 export const UPDATE_ASSETS_ERROR = 'UPDATE_ASSETS_ERROR';
 
-export const GET_BTC_CHANGE = 'GET_BTC_CHANGE';
-export const GET_BTC_CHANGE_SUCCESS = 'GET_BTC_CHANGE_SUCCESS';
-export const GET_BTC_CHANGE_ERROR = 'GET_BTC_CHANGE_ERROR';
+export const BALANCE_DIFF = 'BALANCE_DIFF';
+export const BALANCE_DIFF_SUCCESS = 'BALANCE_DIFF_SUCCESS';
+export const BALANCE_DIFF_ERROR = 'BALANCE_DIFF_ERROR';
 
+export const GET_BALANCE_IN_BTC = 'GET_BALANCE_IN_BTC';
+export const GET_BALANCE_IN_BTC_SUCCESS = 'GET_BALANCE_IN_BTC_SUCCESS';
+export const GET_BALANCE_IN_BTC_ERROR = 'GET_BALANCE_IN_BTC_ERROR';
 
 /**
  * Create new user
@@ -96,51 +99,18 @@ export function getAssetsFailed(error) {
  * /account/update-assets
  * @return {object} An action object with a type of BALANCE
  */
-export function updateAssets() {
+export function getBalanceDiff(days) {
   return {
-    type: UPDATE_ASSETS,
+    type: BALANCE_DIFF,
     isLoading: true,
     isError: false,
+    days: days,
   };
 }
 
-export function updateAssetsSucceeded(res) {
+export function getBalanceDiffSucceeded(res) {
   return {
-    type: UPDATE_ASSETS_SUCCESS,
-    isLoading: false,
-    isError: false,
-  };
-}
-
-export function updateAssetsFailed(error) {
-  return {
-    type: UPDATE_ASSETS_ERROR,
-    isLoading: false,
-    isError: true,
-    error: error
-  };
-}
-
-/**
- * Update assets
- * /account/update-assets
- * @return {object} An action object with a type of BALANCE
- */
-export function getBtcChange(symbol, interval) {
-  return {
-    type: GET_BTC_CHANGE,
-    isLoading: true,
-    isError: false,
-    data: {
-      symbol: symbol,
-      interval: interval
-    }
-  };
-}
-
-export function getBtcChangeSucceeded(res) {
-  return {
-    type: GET_BTC_CHANGE_SUCCESS,
+    type: BALANCE_DIFF_SUCCESS,
     isLoading: false,
     isError: false,
     message: res.message,
@@ -148,11 +118,59 @@ export function getBtcChangeSucceeded(res) {
   };
 }
 
-export function getBtcChangeFailed(error) {
+export function getBalanceDiffFailed(error) {
   return {
-    type: GET_BTC_CHANGE_ERROR,
+    type: BALANCE_DIFF_ERROR,
     isLoading: false,
     isError: true,
     message: error.message
+  };
+}
+
+
+
+/**
+ * Create new user
+ *
+ * @return {object} An action object with a type of BALANCE
+ */
+export function getBalanceInBtc() {
+  return {
+    type: GET_BALANCE_IN_BTC,
+    isLoading: true,
+    isError: false,
+  };
+}
+
+/**
+ * Dispatched when the repositories are loaded by the request saga
+ *
+ * @param  {array} repos The repository data
+ * @param  {string} username The current username
+ *
+ * @return {object}      An action object with a type of BALANCE_SUCCESS passing the repos
+ */
+export function getBalanceInBtcSucceeded(res) {
+  return {
+    type: GET_BALANCE_IN_BTC_SUCCESS,
+    isLoading: false,
+    isError: false,
+    data: res
+  };
+}
+
+/**
+ * Dispatched when loading the repositories fails
+ *
+ * @param  {object} error The error
+ *
+ * @return {object}       An action object with a type of BALANCE_ERROR passing the error
+ */
+export function getBalanceInBtcFailed(error) {
+  return {
+    type: GET_BALANCE_IN_BTC_ERROR,
+    isLoading: false,
+    isError: true,
+    data: error,
   };
 }

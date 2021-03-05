@@ -11,9 +11,9 @@ account_blueprint = Blueprint("account", __name__)
 # @token_required
 
 
-@account_blueprint.route("/", methods=["GET"])
-def get():
-    return Account().get_balances()
+@account_blueprint.route("/btc-balance", methods=["GET"])
+def get_balances_btc():
+    return Account().get_balances_btc()
 
 @account_blueprint.route("/balance", methods=["GET"])
 def getAuth():

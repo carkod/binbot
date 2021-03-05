@@ -5,3 +5,64 @@
 .u-modal--zindex {
   z-index: $zindex-modal;
 }
+
+
+.u-uppercase {
+  text-transform: uppercase;
+}
+
+.u-capitalize {
+  text-transform: capitalize;
+}
+
+.u-center {
+  text-align: center;
+}
+
+.u-align-baseline {
+  align-items: baseline;
+}
+
+.u-space-between {
+  display: flex;
+  justify-content: space-between;
+}
+
+.u-margin-bottom {
+  margin-bottom: 2em;
+}
+
+.u-text-margin-left {
+  margin-bottom: 0.5em;
+}
+
+.u-legend-text {
+  margin-bottom: 0.5em;
+  margin-right: 1em;
+  i {
+    margin-right: 0.2em;
+  }
+}
+
+.u-primary-color {
+  color: $primary-color;
+}
+
+.u-required {
+  color: $danger-color;
+}
+
+.u-margin-left {
+  margin-left: 1.5em;
+}
+
+.u-title-btn {
+  font-size: 0.58em;
+  margin-left: 0.5em;
+}
+
+.u-green-badge {
+  color: $white-color;
+  background-color: $success-color;
+  padding: 0.3em;
+}

@@ -59,7 +59,7 @@ class Orders(Account):
             resp = jsonResp({"message": "Orders not found!"}, 200)
         return resp
 
-    def poll_historical_orders(self):
+    def poll_historical_orders(self, app):
         global poll_percentage
         url = self.all_orders_url
         symbols = self._exchange_info()["symbols"]
@@ -67,42 +67,42 @@ class Orders(Account):
 
         # Empty collection first
         app.db.orders.remove()
+        with app.app_context():
+            for i in range(symbols_count):
 
-        for i in range(symbols_count):
+                timestamp = int(round(tm.time() * 1000))
+                params = [
+                    ('symbol', symbols[i]["symbol"]),
+                    ('timestamp', timestamp),
+                    ('recvWindow', self.recvWindow)
+                ]
+                headers = {'X-MBX-APIKEY': self.key}
 
-            timestamp = int(round(tm.time() * 1000))
-            params = [
-                ('symbol', symbols[i]["symbol"]),
-                ('timestamp', timestamp),
-                ('recvWindow', self.recvWindow)
-            ]
-            headers = {'X-MBX-APIKEY': self.key}
+                # Prepare request for signing
+                r = requests.Request(url=url, params=params, headers=headers)
+                prepped = r.prepare()
+                query_string = urlparse(prepped.url).query
+                total_params = query_string
 
-            # Prepare request for signing
-            r = requests.Request(url=url, params=params, headers=headers)
-            prepped = r.prepare()
-            query_string = urlparse(prepped.url).query
-            total_params = query_string
+                # Generate and append signature
+                signature = hmac.new(self.secret.encode(
+                    'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
+                params.append(('signature', signature))
 
-            # Generate and append signature
-            signature = hmac.new(self.secret.encode(
-                'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-            params.append(('signature', signature))
+                res = requests.get(url=url, params=params, headers=headers)
+                handle_error(res)
+                data = res.json()
 
-            res = requests.get(url=url, params=params, headers=headers)
-            handle_error(res)
-            data = res.json()
-
-            # Check that we have no empty orders
-            if (len(data) > 0) and self.app:
-                for o in data:
-                    # Save in the DB
-                    self.app.db.orders.save(o, {"$currentDate": {"createdAt": "true"}})
-                    if i == (symbols_count - 1):
-                        poll_percentage = 0
-                    else:
-                        poll_percentage = round_numbers((i/symbols_count) * 100, 0)
-            print(f"Polling historical orders: {poll_percentage}")
+                # Check that we have no empty orders
+                if (len(data) > 0) and self.app:
+                    for o in data:
+                        # Save in the DB
+                        self.app.db.orders.save(o, {"$currentDate": {"createdAt": "true"}})
+                        if i == (symbols_count - 1):
+                            poll_percentage = 0
+                        else:
+                            poll_percentage = round_numbers((i/symbols_count) * 100, 0)
+                print(f"Polling historical orders: {poll_percentage}")
 
     def get_open_orders(self):
         timestamp = int(round(tm.time() * 1000))
