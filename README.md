@@ -29,6 +29,8 @@ If docker-compose doesn't exist:
 3. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com`
 4. Modify details to match production needs
 
+or `docker build --tag binbot . && docker tag binbot carloswufei/binbot:latest && docker push carloswufei/binbot`
+
 In production:
 5. `docker-compose pull && docker-compose up -d`
 6. If `.env.prod` is modified, scp to remote server and replace `.env` in production with new `.env.prod`

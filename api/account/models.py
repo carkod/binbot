@@ -126,30 +126,36 @@ class Account:
             if b["asset"] != "BTC":
                 rate = self.get_ticker_price(symbol)
 
-            if "locked" in b:
-                qty = b["free"] + b["locked"]
+                if "locked" in b:
+                    qty = b["free"] + b["locked"]
+                else:
+                    qty = b["free"]
+
+                btc_value = float(qty) * float(rate)
+
+                # Non-btc markets
+                if market != "BTC":
+                    x_rate = self.get_ticker_price(market+"BTC")
+                    x_value = float(qty) * float(rate)
+                    btc_value = float(x_value) * float(x_rate)
+
+                # Only tether coins for hedging
+                if b["asset"] == "USDT":
+                    rate = self.get_ticker_price("BTCUSDT")
+                    btc_value = float(qty) / float(rate)
+
             else:
-                qty = b["free"]
+                if "locked" in b:
+                    btc_value = b["free"] + b["locked"]
+                else:
+                    btc_value = b["free"]
 
-            btc_value = float(qty) * float(rate)
-
-            # Non-btc markets
-            if market != "BTC":
-                x_rate = self.get_ticker_price(market+"BTC")
-                x_value = float(qty) * float(rate)
-                btc_value = float(x_value) * float(x_rate)
-
-            # Only tether coins for hedging
-            if b["asset"] == "USDT":
-                rate = self.get_ticker_price("BTCUSDT")
-                btc_value = float(qty) / float(rate)
-
-            data["total_btc"] += btc_value
-            assets = {
-                "asset": b["asset"],
-                "btc_value": btc_value
-            }
-            data["balances"].append(assets)
+                data["total_btc"] += btc_value
+                assets = {
+                    "asset": b["asset"],
+                    "btc_value": btc_value
+                }
+                data["balances"].append(assets)
 
         # filter out empty
         # Return response
@@ -243,8 +249,7 @@ class Assets(Account, Conversion):
             if b["asset"] != "BTC":
                 symbol = self.find_market(b["asset"])
                 market = self.find_quoteAsset(symbol)
-                if b["asset"] != "BTC":
-                    rate = self.get_ticker_price(symbol)
+                rate = self.get_ticker_price(symbol)
 
                 if "locked" in b:
                     qty = b["free"] + b["locked"]
