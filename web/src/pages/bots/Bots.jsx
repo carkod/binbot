@@ -44,6 +44,15 @@ class Bots extends React.Component {
     }
   };
 
+  handleActivation = async (activate, id) => {
+    if (activate) {
+      this.props.activateBot(id);
+    } else {
+      console.log("Call deactivate API")
+      this.props.deactivateBot(id);
+    }
+  }
+
   render() {
     const { bots } = this.props;
     return (
