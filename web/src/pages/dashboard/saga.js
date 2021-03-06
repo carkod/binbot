@@ -5,8 +5,8 @@ import { balanceFailed, balanceSucceeded, BALANCE_DIFF, getAssetsFailed, getAsse
 /**
  * Account request/response handler
  */
-export function* getAccount() {
-  const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE;
+export function* getBalanceAll() {
+  const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE_ALL;
   const options = {
     method: 'GET',
     mode: 'cors', // no-cors, *cors, same-origin
@@ -20,8 +20,8 @@ export function* getAccount() {
   }
 }
 
-export default function* watchGetAccount() {
-  yield takeLatest(GET_BALANCE, getAccount);
+export function* watchGetBalanceAll() {
+  yield takeLatest(GET_BALANCE, getBalanceAll);
 }
 
 /**
