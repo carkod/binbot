@@ -1,13 +1,12 @@
-import json
 import os
+from datetime import datetime, timedelta
 
 import pandas as pd
 import requests
-from datetime import datetime, timedelta
-from flask import request
-from api.tools.jsonresp import jsonResp
 from api.tools.handle_error import handle_error
-from api.account.models import Account
+from api.tools.jsonresp import jsonResp
+from flask import request
+
 
 class Candlestick:
     """
@@ -18,7 +17,8 @@ class Candlestick:
 
     def __init__(self):
         pair = request.view_args["pair"]
-        params = {'symbol': pair, 'interval': "5m", "limit": "200"}
+        interval = request.view_args["interval"] if "interval" in request.view_args else "5m"
+        params = {'symbol': pair, 'interval': interval, "limit": "200"}
         url = self.candlestick_url
         res = requests.get(url=url, params=params)
         self.data = res.json()
@@ -72,9 +72,8 @@ class Candlestick:
         return defaults
 
     def get(self):
-        trace = json.dumps(self.candlestick_trace())
-
-        resp = jsonResp({"trace": trace}, 200)
+        trace = self.candlestick_trace()
+        resp = jsonResp({"trace": [trace]}, 200)
         return resp
 
     def get_diff(self):

@@ -427,9 +427,7 @@ export function loadCandlestickSucceeded(payload) {
     type: LOAD_CANDLESTICK_SUCCESS,
     isLoading: true,
     isError: false,
-    payload: {
-      trace: [JSON.parse(payload.trace)]
-    }
+    payload
   };
 }
 
