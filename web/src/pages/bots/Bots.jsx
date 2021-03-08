@@ -2,7 +2,6 @@ import React from "react";
 import { connect } from "react-redux";
 import {
   Button,
-  ButtonToggle,
   Card,
   CardBody,
   CardFooter,
@@ -11,7 +10,7 @@ import {
 
   Row
 } from "reactstrap";
-import { activateBot, deactivateBot, deleteBot, getBots } from "./actions";
+import { deleteBot, getBots } from "./actions";
 
 class Bots extends React.Component {
   constructor(props) {
@@ -34,24 +33,6 @@ class Bots extends React.Component {
   handleDelete = (id) => {
     this.props.deleteBot(id);
   };
-
-  handleActivation = async (activate, id) => {
-    if (activate) {
-      this.props.activateBot(id);
-    } else {
-      console.log("Call deactivate API");
-      this.props.deactivateBot(id);
-    }
-  };
-
-  handleActivation = async (activate, id) => {
-    if (activate) {
-      this.props.activateBot(id);
-    } else {
-      console.log("Call deactivate API")
-      this.props.deactivateBot(id);
-    }
-  }
 
   render() {
     const { bots } = this.props;
@@ -106,27 +87,6 @@ class Bots extends React.Component {
                           <div className="stats">
                             <p className="card-category">{x.name}</p>
                           </div>
-                        </Col>
-                        <Col md="4" xs="12">
-                          {x.active === "true" ? (
-                            <ButtonToggle
-                              color="success"
-                              onClick={() =>
-                                this.handleActivation(false, x._id.$oid)
-                              }
-                            >
-                              On
-                            </ButtonToggle>
-                          ) : (
-                            <ButtonToggle
-                              color="secondary"
-                              onClick={() =>
-                                this.handleActivation(true, x._id.$oid)
-                              }
-                            >
-                              Off
-                            </ButtonToggle>
-                          )}
                         </Col>
                       </Row>
                       <hr />
@@ -225,7 +185,5 @@ const mapStateToProps = (state) => {
 
 export default connect(mapStateToProps, {
   getBots,
-  deleteBot,
-  activateBot,
-  deactivateBot,
+  deleteBot
 })(Bots);

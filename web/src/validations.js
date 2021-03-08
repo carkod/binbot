@@ -75,6 +75,6 @@ const roundDecimals = (num, decimals = 2) => {
     return number;
 }
 
-const intervalOptions = ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"];
+const intervalOptions = ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w"];
 
 export { checkValue, checkMinValue, checkBalance, getCurrentPairBalance, toPercentage, percentageToFloat, dataHeaders, replaceZeros, listCssColors, addNotification, roundDecimals, intervalOptions };

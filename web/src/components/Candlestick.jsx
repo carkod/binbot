@@ -1,7 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
 import Plot from "react-plotly.js";
-import { Card, CardBody, CardHeader, CardTitle, Badge } from "reactstrap";
-import { intervalOptions } from "../validations";
 
 const generateOrders = (data, bot) => {
   let annotations = [];
@@ -110,11 +108,13 @@ const generateOrders = (data, bot) => {
   const maxSoCount = parseInt(bot.max_so_count - 1); // -1 for 0 index
   if (maxSoCount > 0) {
     let i = 0;
+    let previousPrice = currentPrice;
     while (i <= maxSoCount) {
       const price = (
-        currentPrice -
-        currentPrice * (bot.price_deviation_so / 100)
-      ).toFixed(process.env.REACT_APP_DECIMALS);
+        previousPrice -
+        (previousPrice * (bot.price_deviation_so / 100))
+      );
+      previousPrice = price;
       const safetyOrderA = {
         x: currentTime,
         y: price,
@@ -149,7 +149,7 @@ const generateOrders = (data, bot) => {
   };
 };
 
-function Candlestick({ title, data, bot, interval, handleInterval }) {
+function Candlestick({ data, bot }) {
   const { annotations, shapes } = generateOrders(data, bot);
   const layout = {
     dragmode: "zoom",
@@ -178,29 +178,12 @@ function Candlestick({ title, data, bot, interval, handleInterval }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle tag="h5">{title}</CardTitle>
-        {intervalOptions.map((item) => (
-          <Badge
-            key={item}
-            onClick={() => handleInterval(item)}
-            color={interval === item ? "primary" : "secondary"}
-            className="btn"
-          >
-            {item}
-          </Badge>
-        ))}
-      </CardHeader>
-      <CardBody>
-        <Plot
-          data={data.trace}
-          layout={layout}
-          useResizeHandler={true}
-          style={{ width: "100%", height: "100%" }}
-        />
-      </CardBody>
-    </Card>
+    <Plot
+      data={data.trace}
+      layout={layout}
+      useResizeHandler={true}
+      style={{ width: "100%", height: "100%" }}
+    />
   );
 }
 

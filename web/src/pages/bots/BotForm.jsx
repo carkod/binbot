@@ -19,6 +19,7 @@ import {
   Row,
   TabContent,
   TabPane,
+  ButtonToggle,
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import Candlestick from "../../components/Candlestick";
@@ -35,6 +36,8 @@ import {
   createBot,
   editBot,
   getBot,
+  activateBot,
+  deactivateBot,
   getSymbolInfo,
   getSymbols,
   loadCandlestick,
@@ -113,19 +116,6 @@ class BotForm extends React.Component {
         trailling_deviation: this.props.bot.trailling_deviation,
       });
     }
-
-    if (s.pair !== this.state.pair) {
-      this.props.loadCandlestick(
-        this.state.pair,
-        this.state.candlestick_interval
-      );
-    }
-    if (s.candlestick_interval !== this.state.candlestick_interval) {
-      this.props.loadCandlestick(
-        this.state.pair,
-        this.state.candlestick_interval
-      );
-    }
   };
 
   requiredinValidation = () => {
@@ -194,7 +184,7 @@ class BotForm extends React.Component {
     return true;
   };
 
-  handleSubmit = (e) => {
+  handleSubmit = async (e) => {
     e.preventDefault();
     const validation = this.requiredinValidation();
     if (validation) {
@@ -217,11 +207,13 @@ class BotForm extends React.Component {
         trailling_deviation: this.state.trailling_deviation,
       };
       if (this.state._id === null) {
-        this.props.createBot(form);
+        const res = await this.props.createBot(form);
+        if (res) {
+          this.props.activateBot(this.state._id);
+        }
       } else {
         this.props.editBot(this.state._id, form);
       }
-      this.props.history.push("/admin/bots");
     }
   };
 
@@ -239,9 +231,9 @@ class BotForm extends React.Component {
     let asset;
     if (symbolInfo) {
       if (strategy === "long") {
-        asset = symbolInfo.baseAsset;
-      } else {
         asset = symbolInfo.quoteAsset;
+      } else {
+        asset = symbolInfo.baseAsset;
       }
 
       let value = "0";
@@ -343,24 +335,41 @@ class BotForm extends React.Component {
     setTimeout(this.setState({ [e.target.name]: e.target.value }), 3000);
   };
 
+  handleCandlestick = () => this.props.loadCandlestick(
+    this.state.pair,
+    this.state.candlestick_interval
+  );
+
   render() {
     return (
       <div className="content">
         <Row>
           <Col md="12">
-            {this.props.candlestick && this.state.pair !== "" ? (
-              <Candlestick
-                interval={this.state.candlestick_interval}
-                handleInterval={(interval) => {
-                  this.setState({ candlestick_interval: interval });
-                }}
-                title={this.state.pair}
-                data={this.props.candlestick}
-                bot={this.state}
-              />
-            ) : (
-              ""
-            )}
+            <Card style={{ minHeight: "650px" }}>
+              <CardHeader>
+                <CardTitle tag="h5">{this.state.pair}</CardTitle>
+                {intervalOptions.map((item) => (
+                  <Badge
+                    key={item}
+                    onClick={() => this.setState({ candlestick_interval: item })}
+                    color={this.state.candlestick_interval === item ? "primary" : "secondary"}
+                    className="btn"
+                  >
+                    {item}
+                  </Badge>
+                ))}
+              </CardHeader>
+              <CardBody>
+                {this.props.candlestick && this.state.pair !== "" ? (
+                  <Candlestick
+                    data={this.props.candlestick}
+                    bot={this.state}
+                  />
+                ) : (
+                  ""
+                )}
+              </CardBody>
+            </Card>
           </Col>
         </Row>
         <Form onSubmit={this.handleSubmit}>
@@ -443,6 +452,7 @@ class BotForm extends React.Component {
                             type="select"
                             name="strategy"
                             onChange={this.handleStrategy}
+                            onBlur={this.handleCandlestick}
                             value={this.state.strategy}
                           >
                             <option defaultChecked value="long">
@@ -463,6 +473,7 @@ class BotForm extends React.Component {
                             type="text"
                             name="base_order_size"
                             onChange={this.handleBaseChange}
+                            onBlur={this.handleCandlestick}
                             value={this.state.base_order_size}
                           />
                           <FormFeedback valid={!this.state.baseOrderSizeError}>
@@ -495,22 +506,6 @@ class BotForm extends React.Component {
                           />
                         </Col>
                       </Row>
-                      <Row>
-                        <Col md="12">
-                          <div className="u-margin-left u-margin-bottom">
-                            <Label check>
-                              <Input
-                                type="checkbox"
-                                onChange={this.handleChange}
-                                value={
-                                  this.state.active === "true" ? true : false
-                                }
-                              />{" "}
-                              Activate after save
-                            </Label>
-                          </div>
-                        </Col>
-                      </Row>
                     </TabPane>
 
                     {/*
@@ -527,6 +522,7 @@ class BotForm extends React.Component {
                             type="text"
                             name="max_so_count"
                             onChange={this.handleChange}
+                            onBlur={this.handleCandlestick}
                             value={this.state.max_so_count}
                           />
                           <FormFeedback>
@@ -545,6 +541,7 @@ class BotForm extends React.Component {
                               name="so_size"
                               id="so_size"
                               onChange={this.handleSafety}
+                              onBlur={this.handleCandlestick}
                               value={this.state.so_size}
                             />
                             <FormFeedback>
@@ -565,6 +562,7 @@ class BotForm extends React.Component {
                               name="price_deviation_so"
                               id="price_deviation_so"
                               onChange={this.handleChange}
+                              onBlur={this.handleCandlestick}
                               value={this.state.price_deviation_so}
                             />
                             <FormFeedback>
@@ -595,6 +593,7 @@ class BotForm extends React.Component {
                             name="take_profit"
                             id="take_profit"
                             onChange={this.handleChange}
+                            onBlur={this.handleCandlestick}
                             value={this.state.take_profit}
                           />
                           <FormFeedback>
@@ -632,6 +631,7 @@ class BotForm extends React.Component {
                               type="text"
                               name="trailling_deviation"
                               onChange={this.handleChange}
+                              onBlur={this.handleCandlestick}
                               value={this.state.trailling_deviation}
                             />
                           </Col>
@@ -640,15 +640,24 @@ class BotForm extends React.Component {
                     </TabPane>
                   </TabContent>
                   <Row>
-                    <div className="update ml-auto mr-auto">
-                      <Button
-                        className="btn-round"
-                        color="primary"
-                        type="submit"
+                    {this.state.active === "true" ? (
+                      <ButtonToggle
+                        color="success"
+                        onClick={() => this.props.deactivateBot(this.state._id)}
                       >
-                        Save
-                      </Button>
-                    </div>
+                        Deactivate
+                      </ButtonToggle>
+                    ) : (
+                      <div className="update ml-auto mr-auto">
+                        <Button
+                          className="btn-round"
+                          color="primary"
+                          type="submit"
+                        >
+                          Save and activate
+                        </Button>
+                      </div>
+                    )}
                   </Row>
                   {!this.state.formIsValid && (
                     <Row>
@@ -715,5 +724,7 @@ export default connect(mapStateToProps, {
   createBot,
   getBot,
   editBot,
+  activateBot,
+  deactivateBot,
   loadCandlestick,
 })(BotForm);

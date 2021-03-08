@@ -126,7 +126,6 @@ function CardTable({ title, data, pages, limit = 10, loadPage, updateData, filte
             <CardHeader>
                 <CardTitle tag="h4">
                     <span>{title}</span>
-                    <Button className="u-title-btn" onClick={updateData}>Poll order data</Button>
                 </CardTitle>
                     <Label for="status">Status filter</Label>
                     <Input type="select" name="status" id="status" onChange={(e) => filter(e)} defaultValue={status}>
