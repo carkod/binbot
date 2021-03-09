@@ -116,6 +116,11 @@ class BotForm extends React.Component {
         trailling_deviation: this.props.bot.trailling_deviation,
       });
     }
+    // If there is a newBotId, it means form was created
+    // To make sure of this, check also URL has NO id param
+    if (!checkValue(this.props.newBotId) && this.props.newBotId !== p.newBotId && checkValue(this.props.match.params.id)) {
+      this.props.activateBot(this.props.newBotId);
+    }
   };
 
   requiredinValidation = () => {
@@ -207,12 +212,12 @@ class BotForm extends React.Component {
         trailling_deviation: this.state.trailling_deviation,
       };
       if (this.state._id === null) {
-        const res = await this.props.createBot(form);
-        if (res) {
-          this.props.activateBot(this.state._id);
-        }
+        this.props.createBot(form);
       } else {
         this.props.editBot(this.state._id, form);
+        if (this.state.active === "false") {
+          this.props.activateBot(this.state._id);
+        }
       }
     }
   };
@@ -291,26 +296,22 @@ class BotForm extends React.Component {
       this.props.balances,
       balance_available_asset
     );
-    if (!checkValue(qty) && !checkBalance(qty)) {
-      const updatedValue = qty - e.target.value * 1;
+    const updatedValue = qty - e.target.value * 1;
 
-      // Check that we have enough funds
-      // If not return error
-      if (parseFloat(updatedValue) >= 0) {
-        this.setState({
-          [e.target.name]: e.target.value,
-          balance_available: updatedValue,
-          baseOrderSizeError: false,
-        });
-      } else {
-        this.setState({
-          [e.target.name]: e.target.value,
-          baseOrderSizeError: true,
-          formIsValid: false,
-        });
-      }
+    // Check that we have enough funds
+    // If not return error
+    if (parseFloat(updatedValue) >= 0) {
+      this.setState({
+        [e.target.name]: e.target.value,
+        balance_available: updatedValue,
+        baseOrderSizeError: false,
+      });
     } else {
-      this.setState({ baseOrderSizeError: true });
+      this.setState({
+        [e.target.name]: e.target.value,
+        baseOrderSizeError: true,
+        formIsValid: false,
+      });
     }
   };
 
@@ -335,10 +336,10 @@ class BotForm extends React.Component {
     setTimeout(this.setState({ [e.target.name]: e.target.value }), 3000);
   };
 
-  handleCandlestick = () => this.props.loadCandlestick(
-    this.state.pair,
-    this.state.candlestick_interval
-  );
+  handleBlur = () => {
+    this.props.loadCandlestick(this.state.pair,this.state.candlestick_interval);
+    this.computeAvailableBalance();
+  };
 
   render() {
     return (
@@ -452,7 +453,7 @@ class BotForm extends React.Component {
                             type="select"
                             name="strategy"
                             onChange={this.handleStrategy}
-                            onBlur={this.handleCandlestick}
+                            onBlur={this.handleBlur}
                             value={this.state.strategy}
                           >
                             <option defaultChecked value="long">
@@ -469,11 +470,11 @@ class BotForm extends React.Component {
                             Base order size<span className="u-required">*</span>
                           </label>
                           <Input
-                            invalid={this.state.baseOrderSizeError}
+                            // invalid={this.state.baseOrderSizeError}
                             type="text"
                             name="base_order_size"
                             onChange={this.handleBaseChange}
-                            onBlur={this.handleCandlestick}
+                            onBlur={this.handleBlur}
                             value={this.state.base_order_size}
                           />
                           <FormFeedback valid={!this.state.baseOrderSizeError}>
@@ -522,7 +523,7 @@ class BotForm extends React.Component {
                             type="text"
                             name="max_so_count"
                             onChange={this.handleChange}
-                            onBlur={this.handleCandlestick}
+                            onBlur={this.handleBlur}
                             value={this.state.max_so_count}
                           />
                           <FormFeedback>
@@ -541,7 +542,7 @@ class BotForm extends React.Component {
                               name="so_size"
                               id="so_size"
                               onChange={this.handleSafety}
-                              onBlur={this.handleCandlestick}
+                              onBlur={this.handleBlur}
                               value={this.state.so_size}
                             />
                             <FormFeedback>
@@ -562,7 +563,7 @@ class BotForm extends React.Component {
                               name="price_deviation_so"
                               id="price_deviation_so"
                               onChange={this.handleChange}
-                              onBlur={this.handleCandlestick}
+                              onBlur={this.handleBlur}
                               value={this.state.price_deviation_so}
                             />
                             <FormFeedback>
@@ -593,7 +594,7 @@ class BotForm extends React.Component {
                             name="take_profit"
                             id="take_profit"
                             onChange={this.handleChange}
-                            onBlur={this.handleCandlestick}
+                            onBlur={this.handleBlur}
                             value={this.state.take_profit}
                           />
                           <FormFeedback>
@@ -631,7 +632,7 @@ class BotForm extends React.Component {
                               type="text"
                               name="trailling_deviation"
                               onChange={this.handleChange}
-                              onBlur={this.handleCandlestick}
+                              onBlur={this.handleBlur}
                               value={this.state.trailling_deviation}
                             />
                           </Col>
@@ -708,12 +709,14 @@ const mapStateToProps = (state) => {
   const { data: symbolInfo } = state.symbolInfoReducer;
   const { data: bot } = state.getSingleBotReducer;
   const { data: candlestick } = state.candlestickReducer;
+  const { id } = state.botReducer;
   return {
     balances: balances,
     symbols: symbols,
     symbolInfo: symbolInfo,
     bot: bot,
     candlestick: candlestick,
+    newBotId: id
   };
 };
 

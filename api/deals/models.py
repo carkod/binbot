@@ -56,10 +56,10 @@ class Deal(Account):
         """
 
         if self.active_bot["strategy"] == "long":
-            asset = self.find_baseAsset(self.active_bot["pair"])
+            asset = self.find_quoteAsset(self.active_bot["pair"])
             balance = self.get_one_balance(asset)
         else:
-            asset = self.find_quoteAsset(self.active_bot["pair"])
+            asset = self.find_baseAsset(self.active_bot["pair"])
             balance = self.get_one_balance(asset)
 
         if not balance:
