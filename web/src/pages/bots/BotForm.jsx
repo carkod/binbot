@@ -120,6 +120,7 @@ class BotForm extends React.Component {
     // To make sure of this, check also URL has NO id param
     if (!checkValue(this.props.newBotId) && this.props.newBotId !== p.newBotId && checkValue(this.props.match.params.id)) {
       this.props.activateBot(this.props.newBotId);
+      this.props.history.push(`/admin/bots-edit/${this.props.newBotId}`);
     }
   };
 
@@ -709,14 +710,14 @@ const mapStateToProps = (state) => {
   const { data: symbolInfo } = state.symbolInfoReducer;
   const { data: bot } = state.getSingleBotReducer;
   const { data: candlestick } = state.candlestickReducer;
-  const { id } = state.botReducer;
+  const { botId } = state.botReducer;
   return {
     balances: balances,
     symbols: symbols,
     symbolInfo: symbolInfo,
     bot: bot,
     candlestick: candlestick,
-    newBotId: id
+    newBotId: botId
   };
 };
 

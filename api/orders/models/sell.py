@@ -17,6 +17,7 @@ class Sell_Order():
     Returns:
         [type] -- [description]
     """
+    recvWindow = os.getenv("RECV_WINDOW")
     min_funds = os.getenv("MIN_QTY")
     key = os.getenv("BINANCE_KEY")
     secret = os.getenv("BINANCE_SECRET")

@@ -16,8 +16,9 @@ class Deal(Account):
     order_book_url = os.getenv("ORDER_BOOK")
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}:{os.getenv("FLASK_PORT")}'
     bb_buy_order_url = f'{bb_base_url}/order/buy'
-    bb_buy_order_url = f'{bb_base_url}/order/buy/market'
+    bb_buy_market_order_url = f'{bb_base_url}/order/buy/market'
     bb_sell_order_url = f'{bb_base_url}/order/sell'
+    bb_sell_market_order_url = f'{bb_base_url}/order/sell/market'
     bb_opened_orders_url = f'{bb_base_url}/open'
 
     def __init__(self, bot, app):
@@ -36,6 +37,8 @@ class Deal(Account):
             "fills": "0",
             "time_in_force": "GTC",
         }
+        self.total_amount = 0
+
 
     @staticmethod
     def handle_fourofour(order):
@@ -65,25 +68,29 @@ class Deal(Account):
         if not balance:
             return jsonResp_message(f"[Deal init error] No {asset} balance", 200)
         self.active_bot["balance_usage_size"] = self.get_one_balance(asset)
-        # Safety orders +1 base_order
-        self.division = self.active_bot["balance_usage_size"] / (int(self.active_bot["max_so_count"]) + 1)
 
     def long_base_order(self):
         pair = self.active_bot['pair']
         # Long position does not need qty in take_profit
-        qty = round_numbers(self.division, 2)
-        price = float(Book_Order(pair).matching_engine(True, qty))
+        # initial price with 1 qty should return first match
+        book_order = Book_Order(pair)
+        initial_price = float(book_order.matching_engine(True, 1))
+        qty = round_numbers((float(self.active_bot["base_order_size"]) / float(initial_price)), 0)
+        price = float(book_order.matching_engine(True, qty))
+        self.price = price
+        amount = float(qty) / float(price)
+        self.total_amount = amount
+
         if price:
-            if price <= self.MIN_PRICE:
+            if price <= float(self.MIN_PRICE):
                 return jsonResp_message("[Base order error] Price too low", 200)
         # Avoid common rate limits
-        if qty <= self.MIN_QTY:
+        if amount <= float(self.MIN_QTY):
             return jsonResp_message("[Base order error] Quantity too low", 200)
-        if (float(qty) * float(price)) <= self.MIN_NOTIONAL:
+        if amount <= float(self.MIN_NOTIONAL):
             return jsonResp_message("[Base order error] Price x Quantity too low", 200)
 
         if price:
-
             order = {
                 "pair": pair,
                 "qty": qty,
@@ -170,10 +177,8 @@ class Deal(Account):
 
     def long_take_profit_order(self):
         pair = self.active_bot['pair']
-        qty = round_numbers(self.division, 0)
-        market_price = float(Book_Order(pair).matching_engine(True, qty))
-        price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
-
+        price = 1 + float(self.active_bot["take_profit"] / 100) * self.price
+        qty = self.total_amount
         order = {
             "pair": pair,
             "qty": qty,
@@ -199,8 +204,11 @@ class Deal(Account):
 
     def short_base_order(self):
         pair = self.active_bot['pair']
-        qty = round_numbers(self.division, 2)
-        price = float(Book_Order(pair).matching_engine(False, qty))
+        book_order = Book_Order(pair)
+        qty = round_numbers((float(self.active_bot["base_order_size"])), 0)
+        price = float(book_order.matching_engine(False, qty))
+        self.price = price
+        self.total_amount = qty
 
         # Avoid common rate limits
         if price:
@@ -217,13 +225,13 @@ class Deal(Account):
                 "qty": qty,
                 "price": price,
             }
-            res = requests.post(url=self.bb_buy_order_url, json=order)
+            res = requests.post(url=self.bb_sell_order_url, json=order)
         else:
             order = {
                 "pair": pair,
                 "qty": qty,
             }
-            res = requests.post(url=self.bb_buy_market_order_url, json=order)
+            res = requests.post(url=self.bb_sell_market_order_url, json=order)
 
         if isinstance(handle_error(res), Response):
             return handle_error(res)
@@ -282,16 +290,16 @@ class Deal(Account):
 
     def short_take_profit_order(self):
         pair = self.active_bot['pair']
-        qty = round_numbers(self.division, 0)
+        qty = round_numbers(self.total_amount, 0)
         market_price = float(Book_Order(pair).matching_engine(False, qty))
-        price = round_numbers(market_price * (1 + float(self.take_profit)), 2)
+        price = round_numbers(market_price * (1 + float(self.active_bot["take_profit"]) / 100), 6)
 
         order = {
             "pair": pair,
             "qty": qty,
             "price": price,
         }
-        res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
+        res = requests.post(url=self.bb_buy_order_url, json=order)
         handle_error(res)
         order = res.json()
 

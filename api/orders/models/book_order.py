@@ -40,7 +40,7 @@ class Book_Order:
 
     def matching_engine(self, order_side, qty, limit_index=0):
         """
-        keyword arguments: 
+        keyword arguments:
         order_side -
             Buy order = bids = True
             Sell order = ask = False
@@ -68,7 +68,7 @@ class Book_Order:
             if limit_index == 4:
                 return None
             self.matching_engine(order_side, qty, limit_index)
-        final_qty = round_numbers(match_qty["price"].iloc[0], 4)
+        final_qty = match_qty["price"].iloc[0]
         return final_qty
 
     def ticker_price(self):

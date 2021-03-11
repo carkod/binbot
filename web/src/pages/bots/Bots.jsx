@@ -7,7 +7,7 @@ import {
   CardFooter,
   CardTitle,
   Col,
-
+  Badge,
   Row
 } from "reactstrap";
 import { deleteBot, getBots } from "./actions";
@@ -86,6 +86,11 @@ class Bots extends React.Component {
                         <Col md="7" xs="12">
                           <div className="stats">
                             <p className="card-category">{x.name}</p>
+                          </div>
+                        </Col>
+                        <Col md="5" xs="12">
+                          <div className="stats">
+                            <Badge color={x.active === "true" ? "success": "secondary"}>{x.active === "true" ? "ACTIVE": "INACTIVE"}</Badge>
                           </div>
                         </Col>
                       </Row>
