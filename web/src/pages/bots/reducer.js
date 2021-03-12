@@ -55,8 +55,7 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: state.data.concat(x => x._id.$oid === action.data),
-        id: action.data
+        botId: action.botId
       };
       return newState;
     }

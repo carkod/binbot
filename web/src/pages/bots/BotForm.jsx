@@ -116,11 +116,33 @@ class BotForm extends React.Component {
         trailling_deviation: this.props.bot.trailling_deviation,
       });
     }
+    if (s.candlestick_interval !== this.state.candlestick_interval) {
+      this.props.loadCandlestick(
+        this.state.pair,
+        this.state.candlestick_interval
+      );
+    }
     // If there is a newBotId, it means form was created
     // To make sure of this, check also URL has NO id param
-    if (!checkValue(this.props.newBotId) && this.props.newBotId !== p.newBotId && checkValue(this.props.match.params.id)) {
-      this.props.activateBot(this.props.newBotId);
-      this.props.history.push(`/admin/bots-edit/${this.props.newBotId}`);
+    if (
+      !checkValue(this.props.newBotId) &&
+      this.props.newBotId !== p.newBotId &&
+      checkValue(this.props.match.params.id)
+    ) {
+      this.props.history.push({
+        pathname: `/admin/bots-edit/${this.props.newBotId}`,
+        state: { candlestick_interval: this.state.candlestick_interval },
+      });
+    }
+
+    // Only for edit bot page
+    // Fill up the candlestick when pair is available and inherit the interval too
+    if (!checkValue(this.state.pair) && this.state.pair !== s.pair) {
+      const interval = !checkValue(this.props.history.location.state) ? this.props.history.location.state.candlestick_interval : this.state.candlestick_interval;
+      this.props.loadCandlestick(
+        this.state.pair,
+        interval
+      );
     }
   };
 
@@ -216,9 +238,6 @@ class BotForm extends React.Component {
         this.props.createBot(form);
       } else {
         this.props.editBot(this.state._id, form);
-        if (this.state.active === "false") {
-          this.props.activateBot(this.state._id);
-        }
       }
     }
   };
@@ -284,6 +303,12 @@ class BotForm extends React.Component {
     this.setState({ pair: value[0] });
   };
 
+  handlePairBlur = () =>
+    this.props.loadCandlestick(
+      this.state.pair,
+      this.state.candlestick_interval
+    );
+
   handleStrategy = (e) => {
     // Get pair base or quote asset and set new strategy
     const { pair } = this.state;
@@ -338,7 +363,10 @@ class BotForm extends React.Component {
   };
 
   handleBlur = () => {
-    this.props.loadCandlestick(this.state.pair,this.state.candlestick_interval);
+    this.props.loadCandlestick(
+      this.state.pair,
+      this.state.candlestick_interval
+    );
     this.computeAvailableBalance();
   };
 
@@ -353,8 +381,14 @@ class BotForm extends React.Component {
                 {intervalOptions.map((item) => (
                   <Badge
                     key={item}
-                    onClick={() => this.setState({ candlestick_interval: item })}
-                    color={this.state.candlestick_interval === item ? "primary" : "secondary"}
+                    onClick={() =>
+                      this.setState({ candlestick_interval: item })
+                    }
+                    color={
+                      this.state.candlestick_interval === item
+                        ? "primary"
+                        : "secondary"
+                    }
                     className="btn"
                   >
                     {item}
@@ -363,10 +397,7 @@ class BotForm extends React.Component {
               </CardHeader>
               <CardBody>
                 {this.props.candlestick && this.state.pair !== "" ? (
-                  <Candlestick
-                    data={this.props.candlestick}
-                    bot={this.state}
-                  />
+                  <Candlestick data={this.props.candlestick} bot={this.state} />
                 ) : (
                   ""
                 )}
@@ -644,22 +675,33 @@ class BotForm extends React.Component {
                   <Row>
                     {this.state.active === "true" ? (
                       <ButtonToggle
-                        color="success"
+                        color="primary"
                         onClick={() => this.props.deactivateBot(this.state._id)}
+                        disabled={checkValue(this.state._id)}
                       >
                         Deactivate
                       </ButtonToggle>
                     ) : (
                       <div className="update ml-auto mr-auto">
-                        <Button
+                        <ButtonToggle
                           className="btn-round"
                           color="primary"
-                          type="submit"
+                          onClick={() => this.props.activateBot(this.state._id)}
+                          disabled={checkValue(this.state._id)}
                         >
-                          Save and activate
-                        </Button>
+                          Activate
+                        </ButtonToggle>
                       </div>
                     )}
+                    <div className="update ml-auto mr-auto">
+                      <Button
+                        className="btn-round"
+                        color="primary"
+                        type="submit"
+                      >
+                        Save
+                      </Button>
+                    </div>
                   </Row>
                   {!this.state.formIsValid && (
                     <Row>
@@ -717,7 +759,7 @@ const mapStateToProps = (state) => {
     symbolInfo: symbolInfo,
     bot: bot,
     candlestick: candlestick,
-    newBotId: botId
+    newBotId: botId,
   };
 };
 

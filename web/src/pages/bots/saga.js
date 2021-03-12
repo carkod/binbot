@@ -46,7 +46,7 @@ export function* watchGetBot() {
 /**
  * Create bot
  */
-export function* createBot(body) {
+export function* createBotApi(body) {
   const { data } = body;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/`;
   const options = {
@@ -65,7 +65,7 @@ export function* createBot(body) {
 }
 
 export function* watchCreateBot() {
-  yield takeLatest(CREATE_BOT, createBot)
+  yield takeLatest(CREATE_BOT, createBotApi)
 }
 
 /**

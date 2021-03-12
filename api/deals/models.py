@@ -39,7 +39,6 @@ class Deal(Account):
         }
         self.total_amount = 0
 
-
     @staticmethod
     def handle_fourofour(order):
         if "code" not in order:

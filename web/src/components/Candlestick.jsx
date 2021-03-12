@@ -43,7 +43,7 @@ const generateOrders = (data, bot) => {
   const price = (
     parseFloat(takeProfitPrice) +
     parseFloat(takeProfitPrice) * (bot.take_profit / 100)
-  ).toFixed(process.env.REACT_APP_DECIMALS);
+  ).toFixed(8);
   const takeProfitA = {
     x: takeProfitTime,
     y: price,

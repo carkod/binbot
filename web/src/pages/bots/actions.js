@@ -155,12 +155,12 @@ export function createBot(body) {
  * @return {object} An action object with a type of BOT_SUCCESS passing the repos
  */
 export function createBotSucceeded(res) {
+  addNotification("SUCCESS!", res.message, "success");
   return {
     type: CREATE_BOT_SUCCESS,
     isLoading: false,
     isError: false,
-    bots: res.botId,
-    message: res.message
+    botId: res.botId,
   };
 }
 
@@ -172,6 +172,7 @@ export function createBotSucceeded(res) {
  * @return {object} An action object with a type of BOT_ERROR passing the error
  */
 export function createBotFailed(error) {
+  addNotification("FAILED!", error.message, "error");
   return {
     type: CREATE_BOT_ERROR,
     isLoading: false,
@@ -206,6 +207,7 @@ export function editBot(id, body) {
  * @return {object} An action object with a type of BOT_SUCCESS passing the repos
  */
 export function editBotSucceeded(res) {
+  addNotification("SUCCESS!", res.message, "success");
   return {
     type: EDIT_BOT_SUCCESS,
     isLoading: false,
@@ -222,6 +224,7 @@ export function editBotSucceeded(res) {
  * @return {object} An action object with a type of BOT_ERROR passing the error
  */
 export function editBotFailed(error) {
+  addNotification("FAILED!", error.message, "error");
   return {
     type: EDIT_BOT_ERROR,
     isLoading: false,
@@ -253,6 +256,7 @@ export function deleteBot(id) {
  * @return {object} An action object with a type of BOT_SUCCESS passing the repos
  */
 export function deleteBotSucceeded(res) {
+  addNotification("SUCCESS!", res.message, "success");
   return {
     type: DELETE_BOT_SUCCESS,
     isLoading: false,
@@ -270,6 +274,7 @@ export function deleteBotSucceeded(res) {
  * @return {object} An action object with a type of BOT_ERROR passing the error
  */
 export function deleteBotFailed(error) {
+  addNotification("ERROR!", error.message, "error");
   return {
     type: DELETE_BOT_SUCCESS,
     isLoading: false,
