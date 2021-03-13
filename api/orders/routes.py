@@ -36,13 +36,4 @@ def delete_order(symbol, orderid):
 
 @order_blueprint.route("/order-updates", methods=["GET"])
 def orders_update():
-    updates = OrderUpdates()
-    listen_key = updates.get_listenkey()["listenKey"]
-    stream = updates.open_stream()
-    if stream:
-        result = updates.get_stream(listen_key)
-        print(result)
-
-    # Comment out after development is finished
-    updates.close_stream()
-    return result
+    return OrderUpdates().get_stream()

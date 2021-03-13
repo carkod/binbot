@@ -3,23 +3,25 @@ import os
 
 import requests
 from api.tools.handle_error import handle_error
-from websocket import create_connection
+from api.tools.jsonresp import jsonResp, jsonResp_message
+from websocket import create_connection, enableTrace
 
 
 class OrderUpdates:
     def __init__(self):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
-        self.ws_base_url = os.getenv("WS_BASE")
         self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
         self.all_orders_url = os.getenv("ALL_ORDERS")
         self.order_url = os.getenv("ORDER")
 
         # streams
-        self.host = os.getenv("WS_BASE")
-        self.port = os.getenv("WS_BASE_PORT")
+        self.base = os.getenv("WS_BASE")
         self.path = "/ws"
         self.active_ws = None
+        self.listenkey = None
+
+        enableTrace(True)
 
     def get_listenkey(self):
         url = self.user_datastream_listenkey
@@ -35,40 +37,47 @@ class OrderUpdates:
         data = res.json()
         return data
 
-    def open_stream(self):
-        url = self.host + ":" + self.port + self.path
+    def subscribe_exectionReport(self):
+        url = self.base + self.path
         ws = create_connection(url)
         subscribe = json.dumps(
             {"method": "SUBSCRIBE", "params": ["executionReport"], "id": 1}
         )
         ws.send(subscribe)
         self.active_ws = ws
-        result = ws.recv()
-        result = json.loads(result)
-        if not result["result"]:
-            print("Received '%s'" % result)
+        response = ws.recv()
+        result = json.loads(response)["result"]
+        if not result:
             return True
         # ws.close()
         return False
         # data = ws.recv_data()
 
-    def get_stream(self, listenkey):
-        url = self.host + ":" + self.port + self.path + "/" + listenkey
-        ws = create_connection(url)
-        result = ws.recv()
-        result = json.loads(result)
+    async def get_stream(self, take_order_client_id=None):
+        if not self.active_ws or not self.listen_key:
+            self.listen_key = self.get_listenkey()["listenKey"]
+            if self.subscribe_exectionReport():
+                print("Subscribed to ExecutionReport!")
+            else:
+                print("Failed to subscribe to ExecutionReport!")
+
+        url = self.base + self.path + "/" + self.listen_key
+        async with create_connection(url) as websocket:
+            result = await websocket.recv()
+            result = json.loads(result)
 
         # Parse result. Print result for raw result from Binance
         client_order_id = result["C"] if result["X"] == "CANCELED" else result["c"]
-        order_result = [
-            ("symbol", result["s"]),
-            ("order_status", result["X"]),
-            ("timestamp", result["E"]),
-            ("client_order_id", client_order_id),
-            ("created_at", result["O"]),
-        ]
+        order_result = {
+            "symbol": result["s"],
+            "order_status": result["X"],
+            "timestamp": result["E"],
+            "client_order_id": client_order_id,
+            "created_at": result["O"],
+        }
 
-        print("order result %s", order_result)
+        if result["X"] == "FILLED" and client_order_id == take_order_client_id:
+            self.close_stream()
 
         return order_result
 
