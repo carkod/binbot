@@ -1,13 +1,18 @@
 from api.orders.models.order_sockets import OrderUpdates
 import os
 import atexit
-import websocket
+from flask_sockets import Sockets
 
 from flask import Flask
 from flask_cors import CORS
 from pymongo import MongoClient
 from apscheduler.schedulers.background import BackgroundScheduler
-
+from gevent import pywsgi
+from geventwebsocket.handler import WebSocketHandler
+import threading
+from unicorn_binance_websocket_api.unicorn_binance_websocket_api_manager import BinanceWebSocketApiManager
+import time
+import logging
 
 # Import Routes
 from api.account.models import Assets
@@ -21,6 +26,8 @@ from api.orders.routes import order_blueprint
 from api.charts.routes import charts_blueprint
 
 app = Flask(__name__)
+sockets = Sockets(app)
+
 # Enable CORS for all routes
 CORS(app)
 # Misc Config
@@ -41,9 +48,6 @@ if (os.getenv("FLASK_ENV") != 'development'):
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))
 
-order_updates = OrderUpdates()
-
-
 # Register Blueprints
 app.register_blueprint(user_blueprint, url_prefix="/user")
 app.register_blueprint(account_blueprint, url_prefix="/account")
@@ -57,6 +61,8 @@ app.register_blueprint(charts_blueprint, url_prefix="/charts")
 def index():
     return jsonResp({"status": "Online"}, 200)
 
-if __name__ == "__main__":
-    websocket.enableTrace(True)
-    order_updates.get_stream()
+
+order_updates = OrderUpdates()
+# start a worker process to move the received stream_data from the stream_buffer to a print function
+worker_thread = threading.Thread(target=order_updates.get_stream)
+worker_thread.start()

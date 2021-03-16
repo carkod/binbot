@@ -18,15 +18,15 @@ passlib = "*"
 pytz = "*"
 pandas = "*"
 requests = "*"
-websocket_client = "*"
 apscheduler = "*"
 gunicorn = "*"
 schedule = "*"
 pyopenssl="*"
 gevent="*"
+flask_sockets = "*"
 
 [requires]
-python_version = "3.9"
+python_version = "3.8"
 
 [pipenv]
 allow_prereleases = false

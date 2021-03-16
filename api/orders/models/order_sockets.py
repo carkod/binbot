@@ -4,7 +4,7 @@ import os
 import requests
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
-from websocket import create_connection, enableTrace
+from websocket import create_connection, enableTrace, WebSocketApp
 
 
 class OrderUpdates:
@@ -37,35 +37,14 @@ class OrderUpdates:
         data = res.json()
         return data
 
-    def subscribe_exectionReport(self):
-        url = self.base + self.path
-        ws = create_connection(url)
-        subscribe = json.dumps(
-            {"method": "SUBSCRIBE", "params": ["executionReport"], "id": 1}
-        )
-        ws.send(subscribe)
-        self.active_ws = ws
-        response = ws.recv()
-        result = json.loads(response)["result"]
-        if not result:
-            return True
-        # ws.close()
-        return False
-        # data = ws.recv_data()
-
-    async def get_stream(self, take_order_client_id=None):
+    def get_stream(self):
         if not self.active_ws or not self.listen_key:
             self.listen_key = self.get_listenkey()["listenKey"]
-            if self.subscribe_exectionReport():
-                print("Subscribed to ExecutionReport!")
-            else:
-                print("Failed to subscribe to ExecutionReport!")
 
         url = self.base + self.path + "/" + self.listen_key
-        async with create_connection(url) as websocket:
-            result = await websocket.recv()
-            result = json.loads(result)
-
+        ws = create_connection(url, on_open=self.on_open, on_error=self.on_error, on_close=self.close_stream)
+        result = ws.recv()
+        result = json.loads(result)
         # Parse result. Print result for raw result from Binance
         client_order_id = result["C"] if result["X"] == "CANCELED" else result["c"]
         order_result = {
@@ -76,12 +55,15 @@ class OrderUpdates:
             "created_at": result["O"],
         }
 
-        if result["X"] == "FILLED" and client_order_id == take_order_client_id:
-            self.close_stream()
+        print(f"Stream returned an order update!{order_result}")
 
-        return order_result
-
-    def close_stream(self):
+    def close_stream(self, ws):
         if self.active_ws:
             self.active_ws.close()
             print("Active socket closed")
+
+    def on_open(self, ws):
+        print("Open")
+
+    def on_error(self, ws, error):
+        print(f"Error: {error}")
