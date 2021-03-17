@@ -176,7 +176,7 @@ class Deal(Account):
 
     def long_take_profit_order(self):
         pair = self.active_bot['pair']
-        price = 1 + float(self.active_bot["take_profit"] / 100) * self.price
+        price = 1 + (float(self.active_bot["take_profit"]) / 100) * self.price
         qty = self.total_amount
         order = {
             "pair": pair,
@@ -366,7 +366,8 @@ class Deal(Account):
             new_deal["take_profit_order"] = short_take_profit_order
 
         dealId = app.db.deals.save(new_deal)
-        dealId = str(dealId)
+        if dealId:
+            return new_deal
         return dealId
 
     def close_deals(self):

@@ -2,6 +2,7 @@ import json
 import os
 
 import requests
+from flask import current_app as app
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from websocket import create_connection, enableTrace, WebSocketApp
@@ -56,6 +57,19 @@ class OrderUpdates:
         }
 
         print(f"Stream returned an order update!{order_result}")
+        with app.app_context():
+            if result['X'] == "FILLED":
+                completed = app.db.bots.find_one_and_update({
+                    "deals": {
+                        "$elemMatch": {
+                            "deal_type": "take_profit", "order_id": client_order_id
+                        }
+                    }
+                }, {"active": "false"})
+                if completed:
+                    print(f"Bot take_profit completed! {completed}. Bot deactivated")
+            else:
+                print(f"No bot found with order client order id: {client_order_id}")
 
     def close_stream(self, ws):
         if self.active_ws:
