@@ -1,16 +1,12 @@
 from api.orders.models.order_sockets import OrderUpdates
 import os
 import atexit
-from flask_sockets import Sockets
 
 from flask import Flask
 from flask_cors import CORS
 from pymongo import MongoClient
 from apscheduler.schedulers.background import BackgroundScheduler
-from gevent import pywsgi
-from geventwebsocket.handler import WebSocketHandler
 import threading
-from unicorn_binance_websocket_api.unicorn_binance_websocket_api_manager import BinanceWebSocketApiManager
 import time
 import logging
 
@@ -26,8 +22,6 @@ from api.orders.routes import order_blueprint
 from api.charts.routes import charts_blueprint
 
 app = Flask(__name__)
-sockets = Sockets(app)
-
 # Enable CORS for all routes
 CORS(app)
 # Misc Config

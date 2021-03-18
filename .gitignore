@@ -8,7 +8,7 @@
 *.pyc
 api/main/config/*.cfg
 .mypy_cache
-
+env
 ##
 #
 # REACT APPS
