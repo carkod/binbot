@@ -40,11 +40,13 @@ class Book_Order:
 
     def matching_engine(self, order_side, qty, limit_index=0):
         """
-        keyword arguments:
-        order_side -
-            Buy order = bids = True
-            Sell order = ask = False
-        qty - quantity wanted to be bought
+        Match quantity with available 100% fill order price,
+        so that order can immediately buy/sell
+        @param: order_side -
+            Buy order = get ask prices = True
+            Sell order = get bids prices = False
+        @param: qty - quantity wanted to be bought
+        @param: order_side - BUY or SELL
         """
 
         url = self.order_book_url

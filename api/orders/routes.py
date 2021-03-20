@@ -16,7 +16,7 @@ def buy_order_market():
 
 @order_blueprint.route("/buy/take-profit", methods=["POST"])
 def create_take_profit_buy_order():
-    return Buy_Order().post_take_profit()
+    return Buy_Order().post_take_profit_limit()
 
 @order_blueprint.route("/sell", methods=["POST"])
 def create_sell_order():
@@ -24,7 +24,7 @@ def create_sell_order():
 
 @order_blueprint.route("/sell/take-profit", methods=["POST"])
 def create_take_profit_sell_order():
-    return Sell_Order().post_take_profit()
+    return Sell_Order().post_take_profit_limit()
 
 @order_blueprint.route("/poll", methods=["GET"])
 def poll_historical_orders():

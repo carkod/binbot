@@ -21,6 +21,9 @@ class Deal(Account):
     bb_opened_orders_url = f'{bb_base_url}/open'
 
     def __init__(self, bot, app):
+        # Inherit also the __init__ from parent class
+        super(self.__class__, self).__init__()
+
         self.active_bot = bot
         self.MIN_PRICE = float(self.price_filter_by_symbol(self.active_bot["pair"], "minPrice"))
         self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
@@ -75,13 +78,13 @@ class Deal(Account):
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
         book_order = Book_Order(pair)
-        initial_price = float(book_order.matching_engine(True, 1))
+        initial_price = float(book_order.matching_engine(False, 1))
         qty = round_numbers((float(self.active_bot["base_order_size"]) / float(initial_price)), 0)
-        # price = float(book_order.matching_engine(True, qty))
-        price = 0.000186
+        price = float(book_order.matching_engine(False, qty))
+        # price = 0.000186
         self.price = price
         amount = float(qty) / float(price)
-        self.total_amount = amount
+        self.total_amount = qty
 
         if price:
             if price <= float(self.MIN_PRICE):
@@ -124,6 +127,15 @@ class Deal(Account):
             "time_in_force": base_order["timeInForce"],
         }
         self.base_order_price = base_order["price"]
+        self.active_bot["deals"].append(base_deal)
+        botId = app.db.bots.save(self.active_bot)
+        if not botId:
+            resp = jsonResp(
+                {"message": "Failed to save Base order", "botId": str(findId)},
+                200,
+            )
+            return resp
+
         return base_deal
 
     def long_safety_order_generator(self):
@@ -178,28 +190,36 @@ class Deal(Account):
         return so_deals
 
     def long_take_profit_order(self):
+        """
+        Execute long strategy (buy and sell higher)
+        take profit order (Binance take_profit)
+        - We only have stop_price, because there are no book bids/asks in t0
+        - Perform validations so we can avoid hitting endpoint errors
+        - take_profit order can ONLY be executed once base order is filled (on Binance)
+        """
         pair = self.active_bot['pair']
         price = (1 + (float(self.active_bot["take_profit"]) / 100)) * self.price
-        decimal_precision = self.get_quote_asset_precision(pair, quote=False)
+        decimal_precision = self.get_quote_asset_precision(pair)
         qty = round_numbers(self.total_amount, 0)
-        price = round_numbers(price, decimal_precision)
+        price = round_numbers(price, 6)
 
         # Validations
         if price:
             if price <= float(self.MIN_PRICE):
-                return jsonResp_message("[Base order error] Price too low", 200)
+                return jsonResp_message("[Long take profit order error] Price too low", 200)
         # Avoid common rate limits
         if qty <= float(self.MIN_QTY):
-            return jsonResp_message("[Base order error] Quantity too low", 200)
-        if amount <= float(self.MIN_NOTIONAL):
-            return jsonResp_message("[Base order error] Price x Quantity too low", 200)
+            return jsonResp_message("[Long take profit order error] Quantity too low", 200)
+        if price * qty <= float(self.MIN_NOTIONAL):
+            return jsonResp_message("[Long take profit order error] Price x Quantity too low", 200)
 
         order = {
             "pair": pair,
             "qty": qty,
-            "price": price,
+            "price": price, # Theoretically stop_price, as we don't have book orders
+            "stop_price": price,
         }
-        res = requests.post(url=self.bb_tp_sell_order_url, json=order)
+        res = requests.post(url=self.bb_sell_order_url, json=order)
         if isinstance(handle_error(res), Response):
             return handle_error(res)
         order = res.json()
@@ -216,6 +236,14 @@ class Deal(Account):
             "fills": order["fills"],
             "time_in_force": order["timeInForce"],
         }
+        self.active_bot["deals"].append(base_order)
+        botId = app.db.bots.save(self.active_bot)
+        if botId:
+            resp = jsonResp(
+                {"message": "Failed to save take_profit deal in the bot", "botId": str(findId)},
+                200,
+            )
+            return resp
         return base_order
 
     def short_base_order(self):

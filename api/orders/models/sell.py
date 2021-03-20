@@ -76,7 +76,7 @@ class Sell_Order():
         data = res.json()
         return data
     
-    def post_take_profit(self):
+    def post_take_profit_limit(self):
         """
         Returns successful order
         Returns validation failed order (MIN_NOTIONAL, LOT_SIZE etc..)
@@ -85,9 +85,10 @@ class Sell_Order():
         symbol = data['pair']
         qty = data['qty']
         price = data['price']
+        stop_price = data['stop_price'] if 'stop_price' in data else price
 
         # Limit order
-        order_type = EnumDefinitions.order_types[4]
+        order_type = EnumDefinitions.order_types[5]
         timestamp = int(round(tm.time() * 1000))
         url = self.order_url
 
@@ -98,7 +99,8 @@ class Sell_Order():
             ('recvWindow', self.recvWindow),
             ('side', self.side),
             ('type', order_type),
-            ('stopPrice', price),
+            ('price', price),
+            ('stopPrice', stop_price),
             ('quantity', qty),
             ('timeInForce', self.timeInForce)
         ]

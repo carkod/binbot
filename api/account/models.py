@@ -26,7 +26,7 @@ class Account:
     ticker24_url = os.getenv('TICKER24')
 
     def __init__(self):
-        self._exchange_info = _get_exchange_info()
+        self._exchange_info = self._get_exchange_info()
 
     def _get_exchange_info(self):
         url = self.exchangeinfo_url

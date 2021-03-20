@@ -108,14 +108,15 @@ class Buy_Order():
         data = res.json()
         return data
 
-    def post_order_limit(self):
+    def post_take_profit_imit(self):
         data = request.json
         symbol = data['pair']
         qty = data['qty']
         price = data['price']
+        stop_price = data['stop_price'] if 'stop_price' in data else price
 
         # Limit order
-        order_type = EnumDefinitions.order_types[0]
+        order_type = EnumDefinitions.order_types[5]
         timestamp = int(round(tm.time() * 1000))
         url = self.order_url
 
@@ -127,7 +128,8 @@ class Buy_Order():
             ('side', self.side),
             ('type', order_type),
             ('timeInForce', self.timeInForce),
-            ('stopPrice', price),
+            ('price', price),
+            ('stopPrice', stop_price),
             ('quantity', qty)
         ]
         headers = {'X-MBX-APIKEY': self.key}
