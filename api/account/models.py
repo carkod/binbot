@@ -25,6 +25,14 @@ class Account:
     ticker_price = os.getenv('TICKER_PRICE')
     ticker24_url = os.getenv('TICKER24')
 
+    def __init__(self):
+        self._exchange_info = _get_exchange_info()
+
+    def _get_exchange_info(self):
+        url = self.exchangeinfo_url
+        r = requests.get(url=url)
+        return r.json()
+
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
         # Get data for a single crypto e.g. BTT in BNB market
@@ -48,11 +56,6 @@ class Account:
         handle_error(res)
         data = res.json()
         return data
-
-    def _exchange_info(self):
-        url = self.exchangeinfo_url
-        r = requests.get(url=url)
-        return r.json()
 
     def _ticker_price(self):
         url = self.ticker_price
@@ -167,22 +170,22 @@ class Account:
         return next((x["free"] for x in data if x["asset"] == symbol), None)
 
     def find_quoteAsset(self, symbol):
-        symbols = self._exchange_info()["symbols"]
+        symbols = self._exchange_info["symbols"]
         quote_asset = next((s for s in symbols if s["symbol"] == symbol), None)["quoteAsset"]
         return quote_asset
 
     def find_baseAsset(self, symbol):
-        symbols = self._exchange_info()["symbols"]
+        symbols = self._exchange_info["symbols"]
         base_asset = next((s for s in symbols if s["symbol"] == symbol), None)["baseAsset"]
         return base_asset
 
     def find_market(self, quote):
-        symbols = self._exchange_info()["symbols"]
+        symbols = self._exchange_info["symbols"]
         market = next((s for s in symbols if s["baseAsset"] == quote), None)["symbol"]
         return market
 
     def get_symbol_info(self):
-        symbols = self._exchange_info()["symbols"]
+        symbols = self._exchange_info["symbols"]
         pair = request.view_args["pair"]
         symbol = next((s for s in symbols if s["symbol"] == pair), None)
         if symbol:
@@ -195,7 +198,53 @@ class Account:
         symbols_list = [x["symbol"] for x in symbols]
         symbols_list.sort()
         return jsonResp({"data": symbols_list}, 200)
-
+    
+    def get_quote_asset_precision(self, symbol, quote=True):
+        """
+        Get Maximum precision (maximum number of decimal points)
+        @params quote: boolean - quote=True, base=False
+        @params symbol: string - market e.g. BNBBTC
+        """
+        symbols = self._exchange_info["symbols"]
+        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        asset_precision = market["quoteAssetPrecision"] if quote else market["baseAssetPrecision"]
+        return asset_precision
+    
+    def price_filter_by_symbol(self, symbol, filter_limit):
+        """
+        PRICE_FILTER restrictions from /exchangeinfo
+        @params: 
+            - symbol: string - pair/market e.g. BNBBTC
+            - filter_limit: string - minPrice or maxPrice
+        """
+        symbols = self._exchange_info["symbols"]
+        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        price_filter = next((m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"), None)
+        return price_filter[filter_limit]
+    
+    def lot_size_by_symbol(self, symbol, lot_size_limit):
+        """
+        LOT_SIZE (quantity) restrictions from /exchangeinfo
+        @params: 
+            - symbol: string - pair/market e.g. BNBBTC
+            - lot_size_limit: string - minQty, maxQty, stepSize
+        """
+        symbols = self._exchange_info["symbols"]
+        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        quantity_filter = next((m for m in market["filters"] if m["filterType"] == "LOT_SIZE"), None)
+        return quantity_filter[lot_size_limit]
+    
+    def min_notional_by_symbol(self, symbol, min_notional_limit="minNotional"):
+        """
+        MIN_NOTIONAL (price x quantity) restrictions from /exchangeinfo
+        @params: 
+            - symbol: string - pair/market e.g. BNBBTC
+            - min_notional_limit: string - minNotional
+        """
+        symbols = self._exchange_info["symbols"]
+        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        min_notional_filter = next((m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None)
+        return min_notional_filter[min_notional_limit]
 
 class Assets(Account, Conversion):
 

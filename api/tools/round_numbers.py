@@ -28,3 +28,10 @@ def floatify(string, decimals=6):
 def stringify_float(num, decimals=6):
     full_float = f"{num:{decimals}f}"
     return full_float
+
+def supress_notation(num: float):
+    """
+    Supress scientific notation
+    e.g. 8e-5 = "0.00008"
+    """
+    return '%f' % (num)

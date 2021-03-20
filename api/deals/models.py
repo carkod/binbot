@@ -5,24 +5,26 @@ import os
 import requests
 from flask import Response, current_app as app
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.round_numbers import round_numbers
+from api.tools.round_numbers import round_numbers, supress_notation
 from api.tools.jsonresp import jsonResp_message
 from api.account.models import Account
 
 class Deal(Account):
-    MIN_QTY = float(os.getenv("MIN_QTY"))
-    MIN_PRICE = float(os.getenv("MIN_PRICE"))
-    MIN_NOTIONAL = float(os.getenv("MIN_NOTIONAL"))
     order_book_url = os.getenv("ORDER_BOOK")
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}:{os.getenv("FLASK_PORT")}'
     bb_buy_order_url = f'{bb_base_url}/order/buy'
+    bb_tp_buy_order_url = f'{bb_base_url}/order/buy/take-profit'
     bb_buy_market_order_url = f'{bb_base_url}/order/buy/market'
     bb_sell_order_url = f'{bb_base_url}/order/sell'
+    bb_tp_sell_order_url = f'{bb_base_url}/order/sell/take-profit'
     bb_sell_market_order_url = f'{bb_base_url}/order/sell/market'
     bb_opened_orders_url = f'{bb_base_url}/open'
 
     def __init__(self, bot, app):
         self.active_bot = bot
+        self.MIN_PRICE = float(self.price_filter_by_symbol(self.active_bot["pair"], "minPrice"))
+        self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
+        self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
         self.app = app
         self.default_deal = {
             "order_id": "",
@@ -75,7 +77,8 @@ class Deal(Account):
         book_order = Book_Order(pair)
         initial_price = float(book_order.matching_engine(True, 1))
         qty = round_numbers((float(self.active_bot["base_order_size"]) / float(initial_price)), 0)
-        price = float(book_order.matching_engine(True, qty))
+        # price = float(book_order.matching_engine(True, qty))
+        price = 0.000186
         self.price = price
         amount = float(qty) / float(price)
         self.total_amount = amount
@@ -84,7 +87,7 @@ class Deal(Account):
             if price <= float(self.MIN_PRICE):
                 return jsonResp_message("[Base order error] Price too low", 200)
         # Avoid common rate limits
-        if amount <= float(self.MIN_QTY):
+        if qty <= float(self.MIN_QTY):
             return jsonResp_message("[Base order error] Quantity too low", 200)
         if amount <= float(self.MIN_NOTIONAL):
             return jsonResp_message("[Base order error] Price x Quantity too low", 200)
@@ -176,15 +179,29 @@ class Deal(Account):
 
     def long_take_profit_order(self):
         pair = self.active_bot['pair']
-        price = 1 + (float(self.active_bot["take_profit"]) / 100) * self.price
-        qty = self.total_amount
+        price = (1 + (float(self.active_bot["take_profit"]) / 100)) * self.price
+        decimal_precision = self.get_quote_asset_precision(pair, quote=False)
+        qty = round_numbers(self.total_amount, 0)
+        price = round_numbers(price, decimal_precision)
+
+        # Validations
+        if price:
+            if price <= float(self.MIN_PRICE):
+                return jsonResp_message("[Base order error] Price too low", 200)
+        # Avoid common rate limits
+        if qty <= float(self.MIN_QTY):
+            return jsonResp_message("[Base order error] Quantity too low", 200)
+        if amount <= float(self.MIN_NOTIONAL):
+            return jsonResp_message("[Base order error] Price x Quantity too low", 200)
+
         order = {
             "pair": pair,
             "qty": qty,
             "price": price,
         }
-        res = requests.post(url=self.bb_sell_order_url, json=order)
-        handle_error(res)
+        res = requests.post(url=self.bb_tp_sell_order_url, json=order)
+        if isinstance(handle_error(res), Response):
+            return handle_error(res)
         order = res.json()
 
         base_order = {
@@ -222,7 +239,7 @@ class Deal(Account):
             order = {
                 "pair": pair,
                 "qty": qty,
-                "price": price,
+                "price": supress_notation(price),
             }
             res = requests.post(url=self.bb_sell_order_url, json=order)
         else:
@@ -332,7 +349,7 @@ class Deal(Account):
 
             # Only do Safety orders if required
             if int(self.active_bot["max_so_count"]) > 0:
-                long_safety_order_generator = self.long_safety_order_generator(0)
+                long_safety_order_generator = self.long_safety_order_generator()
                 if isinstance(long_safety_order_generator, Response):
                     msg = long_safety_order_generator.json["msg"]
                     return jsonResp_message(msg, 200)

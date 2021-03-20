@@ -46,6 +46,21 @@ class OrderUpdates:
         ws = create_connection(url, on_open=self.on_open, on_error=self.on_error, on_close=self.close_stream)
         result = ws.recv()
         result = json.loads(result)
+        if result["e"] == "reportExecution":
+            self.process_report_execution(result)
+
+    def close_stream(self, ws):
+        if self.active_ws:
+            self.active_ws.close()
+            print("Active socket closed")
+
+    def on_open(self, ws):
+        print("Open")
+
+    def on_error(self, ws, error):
+        print(f"Error: {error}")
+    
+    def process_report_execution(self, result):
         # Parse result. Print result for raw result from Binance
         client_order_id = result["C"] if result["X"] == "CANCELED" else result["c"]
         order_result = {
@@ -56,7 +71,6 @@ class OrderUpdates:
             "created_at": result["O"],
         }
 
-        print(f"Stream returned an order update!{order_result}")
         with app.app_context():
             if result['X'] == "FILLED":
                 completed = app.db.bots.find_one_and_update({
@@ -70,14 +84,3 @@ class OrderUpdates:
                     print(f"Bot take_profit completed! {completed}. Bot deactivated")
             else:
                 print(f"No bot found with order client order id: {client_order_id}")
-
-    def close_stream(self, ws):
-        if self.active_ws:
-            self.active_ws.close()
-            print("Active socket closed")
-
-    def on_open(self, ws):
-        print("Open")
-
-    def on_error(self, ws, error):
-        print(f"Error: {error}")
