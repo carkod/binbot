@@ -140,12 +140,21 @@ class Bot(Account):
         return resp
 
     def deactivate(self):
+        """
+        Deactivation involves
+        - Closing all deals (opened orders)
+        - Selling all assets in the market
+        - Finally emptying the deals array in the bot
+        - After above actions succeed, update the DB with all these changes
+        The bot is kept for archive purposes
+        """
         resp = jsonResp({"message": "Bot deactivation is not available"}, 400)
         findId = request.view_args["botId"]
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
 
-            dealId = Deal(bot).close_deals()
+            # Close deals and sell everything
+            dealId = Deal(bot, app).close_deals()
 
             # If error
             if isinstance(dealId, Response):
@@ -155,9 +164,11 @@ class Bot(Account):
             if dealId:
                 bot["active"] = "false"
                 bot["deals"] = []
-                resp = jsonResp(
-                    {"message": "Successfully deactivated bot", "data": bot}, 200
-                )
+                botId = app.db.bots.update_one({"_id": ObjectId(findId)}, {"$set": {"deals": [], "active": "false"}})
+                if botId:
+                    resp = jsonResp(
+                        {"message": "Successfully deactivated bot!", "data": bot}, 200
+                    )
         else:
             resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp

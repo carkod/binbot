@@ -13,7 +13,11 @@ def handle_error(req):
                 response = req.json()
                 if response["code"] == -2010:
                     return jsonResp({"message": "Not enough funds", "error": "true"}, 200)
-
+                
+                # Uknown orders ignored, they are used as a trial an error endpoint to close orders (close deals)
+                if response["code"] == -2011:
+                    return 
+                
                 return jsonResp_message(json.loads(req.content), 200)
 
     except requests.exceptions.HTTPError as err:

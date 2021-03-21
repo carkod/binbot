@@ -18,7 +18,8 @@ class Deal(Account):
     bb_sell_order_url = f'{bb_base_url}/order/sell'
     bb_tp_sell_order_url = f'{bb_base_url}/order/sell/take-profit'
     bb_sell_market_order_url = f'{bb_base_url}/order/sell/market'
-    bb_opened_orders_url = f'{bb_base_url}/open'
+    bb_opened_orders_url = f'{bb_base_url}/order/open'
+    bb_close_order_url = f'{bb_base_url}/order/close'
 
     def __init__(self, bot, app):
         # Inherit also the __init__ from parent class
@@ -125,6 +126,7 @@ class Deal(Account):
             "qty": base_order["origQty"],
             "fills": base_order["fills"],
             "time_in_force": base_order["timeInForce"],
+            "status": order["status"],
         }
         self.base_order_price = base_order["price"]
         self.active_bot["deals"].append(base_deal)
@@ -181,7 +183,8 @@ class Deal(Account):
                 "qty": order["origQty"],
                 "fills": order["fills"],
                 "time_in_force": order["timeInForce"],
-                "so_count": index
+                "so_count": index,
+                "status": order["status"],
             }
 
             so_deals.append(safety_orders)
@@ -239,6 +242,7 @@ class Deal(Account):
             "qty": order["origQty"],
             "fills": order["fills"],
             "time_in_force": order["timeInForce"],
+            "status": order["status"],
         }
         self.active_bot["deals"].append(take_profit_order)
         botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": take_profit_order }})
@@ -297,6 +301,7 @@ class Deal(Account):
             "qty": res_order["origQty"],
             "fills": res_order["fills"],
             "time_in_force": res_order["timeInForce"],
+            "status": order["status"],
         }
         self.base_order_price = res_order["price"]
 
@@ -326,7 +331,8 @@ class Deal(Account):
                 "price": price,
             }
             res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
-            handle_error(res)
+            if isinstance(handle_error(res), Response):
+                return handle_error(res)
             order = res.json()
 
             safety_orders = {
@@ -340,11 +346,15 @@ class Deal(Account):
                 "qty": order["origQty"],
                 "fills": order["fills"],
                 "time_in_force": order["timeInForce"],
+                "status": order["status"],
                 "so_count": index
             }
 
             so_deals.append(safety_orders)
-            
+
+        self.active_bot["deals"].append(so_deals)
+        botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": so_deals }})
+        
         return so_deals
 
     def short_take_profit_order(self):
@@ -358,8 +368,9 @@ class Deal(Account):
             "qty": qty,
             "price": price,
         }
-        res = requests.post(url=self.bb_buy_order_url, json=order)
-        handle_error(res)
+        res = requests.post(url=self.bb_tp_buy_order_url, json=order)
+        if isinstance(handle_error(res), Response):
+            return handle_error(res)
         order = res.json()
 
         tp_order = {
@@ -373,7 +384,18 @@ class Deal(Account):
             "qty": order["origQty"],
             "fills": order["fills"],
             "time_in_force": order["timeInForce"],
+            "status": order["status"],
         }
+        self.active_bot["deals"].append(tp_order)
+        botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": tp_order }})
+
+        if not botId:
+            resp = jsonResp(
+                {"message": "Failed to save take_profit deal in the bot", "botId": str(findId)},
+                200,
+            )
+            return resp
+
         return tp_order
 
     def open_deal(self):
@@ -433,10 +455,40 @@ class Deal(Account):
         - Deals should be stored as an array of orderIds
         - Delete (cancel) endpoint, with symbold and orderId
         """
-        res = requests.delete(url=self.bb_opened_orders_url)
-        handle_error(res)
-        opened_orders = res.json()
-        response = jsonResp_message("Unable to close deals", 200)
-        if opened_orders:
-            response = jsonResp_message("Deals closed successfully", 200)
+        deals = self.active_bot["deals"]
+        
+        for d in deals:
+            if "deal_type" in d and (d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"):
+                order_id = d["order_id"]
+                res = requests.delete(url=f'{self.bb_close_order_url}/{self.active_bot["pair"]}/{order_id}')
+
+                if isinstance(handle_error(res), Response):
+                    return handle_error(res)
+        
+        # Sell everything
+        pair = self.active_bot["pair"]
+        base_asset = self.find_baseAsset(pair)
+        balance = self.get_balances().json
+        qty = round_numbers(float(next((s for s in symbols if s["symbol"] == symbol), None)["free"]), 0)
+        book_order = Book_Order(pair)
+        price = float(book_order.matching_engine(True, qty))
+
+        if price:
+            order = {
+                "pair": pair,
+                "qty": qty,
+                "price": supress_notation(price),
+            }
+            res = requests.post(url=self.bb_sell_order_url, json=order)
+        else:
+            order = {
+                "pair": pair,
+                "qty": qty,
+            }
+            res = requests.post(url=self.bb_sell_market_order_url, json=order)
+
+        if isinstance(handle_error(res), Response):
+            return handle_error(res)
+
+        response = jsonResp_message("Deals closed successfully", 200)
         return response

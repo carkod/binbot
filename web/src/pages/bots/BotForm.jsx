@@ -674,13 +674,16 @@ class BotForm extends React.Component {
                   </TabContent>
                   <Row>
                     {this.state.active === "true" ? (
+                      <div className="update ml-auto mr-auto">
                       <ButtonToggle
-                        color="primary"
+                        className="btn-round"
+                        color="danger"
                         onClick={() => this.props.deactivateBot(this.state._id)}
                         disabled={checkValue(this.state._id)}
                       >
                         Deactivate
                       </ButtonToggle>
+                      </div>
                     ) : (
                       <div className="update ml-auto mr-auto">
                         <ButtonToggle
