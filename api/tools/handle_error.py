@@ -1,6 +1,6 @@
 import requests
 import json
-from api.tools.jsonresp import jsonResp_message
+from api.tools.jsonresp import jsonResp_message, jsonResp
 
 def handle_error(req):
     try:
@@ -9,6 +9,11 @@ def handle_error(req):
         if isinstance(json.loads(req.content), dict):
             # Binance code errors
             if 'code' in json.loads(req.content).keys():
+
+                response = req.json()
+                if response["code"] == -2010:
+                    return jsonResp({"message": "Not enough funds", "error": "true"}, 200)
+
                 return jsonResp_message(json.loads(req.content), 200)
 
     except requests.exceptions.HTTPError as err:

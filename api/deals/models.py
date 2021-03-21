@@ -6,7 +6,7 @@ import requests
 from flask import Response, current_app as app
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.round_numbers import round_numbers, supress_notation
-from api.tools.jsonresp import jsonResp_message
+from api.tools.jsonresp import jsonResp_message, jsonResp
 from api.account.models import Account
 
 class Deal(Account):
@@ -128,7 +128,7 @@ class Deal(Account):
         }
         self.base_order_price = base_order["price"]
         self.active_bot["deals"].append(base_deal)
-        botId = app.db.bots.save(self.active_bot)
+        botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": base_deal }})
         if not botId:
             resp = jsonResp(
                 {"message": "Failed to save Base order", "botId": str(findId)},
@@ -187,6 +187,10 @@ class Deal(Account):
             so_deals.append(safety_orders)
             if index > length:
                 break
+        
+        self.active_bot["deals"].append(so_deals)
+        botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": so_deals }})
+        
         return so_deals
 
     def long_take_profit_order(self):
@@ -224,7 +228,7 @@ class Deal(Account):
             return handle_error(res)
         order = res.json()
 
-        base_order = {
+        take_profit_order = {
             "deal_type": "take_profit",
             "order_id": order["orderId"],
             "strategy": "long",  # change accordingly
@@ -236,9 +240,9 @@ class Deal(Account):
             "fills": order["fills"],
             "time_in_force": order["timeInForce"],
         }
-        self.active_bot["deals"].append(base_order)
-        botId = app.db.bots.save(self.active_bot)
-        if botId:
+        self.active_bot["deals"].append(take_profit_order)
+        botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": take_profit_order }})
+        if not botId:
             resp = jsonResp(
                 {"message": "Failed to save take_profit deal in the bot", "botId": str(findId)},
                 200,
@@ -250,7 +254,7 @@ class Deal(Account):
         pair = self.active_bot['pair']
         book_order = Book_Order(pair)
         qty = round_numbers((float(self.active_bot["base_order_size"])), 0)
-        price = float(book_order.matching_engine(False, qty))
+        price = float(book_order.matching_engine(True, qty))
         self.price = price
         self.total_amount = qty
 
@@ -295,6 +299,16 @@ class Deal(Account):
             "time_in_force": res_order["timeInForce"],
         }
         self.base_order_price = res_order["price"]
+
+        self.active_bot["deals"].append(base_deal)
+        botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": base_deal }})
+        if botId:
+            resp = jsonResp(
+                {"message": "Failed to save take_profit deal in the bot", "botId": str(findId)},
+                200,
+            )
+            return resp
+
         return base_deal
 
     def short_safety_order_generator(self, index):
@@ -330,6 +344,7 @@ class Deal(Account):
             }
 
             so_deals.append(safety_orders)
+            
         return so_deals
 
     def short_take_profit_order(self):
@@ -410,9 +425,6 @@ class Deal(Account):
                 return jsonResp_message(msg, 200)
             new_deal["take_profit_order"] = short_take_profit_order
 
-        dealId = app.db.deals.save(new_deal)
-        if dealId:
-            return new_deal
         return dealId
 
     def close_deals(self):

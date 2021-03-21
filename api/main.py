@@ -6,6 +6,7 @@ from flask import Flask
 from flask_cors import CORS
 from pymongo import MongoClient
 from apscheduler.schedulers.background import BackgroundScheduler
+from flask_mongoengine import MongoEngine
 import threading
 import time
 import logging
@@ -22,6 +23,8 @@ from api.orders.routes import order_blueprint
 from api.charts.routes import charts_blueprint
 
 app = Flask(__name__)
+# Schema
+# db = MongoEngine(app)
 # Enable CORS for all routes
 CORS(app)
 # Misc Config

@@ -105,11 +105,11 @@ const generateOrders = (data, bot) => {
     annotations.push(traillingA);
   }
 
-  const maxSoCount = parseInt(bot.max_so_count - 1); // -1 for 0 index
+  const maxSoCount = parseInt(bot.max_so_count);
   if (maxSoCount > 0) {
     let i = 0;
     let previousPrice = currentPrice;
-    while (i <= maxSoCount) {
+    while (i <= maxSoCount - 1) {
       const price = (
         previousPrice -
         (previousPrice * (bot.price_deviation_so / 100))
