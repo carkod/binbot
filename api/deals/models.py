@@ -100,7 +100,7 @@ class Deal(Account):
             order = {
                 "pair": pair,
                 "qty": qty,
-                "price": price,
+                "price": supress_notation(price),
             }
             res = requests.post(url=self.bb_buy_order_url, json=order)
         else:
@@ -113,22 +113,22 @@ class Deal(Account):
 
         if isinstance(handle_error(res), Response):
             return handle_error(res)
-        base_order = res.json()
+        order = res.json()
 
         base_deal = {
-            "order_id": base_order["orderId"],
+            "order_id": order["orderId"],
             "deal_type": "base_order",
             "strategy": "long",  # change accordingly
-            "pair": base_order["symbol"],
-            "order_side": base_order["side"],
-            "order_type": base_order["type"],
-            "price": base_order["price"],
-            "qty": base_order["origQty"],
-            "fills": base_order["fills"],
-            "time_in_force": base_order["timeInForce"],
+            "pair": order["symbol"],
+            "order_side": order["side"],
+            "order_type": order["type"],
+            "price": order["price"],
+            "qty": order["origQty"],
+            "fills": order["fills"],
+            "time_in_force": order["timeInForce"],
             "status": order["status"],
         }
-        self.base_order_price = base_order["price"]
+        self.base_order_price = order["price"]
         self.active_bot["deals"].append(base_deal)
         botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": base_deal }})
         if not botId:
@@ -223,8 +223,8 @@ class Deal(Account):
         order = {
             "pair": pair,
             "qty": qty,
-            "price": price, # Theoretically stop_price, as we don't have book orders
-            "stop_price": price,
+            "price": supress_notation(price), # Theoretically stop_price, as we don't have book orders
+            "stop_price": supress_notation(price),
         }
         res = requests.post(url=self.bb_sell_order_url, json=order)
         if isinstance(handle_error(res), Response):
@@ -252,7 +252,7 @@ class Deal(Account):
                 200,
             )
             return resp
-        return base_order
+        return order
 
     def short_base_order(self):
         pair = self.active_bot['pair']
@@ -447,7 +447,7 @@ class Deal(Account):
                 return jsonResp_message(msg, 200)
             new_deal["take_profit_order"] = short_take_profit_order
 
-        return dealId
+        return new_deal
 
     def close_deals(self):
         """

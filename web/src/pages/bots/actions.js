@@ -299,8 +299,9 @@ export function activateBot(id) {
 }
 
 export function activateBotSucceeded(res) {
+  const type = res.error === "true" ? "error" : "success"; 
   if (res.message) {
-    addNotification(ACTIVATE_BOT_SUCCESS, res.message, "error");
+    addNotification("Bot activation succeeded", res.message, type);
   }
   return {
     type: ACTIVATE_BOT_SUCCESS,

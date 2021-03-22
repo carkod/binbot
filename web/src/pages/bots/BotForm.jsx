@@ -138,11 +138,10 @@ class BotForm extends React.Component {
     // Only for edit bot page
     // Fill up the candlestick when pair is available and inherit the interval too
     if (!checkValue(this.state.pair) && this.state.pair !== s.pair) {
-      const interval = !checkValue(this.props.history.location.state) ? this.props.history.location.state.candlestick_interval : this.state.candlestick_interval;
-      this.props.loadCandlestick(
-        this.state.pair,
-        interval
-      );
+      const interval = !checkValue(this.props.history.location.state)
+        ? this.props.history.location.state.candlestick_interval
+        : this.state.candlestick_interval;
+      this.props.loadCandlestick(this.state.pair, interval);
     }
   };
 
@@ -675,21 +674,32 @@ class BotForm extends React.Component {
                   <Row>
                     {this.state.active === "true" ? (
                       <div className="update ml-auto mr-auto">
-                      <ButtonToggle
-                        className="btn-round"
-                        color="danger"
-                        onClick={() => this.props.deactivateBot(this.state._id)}
-                        disabled={checkValue(this.state._id)}
-                      >
-                        Deactivate
-                      </ButtonToggle>
+                        <ButtonToggle
+                          className="btn-round"
+                          color="danger"
+                          onClick={() => {
+                            this.props.deactivateBot(this.state._id)
+                            .then(() =>
+                              this.props.getBot(this.props.match.params.id)
+                            )}
+                          }
+                          disabled={checkValue(this.state._id)}
+                        >
+                          Deactivate
+                        </ButtonToggle>
                       </div>
                     ) : (
                       <div className="update ml-auto mr-auto">
                         <ButtonToggle
                           className="btn-round"
                           color="primary"
-                          onClick={() => this.props.activateBot(this.state._id)}
+                          onClick={() => {
+                            this.props
+                              .activateBot(this.state._id)
+                              .then(() =>
+                                this.props.getBot(this.props.match.params.id)
+                              );
+                          }}
                           disabled={checkValue(this.state._id)}
                         >
                           Activate
