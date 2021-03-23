@@ -42,7 +42,7 @@ import {
   getSymbols,
   loadCandlestick,
 } from "./actions";
-
+import BotInfo from "../../components/BotInfo";
 class BotForm extends React.Component {
   constructor(props) {
     super(props);
@@ -408,6 +408,11 @@ class BotForm extends React.Component {
         <Form onSubmit={this.handleSubmit}>
           <Row>
             <Col md="7" sm="12">
+              {!checkValue(this.props.bot) ?
+                  <BotInfo
+                    bot={this.props.bot}
+                  />
+                : ""}
               <Card>
                 <CardHeader>
                   <CardTitle>
