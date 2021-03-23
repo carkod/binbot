@@ -114,6 +114,7 @@ class BotForm extends React.Component {
         take_profit: this.props.bot.take_profit,
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
+        deals: this.props.bot.deals
       });
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
