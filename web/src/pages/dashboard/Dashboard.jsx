@@ -55,14 +55,16 @@ class Dashboard extends React.Component {
 
   computeDiffAssets = (assets) => {
     const balances = assets.reverse();
-    const yesterday =
+    let revenue, percentage = "N/A";
+    if (balances.length > 0) {
+      const yesterday =
       balances[0].estimated_total_usd * balances[0].estimated_total_btc;
-    const previousYesterday =
-      balances[1].estimated_total_usd * balances[1].estimated_total_btc;
-    const diff = yesterday - previousYesterday;
-    const revenue = roundDecimals(diff, 4);
-    const percentage = roundDecimals(diff / previousYesterday, 4) * 100;
-
+      const previousYesterday =
+        balances[1].estimated_total_usd * balances[1].estimated_total_btc;
+      const diff = yesterday - previousYesterday;
+      revenue = roundDecimals(diff, 4);
+      percentage = roundDecimals(diff / previousYesterday, 4) * 100;
+    }
     this.setState({ revenue: revenue, percentageRevenue: percentage });
   };
 
@@ -70,7 +72,6 @@ class Dashboard extends React.Component {
     /**
      * Compute percentage increases benchmark
      * BTC vs Portfolio
-     *
      */
     const dates = [];
     const values = [];
@@ -218,7 +219,10 @@ class Dashboard extends React.Component {
     
     return (
       <>
+      
         <div className="content">
+        {!checkValue(balances) ?
+        <>
           <Row>
             <Col lg="4" md="6" sm="6">
               <Card className="card-stats">
@@ -241,15 +245,6 @@ class Dashboard extends React.Component {
                     </Col>
                   </Row>
                 </CardBody>
-                <CardFooter>
-                  <hr />
-                  {/* <div className="stats">
-                    {assets &&
-                      `Total ${parseFloat(assets[0].total_btc_value).toFixed(
-                        6
-                      )} BTC`}
-                  </div> */}
-                </CardFooter>
               </Card>
             </Col>
             <Col lg="4" md="6" sm="6">
@@ -349,6 +344,14 @@ class Dashboard extends React.Component {
               </div>
             </Col>
           </Row>
+          </>
+          :
+          <Row>
+            <Col md="12">
+              <h1>No balance data available</h1>
+            </Col>
+          </Row>
+          }
         </div>
       </>
     );
