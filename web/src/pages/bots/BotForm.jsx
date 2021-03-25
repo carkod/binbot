@@ -144,6 +144,10 @@ class BotForm extends React.Component {
         : this.state.candlestick_interval;
       this.props.loadCandlestick(this.state.pair, interval);
     }
+
+    if (this.props.botActive !== p.botActive) {
+      this.props.getBot(this.props.match.params.id)
+    }
   };
 
   requiredinValidation = () => {
@@ -683,11 +687,8 @@ class BotForm extends React.Component {
                         <ButtonToggle
                           className="btn-round"
                           color="danger"
-                          onClick={() => {
+                          onClick={() => 
                             this.props.deactivateBot(this.state._id)
-                            .then(() =>
-                              this.props.getBot(this.props.match.params.id)
-                            )}
                           }
                           disabled={checkValue(this.state._id)}
                         >
@@ -700,12 +701,8 @@ class BotForm extends React.Component {
                           className="btn-round"
                           color="primary"
                           onClick={() => {
-                            this.props
-                              .activateBot(this.state._id)
-                              .then(() =>
-                                this.props.getBot(this.props.match.params.id)
-                              );
-                          }}
+                            this.props.activateBot(this.state._id)
+                            }}
                           disabled={checkValue(this.state._id)}
                         >
                           Activate
@@ -771,7 +768,7 @@ const mapStateToProps = (state) => {
   const { data: symbolInfo } = state.symbolInfoReducer;
   const { data: bot } = state.getSingleBotReducer;
   const { data: candlestick } = state.candlestickReducer;
-  const { botId } = state.botReducer;
+  const { botId, botActive } = state.botReducer;
   return {
     balances: balances,
     symbols: symbols,
@@ -779,6 +776,7 @@ const mapStateToProps = (state) => {
     bot: bot,
     candlestick: candlestick,
     newBotId: botId,
+    botActive: botActive,
   };
 };
 

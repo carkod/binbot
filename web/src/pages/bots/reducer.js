@@ -45,7 +45,8 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
-        data: state.data
+        data: state.data,
+        botActive: false,
       };
 
       return newState;
@@ -55,7 +56,8 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        botId: action.botId
+        botId: action.botId,
+        botActive: false,
       };
       return newState;
     }
@@ -66,7 +68,8 @@ function botReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.data
+        data: action.data,
+        botActive: false,
       };
     }
 
@@ -74,7 +77,8 @@ function botReducer(state = initialState, action) {
       const newState = {
         isLoading: true,
         isError: false,
-        data: state.data
+        data: state.data,
+        botActive: state.botActive
       };
 
       return newState;
@@ -84,7 +88,8 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: state.data.filter(x => x._id.$oid !== action.data)
+        data: state.data.filter(x => x._id.$oid !== action.data),
+        botActive: false
       };
       return newState;
     }
@@ -95,6 +100,7 @@ function botReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
+        botActive: state.botActive
       };
     }
 
@@ -103,6 +109,7 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
+        botActive: false,
       };
 
       return newState;
@@ -112,7 +119,8 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        message: action.message
+        message: action.message,
+        botActive: true,
       };
       return newState;
     }
@@ -122,7 +130,8 @@ function botReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.state
+        data: action.state,
+        botActive: false,
       };
     }
 
@@ -130,6 +139,7 @@ function botReducer(state = initialState, action) {
       const newState = {
         isLoading: true,
         isError: false,
+        botActive: true,
       };
 
       return newState;
@@ -138,7 +148,8 @@ function botReducer(state = initialState, action) {
       const newState = {
         isLoading: false,
         isError: false,
-        data: action.state
+        data: action.state,
+        botActive: false,
       };
       return newState;
     }
@@ -148,7 +159,8 @@ function botReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.state
+        data: action.state,
+        botActive: true
       };
     }
 
