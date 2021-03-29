@@ -27,6 +27,14 @@ def get_symbols():
 def get_symbol_info(pair):
     return Account().get_symbol_info()
 
+@account_blueprint.route("/find-quote/<pair>", methods=["GET"])
+def find_quote_asset(pair):
+    return Account().find_quoteAsset(pair)
+
+@account_blueprint.route("/find-base/<pair>", methods=["GET"])
+def find_base_asset(pair):
+    return Account().find_baseAsset(pair)
+
 @account_blueprint.route("/ticker", defaults={'symbol': None})
 @account_blueprint.route("/ticker/<symbol>", methods=["GET"])
 def ticker(symbol=None):

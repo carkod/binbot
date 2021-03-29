@@ -20,6 +20,9 @@ import {
   TabContent,
   TabPane,
   ButtonToggle,
+  InputGroupAddon,
+  InputGroupText,
+  InputGroup,
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import Candlestick from "../../components/Candlestick";
@@ -43,6 +46,7 @@ import {
   loadCandlestick,
 } from "./actions";
 import BotInfo from "../../components/BotInfo";
+import { getQuoteAsset } from "./requests";
 class BotForm extends React.Component {
   constructor(props) {
     super(props);
@@ -57,8 +61,8 @@ class BotForm extends React.Component {
       balance_usage_size: "0", // Computed
       base_order_size: "",
       baseOrderSizeError: false,
-      cooldown: "0",
-      deal_min_value: "0.001",
+      short_order: "0",
+      shortOrderError: false,
       max_so_count: "0",
       maxSOCountError: false,
       name: "Default bot",
@@ -79,6 +83,9 @@ class BotForm extends React.Component {
       formIsValid: true,
       activeTab: "main",
       candlestick_interval: intervalOptions[5],
+      deals: [],
+      quoteAsset: "",
+      baseAsset: "",
     };
   }
 
@@ -103,7 +110,6 @@ class BotForm extends React.Component {
         balance_usage: this.props.bot.balance_usage,
         balance_usage_size: this.props.bot.balance_usage_size,
         base_order_size: this.props.bot.base_order_size,
-        deal_min_value: this.props.bot.deal_min_value,
         max_so_count: this.props.bot.max_so_count,
         name: this.props.bot.name,
         pair: this.props.bot.pair,
@@ -143,6 +149,8 @@ class BotForm extends React.Component {
         ? this.props.history.location.state.candlestick_interval
         : this.state.candlestick_interval;
       this.props.loadCandlestick(this.state.pair, interval);
+      getQuoteAsset(this.state.pair).then(({data}) => this.setState({ quoteAsset: data }))
+      this.setState({ name: `${this.state.pair}_${new Date().getTime()}`})
     }
 
     if (this.props.botActive !== p.botActive) {
@@ -225,7 +233,6 @@ class BotForm extends React.Component {
         balance_available: this.state.balance_available,
         balance_usage: this.state.balance_usage,
         base_order_size: String(this.state.base_order_size),
-        cooldown: this.state.cooldown,
         deal_min_value: this.state.deal_min_value,
         max_so_count: this.state.max_so_count,
         name: this.state.name,
@@ -374,6 +381,17 @@ class BotForm extends React.Component {
     this.computeAvailableBalance();
   };
 
+  handleShortOrder = (e) => {
+    const shortOrderValue = e.target.value;
+    this.setState({ short_order: shortOrderValue });
+    if (parseFloat(shortOrderValue) > 0) {
+      this.setState({ strategy: "short" });
+    } else {
+      this.setState({ strategy: "long" });
+    }
+    
+  }
+
   render() {
     return (
       <div className="content">
@@ -420,6 +438,9 @@ class BotForm extends React.Component {
               <Card>
                 <CardHeader>
                   <CardTitle>
+                    <small>Base order size must be always filled and will always be triggered in activation. Short order will replace base order if it reaches stop price.</small>
+                    <br />
+                    <br />
                     <Nav tabs>
                       <NavItem>
                         <NavLink
@@ -487,37 +508,21 @@ class BotForm extends React.Component {
                       </Row>
                       <Row className="u-margin-bottom">
                         <Col md="6" sm="12">
-                          <Label htmlFor="strategy">
-                            Strategy<span className="u-required">*</span>
-                          </Label>
-                          <Input
-                            type="select"
-                            name="strategy"
-                            onChange={this.handleStrategy}
-                            onBlur={this.handleBlur}
-                            value={this.state.strategy}
-                          >
-                            <option defaultChecked value="long">
-                              Long
-                            </option>
-                            <option value="short">Short</option>
-                          </Input>
-                          <small>
-                            Long for trends. Short for vertical movement.
-                          </small>
-                        </Col>
-                        <Col md="6" sm="12">
-                          <label htmlFor="base_order_size">
+                          <Label htmlFor="base_order_size">
                             Base order size<span className="u-required">*</span>
-                          </label>
-                          <Input
-                            // invalid={this.state.baseOrderSizeError}
-                            type="text"
-                            name="base_order_size"
-                            onChange={this.handleBaseChange}
-                            onBlur={this.handleBlur}
-                            value={this.state.base_order_size}
-                          />
+                          </Label>
+                          <InputGroup>
+                            <Input
+                              type="text"
+                              name="base_order_size"
+                              onChange={this.handleBaseChange}
+                              onBlur={this.handleBlur}
+                              value={this.state.base_order_size}
+                            />
+                            <InputGroupAddon addonType="append">
+                              <InputGroupText>{this.state.quoteAsset}</InputGroupText>
+                            </InputGroupAddon>
+                          </InputGroup>
                           <FormFeedback valid={!this.state.baseOrderSizeError}>
                             Not enough balance
                           </FormFeedback>
@@ -525,26 +530,50 @@ class BotForm extends React.Component {
                             All
                           </Badge>
                         </Col>
+                        <Col md="6" sm="12">
+                          <Label htmlFor="strategy">
+                            Strategy
+                          </Label>
+                          <Input
+                            type="input"
+                            name="strategy"
+                            value={this.state.strategy}
+                            disabled={true}
+                          >
+                          </Input>
+                          <small>
+                            Long for trends. Short for vertical movement.
+                          </small>
+                        </Col>
                       </Row>
                       <Row className="u-margin-bottom">
                         <Col md="6" sm="12">
-                          <label htmlFor="deal_min_value">
-                            Deal minimum value
+                          <Label htmlFor="short_stop_price">
+                            Short order stop
+                          </Label>
+                          <InputGroup>
+                            <Input
+                              type="text"
+                              name="short_stop_price"
+                              onChange={this.handleShortOrder}
+                              // onBlur={this.handleShortOrder}
+                              value={this.state.short_stop_price}
+                            />
+                            <InputGroupAddon addonType="append">
+                              <InputGroupText>%</InputGroupText>
+                            </InputGroupAddon>
+                          </InputGroup>
+                        </Col>
+                        <Col md="6" sm="12">
+                          <label htmlFor="short_order">
+                            Short order
                           </label>
                           <Input
                             type="text"
-                            name="deal_min_value"
-                            onChange={this.handleChange}
-                            value={this.state.deal_min_value}
-                          />
-                        </Col>
-                        <Col md="6" sm="12">
-                          <label htmlFor="cooldown">Cooldown</label>
-                          <Input
-                            type="text"
-                            name="cooldown"
-                            onChange={this.handleChange}
-                            value={this.state.cooldown}
+                            name="short_order"
+                            onChange={this.handleShortOrder}
+                            // onBlur={this.handleShortOrder}
+                            value={this.state.short_order}
                           />
                         </Col>
                       </Row>

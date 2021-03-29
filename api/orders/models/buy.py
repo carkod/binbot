@@ -108,7 +108,7 @@ class Buy_Order():
         data = res.json()
         return data
 
-    def post_take_profit_imit(self):
+    def post_take_profit_limit(self):
         data = request.json
         symbol = data['pair']
         qty = data['qty']

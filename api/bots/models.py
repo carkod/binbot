@@ -19,9 +19,11 @@ class Bot(Account):
             "balance_usage_size": "0.0001",
             "base_order_size": "3",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
+            "short_stop_price": "0", # Flip to short strategy threshold
+            "short_order": "0", # Quantity flip to short
             "start_condition": "true",
             "so_size": "0.0001",  # Top band
-            "take_profit": "0.003",  # 30% take profit
+            "take_profit": "0.003",  # 3% take profit
             "price_deviation_so": "0.63",  # % percentage
             "trailling": "false",
             "trailling_deviation": "0.63",
@@ -52,9 +54,7 @@ class Bot(Account):
     def create(self):
         resp = jsonResp({"message": "Bot creation not available"}, 400)
         data = request.json
-        # base_order_size = self.get_base_order_size(data['pair'], data['maxSOCount'], data['take_profit'])
-
-        data["name"] = data["name"] if data["name"] != "" else f"Bot-{date.today()}"
+        data["name"] = data["name"] if data["name"] != "" else f"{data['pair']}-{date.today()}"
         self.defaults.update(data)
         botId = app.db.bots.save(self.defaults, {"$currentDate": {"createdAt": "true"}})
         if botId:

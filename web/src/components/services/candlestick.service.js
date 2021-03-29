@@ -19,9 +19,11 @@ export const generateOrders = (data, bot) => {
   takeProfitPrice = data.trace[0].close[data.trace[0].close.length - 1];
   takeProfitTime = data.trace[0].x[data.trace[0].x.length - 1];
 
-  const baseOrder = bot.deals.find(x => x.deal_type === "base_order");
-  if (!checkValue(baseOrder)) {
-    currentPrice = baseOrder.price;
+  if (bot.deals.length > 0) {
+    const baseOrder = bot.deals.find(x => x.deal_type === "base_order");
+    if (!checkValue(baseOrder)) {
+      currentPrice = baseOrder.price;
+    }
   }
 
   // Base order

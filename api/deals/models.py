@@ -45,15 +45,6 @@ class Deal(Account):
         }
         self.total_amount = 0
 
-    @staticmethod
-    def handle_fourofour(order):
-        if "code" not in order:
-            # save base deal
-            return order
-        else:
-            print(order)
-            exit(1)
-
     def initialization(self):
         """
         Initial checks to see if the deal is possible

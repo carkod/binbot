@@ -172,11 +172,15 @@ class Account:
     def find_quoteAsset(self, symbol):
         symbols = self._exchange_info["symbols"]
         quote_asset = next((s for s in symbols if s["symbol"] == symbol), None)["quoteAsset"]
+        if request:
+            return jsonResp({"data": quote_asset}, 200)
         return quote_asset
 
     def find_baseAsset(self, symbol):
         symbols = self._exchange_info["symbols"]
         base_asset = next((s for s in symbols if s["symbol"] == symbol), None)["baseAsset"]
+        if request:
+            return jsonResp({"data": base_asset}, 200)
         return base_asset
 
     def find_market(self, quote):

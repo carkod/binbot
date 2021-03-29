@@ -1,5 +1,5 @@
-import { call, put, takeLatest } from 'redux-saga/effects';
-import request from '../../request';
+import { call, put, take, takeLatest } from 'redux-saga/effects';
+import request, { defaultOptions } from '../../request';
 import { activateBotFailed, activateBotSucceeded, ACTIVATE_BOT, createBotFailed, createBotSucceeded, CREATE_BOT, deactivateBotFailed, deactivateBotSucceeded, DEACTIVATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolInfoFailed, getSymbolInfoSucceeded, getSymbolsFailed, getSymbolsSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS, GET_SYMBOL_INFO, loadCandlestickFailed, loadCandlestickSucceeded, LOAD_CANDLESTICK } from './actions';
 
 /**
@@ -7,13 +7,8 @@ import { activateBotFailed, activateBotSucceeded, ACTIVATE_BOT, createBotFailed,
  */
 export function* getBots() {
   const requestURL = process.env.REACT_APP_GET_BOTS;
-  const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(getBotsSucceeded(res));
   } catch (err) {
     yield put(getBotsFailed(err));
@@ -26,13 +21,8 @@ export function* getBots() {
 export function* getBot(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
-  const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(getBotSucceeded(res));
   } catch (err) {
     yield put(getBotFailed(err));
@@ -115,13 +105,8 @@ export function* deleteBot(payload) {
 
 export function* getSymbols() {
   const requestURL = `${process.env.REACT_APP_SYMBOLS}`;
-  const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(getSymbolsSucceeded(res));
   } catch (err) {
     yield put(getSymbolsFailed(err));
@@ -131,13 +116,8 @@ export function* getSymbols() {
 export function* getSymbolInfo(payload) {
   const pair = payload.data;
   const requestURL = `${process.env.REACT_APP_SYMBOL_INFO}/${pair}`;
-  const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(getSymbolInfoSucceeded(res));
   } catch (err) {
     yield put(getSymbolInfoFailed(err));
@@ -161,13 +141,8 @@ export default function* watchBot() {
 export function* activateBot(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_ACTIVATE_BOT}/${id}`;
-  const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(activateBotSucceeded(res));
   } catch (err) {
     yield put(activateBotFailed(err));
@@ -182,13 +157,8 @@ export function* watchActivateBot() {
 export function* deactivateBot(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_DEACTIVATE_BOT}/${id}`;
-  const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(deactivateBotSucceeded(res));
   } catch (err) {
     yield put(deactivateBotFailed(err));
@@ -205,13 +175,8 @@ export function* watchDeactivateBot() {
  */
 export function* getCandlestick({pair, interval}) {
   const requestURL = `${process.env.REACT_APP_CANDLESTICK}/${pair}/${interval}`;
-  const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(loadCandlestickSucceeded(res));
   } catch (err) {
     yield put(loadCandlestickFailed(err));

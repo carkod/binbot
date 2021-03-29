@@ -102,7 +102,7 @@
 
             & + .input-group-prepend .input-group-text,
             & + .input-group-append .input-group-text{
-                padding: $padding-vertical - 1 $padding-horizontal - 1 $padding-vertical - 1 0;
+                padding: $padding-small-vertical - 1 $padding-small-horizontal - 1 $padding-small-vertical - 1 $padding-small-horizontal - 1;
             }
         }
 
@@ -119,12 +119,12 @@
 }
 
 
-//color1 = $opacity-5
-//color2 = $opacity-8
-//color3 = $white-color
-//color4 = $transparent-bg
-//color5 = $opacity-1
-//color6 = $opacity-2
+$color1: $opacity-5;
+$color2: $opacity-8;
+$color3: $white-color;
+$color4: $transparent-bg;
+$color5: $opacity-1;
+$color6: $opacity-2;
 
 
 @mixin input-coloured-bg($color1, $color2, $color3, $color4, $color5, $color6) {
@@ -187,7 +187,7 @@
         .form-control + .input-group-prepend .input-group-text,
         .form-control + .input-group-append .input-group-text{
             background-color: $color5;
-
+            
             &:focus,
             &:active,
             &:active{
