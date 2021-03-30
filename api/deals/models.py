@@ -54,15 +54,12 @@ class Deal(Account):
         - If short position, check quote (right) asset
         """
 
-        if self.active_bot["strategy"] == "long":
-            asset = self.find_quoteAsset(self.active_bot["pair"])
-            balance = self.get_one_balance(asset)
-        else:
-            asset = self.find_baseAsset(self.active_bot["pair"])
-            balance = self.get_one_balance(asset)
+        asset = self.find_quoteAsset(self.active_bot["pair"])
+        balance = self.get_one_balance(asset)
 
         if not balance:
             return jsonResp_message(f"[Deal init error] No {asset} balance", 200)
+
         self.active_bot["balance_usage_size"] = self.get_one_balance(asset)
 
     def long_base_order(self):
@@ -394,51 +391,28 @@ class Deal(Account):
         can_initialize = self.initialization()
         if isinstance(can_initialize, Response):
             return can_initialize
-        deal_strategy = self.active_bot["strategy"]
 
-        if deal_strategy == "long":
-            long_base_order = self.long_base_order()
-            if isinstance(long_base_order, Response):
-                msg = long_base_order.json["message"]
+        long_base_order = self.long_base_order()
+        if isinstance(long_base_order, Response):
+            msg = long_base_order.json["message"]
+            return jsonResp_message(msg, 200)
+        new_deal["base_order"] = long_base_order
+
+        # Only do Safety orders if required
+        if int(self.active_bot["max_so_count"]) > 0:
+            long_safety_order_generator = self.long_safety_order_generator()
+            if isinstance(long_safety_order_generator, Response):
+                msg = long_safety_order_generator.json["msg"]
                 return jsonResp_message(msg, 200)
-            new_deal["base_order"] = long_base_order
+            new_deal["so_orders"] = long_safety_order_generator
 
-            # Only do Safety orders if required
-            if int(self.active_bot["max_so_count"]) > 0:
-                long_safety_order_generator = self.long_safety_order_generator()
-                if isinstance(long_safety_order_generator, Response):
-                    msg = long_safety_order_generator.json["msg"]
-                    return jsonResp_message(msg, 200)
-                new_deal["so_orders"] = long_safety_order_generator
+        long_take_profit_order = self.long_take_profit_order()
+        if isinstance(long_take_profit_order, Response):
+            msg = long_take_profit_order.json["message"]
+            return jsonResp_message(msg, 200)
+        new_deal["take_profit_order"] = long_take_profit_order
 
-            long_take_profit_order = self.long_take_profit_order()
-            if isinstance(long_take_profit_order, Response):
-                msg = long_take_profit_order.json["message"]
-                return jsonResp_message(msg, 200)
-            new_deal["take_profit_order"] = long_take_profit_order
-
-        if deal_strategy == "short":
-            short_base_order = self.short_base_order()
-            # Check if error
-            if isinstance(short_base_order, Response):
-                msg = short_base_order.json["message"]
-                return jsonResp_message(msg, 200)
-            new_deal["base_order"] = short_base_order
-
-            # Only do Safety orders if required
-            if int(self.active_bot["max_so_count"]) > 0:
-                short_safety_order_generator = self.short_safety_order_generator(0)
-                if not short_safety_order_generator:
-                    return jsonResp_message("Deal: Safety orders failed", 200)
-                new_deal["so_orders"] = short_safety_order_generator
-
-            short_take_profit_order = self.short_take_profit_order()
-            if isinstance(short_take_profit_order, Response):
-                msg = short_take_profit_order.json["msg"]
-                return jsonResp_message(msg, 200)
-            new_deal["take_profit_order"] = short_take_profit_order
-
-        return new_deal
+        return
 
     def close_deals(self):
         """

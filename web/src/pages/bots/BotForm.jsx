@@ -61,8 +61,9 @@ class BotForm extends React.Component {
       balance_usage_size: "0", // Computed
       base_order_size: "",
       baseOrderSizeError: false,
-      short_order: "0",
+      short_order: "",
       shortOrderError: false,
+      short_stop_price: "",
       max_so_count: "0",
       maxSOCountError: false,
       name: "Default bot",
@@ -79,7 +80,6 @@ class BotForm extends React.Component {
       trailling: "false",
       trailling_deviation: "0.63",
       traillingDeviationError: false,
-      auto_strategy: "true",
       formIsValid: true,
       activeTab: "main",
       candlestick_interval: intervalOptions[5],
@@ -120,7 +120,9 @@ class BotForm extends React.Component {
         take_profit: this.props.bot.take_profit,
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
-        deals: this.props.bot.deals
+        deals: this.props.bot.deals,
+        short_order: this.props.bot.short_order,
+        short_stop_price: this.props.bot.short_stop_price
       });
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
@@ -224,7 +226,7 @@ class BotForm extends React.Component {
     return true;
   };
 
-  handleSubmit = async (e) => {
+  handleSubmit = (e) => {
     e.preventDefault();
     const validation = this.requiredinValidation();
     if (validation) {
@@ -244,6 +246,8 @@ class BotForm extends React.Component {
         take_profit: this.state.take_profit,
         trailling: this.state.trailling,
         trailling_deviation: this.state.trailling_deviation,
+        short_order: this.state.short_order,
+        short_stop_price: this.state.short_stop_price
       };
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -382,14 +386,12 @@ class BotForm extends React.Component {
   };
 
   handleShortOrder = (e) => {
-    const shortOrderValue = e.target.value;
-    this.setState({ short_order: shortOrderValue });
-    if (parseFloat(shortOrderValue) > 0) {
+    this.setState({ [e.target.name]: e.target.value });
+    if (parseFloat(e.target.value) > 0) {
       this.setState({ strategy: "short" });
     } else {
       this.setState({ strategy: "long" });
     }
-    
   }
 
   render() {
@@ -553,7 +555,7 @@ class BotForm extends React.Component {
                           </Label>
                           <InputGroup>
                             <Input
-                              type="text"
+                              type="number"
                               name="short_stop_price"
                               onChange={this.handleShortOrder}
                               // onBlur={this.handleShortOrder}
@@ -565,9 +567,9 @@ class BotForm extends React.Component {
                           </InputGroup>
                         </Col>
                         <Col md="6" sm="12">
-                          <label htmlFor="short_order">
+                          <Label htmlFor="short_order">
                             Short order
-                          </label>
+                          </Label>
                           <Input
                             type="text"
                             name="short_order"
