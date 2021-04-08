@@ -223,6 +223,12 @@ class BotForm extends React.Component {
         this.setState({ traillingDeviationError: false });
       }
     }
+
+    if (checkValue(this.state.balance_available) || parseFloat(this.state.balance_available) >= 0) {
+      this.setState({ soSizeError: true, formIsValid: false });
+      return false;
+    }
+
     return true;
   };
 
@@ -266,15 +272,11 @@ class BotForm extends React.Component {
     /**
      * Refer to bots.md
      */
-    const { strategy, base_order_size, so_size, max_so_count } = this.state;
+    const { base_order_size, so_size, max_so_count, short_order } = this.state;
     const { balances, symbolInfo } = this.props;
     let asset;
     if (symbolInfo) {
-      if (strategy === "long") {
-        asset = symbolInfo.quoteAsset;
-      } else {
-        asset = symbolInfo.baseAsset;
-      }
+      asset = symbolInfo.quoteAsset;
 
       let value = "0";
       let name = "";
@@ -286,12 +288,14 @@ class BotForm extends React.Component {
       });
 
       if (!checkValue(value) && !checkBalance(value)) {
-        const updatedValue =
-          value - (base_order_size * 1 + so_size * max_so_count);
+        const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
+        const safetyOrders = parseFloat(so_size) * parseInt(max_so_count);
+        const shortOrder = parseFloat(short_order);
+        const updatedValue = (value - (baseOrder + safetyOrders + shortOrder)).toFixed(8);
 
         // Check that we have enough funds
         // If not return error
-        if (parseFloat(updatedValue) >= 0) {
+        if (parseFloat(updatedValue) > 0) {
           this.setState({
             balance_available: updatedValue,
             balance_available_asset: name,
@@ -391,6 +395,13 @@ class BotForm extends React.Component {
       this.setState({ strategy: "short" });
     } else {
       this.setState({ strategy: "long" });
+    }
+  }
+
+  handleActivation = (e) => {
+    const validation = this.requiredinValidation();
+    if (validation) {
+      this.props.activateBot(this.state._id)
     }
   }
 
@@ -733,9 +744,7 @@ class BotForm extends React.Component {
                         <ButtonToggle
                           className="btn-round"
                           color="primary"
-                          onClick={() => {
-                            this.props.activateBot(this.state._id)
-                            }}
+                          onClick={this.handleActivation}
                           disabled={checkValue(this.state._id)}
                         >
                           Activate
@@ -763,7 +772,10 @@ class BotForm extends React.Component {
                               <li>Base order size</li>
                             )}
                             {this.state.soSizeError && (
-                              <li>Safety order size</li>
+                              <>
+                                <li>Safety order size</li>
+                                <li>Check balance for Safety order size</li>
+                              </>
                             )}
                             {this.state.priceDevSoError && (
                               <li>Price deviation</li>

@@ -157,7 +157,7 @@ class Deal(Account):
                 "price": supress_notation(stop_price),
                 "stop_price": supress_notation(stop_price)
             }
-            res = requests.post(url=self.bb_stop_buy_order_url, data=json.dumps(order))
+            res = requests.post(url=self.bb_stop_buy_order_url, json=order)
             if isinstance(handle_error(res), Response):
                 return handle_error(res)
 
@@ -184,7 +184,13 @@ class Deal(Account):
         
         self.active_bot["deals"].append(so_deals)
         botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": so_deals }})
-        
+        if not botId:
+            resp = jsonResp(
+                {"message": "Failed to save take_profit deal in the bot", "botId": str(findId)},
+                200,
+            )
+            return resp
+
         return so_deals
 
     def long_take_profit_order(self):
@@ -395,17 +401,17 @@ class Deal(Account):
         if isinstance(can_initialize, Response):
             return can_initialize
 
-        long_base_order = self.long_base_order()
-        if isinstance(long_base_order, Response):
-            msg = long_base_order.json["message"]
-            return jsonResp_message(msg, 200)
-        new_deal["base_order"] = long_base_order
+        # long_base_order = self.long_base_order()
+        # if isinstance(long_base_order, Response):
+        #     msg = long_base_order.json["message"]
+        #     return jsonResp_message(msg, 200)
+        # new_deal["base_order"] = long_base_order
 
         # Only do Safety orders if required
         if int(self.active_bot["max_so_count"]) > 0:
             long_safety_order_generator = self.long_safety_order_generator()
             if isinstance(long_safety_order_generator, Response):
-                msg = long_safety_order_generator.json["msg"]
+                msg = long_safety_order_generator.json["message"]
                 return jsonResp_message(msg, 200)
             new_deal["so_orders"] = long_safety_order_generator
 

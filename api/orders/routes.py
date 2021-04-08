@@ -27,11 +27,11 @@ def create_take_profit_sell_order():
     return Sell_Order().post_take_profit_limit()
 
 @order_blueprint.route("/buy/stop-limit", methods=["POST"])
-def create_take_profit_buy_order():
+def create_stop_loss_buy_order():
     return Buy_Order().post_stop_loss_limit()
 
 @order_blueprint.route("/sell/stop-limit", methods=["POST"])
-def create_take_profit_sell_order():
+def create_stop_loss_sell_order():
     return Sell_Order().post_stop_loss_limit()
 
 @order_blueprint.route("/poll", methods=["GET"])
