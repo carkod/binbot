@@ -20,6 +20,8 @@ class Deal(Account):
     bb_sell_market_order_url = f'{bb_base_url}/order/sell/market'
     bb_opened_orders_url = f'{bb_base_url}/order/open'
     bb_close_order_url = f'{bb_base_url}/order/close'
+    bb_stop_buy_order_url = f'{bb_base_url}/order/buy/stop-limit'
+    bb_stop_sell_order_url = f'{bb_base_url}/order/sell/stop-limit'
 
     def __init__(self, bot, app):
         # Inherit also the __init__ from parent class
@@ -44,6 +46,9 @@ class Deal(Account):
             "time_in_force": "GTC",
         }
         self.total_amount = 0
+        self.max_so_count = int(bot["max_so_count"])
+        self.balances = 0
+        self.decimal_precision = self.get_quote_asset_precision(self.active_bot["pair"])
 
     def initialization(self):
         """
@@ -55,9 +60,9 @@ class Deal(Account):
         """
 
         asset = self.find_quoteAsset(self.active_bot["pair"])
-        balance = self.get_one_balance(asset)
+        self.balance = self.get_one_balance(asset)
 
-        if not balance:
+        if not self.balance:
             return jsonResp_message(f"[Deal init error] No {asset} balance", 200)
 
         self.active_bot["balance_usage_size"] = self.get_one_balance(asset)
@@ -131,33 +136,31 @@ class Deal(Account):
     def long_safety_order_generator(self):
         length = self.max_so_count
         so_deals = []
+        base_order_deal = next((bo_deal for bo_deal in self.active_bot["deals"] if bo_deal["deal_type"] == "base_order"), None)
+        take_profit = float(self.active_bot["take_profit"])
+        so_deviation = float(self.active_bot["price_deviation_so"]) / 100
         index = 0
         for index in range(length):
             index += 1
 
             # Recursive order
             pair = self.active_bot['pair']
-            qty = math.floor(self.division * 1000000) / 1000000
+            so_proportion = self.active_bot["so_size"]
+            qty = round_numbers(so_proportion, 8)
 
-            # SO mark based on take profit
-            increase_from_tp = float(self.take_profit) / int(self.max_so_count)
+            # Stop price
+            stop_price = float(base_order_deal["price"])
 
-            # last book order price
-            market_price = float(Book_Order(pair).matching_engine(True, qty))
-
-            # final order price.
-            # Index incrementally increases price added markup
-            # +1 to exclude index 0 and first base order (index 1) from safety order
-            price = market_price * (1 + (increase_from_tp * (index + 1)))
-            # round down number
-            price = round_numbers(price, 2)
             order = {
                 "pair": pair,
                 "qty": qty,
-                "price": price,
+                "price": supress_notation(stop_price),
+                "stop_price": supress_notation(stop_price)
             }
-            res = requests.post(url=self.bb_buy_order_url, data=json.dumps(order))
-            handle_error(res)
+            res = requests.post(url=self.bb_stop_buy_order_url, data=json.dumps(order))
+            if isinstance(handle_error(res), Response):
+                return handle_error(res)
+
             order = res.json()
 
             safety_orders = {

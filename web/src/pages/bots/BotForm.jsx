@@ -63,7 +63,7 @@ class BotForm extends React.Component {
       baseOrderSizeError: false,
       short_order: "",
       shortOrderError: false,
-      short_stop_price: "",
+      short_stop_price: 0,
       max_so_count: "0",
       maxSOCountError: false,
       name: "Default bot",
@@ -432,7 +432,7 @@ class BotForm extends React.Component {
         <Form onSubmit={this.handleSubmit}>
           <Row>
             <Col md="7" sm="12">
-              {!checkValue(this.props.bot) ?
+              {!checkValue(this.props.bot) && !checkValue(this.props.match.params.id) ?
                   <BotInfo
                     bot={this.props.bot}
                   />
@@ -565,6 +565,7 @@ class BotForm extends React.Component {
                               <InputGroupText>%</InputGroupText>
                             </InputGroupAddon>
                           </InputGroup>
+                          <small>Price</small>
                         </Col>
                         <Col md="6" sm="12">
                           <Label htmlFor="short_order">
@@ -577,6 +578,7 @@ class BotForm extends React.Component {
                             // onBlur={this.handleShortOrder}
                             value={this.state.short_order}
                           />
+                          <small>Quantity</small>
                         </Col>
                       </Row>
                     </TabPane>

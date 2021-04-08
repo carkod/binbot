@@ -109,7 +109,6 @@ class Bot(Account):
             return resp
 
     def activate(self):
-        resp = jsonResp({"message": "Bot activation is not available"}, 400)
         findId = request.view_args["botId"]
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
 

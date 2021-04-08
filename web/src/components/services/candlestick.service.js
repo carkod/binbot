@@ -26,7 +26,7 @@ export const generateOrders = (data, bot) => {
     }
   }
 
-  // Base order
+  // Base order Annotation
   const baseOrderA = {
     x: currentTime,
     y: currentPrice,
@@ -37,6 +37,7 @@ export const generateOrders = (data, bot) => {
     showarrow: false,
     xanchor: "left",
   };
+  // Base order Shape
   const baseOrderS = {
     type: "line",
     xref: "x",
@@ -52,6 +53,41 @@ export const generateOrders = (data, bot) => {
   };
   shapes.push(baseOrderS);
   annotations.push(baseOrderA);
+
+
+  // Short (switch) order
+  const shortOrderPrice = currentPrice - (currentPrice * (bot.short_stop_price / 100));
+  if (!checkValue(bot.short_stop_price)) {
+    // Annotation
+    const shortOrderA = {
+      x: currentTime,
+      y: shortOrderPrice,
+      xref: "x",
+      yref: "y",
+      text: "Short Order",
+      font: { color: "#FD9F23" },
+      showarrow: false,
+      xanchor: "left",
+    }
+    // Shape
+    const shortOrderS = {
+      type: "line",
+      xref: "x",
+      yref: "y",
+      x0: data.trace[0].x[0],
+      y0: shortOrderPrice,
+      x1: currentTime,
+      y1: shortOrderPrice,
+      line: {
+        color: "#FD9F23",
+        width: 4,
+      },
+    }
+    shapes.push(shortOrderS);
+    annotations.push(shortOrderA);
+  }
+  
+
 
   // Take profit order
   const price = (
