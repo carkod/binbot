@@ -4,6 +4,7 @@ import {
   Alert,
   Badge,
   Button,
+  ButtonToggle,
   Card,
   CardBody,
   CardHeader,
@@ -19,14 +20,10 @@ import {
   Row,
   TabContent,
   TabPane,
-  ButtonToggle,
-  InputGroupAddon,
-  InputGroupText,
-  InputGroup,
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
+import BotInfo from "../../components/BotInfo";
 import Candlestick from "../../components/Candlestick";
-import SymbolSearch from "../../components/SymbolSearch";
 import {
   checkBalance,
   checkMinValue,
@@ -36,17 +33,18 @@ import {
 } from "../../validations.js";
 import { getBalance } from "../dashboard/actions";
 import {
+  activateBot,
   createBot,
+  deactivateBot,
   editBot,
   getBot,
-  activateBot,
-  deactivateBot,
   getSymbolInfo,
   getSymbols,
   loadCandlestick,
 } from "./actions";
-import BotInfo from "../../components/BotInfo";
 import { getQuoteAsset } from "./requests";
+import MainTab from "./tabs/Main";
+import ShortTab from "./tabs/Short";
 class BotForm extends React.Component {
   constructor(props) {
     super(props);
@@ -82,10 +80,12 @@ class BotForm extends React.Component {
       traillingDeviationError: false,
       formIsValid: true,
       activeTab: "main",
-      candlestick_interval: intervalOptions[5],
+      candlestick_interval: intervalOptions[11],
       deals: [],
       quoteAsset: "",
       baseAsset: "",
+      stop_loss: 0,
+      stopLossError: false,
     };
   }
 
@@ -122,7 +122,8 @@ class BotForm extends React.Component {
         trailling_deviation: this.props.bot.trailling_deviation,
         deals: this.props.bot.deals,
         short_order: this.props.bot.short_order,
-        short_stop_price: this.props.bot.short_stop_price
+        short_stop_price: this.props.bot.short_stop_price,
+        stop_loss: this.props.bot.stop_loss
       });
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
@@ -151,12 +152,14 @@ class BotForm extends React.Component {
         ? this.props.history.location.state.candlestick_interval
         : this.state.candlestick_interval;
       this.props.loadCandlestick(this.state.pair, interval);
-      getQuoteAsset(this.state.pair).then(({data}) => this.setState({ quoteAsset: data }))
-      this.setState({ name: `${this.state.pair}_${new Date().getTime()}`})
+      getQuoteAsset(this.state.pair).then(({ data }) =>
+        this.setState({ quoteAsset: data })
+      );
+      this.setState({ name: `${this.state.pair}_${new Date().getTime()}` });
     }
 
     if (this.props.botActive !== p.botActive) {
-      this.props.getBot(this.props.match.params.id)
+      this.props.getBot(this.props.match.params.id);
     }
   };
 
@@ -224,7 +227,10 @@ class BotForm extends React.Component {
       }
     }
 
-    if (checkValue(this.state.balance_available) || parseFloat(this.state.balance_available) >= 0) {
+    if (
+      checkValue(this.state.balance_available) ||
+      parseFloat(this.state.balance_available) <= 0
+    ) {
       this.setState({ soSizeError: true, formIsValid: false });
       return false;
     }
@@ -253,7 +259,7 @@ class BotForm extends React.Component {
         trailling: this.state.trailling,
         trailling_deviation: this.state.trailling_deviation,
         short_order: this.state.short_order,
-        short_stop_price: this.state.short_stop_price
+        short_stop_price: this.state.short_stop_price,
       };
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -291,7 +297,10 @@ class BotForm extends React.Component {
         const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
         const safetyOrders = parseFloat(so_size) * parseInt(max_so_count);
         const shortOrder = parseFloat(short_order);
-        const updatedValue = (value - (baseOrder + safetyOrders + shortOrder)).toFixed(8);
+        const updatedValue = (
+          value -
+          (baseOrder + safetyOrders + shortOrder)
+        ).toFixed(8);
 
         // Check that we have enough funds
         // If not return error
@@ -396,14 +405,14 @@ class BotForm extends React.Component {
     } else {
       this.setState({ strategy: "long" });
     }
-  }
+  };
 
   handleActivation = (e) => {
     const validation = this.requiredinValidation();
     if (validation) {
-      this.props.activateBot(this.state._id)
+      this.props.activateBot(this.state._id);
     }
-  }
+  };
 
   render() {
     return (
@@ -443,15 +452,20 @@ class BotForm extends React.Component {
         <Form onSubmit={this.handleSubmit}>
           <Row>
             <Col md="7" sm="12">
-              {!checkValue(this.props.bot) && !checkValue(this.props.match.params.id) ?
-                  <BotInfo
-                    bot={this.props.bot}
-                  />
-                : ""}
+              {!checkValue(this.props.bot) &&
+              !checkValue(this.props.match.params.id) ? (
+                <BotInfo bot={this.props.bot} />
+              ) : (
+                ""
+              )}
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    <small>Base order size must be always filled and will always be triggered in activation. Short order will replace base order if it reaches stop price.</small>
+                    <small>
+                      Base order size must be always filled and will always be
+                      triggered in activation. Short order will replace base
+                      order if it reaches stop price.
+                    </small>
                     <br />
                     <br />
                     <Nav tabs>
@@ -463,6 +477,16 @@ class BotForm extends React.Component {
                           onClick={() => this.toggle("main")}
                         >
                           Main
+                        </NavLink>
+                      </NavItem>
+                      <NavItem>
+                        <NavLink
+                          className={
+                            this.state.activeTab === "short" ? "active" : ""
+                          }
+                          onClick={() => this.toggle("short")}
+                        >
+                          Short
                         </NavLink>
                       </NavItem>
                       <NavItem>
@@ -494,105 +518,26 @@ class BotForm extends React.Component {
                 </CardHeader>
                 <CardBody>
                   {/*
-                    Main tab
+                    Tab contents
                   */}
                   <TabContent activeTab={this.state.activeTab}>
-                    <TabPane tabId="main">
-                      <Row className="u-margin-bottom">
-                        <Col md="6" sm="12">
-                          <SymbolSearch
-                            name="Pair"
-                            label="Select pair"
-                            options={this.props.symbols}
-                            selected={this.state.pair}
-                            handleChange={this.handlePairChange}
-                            handleBlur={this.handlePairBlur}
-                          />
-                        </Col>
-                        <Col md="6" sm="12">
-                          <Label htmlFor="name">Name</Label>
-                          <Input
-                            type="text"
-                            name="name"
-                            onChange={this.handleChange}
-                            value={this.state.name}
-                          />
-                        </Col>
-                      </Row>
-                      <Row className="u-margin-bottom">
-                        <Col md="6" sm="12">
-                          <Label htmlFor="base_order_size">
-                            Base order size<span className="u-required">*</span>
-                          </Label>
-                          <InputGroup>
-                            <Input
-                              type="text"
-                              name="base_order_size"
-                              onChange={this.handleBaseChange}
-                              onBlur={this.handleBlur}
-                              value={this.state.base_order_size}
-                            />
-                            <InputGroupAddon addonType="append">
-                              <InputGroupText>{this.state.quoteAsset}</InputGroupText>
-                            </InputGroupAddon>
-                          </InputGroup>
-                          <FormFeedback valid={!this.state.baseOrderSizeError}>
-                            Not enough balance
-                          </FormFeedback>
-                          <Badge color="secondary" onClick={this.addAll}>
-                            All
-                          </Badge>
-                        </Col>
-                        <Col md="6" sm="12">
-                          <Label htmlFor="strategy">
-                            Strategy
-                          </Label>
-                          <Input
-                            type="input"
-                            name="strategy"
-                            value={this.state.strategy}
-                            disabled={true}
-                          >
-                          </Input>
-                          <small>
-                            Long for trends. Short for vertical movement.
-                          </small>
-                        </Col>
-                      </Row>
-                      <Row className="u-margin-bottom">
-                        <Col md="6" sm="12">
-                          <Label htmlFor="short_stop_price">
-                            Short order stop
-                          </Label>
-                          <InputGroup>
-                            <Input
-                              type="number"
-                              name="short_stop_price"
-                              onChange={this.handleShortOrder}
-                              // onBlur={this.handleShortOrder}
-                              value={this.state.short_stop_price}
-                            />
-                            <InputGroupAddon addonType="append">
-                              <InputGroupText>%</InputGroupText>
-                            </InputGroupAddon>
-                          </InputGroup>
-                          <small>Price</small>
-                        </Col>
-                        <Col md="6" sm="12">
-                          <Label htmlFor="short_order">
-                            Short order
-                          </Label>
-                          <Input
-                            type="text"
-                            name="short_order"
-                            onChange={this.handleShortOrder}
-                            // onBlur={this.handleShortOrder}
-                            value={this.state.short_order}
-                          />
-                          <small>Quantity</small>
-                        </Col>
-                      </Row>
-                    </TabPane>
+                    <MainTab
+                      symbols={this.props.symbols}
+                      state={this.state}
+                      handlePairChange={this.handlePairChange}
+                      handlePairBlur={this.handlePairBlur}
+                      handleChange={this.handleChange}
+                      handleBaseChange={this.handleBaseChange}
+                      handleBlur={this.handleBlur}
+                      addAll={this.addAll}
+                    />
+
+                    <ShortTab
+                      state={this.state}
+                      handleChange={this.handleChange}
+                      handleBlur={this.handleBlur}
+                      handleShortOrder={this.handleShortOrder}
+                    />
 
                     {/*
                       Safey orders tab
@@ -731,7 +676,7 @@ class BotForm extends React.Component {
                         <ButtonToggle
                           className="btn-round"
                           color="danger"
-                          onClick={() => 
+                          onClick={() =>
                             this.props.deactivateBot(this.state._id)
                           }
                           disabled={checkValue(this.state._id)}

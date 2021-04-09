@@ -85,9 +85,37 @@ export const generateOrders = (data, bot) => {
     }
     shapes.push(shortOrderS);
     annotations.push(shortOrderA);
-  }
-  
 
+    // Stop loss
+    const stopLossPrice = currentPrice - (currentPrice * (bot.stop_loss / 100));
+    // Annotation
+    const stopLossA = {
+      x: currentTime,
+      y: stopLossPrice,
+      xref: "x",
+      yref: "y",
+      text: "Stop loss",
+      font: { color: "Blue" },
+      showarrow: false,
+      xanchor: "left",
+    }
+    // Shape
+    const stopLossS = {
+      type: "line",
+      xref: "x",
+      yref: "y",
+      x0: data.trace[0].x[0],
+      y0: stopLossPrice,
+      x1: currentTime,
+      y1: stopLossPrice,
+      line: {
+        color: "Blue",
+        width: 4,
+      },
+    }
+    shapes.push(stopLossS);
+    annotations.push(stopLossA);
+  }
 
   // Take profit order
   const price = (
