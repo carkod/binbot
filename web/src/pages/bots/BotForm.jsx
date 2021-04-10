@@ -59,7 +59,7 @@ class BotForm extends React.Component {
       balance_usage_size: "0", // Computed
       base_order_size: "",
       baseOrderSizeError: false,
-      short_order: "",
+      short_order: "0",
       shortOrderError: false,
       short_stop_price: 0,
       max_so_count: "0",
@@ -123,7 +123,7 @@ class BotForm extends React.Component {
         deals: this.props.bot.deals,
         short_order: this.props.bot.short_order,
         short_stop_price: this.props.bot.short_stop_price,
-        stop_loss: this.props.bot.stop_loss
+        stop_loss: this.props.bot.stop_loss,
       });
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
@@ -226,10 +226,9 @@ class BotForm extends React.Component {
         this.setState({ traillingDeviationError: false });
       }
     }
-
     if (
       checkValue(this.state.balance_available) ||
-      parseFloat(this.state.balance_available) <= 0
+      parseFloat(this.state.balance_available) === 0
     ) {
       this.setState({ soSizeError: true, formIsValid: false });
       return false;
@@ -260,7 +259,7 @@ class BotForm extends React.Component {
         trailling_deviation: this.state.trailling_deviation,
         short_order: this.state.short_order,
         short_stop_price: this.state.short_stop_price,
-        stop_loss: this.state.stop_loss
+        stop_loss: this.state.stop_loss,
       };
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -280,15 +279,13 @@ class BotForm extends React.Component {
      * Refer to bots.md
      */
     const { base_order_size, so_size, max_so_count, short_order } = this.state;
-    const { balances, symbolInfo } = this.props;
-    let asset;
-    if (symbolInfo) {
-      asset = symbolInfo.quoteAsset;
+    const { balances } = this.props;
 
-      let value = "0";
-      let name = "";
+    let value = "0";
+    let name = "";
+    if (!checkValue(this.state.quoteAsset)) {
       balances.forEach((x) => {
-        if (asset === x.asset) {
+        if (this.state.quoteAsset === x.asset) {
           value = x.free;
           name = x.asset;
         }
@@ -312,6 +309,11 @@ class BotForm extends React.Component {
             baseOrderSizeError: false,
             balanceAvailableError: false,
           });
+          if (parseFloat(this.state.so_size) > 0) {
+            this.setState({
+              soSizeError: false
+            })
+          }
         } else {
           this.setState({ baseOrderSizeError: true, formIsValid: false });
         }
@@ -756,14 +758,12 @@ class BotForm extends React.Component {
 const mapStateToProps = (state) => {
   const { data: balances } = state.balanceReducer;
   const { data: symbols } = state.symbolReducer;
-  const { data: symbolInfo } = state.symbolInfoReducer;
   const { data: bot } = state.getSingleBotReducer;
   const { data: candlestick } = state.candlestickReducer;
   const { botId, botActive } = state.botReducer;
   return {
     balances: balances,
     symbols: symbols,
-    symbolInfo: symbolInfo,
     bot: bot,
     candlestick: candlestick,
     newBotId: botId,

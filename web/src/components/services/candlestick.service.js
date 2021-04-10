@@ -57,7 +57,7 @@ export const generateOrders = (data, bot) => {
 
   // Short (switch) order
   const shortOrderPrice = currentPrice - (currentPrice * (bot.short_stop_price / 100));
-  if (!checkValue(bot.short_stop_price)) {
+  if (!checkValue(bot.short_stop_price) && parseFloat(bot.short_stop_price > 0)) {
     // Annotation
     const shortOrderA = {
       x: currentTime,

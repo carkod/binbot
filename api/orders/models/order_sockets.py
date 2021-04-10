@@ -73,6 +73,7 @@ class OrderUpdates:
 
         with app.app_context():
             if result['X'] == "FILLED":
+                # Close successful orders
                 completed = app.db.bots.find_one_and_update({
                     "deals": {
                         "$elemMatch": {
@@ -82,5 +83,21 @@ class OrderUpdates:
                 }, {"active": "false"})
                 if completed:
                     print(f"Bot take_profit completed! {completed}. Bot deactivated")
+
+                # Update Safety orders
+                # so_update = app.db.bots.find_one_and_update({
+                #     "deals": {
+                #         "$elemMatch": {
+                #             "deal_type": "safety_order", "order_id": client_order_id
+                #         }
+                #     }
+                # }, {"deals": {
+                #     "$set": {
+                #         "deal_type": "take_profit", "order_id": client_order_id
+                #     }
+                # } })
+                # if so_update:
+
+                #     print(f"Bot safety order completed! {completed}. Take profit updated")
             else:
                 print(f"No bot found with order client order id: {client_order_id}")

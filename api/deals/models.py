@@ -134,6 +134,7 @@ class Deal(Account):
         return base_deal
 
     def long_safety_order_generator(self):
+        pair = self.active_bot['pair']
         length = self.max_so_count
         so_deals = []
         base_order_deal = next((bo_deal for bo_deal in self.active_bot["deals"] if bo_deal["deal_type"] == "base_order"), None)
@@ -144,19 +145,20 @@ class Deal(Account):
             index += 1
 
             # Stop price
-            stop_price = float(base_order_deal["price"])
+            # stop_price = float(base_order_deal["price"]) - ((int(self.active_bot["price_deviation_so"]) / 100) * float(base_order_deal["price"]))
+            stop_price = float(0.00006) - ((int(self.active_bot["price_deviation_so"]) / 100) * float(0.00006))
 
             # Recursive order
-            pair = self.active_bot['pair']
             so_proportion = float(self.active_bot["so_size"]) / stop_price
             qty = round_numbers(so_proportion, 0)
+            # Price is a little higher to make it easier to buy
+            price = stop_price + (stop_price * 0.01)
 
             order = {
                 "pair": pair,
                 "qty": qty,
-                "price": supress_notation(stop_price),
+                "price": supress_notation(price),
                 "stop_price": supress_notation(stop_price),
-                "newOrderRespType": "FULL"
             }
             res = requests.post(url=self.bb_stop_buy_order_url, json=order)
             if isinstance(handle_error(res), Response):
@@ -171,7 +173,7 @@ class Deal(Account):
                 "pair": response["symbol"],
                 "order_side": response["side"],
                 "order_type": response["type"],
-                "price": price,
+                "price": response["price"],
                 "qty": response["origQty"],
                 "fills": response["fills"],
                 "time_in_force": response["timeInForce"],
@@ -203,28 +205,30 @@ class Deal(Account):
         - take_profit order can ONLY be executed once base order is filled (on Binance)
         """
         pair = self.active_bot['pair']
-        price = (1 + (float(self.active_bot["take_profit"]) / 100)) * self.price
+        base_order_deal = next((bo_deal for bo_deal in self.active_bot["deals"] if bo_deal["deal_type"] == "base_order"), None)
+        stop_price = (1 + (float(self.active_bot["take_profit"]) / 100)) * base_order_deal["price"]
         decimal_precision = self.get_quote_asset_precision(pair)
         qty = round_numbers(self.total_amount, 0)
-        price = round_numbers(price, 6)
+        stop_price = round_numbers(price, 6)
+        real_price = price - (price * 0.01)
 
         # Validations
-        if price:
-            if price <= float(self.MIN_PRICE):
+        if stop_price:
+            if stop_price <= float(self.MIN_PRICE):
                 return jsonResp_message("[Long take profit order error] Price too low", 200)
         # Avoid common rate limits
         if qty <= float(self.MIN_QTY):
             return jsonResp_message("[Long take profit order error] Quantity too low", 200)
-        if price * qty <= float(self.MIN_NOTIONAL):
+        if stop_price * qty <= float(self.MIN_NOTIONAL):
             return jsonResp_message("[Long take profit order error] Price x Quantity too low", 200)
 
         order = {
             "pair": pair,
             "qty": qty,
-            "price": supress_notation(price), # Theoretically stop_price, as we don't have book orders
-            "stop_price": supress_notation(price),
+            "price": supress_notation(real_price), # Cheaper price to make it sellable
+            "stop_price": supress_notation(stop_price),
         }
-        res = requests.post(url=self.bb_sell_order_url, json=order)
+        res = requests.post(url=self.bb_tp_sell_order_url, json=order)
         if isinstance(handle_error(res), Response):
             return handle_error(res)
         order = res.json()
@@ -236,7 +240,7 @@ class Deal(Account):
             "pair": order["symbol"],
             "order_side": order["side"],
             "order_type": order["type"],
-            "price": price,
+            "price": order["price"],
             "qty": order["origQty"],
             "fills": order["fills"],
             "time_in_force": order["timeInForce"],
@@ -294,7 +298,7 @@ class Deal(Account):
             "pair": stop_limit_order["symbol"],
             "order_side": stop_limit_order["side"],
             "order_type": stop_limit_order["type"],
-            "price": stop_loss_price,
+            "price": stop_limit_order["price"],
             "qty": stop_limit_order["origQty"],
             "fills": stop_limit_order["fills"],
             "time_in_force": stop_limit_order["timeInForce"],
@@ -344,7 +348,7 @@ class Deal(Account):
             "pair": order["symbol"],
             "order_side": order["side"],
             "order_type": order["type"],
-            "price": price,
+            "price": order["price"],
             "qty": order["origQty"],
             "fills": order["fills"],
             "time_in_force": order["timeInForce"],
@@ -366,12 +370,15 @@ class Deal(Account):
         if isinstance(can_initialize, Response):
             return can_initialize
 
-        long_base_order = self.long_base_order()
-        if isinstance(long_base_order, Response):
-            msg = long_base_order.json["message"]
-            return jsonResp_message(msg, 200)
+        # If there is already a base order do not execute
+        base_order_deal = next((bo_deal for bo_deal in self.active_bot["deals"] if len(bo_deal) > 0 and (bo_deal["deal_type"] == "base_order")), None)
+        if not base_order_deal:
+            long_base_order = self.long_base_order()
+            if isinstance(long_base_order, Response):
+                msg = long_base_order.json["message"]
+                return jsonResp_message(msg, 200)
 
-        Only do Safety orders if required
+        # Only do Safety orders if required
         if int(self.active_bot["max_so_count"]) > 0:
             long_safety_order_generator = self.long_safety_order_generator()
             if isinstance(long_safety_order_generator, Response):
@@ -382,7 +389,8 @@ class Deal(Account):
         if isinstance(long_take_profit_order, Response):
             msg = long_take_profit_order.json["message"]
             return jsonResp_message(msg, 200)
-    
+
+        # If short order is enabled 
         if float(self.active_bot["short_order"]) > 0:
             short_stop_limit_order = self.short_stop_limit_order()
             if isinstance(short_stop_limit_order, Response):
@@ -393,12 +401,6 @@ class Deal(Account):
             if isinstance(short_order, Response):
                 msg = short_order.json["message"]
                 return jsonResp_message(msg, 200)
-        else:
-            resp = jsonResp(
-                {"message": "Short order size not set", "botId": str(findId)},
-                200,
-            )
-            return resp
 
         return
 
