@@ -30,6 +30,7 @@ class Bot(Account):
             "deal_min_value": "0",
             "cooldown": "0",
             "deals": [],
+            "stop_loss": "0"
         }
 
     def get(self):

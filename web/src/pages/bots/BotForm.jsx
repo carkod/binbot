@@ -260,6 +260,7 @@ class BotForm extends React.Component {
         trailling_deviation: this.state.trailling_deviation,
         short_order: this.state.short_order,
         short_stop_price: this.state.short_stop_price,
+        stop_loss: this.state.stop_loss
       };
       if (this.state._id === null) {
         this.props.createBot(form);
