@@ -163,6 +163,16 @@ class BotForm extends React.Component {
     if (this.props.botActive !== p.botActive && !checkValue(this.props.match.params.id)) {
       this.props.getBot(this.props.match.params.id);
     }
+
+    // Candlestick data updates
+    if (!checkValue(this.props.candlestick) && this.props.candlestick !== p.candlestick) {
+      const { trace } = this.props.candlestick;
+      if (trace.length > 0) {
+        const currentPrice = parseFloat(trace[0].close[trace.length - 1]);
+        const profitChange = (currentPrice - parseFloat(this.props.bot.base_order_size)) / parseFloat(this.props.bot.base_order_size);
+        this.setState({ bot_profit: profitChange.toFixed(4) })
+      }
+    }
   };
 
   requiredinValidation = () => {
@@ -426,7 +436,11 @@ class BotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <CardTitle tag="h5">{this.state.pair}</CardTitle>
+                <CardTitle tag="h5">{this.state.pair}{" "}
+                  {!checkValue(this.state.bot_profit) &&
+                    <Badge color={this.state.bot_profit > 0 ? "success" : "danger"}>{this.state.bot_profit + "%"}</Badge>
+                  }
+                </CardTitle>
                 {intervalOptions.map((item) => (
                   <Badge
                     key={item}
