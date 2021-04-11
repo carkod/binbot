@@ -114,27 +114,38 @@ class Bot(Account):
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            dealId = Deal(bot, app).open_deal()
+            dealId, order_errors = Deal(bot, app).open_deal()
 
             # If error
             if isinstance(dealId, Response):
                 resp = jsonResp(dealId.json, 200)
                 return resp
 
-            if dealId:
+            if dealId and not order_errors:
                 bot["active"] = "true"
                 bot["deals"].append(dealId)
                 botId = app.db.bots.save(bot)
                 if botId:
                     resp = jsonResp(
-                        {"message": "Successfully activated bot and triggered deals", "botId": str(findId)},
+                        {"message": "Successfully activated bot and triggered deals with no errors", "botId": str(findId)},
+                        200,
+                    )
+                return resp
+            elif dealId and order_errors:
+                bot["active"] = "true"
+                bot["deals"].append(dealId)
+                botId = app.db.bots.save(bot)
+                if botId:
+                    resp = jsonResp(
+                        {"message": f"Successfully activated bot, deals {','.join(order_errors)}", "botId": str(findId)},
                         200,
                     )
                 return resp
             else:
                 resp = jsonResp(
-                    {"message": "Deal creation failed", "botId": findId}, 400
+                    {"message": "Deal base order failed", "botId": findId}, 400
                 )
+
         else:
             resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp

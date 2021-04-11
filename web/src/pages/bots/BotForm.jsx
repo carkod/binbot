@@ -92,8 +92,10 @@ class BotForm extends React.Component {
   componentDidMount = () => {
     this.props.getBalance();
     this.props.getSymbols();
-    if (this.props.match.params.id !== undefined) {
+    if (!checkValue(this.props.match.params.id)) {
       this.props.getBot(this.props.match.params.id);
+      this.computeAvailableBalance();
+      this.requiredinValidation();
     }
   };
 
@@ -158,7 +160,7 @@ class BotForm extends React.Component {
       this.setState({ name: `${this.state.pair}_${new Date().getTime()}` });
     }
 
-    if (this.props.botActive !== p.botActive) {
+    if (this.props.botActive !== p.botActive && !checkValue(this.props.match.params.id)) {
       this.props.getBot(this.props.match.params.id);
     }
   };

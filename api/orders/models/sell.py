@@ -55,7 +55,7 @@ class Sell_Order():
             ('type', order_type),
             ('timeInForce', self.timeInForce),
             ('price', price),
-            ('quantity', qty)
+            ('quantity', qty),
         ]
         headers = {'X-MBX-APIKEY': self.key}
 
@@ -102,7 +102,8 @@ class Sell_Order():
             ('price', price),
             ('stopPrice', stop_price),
             ('quantity', qty),
-            ('timeInForce', self.timeInForce)
+            ('timeInForce', self.timeInForce),
+            ('newOrderRespType', "FULL"),
         ]
         headers = {'X-MBX-APIKEY': self.key}
 

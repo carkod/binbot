@@ -22,8 +22,8 @@ export default function BotInfo({
           </tr>
         </thead>
         <tbody>
-          {bot.deals.map(function(deal) {
-            if ("deal_type" in deal) {
+          {bot.deals.map((deal) => {
+            if (typeof deal === "object" && "deal_type" in deal) {
               return (
                 <tr key={deal.order_id}>
                   <th scope="row">{deal.order_id}</th>

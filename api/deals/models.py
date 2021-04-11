@@ -145,8 +145,7 @@ class Deal(Account):
             index += 1
 
             # Stop price
-            # stop_price = float(base_order_deal["price"]) - ((int(self.active_bot["price_deviation_so"]) / 100) * float(base_order_deal["price"]))
-            stop_price = float(0.00006) - ((int(self.active_bot["price_deviation_so"]) / 100) * float(0.00006))
+            stop_price = float(base_order_deal["price"]) - (so_deviation * float(base_order_deal["price"]))
 
             # Recursive order
             so_proportion = float(self.active_bot["so_size"]) / stop_price
@@ -181,20 +180,19 @@ class Deal(Account):
                 "status": response["status"],
             }
 
-            so_deals.append(safety_orders)
+            self.active_bot["deals"].append(safety_orders)
+            botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": safety_orders }})
+            if not botId:
+                resp = jsonResp(
+                    {"message": "Failed to save safety_order deal in the bot", "botId": str(findId)},
+                    200,
+                )
+                return resp
+
             if index > length:
                 break
-        
-        self.active_bot["deals"].append(so_deals)
-        botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": so_deals }})
-        if not botId:
-            resp = jsonResp(
-                {"message": "Failed to save safety_order deal in the bot", "botId": str(findId)},
-                200,
-            )
-            return resp
 
-        return so_deals
+        return
 
     def long_take_profit_order(self):
         """
@@ -206,21 +204,21 @@ class Deal(Account):
         """
         pair = self.active_bot['pair']
         base_order_deal = next((bo_deal for bo_deal in self.active_bot["deals"] if bo_deal["deal_type"] == "base_order"), None)
-        stop_price = (1 + (float(self.active_bot["take_profit"]) / 100)) * base_order_deal["price"]
+        stop_price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(base_order_deal["price"])
         decimal_precision = self.get_quote_asset_precision(pair)
-        qty = round_numbers(self.total_amount, 0)
-        stop_price = round_numbers(price, 6)
-        real_price = price - (price * 0.01)
+        qty = round_numbers(base_order_deal["qty"], 0)
+        stop_price = round_numbers(stop_price, 6)
+        real_price = stop_price - (stop_price * 0.01)
 
         # Validations
         if stop_price:
             if stop_price <= float(self.MIN_PRICE):
-                return jsonResp_message("[Long take profit order error] Price too low", 200)
+                return jsonResp_message("[Take profit order error] Price too low", 200)
         # Avoid common rate limits
         if qty <= float(self.MIN_QTY):
-            return jsonResp_message("[Long take profit order error] Quantity too low", 200)
+            return jsonResp_message("[Take profit order error] Quantity too low", 200)
         if stop_price * qty <= float(self.MIN_NOTIONAL):
-            return jsonResp_message("[Long take profit order error] Price x Quantity too low", 200)
+            return jsonResp_message("[Take profit order error] Price x Quantity too low", 200)
 
         order = {
             "pair": pair,
@@ -254,7 +252,7 @@ class Deal(Account):
                 200,
             )
             return resp
-        return order
+        return
     
     def short_stop_limit_order(self):
         """
@@ -366,6 +364,7 @@ class Deal(Account):
 
 
     def open_deal(self):
+        order_errors = []
         can_initialize = self.initialization()
         if isinstance(can_initialize, Response):
             return can_initialize
@@ -383,26 +382,26 @@ class Deal(Account):
             long_safety_order_generator = self.long_safety_order_generator()
             if isinstance(long_safety_order_generator, Response):
                 msg = long_safety_order_generator.json["message"]
-                return jsonResp_message(msg, 200)
+                order_errors.append(msg)
 
         long_take_profit_order = self.long_take_profit_order()
         if isinstance(long_take_profit_order, Response):
             msg = long_take_profit_order.json["message"]
-            return jsonResp_message(msg, 200)
+            order_errors.append(msg)
 
         # If short order is enabled 
         if float(self.active_bot["short_order"]) > 0:
             short_stop_limit_order = self.short_stop_limit_order()
             if isinstance(short_stop_limit_order, Response):
                 msg = short_stop_limit_order.json["message"]
-                return jsonResp_message(msg, 200)
+                order_errors.append(msg)
 
             short_order = self.short_base_order()
             if isinstance(short_order, Response):
                 msg = short_order.json["message"]
-                return jsonResp_message(msg, 200)
+                order_errors.append(msg)
 
-        return
+        return True, order_errors
 
     def close_deals(self):
         """
