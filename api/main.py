@@ -59,7 +59,7 @@ def index():
     return jsonResp({"status": "Online"}, 200)
 
 
-order_updates = OrderUpdates()
+order_updates = OrderUpdates(app)
 # start a worker process to move the received stream_data from the stream_buffer to a print function
 worker_thread = threading.Thread(target=order_updates.get_stream)
 worker_thread.start()

@@ -145,28 +145,25 @@ class Deal(Account):
             index += 1
 
             # Stop price
-            stop_price = float(base_order_deal["price"]) - (so_deviation * float(base_order_deal["price"]))
+            price = float(base_order_deal["price"]) - (so_deviation * float(base_order_deal["price"]))
 
             # Recursive order
-            so_proportion = float(self.active_bot["so_size"]) / stop_price
+            so_proportion = float(self.active_bot["so_size"]) / price
             qty = round_numbers(so_proportion, 0)
-            # Price is a little higher to make it easier to buy
-            price = stop_price + (stop_price * 0.01)
 
             order = {
                 "pair": pair,
                 "qty": qty,
                 "price": supress_notation(price),
-                "stop_price": supress_notation(stop_price),
             }
-            res = requests.post(url=self.bb_stop_buy_order_url, json=order)
+            res = requests.post(url=self.bb_buy_order_url, json=order)
             if isinstance(handle_error(res), Response):
                 return handle_error(res)
 
             response = res.json()
 
             safety_orders = {
-                "order_id": response["orderId"],
+                "order_id": response["clientOrderId"],
                 "deal_type": "safety_order",
                 "strategy": "long",  # change accordingly
                 "pair": response["symbol"],
@@ -253,6 +250,80 @@ class Deal(Account):
             )
             return resp
         return
+    
+    def update_take_profit(self, order_id):
+        """
+        Update take profit after websocket order endpoint triggered
+        - Close current opened take profit order
+        - Create new take profit order
+        - Update database by replacing old take profit deal with new take profit deal
+        """
+        bot = self.active_bot
+        for deal in bot["deals"]:
+            if deal == order_id:
+                so_deal_price = deal["price"]
+                # Create new take profit order
+                new_tp_price = float(so_deal_price) + (float(so_deal_price) * float(bot["take_profit"]) / 100)
+                asset = self.find_baseAsset(bot["pair"])
+                qty = self.get_one_balance(asset)
+
+                # Validations
+                if new_tp_price:
+                    if new_tp_price <= float(self.MIN_PRICE):
+                        return jsonResp_message("[Take profit order error] Price too low", 200)
+                if qty <= float(self.MIN_QTY):
+                    return jsonResp_message("[Take profit order error] Quantity too low", 200)
+                if new_tp_price * qty <= float(self.MIN_NOTIONAL):
+                    return jsonResp_message("[Take profit order error] Price x Quantity too low", 200)
+
+                new_tp_order = {
+                    "pair": bot["pair"],
+                    "qty": qty,
+                    "price": supress_notation(new_tp_price),
+                }
+                res = requests.post(url=self.bb_tp_sell_order_url, json=new_tp_order)
+                order = res.json()
+
+                # New take profit order successfully created
+                # Now cancel old
+                close_order_params = {
+                    "symbol": bot["pair"],
+                    "orderId": order_id
+                }
+                cancel_response = requests.post(url=self.bb_close_order_url, params=close_order_params)
+                canceled_order = res.json()
+                if canceled_order:
+                    print("Old take profit order cancelled")
+                
+                # Replace take_profit order
+                take_profit_deal = {
+                    "deal_type": "take_profit",
+                    "order_id": order["orderId"],
+                    "strategy": "long",  # change accordingly
+                    "pair": order["symbol"],
+                    "order_side": order["side"],
+                    "order_type": order["type"],
+                    "price": order["price"],
+                    "qty": order["origQty"],
+                    "fills": order["fills"],
+                    "time_in_force": order["timeInForce"],
+                    "status": order["status"],
+                }
+                # Build new deals list
+                new_deals = []
+                for d in bot["deals"]:
+                    if d["deal_type"] != "take_profit":
+                        new_deals.append(d)
+                
+                # Append now new take_profit deal
+                new_deals.append(take_profit_deal)
+                self.active_bot["deals"] = new_deals
+                botId = app.db.bots.update_one({"_id": self.active_bot["_id"]}, {"$push": {"deals": take_profit_order }})
+                if not botId:
+                    print(f"Failed to update take_profit deal: {botId}")
+                else:
+                    print(f"New take_profit deal successfully updated: {botId}")
+                return
     
     def short_stop_limit_order(self):
         """

@@ -169,8 +169,13 @@ class BotForm extends React.Component {
       const { trace } = this.props.candlestick;
       if (trace.length > 0) {
         const currentPrice = parseFloat(trace[0].close[trace.length - 1]);
-        const profitChange = (currentPrice - parseFloat(this.props.bot.base_order_size)) / parseFloat(this.props.bot.base_order_size);
-        this.setState({ bot_profit: profitChange.toFixed(4) })
+        if (!checkValue(this.props.bot) && this.props.bot.active === "true" && !checkValue(this.props.bot.base_order_size)) {
+          const profitChange = (currentPrice - parseFloat(this.props.bot.base_order_size)) / parseFloat(this.props.bot.base_order_size);
+          this.setState({ bot_profit: profitChange.toFixed(4) })
+        } else {
+          this.setState({ bot_profit: 0 })
+        }
+        
       }
     }
   };
@@ -437,8 +442,9 @@ class BotForm extends React.Component {
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
                 <CardTitle tag="h5">{this.state.pair}{" "}
-                  {!checkValue(this.state.bot_profit) &&
+                  {!checkValue(this.state.bot_profit) && this.state.active === "true" ?
                     <Badge color={this.state.bot_profit > 0 ? "success" : "danger"}>{this.state.bot_profit + "%"}</Badge>
+                  : "Inactive"
                   }
                 </CardTitle>
                 {intervalOptions.map((item) => (
@@ -690,31 +696,16 @@ class BotForm extends React.Component {
                     </TabPane>
                   </TabContent>
                   <Row>
-                    {this.state.active === "true" ? (
-                      <div className="update ml-auto mr-auto">
-                        <ButtonToggle
-                          className="btn-round"
-                          color="danger"
-                          onClick={() =>
-                            this.props.deactivateBot(this.state._id)
-                          }
-                          disabled={checkValue(this.state._id)}
-                        >
-                          Deactivate
-                        </ButtonToggle>
-                      </div>
-                    ) : (
-                      <div className="update ml-auto mr-auto">
-                        <ButtonToggle
-                          className="btn-round"
-                          color="primary"
-                          onClick={this.handleActivation}
-                          disabled={checkValue(this.state._id)}
-                        >
-                          Activate
-                        </ButtonToggle>
-                      </div>
-                    )}
+                    <div className="update ml-auto mr-auto">
+                      <ButtonToggle
+                        className="btn-round"
+                        color="primary"
+                        onClick={this.handleActivation}
+                        disabled={checkValue(this.state._id)}
+                      >
+                        Activate
+                      </ButtonToggle>
+                    </div>
                     <div className="update ml-auto mr-auto">
                       <Button
                         className="btn-round"

@@ -1,4 +1,5 @@
 import math
+from decimal import Decimal
 
 def round_numbers(value, decimals=6):
     decimal_points = 10 ** int(decimals)
@@ -34,4 +35,5 @@ def supress_notation(num: float):
     Supress scientific notation
     e.g. 8e-5 = "0.00008"
     """
-    return '%f' % (num)
+    decimal_points = Decimal(str(num)).as_tuple().exponent * -1
+    return f'{num:.{decimal_points}f}'

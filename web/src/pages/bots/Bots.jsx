@@ -73,12 +73,7 @@ class Bots extends React.Component {
                             tag="h5"
                             className="card-title u-uppercase"
                           >
-                            {x.strategy === "short" ? (
-                              <i className="fas fa-chart-line" />
-                            ) : (
-                              <i className="fa fa-angle-double-up" />
-                            )}
-                            {` ${x.strategy}`}
+                            0
                           </CardTitle>
                         </Col>
                       </Row>

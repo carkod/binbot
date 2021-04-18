@@ -2,14 +2,15 @@ import json
 import os
 
 import requests
-from flask import current_app as app
+from flask import current_app
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from websocket import create_connection, enableTrace, WebSocketApp
+from api.deals.models import Deal
+from api.account.models import Account
 
-
-class OrderUpdates:
-    def __init__(self):
+class OrderUpdates(Account):
+    def __init__(self, app):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
@@ -21,6 +22,7 @@ class OrderUpdates:
         self.path = "/ws"
         self.active_ws = None
         self.listenkey = None
+        self.app = app
 
         enableTrace(True)
 
@@ -46,7 +48,7 @@ class OrderUpdates:
         ws = create_connection(url, on_open=self.on_open, on_error=self.on_error, on_close=self.close_stream)
         result = ws.recv()
         result = json.loads(result)
-        if result["e"] == "reportExecution":
+        if result["e"] == "executionReport":
             self.process_report_execution(result)
 
     def close_stream(self, ws):
@@ -62,42 +64,45 @@ class OrderUpdates:
     
     def process_report_execution(self, result):
         # Parse result. Print result for raw result from Binance
-        client_order_id = result["C"] if result["X"] == "CANCELED" else result["c"]
+        order_id = result["i"]
         order_result = {
             "symbol": result["s"],
             "order_status": result["X"],
             "timestamp": result["E"],
-            "client_order_id": client_order_id,
+            "order_id": order_id,
             "created_at": result["O"],
         }
 
-        with app.app_context():
-            if result['X'] == "FILLED":
-                # Close successful orders
-                completed = app.db.bots.find_one_and_update({
-                    "deals": {
-                        "$elemMatch": {
-                            "deal_type": "take_profit", "order_id": client_order_id
-                        }
+        if result['X'] == "FILLED":
+            # Close successful orders
+            completed = self.app.db.bots.find_one_and_update({
+                "deals": {
+                    "$elemMatch": {
+                        "deal_type": "take_profit", "order_id": order_id
                     }
-                }, {"active": "false"})
-                if completed:
-                    print(f"Bot take_profit completed! {completed}. Bot deactivated")
-
-                # Update Safety orders
-                # so_update = app.db.bots.find_one_and_update({
-                #     "deals": {
-                #         "$elemMatch": {
-                #             "deal_type": "safety_order", "order_id": client_order_id
-                #         }
-                #     }
-                # }, {"deals": {
-                #     "$set": {
-                #         "deal_type": "take_profit", "order_id": client_order_id
-                #     }
-                # } })
-                # if so_update:
-
-                #     print(f"Bot safety order completed! {completed}. Take profit updated")
+                }
+            }, {"active": "false"})
+            if completed:
+                print(f"Bot take_profit completed! {completed}. Bot deactivated")
             else:
-                print(f"No bot found with order client order id: {client_order_id}")
+                print(f"Bot take_profit failed to complete! {completed}.")
+        
+        if result['X'] == "CANCELLED":
+            # Update Safety orders
+            order_price = float(result["p"])
+            bot = self.app.db.bots.find_one({
+                "deals": {
+                    "$elemMatch": {
+                        "deal_type": "safety_order", "order_id": order_id
+                    }
+                }
+            })
+
+            if bot:
+                # It is a safety order, now find safety order deal price
+                deal = Deal(bot, self.app)
+                deal.default_deal.update(bot)
+                order = deal.long_take_profit_order()
+
+        else:
+            print(f"No bot found with order client order id: {client_order_id}")
