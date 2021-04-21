@@ -38,3 +38,6 @@ A price to buy or sell cannot be chosen, because the matching engine takes care 
 
 ## Why do I often get base order size error?
 The base order size error is tightly coupled with available balance, as this is the main front-end controlled mechanism to prevent activating a bot that does not have enough funds. If this validation is removed, the Binance API will still complain of MIN NOTIONAL errors or similar.
+
+## Why not use algo orders for take_profit and safety_orders (TAKE_PROFIT, STOP_LOSS)?
+The Binance maximum is only 5 algo orders, which is not enough to make many orders.

@@ -137,7 +137,7 @@ class Bot(Account):
                 botId = app.db.bots.save(bot)
                 if botId:
                     resp = jsonResp(
-                        {"message": f"Successfully activated bot, deals {','.join(order_errors)}", "botId": str(findId)},
+                        {"message": f"Successfully activated bot, deals had errors {','.join(order_errors)}", "botId": str(findId)},
                         200,
                     )
                 return resp

@@ -30,10 +30,12 @@ def stringify_float(num, decimals=6):
     full_float = f"{num:{decimals}f}"
     return full_float
 
-def supress_notation(num: float):
+def supress_notation(num: float, precision:int=0):
     """
     Supress scientific notation
     e.g. 8e-5 = "0.00008"
     """
     decimal_points = Decimal(str(num)).as_tuple().exponent * -1
+    if precision > 0:
+        decimal_points = precision
     return f'{num:.{decimal_points}f}'

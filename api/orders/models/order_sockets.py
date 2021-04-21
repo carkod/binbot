@@ -87,7 +87,7 @@ class OrderUpdates(Account):
             else:
                 print(f"Bot take_profit failed to complete! {completed}.")
         
-        if result['X'] == "CANCELLED":
+        if result['X'] == "CANCELLED": # remove after tested
             # Update Safety orders
             order_price = float(result["p"])
             bot = self.app.db.bots.find_one({
@@ -105,4 +105,4 @@ class OrderUpdates(Account):
                 order = deal.long_take_profit_order()
 
         else:
-            print(f"No bot found with order client order id: {client_order_id}")
+            print(f"No bot found with order client order id: {order_id}")

@@ -140,12 +140,13 @@ class Deal(Account):
         base_order_deal = next((bo_deal for bo_deal in self.active_bot["deals"] if bo_deal["deal_type"] == "base_order"), None)
         take_profit = float(self.active_bot["take_profit"])
         so_deviation = float(self.active_bot["price_deviation_so"]) / 100
+        # Base order, safety order 1, safety order 2... in a list
+        price_list = []
+        price_list.append(base_order_deal["price"])
         index = 0
         for index in range(length):
-            index += 1
 
-            # Stop price
-            price = float(base_order_deal["price"]) - (so_deviation * float(base_order_deal["price"]))
+            price = float(price_list[index]) - (so_deviation * float(price_list[index]))
 
             # Recursive order
             so_proportion = float(self.active_bot["so_size"]) / price
@@ -154,7 +155,7 @@ class Deal(Account):
             order = {
                 "pair": pair,
                 "qty": qty,
-                "price": supress_notation(price),
+                "price": supress_notation(price, self.decimal_precision),
             }
             res = requests.post(url=self.bb_buy_order_url, json=order)
             if isinstance(handle_error(res), Response):
@@ -162,8 +163,11 @@ class Deal(Account):
 
             response = res.json()
 
+            # Append safety order price
+            price_list.append(response["price"])
+
             safety_orders = {
-                "order_id": response["clientOrderId"],
+                "order_id": response["orderId"],
                 "deal_type": "safety_order",
                 "strategy": "long",  # change accordingly
                 "pair": response["symbol"],
@@ -188,6 +192,7 @@ class Deal(Account):
 
             if index > length:
                 break
+            index += 1
 
         return
 
@@ -201,29 +206,27 @@ class Deal(Account):
         """
         pair = self.active_bot['pair']
         base_order_deal = next((bo_deal for bo_deal in self.active_bot["deals"] if bo_deal["deal_type"] == "base_order"), None)
-        stop_price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(base_order_deal["price"])
+        price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(base_order_deal["price"])
         decimal_precision = self.get_quote_asset_precision(pair)
         qty = round_numbers(base_order_deal["qty"], 0)
-        stop_price = round_numbers(stop_price, 6)
-        real_price = stop_price - (stop_price * 0.01)
+        price = round_numbers(price, decimal_precision)
 
         # Validations
-        if stop_price:
-            if stop_price <= float(self.MIN_PRICE):
+        if price:
+            if price <= float(self.MIN_PRICE):
                 return jsonResp_message("[Take profit order error] Price too low", 200)
         # Avoid common rate limits
         if qty <= float(self.MIN_QTY):
             return jsonResp_message("[Take profit order error] Quantity too low", 200)
-        if stop_price * qty <= float(self.MIN_NOTIONAL):
+        if price * qty <= float(self.MIN_NOTIONAL):
             return jsonResp_message("[Take profit order error] Price x Quantity too low", 200)
 
         order = {
             "pair": pair,
             "qty": qty,
-            "price": supress_notation(real_price), # Cheaper price to make it sellable
-            "stop_price": supress_notation(stop_price),
+            "price": supress_notation(price),
         }
-        res = requests.post(url=self.bb_tp_sell_order_url, json=order)
+        res = requests.post(url=self.bb_sell_order_url, json=order)
         if isinstance(handle_error(res), Response):
             return handle_error(res)
         order = res.json()
@@ -446,7 +449,7 @@ class Deal(Account):
             long_base_order = self.long_base_order()
             if isinstance(long_base_order, Response):
                 msg = long_base_order.json["message"]
-                return jsonResp_message(msg, 200)
+                order_errors.append(msg)
 
         # Only do Safety orders if required
         if int(self.active_bot["max_so_count"]) > 0:
