@@ -35,15 +35,14 @@ mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(os.environ["MONGO_AUTH_USE
 app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
 
 # Cronjob
-if (os.getenv("FLASK_ENV") != 'development'):
-    scheduler = BackgroundScheduler()
-    assets = Assets(app)
-    orders = Orders(app)
+scheduler = BackgroundScheduler()
+assets = Assets(app)
+orders = Orders(app)
 
-    scheduler.add_job(func=assets.store_balance, trigger='cron', timezone="UTC", hour=0, minute=1)
-    scheduler.add_job(func=orders.poll_historical_orders, trigger='cron', args=[app], timezone="UTC", hour=1, minute=1)
-    scheduler.start()
-    atexit.register(lambda: scheduler.shutdown(wait=False))
+scheduler.add_job(func=assets.store_balance, trigger='cron', timezone="UTC", hour=0, minute=1)
+scheduler.add_job(func=orders.poll_historical_orders, trigger='cron', args=[app], timezone="UTC", hour=1, minute=1)
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown(wait=False))
 
 # Register Blueprints
 app.register_blueprint(user_blueprint, url_prefix="/user")
