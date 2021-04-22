@@ -1,5 +1,5 @@
 FROM python:3.8
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-dev nginx wheel python-setuptools python-wheel
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-dev nginx python-setuptools python-wheel
 COPY web/build /var/www/html
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 COPY Pipfile Pipfile.lock start ./
