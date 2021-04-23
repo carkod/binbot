@@ -31,7 +31,9 @@ CORS(app)
 os.environ["TZ"] = os.environ["TIMEZONE"]
 
 mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
-mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"])
+mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(
+    os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"]
+)
 app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
 
 # Cronjob
@@ -39,8 +41,17 @@ scheduler = BackgroundScheduler()
 assets = Assets(app)
 orders = Orders(app)
 
-scheduler.add_job(func=assets.store_balance, trigger='cron', timezone="UTC", hour=0, minute=1)
-scheduler.add_job(func=orders.poll_historical_orders, trigger='cron', args=[app], timezone="UTC", hour=1, minute=1)
+scheduler.add_job(
+    func=assets.store_balance, trigger="cron", timezone="UTC", hour=0, minute=1
+)
+scheduler.add_job(
+    func=orders.poll_historical_orders,
+    trigger="cron",
+    args=[app],
+    timezone="UTC",
+    hour=1,
+    minute=1,
+)
 scheduler.start()
 atexit.register(lambda: scheduler.shutdown(wait=False))
 

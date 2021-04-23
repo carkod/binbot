@@ -1,18 +1,18 @@
 .card-chart {
-  .card-header{
-    .card-title{
+  .card-header {
+    .card-title {
       margin-top: 10px;
       margin-bottom: 0;
     }
-    .card-category{
+    .card-category {
       margin-bottom: 5px;
     }
   }
 
-  .table{
+  .table {
     margin-bottom: 0;
 
-    td{
+    td {
       border-top: none;
       border-bottom: 1px solid #e9ecef;
     }
@@ -31,17 +31,17 @@
   .card-footer {
     margin-top: 15px;
 
-    .stats{
+    .stats {
       color: $dark-gray;
     }
   }
 
-  .dropdown{
+  .dropdown {
     position: absolute;
     right: 20px;
     top: 20px;
 
-    .btn{
+    .btn {
       margin: 0;
     }
   }

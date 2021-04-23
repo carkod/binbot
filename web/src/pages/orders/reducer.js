@@ -1,5 +1,17 @@
-import { DELETE_OPEN_ORDERS, DELETE_OPEN_ORDERS_ERROR, DELETE_OPEN_ORDERS_SUCCESS, GET_ALL_ORDERS, GET_ALL_ORDERS_ERROR, GET_ALL_ORDERS_SUCCESS, GET_OPEN_ORDERS, GET_OPEN_ORDERS_ERROR, GET_OPEN_ORDERS_SUCCESS, POLL_ORDERS, POLL_ORDERS_ERROR, POLL_ORDERS_SUCCESS } from "./actions";
-
+import {
+  DELETE_OPEN_ORDERS,
+  DELETE_OPEN_ORDERS_ERROR,
+  DELETE_OPEN_ORDERS_SUCCESS,
+  GET_ALL_ORDERS,
+  GET_ALL_ORDERS_ERROR,
+  GET_ALL_ORDERS_SUCCESS,
+  GET_OPEN_ORDERS,
+  GET_OPEN_ORDERS_ERROR,
+  GET_OPEN_ORDERS_SUCCESS,
+  POLL_ORDERS,
+  POLL_ORDERS_ERROR,
+  POLL_ORDERS_SUCCESS,
+} from "./actions";
 
 // The initial state of the App
 export const initialState = {
@@ -30,7 +42,7 @@ function ordersReducer(state = initialState, action) {
         isLoading: false,
         isError: false,
         data: action.orders,
-        pages: action.pages
+        pages: action.pages,
       };
       return newState;
     }
@@ -52,7 +64,7 @@ function ordersReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: state.data.filter(x => x._id.$oid !== action.data)
+        data: state.data.filter((x) => x._id.$oid !== action.data),
       };
       return newState;
     }
@@ -78,7 +90,7 @@ function openOrdersReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
-        data: state.data
+        data: state.data,
       };
 
       return newState;
@@ -88,7 +100,7 @@ function openOrdersReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: action.data
+        data: action.data,
       };
       return newState;
     }
@@ -99,7 +111,7 @@ function openOrdersReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.data
+        data: action.data,
       };
     }
 
@@ -108,7 +120,7 @@ function openOrdersReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
-        data: state.data
+        data: state.data,
       };
 
       return newState;
@@ -118,7 +130,7 @@ function openOrdersReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: state.data.filter(x => x.orderId !== action.data.orderId)
+        data: state.data.filter((x) => x.orderId !== action.data.orderId),
       };
       return newState;
     }
@@ -129,7 +141,7 @@ function openOrdersReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.data
+        data: action.data,
       };
     }
 

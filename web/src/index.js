@@ -1,9 +1,9 @@
 import "bootstrap/dist/css/bootstrap.css";
 import React from "react";
 import ReactDOM from "react-dom";
-import App from "./App.jsx"
-import configureStore from './store';
-import reportWebVitals from './reportWebVitals';
+import App from "./App.jsx";
+import configureStore from "./store";
+import reportWebVitals from "./reportWebVitals";
 import { Provider } from "react-redux";
 import { Router, Switch } from "react-router-dom";
 import { createBrowserHistory } from "history";
@@ -19,8 +19,7 @@ ReactDOM.render(
         <App />
       </Switch>
     </Router>
-  </Provider>
-  ,
+  </Provider>,
   document.getElementById("root")
 );
 

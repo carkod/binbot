@@ -1,4 +1,3 @@
-
 from flask import Flask, request
 from flask import current_app as app
 from passlib.hash import pbkdf2_sha256
@@ -20,12 +19,13 @@ from api.account import Account
 import os
 
 
-class Buy_Order():
+class Buy_Order:
     """Post order
 
     Returns:
         [type] -- [description]
     """
+
     recvWindow = 10000
     # Min amount to be considered for investing (BNB)
     min_funds = 0.000000
@@ -48,11 +48,11 @@ class Buy_Order():
         self.price = price
 
     def get_balances(self):
-        data = json.loads(Account().get_balances().data)['data']
+        data = json.loads(Account().get_balances().data)["data"]
         available_balance = 0
         for i in range(len(data)):
-            if data[i]['asset'] == 'BTC':
-                available_balance = data[i]['free']
+            if data[i]["asset"] == "BTC":
+                available_balance = data[i]["free"]
                 return available_balance
         return available_balance
 
@@ -61,35 +61,35 @@ class Buy_Order():
     Sell order = ask
     """
 
-    def last_order_book_price(self, limit_index, order_side='bids'):
+    def last_order_book_price(self, limit_index, order_side="bids"):
         url = self.order_book_url
         limit = EnumDefinitions.order_book_limits[limit_index]
         params = [
-            ('symbol', self.symbol),
-            ('limit', limit),
+            ("symbol", self.symbol),
+            ("limit", limit),
         ]
         res = requests.get(url=url, params=params)
         handle_error(res)
         data = res.json()
-        if order_side == 'bids':
-            df = pd.DataFrame(data['bids'], columns=['price', 'qty'])
-        elif order_side == 'ask':
-            df = pd.DataFrame(data['ask'], columns=['price', 'qty'])
+        if order_side == "bids":
+            df = pd.DataFrame(data["bids"], columns=["price", "qty"])
+        elif order_side == "ask":
+            df = pd.DataFrame(data["ask"], columns=["price", "qty"])
 
         else:
-            print('Incorrect bid/ask keyword for last_order_book_price')
+            print("Incorrect bid/ask keyword for last_order_book_price")
             exit(1)
 
-        df['qty'] = df['qty'].astype(float)
+        df["qty"] = df["qty"].astype(float)
 
         # If quantity matches list
-        match_qty = df[df['qty'] > float(self.quantity)]
-        condition = df['qty'] > float(self.quantity)
+        match_qty = df[df["qty"] > float(self.quantity)]
+        condition = df["qty"] > float(self.quantity)
         if not condition.any():
             limit += limit
             self.last_order_book_price(limit)
 
-        return match_qty['price'][0]
+        return match_qty["price"][0]
 
     """
     Returns successful order
@@ -108,27 +108,28 @@ class Buy_Order():
         qty = round(float(price) / float(self.quantity), 0)
         # Get data for a single crypto e.g. BTT in BNB market
         params = [
-            ('recvWindow', self.recvWindow),
-            ('timestamp', timestamp),
-            ('symbol', self.symbol),
-            ('side', self.side),
-            ('type', type),
-            ('timeInForce', self.timeInForce),
-            ('price', price),
-            ('quantity', qty)
+            ("recvWindow", self.recvWindow),
+            ("timestamp", timestamp),
+            ("symbol", self.symbol),
+            ("side", self.side),
+            ("type", type),
+            ("timeInForce", self.timeInForce),
+            ("price", price),
+            ("quantity", qty),
         ]
-        headers = {'X-MBX-APIKEY': self.key}
+        headers = {"X-MBX-APIKEY": self.key}
 
         # Prepare request for signing
-        r = requests.Request('POST', url=url, params=params, headers=headers)
+        r = requests.Request("POST", url=url, params=params, headers=headers)
         prepped = r.prepare()
         query_string = urlparse(prepped.url).query
         total_params = query_string
 
         # Generate and append signature
-        signature = hmac.new(self.secret.encode(
-            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-        params.append(('signature', signature))
+        signature = hmac.new(
+            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        params.append(("signature", signature))
 
         # Response after request
         res = requests.post(url=url, params=params, headers=headers)

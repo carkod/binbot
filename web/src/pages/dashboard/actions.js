@@ -1,22 +1,22 @@
-export const GET_BALANCE = 'GET_BALANCE';
-export const BALANCE_SUCCESS = 'BALANCE_SUCCESS';
-export const BALANCE_ERROR = 'BALANCE_ERROR';
+export const GET_BALANCE = "GET_BALANCE";
+export const BALANCE_SUCCESS = "BALANCE_SUCCESS";
+export const BALANCE_ERROR = "BALANCE_ERROR";
 
-export const GET_ASSETS = 'GET_ASSETS';
-export const GET_ASSETS_SUCCESS = 'GET_ASSETS_SUCCESS';
-export const GET_ASSETS_ERROR = 'GET_ASSETS_ERROR';
+export const GET_ASSETS = "GET_ASSETS";
+export const GET_ASSETS_SUCCESS = "GET_ASSETS_SUCCESS";
+export const GET_ASSETS_ERROR = "GET_ASSETS_ERROR";
 
-export const UPDATE_ASSETS = 'UPDATE_ASSETS';
-export const UPDATE_ASSETS_SUCCESS = 'UPDATE_ASSETS_SUCCESS';
-export const UPDATE_ASSETS_ERROR = 'UPDATE_ASSETS_ERROR';
+export const UPDATE_ASSETS = "UPDATE_ASSETS";
+export const UPDATE_ASSETS_SUCCESS = "UPDATE_ASSETS_SUCCESS";
+export const UPDATE_ASSETS_ERROR = "UPDATE_ASSETS_ERROR";
 
-export const BALANCE_DIFF = 'BALANCE_DIFF';
-export const BALANCE_DIFF_SUCCESS = 'BALANCE_DIFF_SUCCESS';
-export const BALANCE_DIFF_ERROR = 'BALANCE_DIFF_ERROR';
+export const BALANCE_DIFF = "BALANCE_DIFF";
+export const BALANCE_DIFF_SUCCESS = "BALANCE_DIFF_SUCCESS";
+export const BALANCE_DIFF_ERROR = "BALANCE_DIFF_ERROR";
 
-export const GET_BALANCE_IN_BTC = 'GET_BALANCE_IN_BTC';
-export const GET_BALANCE_IN_BTC_SUCCESS = 'GET_BALANCE_IN_BTC_SUCCESS';
-export const GET_BALANCE_IN_BTC_ERROR = 'GET_BALANCE_IN_BTC_ERROR';
+export const GET_BALANCE_IN_BTC = "GET_BALANCE_IN_BTC";
+export const GET_BALANCE_IN_BTC_SUCCESS = "GET_BALANCE_IN_BTC_SUCCESS";
+export const GET_BALANCE_IN_BTC_ERROR = "GET_BALANCE_IN_BTC_ERROR";
 
 /**
  * Create new user
@@ -44,7 +44,7 @@ export function balanceSucceeded(res) {
     type: BALANCE_SUCCESS,
     isLoading: false,
     isError: false,
-    data: res
+    data: res,
   };
 }
 
@@ -81,7 +81,7 @@ export function getAssetsSucceeded(res) {
     type: GET_ASSETS_SUCCESS,
     isLoading: false,
     isError: false,
-    data: res.data
+    data: res.data,
   };
 }
 
@@ -114,7 +114,7 @@ export function getBalanceDiffSucceeded(res) {
     isLoading: false,
     isError: false,
     message: res.message,
-    data: res.data
+    data: res.data,
   };
 }
 
@@ -123,11 +123,9 @@ export function getBalanceDiffFailed(error) {
     type: BALANCE_DIFF_ERROR,
     isLoading: false,
     isError: true,
-    message: error.message
+    message: error.message,
   };
 }
-
-
 
 /**
  * Create new user
@@ -155,7 +153,7 @@ export function getBalanceInBtcSucceeded(res) {
     type: GET_BALANCE_IN_BTC_SUCCESS,
     isLoading: false,
     isError: false,
-    data: res
+    data: res,
   };
 }
 

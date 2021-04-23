@@ -30,11 +30,7 @@ function LineChart({ data, width, height }) {
 
   return (
     <>
-      <Plot
-        data={data}
-        layout={layout}
-        useResizeHandler={true}
-      />
+      <Plot data={data} layout={layout} useResizeHandler={true} />
     </>
   );
 }

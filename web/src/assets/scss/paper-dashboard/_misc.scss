@@ -1,14 +1,14 @@
-body{
-    color: $black-color;
-    font-size: $font-size-base;
-    font-family: $sans-serif-family;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-font-smoothing: antialiased;
+body {
+  color: $black-color;
+  font-size: $font-size-base;
+  font-family: $sans-serif-family;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
 }
 
-.main{
-    position: relative;
-    background: $white-color;
+.main {
+  position: relative;
+  background: $white-color;
 }
 /* Animations */
 .nav-pills .nav-link,
@@ -19,63 +19,62 @@ body{
 .animation-transition-general,
 .tag,
 .tag [data-role="remove"],
-.animation-transition-general{
-    @include transition($general-transition-time, $transition-ease);
+.animation-transition-general {
+  @include transition($general-transition-time, $transition-ease);
 }
 
 //transition for dropdown caret
 .dropdown-toggle:after,
 .bootstrap-switch-label:before,
-.caret{
-    @include transition($fast-transition-time, $transition-ease);
+.caret {
+  @include transition($fast-transition-time, $transition-ease);
 }
 
 .dropdown-toggle[aria-expanded="true"]:after,
 a[data-toggle="collapse"][aria-expanded="true"] .caret,
 .card-collapse .card a[data-toggle="collapse"][aria-expanded="true"] i,
-.card-collapse .card a[data-toggle="collapse"].expanded i{
-    @include rotate-180();
+.card-collapse .card a[data-toggle="collapse"].expanded i {
+  @include rotate-180();
 }
 
-.button-bar{
-    display: block;
-    position: relative;
-    width: 22px;
-    height: 1px;
-    border-radius: 1px;
-    background: $white-bg;
+.button-bar {
+  display: block;
+  position: relative;
+  width: 22px;
+  height: 1px;
+  border-radius: 1px;
+  background: $white-bg;
 
-    & + .button-bar{
-        margin-top: 7px;
-    }
+  & + .button-bar {
+    margin-top: 7px;
+  }
 
-    &:nth-child(2){
-        width: 17px;
-    }
+  &:nth-child(2) {
+    width: 17px;
+  }
 }
 
-.caret{
-    display: inline-block;
-    width: 0;
-    height: 0;
-    margin-left: 2px;
-    vertical-align: middle;
-    border-top: 4px dashed;
-    border-top: 4px solid\9;
-    border-right: 4px solid transparent;
-    border-left: 4px solid transparent;
+.caret {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  vertical-align: middle;
+  border-top: 4px dashed;
+  border-top: 4px solid\9;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
 }
 
-.pull-left{
+.pull-left {
   float: left;
 }
-.pull-right{
+.pull-right {
   float: right;
 }
 
-
 .offline-doc {
-  .navbar.navbar-transparent{
+  .navbar.navbar-transparent {
     padding-top: 25px;
     border-bottom: none;
 
@@ -90,7 +89,7 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
   .footer {
     z-index: 3 !important;
   }
-  .page-header{
+  .page-header {
     .container {
       z-index: 3;
     }
@@ -116,28 +115,28 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
 
 // badge color
 
-.badge{
-  &.badge-default{
-      @include badge-color($default-color);
+.badge {
+  &.badge-default {
+    @include badge-color($default-color);
   }
-  &.badge-primary{
-      @include badge-color($primary-color);
+  &.badge-primary {
+    @include badge-color($primary-color);
   }
-  &.badge-info{
-      @include badge-color($info-color);
+  &.badge-info {
+    @include badge-color($info-color);
   }
-  &.badge-success{
-      @include badge-color($success-color);
+  &.badge-success {
+    @include badge-color($success-color);
   }
-  &.badge-warning{
-      @include badge-color($warning-color);
+  &.badge-warning {
+    @include badge-color($warning-color);
   }
-  &.badge-danger{
-      @include badge-color($danger-color);
+  &.badge-danger {
+    @include badge-color($danger-color);
   }
-  &.badge-neutral{
-      @include badge-color($white-color);
-      color: inherit;
+  &.badge-neutral {
+    @include badge-color($white-color);
+    color: inherit;
   }
 }
 

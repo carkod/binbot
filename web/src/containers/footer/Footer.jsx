@@ -11,10 +11,9 @@ class Footer extends React.Component {
       >
         <Container fluid={this.props.fluid ? true : false}>
           <Row>
-            
             <div className="credits ml-auto">
               <div className="copyright">
-                &copy; {1900 + new Date().getYear()}  Binbot
+                &copy; {1900 + new Date().getYear()} Binbot
               </div>
             </div>
           </Row>
@@ -26,7 +25,7 @@ class Footer extends React.Component {
 
 Footer.propTypes = {
   default: PropTypes.bool,
-  fluid: PropTypes.bool
+  fluid: PropTypes.bool,
 };
 
 export default Footer;

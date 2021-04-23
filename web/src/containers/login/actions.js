@@ -1,8 +1,7 @@
-export const LOGIN = 'LOGIN';
-export const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
-export const LOGIN_ERROR = 'LOGIN_ERROR';
-export const DEFAULT_LOCALE = 'en';
-
+export const LOGIN = "LOGIN";
+export const LOGIN_SUCCESS = "LOGIN_SUCCESS";
+export const LOGIN_ERROR = "LOGIN_ERROR";
+export const DEFAULT_LOCALE = "en";
 
 /**
  * Create new user
@@ -14,7 +13,7 @@ export function login(body) {
     type: LOGIN,
     isLoading: true,
     isError: false,
-    data: body
+    data: body,
   };
 }
 

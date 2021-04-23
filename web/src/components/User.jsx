@@ -12,7 +12,7 @@ import {
   Form,
   Input,
   Row,
-  Col
+  Col,
 } from "reactstrap";
 
 class User extends React.Component {
@@ -31,7 +31,7 @@ class User extends React.Component {
                 </div>
                 <CardBody>
                   <div className="author">
-                    <a href="#pablo" onClick={e => e.preventDefault()}>
+                    <a href="#pablo" onClick={(e) => e.preventDefault()}>
                       <img
                         alt="..."
                         className="avatar border-gray"

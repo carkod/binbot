@@ -1,6 +1,37 @@
-import { call, put, take, takeLatest } from 'redux-saga/effects';
-import request, { defaultOptions } from '../../request';
-import { activateBotFailed, activateBotSucceeded, ACTIVATE_BOT, createBotFailed, createBotSucceeded, CREATE_BOT, deactivateBotFailed, deactivateBotSucceeded, DEACTIVATE_BOT, deleteBotFailed, deleteBotSucceeded, DELETE_BOT, editBotFailed, editBotSucceeded, EDIT_BOT, getBotFailed, getBotsFailed, getBotsSucceeded, getBotSucceeded, getSymbolInfoFailed, getSymbolInfoSucceeded, getSymbolsFailed, getSymbolsSucceeded, GET_BOT, GET_BOTS, GET_SYMBOLS, GET_SYMBOL_INFO, loadCandlestickFailed, loadCandlestickSucceeded, LOAD_CANDLESTICK } from './actions';
+import { call, put, take, takeLatest } from "redux-saga/effects";
+import request, { defaultOptions } from "../../request";
+import {
+  activateBotFailed,
+  activateBotSucceeded,
+  ACTIVATE_BOT,
+  createBotFailed,
+  createBotSucceeded,
+  CREATE_BOT,
+  deactivateBotFailed,
+  deactivateBotSucceeded,
+  DEACTIVATE_BOT,
+  deleteBotFailed,
+  deleteBotSucceeded,
+  DELETE_BOT,
+  editBotFailed,
+  editBotSucceeded,
+  EDIT_BOT,
+  getBotFailed,
+  getBotsFailed,
+  getBotsSucceeded,
+  getBotSucceeded,
+  getSymbolInfoFailed,
+  getSymbolInfoSucceeded,
+  getSymbolsFailed,
+  getSymbolsSucceeded,
+  GET_BOT,
+  GET_BOTS,
+  GET_SYMBOLS,
+  GET_SYMBOL_INFO,
+  loadCandlestickFailed,
+  loadCandlestickSucceeded,
+  LOAD_CANDLESTICK,
+} from "./actions";
 
 /**
  * Bots request/response handler
@@ -40,12 +71,12 @@ export function* createBotApi(body) {
   const { data } = body;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/`;
   const options = {
-    method: 'POST',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-    headers: {"content-type": "application/json", "accept": "application/json"},
-    body: JSON.stringify(data)
-  }
+    method: "POST",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(data),
+  };
   try {
     const res = yield call(request, requestURL, options);
     yield put(createBotSucceeded(res));
@@ -55,7 +86,7 @@ export function* createBotApi(body) {
 }
 
 export function* watchCreateBot() {
-  yield takeLatest(CREATE_BOT, createBotApi)
+  yield takeLatest(CREATE_BOT, createBotApi);
 }
 
 /**
@@ -65,12 +96,12 @@ export function* editBot(payload) {
   const { data, id } = payload;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
   const options = {
-    method: 'PUT',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-    headers: {"content-type": "application/json", "accept": "application/json"},
-    body: JSON.stringify(data)
-  }
+    method: "PUT",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(data),
+  };
   try {
     const res = yield call(request, requestURL, options);
     yield put(editBotSucceeded(res));
@@ -80,7 +111,7 @@ export function* editBot(payload) {
 }
 
 export function* watchEditBot() {
-  yield takeLatest(EDIT_BOT, editBot)
+  yield takeLatest(EDIT_BOT, editBot);
 }
 
 /**
@@ -90,10 +121,10 @@ export function* deleteBot(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
   const options = {
-    method: 'DELETE',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
+    method: "DELETE",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+  };
   try {
     const res = yield call(request, requestURL, options);
     yield put(deleteBotSucceeded(res));
@@ -101,7 +132,6 @@ export function* deleteBot(payload) {
     yield put(deleteBotFailed(err));
   }
 }
-
 
 export function* getSymbols() {
   const requestURL = `${process.env.REACT_APP_SYMBOLS}`;
@@ -132,10 +162,10 @@ export function* getSymbolInfo(payload) {
  * It will be cancelled automatically on component unmount
  */
 export default function* watchBot() {
-  yield takeLatest(GET_SYMBOL_INFO, getSymbolInfo)
-  yield takeLatest(GET_BOTS, getBots)
-  yield takeLatest(DELETE_BOT, deleteBot)
-  yield takeLatest(GET_SYMBOLS, getSymbols)
+  yield takeLatest(GET_SYMBOL_INFO, getSymbolInfo);
+  yield takeLatest(GET_BOTS, getBots);
+  yield takeLatest(DELETE_BOT, deleteBot);
+  yield takeLatest(GET_SYMBOLS, getSymbols);
 }
 
 export function* activateBot(payload) {
@@ -150,9 +180,8 @@ export function* activateBot(payload) {
 }
 
 export function* watchActivateBot() {
-  yield takeLatest(ACTIVATE_BOT, activateBot)
+  yield takeLatest(ACTIVATE_BOT, activateBot);
 }
-
 
 export function* deactivateBot(payload) {
   const id = payload.data;
@@ -166,14 +195,13 @@ export function* deactivateBot(payload) {
 }
 
 export function* watchDeactivateBot() {
-  yield takeLatest(DEACTIVATE_BOT, deactivateBot)
+  yield takeLatest(DEACTIVATE_BOT, deactivateBot);
 }
-
 
 /**
  * Get single bot
  */
-export function* getCandlestick({pair, interval}) {
+export function* getCandlestick({ pair, interval }) {
   const requestURL = `${process.env.REACT_APP_CANDLESTICK}/${pair}/${interval}`;
   try {
     const res = yield call(request, requestURL, defaultOptions);

@@ -5,6 +5,7 @@ from api.tools.enum_definitions import EnumDefinitions
 import pandas as pd
 from api.tools.round_numbers import round_numbers
 
+
 class Book_Order:
     def __init__(self, symbol):
         self.key = os.getenv("BINANCE_KEY")

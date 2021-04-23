@@ -10,10 +10,11 @@ from api.tools.handle_error import handle_error
 from api.tools.enum_definitions import EnumDefinitions
 
 
-class Buy_Order():
+class Buy_Order:
     """
     Binance Post order
     """
+
     recvWindow = os.getenv("RECV_WINDOW")
     min_funds = os.getenv("MIN_QTY")
     key = os.getenv("BINANCE_KEY")
@@ -30,9 +31,9 @@ class Buy_Order():
 
     def post_order_limit(self):
         data = request.json
-        symbol = data['pair']
-        qty = data['qty']
-        price = data['price']
+        symbol = data["pair"]
+        qty = data["qty"]
+        price = data["price"]
 
         # Limit order
         order_type = EnumDefinitions.order_types[0]
@@ -41,16 +42,16 @@ class Buy_Order():
 
         # Get data for a single crypto e.g. BTT in BNB market
         params = [
-            ('recvWindow', self.recvWindow),
-            ('timestamp', timestamp),
-            ('symbol', symbol),
-            ('side', self.side),
-            ('type', order_type),
-            ('timeInForce', self.timeInForce),
-            ('price', price),
-            ('quantity', qty)
+            ("recvWindow", self.recvWindow),
+            ("timestamp", timestamp),
+            ("symbol", symbol),
+            ("side", self.side),
+            ("type", order_type),
+            ("timeInForce", self.timeInForce),
+            ("price", price),
+            ("quantity", qty),
         ]
-        headers = {'X-MBX-APIKEY': self.key}
+        headers = {"X-MBX-APIKEY": self.key}
 
         # Prepare request for signing
         r = requests.Request(url=url, params=params, headers=headers)
@@ -59,9 +60,10 @@ class Buy_Order():
         total_params = query_string
 
         # Generate and append signature
-        signature = hmac.new(self.secret.encode(
-            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-        params.append(('signature', signature))
+        signature = hmac.new(
+            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        params.append(("signature", signature))
 
         # Response after request
         res = requests.post(url=url, params=params, headers=headers)
@@ -71,8 +73,8 @@ class Buy_Order():
 
     def post_order_market(self):
         data = request.json
-        symbol = data['pair']
-        qty = data['qty']
+        symbol = data["pair"]
+        qty = data["qty"]
 
         # Limit order
         order_type = EnumDefinitions.order_types[1]
@@ -81,15 +83,15 @@ class Buy_Order():
 
         # Get data for a single crypto e.g. BTT in BNB market
         params = [
-            ('recvWindow', self.recvWindow),
-            ('timestamp', timestamp),
-            ('symbol', symbol),
-            ('side', self.side),
-            ('type', order_type),
-            ('timeInForce', self.timeInForce),
-            ('quantity', qty)
+            ("recvWindow", self.recvWindow),
+            ("timestamp", timestamp),
+            ("symbol", symbol),
+            ("side", self.side),
+            ("type", order_type),
+            ("timeInForce", self.timeInForce),
+            ("quantity", qty),
         ]
-        headers = {'X-MBX-APIKEY': self.key}
+        headers = {"X-MBX-APIKEY": self.key}
 
         # Prepare request for signing
         r = requests.Request(url=url, params=params, headers=headers)
@@ -98,9 +100,10 @@ class Buy_Order():
         total_params = query_string
 
         # Generate and append signature
-        signature = hmac.new(self.secret.encode(
-            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-        params.append(('signature', signature))
+        signature = hmac.new(
+            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        params.append(("signature", signature))
 
         # Response after request
         res = requests.post(url=url, params=params, headers=headers)
@@ -110,10 +113,10 @@ class Buy_Order():
 
     def post_take_profit_limit(self):
         data = request.json
-        symbol = data['pair']
-        qty = data['qty']
-        price = data['price']
-        stop_price = data['stop_price'] if 'stop_price' in data else price
+        symbol = data["pair"]
+        qty = data["qty"]
+        price = data["price"]
+        stop_price = data["stop_price"] if "stop_price" in data else price
 
         # Limit order
         order_type = EnumDefinitions.order_types[5]
@@ -122,17 +125,17 @@ class Buy_Order():
 
         # Get data for a single crypto e.g. BTT in BNB market
         params = [
-            ('recvWindow', self.recvWindow),
-            ('timestamp', timestamp),
-            ('symbol', symbol),
-            ('side', self.side),
-            ('type', order_type),
-            ('timeInForce', self.timeInForce),
-            ('price', price),
-            ('stopPrice', stop_price),
-            ('quantity', qty),
+            ("recvWindow", self.recvWindow),
+            ("timestamp", timestamp),
+            ("symbol", symbol),
+            ("side", self.side),
+            ("type", order_type),
+            ("timeInForce", self.timeInForce),
+            ("price", price),
+            ("stopPrice", stop_price),
+            ("quantity", qty),
         ]
-        headers = {'X-MBX-APIKEY': self.key}
+        headers = {"X-MBX-APIKEY": self.key}
 
         # Prepare request for signing
         r = requests.Request(url=url, params=params, headers=headers)
@@ -141,22 +144,23 @@ class Buy_Order():
         total_params = query_string
 
         # Generate and append signature
-        signature = hmac.new(self.secret.encode(
-            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-        params.append(('signature', signature))
+        signature = hmac.new(
+            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        params.append(("signature", signature))
 
         # Response after request
         res = requests.post(url=url, params=params, headers=headers)
         handle_error(res)
         data = res.json()
         return data
-    
+
     def post_stop_loss_limit(self):
         data = request.json
-        symbol = data['pair']
-        qty = data['qty']
-        price = data['price']
-        stop_price = data['stop_price'] if 'stop_price' in data else price
+        symbol = data["pair"]
+        qty = data["qty"]
+        price = data["price"]
+        stop_price = data["stop_price"] if "stop_price" in data else price
 
         # Limit order
         order_type = EnumDefinitions.order_types[3]
@@ -165,18 +169,18 @@ class Buy_Order():
 
         # Get data for a single crypto e.g. BTT in BNB market
         params = [
-            ('recvWindow', self.recvWindow),
-            ('timestamp', timestamp),
-            ('symbol', symbol),
-            ('side', self.side),
-            ('type', order_type),
-            ('timeInForce', self.timeInForce),
-            ('price', price),
-            ('stopPrice', stop_price),
-            ('quantity', qty),
-            ('newOrderRespType', "FULL"),
+            ("recvWindow", self.recvWindow),
+            ("timestamp", timestamp),
+            ("symbol", symbol),
+            ("side", self.side),
+            ("type", order_type),
+            ("timeInForce", self.timeInForce),
+            ("price", price),
+            ("stopPrice", stop_price),
+            ("quantity", qty),
+            ("newOrderRespType", "FULL"),
         ]
-        headers = {'X-MBX-APIKEY': self.key}
+        headers = {"X-MBX-APIKEY": self.key}
 
         # Prepare request for signing
         r = requests.Request(url=url, params=params, headers=headers)
@@ -185,9 +189,10 @@ class Buy_Order():
         total_params = query_string
 
         # Generate and append signature
-        signature = hmac.new(self.secret.encode(
-            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-        params.append(('signature', signature))
+        signature = hmac.new(
+            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        params.append(("signature", signature))
 
         # Response after request
         res = requests.post(url=url, params=params, headers=headers)

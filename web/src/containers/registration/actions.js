@@ -9,11 +9,10 @@
  * export const YOUR_ACTION_CONSTANT = 'yourproject/YourContainer/YOUR_ACTION_CONSTANT';
  */
 
-export const REGISTER_USER = 'REGISTER_USER';
-export const REGISTER_USER_SUCCESS = 'REGISTER_USER_SUCCESS';
-export const REGISTER_USER_ERROR = 'REGISTER_USER_ERROR';
-export const DEFAULT_LOCALE = 'en';
-
+export const REGISTER_USER = "REGISTER_USER";
+export const REGISTER_USER_SUCCESS = "REGISTER_USER_SUCCESS";
+export const REGISTER_USER_ERROR = "REGISTER_USER_ERROR";
+export const DEFAULT_LOCALE = "en";
 
 /**
  * Create new user
@@ -25,7 +24,7 @@ export function registerUser(body) {
     type: REGISTER_USER,
     isLoading: true,
     isError: false,
-    data: body
+    data: body,
   };
 }
 
@@ -42,7 +41,7 @@ export function registerUserSucceded(msg) {
     type: REGISTER_USER_SUCCESS,
     isLoading: false,
     isError: false,
-    message: msg
+    message: msg,
   };
 }
 
@@ -58,6 +57,6 @@ export function registerUserFailed(error) {
     type: REGISTER_USER_ERROR,
     isLoading: false,
     isError: true,
-    message: error
+    message: error,
   };
 }

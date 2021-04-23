@@ -1,6 +1,19 @@
-import { call, put, takeLatest } from 'redux-saga/effects';
-import request from '../../request';
-import { balanceFailed, balanceSucceeded, BALANCE_DIFF, getAssetsFailed, getAssetsSucceeded, getBalanceDiffFailed, getBalanceDiffSucceeded, getBalanceInBtcFailed, getBalanceInBtcSucceeded, GET_ASSETS, GET_BALANCE, GET_BALANCE_IN_BTC } from './actions';
+import { call, put, takeLatest } from "redux-saga/effects";
+import request from "../../request";
+import {
+  balanceFailed,
+  balanceSucceeded,
+  BALANCE_DIFF,
+  getAssetsFailed,
+  getAssetsSucceeded,
+  getBalanceDiffFailed,
+  getBalanceDiffSucceeded,
+  getBalanceInBtcFailed,
+  getBalanceInBtcSucceeded,
+  GET_ASSETS,
+  GET_BALANCE,
+  GET_BALANCE_IN_BTC,
+} from "./actions";
 
 /**
  * Account request/response handler
@@ -8,10 +21,10 @@ import { balanceFailed, balanceSucceeded, BALANCE_DIFF, getAssetsFailed, getAsse
 export function* getBalanceAll() {
   const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE_ALL;
   const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
+    method: "GET",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+  };
   try {
     const res = yield call(request, requestURL, options);
     yield put(balanceSucceeded(res));
@@ -32,10 +45,10 @@ export function* watchGetBalanceAll() {
 export function* getAssetsValue() {
   const requestURL = process.env.REACT_APP_ASSETS;
   const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
+    method: "GET",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+  };
   try {
     const res = yield call(request, requestURL, options);
     yield put(getAssetsSucceeded(res));
@@ -52,13 +65,13 @@ export function* watchAssetsValue() {
  * Update Portolio of assets balance
  * /account/ticker23/<symbol>
  */
-export function* getBalanceDiffApi({days}) {
+export function* getBalanceDiffApi({ days }) {
   const requestURL = `${process.env.REACT_APP_BALANCE_DIFF}?days=${days}`;
   const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
+    method: "GET",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+  };
   try {
     const res = yield call(request, requestURL, options);
     yield put(getBalanceDiffSucceeded(res));
@@ -71,17 +84,16 @@ export function* watchGetBalanceDiff() {
   yield takeLatest(BALANCE_DIFF, getBalanceDiffApi);
 }
 
-
 /**
  * Account request/response handler
  */
 export function* getBalanceInBtcApi() {
   const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE_BTC;
   const options = {
-    method: 'GET',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  }
+    method: "GET",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+  };
   try {
     const res = yield call(request, requestURL, options);
     yield put(getBalanceInBtcSucceeded(res));

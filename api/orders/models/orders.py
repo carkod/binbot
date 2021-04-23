@@ -1,4 +1,3 @@
-
 import hashlib
 import hmac
 import os
@@ -14,6 +13,7 @@ from api.account.models import Account
 from api.tools.round_numbers import round_numbers
 
 poll_percentage = 0
+
 
 class Orders(Account):
 
@@ -36,11 +36,17 @@ class Orders(Account):
 
     def get_all_orders(self):
         # here we want to get the value of user (i.e. ?user=some-value)
-        limit = 50 if not request.args.get('limit') else int(request.args.get('limit'))
-        offset = 0 if not request.args.get('offset') else int(request.args.get('offset'))
+        limit = 50 if not request.args.get("limit") else int(request.args.get("limit"))
+        offset = (
+            0 if not request.args.get("offset") else int(request.args.get("offset"))
+        )
         pages = app.db.orders.count()
-        status = request.args.get('status', None)
-        startTime = int(request.args.get('start-time', None)) if request.args.get('start-time') else None
+        status = request.args.get("status", None)
+        startTime = (
+            int(request.args.get("start-time", None))
+            if request.args.get("start-time")
+            else None
+        )
 
         # Filters
         args = {}
@@ -48,11 +54,14 @@ class Orders(Account):
             args["status"] = status
 
         if startTime:
-            args["time"] = {
-                "$gte": startTime
-            }
+            args["time"] = {"$gte": startTime}
 
-        orders = list(app.db.orders.find(args).sort([("updateTime", -1)]).skip(offset).limit(limit))
+        orders = list(
+            app.db.orders.find(args)
+            .sort([("updateTime", -1)])
+            .skip(offset)
+            .limit(limit)
+        )
         if orders:
             resp = jsonResp({"data": orders, "pages": pages}, 200)
         else:
@@ -72,11 +81,11 @@ class Orders(Account):
 
                 timestamp = int(round(tm.time() * 1000))
                 params = [
-                    ('symbol', symbols[i]["symbol"]),
-                    ('timestamp', timestamp),
-                    ('recvWindow', self.recvWindow)
+                    ("symbol", symbols[i]["symbol"]),
+                    ("timestamp", timestamp),
+                    ("recvWindow", self.recvWindow),
                 ]
-                headers = {'X-MBX-APIKEY': self.key}
+                headers = {"X-MBX-APIKEY": self.key}
 
                 # Prepare request for signing
                 r = requests.Request(url=url, params=params, headers=headers)
@@ -85,9 +94,12 @@ class Orders(Account):
                 total_params = query_string
 
                 # Generate and append signature
-                signature = hmac.new(self.secret.encode(
-                    'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-                params.append(('signature', signature))
+                signature = hmac.new(
+                    self.secret.encode("utf-8"),
+                    total_params.encode("utf-8"),
+                    hashlib.sha256,
+                ).hexdigest()
+                params.append(("signature", signature))
 
                 res = requests.get(url=url, params=params, headers=headers)
                 handle_error(res)
@@ -97,21 +109,22 @@ class Orders(Account):
                 if (len(data) > 0) and self.app:
                     for o in data:
                         # Save in the DB
-                        self.app.db.orders.save(o, {"$currentDate": {"createdAt": "true"}})
+                        self.app.db.orders.save(
+                            o, {"$currentDate": {"createdAt": "true"}}
+                        )
                         if i == (symbols_count - 1):
                             poll_percentage = 0
                         else:
-                            poll_percentage = round_numbers((i/symbols_count) * 100, 0)
+                            poll_percentage = round_numbers(
+                                (i / symbols_count) * 100, 0
+                            )
                 print(f"Polling historical orders: {poll_percentage}")
 
     def get_open_orders(self):
         timestamp = int(round(tm.time() * 1000))
         url = self.open_orders
-        params = [
-            ('timestamp', timestamp),
-            ('recvWindow', self.recvWindow)
-        ]
-        headers = {'X-MBX-APIKEY': self.key}
+        params = [("timestamp", timestamp), ("recvWindow", self.recvWindow)]
+        headers = {"X-MBX-APIKEY": self.key}
 
         # Prepare request for signing
         r = requests.Request(url=url, params=params, headers=headers)
@@ -120,15 +133,16 @@ class Orders(Account):
         total_params = query_string
 
         # Generate and append signature
-        signature = hmac.new(self.secret.encode(
-            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-        params.append(('signature', signature))
+        signature = hmac.new(
+            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        params.append(("signature", signature))
 
         res = requests.get(url=url, params=params, headers=headers)
         handle_error(res)
         data = res.json()
 
-        if (len(data) > 0):
+        if len(data) > 0:
             resp = jsonResp({"message": "Open orders found!", "data": data}, 200)
         else:
             resp = jsonResp_message("No open orders found!", 200)
@@ -144,13 +158,13 @@ class Orders(Account):
         symbol = request.view_args["symbol"]
         orderId = request.view_args["orderid"]
         params = [
-            ('symbol', symbol),
-            ('timestamp', timestamp),
-            ('recvWindow', self.recvWindow),
-            ('orderId', orderId),
+            ("symbol", symbol),
+            ("timestamp", timestamp),
+            ("recvWindow", self.recvWindow),
+            ("orderId", orderId),
         ]
 
-        headers = {'X-MBX-APIKEY': self.key}
+        headers = {"X-MBX-APIKEY": self.key}
 
         # Prepare request for signing
         r = requests.Request(url=url, params=params, headers=headers)
@@ -159,16 +173,17 @@ class Orders(Account):
         total_params = query_string
 
         # Generate and append signature
-        signature = hmac.new(self.secret.encode(
-            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-        params.append(('signature', signature))
+        signature = hmac.new(
+            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        params.append(("signature", signature))
 
         # Response after request
         res = requests.delete(url=url, params=params, headers=headers)
         handle_error(res)
         data = res.json()
 
-        if (len(data) > 0):
+        if len(data) > 0:
             resp = jsonResp({"message": "Order deleted!", "data": data}, 200)
         else:
             resp = jsonResp_message("Failed to delete order", 200)
@@ -186,12 +201,12 @@ class Orders(Account):
         # path params -> view_args
         symbol = request.args["symbol"]
         params = [
-            ('symbol', symbol),
-            ('timestamp', timestamp),
-            ('recvWindow', self.recvWindow),
+            ("symbol", symbol),
+            ("timestamp", timestamp),
+            ("recvWindow", self.recvWindow),
         ]
 
-        headers = {'X-MBX-APIKEY': self.key}
+        headers = {"X-MBX-APIKEY": self.key}
 
         # Prepare request for signing
         r = requests.Request(url=url, params=params, headers=headers)
@@ -200,16 +215,17 @@ class Orders(Account):
         total_params = query_string
 
         # Generate and append signature
-        signature = hmac.new(self.secret.encode(
-            'utf-8'), total_params.encode('utf-8'), hashlib.sha256).hexdigest()
-        params.append(('signature', signature))
+        signature = hmac.new(
+            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        params.append(("signature", signature))
 
         # Response after request
         res = requests.delete(url=url, params=params, headers=headers)
         handle_error(res)
         data = res.json()
 
-        if (len(data) > 0):
+        if len(data) > 0:
             resp = jsonResp({"message": "Orders deleted", "data": data}, 200)
         else:
             resp = jsonResp_message("No open orders found!", 200)

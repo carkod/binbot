@@ -8,7 +8,7 @@ import {
   CardTitle,
   Col,
   Badge,
-  Row
+  Row,
 } from "reactstrap";
 import { deleteBot, getBots } from "./actions";
 
@@ -85,7 +85,13 @@ class Bots extends React.Component {
                         </Col>
                         <Col md="5" xs="12">
                           <div className="stats">
-                            <Badge color={x.active === "true" ? "success": "secondary"}>{x.active === "true" ? "ACTIVE": "INACTIVE"}</Badge>
+                            <Badge
+                              color={
+                                x.active === "true" ? "success" : "secondary"
+                              }
+                            >
+                              {x.active === "true" ? "ACTIVE" : "INACTIVE"}
+                            </Badge>
                           </div>
                         </Col>
                       </Row>
@@ -185,5 +191,5 @@ const mapStateToProps = (state) => {
 
 export default connect(mapStateToProps, {
   getBots,
-  deleteBot
+  deleteBot,
 })(Bots);

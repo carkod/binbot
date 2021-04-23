@@ -14,7 +14,7 @@ export default function ShortTab({
   state,
   handleChange,
   handleBlur,
-  handleShortOrder
+  handleShortOrder,
 }) {
   return (
     <TabPane tabId="short">
@@ -61,7 +61,9 @@ export default function ShortTab({
             <InputGroupAddon addonType="append">
               <InputGroupText>%</InputGroupText>
             </InputGroupAddon>
-            <FormFeedback valid={parseFloat(state.short_order) > 0 ? false : true}>
+            <FormFeedback
+              valid={parseFloat(state.short_order) > 0 ? false : true}
+            >
               Stop loss required if short order enabled
             </FormFeedback>
           </InputGroup>

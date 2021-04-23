@@ -160,22 +160,33 @@ class BotForm extends React.Component {
       this.setState({ name: `${this.state.pair}_${new Date().getTime()}` });
     }
 
-    if (this.props.botActive !== p.botActive && !checkValue(this.props.match.params.id)) {
+    if (
+      this.props.botActive !== p.botActive &&
+      !checkValue(this.props.match.params.id)
+    ) {
       this.props.getBot(this.props.match.params.id);
     }
 
     // Candlestick data updates
-    if (!checkValue(this.props.candlestick) && this.props.candlestick !== p.candlestick) {
+    if (
+      !checkValue(this.props.candlestick) &&
+      this.props.candlestick !== p.candlestick
+    ) {
       const { trace } = this.props.candlestick;
       if (trace.length > 0) {
         const currentPrice = parseFloat(trace[0].close[trace.length - 1]);
-        if (!checkValue(this.props.bot) && this.props.bot.active === "true" && !checkValue(this.props.bot.base_order_size)) {
-          const profitChange = (currentPrice - parseFloat(this.props.bot.base_order_size)) / parseFloat(this.props.bot.base_order_size);
-          this.setState({ bot_profit: profitChange.toFixed(4) })
+        if (
+          !checkValue(this.props.bot) &&
+          this.props.bot.active === "true" &&
+          !checkValue(this.props.bot.base_order_size)
+        ) {
+          const profitChange =
+            (currentPrice - parseFloat(this.props.bot.base_order_size)) /
+            parseFloat(this.props.bot.base_order_size);
+          this.setState({ bot_profit: profitChange.toFixed(4) });
         } else {
-          this.setState({ bot_profit: 0 })
+          this.setState({ bot_profit: 0 });
         }
-        
       }
     }
   };
@@ -328,8 +339,8 @@ class BotForm extends React.Component {
           });
           if (parseFloat(this.state.so_size) > 0) {
             this.setState({
-              soSizeError: false
-            })
+              soSizeError: false,
+            });
           }
         } else {
           this.setState({ baseOrderSizeError: true, formIsValid: false });
@@ -441,11 +452,18 @@ class BotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <CardTitle tag="h5">{this.state.pair}{" "}
-                  {!checkValue(this.state.bot_profit) && this.state.active === "true" ?
-                    <Badge color={this.state.bot_profit > 0 ? "success" : "danger"}>{this.state.bot_profit + "%"}</Badge>
-                  : "Inactive"
-                  }
+                <CardTitle tag="h5">
+                  {this.state.pair}{" "}
+                  {!checkValue(this.state.bot_profit) &&
+                  this.state.active === "true" ? (
+                    <Badge
+                      color={this.state.bot_profit > 0 ? "success" : "danger"}
+                    >
+                      {this.state.bot_profit + "%"}
+                    </Badge>
+                  ) : (
+                    "Inactive"
+                  )}
                 </CardTitle>
                 {intervalOptions.map((item) => (
                   <Badge

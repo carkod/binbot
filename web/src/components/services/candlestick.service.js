@@ -2,8 +2,8 @@ import { checkValue } from "../../validations";
 
 /**
  * Generate annotations and shapes with real base_order_price
- * @param {*} data 
- * @param {*} bot 
+ * @param {*} data
+ * @param {*} bot
  * @returns annotations, shapes
  */
 export const generateOrders = (data, bot) => {
@@ -20,7 +20,7 @@ export const generateOrders = (data, bot) => {
   takeProfitTime = data.trace[0].x[data.trace[0].x.length - 1];
 
   if (bot.deals.length > 0) {
-    const baseOrder = bot.deals.find(x => x.deal_type === "base_order");
+    const baseOrder = bot.deals.find((x) => x.deal_type === "base_order");
     if (!checkValue(baseOrder)) {
       currentPrice = baseOrder.price;
     }
@@ -54,10 +54,13 @@ export const generateOrders = (data, bot) => {
   shapes.push(baseOrderS);
   annotations.push(baseOrderA);
 
-
   // Short (switch) order
-  const shortOrderPrice = currentPrice - (currentPrice * (bot.short_stop_price / 100));
-  if (!checkValue(bot.short_stop_price) && parseFloat(bot.short_stop_price > 0)) {
+  const shortOrderPrice =
+    currentPrice - currentPrice * (bot.short_stop_price / 100);
+  if (
+    !checkValue(bot.short_stop_price) &&
+    parseFloat(bot.short_stop_price > 0)
+  ) {
     // Annotation
     const shortOrderA = {
       x: currentTime,
@@ -68,7 +71,7 @@ export const generateOrders = (data, bot) => {
       font: { color: "#FD9F23" },
       showarrow: false,
       xanchor: "left",
-    }
+    };
     // Shape
     const shortOrderS = {
       type: "line",
@@ -82,12 +85,12 @@ export const generateOrders = (data, bot) => {
         color: "#FD9F23",
         width: 4,
       },
-    }
+    };
     shapes.push(shortOrderS);
     annotations.push(shortOrderA);
 
     // Stop loss
-    const stopLossPrice = currentPrice - (currentPrice * (bot.stop_loss / 100));
+    const stopLossPrice = currentPrice - currentPrice * (bot.stop_loss / 100);
     // Annotation
     const stopLossA = {
       x: currentTime,
@@ -98,7 +101,7 @@ export const generateOrders = (data, bot) => {
       font: { color: "Blue" },
       showarrow: false,
       xanchor: "left",
-    }
+    };
     // Shape
     const stopLossS = {
       type: "line",
@@ -112,7 +115,7 @@ export const generateOrders = (data, bot) => {
         color: "Blue",
         width: 4,
       },
-    }
+    };
     shapes.push(stopLossS);
     annotations.push(stopLossA);
   }
@@ -188,10 +191,8 @@ export const generateOrders = (data, bot) => {
     let i = 0;
     let previousPrice = currentPrice;
     while (i <= maxSoCount - 1) {
-      const price = (
-        previousPrice -
-        (previousPrice * (bot.price_deviation_so / 100))
-      );
+      const price =
+        previousPrice - previousPrice * (bot.price_deviation_so / 100);
       previousPrice = price;
       const safetyOrderA = {
         x: currentTime,

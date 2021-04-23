@@ -8,6 +8,7 @@ deal_blueprint = Blueprint("deal", __name__)
 def get():
     return Deal().get_balances()
 
+
 @deal_blueprint.route("/close/<id>", methods=["GET"])
 def getAuth():
     return Deal().get_balances()

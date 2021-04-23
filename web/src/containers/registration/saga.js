@@ -1,9 +1,12 @@
-import { call, put, takeLatest } from 'redux-saga/effects';
-import request from '../../request';
-import { registerUserFailed, registerUserSucceded, REGISTER_USER } from './actions';
+import { call, put, takeLatest } from "redux-saga/effects";
+import request from "../../request";
+import {
+  registerUserFailed,
+  registerUserSucceded,
+  REGISTER_USER,
+} from "./actions";
 
-
-const host = 'http://localhost:5000/';
+const host = "http://localhost:5000/";
 
 /**
  * Github repos request/response handler
@@ -12,7 +15,10 @@ export function* postRegistration(body) {
   const { data } = body;
   const requestURL = `${host}user/register`;
   try {
-    yield call(request, requestURL, { method: 'POST', body: JSON.stringify(data)});
+    yield call(request, requestURL, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
     yield put(registerUserSucceded(body));
   } catch (err) {
     yield put(registerUserFailed(err));

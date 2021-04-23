@@ -1,6 +1,6 @@
-import { call, put, takeLatest } from 'redux-saga/effects';
-import request, { setToken } from '../../request';
-import { loginFailed, loginSucceeded, LOGIN } from './actions';
+import { call, put, takeLatest } from "redux-saga/effects";
+import request, { setToken } from "../../request";
+import { loginFailed, loginSucceeded, LOGIN } from "./actions";
 
 /**
  * Login request/response handler
@@ -9,16 +9,16 @@ export function* postLogin(body) {
   const { data } = body;
   const requestURL = process.env.REACT_APP_LOGIN;
   const options = {
-    method: 'POST',
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-    headers: {"content-type": "application/json", "accept": "application/json"},
-    body: JSON.stringify(data)
-  }
+    method: "POST",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(data),
+  };
   try {
     // Call our request helper (see 'utils/request')
     const res = yield call(request, requestURL, options);
-    setToken(res.access_token)
+    setToken(res.access_token);
     yield put(loginSucceeded(res));
   } catch (err) {
     yield put(loginFailed(err));

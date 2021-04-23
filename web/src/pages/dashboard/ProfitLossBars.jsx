@@ -1,12 +1,6 @@
 import React from "react";
 import Plot from "react-plotly.js";
-import {
-  Card,
-  CardBody,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "reactstrap";
+import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "reactstrap";
 
 function BarChart({ data, width = "100%", height = "100%" }) {
   const layout = {
@@ -33,11 +27,7 @@ function BarChart({ data, width = "100%", height = "100%" }) {
 
   return (
     <>
-      <Plot
-        data={data}
-        layout={layout}
-        useResizeHandler={true}
-      />
+      <Plot data={data} layout={layout} useResizeHandler={true} />
     </>
   );
 }
@@ -50,7 +40,7 @@ export function ProfitLossBars({ data }) {
         <p className="card-category">Daily profit or loss in USD</p>
       </CardHeader>
       <CardBody>
-        <BarChart data={data} width="300" height="200"/>
+        <BarChart data={data} width="300" height="200" />
       </CardBody>
       <CardFooter>
         <hr />

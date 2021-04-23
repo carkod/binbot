@@ -1,41 +1,41 @@
 import { addNotification } from "../../validations";
 
-export const GET_BOTS = 'GET_BOTS';
-export const GET_BOTS_SUCCESS = 'GET_BOTS_SUCCESS';
-export const GET_BOTS_ERROR = 'GET_BOTS_ERROR';
+export const GET_BOTS = "GET_BOTS";
+export const GET_BOTS_SUCCESS = "GET_BOTS_SUCCESS";
+export const GET_BOTS_ERROR = "GET_BOTS_ERROR";
 
-export const GET_BOT = 'GET_BOT';
-export const GET_BOT_SUCCESS = 'GET_BOT_SUCCESS';
-export const GET_BOT_ERROR = 'GET_BOT_ERROR';
+export const GET_BOT = "GET_BOT";
+export const GET_BOT_SUCCESS = "GET_BOT_SUCCESS";
+export const GET_BOT_ERROR = "GET_BOT_ERROR";
 
-export const CREATE_BOT = 'CREATE_BOT';
-export const CREATE_BOT_SUCCESS = 'CREATE_BOT_SUCCESS';
-export const CREATE_BOT_ERROR = 'CREATE_BOT_ERROR';
-export const EDIT_BOT = 'EDIT_BOT';
-export const EDIT_BOT_SUCCESS = 'EDIT_BOT_SUCCESS';
-export const EDIT_BOT_ERROR = 'EDIT_BOT_ERROR';
-export const DELETE_BOT = 'DELETE_BOT';
-export const DELETE_BOT_SUCCESS = 'DELETE_BOT_SUCCESS';
-export const DELETE_BOT_ERROR = 'DELETE_BOT_ERROR';
+export const CREATE_BOT = "CREATE_BOT";
+export const CREATE_BOT_SUCCESS = "CREATE_BOT_SUCCESS";
+export const CREATE_BOT_ERROR = "CREATE_BOT_ERROR";
+export const EDIT_BOT = "EDIT_BOT";
+export const EDIT_BOT_SUCCESS = "EDIT_BOT_SUCCESS";
+export const EDIT_BOT_ERROR = "EDIT_BOT_ERROR";
+export const DELETE_BOT = "DELETE_BOT";
+export const DELETE_BOT_SUCCESS = "DELETE_BOT_SUCCESS";
+export const DELETE_BOT_ERROR = "DELETE_BOT_ERROR";
 
-export const ACTIVATE_BOT = 'ACTIVATE_BOT';
-export const ACTIVATE_BOT_SUCCESS = 'ACTIVATE_BOT_SUCCESS';
-export const ACTIVATE_BOT_ERROR = 'ACTIVATE_BOT_ERROR';
-export const DEACTIVATE_BOT = 'DEACTIVATE_BOT';
-export const DEACTIVATE_BOT_SUCCESS = 'DEACTIVATE_BOT_SUCCESS';
-export const DEACTIVATE_BOT_ERROR = 'DEACTIVATE_BOT_ERROR';
+export const ACTIVATE_BOT = "ACTIVATE_BOT";
+export const ACTIVATE_BOT_SUCCESS = "ACTIVATE_BOT_SUCCESS";
+export const ACTIVATE_BOT_ERROR = "ACTIVATE_BOT_ERROR";
+export const DEACTIVATE_BOT = "DEACTIVATE_BOT";
+export const DEACTIVATE_BOT_SUCCESS = "DEACTIVATE_BOT_SUCCESS";
+export const DEACTIVATE_BOT_ERROR = "DEACTIVATE_BOT_ERROR";
 
-export const GET_SYMBOLS = 'GET_SYMBOLS';
-export const GET_SYMBOLS_SUCCESS = 'GET_SYMBOLS_SUCCESS';
-export const GET_SYMBOLS_ERROR = 'GET_SYMBOLS_ERROR';
-export const GET_SYMBOL_INFO = 'GET_SYMBOL_INFO';
-export const GET_SYMBOL_INFO_SUCCESS = 'GET_SYMBOL_INFO_SUCCESS';
-export const GET_SYMBOL_INFO_ERROR = 'GET_SYMBOL_INFO_ERROR';
+export const GET_SYMBOLS = "GET_SYMBOLS";
+export const GET_SYMBOLS_SUCCESS = "GET_SYMBOLS_SUCCESS";
+export const GET_SYMBOLS_ERROR = "GET_SYMBOLS_ERROR";
+export const GET_SYMBOL_INFO = "GET_SYMBOL_INFO";
+export const GET_SYMBOL_INFO_SUCCESS = "GET_SYMBOL_INFO_SUCCESS";
+export const GET_SYMBOL_INFO_ERROR = "GET_SYMBOL_INFO_ERROR";
 
-export const LOAD_CANDLESTICK = 'LOAD_CANDLESTICK';
-export const LOAD_CANDLESTICK_SUCCESS = 'LOAD_CANDLESTICK_SUCCESS';
-export const LOAD_CANDLESTICK_ERROR = 'LOAD_CANDLESTICK_ERROR';
-export const DEFAULT_LOCALE = 'en';
+export const LOAD_CANDLESTICK = "LOAD_CANDLESTICK";
+export const LOAD_CANDLESTICK_SUCCESS = "LOAD_CANDLESTICK_SUCCESS";
+export const LOAD_CANDLESTICK_ERROR = "LOAD_CANDLESTICK_ERROR";
+export const DEFAULT_LOCALE = "en";
 
 export const GET_QUOTE_ASSET = "GET_QUOTE_ASSET";
 export const GET_QUOTE_ASSET_SUCCESSFUL = "GET_QUOTE_ASSET_SUCCESSFUL";
@@ -71,7 +71,7 @@ export function getBotsSucceeded(res) {
     type: GET_BOTS_SUCCESS,
     isLoading: false,
     isError: false,
-    bots: res.data
+    bots: res.data,
   };
 }
 
@@ -101,7 +101,7 @@ export function getBot(id) {
     type: GET_BOT,
     isLoading: true,
     isError: false,
-    data: id
+    data: id,
   };
 }
 
@@ -119,7 +119,7 @@ export function getBotSucceeded(res) {
     isLoading: false,
     isError: false,
     bots: res.data,
-    message: res.message
+    message: res.message,
   };
 }
 
@@ -149,7 +149,7 @@ export function createBot(body) {
     type: CREATE_BOT,
     isLoading: true,
     isError: false,
-    data: body
+    data: body,
   };
 }
 
@@ -185,10 +185,9 @@ export function createBotFailed(error) {
     isLoading: false,
     isError: true,
     data: error,
-    message: error.message
+    message: error.message,
   };
 }
-
 
 /**
  * Edit bot
@@ -219,7 +218,7 @@ export function editBotSucceeded(res) {
     type: EDIT_BOT_SUCCESS,
     isLoading: false,
     isError: false,
-    bots: res
+    bots: res,
   };
 }
 
@@ -250,7 +249,7 @@ export function deleteBot(id) {
     type: DELETE_BOT,
     isLoading: true,
     isError: false,
-    data: id
+    data: id,
   };
 }
 
@@ -269,7 +268,7 @@ export function deleteBotSucceeded(res) {
     isLoading: false,
     isError: false,
     data: res.botId,
-    message: res.message
+    message: res.message,
   };
 }
 
@@ -290,7 +289,6 @@ export function deleteBotFailed(error) {
   };
 }
 
-
 /**
  * Activate bot
  * GET /bot/activate/<id>
@@ -301,12 +299,12 @@ export function activateBot(id) {
     type: ACTIVATE_BOT,
     isLoading: true,
     isError: false,
-    data: id
+    data: id,
   };
 }
 
 export function activateBotSucceeded(res) {
-  const type = res.error === "true" ? "error" : "success"; 
+  const type = res.error === "true" ? "error" : "success";
   if (res.message) {
     addNotification("Bot activation succeeded", res.message, type);
   }
@@ -337,7 +335,7 @@ export function deactivateBot(id) {
     type: DEACTIVATE_BOT,
     isLoading: true,
     isError: false,
-    data: id
+    data: id,
   };
 }
 
@@ -350,7 +348,7 @@ export function deactivateBotSucceeded(res) {
     isLoading: false,
     isError: false,
     data: res.botId,
-    message: res.message
+    message: res.message,
   };
 }
 
@@ -362,7 +360,6 @@ export function deactivateBotFailed(error) {
     error: error.message,
   };
 }
-
 
 /**
  * Get symbols
@@ -382,7 +379,7 @@ export function getSymbolsSucceeded(res) {
     type: GET_SYMBOLS_SUCCESS,
     isLoading: false,
     isError: false,
-    data: res.data
+    data: res.data,
   };
 }
 
@@ -409,7 +406,7 @@ export function getSymbolInfoSucceeded(res) {
     type: GET_SYMBOL_INFO_SUCCESS,
     isLoading: false,
     isError: false,
-    data: res.data
+    data: res.data,
   };
 }
 
@@ -421,7 +418,6 @@ export function getSymbolInfoFailed(error) {
     error: error.message,
   };
 }
-
 
 export function loadCandlestick(pair, interval) {
   return {
@@ -440,7 +436,7 @@ export function loadCandlestickSucceeded(payload) {
     type: LOAD_CANDLESTICK_SUCCESS,
     isLoading: true,
     isError: false,
-    payload
+    payload,
   };
 }
 
@@ -449,6 +445,6 @@ export function loadCandlestickFailed(payload) {
     type: LOAD_CANDLESTICK_ERROR,
     isLoading: true,
     isError: false,
-    payload
+    payload,
   };
 }

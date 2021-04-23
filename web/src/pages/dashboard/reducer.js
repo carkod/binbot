@@ -27,7 +27,7 @@ export const initialState = {
 function balanceReducer(state = initialState, action) {
   switch (action.type) {
     case GET_BALANCE: {
-     return state
+      return state;
     }
     case BALANCE_SUCCESS: {
       const newState = {
@@ -144,7 +144,7 @@ function balanceDiffReducer(state = initialState, action) {
 function balanceInBtcReducer(state = initialState, action) {
   switch (action.type) {
     case GET_BALANCE_IN_BTC: {
-     return state
+      return state;
     }
     case GET_BALANCE_IN_BTC_SUCCESS: {
       const newState = {
@@ -169,4 +169,9 @@ function balanceInBtcReducer(state = initialState, action) {
   }
 }
 
-export { balanceReducer, assetsReducer, balanceDiffReducer, balanceInBtcReducer };
+export {
+  balanceReducer,
+  assetsReducer,
+  balanceDiffReducer,
+  balanceInBtcReducer,
+};

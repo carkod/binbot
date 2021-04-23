@@ -1,38 +1,46 @@
 import React, { Component } from "react";
 // reactstrap components
-import { Button, Card, CardBody, CardHeader, CardTitle, Col, Form, FormGroup, Input, Row, FormFeedback } from "reactstrap";
-
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  Col,
+  Form,
+  FormGroup,
+  Input,
+  Row,
+  FormFeedback,
+} from "reactstrap";
 
 class RegistrationForm extends Component {
-
-
   state = {
-    username: '',
+    username: "",
     usernameIsRequiredError: false,
-    password: '',
-    confirmPassword: '',
-    email: '',
+    password: "",
+    confirmPassword: "",
+    email: "",
     emailIsRequiredError: false,
-    description: '',
+    description: "",
     passwordNotMatch: false,
     passwordIsRequiredError: false,
-  }
+  };
 
   requiredinValidation = () => {
     const { username, password } = this.state;
-    if (username === '' || username === null || username === undefined) {
+    if (username === "" || username === null || username === undefined) {
       this.setState({ usernameIsRequiredError: true });
     } else {
       this.setState({ usernameIsRequiredError: false });
     }
 
-    if (password === '' || password === null || password === undefined) {
+    if (password === "" || password === null || password === undefined) {
       this.setState({ passwordIsRequiredError: true });
     } else {
       this.setState({ passwordIsRequiredError: false });
     }
-
-  }
+  };
 
   passwordMatchinValidation = () => {
     if (this.state.confirmPassword !== this.state.password) {
@@ -40,20 +48,20 @@ class RegistrationForm extends Component {
     } else {
       this.setState({ passwordNotMatch: false });
     }
-  }
+  };
 
   handleChange = (e) => {
     this.requiredinValidation();
     this.passwordMatchinValidation();
     this.setState({ [e.target.name]: e.target.value });
-  }
+  };
 
   handleSubmit = (e) => {
     e.preventDefault();
     // this.requiredinValidation();
     this.passwordMatchinValidation();
     this.props.onSubmit(this.state);
-  }
+  };
 
   render() {
     return (
@@ -72,16 +80,31 @@ class RegistrationForm extends Component {
                     type="text"
                     name="username"
                     invalid={this.state.usernameIsRequiredError}
-                    onChange={(e) => this.setState({ [e.target.name]: e.target.value })}
+                    onChange={(e) =>
+                      this.setState({ [e.target.name]: e.target.value })
+                    }
                   />
-                  {this.state.usernameIsRequiredError && <FormFeedback className="register-form__error">Username is required</FormFeedback>}
+                  {this.state.usernameIsRequiredError && (
+                    <FormFeedback className="register-form__error">
+                      Username is required
+                    </FormFeedback>
+                  )}
                 </FormGroup>
               </Col>
               <Col className="pl-1" md="6">
                 <FormGroup>
                   <label htmlFor="email">Email address</label>
-                  <Input placeholder="Email" type="email" name="email" onChange={this.handleChange} />
-                  {this.state.emailIsRequiredError && <FormFeedback className="register-form__error">Email is required</FormFeedback>}
+                  <Input
+                    placeholder="Email"
+                    type="email"
+                    name="email"
+                    onChange={this.handleChange}
+                  />
+                  {this.state.emailIsRequiredError && (
+                    <FormFeedback className="register-form__error">
+                      Email is required
+                    </FormFeedback>
+                  )}
                 </FormGroup>
               </Col>
             </Row>
@@ -89,15 +112,27 @@ class RegistrationForm extends Component {
               <Col className="pr-1" md="6">
                 <FormGroup>
                   <label>Password</label>
-                  <Input type="password" name="password" onChange={this.handleChange}/>
+                  <Input
+                    type="password"
+                    name="password"
+                    onChange={this.handleChange}
+                  />
                   {/* <FormFeedback invalid className="register-form__error">Password is required</FormFeedback> */}
                 </FormGroup>
               </Col>
               <Col className="pl-1" md="6">
                 <FormGroup>
                   <label>Repeat password</label>
-                  <Input type="password" name="confirmPassword" onChange={this.handleChange} />
-                  {this.state.passwordNotMatch && <FormFeedback className="register-form__error">Password does not match</FormFeedback>}
+                  <Input
+                    type="password"
+                    name="confirmPassword"
+                    onChange={this.handleChange}
+                  />
+                  {this.state.passwordNotMatch && (
+                    <FormFeedback className="register-form__error">
+                      Password does not match
+                    </FormFeedback>
+                  )}
                 </FormGroup>
               </Col>
             </Row>
@@ -117,19 +152,16 @@ class RegistrationForm extends Component {
             </Row>
             <Row>
               <div className="update ml-auto mr-auto">
-                <Button
-                  className="btn-round"
-                  color="primary"
-                  type="submit"
-                >Register</Button>
+                <Button className="btn-round" color="primary" type="submit">
+                  Register
+                </Button>
               </div>
             </Row>
           </Form>
         </CardBody>
       </Card>
-    )
+    );
   }
 }
-
 
 export default RegistrationForm;

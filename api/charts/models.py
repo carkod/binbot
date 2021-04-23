@@ -13,12 +13,15 @@ class Candlestick:
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
     """
+
     candlestick_url = os.getenv("CANDLESTICK")
 
     def __init__(self):
         pair = request.view_args["pair"]
-        interval = request.view_args["interval"] if "interval" in request.view_args else "5m"
-        params = {'symbol': pair, 'interval': interval, "limit": "200"}
+        interval = (
+            request.view_args["interval"] if "interval" in request.view_args else "5m"
+        )
+        params = {"symbol": pair, "interval": interval, "limit": "200"}
         url = self.candlestick_url
         res = requests.get(url=url, params=params)
         self.data = res.json()
@@ -62,9 +65,9 @@ class Candlestick:
             "high": self._high_prices(),
             "low": self._low_prices(),
             "open": self._open_prices(),
-            "decreasing": {"line": {"color": 'red'}},
-            "increasing": {"line": {"color": 'green'}},
-            "line": {"color": '#17BECF'},
+            "decreasing": {"line": {"color": "red"}},
+            "increasing": {"line": {"color": "green"}},
+            "line": {"color": "#17BECF"},
             "type": "candlestick",
             "xaxis": "x",
             "yaxis": "y",
@@ -86,7 +89,12 @@ class Candlestick:
 
         pair = request.view_args["pair"]
         interval = request.view_args["interval"]
-        params = {'symbol': pair, 'interval': interval, "limit": lastMonth.day, "startTime": startTime}
+        params = {
+            "symbol": pair,
+            "interval": interval,
+            "limit": lastMonth.day,
+            "startTime": startTime,
+        }
         url = self.candlestick_url
         res = requests.get(url=url, params=params)
         handle_error(res)
@@ -101,8 +109,8 @@ class Candlestick:
         trace = {
             "x": dates,
             "y": close_prices,
-            "type": 'scatter',
-            "mode": 'lines+markers'
+            "type": "scatter",
+            "mode": "lines+markers",
         }
         resp = jsonResp({"message": "Successfully retrieved data", "data": trace}, 200)
         return resp
