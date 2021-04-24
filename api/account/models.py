@@ -232,7 +232,7 @@ class Account:
         price_filter = next(
             (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"), None
         )
-        return price_filter[filter_limit]
+        return float(price_filter[filter_limit])
 
     def lot_size_by_symbol(self, symbol, lot_size_limit):
         """

@@ -4,6 +4,7 @@ import os
 
 import requests
 from flask import Response, current_app as app
+from decimal import Decimal
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.round_numbers import round_numbers, supress_notation
 from api.tools.jsonresp import jsonResp_message, jsonResp
@@ -52,6 +53,9 @@ class Deal(Account):
         self.max_so_count = int(bot["max_so_count"])
         self.balances = 0
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot["pair"])
+        # PRICE_FILTER decimals
+        self.price_precision = - (Decimal(str(self.price_filter_by_symbol(self.active_bot["pair"], "tickSize"))).as_tuple().exponent)
+        self.qty_precision = - (Decimal(str(self.MIN_QTY)).as_tuple().exponent)
 
     def initialization(self):
         """
@@ -77,7 +81,7 @@ class Deal(Account):
         book_order = Book_Order(pair)
         initial_price = float(book_order.matching_engine(False, 1))
         qty = round_numbers(
-            (float(self.active_bot["base_order_size"]) / float(initial_price)), 0
+            (float(self.active_bot["base_order_size"]) / float(initial_price)), self.qty_precision
         )
         price = float(book_order.matching_engine(False, qty))
         # price = 0.000186
@@ -164,12 +168,12 @@ class Deal(Account):
 
             # Recursive order
             so_proportion = float(self.active_bot["so_size"]) / price
-            qty = round_numbers(so_proportion, 0)
+            qty = round_numbers(so_proportion, self.qty_precision)
 
             order = {
                 "pair": pair,
                 "qty": qty,
-                "price": supress_notation(price, self.decimal_precision),
+                "price": supress_notation(price, self.price_precision),
             }
             res = requests.post(url=self.bb_buy_order_url, json=order)
             if isinstance(handle_error(res), Response):
@@ -235,9 +239,8 @@ class Deal(Account):
         price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(
             base_order_deal["price"]
         )
-        decimal_precision = self.get_quote_asset_precision(pair)
-        qty = round_numbers(base_order_deal["qty"], 0)
-        price = round_numbers(price, decimal_precision)
+        qty = round_numbers(base_order_deal["qty"], self.qty_precision)
+        price = round_numbers(price, self.price_precision)
 
         # Validations
         if price:
@@ -585,7 +588,7 @@ class Deal(Account):
         base_asset = self.find_baseAsset(pair)
         balance = self.get_balances().json
         qty = round_numbers(
-            float(next((s for s in symbols if s["symbol"] == symbol), None)["free"]), 0
+            float(next((s for s in symbols if s["symbol"] == symbol), None)["free"]), self.qty_precision
         )
         book_order = Book_Order(pair)
         price = float(book_order.matching_engine(True, qty))
