@@ -102,7 +102,7 @@ class Deal(Account):
             order = {
                 "pair": pair,
                 "qty": qty,
-                "price": supress_notation(price),
+                "price": supress_notation(price, self.price_precision),
             }
             res = requests.post(url=self.bb_buy_order_url, json=order)
         else:
@@ -257,7 +257,7 @@ class Deal(Account):
         order = {
             "pair": pair,
             "qty": qty,
-            "price": supress_notation(price),
+            "price": supress_notation(price, self.price_precision),
         }
         res = requests.post(url=self.bb_sell_order_url, json=order)
         if isinstance(handle_error(res), Response):
@@ -301,14 +301,25 @@ class Deal(Account):
         """
         bot = self.active_bot
         for deal in bot["deals"]:
-            if deal == order_id:
+            if deal["order_id"] == order_id:
                 so_deal_price = deal["price"]
                 # Create new take profit order
                 new_tp_price = float(so_deal_price) + (
                     float(so_deal_price) * float(bot["take_profit"]) / 100
                 )
                 asset = self.find_baseAsset(bot["pair"])
-                qty = self.get_one_balance(asset)
+
+                # First cancel old order to unlock balance
+                close_order_params = {"symbol": bot["pair"], "orderId": order_id}
+                cancel_response = requests.post(
+                    url=self.bb_close_order_url, params=close_order_params
+                )
+                if cancel_response.status_code != 200:
+                    print("Take profit order not found, no need to cancel")
+                else:
+                    print("Old take profit order cancelled")
+
+                qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
 
                 # Validations
                 if new_tp_price:
@@ -328,20 +339,14 @@ class Deal(Account):
                 new_tp_order = {
                     "pair": bot["pair"],
                     "qty": qty,
-                    "price": supress_notation(new_tp_price),
+                    "price": supress_notation(new_tp_price, self.price_precision),
                 }
-                res = requests.post(url=self.bb_tp_sell_order_url, json=new_tp_order)
-                order = res.json()
-
+                res = requests.post(url=self.bb_sell_order_url, json=new_tp_order)
+                if isinstance(handle_error(res), Response):
+                    return handle_error(res)
+                
                 # New take profit order successfully created
-                # Now cancel old
-                close_order_params = {"symbol": bot["pair"], "orderId": order_id}
-                cancel_response = requests.post(
-                    url=self.bb_close_order_url, params=close_order_params
-                )
-                canceled_order = res.json()
-                if canceled_order:
-                    print("Old take profit order cancelled")
+                order = res.json()
 
                 # Replace take_profit order
                 take_profit_deal = {
@@ -415,9 +420,9 @@ class Deal(Account):
             "pair": pair,
             "qty": self.asset_qty,
             "price": supress_notation(
-                stop_loss_price
+                stop_loss_price, self.price_precision
             ),  # Theoretically stop_price, as we don't have book orders
-            "stop_price": supress_notation(stop_loss_price),
+            "stop_price": supress_notation(stop_loss_price, self.price_precision),
         }
         res = requests.post(url=self.bb_stop_sell_order_url, json=order)
         if isinstance(handle_error(res), Response):
@@ -479,9 +484,9 @@ class Deal(Account):
             "pair": pair,
             "qty": self.asset_qty,
             "price": supress_notation(
-                price
+                price, self.price_precision
             ),  # Theoretically stop_price, as we don't have book orders
-            "stop_price": supress_notation(price),
+            "stop_price": supress_notation(price, self.price_precision),
         }
         res = requests.post(url=self.bb_stop_buy_order_url, json=order)
         if isinstance(handle_error(res), Response):
@@ -597,7 +602,7 @@ class Deal(Account):
             order = {
                 "pair": pair,
                 "qty": qty,
-                "price": supress_notation(price),
+                "price": supress_notation(price, self.price_precision),
             }
             res = requests.post(url=self.bb_sell_order_url, json=order)
         else:
