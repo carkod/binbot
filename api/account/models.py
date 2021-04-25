@@ -232,7 +232,7 @@ class Account:
         price_filter = next(
             (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"), None
         )
-        return float(price_filter[filter_limit])
+        return price_filter[filter_limit].rstrip('.0')
 
     def lot_size_by_symbol(self, symbol, lot_size_limit):
         """
@@ -246,7 +246,7 @@ class Account:
         quantity_filter = next(
             (m for m in market["filters"] if m["filterType"] == "LOT_SIZE"), None
         )
-        return quantity_filter[lot_size_limit]
+        return quantity_filter[lot_size_limit].rstrip('.0')
 
     def min_notional_by_symbol(self, symbol, min_notional_limit="minNotional"):
         """

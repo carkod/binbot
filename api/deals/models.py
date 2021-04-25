@@ -55,7 +55,7 @@ class Deal(Account):
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot["pair"])
         # PRICE_FILTER decimals
         self.price_precision = - (Decimal(str(self.price_filter_by_symbol(self.active_bot["pair"], "tickSize"))).as_tuple().exponent)
-        self.qty_precision = - (Decimal(str(self.MIN_QTY)).as_tuple().exponent)
+        self.qty_precision = - (Decimal(str(self.lot_size_by_symbol(self.active_bot["pair"], "stepSize"))).as_tuple().exponent)
 
     def initialization(self):
         """

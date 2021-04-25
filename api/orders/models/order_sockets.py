@@ -84,17 +84,14 @@ class OrderUpdates(Account):
             completed = self.app.db.bots.find_one_and_update(
                 {
                     "deals": {
-                        "$elemMatch": {"deal_type": "take_profit", "order_id": order_id}
+                        "$elemMatch": {"deal_type": "take_profit", "order_id": order_id }
                     }
                 },
-                {"active": "false"},
+                {"$set": {"active": "false"}},
             )
             if completed:
-                print(f"Bot take_profit completed! {completed}. Bot deactivated")
-            else:
-                print(f"Bot take_profit failed to complete! {completed}.")
+                print(f"Bot take_profit completed! Bot {completed['_id']} deactivated")
 
-        if result["X"] == "CANCELLED":  # remove after tested
             # Update Safety orders
             order_price = float(result["p"])
             bot = self.app.db.bots.find_one(
@@ -112,7 +109,7 @@ class OrderUpdates(Account):
                 # It is a safety order, now find safety order deal price
                 deal = Deal(bot, self.app)
                 deal.default_deal.update(bot)
-                order = deal.long_take_profit_order()
+                order = deal.update_take_profit(order_id)
 
         else:
             print(f"No bot found with order client order id: {order_id}")

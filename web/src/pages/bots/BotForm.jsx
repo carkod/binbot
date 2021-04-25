@@ -95,7 +95,6 @@ class BotForm extends React.Component {
     if (!checkValue(this.props.match.params.id)) {
       this.props.getBot(this.props.match.params.id);
       this.computeAvailableBalance();
-      this.requiredinValidation();
     }
   };
 
@@ -103,9 +102,7 @@ class BotForm extends React.Component {
     if (p.symbolInfo !== this.props.symbolInfo) {
       this.computeAvailableBalance();
     }
-    if (s.strategy !== this.state.strategy) {
-      this.computeAvailableBalance();
-    }
+
     if (p.bot !== this.props.bot) {
       this.setState({
         active: this.props.bot.active,
@@ -188,6 +185,10 @@ class BotForm extends React.Component {
           this.setState({ bot_profit: 0 });
         }
       }
+    }
+
+    if (this.state.quoteAsset !== s.quoteAsset && !checkValue(this.props.balances)) {
+      this.computeAvailableBalance();
     }
   };
 
@@ -311,7 +312,7 @@ class BotForm extends React.Component {
 
     let value = "0";
     let name = "";
-    if (!checkValue(this.state.quoteAsset)) {
+    if (!checkValue(this.state.quoteAsset) && !checkValue(balances)) {
       balances.forEach((x) => {
         if (this.state.quoteAsset === x.asset) {
           value = x.free;
