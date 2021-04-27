@@ -37,7 +37,7 @@ class User:
         if user:
             resp = jsonResp({"message": "User found", "data": user}, 200)
         else:
-            resp = jsonResp({"message": "User not found"}, 404)
+            resp = jsonResp({"message": "User not found", "error": 1}, 404)
         return resp
 
     def login(self):
@@ -64,6 +64,7 @@ class User:
                         "_id": user["_id"],
                         "email": user["email"],
                         "access_token": access_token,
+                        "error": 0
                     },
                     200,
                 )
@@ -73,7 +74,7 @@ class User:
                 resp = jsonResp({"message": "Password verification failed"}, 200)
                 return resp
         else:
-            resp = jsonResp({"message": "User not found"}, 200)
+            resp = jsonResp({"message": "Credentials are incorrect", "error": 1}, 200)
         return resp
 
     def logout(self):

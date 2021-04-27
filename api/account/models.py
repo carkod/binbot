@@ -136,11 +136,11 @@ class Account:
                 btc_value = float(qty) * float(rate)
 
                 # Non-btc markets
-                if market != "BTC":
+                if market != "BTC" and b["asset"] != "USDT":
                     x_rate = self.get_ticker_price(market + "BTC")
                     x_value = float(qty) * float(rate)
                     btc_value = float(x_value) * float(x_rate)
-
+                
                 # Only tether coins for hedging
                 if b["asset"] == "USDT":
                     rate = self.get_ticker_price("BTCUSDT")
@@ -152,9 +152,9 @@ class Account:
                 else:
                     btc_value = b["free"]
 
-                data["total_btc"] += btc_value
-                assets = {"asset": b["asset"], "btc_value": btc_value}
-                data["balances"].append(assets)
+            data["total_btc"] += btc_value
+            assets = {"asset": b["asset"], "btc_value": btc_value}
+            data["balances"].append(assets)
 
         # filter out empty
         # Return response

@@ -18,7 +18,6 @@ export function* postLogin(body) {
   try {
     // Call our request helper (see 'utils/request')
     const res = yield call(request, requestURL, options);
-    setToken(res.access_token);
     yield put(loginSucceeded(res));
   } catch (err) {
     yield put(loginFailed(err));

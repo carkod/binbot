@@ -1,10 +1,19 @@
-import LoginForm from "../../components/LoginForm";
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { Col, Row } from "reactstrap";
-import { login, loginSucceeded, loginFailed } from "./actions";
+import LoginForm from "../../components/LoginForm";
+import { login, loginFailed, loginSucceeded } from "./actions";
+import ReduxToastr from "react-redux-toastr";
+import { getToken } from "../../request";
+import { checkValue } from "../../validations";
 
 class Login extends Component {
+
+  componentDidUpdate = () => {
+    if (!checkValue(getToken())) {
+      this.props.history.push("/");
+    }
+  }
+
   handleSubmit = async (data) => {
     const credentials = {
       email: data.email,
@@ -13,26 +22,34 @@ class Login extends Component {
       description: data.description,
     };
     this.props.login(credentials);
-    this.props.history.push("/");
   };
 
   render() {
     return (
-      <>
-        <div className="content">
-          <Row>
-            <Col md="12">
-              <LoginForm onSubmit={this.handleSubmit} />
-            </Col>
-          </Row>
-        </div>
-      </>
+      <div className="content">
+        <ReduxToastr
+          timeOut={4000}
+          newestOnTop={true}
+          preventDuplicates
+          position="top-right"
+          getState={(state) => state.toastr} // This is the default
+          transitionIn="fadeIn"
+          transitionOut="fadeOut"
+          progressBar
+          closeOnToastrClick
+        />
+        <LoginForm onSubmit={this.handleSubmit} />
+      </div>
     );
   }
 }
 
-const mapStateToProps = (state) => {
-  return {};
+const mapStateToProps = (p, s) => {
+  const { loginReducer } = p;
+  return {
+    message: loginReducer.message,
+    data: loginReducer.data
+  };
 };
 
 export default connect(mapStateToProps, { login, loginSucceeded, loginFailed })(
