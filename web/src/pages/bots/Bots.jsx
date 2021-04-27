@@ -2,16 +2,15 @@ import React from "react";
 import { connect } from "react-redux";
 import {
   Button,
-  ButtonToggle,
   Card,
   CardBody,
   CardFooter,
   CardTitle,
   Col,
-
-  Row
+  Badge,
+  Row,
 } from "reactstrap";
-import { activateBot, deactivateBot, deleteBot, getBots } from "./actions";
+import { deleteBot, getBots } from "./actions";
 
 class Bots extends React.Component {
   constructor(props) {
@@ -34,24 +33,6 @@ class Bots extends React.Component {
   handleDelete = (id) => {
     this.props.deleteBot(id);
   };
-
-  handleActivation = async (activate, id) => {
-    if (activate) {
-      this.props.activateBot(id);
-    } else {
-      console.log("Call deactivate API");
-      this.props.deactivateBot(id);
-    }
-  };
-
-  handleActivation = async (activate, id) => {
-    if (activate) {
-      this.props.activateBot(id);
-    } else {
-      console.log("Call deactivate API")
-      this.props.deactivateBot(id);
-    }
-  }
 
   render() {
     const { bots } = this.props;
@@ -92,12 +73,7 @@ class Bots extends React.Component {
                             tag="h5"
                             className="card-title u-uppercase"
                           >
-                            {x.strategy === "short" ? (
-                              <i className="fas fa-chart-line" />
-                            ) : (
-                              <i className="fa fa-angle-double-up" />
-                            )}
-                            {` ${x.strategy}`}
+                            0
                           </CardTitle>
                         </Col>
                       </Row>
@@ -107,26 +83,16 @@ class Bots extends React.Component {
                             <p className="card-category">{x.name}</p>
                           </div>
                         </Col>
-                        <Col md="4" xs="12">
-                          {x.active === "true" ? (
-                            <ButtonToggle
-                              color="success"
-                              onClick={() =>
-                                this.handleActivation(false, x._id.$oid)
+                        <Col md="5" xs="12">
+                          <div className="stats">
+                            <Badge
+                              color={
+                                x.active === "true" ? "success" : "secondary"
                               }
                             >
-                              On
-                            </ButtonToggle>
-                          ) : (
-                            <ButtonToggle
-                              color="secondary"
-                              onClick={() =>
-                                this.handleActivation(true, x._id.$oid)
-                              }
-                            >
-                              Off
-                            </ButtonToggle>
-                          )}
+                              {x.active === "true" ? "ACTIVE" : "INACTIVE"}
+                            </Badge>
+                          </div>
                         </Col>
                       </Row>
                       <hr />
@@ -226,6 +192,4 @@ const mapStateToProps = (state) => {
 export default connect(mapStateToProps, {
   getBots,
   deleteBot,
-  activateBot,
-  deactivateBot,
 })(Bots);

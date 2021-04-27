@@ -1,9 +1,24 @@
 import React from "react";
-import { Collapse, Container, Dropdown, DropdownItem, DropdownMenu, DropdownToggle, Input, InputGroup, InputGroupAddon, InputGroupText, Nav, Navbar, NavbarBrand, NavbarToggler, NavItem } from "reactstrap";
+import {
+  Collapse,
+  Container,
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownToggle,
+  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupText,
+  Nav,
+  Navbar,
+  NavbarBrand,
+  NavbarToggler,
+  NavItem,
+} from "reactstrap";
 import routes from "../../router/routes";
 import { removeToken } from "../../request";
 import { withRouter } from "react-router-dom";
-
 
 class Header extends React.Component {
   constructor(props) {
@@ -11,7 +26,7 @@ class Header extends React.Component {
     this.state = {
       isOpen: false,
       dropdownOpen: false,
-      color: "transparent"
+      color: "transparent",
     };
     this.toggle = this.toggle.bind(this);
     this.dropdownToggle = this.dropdownToggle.bind(this);
@@ -21,20 +36,20 @@ class Header extends React.Component {
   toggle() {
     if (this.state.isOpen) {
       this.setState({
-        color: "transparent"
+        color: "transparent",
       });
     } else {
       this.setState({
-        color: "dark"
+        color: "dark",
       });
     }
     this.setState({
-      isOpen: !this.state.isOpen
+      isOpen: !this.state.isOpen,
     });
   }
   dropdownToggle(e) {
     this.setState({
-      dropdownOpen: !this.state.dropdownOpen
+      dropdownOpen: !this.state.dropdownOpen,
     });
   }
   getBrand() {
@@ -55,11 +70,11 @@ class Header extends React.Component {
   updateColor() {
     if (window.innerWidth < 993 && this.state.isOpen) {
       this.setState({
-        color: "dark"
+        color: "dark",
       });
     } else {
       this.setState({
-        color: "transparent"
+        color: "transparent",
       });
     }
   }
@@ -77,7 +92,7 @@ class Header extends React.Component {
     }
   }
 
-  handleLogout (e) {
+  handleLogout(e) {
     e.preventDefault();
     removeToken();
     this.props.history.push("/login");
@@ -147,7 +162,7 @@ class Header extends React.Component {
               <Dropdown
                 nav
                 isOpen={this.state.dropdownOpen}
-                toggle={e => this.dropdownToggle(e)}
+                toggle={(e) => this.dropdownToggle(e)}
               >
                 <DropdownToggle caret nav>
                   <i className="nc-icon nc-bell-55" />
@@ -162,7 +177,10 @@ class Header extends React.Component {
                 </DropdownMenu>
               </Dropdown>
               <NavItem>
-                <button onClick={this.handleLogout} className="btn-reset nav-link btn-rotate">
+                <button
+                  onClick={this.handleLogout}
+                  className="btn-reset nav-link btn-rotate"
+                >
                   <i className="nc-icon nc-user-run" />
                   <p>
                     <span className="d-lg-none d-md-block">Account</span>

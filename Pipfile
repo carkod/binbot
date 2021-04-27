@@ -18,10 +18,10 @@ passlib = "*"
 pytz = "*"
 pandas = "*"
 requests = "*"
-websocket_client = "*"
-APScheduler = "*"
+apscheduler = "*"
 gunicorn = "*"
-schedule = "*"
+websocket-client = "*"
+flask-mongoengine = "*"
 
 [requires]
 python_version = "3.8"

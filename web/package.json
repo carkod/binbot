@@ -37,6 +37,7 @@
     "@testing-library/react": "^11.2.2",
     "@testing-library/user-event": "^12.2.2",
     "node-sass": "^5.0.0",
+    "prettier": "^2.2.1",
     "react-scripts": "^4.0.2",
     "web-vitals": "^0.2.4"
   },

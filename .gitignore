@@ -8,7 +8,7 @@
 *.pyc
 api/main/config/*.cfg
 .mypy_cache
-
+env
 ##
 #
 # REACT APPS
@@ -20,6 +20,7 @@ node_modules/
 coverage/
 build/
 mongo_data
+mongo_db
 
 .DS_Store
 .env.local

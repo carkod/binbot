@@ -1,4 +1,8 @@
-import { REGISTER_USER, REGISTER_USER_SUCCESS, REGISTER_USER_ERROR } from './actions';
+import {
+  REGISTER_USER,
+  REGISTER_USER_SUCCESS,
+  REGISTER_USER_ERROR,
+} from "./actions";
 
 // The initial state of the App
 export const initialState = {
@@ -15,7 +19,7 @@ function registrationReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
-        data: action.data
+        data: action.data,
       };
 
       return newState;
@@ -24,7 +28,7 @@ function registrationReducer(state = initialState, action) {
       const newState = {
         ...state,
         loading: false,
-        data: action.data
+        data: action.data,
       };
       return newState;
     }

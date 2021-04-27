@@ -1,24 +1,27 @@
-import json
 import os
+from datetime import datetime, timedelta
 
 import pandas as pd
 import requests
-from datetime import datetime, timedelta
-from flask import request
-from api.tools.jsonresp import jsonResp
 from api.tools.handle_error import handle_error
-from api.account.models import Account
+from api.tools.jsonresp import jsonResp
+from flask import request
+
 
 class Candlestick:
     """
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
     """
+
     candlestick_url = os.getenv("CANDLESTICK")
 
     def __init__(self):
         pair = request.view_args["pair"]
-        params = {'symbol': pair, 'interval': "5m", "limit": "200"}
+        interval = (
+            request.view_args["interval"] if "interval" in request.view_args else "5m"
+        )
+        params = {"symbol": pair, "interval": interval, "limit": "200"}
         url = self.candlestick_url
         res = requests.get(url=url, params=params)
         self.data = res.json()
@@ -62,9 +65,9 @@ class Candlestick:
             "high": self._high_prices(),
             "low": self._low_prices(),
             "open": self._open_prices(),
-            "decreasing": {"line": {"color": 'red'}},
-            "increasing": {"line": {"color": 'green'}},
-            "line": {"color": '#17BECF'},
+            "decreasing": {"line": {"color": "red"}},
+            "increasing": {"line": {"color": "green"}},
+            "line": {"color": "#17BECF"},
             "type": "candlestick",
             "xaxis": "x",
             "yaxis": "y",
@@ -72,9 +75,8 @@ class Candlestick:
         return defaults
 
     def get(self):
-        trace = json.dumps(self.candlestick_trace())
-
-        resp = jsonResp({"trace": trace}, 200)
+        trace = self.candlestick_trace()
+        resp = jsonResp({"trace": [trace]}, 200)
         return resp
 
     def get_diff(self):
@@ -87,7 +89,12 @@ class Candlestick:
 
         pair = request.view_args["pair"]
         interval = request.view_args["interval"]
-        params = {'symbol': pair, 'interval': interval, "limit": lastMonth.day, "startTime": startTime}
+        params = {
+            "symbol": pair,
+            "interval": interval,
+            "limit": lastMonth.day,
+            "startTime": startTime,
+        }
         url = self.candlestick_url
         res = requests.get(url=url, params=params)
         handle_error(res)
@@ -102,8 +109,8 @@ class Candlestick:
         trace = {
             "x": dates,
             "y": close_prices,
-            "type": 'scatter',
-            "mode": 'lines+markers'
+            "type": "scatter",
+            "mode": "lines+markers",
         }
         resp = jsonResp({"message": "Successfully retrieved data", "data": trace}, 200)
         return resp

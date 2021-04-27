@@ -7,6 +7,7 @@ from api.deals.models import Deal
 from bson.objectid import ObjectId
 from api.tools.jsonresp import jsonResp
 
+
 class Bot(Account):
     def __init__(self):
         self.defaults = {
@@ -19,15 +20,18 @@ class Bot(Account):
             "balance_usage_size": "0.0001",
             "base_order_size": "3",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
+            "short_stop_price": "0",  # Flip to short strategy threshold
+            "short_order": "0",  # Quantity flip to short
             "start_condition": "true",
             "so_size": "0.0001",  # Top band
-            "take_profit": "0.003",  # 30% take profit
+            "take_profit": "0.003",  # 3% take profit
             "price_deviation_so": "0.63",  # % percentage
             "trailling": "false",
             "trailling_deviation": "0.63",
             "deal_min_value": "0",
             "cooldown": "0",
             "deals": [],
+            "stop_loss": "0",
         }
 
     def get(self):
@@ -52,9 +56,9 @@ class Bot(Account):
     def create(self):
         resp = jsonResp({"message": "Bot creation not available"}, 400)
         data = request.json
-        # base_order_size = self.get_base_order_size(data['pair'], data['maxSOCount'], data['take_profit'])
-
-        data["name"] = data["name"] if data["name"] != "" else f"Bot-{date.today()}"
+        data["name"] = (
+            data["name"] if data["name"] != "" else f"{data['pair']}-{date.today()}"
+        )
         self.defaults.update(data)
         botId = app.db.bots.save(self.defaults, {"$currentDate": {"createdAt": "true"}})
         if botId:
@@ -109,43 +113,68 @@ class Bot(Account):
             return resp
 
     def activate(self):
-        resp = jsonResp({"message": "Bot activation is not available"}, 400)
         findId = request.view_args["botId"]
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            dealId = Deal(bot, app).open_deal()
+            dealId, order_errors = Deal(bot, app).open_deal()
 
             # If error
             if isinstance(dealId, Response):
                 resp = jsonResp(dealId.json, 200)
                 return resp
 
-            if dealId:
+            if dealId and not order_errors:
                 bot["active"] = "true"
                 bot["deals"].append(dealId)
                 botId = app.db.bots.save(bot)
                 if botId:
                     resp = jsonResp(
-                        {"message": "Successfully activated bot and triggered deals", "bodId": str(findId)},
+                        {
+                            "message": "Successfully activated bot and triggered deals with no errors",
+                            "botId": str(findId),
+                        },
+                        200,
+                    )
+                return resp
+            elif dealId and order_errors:
+                bot["active"] = "true"
+                bot["deals"].append(dealId)
+                botId = app.db.bots.save(bot)
+                if botId:
+                    resp = jsonResp(
+                        {
+                            "message": f"Successfully activated bot, deals had errors {','.join(order_errors)}",
+                            "botId": str(findId),
+                        },
                         200,
                     )
                 return resp
             else:
                 resp = jsonResp(
-                    {"message": "Deal creation failed", "botId": findId}, 400
+                    {"message": "Deal base order failed", "botId": findId}, 400
                 )
+
         else:
             resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp
 
     def deactivate(self):
+        """
+        Deactivation involves
+        - Closing all deals (opened orders)
+        - Selling all assets in the market
+        - Finally emptying the deals array in the bot
+        - After above actions succeed, update the DB with all these changes
+        The bot is kept for archive purposes
+        """
         resp = jsonResp({"message": "Bot deactivation is not available"}, 400)
         findId = request.view_args["botId"]
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
 
-            dealId = Deal(bot).close_deals()
+            # Close deals and sell everything
+            dealId = Deal(bot, app).close_deals()
 
             # If error
             if isinstance(dealId, Response):
@@ -155,9 +184,14 @@ class Bot(Account):
             if dealId:
                 bot["active"] = "false"
                 bot["deals"] = []
-                resp = jsonResp(
-                    {"message": "Successfully deactivated bot", "data": bot}, 200
+                botId = app.db.bots.update_one(
+                    {"_id": ObjectId(findId)},
+                    {"$set": {"deals": [], "active": "false"}},
                 )
+                if botId:
+                    resp = jsonResp(
+                        {"message": "Successfully deactivated bot!", "data": bot}, 200
+                    )
         else:
             resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp

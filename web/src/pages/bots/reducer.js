@@ -1,5 +1,35 @@
-import { CREATE_BOT, CREATE_BOT_ERROR, CREATE_BOT_SUCCESS, DELETE_BOT, DELETE_BOT_ERROR, DELETE_BOT_SUCCESS, EDIT_BOT, EDIT_BOT_ERROR, EDIT_BOT_SUCCESS, GET_BOT, GET_BOTS, GET_BOTS_ERROR, GET_BOTS_SUCCESS, GET_BOT_ERROR, GET_BOT_SUCCESS, GET_SYMBOLS, GET_SYMBOLS_SUCCESS, GET_SYMBOLS_ERROR, GET_SYMBOL_INFO, GET_SYMBOL_INFO_SUCCESS, GET_SYMBOL_INFO_ERROR, LOAD_CANDLESTICK, LOAD_CANDLESTICK_ERROR, LOAD_CANDLESTICK_SUCCESS, ACTIVATE_BOT, ACTIVATE_BOT_SUCCESS, ACTIVATE_BOT_ERROR, DEACTIVATE_BOT, DEACTIVATE_BOT_SUCCESS, DEACTIVATE_BOT_ERROR } from './actions';
-
+import {
+  CREATE_BOT,
+  CREATE_BOT_ERROR,
+  CREATE_BOT_SUCCESS,
+  DELETE_BOT,
+  DELETE_BOT_ERROR,
+  DELETE_BOT_SUCCESS,
+  EDIT_BOT,
+  EDIT_BOT_ERROR,
+  EDIT_BOT_SUCCESS,
+  GET_BOT,
+  GET_BOTS,
+  GET_BOTS_ERROR,
+  GET_BOTS_SUCCESS,
+  GET_BOT_ERROR,
+  GET_BOT_SUCCESS,
+  GET_SYMBOLS,
+  GET_SYMBOLS_SUCCESS,
+  GET_SYMBOLS_ERROR,
+  GET_SYMBOL_INFO,
+  GET_SYMBOL_INFO_SUCCESS,
+  GET_SYMBOL_INFO_ERROR,
+  LOAD_CANDLESTICK,
+  LOAD_CANDLESTICK_ERROR,
+  LOAD_CANDLESTICK_SUCCESS,
+  ACTIVATE_BOT,
+  ACTIVATE_BOT_SUCCESS,
+  ACTIVATE_BOT_ERROR,
+  DEACTIVATE_BOT,
+  DEACTIVATE_BOT_SUCCESS,
+  DEACTIVATE_BOT_ERROR,
+} from "./actions";
 
 // The initial state of the App
 export const initialState = {
@@ -16,7 +46,7 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
-        data: action.data
+        data: action.data,
       };
 
       return newState;
@@ -26,7 +56,7 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: action.bots
+        data: action.bots,
       };
       return newState;
     }
@@ -45,7 +75,8 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
-        data: state.data
+        data: state.data,
+        botActive: false,
       };
 
       return newState;
@@ -55,7 +86,8 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: state.data.concat(x => x._id.$oid === action.data)
+        botId: action.botId,
+        botActive: false,
       };
       return newState;
     }
@@ -66,7 +98,8 @@ function botReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.data
+        data: action.data,
+        botActive: false,
       };
     }
 
@@ -74,7 +107,8 @@ function botReducer(state = initialState, action) {
       const newState = {
         isLoading: true,
         isError: false,
-        data: state.data
+        data: state.data,
+        botActive: state.botActive,
       };
 
       return newState;
@@ -84,7 +118,8 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: state.data.filter(x => x._id.$oid !== action.data)
+        data: state.data.filter((x) => x._id.$oid !== action.data),
+        botActive: false,
       };
       return newState;
     }
@@ -95,6 +130,7 @@ function botReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
+        botActive: state.botActive,
       };
     }
 
@@ -103,6 +139,7 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
+        botActive: false,
       };
 
       return newState;
@@ -112,7 +149,8 @@ function botReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        message: action.message
+        message: action.message,
+        botActive: true,
       };
       return newState;
     }
@@ -122,7 +160,8 @@ function botReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.state
+        data: action.state,
+        botActive: false,
       };
     }
 
@@ -130,6 +169,7 @@ function botReducer(state = initialState, action) {
       const newState = {
         isLoading: true,
         isError: false,
+        botActive: true,
       };
 
       return newState;
@@ -138,7 +178,8 @@ function botReducer(state = initialState, action) {
       const newState = {
         isLoading: false,
         isError: false,
-        data: action.state
+        data: action.state,
+        botActive: false,
       };
       return newState;
     }
@@ -148,7 +189,8 @@ function botReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.state
+        data: action.state,
+        botActive: true,
       };
     }
 
@@ -159,12 +201,11 @@ function botReducer(state = initialState, action) {
 
 function symbolReducer(state = initialState, action) {
   switch (action.type) {
-
     case GET_SYMBOLS: {
       const newState = {
         isLoading: true,
         isError: false,
-        data: state.data
+        data: state.data,
       };
 
       return newState;
@@ -174,7 +215,7 @@ function symbolReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: action.data
+        data: action.data,
       };
       return newState;
     }
@@ -185,7 +226,7 @@ function symbolReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.data
+        data: action.data,
       };
     }
 
@@ -200,7 +241,7 @@ function symbolInfoReducer(state = initialState, action) {
       const newState = {
         isLoading: true,
         isError: false,
-        data: state.data
+        data: state.data,
       };
 
       return newState;
@@ -210,7 +251,7 @@ function symbolInfoReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: action.data
+        data: action.data,
       };
       return newState;
     }
@@ -221,7 +262,7 @@ function symbolInfoReducer(state = initialState, action) {
         error: action.error,
         isLoading: false,
         isError: true,
-        data: action.data
+        data: action.data,
       };
     }
 
@@ -237,7 +278,7 @@ function getSingleBotReducer(state = initialState, action) {
         ...state,
         isLoading: true,
         isError: false,
-        data: state.data
+        data: state.data,
       };
 
       return newState;
@@ -248,7 +289,7 @@ function getSingleBotReducer(state = initialState, action) {
         isLoading: false,
         isError: false,
         data: action.bots,
-        message: action.message
+        message: action.message,
       };
       return newState;
     }
@@ -267,17 +308,14 @@ function getSingleBotReducer(state = initialState, action) {
   }
 }
 
-
-
 function editBotReducer(state = initialState, action) {
   switch (action.type) {
-
     case EDIT_BOT: {
       const newState = {
         ...state,
         isLoading: true,
         isError: false,
-        data: action.data
+        data: action.data,
       };
 
       return newState;
@@ -287,7 +325,7 @@ function editBotReducer(state = initialState, action) {
         ...state,
         isLoading: false,
         isError: false,
-        data: action.data
+        data: action.data,
       };
       return newState;
     }
@@ -308,13 +346,12 @@ function editBotReducer(state = initialState, action) {
 
 function candlestickReducer(state = initialState, action) {
   switch (action.type) {
-
     case LOAD_CANDLESTICK: {
       const newState = {
         ...state,
         isLoading: true,
         isError: false,
-        data: action.data
+        data: action.data,
       };
 
       return newState;
@@ -323,7 +360,7 @@ function candlestickReducer(state = initialState, action) {
       const newState = {
         isLoading: false,
         isError: false,
-        data: action.payload
+        data: action.payload,
       };
       return newState;
     }
@@ -343,4 +380,11 @@ function candlestickReducer(state = initialState, action) {
   }
 }
 
-export { botReducer, symbolInfoReducer, symbolReducer, getSingleBotReducer, editBotReducer, candlestickReducer };
+export {
+  botReducer,
+  symbolInfoReducer,
+  symbolReducer,
+  getSingleBotReducer,
+  editBotReducer,
+  candlestickReducer,
+};

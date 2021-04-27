@@ -1,4 +1,3 @@
-
 import PerfectScrollbar from "perfect-scrollbar";
 import React from "react";
 import { Route, Switch } from "react-router-dom";
@@ -6,7 +5,7 @@ import Footer from "../containers/footer/Footer.jsx";
 import Header from "../containers/header/Header.jsx";
 import Sidebar from "../containers/sidebar/Sidebar";
 import routes from "../router/routes";
-import ReduxToastr from 'react-redux-toastr'
+import ReduxToastr from "react-redux-toastr";
 
 var ps;
 
@@ -15,7 +14,7 @@ class Admin extends React.Component {
     super(props);
     this.state = {
       backgroundColor: "black",
-      activeColor: "info"
+      activeColor: "info",
     };
     this.mainPanel = React.createRef();
   }
@@ -37,10 +36,10 @@ class Admin extends React.Component {
       document.scrollingElement.scrollTop = 0;
     }
   }
-  handleActiveClick = color => {
+  handleActiveClick = (color) => {
     this.setState({ activeColor: color });
   };
-  handleBgClick = color => {
+  handleBgClick = (color) => {
     this.setState({ backgroundColor: color });
   };
   render() {
@@ -68,14 +67,17 @@ class Admin extends React.Component {
           <Switch>
             {routes.map((prop, key) => {
               return (
-                <Route path={prop.layout + prop.path} component={prop.component} key={key} />
+                <Route
+                  path={prop.layout + prop.path}
+                  component={prop.component}
+                  key={key}
+                />
               );
             })}
           </Switch>
           <Footer fluid />
         </div>
       </div>
-
     );
   }
 }

@@ -34,4 +34,4 @@ DELETE http://localhost:5000/bot/5f830c917cb67ea5d0bd5972 HTTP/1.1
 
 ###
 
-GET http://localhost:5000/bot/activate/5f837dd146148214845cb32b HTTP/1.1
+GET http://localhost:5000/bot/activate/6046b0e75b97144638063cf3 HTTP/1.1

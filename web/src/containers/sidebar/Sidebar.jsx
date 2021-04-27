@@ -1,4 +1,3 @@
-
 import React, { Component } from "react";
 import { NavLink } from "react-router-dom";
 import { Nav } from "reactstrap";
@@ -21,7 +20,7 @@ class Sidebar extends Component {
     if (navigator.platform.indexOf("Win") > -1) {
       ps = new PerfectScrollbar(this.sidebar.current, {
         suppressScrollX: true,
-        suppressScrollY: false
+        suppressScrollY: false,
       });
     }
   }
@@ -53,26 +52,25 @@ class Sidebar extends Component {
         <div className="sidebar-wrapper" ref={this.sidebar}>
           <Nav>
             {this.filterNavigationRoutes().map((prop, key) => {
-                return (
-                  <li
-                    className={
-                      this.activeRoute(prop.path) +
-                      (prop.pro ? " active-pro" : "")
-                    }
-                    key={key}
+              return (
+                <li
+                  className={
+                    this.activeRoute(prop.path) +
+                    (prop.pro ? " active-pro" : "")
+                  }
+                  key={key}
+                >
+                  <NavLink
+                    to={prop.layout + prop.path}
+                    className="nav-link"
+                    activeClassName="active"
                   >
-                    <NavLink
-                      to={prop.layout + prop.path}
-                      className="nav-link"
-                      activeClassName="active"
-                    >
-                      <i className={prop.icon} />
-                      <p>{prop.name}</p>
-                    </NavLink>
-                  </li>
-                );
-              }
-            )}
+                    <i className={prop.icon} />
+                    <p>{prop.name}</p>
+                  </NavLink>
+                </li>
+              );
+            })}
           </Nav>
         </div>
       </div>

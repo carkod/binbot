@@ -4,39 +4,43 @@ import React from "react";
 import { connect } from "react-redux";
 import { Col, Row } from "reactstrap";
 import { dataHeaders } from "../../validations";
-import { deleteOpenOrders, getOpenOrders, getOrders, pollOrders } from "./actions";
+import {
+  deleteOpenOrders,
+  getOpenOrders,
+  getOrders,
+  pollOrders,
+} from "./actions";
 
 class Orders extends React.Component {
-
   constructor(props) {
     super(props);
     this.state = {
       limit: 10,
       offset: 0,
-      status: "FILLED"
-    }
+      status: "FILLED",
+    };
   }
 
   componentDidMount = () => {
     this.props.getOrders(this.state);
     this.props.getOpenOrders();
-  }
+  };
 
   handleLoadPage = (limit, offset, status) => {
     if (status === "" || status === undefined) status = null;
-    this.setState({ offset: offset, limit: limit, status: status }, () => 
+    this.setState({ offset: offset, limit: limit, status: status }, () =>
       this.props.getOrders(this.state)
     );
-  }
+  };
 
   updateHistoricalOrders = (e) => {
     e.preventDefault();
     this.props.pollOrders();
-  }
+  };
 
   handleDeleteOrder = (element) => {
     this.props.deleteOpenOrders(element);
-  }
+  };
 
   handleFilter = (e) => {
     let stateName = e.target.name;
@@ -44,8 +48,7 @@ class Orders extends React.Component {
     this.setState({ [stateName]: e.target.value }, () => {
       this.props.getOrders(this.state);
     });
-  }
-
+  };
 
   render() {
     return (
@@ -53,17 +56,19 @@ class Orders extends React.Component {
         <div className="content">
           <Row>
             <Col md="12">
-              {this.props.openOrders && <Tables 
-                title={"Opened orders"}
-                headers={dataHeaders}
-                data={this.props.openOrders}
-                action={this.handleDeleteOrder}
-                />}
+              {this.props.openOrders && (
+                <Tables
+                  title={"Opened orders"}
+                  headers={dataHeaders}
+                  data={this.props.openOrders}
+                  action={this.handleDeleteOrder}
+                />
+              )}
             </Col>
           </Row>
           <Row>
             <Col md="12">
-              <CardTable 
+              <CardTable
                 title={"Historical orders"}
                 data={this.props.orders}
                 pages={this.props.pages}
@@ -71,7 +76,7 @@ class Orders extends React.Component {
                 loadPage={this.handleLoadPage}
                 updateData={this.updateHistoricalOrders}
                 filter={this.handleFilter}
-                />
+              />
             </Col>
           </Row>
         </div>
@@ -86,9 +91,13 @@ const mapStateToProps = (state) => {
   return {
     orders: orders,
     pages: pages,
-    openOrders: openOrders
+    openOrders: openOrders,
   };
+};
 
-}
-
-export default connect(mapStateToProps, { getOrders, getOpenOrders, pollOrders, deleteOpenOrders })(Orders);
+export default connect(mapStateToProps, {
+  getOrders,
+  getOpenOrders,
+  pollOrders,
+  deleteOpenOrders,
+})(Orders);

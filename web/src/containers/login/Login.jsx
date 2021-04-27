@@ -2,20 +2,19 @@ import LoginForm from "../../components/LoginForm";
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Col, Row } from "reactstrap";
-import { login, loginSucceeded, loginFailed } from './actions';
+import { login, loginSucceeded, loginFailed } from "./actions";
 
 class Login extends Component {
-
   handleSubmit = async (data) => {
     const credentials = {
       email: data.email,
       password: data.password,
       username: data.username,
-      description: data.description
-    }
+      description: data.description,
+    };
     this.props.login(credentials);
-    this.props.history.push('/');
-  }
+    this.props.history.push("/");
+  };
 
   render() {
     return (
@@ -33,7 +32,9 @@ class Login extends Component {
 }
 
 const mapStateToProps = (state) => {
-  return {}
-}
+  return {};
+};
 
-export default connect(mapStateToProps, { login, loginSucceeded, loginFailed })(Login);
+export default connect(mapStateToProps, { login, loginSucceeded, loginFailed })(
+  Login
+);

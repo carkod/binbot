@@ -13,7 +13,7 @@ var routes = [
     component: Dashboard,
     layout: "/admin",
     nav: true,
-    private: true
+    private: true,
   },
   {
     path: "/bots",
@@ -33,7 +33,7 @@ var routes = [
     component: BotForm,
     layout: "/admin",
     nav: false,
-    private: true
+    private: true,
   },
   {
     path: "/bots-edit/:id",
@@ -42,7 +42,7 @@ var routes = [
     component: BotForm,
     layout: "/admin",
     nav: false,
-    private: true
+    private: true,
   },
   {
     path: "/orders",
@@ -51,7 +51,7 @@ var routes = [
     component: Orders,
     layout: "/admin",
     nav: true,
-    private: true
+    private: true,
   },
   {
     path: "/research",
@@ -60,7 +60,7 @@ var routes = [
     component: UserPage,
     layout: "/admin",
     nav: true,
-    private: true
+    private: true,
   },
   {
     path: "/user-page",
@@ -69,7 +69,7 @@ var routes = [
     component: UserPage,
     layout: "/admin",
     nav: true,
-    private: true
+    private: true,
   },
   {
     path: "/registration",
@@ -78,7 +78,7 @@ var routes = [
     component: Registration,
     layout: "/admin",
     nav: true,
-    private: true
-  }
+    private: true,
+  },
 ];
 export default routes;

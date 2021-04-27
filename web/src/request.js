@@ -25,7 +25,7 @@ function checkStatus(response) {
   }
 
   if (response.status < 404) {
-    return response
+    return response;
   }
 
   const error = new Error(response.statusText);
@@ -42,12 +42,10 @@ function checkStatus(response) {
  * @return {object}           The response data
  */
 export default function request(url, options = {}) {
-  return fetch(url, options)
-    .then(checkStatus)
-    .then(parseJSON);
+  return fetch(url, options).then(checkStatus).then(parseJSON);
 }
 
-const tokenName = 'binbot-token';
+const tokenName = "binbot-token";
 
 export function getToken() {
   const parsedToken = JSON.parse(localStorage.getItem(tokenName));
@@ -62,3 +60,9 @@ export function setToken(token) {
 export function removeToken() {
   localStorage.removeItem(tokenName);
 }
+
+export const defaultOptions = {
+  method: "GET",
+  mode: "cors", // no-cors, *cors, same-origin
+  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+};

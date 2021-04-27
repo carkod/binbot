@@ -1,10 +1,53 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardBody, CardHeader, CardTitle, Table, Pagination, PaginationItem, PaginationLink, Col, Row, Modal, ModalHeader, ModalBody,ModalFooter, Button } from "reactstrap";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  Table,
+  Pagination,
+  PaginationItem,
+  PaginationLink,
+  Col,
+  Row,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+} from "reactstrap";
 
 function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
-
   const [totalPages, setTotalPages] = useState(1);
-  const [displayedPages, setdisplayedPages] = useState([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, "..."]);
+  const [displayedPages, setdisplayedPages] = useState([
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    "...",
+  ]);
   const [currentPage, setCurrentPage] = useState(1);
   const [firstNavigationDisabled, setFirstNavigationDisabled] = useState(true);
   const [lastNavigationDisabled, setLastNavigationDisabled] = useState(false);
@@ -13,13 +56,12 @@ function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
 
   useEffect(() => {
     getTotalPages(pages, limit);
-
   }, [pages, limit]);
 
   const getTotalPages = (pages, limit) => {
     const totalPages = Math.ceil(pages / limit);
     setTotalPages(totalPages);
-  }
+  };
 
   const goToPage = (num) => {
     navigationDisabilityChecks(num);
@@ -32,7 +74,7 @@ function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
       retractPages();
     }
     loadPage(limit, newOffset);
-  }
+  };
 
   const nextPage = () => {
     if (currentPage < totalPages) {
@@ -48,7 +90,7 @@ function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
       }
       loadPage(limit, newOffset);
     }
-  }
+  };
 
   const previousPage = () => {
     if (currentPage > 1) {
@@ -64,21 +106,21 @@ function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
       }
       loadPage(limit, newOffset);
     }
-  }
+  };
 
   const firstPage = () => {
-    const newCurrentPage = 1
+    const newCurrentPage = 1;
     setCurrentPage(newCurrentPage);
     const newOffset = (newCurrentPage - 1) * limit;
     loadPage(limit, newOffset);
-  }
+  };
 
   const lastPage = () => {
     const newCurrentPage = totalPages;
     setCurrentPage(newCurrentPage);
     const newOffset = (newCurrentPage - 1) * limit;
     loadPage(limit, newOffset);
-  }
+  };
 
   const expandPages = () => {
     // Not greater or equal than totalPages length
@@ -89,9 +131,9 @@ function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
       const newPageList3 = newPageList2.concat("...");
       setdisplayedPages(newPageList3);
     } else {
-      setLastNavigationDisabled(true)
+      setLastNavigationDisabled(true);
     }
-  }
+  };
 
   const retractPages = () => {
     // Not less or equal than 1
@@ -103,9 +145,9 @@ function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
       setdisplayedPages(newPageList3);
     }
     if (displayedPages[0] === 1) {
-      setFirstNavigationDisabled(true)
+      setFirstNavigationDisabled(true);
     }
-  }
+  };
 
   const navigationDisabilityChecks = (num) => {
     if (num > 1 && firstNavigationDisabled) {
@@ -120,7 +162,7 @@ function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
     if (num === totalPages && !lastNavigationDisabled) {
       setLastNavigationDisabled(true);
     }
-  }
+  };
 
   const toggle = () => setModal(!modal);
 
@@ -137,54 +179,75 @@ function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
                 <Table>
                   <thead className="text-primary">
                     <tr>
-                      {headers !== undefined && headers.map((x,i) => 
-                        <th key={i} >{x}</th> 
-                      )}
+                      {headers !== undefined &&
+                        headers.map((x, i) => <th key={i}>{x}</th>)}
                     </tr>
                   </thead>
                   <tbody>
-                    {data && data.map(x =>
-                      <tr key={x.clientOrderId} onClick={() => { setSelectedOrder(x); toggle(!modal)}}>
-                        <td>{new Date(x.updateTime).toLocaleDateString('en-gb', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
-                        <td>{x.symbol}</td>
-                        <td>{x.side}</td>
-                        <td>{x.type}</td>
-                        <td>{x.price}</td>
-                        <td>{x.origQty}</td>
-                        <td>{x.executedQty}</td>
-                      </tr>
-                    )}
+                    {data &&
+                      data.map((x) => (
+                        <tr
+                          key={x.clientOrderId}
+                          onClick={() => {
+                            setSelectedOrder(x);
+                            toggle(!modal);
+                          }}
+                        >
+                          <td>
+                            {new Date(x.updateTime).toLocaleDateString(
+                              "en-gb",
+                              { year: "numeric", month: "long", day: "numeric" }
+                            )}
+                          </td>
+                          <td>{x.symbol}</td>
+                          <td>{x.side}</td>
+                          <td>{x.type}</td>
+                          <td>{x.price}</td>
+                          <td>{x.origQty}</td>
+                          <td>{x.executedQty}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </Table>
                 <Row>
-                  <Col md="12" >
-                    {pages !== undefined && <Pagination aria-label="Page navigation example">
-                      <PaginationItem disabled={firstNavigationDisabled}>
-                        <PaginationLink first href="#" onClick={firstPage} />
-                      </PaginationItem>
-                      <PaginationItem disabled={firstNavigationDisabled} >
-                        <PaginationLink previous href="#" onClick={previousPage} />
-                      </PaginationItem>
-
-                      {displayedPages && displayedPages.map((x, i) => (
-                        <PaginationItem key={i} active={currentPage === x}>
-                          {x === "..." ? <span className="page-link">{x}</span> :
-                            <PaginationLink href="#" onClick={() => goToPage(x)}>
-                              {x}
-                            </PaginationLink>
-                          }
+                  <Col md="12">
+                    {pages !== undefined && (
+                      <Pagination aria-label="Page navigation example">
+                        <PaginationItem disabled={firstNavigationDisabled}>
+                          <PaginationLink first href="#" onClick={firstPage} />
                         </PaginationItem>
-                      )
-                      )}
+                        <PaginationItem disabled={firstNavigationDisabled}>
+                          <PaginationLink
+                            previous
+                            href="#"
+                            onClick={previousPage}
+                          />
+                        </PaginationItem>
 
-                      <PaginationItem disabled={lastNavigationDisabled}>
-                        <PaginationLink next href="#" onClick={nextPage} />
-                      </PaginationItem>
-                      <PaginationItem disabled={lastNavigationDisabled}>
-                        <PaginationLink last href="#" onClick={lastPage} />
-                      </PaginationItem>
-                    </Pagination>
-                    }
+                        {displayedPages &&
+                          displayedPages.map((x, i) => (
+                            <PaginationItem key={i} active={currentPage === x}>
+                              {x === "..." ? (
+                                <span className="page-link">{x}</span>
+                              ) : (
+                                <PaginationLink
+                                  href="#"
+                                  onClick={() => goToPage(x)}
+                                >
+                                  {x}
+                                </PaginationLink>
+                              )}
+                            </PaginationItem>
+                          ))}
+
+                        <PaginationItem disabled={lastNavigationDisabled}>
+                          <PaginationLink next href="#" onClick={nextPage} />
+                        </PaginationItem>
+                        <PaginationItem disabled={lastNavigationDisabled}>
+                          <PaginationLink last href="#" onClick={lastPage} />
+                        </PaginationItem>
+                      </Pagination>
+                    )}
                   </Col>
                 </Row>
               </CardBody>
@@ -192,15 +255,23 @@ function Tables({ title, headers, data, pages, limit = 10, loadPage, action }) {
           </Col>
         </Row>
         <Modal isOpen={modal} toggle={toggle} zIndex="99999">
-        <ModalHeader toggle={toggle}>Delete item</ModalHeader>
-        <ModalBody>
-          Are you sure you want to delete?
-        </ModalBody>
-        <ModalFooter>
-          <Button color="primary" onClick={() => { action(selectedOrder); toggle(!modal) }}>Accept</Button>
-          <Button color="secondary" onClick={toggle}>Cancel</Button>
-        </ModalFooter>
-      </Modal>
+          <ModalHeader toggle={toggle}>Delete item</ModalHeader>
+          <ModalBody>Are you sure you want to delete?</ModalBody>
+          <ModalFooter>
+            <Button
+              color="primary"
+              onClick={() => {
+                action(selectedOrder);
+                toggle(!modal);
+              }}
+            >
+              Accept
+            </Button>
+            <Button color="secondary" onClick={toggle}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </Modal>
       </div>
     </>
   );

@@ -2,24 +2,30 @@ import json
 import os
 
 import requests
+from flask import current_app
 from api.tools.handle_error import handle_error
-from websocket import create_connection
+from api.tools.jsonresp import jsonResp, jsonResp_message
+from websocket import create_connection, enableTrace, WebSocketApp
+from api.deals.models import Deal
+from api.account.models import Account
 
 
-class OrderUpdates:
-    def __init__(self):
+class OrderUpdates(Account):
+    def __init__(self, app):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
-        self.ws_base_url = os.getenv("WS_BASE")
         self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
         self.all_orders_url = os.getenv("ALL_ORDERS")
         self.order_url = os.getenv("ORDER")
 
         # streams
-        self.host = os.getenv("WS_BASE")
-        self.port = os.getenv("WS_BASE_PORT")
+        self.base = os.getenv("WS_BASE")
         self.path = "/ws"
         self.active_ws = None
+        self.listenkey = None
+        self.app = app
+
+        enableTrace(True)
 
     def get_listenkey(self):
         url = self.user_datastream_listenkey
@@ -35,44 +41,75 @@ class OrderUpdates:
         data = res.json()
         return data
 
-    def open_stream(self):
-        url = self.host + ":" + self.port + self.path
-        ws = create_connection(url)
-        subscribe = json.dumps(
-            {"method": "SUBSCRIBE", "params": ["executionReport"], "id": 1}
+    def get_stream(self):
+        if not self.active_ws or not self.listen_key:
+            self.listen_key = self.get_listenkey()["listenKey"]
+
+        url = self.base + self.path + "/" + self.listen_key
+        ws = create_connection(
+            url,
+            on_open=self.on_open,
+            on_error=self.on_error,
+            on_close=self.close_stream,
         )
-        ws.send(subscribe)
-        self.active_ws = ws
         result = ws.recv()
         result = json.loads(result)
-        if not result["result"]:
-            print("Received '%s'" % result)
-            return True
-        # ws.close()
-        return False
-        # data = ws.recv_data()
+        if result["e"] == "executionReport":
+            self.process_report_execution(result)
 
-    def get_stream(self, listenkey):
-        url = self.host + ":" + self.port + self.path + "/" + listenkey
-        ws = create_connection(url)
-        result = ws.recv()
-        result = json.loads(result)
-
-        # Parse result. Print result for raw result from Binance
-        client_order_id = result["C"] if result["X"] == "CANCELED" else result["c"]
-        order_result = [
-            ("symbol", result["s"]),
-            ("order_status", result["X"]),
-            ("timestamp", result["E"]),
-            ("client_order_id", client_order_id),
-            ("created_at", result["O"]),
-        ]
-
-        print("order result %s", order_result)
-
-        return order_result
-
-    def close_stream(self):
+    def close_stream(self, ws):
         if self.active_ws:
             self.active_ws.close()
             print("Active socket closed")
+
+    def on_open(self, ws):
+        print("Open")
+
+    def on_error(self, ws, error):
+        print(f"Error: {error}")
+
+    def process_report_execution(self, result):
+        # Parse result. Print result for raw result from Binance
+        order_id = result["i"]
+        order_result = {
+            "symbol": result["s"],
+            "order_status": result["X"],
+            "timestamp": result["E"],
+            "order_id": order_id,
+            "created_at": result["O"],
+        }
+
+        if result["X"] == "FILLED":
+            # Close successful orders
+            completed = self.app.db.bots.find_one_and_update(
+                {
+                    "deals": {
+                        "$elemMatch": {"deal_type": "take_profit", "order_id": order_id }
+                    }
+                },
+                {"$set": {"active": "false"}},
+            )
+            if completed:
+                print(f"Bot take_profit completed! Bot {completed['_id']} deactivated")
+
+            # Update Safety orders
+            order_price = float(result["p"])
+            bot = self.app.db.bots.find_one(
+                {
+                    "deals": {
+                        "$elemMatch": {
+                            "deal_type": "safety_order",
+                            "order_id": order_id,
+                        }
+                    }
+                }
+            )
+
+            if bot:
+                # It is a safety order, now find safety order deal price
+                deal = Deal(bot, self.app)
+                deal.default_deal.update(bot)
+                order = deal.update_take_profit(order_id)
+
+        else:
+            print(f"No bot found with order client order id: {order_id}")

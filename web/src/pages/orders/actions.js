@@ -1,26 +1,25 @@
-export const GET_ALL_ORDERS = 'GET_ALL_ORDERS';
-export const GET_ALL_ORDERS_SUCCESS = 'GET_ALL_ORDERS_SUCCESS';
-export const GET_ALL_ORDERS_ERROR = 'GET_ALL_ORDERS_ERROR';
+export const GET_ALL_ORDERS = "GET_ALL_ORDERS";
+export const GET_ALL_ORDERS_SUCCESS = "GET_ALL_ORDERS_SUCCESS";
+export const GET_ALL_ORDERS_ERROR = "GET_ALL_ORDERS_ERROR";
 
-export const GET_OPEN_ORDERS = 'GET_OPEN_ORDERS';
-export const GET_OPEN_ORDERS_SUCCESS = 'GET_OPEN_ORDERS_SUCCESS';
-export const GET_OPEN_ORDERS_ERROR = 'GET_OPEN_ORDERS_ERROR';
-export const DELETE_OPEN_ORDERS = 'DELETE_OPEN_ORDERS';
-export const DELETE_OPEN_ORDERS_SUCCESS = 'DELETE_OPEN_ORDERS_SUCCESS';
-export const DELETE_OPEN_ORDERS_ERROR = 'DELETE_OPEN_ORDERS_ERROR';
+export const GET_OPEN_ORDERS = "GET_OPEN_ORDERS";
+export const GET_OPEN_ORDERS_SUCCESS = "GET_OPEN_ORDERS_SUCCESS";
+export const GET_OPEN_ORDERS_ERROR = "GET_OPEN_ORDERS_ERROR";
+export const DELETE_OPEN_ORDERS = "DELETE_OPEN_ORDERS";
+export const DELETE_OPEN_ORDERS_SUCCESS = "DELETE_OPEN_ORDERS_SUCCESS";
+export const DELETE_OPEN_ORDERS_ERROR = "DELETE_OPEN_ORDERS_ERROR";
 
-export const POLL_ORDERS = 'POLL_ORDERS';
-export const POLL_ORDERS_SUCCESS = 'POLL_ORDERS_SUCCESS';
-export const POLL_ORDERS_ERROR = 'POLL_ORDERS_ERROR';
-export const DEFAULT_LOCALE = 'en';
-
+export const POLL_ORDERS = "POLL_ORDERS";
+export const POLL_ORDERS_SUCCESS = "POLL_ORDERS_SUCCESS";
+export const POLL_ORDERS_ERROR = "POLL_ORDERS_ERROR";
+export const DEFAULT_LOCALE = "en";
 
 /**
  * Create new user
  *
  * @return {object} An action object with a type of BOT
  */
-export function getOrders({limit, offset, status}) {
+export function getOrders({ limit, offset, status }) {
   return {
     type: GET_ALL_ORDERS,
     isLoading: true,
@@ -28,8 +27,8 @@ export function getOrders({limit, offset, status}) {
     data: {
       limit: limit,
       offset: offset,
-      status: status
-    }
+      status: status,
+    },
   };
 }
 
@@ -48,7 +47,7 @@ export function getOrdersSucceeded(res) {
     isError: false,
     orders: res.data,
     pages: res.pages,
-    status: res.status
+    status: res.status,
   };
 }
 
@@ -87,7 +86,7 @@ export function getOpenOrdersSucceeded(res) {
     isLoading: false,
     isError: false,
     data: res.data,
-    message: res.message
+    message: res.message,
   };
 }
 
@@ -110,7 +109,7 @@ export function deleteOpenOrders(payload) {
     type: DELETE_OPEN_ORDERS,
     isLoading: true,
     isError: false,
-    data: payload
+    data: payload,
   };
 }
 
@@ -120,7 +119,7 @@ export function deleteOpenOrdersSucceeded(res) {
     isLoading: false,
     isError: false,
     data: res.data,
-    message: res.message
+    message: res.message,
   };
 }
 
@@ -160,7 +159,7 @@ export function pollOrdersSucceeded(res) {
     isLoading: false,
     isError: false,
     bots: res.botId,
-    message: res.message
+    message: res.message,
   };
 }
 
@@ -177,6 +176,6 @@ export function pollOrdersFailed(error) {
     isLoading: false,
     isError: true,
     data: error,
-    message: error.message
+    message: error.message,
   };
 }

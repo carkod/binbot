@@ -5,6 +5,7 @@ from api.tools.enum_definitions import EnumDefinitions
 import pandas as pd
 from api.tools.round_numbers import round_numbers
 
+
 class Book_Order:
     def __init__(self, symbol):
         self.key = os.getenv("BINANCE_KEY")
@@ -40,8 +41,13 @@ class Book_Order:
 
     def matching_engine(self, order_side, qty, limit_index=0):
         """
-        Buy order = bids = True
-        Sell order = ask = False
+        Match quantity with available 100% fill order price,
+        so that order can immediately buy/sell
+        @param: order_side -
+            Buy order = get ask prices = True
+            Sell order = get bids prices = False
+        @param: qty - quantity wanted to be bought
+        @param: order_side - BUY or SELL
         """
 
         url = self.order_book_url
@@ -65,7 +71,7 @@ class Book_Order:
             if limit_index == 4:
                 return None
             self.matching_engine(order_side, qty, limit_index)
-        final_qty = round_numbers(match_qty["price"].iloc[0], 4)
+        final_qty = match_qty["price"].iloc[0]
         return final_qty
 
     def ticker_price(self):
