@@ -31,11 +31,19 @@ function loginReducer(state = initialState, action) {
     }
 
     case LOGIN_ERROR: {
+      if (action.isError) {
+        return {
+          ...state,
+          error: true,
+          isLoading: false,
+          message: action.message
+        }
+      }
       return {
         ...state,
-        error: action.error,
+        error: false,
         isLoading: false,
-        isError: true,
+        message: action.message,
       };
     }
     default:

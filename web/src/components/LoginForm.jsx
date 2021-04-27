@@ -59,14 +59,15 @@ class LoginForm extends Component {
   render() {
     const { passwordIsRequiredError, emailIsRequiredError } = this.state;
     return (
+      <div className="c-login-card">
       <Card className="card-user">
         <CardHeader>
-          <CardTitle tag="h5">Login</CardTitle>
+        <CardTitle tag="h3">Login</CardTitle>
         </CardHeader>
         <CardBody>
           <Form onSubmit={this.handleSubmit}>
             <Row>
-              <Col className="pr-1" md="12">
+              <Col md="12">
                 <FormGroup>
                   <label htmlFor="email">Email address</label>
                   <Input
@@ -79,9 +80,7 @@ class LoginForm extends Component {
                   <FormFeedback>Email is required</FormFeedback>
                 </FormGroup>
               </Col>
-            </Row>
-            <Row>
-              <Col className="pr-1" md="12">
+              <Col md="12">
                 <FormGroup>
                   <label htmlFor="password">Password</label>
                   <Input
@@ -106,6 +105,7 @@ class LoginForm extends Component {
           </Form>
         </CardBody>
       </Card>
+      </div>
     );
   }
 }
