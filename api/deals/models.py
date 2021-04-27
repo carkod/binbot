@@ -84,9 +84,8 @@ class Deal(Account):
             (float(self.active_bot["base_order_size"]) / float(initial_price)), self.qty_precision
         )
         price = float(book_order.matching_engine(False, qty))
-        # price = 0.000186
         self.price = price
-        amount = float(qty) / float(price)
+        amount = float(qty) * float(price)
         self.total_amount = qty
 
         if price:
