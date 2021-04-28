@@ -3,7 +3,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "yearly"
+      interval: "monthly"
     commit-message:
       # Prefix all commit messages with "npm"
       prefix: "npm"
@@ -11,7 +11,7 @@ updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "yearly"
+      interval: "monthly"
     # Include a list of updated dependencies
     # with a prefix determined by the dependency group
     commit-message:
