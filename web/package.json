@@ -5,7 +5,7 @@
   "homepage": ".",
   "dependencies": {
     "bootstrap": "^4.3.1",
-    "history": "^4.9.0",
+    "history": "^5.0.0",
     "perfect-scrollbar": "^1.4.0",
     "plotly.js": "^1.57.1",
     "react": "^17.0.1",
