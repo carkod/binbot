@@ -26,10 +26,6 @@ class Bots extends React.Component {
     return `${parseFloat(stringNum) * 100}%`;
   };
 
-  handleNew = () => {
-    this.props.history.replace("/admin/bots-create");
-  };
-
   handleDelete = (id) => {
     this.props.deleteBot(id);
   };
@@ -41,18 +37,6 @@ class Bots extends React.Component {
         <div className="content">
           <Row>
             <Col md="12">{/* <Candlestick title={"BNBBTC"} /> */}</Col>
-          </Row>
-          <Row>
-            <Col md="12">
-              <div className="t-jumbotron u-space-between">
-                <h2 className="display-5">Active bots</h2>
-                <Button color="link" onClick={this.handleNew}>
-                  New bot
-                </Button>
-              </div>
-
-              <p className="lead">Ordered by active and creation date</p>
-            </Col>
           </Row>
           <Row>
             {bots &&

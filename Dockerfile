@@ -1,7 +1,7 @@
 FROM python:3.8
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-dev nginx python-setuptools python-wheel
 COPY /web/build/ /usr/share/nginx/html
-COPY ./nginx.conf /etc/nginx/sites-enabled/default
+COPY ./nginx.conf /etc/nginx/sites-enabled/default.conf
 COPY Pipfile Pipfile.lock start ./
 RUN chmod +x start
 RUN pip install --upgrade pip && pip install pipenv gunicorn
