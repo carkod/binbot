@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, withRouter } from "react-router-dom";
 import { Nav } from "reactstrap";
 class Sidebar extends Component {
   constructor(props) {
@@ -8,13 +8,9 @@ class Sidebar extends Component {
   }
   // verifies if routeName is the one active (in browser input)
   activeRoute(routeName) {
-    if (this.props.location) {
-      return this.props.location.pathname.indexOf(routeName) > -1
-        ? "active"
-        : "";
-    } else {
-      return "";
-    }
+    return this.props.location.pathname.indexOf(routeName) > -1
+      ? "active"
+      : "";
   }
 
   filterNavigationRoutes() {
@@ -41,13 +37,11 @@ class Sidebar extends Component {
             {this.filterNavigationRoutes().map((prop, key) => {
               return (
                 <li
-                  className={
-                    this.activeRoute(prop.path) +
-                    (prop.pro ? " active-pro" : "")
-                  }
+                  className={this.activeRoute(prop.path)}
                   key={key}
                 >
                   <NavLink
+                    exact
                     to={prop.layout + prop.path}
                     className="nav-link"
                     activeClassName="active"
@@ -65,4 +59,4 @@ class Sidebar extends Component {
   }
 }
 
-export default Sidebar;
+export default withRouter(Sidebar);

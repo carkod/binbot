@@ -1,14 +1,10 @@
-import PerfectScrollbar from "perfect-scrollbar";
 import React from "react";
+import ReduxToastr from "react-redux-toastr";
 import { Route, Switch } from "react-router-dom";
 import Footer from "../containers/footer/Footer.jsx";
 import Header from "../containers/header/Header.jsx";
 import Sidebar from "../containers/sidebar/Sidebar";
 import routes from "../router/routes";
-import ReduxToastr from "react-redux-toastr";
-
-var ps;
-
 class Admin extends React.Component {
   constructor(props) {
     super(props);
@@ -17,24 +13,6 @@ class Admin extends React.Component {
       activeColor: "info",
     };
     this.mainPanel = React.createRef();
-  }
-  componentDidMount() {
-    if (navigator.platform.indexOf("Win") > -1) {
-      ps = new PerfectScrollbar(this.mainPanel.current);
-      document.body.classList.toggle("perfect-scrollbar-on");
-    }
-  }
-  componentWillUnmount() {
-    if (navigator.platform.indexOf("Win") > -1) {
-      ps.destroy();
-      document.body.classList.toggle("perfect-scrollbar-on");
-    }
-  }
-  componentDidUpdate(e) {
-    if (e.history.action === "PUSH") {
-      this.mainPanel.current.scrollTop = 0;
-      document.scrollingElement.scrollTop = 0;
-    }
   }
   handleActiveClick = (color) => {
     this.setState({ activeColor: color });
