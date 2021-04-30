@@ -1,12 +1,6 @@
-FROM node:14 as build-web
-COPY web web
-WORKDIR /web/
-RUN yarn install && yarn global add react-scripts
-RUN yarn build
-
 FROM python:3.8
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-dev nginx python-setuptools python-wheel
-COPY --from=build-web /web/build /usr/share/nginx/html
+COPY /web/build/ /usr/share/nginx/html
 COPY ./nginx.conf /etc/nginx/sites-enabled/default
 COPY Pipfile Pipfile.lock start ./
 RUN chmod +x start

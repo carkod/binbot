@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
-import request, { setToken } from "../../request";
-import { loginFailed, loginSucceeded, LOGIN } from "./actions";
+import request from "../../request";
+import { LOGIN, loginFailed, loginSucceeded } from "./actions";
 
 /**
  * Login request/response handler

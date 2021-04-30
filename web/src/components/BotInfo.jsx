@@ -1,13 +1,5 @@
 import React from "react";
-import {
-  Card,
-  CardBody,
-  CardHeader,
-  CardTitle,
-  Col,
-  Row,
-  Table,
-} from "reactstrap";
+import { Card, CardBody, CardHeader, CardTitle, Table } from "reactstrap";
 
 export default function BotInfo({ bot }) {
   return (
