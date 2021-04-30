@@ -23,6 +23,7 @@ class Dashboard extends React.Component {
       networthLayout: null,
       dailyPnL: null,
       usdBalance: 0, // Does not rely on cronjob totalBtcBalance
+      loading: true
     };
   }
 
@@ -30,6 +31,7 @@ class Dashboard extends React.Component {
     this.props.getBalanceInBtc();
     this.props.getAssets();
     this.props.getBalanceDiff("7");
+    this.setState({ loading: true });
   };
 
   componentDidUpdate = (p, s) => {
@@ -226,7 +228,7 @@ class Dashboard extends React.Component {
     return (
       <>
         <div className="content">
-          {!checkValue(balances) ? (
+          {!this.state.loading ? (
             <>
               <Row>
                 <Col lg="4" md="6" sm="6">
@@ -278,8 +280,8 @@ class Dashboard extends React.Component {
                               }
                             >
                               <p>
-                                {this.state.percentageRevenue &&
-                                  `${this.state.percentageRevenue}%`}
+                                {this.state.percentageRevenue > 0 &&
+                                  `${(this.state.percentageRevenue).toFixed(2)}%`}
                               </p>
                               <p>
                                 {this.state.revenue && `$${this.state.revenue}`}

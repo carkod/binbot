@@ -390,3 +390,6 @@ $input-color-placeholder: #999 !default;
 $zindex-select-dropdown: 1060 !default; // must be higher than a modal background (1050)
 $zindex-notification: 1070 !default; // must be higher than a modal background (1050)
 $zindex-modal: 1080 !default; // must be higher than a modal background (1050)
+$zindex-loader-bg: 1085 !default;
+$zindex-loader: 1090 !default;
+
