@@ -27,12 +27,8 @@ class Account:
     ticker24_url = os.getenv("TICKER24")
 
     def __init__(self):
-        self._exchange_info = self._get_exchange_info()
-
-    def _get_exchange_info(self):
         url = self.exchangeinfo_url
-        r = requests.get(url=url)
-        return r.json()
+        self._exchange_info = requests.get(url=url).json()
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
@@ -267,6 +263,7 @@ class Assets(Account, Conversion):
     def __init__(self, app=None):
         self.usd_balance = 0
         self.app = app
+        return super().__init__()
 
     def get_usd_balance(self):
         """
@@ -309,34 +306,34 @@ class Assets(Account, Conversion):
         Alternative PnL data that runs as a cronjob everyday once at 1200
         Store current balance in Db
         """
-
+        print("Store balance starting...")
         balances = self.get_balances().json
         current_time = datetime.utcnow()
         total_btc = 0
         rate = 0
         for b in balances:
             if b["asset"] != "BTC":
-                symbol = self.find_market(b["asset"])
-                market = self.find_quoteAsset(symbol)
-                rate = self.get_ticker_price(symbol)
-
-                if "locked" in b:
-                    qty = b["free"] + b["locked"]
-                else:
-                    qty = b["free"]
-
-                btc_value = float(qty) * float(rate)
-
-                # Non-btc markets
-                if market != "BTC":
-                    x_rate = self.get_ticker_price(market + "BTC")
-                    x_value = float(qty) * float(rate)
-                    btc_value = float(x_value) * float(x_rate)
-
                 # Only tether coins for hedging
                 if "USD" in b["asset"]:
                     rate = self.get_ticker_price("BTC" + b["asset"])
                     btc_value = float(qty) / float(rate)
+                else:
+                    symbol = self.find_market(b["asset"])
+                    market = self.find_quoteAsset(symbol)
+                    rate = self.get_ticker_price(symbol)
+
+                    if "locked" in b:
+                        qty = b["free"] + b["locked"]
+                    else:
+                        qty = b["free"]
+
+                    btc_value = float(qty) * float(rate)
+
+                    # Non-btc markets
+                    if market != "BTC":
+                        x_rate = self.get_ticker_price(market + "BTC")
+                        x_value = float(qty) * float(rate)
+                        btc_value = float(x_value) * float(x_rate)
             else:
                 if "locked" in b:
                     btc_value = b["free"] + b["locked"]
@@ -355,7 +352,9 @@ class Assets(Account, Conversion):
             balance, {"$currentDate": {"createdAt": "true"}}
         )
         if balanceId:
-            print(f"Balance stored! {current_time}")
+            print(f"{current_time} Balance stored!")
+        else:
+            print(f"{current_time} Unable to store balance! Error: {balanceId}")
 
     def get_value(self):
         resp = jsonResp({"message": "No balance found"}, 200)

@@ -33,7 +33,7 @@ class Admin extends React.Component {
     return (
       <div className="wrapper">
         <div className={this.state.loading ? "u-loading-layer" : ""}>
-          {this.state.loading ? <Spinner color="warning" type="grow" className="c-loader" /> : ""}
+          {this.state.loading ? <Spinner color="primary" type="grow" className="c-loader" /> : ""}
           <ReduxToastr
             timeOut={4000}
             newestOnTop={true}
