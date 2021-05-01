@@ -23,7 +23,7 @@ class Dashboard extends React.Component {
       networthLayout: null,
       dailyPnL: null,
       usdBalance: 0, // Does not rely on cronjob totalBtcBalance
-      loading: true
+      loading: true,
     };
   }
 
@@ -59,7 +59,7 @@ class Dashboard extends React.Component {
     const balances = assets.reverse();
     let revenue,
       percentage = "N/A";
-    if (balances.length > 0) {
+    if (balances.length > 1) {
       const yesterday =
         balances[0].estimated_total_usd * balances[0].estimated_total_btc;
       const previousYesterday =
@@ -228,142 +228,146 @@ class Dashboard extends React.Component {
     return (
       <>
         <div className="content">
-          {!this.state.loading ? (
-            <>
-              <Row>
-                <Col lg="4" md="6" sm="6">
-                  <Card className="card-stats">
-                    <CardBody>
-                      <Row>
-                        <Col md="12">
-                          <div className="stats">
-                            <p className="card-category">Balance</p>
-                            {balances && (
-                              <CardTitle tag="h5" className={`card-title`}>
-                                {`${roundDecimals(
-                                  balances.reduce(
-                                    (accumulator, current) =>
-                                      parseFloat(accumulator) +
-                                      parseFloat(current.btc_value),
-                                    0
-                                  ),
-                                  6
-                                )} BTC`}
-                                <br />
-                                {`$${this.state.usdBalance}`}
+          {!this.state.loading &&
+            (!checkValue(balances) ? (
+              <>
+                <Row>
+                  <Col lg="4" md="6" sm="6">
+                    <Card className="card-stats">
+                      <CardBody>
+                        <Row>
+                          <Col md="12">
+                            <div className="stats">
+                              <p className="card-category">Balance</p>
+                              {balances && (
+                                <CardTitle tag="h5" className={`card-title`}>
+                                  {`${roundDecimals(
+                                    balances.reduce(
+                                      (accumulator, current) =>
+                                        parseFloat(accumulator) +
+                                        parseFloat(current.btc_value),
+                                      0
+                                    ),
+                                    6
+                                  )} BTC`}
+                                  <br />
+                                  {`$${this.state.usdBalance}`}
+                                </CardTitle>
+                              )}
+                            </div>
+                          </Col>
+                        </Row>
+                      </CardBody>
+                    </Card>
+                  </Col>
+                  <Col lg="4" md="6" sm="6">
+                    <Card className="card-stats">
+                      <CardBody>
+                        <Row>
+                          <Col md="4" xs="5">
+                            <div className="icon-big text-center icon-warning">
+                              <i className="nc-icon nc-money-coins text-success" />
+                            </div>
+                          </Col>
+                          <Col md="8" xs="7">
+                            <div className="numbers">
+                              <p className="card-category">Profit &amp; Loss</p>
+                              <CardTitle
+                                tag="div"
+                                className={
+                                  this.state.revenue > 0
+                                    ? "text-success"
+                                    : "text-danger"
+                                }
+                              >
+                                <p>
+                                  {this.state.percentageRevenue > 0 &&
+                                    `${this.state.percentageRevenue.toFixed(
+                                      2
+                                    )}%`}
+                                </p>
+                                <p>
+                                  {this.state.revenue &&
+                                    `$${this.state.revenue}`}
+                                </p>
                               </CardTitle>
-                            )}
-                          </div>
-                        </Col>
-                      </Row>
-                    </CardBody>
-                  </Card>
-                </Col>
-                <Col lg="4" md="6" sm="6">
-                  <Card className="card-stats">
-                    <CardBody>
-                      <Row>
-                        <Col md="4" xs="5">
-                          <div className="icon-big text-center icon-warning">
-                            <i className="nc-icon nc-money-coins text-success" />
-                          </div>
-                        </Col>
-                        <Col md="8" xs="7">
-                          <div className="numbers">
-                            <p className="card-category">Profit &amp; Loss</p>
-                            <CardTitle
-                              tag="div"
-                              className={
-                                this.state.revenue > 0
-                                  ? "text-success"
-                                  : "text-danger"
-                              }
-                            >
-                              <p>
-                                {this.state.percentageRevenue > 0 &&
-                                  `${(this.state.percentageRevenue).toFixed(2)}%`}
-                              </p>
-                              <p>
-                                {this.state.revenue && `$${this.state.revenue}`}
-                              </p>
-                            </CardTitle>
-                            <p />
-                          </div>
-                        </Col>
-                      </Row>
-                    </CardBody>
-                    <CardFooter>
-                      <hr />
-                      <i className="fas fa-sync" /> Yesterday
-                    </CardFooter>
-                  </Card>
-                </Col>
-                <Col lg="4" md="6" sm="6">
-                  <Card className="card-stats">
-                    <CardBody>
-                      <Row>
-                        <Col md="4" xs="5">
-                          <div className="icon-big text-center icon-warning">
-                            <i className="nc-icon nc-vector text-danger" />
-                          </div>
-                        </Col>
-                        <Col md="8" xs="7">
-                          <div className="numbers">
-                            <p className="card-category">Errors</p>
-                            <CardTitle tag="p">23</CardTitle>
-                            <p />
-                          </div>
-                        </Col>
-                      </Row>
-                    </CardBody>
-                    <CardFooter>
-                      <hr />
-                      <div className="stats">
-                        <i className="far fa-clock" /> In the last hour
-                      </div>
-                    </CardFooter>
-                  </Card>
-                </Col>
-              </Row>
-              <Row>
-                <Col md="4">
-                  <AssetsPie
-                    data={this.state.pieChartData}
-                    legend={this.state.pieChartLegend}
-                  />
-                </Col>
-                <Col md="8">
-                  {this.state.lineChartData && (
-                    <PortfolioBenchmarkChart
-                      data={this.state.lineChartData}
-                      legend={this.state.lineChartLegend}
+                              <p />
+                            </div>
+                          </Col>
+                        </Row>
+                      </CardBody>
+                      <CardFooter>
+                        <hr />
+                        <i className="fas fa-sync" /> Yesterday
+                      </CardFooter>
+                    </Card>
+                  </Col>
+                  <Col lg="4" md="6" sm="6">
+                    <Card className="card-stats">
+                      <CardBody>
+                        <Row>
+                          <Col md="4" xs="5">
+                            <div className="icon-big text-center icon-warning">
+                              <i className="nc-icon nc-vector text-danger" />
+                            </div>
+                          </Col>
+                          <Col md="8" xs="7">
+                            <div className="numbers">
+                              <p className="card-category">Errors</p>
+                              <CardTitle tag="p">23</CardTitle>
+                              <p />
+                            </div>
+                          </Col>
+                        </Row>
+                      </CardBody>
+                      <CardFooter>
+                        <hr />
+                        <div className="stats">
+                          <i className="far fa-clock" /> In the last hour
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col md="4">
+                    <AssetsPie
+                      data={this.state.pieChartData}
+                      legend={this.state.pieChartLegend}
                     />
-                  )}
-                </Col>
-              </Row>
+                  </Col>
+                  <Col md="8">
+                    {this.state.lineChartData && (
+                      <PortfolioBenchmarkChart
+                        data={this.state.lineChartData}
+                        legend={this.state.lineChartLegend}
+                      />
+                    )}
+                  </Col>
+                </Row>
+                <Row>
+                  <Col md="4">
+                    {this.state.netWorth && (
+                      <NetWorthChart data={this.state.netWorth} />
+                    )}
+                    {this.state.dailyPnL && (
+                      <ProfitLossBars data={this.state.dailyPnL} />
+                    )}
+                  </Col>
+                  <Col md="8">
+                    <div className="t-jumbotron">
+                      <h2>Failed bots</h2>
+                    </div>
+                  </Col>
+                </Row>
+              </>
+            ) : (
               <Row>
-                <Col md="4">
-                  {this.state.netWorth && (
-                    <NetWorthChart data={this.state.netWorth} />
-                  )}
-                  {this.state.dailyPnL && (
-                    <ProfitLossBars data={this.state.dailyPnL} />
-                  )}
-                </Col>
-                <Col md="8">
-                  <div className="t-jumbotron">
-                    <h2>Failed bots</h2>
-                  </div>
+                <Col md="12">
+                  <h1>No balance data available</h1>
                 </Col>
               </Row>
-            </>
-          ) : (
-            <Row>
-              <Col md="12">
-                <h1>No balance data available</h1>
-              </Col>
-            </Row>
-          )}
+            ))}
         </div>
       </>
     );
