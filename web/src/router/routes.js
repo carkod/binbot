@@ -1,11 +1,13 @@
-import UserPage from "../components/User.jsx";
-import Registration from "../containers/registration/Registration";
 import BotForm from "../pages/bots/BotForm";
 import Bots from "../pages/bots/Bots";
-import Orders from "../pages/orders/Orders";
 import Dashboard from "../pages/dashboard/Dashboard";
+import { lazy } from "react";
 
-var routes = [
+const UserPage = lazy(() => import("../components/User.jsx"));
+const Registration = lazy(() => import("../containers/registration/Registration"));
+const Orders = lazy(() => import("../pages/dashboard/Dashboard"));
+
+const routes = [
   {
     path: "/dashboard",
     name: "Dashboard",
