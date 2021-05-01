@@ -1,11 +1,9 @@
 import Dashboard from "../pages/dashboard/Dashboard";
-import { lazy } from "react";
-
-const UserPage = lazy(() => import("../components/User.jsx"));
-const Registration = lazy(() => import("../containers/registration/Registration"));
-const Orders = lazy(() => import("../pages/dashboard/Dashboard"));
-const BotForm = lazy(() => import("../pages/bots/BotForm"));
-const Bots = lazy(() => import("../pages/bots/Bots"));
+import UserPage from "../components/User.jsx";
+import Registration from "../containers/registration/Registration";
+import BotForm from "../pages/bots/BotForm";
+import Bots from "../pages/bots/Bots";
+import Orders from "../pages/orders/Orders";
 
 const routes = [
   {

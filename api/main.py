@@ -42,8 +42,7 @@ assets = Assets(app)
 orders = Orders(app)
 
 scheduler.add_job(
-    # func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=0, minute=1
-    func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=21, minute=50
+    func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=0, minute=1
 )
 scheduler.add_job(
     func=orders.poll_historical_orders,
