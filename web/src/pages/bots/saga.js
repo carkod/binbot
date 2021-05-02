@@ -1,4 +1,4 @@
-import { call, put, take, takeLatest } from "redux-saga/effects";
+import { call, put, takeLatest } from "redux-saga/effects";
 import request, { defaultOptions } from "../../request";
 import {
   activateBotFailed,

@@ -15,6 +15,7 @@ import {
   NavbarBrand,
   NavbarToggler,
   NavItem,
+  Button,
 } from "reactstrap";
 import routes from "../../router/routes";
 import { removeToken } from "../../request";
@@ -101,17 +102,9 @@ class Header extends React.Component {
     return (
       // add or remove classes depending if we are on full-screen-maps page or not
       <Navbar
-        color={
-          this.props.location.pathname.indexOf("full-screen-maps") !== -1
-            ? "dark"
-            : this.state.color
-        }
         expand="lg"
         className={
-          this.props.location.pathname.indexOf("full-screen-maps") !== -1
-            ? "navbar-absolute fixed-top"
-            : "navbar-absolute fixed-top " +
-              (this.state.color === "transparent" ? "navbar-transparent " : "")
+          this.state.color === "transparent" ? "navbar-transparent " : ""
         }
       >
         <Container fluid>
@@ -129,6 +122,13 @@ class Header extends React.Component {
               </button>
             </div>
             <NavbarBrand href="/">{this.getBrand()}</NavbarBrand>
+            <div className="navbar-content">
+              {window.location.href.indexOf("/admin/bots") !== -1 &&
+                <Button color="link" onClick={() => this.props.history.replace("/admin/create-bot")}>
+                  New bot
+                </Button>
+              }
+            </div>
           </div>
           <NavbarToggler onClick={this.toggle}>
             <span className="navbar-toggler-bar navbar-kebab" />

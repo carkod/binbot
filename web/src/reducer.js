@@ -17,7 +17,7 @@ import {
 } from "./pages/bots/reducer";
 import { ordersReducer, openOrdersReducer } from "./pages/orders/reducer";
 import { reducer as toastrReducer } from "react-redux-toastr";
-
+import { loadingReducer } from "./containers/spinner/reducer";
 const rootReducer = combineReducers({
   registrationReducer,
   loginReducer,
@@ -34,5 +34,6 @@ const rootReducer = combineReducers({
   balanceDiffReducer,
   toastr: toastrReducer,
   balanceInBtcReducer,
+  loadingReducer
 });
 export default rootReducer;

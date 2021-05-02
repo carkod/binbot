@@ -30,10 +30,10 @@ class Conversion:
 
         params = {
             "apikey": self.coin_api_key,
-            "time": time.replace(microsecond=0).isoformat(),
+            "date": time.strftime('%Y-%m-%d'),
         }
-        url = f"{self.url}/{base}/{quote}"
+        url = f"{self.url}/{base}-{quote}/spot"
         r = requests.get(url, params)
         data = r.json()
-        rate = float(data["rate"])
+        rate = float(data["data"]["amount"])
         return rate

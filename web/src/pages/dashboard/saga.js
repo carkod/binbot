@@ -1,4 +1,5 @@
 import { call, put, takeLatest } from "redux-saga/effects";
+import { loading } from "../../containers/spinner/actions";
 import request from "../../request";
 import {
   balanceFailed,
@@ -95,10 +96,13 @@ export function* getBalanceInBtcApi() {
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
   };
   try {
+    yield put(loading(true))
     const res = yield call(request, requestURL, options);
     yield put(getBalanceInBtcSucceeded(res));
   } catch (err) {
     yield put(getBalanceInBtcFailed(err));
+  } finally {
+    yield put(loading(false))
   }
 }
 

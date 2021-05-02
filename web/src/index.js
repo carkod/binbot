@@ -1,24 +1,22 @@
 import "bootstrap/dist/css/bootstrap.css";
 import React from "react";
 import ReactDOM from "react-dom";
-import App from "./App.jsx";
-import configureStore from "./store";
-import reportWebVitals from "./reportWebVitals";
 import { Provider } from "react-redux";
-import { Router, Switch } from "react-router-dom";
-import { createBrowserHistory } from "history";
+import { BrowserRouter, Switch } from "react-router-dom";
+import App from "./App.jsx";
 import "./assets/scss/paper-dashboard.scss";
+import reportWebVitals from "./reportWebVitals";
+import configureStore from "./store";
 
-const hist = createBrowserHistory();
 const store = configureStore({});
 
 ReactDOM.render(
   <Provider store={store}>
-    <Router history={hist}>
+    <BrowserRouter>
       <Switch>
         <App />
       </Switch>
-    </Router>
+    </BrowserRouter>
   </Provider>,
   document.getElementById("root")
 );

@@ -1,13 +1,6 @@
 import React from "react";
 import Plot from "react-plotly.js";
-import {
-  Card,
-  CardBody,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  Button,
-} from "reactstrap";
+import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "reactstrap";
 
 function LineChart({ data, width = "100%", height = "100%" }) {
   const layout = {
