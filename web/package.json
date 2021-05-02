@@ -5,20 +5,19 @@
   "homepage": ".",
   "dependencies": {
     "bootstrap": "^4.3.1",
-    "history": "^4.9.0",
-    "perfect-scrollbar": "^1.4.0",
+    "history": "^5.0.0",
     "plotly.js": "^1.57.1",
     "react": "^17.0.1",
     "react-bootstrap": "^1.4.0",
     "react-bootstrap-typeahead": "^5.1.2",
     "react-dom": "^17.0.1",
     "react-plotly.js": "^2.5.0",
-    "react-redux": "^7.2.2",
+    "react-redux": "^7.2.4",
     "react-redux-toastr": "7.6.5",
     "react-router": "^5.2.0",
     "react-router-dom": "^5.2.0",
     "reactstrap": "^8.6.0",
-    "redux": "^4.0.5",
+    "redux": "^4.1.0",
     "redux-saga": "^1.1.3"
   },
   "scripts": {
@@ -26,19 +25,21 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "install:clean": "npm run clean && npm install && npm start",
+    "install:clean": "yarn run clean && yarn install && yarn start",
     "clean": "rm -rf node_modules/ && rm -rf package-lock.json && rm -rf build",
     "compile-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css",
     "minify-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.min.css --output-style compressed",
-    "map-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css --source-map true"
+    "map-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css --source-map true",
+    "analyze": "source-map-explorer build/static/js/main.*"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.11.6",
     "@testing-library/react": "^11.2.2",
-    "@testing-library/user-event": "^12.2.2",
+    "@testing-library/user-event": "^13.1.8",
     "node-sass": "^5.0.0",
     "prettier": "^2.2.1",
     "react-scripts": "^4.0.2",
+    "source-map-explorer": "^2.5.2",
     "web-vitals": "^0.2.4"
   },
   "eslintConfig": {
