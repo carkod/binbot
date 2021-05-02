@@ -8,6 +8,8 @@ import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
 import request from "../../request";
+import { loading } from "../../containers/spinner/actions";
+
 class Dashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -23,7 +25,6 @@ class Dashboard extends React.Component {
       networthLayout: null,
       dailyPnL: null,
       usdBalance: 0, // Does not rely on cronjob totalBtcBalance
-      loading: true,
     };
   }
 
@@ -31,7 +32,6 @@ class Dashboard extends React.Component {
     this.props.getBalanceInBtc();
     this.props.getAssets();
     this.props.getBalanceDiff("7");
-    this.setState({ loading: true });
   };
 
   componentDidUpdate = (p, s) => {
@@ -113,7 +113,7 @@ class Dashboard extends React.Component {
 
     this.setState({
       lineChartData: [trace],
-      lineChartLegend: [assetsLegend],
+      lineChartLegend: [assetsLegend]
     });
   };
 
@@ -228,7 +228,7 @@ class Dashboard extends React.Component {
     return (
       <>
         <div className="content">
-          {!this.state.loading &&
+          {!this.props.load &&
             (!checkValue(balances) ? (
               <>
                 <Row>
@@ -378,11 +378,13 @@ const mapStateToProps = (s) => {
   const { data: account } = s.balanceInBtcReducer;
   const { data: assets } = s.assetsReducer;
   const { data: balanceDiff } = s.balanceDiffReducer;
+  const { loading } = s.loadingReducer;
   let props = {
     balances: !checkValue(account) ? account.balances : null,
     totalBtcBalance: !checkValue(account) ? account.total_btc : null,
     assets: assets,
     balanceDiff: balanceDiff,
+    load: loading
   };
   return props;
 };
@@ -391,4 +393,5 @@ export default connect(mapStateToProps, {
   getBalanceInBtc,
   getAssets,
   getBalanceDiff,
+  loading
 })(Dashboard);

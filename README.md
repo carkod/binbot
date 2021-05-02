@@ -23,6 +23,10 @@ New packages or installing from scratch:
 ## Deployment
 
 1. Merge changes to master
+2. Test on local:
+  - `cd web && yarn build` This is to avoid docker javascript leap out of memory error
+  - Build and test docker container `docker build --tag binbot . && docker run -ti -p 8000:80 binbot`
+  - 
 2. Wait for check to pass. Github action will publish to Docker Hub
 
 If docker-compose doesn't exist:
@@ -40,3 +44,6 @@ In production:
 1. Run `docker build --tag binbot .`
 2. Run `docker-compose up`
 
+If issues are encountered downloading prod DB to local
+1. Dump database: `docker exec -i binbot_db sh -c 'mongorestore --archive -u <MONGO_AUTH_USERNAME> -p <MONGO_AUTH_PASSWORD> --authenticationDatabase <MONGO_AUTH_DATABASE> ' < db.dump`
+2. On local, restore `docker exec -i binbot_db sh -c 'mongorestore --archive -u <MONGO_AUTH_USERNAME> -p <MONGO_AUTH_PASSWORD> --authenticationDatabase <MONGO_AUTH_DATABASE> ' < db.dump`

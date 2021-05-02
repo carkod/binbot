@@ -7,7 +7,7 @@ import Footer from "../containers/footer/Footer.jsx";
 import Header from "../containers/header/Header.jsx";
 import Sidebar from "../containers/sidebar/Sidebar";
 import routes from "../router/routes";
-import { checkValue } from "../validations.js";
+
 class Admin extends React.Component {
   constructor(props) {
     super(props);
@@ -18,11 +18,7 @@ class Admin extends React.Component {
     };
     this.mainPanel = React.createRef();
   }
-  componentDidUpdate = (p) => {
-    if (this.props.loading !== p.loading) {
-      this.setState({ loading: this.props.loading})
-    }
-  }
+
   handleActiveClick = (color) => {
     this.setState({ activeColor: color });
   };
@@ -32,8 +28,12 @@ class Admin extends React.Component {
   render() {
     return (
       <div className="wrapper">
-        <div className={this.state.loading ? "u-loading-layer" : ""}>
-          {this.state.loading ? <Spinner color="primary" type="grow" className="c-loader" /> : ""}
+        <div className={this.props.loading ? "u-loading-layer" : ""}>
+          {this.props.loading ? (
+            <Spinner color="primary" type="grow" className="c-loader" />
+          ) : (
+            ""
+          )}
           <ReduxToastr
             timeOut={4000}
             newestOnTop={true}
@@ -73,26 +73,10 @@ class Admin extends React.Component {
 }
 
 const mapStateToProps = (s, p) => {
-  // Dashboard loading
-  const { data: account } = s.balanceInBtcReducer;
-  const { data: assets } = s.assetsReducer;
-  const { data: balanceDiff } = s.balanceDiffReducer;
-  const dashboardData = !checkValue(account) && !checkValue(assets) && !checkValue(balanceDiff);
-
-  // BotForm loading
-  const { data: balances } = s.balanceReducer;
-  const { data: symbols } = s.symbolReducer;
-  const { data: bot } = s.getSingleBotReducer;
-  const botFormData = !checkValue(balances) && !checkValue(symbols) && !checkValue(bot);
-
-  if (p.location.pathname === "/admin/dashboard") {
-    return {
-      loading: !dashboardData
-    }
-  }
+  const { loading } = s.loadingReducer;
   return {
-    loading: false
-  }
+    loading: loading
+  };
 };
 
-export default connect(mapStateToProps,{})(Admin);
+export default connect(mapStateToProps, {})(Admin);

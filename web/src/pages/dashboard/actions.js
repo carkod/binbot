@@ -26,7 +26,6 @@ export const GET_BALANCE_IN_BTC_ERROR = "GET_BALANCE_IN_BTC_ERROR";
 export function getBalance() {
   return {
     type: GET_BALANCE,
-    isLoading: true,
     isError: false,
   };
 }
@@ -42,7 +41,6 @@ export function getBalance() {
 export function balanceSucceeded(res) {
   return {
     type: BALANCE_SUCCESS,
-    isLoading: false,
     isError: false,
     data: res,
   };
@@ -58,7 +56,6 @@ export function balanceSucceeded(res) {
 export function balanceFailed(error) {
   return {
     type: BALANCE_ERROR,
-    isLoading: false,
     isError: true,
     data: error,
   };
@@ -71,7 +68,6 @@ export function balanceFailed(error) {
 export function getAssets() {
   return {
     type: GET_ASSETS,
-    isLoading: true,
     isError: false,
   };
 }
@@ -79,7 +75,6 @@ export function getAssets() {
 export function getAssetsSucceeded(res) {
   return {
     type: GET_ASSETS_SUCCESS,
-    isLoading: false,
     isError: false,
     data: res.data,
   };
@@ -88,7 +83,6 @@ export function getAssetsSucceeded(res) {
 export function getAssetsFailed(error) {
   return {
     type: GET_ASSETS_ERROR,
-    isLoading: false,
     isError: true,
     data: error,
   };
@@ -102,7 +96,6 @@ export function getAssetsFailed(error) {
 export function getBalanceDiff(days) {
   return {
     type: BALANCE_DIFF,
-    isLoading: true,
     isError: false,
     days: days,
   };
@@ -111,7 +104,6 @@ export function getBalanceDiff(days) {
 export function getBalanceDiffSucceeded(res) {
   return {
     type: BALANCE_DIFF_SUCCESS,
-    isLoading: false,
     isError: false,
     message: res.message,
     data: res.data,
@@ -121,7 +113,6 @@ export function getBalanceDiffSucceeded(res) {
 export function getBalanceDiffFailed(error) {
   return {
     type: BALANCE_DIFF_ERROR,
-    isLoading: false,
     isError: true,
     message: error.message,
   };
@@ -135,7 +126,6 @@ export function getBalanceDiffFailed(error) {
 export function getBalanceInBtc() {
   return {
     type: GET_BALANCE_IN_BTC,
-    isLoading: true,
     isError: false,
   };
 }
@@ -151,7 +141,6 @@ export function getBalanceInBtc() {
 export function getBalanceInBtcSucceeded(res) {
   return {
     type: GET_BALANCE_IN_BTC_SUCCESS,
-    isLoading: false,
     isError: false,
     data: res,
   };
@@ -167,7 +156,6 @@ export function getBalanceInBtcSucceeded(res) {
 export function getBalanceInBtcFailed(error) {
   return {
     type: GET_BALANCE_IN_BTC_ERROR,
-    isLoading: false,
     isError: true,
     data: error,
   };
