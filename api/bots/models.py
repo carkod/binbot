@@ -29,9 +29,19 @@ class Bot(Account):
             "trailling": "false",
             "trailling_deviation": "0.63",
             "deal_min_value": "0",
-            "cooldown": "0",
             "deals": [],
             "stop_loss": "0",
+            "deal": {
+                "buy_price": "",
+                "current_price": "",
+                "buy_total_qty": "",
+                "take_profit": ""
+            }
+            "safety_orders": [{
+                "size": "0.0001",
+                "price": "0",
+                "price_deviation": "0.63"
+            }]
         }
 
     def get(self):
