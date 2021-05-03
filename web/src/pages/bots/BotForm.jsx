@@ -728,7 +728,7 @@ class BotForm extends React.Component {
                         onClick={this.handleActivation}
                         disabled={checkValue(this.state._id)}
                       >
-                        Activate
+                        Deal
                       </ButtonToggle>
                     </div>
                     <div className="update ml-auto mr-auto">

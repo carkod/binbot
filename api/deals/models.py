@@ -74,7 +74,7 @@ class Deal(Account):
 
         self.active_bot["balance_usage_size"] = self.get_one_balance(asset)
 
-    def long_base_order(self):
+    def base_order(self):
         pair = self.active_bot["pair"]
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
@@ -129,10 +129,22 @@ class Deal(Account):
             "time_in_force": order["timeInForce"],
             "status": order["status"],
         }
+        # Remove follow line once redesign is finished
         self.base_order_price = order["price"]
-        self.active_bot["deals"].append(base_deal)
+
+        deal = {
+            "last_order_id": order["orderId"],
+            "buy_price": order["price"],
+            "buy_total_qty": order["origQty"],
+            "current_price": self.get_ticker_price(order["symbol"]),
+            "commission": 0
+        }
+        for chunk in order["fills"]:
+            deal["commission"] += chunk["commission"]
+        deal["commission"] = supress_notation(deal["commission"])
+
         botId = app.db.bots.update_one(
-            {"_id": self.active_bot["_id"]}, {"$push": {"deals": base_deal}}
+            {"_id": self.active_bot["_id"]}, {"$set": {"deal": deal }, "$push": { "orders": base_deal }}
         )
         if not botId:
             resp = jsonResp(
@@ -143,14 +155,19 @@ class Deal(Account):
 
         return base_deal
 
-    def long_safety_order_generator(self):
+    def so_update_deal(self):
+        """
+        Executes when Safety order is reached
+        Update deal with so_price -> bo_price
+        Update quantity
+        """
         pair = self.active_bot["pair"]
         length = self.max_so_count
-        so_deals = []
+        so_deals = self.active_bot["safety_orders"]
         base_order_deal = next(
             (
                 bo_deal
-                for bo_deal in self.active_bot["deals"]
+                for bo_deal in self.active_bot["orders"]
                 if bo_deal["deal_type"] == "base_order"
             ),
             None,
@@ -227,18 +244,10 @@ class Deal(Account):
         - take_profit order can ONLY be executed once base order is filled (on Binance)
         """
         pair = self.active_bot["pair"]
-        base_order_deal = next(
-            (
-                bo_deal
-                for bo_deal in self.active_bot["deals"]
-                if bo_deal["deal_type"] == "base_order"
-            ),
-            None,
-        )
         price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(
-            base_order_deal["price"]
+            self.active_bot["deal"]["buy_price"]
         )
-        qty = round_numbers(base_order_deal["qty"], self.qty_precision)
+        qty = round_numbers(self.active_bot["deal"]["buy_total_qty"], self.qty_precision)
         price = round_numbers(price, self.price_precision)
 
         # Validations
@@ -276,9 +285,9 @@ class Deal(Account):
             "time_in_force": order["timeInForce"],
             "status": order["status"],
         }
-        self.active_bot["deals"].append(take_profit_order)
+        self.active_bot["orders"].append(take_profit_order)
         botId = app.db.bots.update_one(
-            {"_id": self.active_bot["_id"]}, {"$push": {"deals": take_profit_order}}
+            {"_id": self.active_bot["_id"]}, {"$set": { "deal.sell_price": order["price"]  } ,"$push": {"orders": take_profit_order}}
         )
         if not botId:
             resp = jsonResp(
@@ -530,28 +539,32 @@ class Deal(Account):
         base_order_deal = next(
             (
                 bo_deal
-                for bo_deal in self.active_bot["deals"]
+                for bo_deal in self.active_bot["orders"]
                 if len(bo_deal) > 0 and (bo_deal["deal_type"] == "base_order")
             ),
             None,
         )
         if not base_order_deal:
-            long_base_order = self.long_base_order()
-            if isinstance(long_base_order, Response):
-                msg = long_base_order.json["message"]
+            base_order = self.base_order()
+            if isinstance(base_order, Response):
+                msg = base_order.json["message"]
                 order_errors.append(msg)
 
-        # Only do Safety orders if required
-        if int(self.active_bot["max_so_count"]) > 0:
-            long_safety_order_generator = self.long_safety_order_generator()
-            if isinstance(long_safety_order_generator, Response):
-                msg = long_safety_order_generator.json["message"]
-                order_errors.append(msg)
+        # If there is already a take profit do not execute
+        # If there is no base order can't execute
+        check_bo = False
+        check_tp = True
+        for deal in self.active_bot["orders"]:
+            if len(deal) > 0 and (deal["deal_type"] == "base_order"):
+                check_bo = True
+            if len(deal) > 0 and deal["deal_type"] == "take_profit":
+                check_tp = False
 
-        long_take_profit_order = self.long_take_profit_order()
-        if isinstance(long_take_profit_order, Response):
-            msg = long_take_profit_order.json["message"]
-            order_errors.append(msg)
+        if check_bo and check_tp:
+            long_take_profit_order = self.long_take_profit_order()
+            if isinstance(long_take_profit_order, Response):
+                msg = long_take_profit_order.json["message"]
+                order_errors.append(msg)
 
         # If short order is enabled
         if float(self.active_bot["short_order"]) > 0:
