@@ -455,8 +455,9 @@ class BotForm extends React.Component {
 
   renderSO = () => {
     const count = parseInt(this.state.max_so_count);
+    const length = Object.keys(this.state.safety_orders).length;
     let newState = {};
-    if (count > 0) {
+    if (count > 0 && length === 0) {
         for (let i = 0; i < count; i++) {
           const id = nanoid();
           newState[id] = {
@@ -466,13 +467,34 @@ class BotForm extends React.Component {
             soSizeError: false
           }
       }
+    } else if (count - length > 0) {
+      newState = this.state.safety_orders;
+      for (let i = 0; i < (count - length); i++) {
+        const id = nanoid();
+        newState[id] = {
+          so_size: "",
+          price_deviation_so: "0.63",
+          priceDevSoError: false,
+          soSizeError: false
+        }
+    }
+    } else if (count - length < 0) {
+      newState = this.state.safety_orders;
+      for (let i = 0; i < (length - count); i++) {
+        const id = Object.keys(newState)[length - 1];
+        delete newState[id];
+      }
+      
     }
     this.setState({ safety_orders: newState })
   }
 
   handleSoBlur = (e) => {
     e.preventDefault();
-    this.renderSO();
+    const count = parseInt(this.state.max_so_count);
+    if (count !== e.target.value) {
+      this.renderSO();
+    }
   }
 
   handleSoChange = (id) => (e) => {

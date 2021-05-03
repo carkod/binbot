@@ -6,11 +6,10 @@ from flask import current_app
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from websocket import create_connection, enableTrace, WebSocketApp
-from api.deals.models import Deal
-from api.account.models import Account
+from api.deals.deal_updates import DealUpdates
 
 
-class OrderUpdates(Account):
+class OrderUpdates:
     def __init__(self, app):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
@@ -20,7 +19,7 @@ class OrderUpdates(Account):
 
         # streams
         self.base = os.getenv("WS_BASE")
-        self.path = "/ws"
+        self.path = "/stream"
         self.active_ws = None
         self.listenkey = None
         self.app = app
@@ -45,17 +44,44 @@ class OrderUpdates(Account):
         if not self.active_ws or not self.listen_key:
             self.listen_key = self.get_listenkey()["listenKey"]
 
-        url = self.base + self.path + "/" + self.listen_key
+        url = self.base + self.path + "?streams=" + self.listen_key
         ws = create_connection(
             url,
             on_open=self.on_open,
             on_error=self.on_error,
             on_close=self.close_stream,
         )
-        result = ws.recv()
-        result = json.loads(result)
+        self.active_ws = ws
+        result = json.loads(ws.recv())["data"]
+        print("Received socket data:")
+        print(result)
         if result["e"] == "executionReport":
             self.process_report_execution(result)
+    
+    def kline_stream(self, id, symbol, subs=True, interval="1d"):
+        """
+        Activate kline stream when bot activates SO
+        @params: 
+        - id: ObjectId
+        - symbol: string (e.g. BNBBTC, later needs to be lowercased)
+        - subs: bool (True = SUBSCRIBE otherwise UNSUBSCRIBE)
+        """
+        url = self.base + self.path + "?streams=" + self.listen_key
+        ws = create_connection(
+            url,
+            on_open=self.on_open,
+            on_error=self.on_error,
+            on_close=self.close_stream,
+        )
+        request = {
+            "method": "SUBSCRIBE" if subs else "UNSUBSCRIBE",
+            "params": [
+                f"{symbol.lower()}@kline_{interval}",
+            ],
+            "id": id
+        }
+        ws.send(request)
+        self.close_stream(ws)
 
     def close_stream(self, ws):
         if self.active_ws:
@@ -83,7 +109,7 @@ class OrderUpdates(Account):
             # Close successful orders
             completed = self.app.db.bots.find_one_and_update(
                 {
-                    "deals": {
+                    "orders": {
                         "$elemMatch": {"deal_type": "take_profit", "order_id": order_id }
                     }
                 },
@@ -96,7 +122,7 @@ class OrderUpdates(Account):
             order_price = float(result["p"])
             bot = self.app.db.bots.find_one(
                 {
-                    "deals": {
+                    "orders": {
                         "$elemMatch": {
                             "deal_type": "safety_order",
                             "order_id": order_id,
@@ -107,7 +133,7 @@ class OrderUpdates(Account):
 
             if bot:
                 # It is a safety order, now find safety order deal price
-                deal = Deal(bot, self.app)
+                deal = DealUpdates(bot, self.app)
                 deal.default_deal.update(bot)
                 order = deal.update_take_profit(order_id)
 
