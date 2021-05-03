@@ -23,13 +23,12 @@ class Bot(Account):
             "short_stop_price": "0",  # Flip to short strategy threshold
             "short_order": "0",  # Quantity flip to short
             "start_condition": "true",
-            "so_size": "0.0001",  # Top band
             "take_profit": "0.003",  # 3% take profit
-            "price_deviation_so": "0.63",  # % percentage
             "trailling": "false",
             "trailling_deviation": "0.63",
             "deal_min_value": "0",
             "deals": [],
+            "orders": [],
             "stop_loss": "0",
             "deal": {
                 "buy_price": "",
@@ -37,11 +36,12 @@ class Bot(Account):
                 "buy_total_qty": "",
                 "take_profit": ""
             }
-            "safety_orders": [{
-                "size": "0.0001",
-                "price": "0",
-                "price_deviation": "0.63"
-            }]
+            "safety_orders": {}
+        }
+        self.default_so = {
+            "so_size": "0",
+            "price": "0",
+            "price_deviation_so": "0.63"
         }
 
     def get(self):

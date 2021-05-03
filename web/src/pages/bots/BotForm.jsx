@@ -43,8 +43,12 @@ import {
   loadCandlestick,
 } from "./actions";
 import { getQuoteAsset } from "./requests";
+import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
 import ShortTab from "./tabs/Short";
+import { nanoid } from 'nanoid';
+import produce from 'immer';
+
 class BotForm extends React.Component {
   constructor(props) {
     super(props);
@@ -82,10 +86,12 @@ class BotForm extends React.Component {
       activeTab: "main",
       candlestick_interval: intervalOptions[11],
       deals: [],
+      orders: [],
       quoteAsset: "",
       baseAsset: "",
       stop_loss: 0,
       stopLossError: false,
+      safety_orders: {}
     };
   }
 
@@ -123,6 +129,7 @@ class BotForm extends React.Component {
         short_order: this.props.bot.short_order,
         short_stop_price: this.props.bot.short_stop_price,
         stop_loss: this.props.bot.stop_loss,
+        safety_orders: this.props.bot.safety_orders
       });
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
@@ -190,6 +197,7 @@ class BotForm extends React.Component {
     if (this.state.quoteAsset !== s.quoteAsset && !checkValue(this.props.balances)) {
       this.computeAvailableBalance();
     }
+
   };
 
   requiredinValidation = () => {
@@ -446,7 +454,37 @@ class BotForm extends React.Component {
     }
   };
 
+  renderSO = () => {
+    const count = parseInt(this.state.max_so_count);
+    let newState = {};
+    if (count > 0) {
+        for (let i = 0; i < count; i++) {
+          const id = nanoid();
+          newState[id] = {
+            so_size: "",
+            price_deviation_so: "0.63",
+            priceDevSoError: false,
+            soSizeError: false
+          }
+      }
+    }
+    this.setState({ safety_orders: newState })
+  }
+
+  handleSoBlur = (e) => {
+    e.preventDefault();
+    this.renderSO();
+  }
+
+  handleSoChange = (id) => (e) => {
+    e.preventDefault();
+    this.setState(produce(draft => {
+        draft.safety_orders[id][e.target.name] = e.target.value
+    }));
+  }
+
   render() {
+    console.log(this.state.safety_orders)
     return (
       <div className="content">
         <Row>
@@ -597,7 +635,7 @@ class BotForm extends React.Component {
                             type="text"
                             name="max_so_count"
                             onChange={this.handleChange}
-                            onBlur={this.handleBlur}
+                            onBlur={this.handleSoBlur}
                             value={this.state.max_so_count}
                           />
                           <FormFeedback>
@@ -607,49 +645,19 @@ class BotForm extends React.Component {
                             If value = 0, Safety orders will be turned off
                           </small>
                         </Col>
-                        {parseInt(this.state.max_so_count) > 0 && (
-                          <Col md="6" sm="12">
-                            <Label for="so_size">Safety order size</Label>
-                            <Input
-                              invalid={this.state.soSizeError}
-                              type="text"
-                              name="so_size"
-                              id="so_size"
-                              onChange={this.handleSafety}
-                              onBlur={this.handleBlur}
-                              value={this.state.so_size}
-                            />
-                            <FormFeedback>
-                              <strong>Safety order size</strong> is required.
-                            </FormFeedback>
-                          </Col>
-                        )}
                       </Row>
-                      <Row className="u-margin-bottom">
-                        {parseInt(this.state.max_so_count) > 0 && (
-                          <Col md="10" sm="12">
-                            <Label htmlFor="price_deviation_so">
-                              Price deviation (%)
-                            </Label>
-                            <Input
-                              invalid={this.state.priceDevSoError}
-                              type="text"
-                              name="price_deviation_so"
-                              id="price_deviation_so"
-                              onChange={this.handleChange}
-                              onBlur={this.handleBlur}
-                              value={this.state.price_deviation_so}
-                            />
-                            <FormFeedback>
-                              <strong>Price deviation</strong> is required.
-                            </FormFeedback>
-                            <small>
-                              How much does the price have to drop to create a
-                              Safety Order?
-                            </small>
-                          </Col>
-                        )}
-                      </Row>
+                      {parseInt(this.state.max_so_count) > 0 && Object.keys(this.state.safety_orders).map(so => 
+                        <SafetyOrderField
+                          key={so}
+                          id={so}
+                          price_deviation_so={this.state.safety_orders[so].price_deviation_so}
+                          priceDevSoError={this.state.safety_orders[so].priceDevSoError}
+                          so_size={this.state.safety_orders[so].so_size}
+                          soSizeError={this.state.safety_orders[so].soSizeError}
+                          handleChange={this.handleSoChange}
+                          handleBlur={this.handleBlur}
+                        />
+                      )}
                     </TabPane>
 
                     {/*
