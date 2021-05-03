@@ -35,7 +35,7 @@ class Bot(Account):
                 "current_price": "",
                 "buy_total_qty": "",
                 "take_profit": ""
-            }
+            },
             "safety_orders": {}
         }
         self.default_so = {
@@ -64,12 +64,12 @@ class Bot(Account):
         return resp
 
     def create(self):
-        resp = jsonResp({"message": "Bot creation not available"}, 400)
         data = request.json
         data["name"] = (
             data["name"] if data["name"] != "" else f"{data['pair']}-{date.today()}"
         )
         self.defaults.update(data)
+        self.defaults["safety_orders"] = data["safety_orders"]
         botId = app.db.bots.save(self.defaults, {"$currentDate": {"createdAt": "true"}})
         if botId:
             resp = jsonResp(
@@ -81,10 +81,10 @@ class Bot(Account):
         return resp
 
     def edit(self):
-        resp = jsonResp({"message": "Bot update is not available"}, 400)
         data = request.json
         findId = request.view_args["id"]
         self.defaults.update(data)
+        self.defaults["safety_orders"] = data["safety_orders"]
         botId = app.db.bots.update_one(
             {"_id": ObjectId(findId)}, {"$set": self.defaults}, upsert=False
         )

@@ -187,12 +187,12 @@ export const generateOrders = (data, bot) => {
   }
 
   const maxSoCount = parseInt(bot.max_so_count);
-  if (maxSoCount > 0) {
-    let i = 0;
+  const soOrders = bot.safety_orders;
+  if (maxSoCount > 0 && Object.keys(soOrders).length > 0) {
     let previousPrice = currentPrice;
-    while (i <= maxSoCount - 1) {
+    Object.keys(soOrders).forEach((element, i) => {
       const price =
-        previousPrice - previousPrice * (bot.price_deviation_so / 100);
+        previousPrice - (previousPrice * (soOrders[element].price_deviation_so / 100));
       previousPrice = price;
       const safetyOrderA = {
         x: currentTime,
@@ -219,8 +219,7 @@ export const generateOrders = (data, bot) => {
       };
       annotations.push(safetyOrderA);
       shapes.push(safetyOrderS);
-      i++;
-    }
+    });
   }
   return {
     annotations: annotations,

@@ -287,8 +287,6 @@ class BotForm extends React.Component {
         max_so_count: this.state.max_so_count,
         name: this.state.name,
         pair: this.state.pair,
-        price_deviation_so: this.state.price_deviation_so,
-        so_size: this.state.so_size,
         start_condition: this.state.start_condition,
         strategy: this.state.strategy,
         take_profit: this.state.take_profit,
@@ -297,6 +295,7 @@ class BotForm extends React.Component {
         short_order: this.state.short_order,
         short_stop_price: this.state.short_stop_price,
         stop_loss: this.state.stop_loss,
+        safety_orders: this.state.safety_orders
       };
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -484,7 +483,6 @@ class BotForm extends React.Component {
   }
 
   render() {
-    console.log(this.state.safety_orders)
     return (
       <div className="content">
         <Row>
