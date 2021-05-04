@@ -152,7 +152,8 @@ class Deal(Account):
             "commission": 0,
         }
         for chunk in order["fills"]:
-            deal["commission"] += chunk["commission"]
+            deal["commission"] += float(chunk["commission"])
+
         deal["commission"] = supress_notation(deal["commission"])
 
         botId = app.db.bots.update_one(

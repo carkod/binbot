@@ -20,7 +20,7 @@ export default function BotInfo({ bot }) {
             </tr>
           </thead>
           <tbody>
-            {bot.deals.map((deal) => {
+            {bot.orders.map((deal) => {
               if (typeof deal === "object" && "deal_type" in deal) {
                 return (
                   <tr key={deal.order_id}>

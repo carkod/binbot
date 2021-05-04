@@ -8,7 +8,6 @@ from api.tools.jsonresp import jsonResp, jsonResp_message
 from websocket import create_connection, enableTrace, WebSocketApp
 from api.deals.deal_updates import DealUpdates
 
-
 class OrderUpdates:
     def __init__(self, app):
         self.key = os.getenv("BINANCE_KEY")
@@ -66,6 +65,8 @@ class OrderUpdates:
         - symbol: string (e.g. BNBBTC, later needs to be lowercased)
         - subs: bool (True = SUBSCRIBE otherwise UNSUBSCRIBE)
         """
+        if not self.active_ws or not self.listen_key:
+            self.listen_key = self.get_listenkey()["listenKey"]
         url = self.base + self.path + "?streams=" + self.listen_key
         ws = create_connection(
             url,
@@ -78,9 +79,25 @@ class OrderUpdates:
             "params": [
                 f"{symbol.lower()}@kline_{interval}",
             ],
-            "id": id
+            "id": 1
         }
-        ws.send(request)
+        ws.send(json.dumps(request))
+        response = json.loads(ws.recv())
+        if "error" not in response:
+            list_subs_req = {
+                "method": "LIST_SUBSCRIPTIONS",
+                "id": 2
+            }
+            ws.send(json.dumps(list_subs_req))
+            response = json.loads(ws.recv())
+            if "error" not in response:
+                for subs in response["result"]:
+                    if subs == f"{symbol.lower()}@kline_{interval}":
+                        print(f"Successfully subscribed to {symbol}")
+            else:
+                print(response["error"]["msg"])
+        else:
+            print(response["error"]["msg"])
         self.close_stream(ws)
 
     def close_stream(self, ws):

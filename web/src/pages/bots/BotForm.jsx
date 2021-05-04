@@ -48,6 +48,7 @@ import MainTab from "./tabs/Main";
 import ShortTab from "./tabs/Short";
 import { nanoid } from 'nanoid';
 import produce from 'immer';
+import Deal from "../../components/Deal";
 
 class BotForm extends React.Component {
   constructor(props) {
@@ -314,7 +315,7 @@ class BotForm extends React.Component {
     /**
      * Refer to bots.md
      */
-    const { base_order_size, so_size, max_so_count, short_order } = this.state;
+    const { base_order_size, max_so_count, short_order } = this.state;
     const { balances } = this.props;
 
     let value = "0";
@@ -329,7 +330,7 @@ class BotForm extends React.Component {
 
       if (!checkValue(value) && !checkBalance(value)) {
         const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
-        const safetyOrders = parseFloat(so_size) * parseInt(max_so_count);
+        const safetyOrders = Object.values(this.state.safety_orders).reduce((v, a) => parseFloat(v.so_size) + parseFloat(a.so_size));
         const shortOrder = parseFloat(short_order);
         const updatedValue = (
           value -
@@ -345,11 +346,6 @@ class BotForm extends React.Component {
             baseOrderSizeError: false,
             balanceAvailableError: false,
           });
-          if (parseFloat(this.state.so_size) > 0) {
-            this.setState({
-              soSizeError: false,
-            });
-          }
         } else {
           this.setState({ baseOrderSizeError: true, formIsValid: false });
         }
@@ -370,11 +366,12 @@ class BotForm extends React.Component {
     this.setState({ pair: value[0] });
   };
 
-  handlePairBlur = () =>
+  handlePairBlur = () => {
     this.props.loadCandlestick(
       this.state.pair,
       this.state.candlestick_interval
     );
+  }
 
   handleStrategy = (e) => {
     // Get pair base or quote asset and set new strategy
@@ -492,7 +489,7 @@ class BotForm extends React.Component {
   handleSoBlur = (e) => {
     e.preventDefault();
     const count = parseInt(this.state.max_so_count);
-    if (count !== e.target.value) {
+    if (count !== parseInt(e.target.value)) {
       this.renderSO();
     }
   }
@@ -551,15 +548,24 @@ class BotForm extends React.Component {
             </Card>
           </Col>
         </Row>
+        <Row>
+          {!checkValue(this.props.bot) &&
+            !checkValue(this.props.match.params.id) ? (
+              <Col md="7" sm="12">
+                <BotInfo bot={this.props.bot} />
+              </Col>
+            ) : (
+              ""
+          )}
+          {!checkValue(this.props.bot) && !checkValue(this.props.bot.deal) ?
+            <Col md="5" sm="12">
+              <Deal bot={this.props.bot} />
+            </Col>
+          : ""}
+        </Row>
         <Form onSubmit={this.handleSubmit}>
           <Row>
             <Col md="7" sm="12">
-              {!checkValue(this.props.bot) &&
-              !checkValue(this.props.match.params.id) ? (
-                <BotInfo bot={this.props.bot} />
-              ) : (
-                ""
-              )}
               <Card>
                 <CardHeader>
                   <CardTitle>
