@@ -2,11 +2,12 @@ import json
 import os
 
 import requests
-from flask import current_app
+from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
-from websocket import create_connection, enableTrace, WebSocketApp
-from api.deals.deal_updates import DealUpdates
+from flask import current_app
+from websocket import WebSocketApp, create_connection, enableTrace
+
 
 class OrderUpdates:
     def __init__(self, app):
@@ -39,77 +40,41 @@ class OrderUpdates:
         data = res.json()
         return data
 
-    def get_stream(self):
+    def run_stream(self):
         if not self.active_ws or not self.listen_key:
             self.listen_key = self.get_listenkey()["listenKey"]
 
-        url = self.base + self.path + "?streams=" + self.listen_key
-        ws = create_connection(
+        url = f"{self.base}{self.path}?streams={self.listen_key}"
+        ws = WebSocketApp(
             url,
             on_open=self.on_open,
             on_error=self.on_error,
             on_close=self.close_stream,
+            on_message=self.on_message,
         )
-        self.active_ws = ws
-        result = json.loads(ws.recv())["data"]
-        print("Received socket data:")
-        print(result)
-        if result["e"] == "executionReport":
-            self.process_report_execution(result)
-    
-    def kline_stream(self, id, symbol, subs=True, interval="1d"):
-        """
-        Activate kline stream when bot activates SO
-        @params: 
-        - id: ObjectId
-        - symbol: string (e.g. BNBBTC, later needs to be lowercased)
-        - subs: bool (True = SUBSCRIBE otherwise UNSUBSCRIBE)
-        """
-        if not self.active_ws or not self.listen_key:
-            self.listen_key = self.get_listenkey()["listenKey"]
-        url = self.base + self.path + "?streams=" + self.listen_key
-        ws = create_connection(
-            url,
-            on_open=self.on_open,
-            on_error=self.on_error,
-            on_close=self.close_stream,
-        )
-        request = {
-            "method": "SUBSCRIBE" if subs else "UNSUBSCRIBE",
-            "params": [
-                f"{symbol.lower()}@kline_{interval}",
-            ],
-            "id": 1
-        }
-        ws.send(json.dumps(request))
-        response = json.loads(ws.recv())
-        if "error" not in response:
-            list_subs_req = {
-                "method": "LIST_SUBSCRIPTIONS",
-                "id": 2
-            }
-            ws.send(json.dumps(list_subs_req))
-            response = json.loads(ws.recv())
-            if "error" not in response:
-                for subs in response["result"]:
-                    if subs == f"{symbol.lower()}@kline_{interval}":
-                        print(f"Successfully subscribed to {symbol}")
-            else:
-                print(response["error"]["msg"])
-        else:
-            print(response["error"]["msg"])
-        self.close_stream(ws)
-
+        ws.run_forever()
+        
     def close_stream(self, ws):
-        if self.active_ws:
-            self.active_ws.close()
-            print("Active socket closed")
+        ws.close()
+        print("Active socket closed")
 
     def on_open(self, ws):
-        print("Open")
+        print("Sockets stream opened")
 
     def on_error(self, ws, error):
-        print(f"Error: {error}")
+        print(f"Websocket error: {error}")
+        ws.close()
+
+    def on_message(self, wsapp, message):
+        print("On Message executed")
+        response = json.loads(message)
+        try:
+            result = response["data"]
+        except KeyError:
+            print(f"Error: {result}")
+
+        if "e" in result and result["e"] == "executionReport":
+            self.process_report_execution(result)
 
     def process_report_execution(self, result):
         # Parse result. Print result for raw result from Binance

@@ -315,7 +315,7 @@ class BotForm extends React.Component {
     /**
      * Refer to bots.md
      */
-    const { base_order_size, max_so_count, short_order } = this.state;
+    const { base_order_size, safety_orders, short_order } = this.state;
     const { balances } = this.props;
 
     let value = "0";
@@ -328,9 +328,9 @@ class BotForm extends React.Component {
         }
       });
 
-      if (!checkValue(value) && !checkBalance(value)) {
+      if (!checkValue(value) && !checkBalance(value) && Object.values(safety_orders).length > 0) {
         const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
-        const safetyOrders = Object.values(this.state.safety_orders).reduce((v, a) => parseFloat(v.so_size) + parseFloat(a.so_size));
+        const safetyOrders = Object.values(safety_orders).reduce((v, a) => parseFloat(v.so_size) + parseFloat(a.so_size));
         const shortOrder = parseFloat(short_order);
         const updatedValue = (
           value -
@@ -486,18 +486,18 @@ class BotForm extends React.Component {
     this.setState({ safety_orders: newState })
   }
 
-  handleSoBlur = (e) => {
+  handleMaxSoChange = (e) => {
     e.preventDefault();
     const count = parseInt(this.state.max_so_count);
     if (count !== parseInt(e.target.value)) {
-      this.renderSO();
+      this.setState({ [e.target.name]: e.target.value }, () => this.renderSO());
     }
   }
 
   handleSoChange = (id) => (e) => {
     e.preventDefault();
     this.setState(produce(draft => {
-        draft.safety_orders[id][e.target.name] = e.target.value
+      draft.safety_orders[id][e.target.name] = e.target.value
     }));
   }
 
@@ -660,8 +660,8 @@ class BotForm extends React.Component {
                             invalid={this.state.maxSOCountError}
                             type="text"
                             name="max_so_count"
-                            onChange={this.handleChange}
-                            onBlur={this.handleSoBlur}
+                            onChange={this.handleMaxSoChange}
+                            onBlur={this.handleBlur}
                             value={this.state.max_so_count}
                           />
                           <FormFeedback>

@@ -1,26 +1,27 @@
-from api.orders.models.order_sockets import OrderUpdates
-import os
 import atexit
-
-from flask import Flask
-from flask_cors import CORS
-from pymongo import MongoClient
-from apscheduler.schedulers.background import BackgroundScheduler
-from flask_mongoengine import MongoEngine
+import logging
+import os
 import threading
 import time
-import logging
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from flask import Flask
+from flask_cors import CORS
+from flask_mongoengine import MongoEngine
+from pymongo import MongoClient
 
 # Import Routes
 from api.account.models import Assets
-from api.orders.models.orders import Orders
-from api.tools.jsonresp import jsonResp
-from api.user.routes import user_blueprint
 from api.account.routes import account_blueprint
 from api.bots.routes import bot_blueprint
-from api.deals.routes import deal_blueprint
-from api.orders.routes import order_blueprint
 from api.charts.routes import charts_blueprint
+from api.deals.routes import deal_blueprint
+from api.orders.models.order_sockets import OrderUpdates
+from api.charts.klines_sockets import KlineSockets
+from api.orders.models.orders import Orders
+from api.orders.routes import order_blueprint
+from api.tools.jsonresp import jsonResp
+from api.user.routes import user_blueprint
 
 app = Flask(__name__)
 # Schema
@@ -70,6 +71,10 @@ def index():
 
 
 order_updates = OrderUpdates(app)
+kline_updates = KlineSockets(app)
 # start a worker process to move the received stream_data from the stream_buffer to a print function
-worker_thread = threading.Thread(target=order_updates.get_stream)
-worker_thread.start()
+# worker_thread = threading.Thread(target=order_updates.run_stream)
+# worker_thread.start()
+
+kline_thread = threading.Thread(target=kline_updates.start_stream)
+kline_thread.start()

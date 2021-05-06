@@ -483,7 +483,7 @@ class Deal(Account):
 
         # Subscribe to streams with corresponding symbol
         streams = OrderUpdates(app)
-        streams.kline_stream(self.active_bot["_id"], self.active_bot["pair"])
+        streams.kline_stream(self.active_bot["pair"])
 
         # If there is already a take profit do not execute
         # If there is no base order can't execute
