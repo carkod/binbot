@@ -3,14 +3,10 @@ import os
 
 import requests
 from api.deals.deal_updates import DealUpdates
-from api.tools.handle_error import handle_error
-from api.tools.jsonresp import jsonResp, jsonResp_message
-from flask import current_app
-from websocket import WebSocketApp, create_connection, enableTrace
-
+from websocket import WebSocketApp, enableTrace
 
 class KlineSockets:
-    def __init__(self, app, symbol="BNBBTC", subs=True, interval="30m"):
+    def __init__(self, app, symbol="BNBBTC", subs=True, interval="1m"):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
@@ -67,16 +63,33 @@ class KlineSockets:
     def on_message(self, wsapp, message):
         print("On Message executed")
         response = json.loads(message)
-        try:
-            result = response["e"]
-        except KeyError:
-            print(f"Error: {result}")
 
-        if response["e"] == "kline":
+        if "result" in response and response["result"]:
+            print(f'Subscriptions: {response["result"]}')
+
+        elif "e" in response and response["e"] == "kline":
             self.process_kline_stream(response)
+
+        else:
+            print(f"Error: {response}")
 
     def process_kline_stream(self, result):
         if result["k"]["x"]:
             close_price = result["k"]["c"]
             close_time = result["k"]["T"]
             symbol = result["k"]["s"]
+
+            # Update Current price
+            bot = self.app.db.bots.find_one_and_update(
+                {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
+            )
+
+            # Open safety orders
+            if "safety_order_prices" in bot["deal"]:
+                for index, price in enumerate(bot["deal"]["safety_order_prices"]):
+                    # Index is the ID of the safety order price that matches safety_orders list
+                    if float(price) == float(close_price):
+                        deal = DealUpdates(bot, self.app)
+                        # No need to pass price to update deal
+                        # The price already matched market price
+                        deal.so_update_deal(index)

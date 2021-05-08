@@ -34,7 +34,7 @@ class Bot(Account):
                 "buy_price": "",
                 "current_price": "",
                 "buy_total_qty": "",
-                "take_profit": ""
+                "take_profit": "",
             },
             "safety_orders": {}
         }

@@ -14,6 +14,20 @@ from flask import current_app as app
 
 class DealUpdates(Account):
 
+    order_book_url = os.getenv("ORDER_BOOK")
+    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}:{os.getenv("FLASK_PORT")}'
+    bb_buy_order_url = f"{bb_base_url}/order/buy"
+    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
+    bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
+    bb_sell_order_url = f"{bb_base_url}/order/sell"
+    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
+    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
+    bb_opened_orders_url = f"{bb_base_url}/order/open"
+    bb_close_order_url = f"{bb_base_url}/order/close"
+    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
+    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
+
+
     def __init__(self, bot, app):
         # Inherit also the __init__ from parent class
         super(self.__class__, self).__init__()
@@ -134,3 +148,85 @@ class DealUpdates(Account):
                 else:
                     print(f"New take_profit deal successfully updated: {botId}")
                 return
+
+    def so_update_deal(self, so_index):
+        """
+        Executes when
+        - Klines websocket triggers condition price = safety order price
+        - Get qty and price (use trade books so it can sell immediately at limit)
+        - Update deal.price, deal.qty
+        """
+        pair = self.active_bot["pair"]
+        so_qty = list(self.active_bot["safety_orders"].values())[so_index]["so_size"]
+        book_order = Book_Order(pair)
+        price = float(book_order.matching_engine(False, so_qty))
+        qty = round_numbers(
+            (float(so_qty) / float(price)),
+            self.qty_precision,
+        )
+
+        order = {
+            "pair": pair,
+            "qty": supress_notation(qty, self.qty_precision),
+            "price": supress_notation(price, self.price_precision),
+        }
+        res = requests.post(url=self.bb_buy_order_url, json=order)
+        if isinstance(handle_error(res), Response):
+            return handle_error(res)
+
+        response = res.json()
+
+        safety_orders = {
+            "order_id": response["orderId"],
+            "deal_type": "safety_order",
+            "strategy": "long",  # change accordingly
+            "pair": response["symbol"],
+            "order_side": response["side"],
+            "order_type": response["type"],
+            "price": response["price"],
+            "qty": response["origQty"],
+            "fills": response["fills"],
+            "time_in_force": response["timeInForce"],
+            "so_count": so_index,
+            "status": response["status"],
+        }
+
+        self.active_bot["orders"].append(safety_orders)
+        new_tp_price = float(response["price"]) * (1 + float(self.active_bot["take_profit"]) / 100)
+        commission = 0
+        for chunk in response["fills"]:
+            commission += float(chunk["commission"])
+
+        if "buy_total_qty" in self.active_bot["deal"]:
+            buy_total_qty = float(self.active_bot["deal"]["buy_total_qty"]) + float(response["origQty"])
+        else:
+            buy_total_qty = self.active_bot["base_order_size"]
+        
+        self.active_bot["deal"]["safety_order_prices"].remove(self.active_bot["deal"]["safety_order_prices"][so_index])
+        new_so_prices = self.active_bot["deal"]["safety_order_prices"]
+
+        botId = self.app.db.bots.update_one(
+            {"_id": self.active_bot["_id"]}, 
+                {
+                    "$push": {"orders": safety_orders}, 
+                    "$set": {
+                        "deal.buy_price": supress_notation(response["price"], self.price_precision),
+                        "deal.take_profit_price": supress_notation(new_tp_price, self.price_precision)
+                        "deal.buy_total_qty": supress_notation(buy_total_qty, self.qty_precision),
+                        "deal.safety_order_prices": new_so_prices,
+                    },
+                    "$inc": {
+                        "deal.comission": commission
+                    }
+                }
+        )
+        if not botId:
+            resp = jsonResp(
+                {
+                    "message": "Failed to save safety_order deal in the bot",
+                    "botId": str(findId),
+                },
+                200,
+            )
+            return resp
+        return

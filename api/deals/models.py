@@ -1,15 +1,16 @@
 import json
 import math
 import os
+from decimal import Decimal
 
 import requests
-from flask import Response, current_app as app
-from decimal import Decimal
-from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.round_numbers import round_numbers, supress_notation
-from api.tools.jsonresp import jsonResp_message, jsonResp
 from api.account.models import Account
-from api.orders.models.order_sockets import OrderUpdates
+from api.charts.klines_sockets import KlineSockets
+from api.orders.models.book_order import Book_Order, handle_error
+from api.tools.jsonresp import jsonResp, jsonResp_message
+from api.tools.round_numbers import round_numbers, supress_notation
+from flask import Response
+from flask import current_app as app
 
 
 class Deal(Account):
@@ -67,6 +68,15 @@ class Deal(Account):
             .as_tuple()
             .exponent
         )
+        self.deal = {
+            "last_order_id": 0,
+            "buy_price": "",
+            "buy_total_qty": "",
+            "current_price": "",
+            "take_profit_price": "",
+            "so_prices": [],
+            "commission": 0,
+        }
 
     def initialization(self):
         """
@@ -144,17 +154,23 @@ class Deal(Account):
         # Remove follow line once redesign is finished
         self.base_order_price = order["price"]
 
+        tp_price = (float(base_order_deal["price"]) * 1 + (float(self.active_bot["take_profit"]) / 100))
+        so_prices = []
+        for key, value in self.active_bot["safety_orders"].items():
+            prices = float(base_order_deal["price"]) - (float(base_order_deal["price"]) * (float(value["price_deviation_so"]) / 100))
+            so_prices.append(prices)
+
         deal = {
             "last_order_id": order["orderId"],
             "buy_price": order["price"],
             "buy_total_qty": order["origQty"],
             "current_price": self.get_ticker_price(order["symbol"]),
+            "take_profit_price": tp_price,
+            "safety_order_prices": so_prices,
             "commission": 0,
         }
         for chunk in order["fills"]:
             deal["commission"] += float(chunk["commission"])
-
-        deal["commission"] = supress_notation(deal["commission"])
 
         botId = app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
@@ -168,86 +184,6 @@ class Deal(Account):
             return resp
 
         return base_deal
-
-    def so_update_deal(self):
-        """
-        Executes when Safety order is reached
-        Update deal with so_price -> bo_price
-        Update quantity
-        """
-        pair = self.active_bot["pair"]
-        length = self.max_so_count
-        so_deals = self.active_bot["safety_orders"]
-        base_order_deal = next(
-            (
-                bo_deal
-                for bo_deal in self.active_bot["orders"]
-                if bo_deal["deal_type"] == "base_order"
-            ),
-            None,
-        )
-        take_profit = float(self.active_bot["take_profit"])
-        so_deviation = float(self.active_bot["price_deviation_so"]) / 100
-        # Base order, safety order 1, safety order 2... in a list
-        price_list = []
-        price_list.append(base_order_deal["price"])
-        index = 0
-        for index in range(length):
-
-            price = float(price_list[index]) - (so_deviation * float(price_list[index]))
-
-            # Recursive order
-            so_proportion = float(self.active_bot["so_size"]) / price
-            qty = round_numbers(so_proportion, self.qty_precision)
-
-            order = {
-                "pair": pair,
-                "qty": qty,
-                "price": supress_notation(price, self.price_precision),
-            }
-            res = requests.post(url=self.bb_buy_order_url, json=order)
-            if isinstance(handle_error(res), Response):
-                return handle_error(res)
-
-            response = res.json()
-
-            # Append safety order price
-            price_list.append(response["price"])
-
-            safety_orders = {
-                "order_id": response["orderId"],
-                "deal_type": "safety_order",
-                "strategy": "long",  # change accordingly
-                "pair": response["symbol"],
-                "order_side": response["side"],
-                "order_type": response["type"],
-                "price": response["price"],
-                "qty": response["origQty"],
-                "fills": response["fills"],
-                "time_in_force": response["timeInForce"],
-                "so_count": index,
-                "status": response["status"],
-            }
-
-            self.active_bot["deals"].append(safety_orders)
-            botId = app.db.bots.update_one(
-                {"_id": self.active_bot["_id"]}, {"$push": {"deals": safety_orders}}
-            )
-            if not botId:
-                resp = jsonResp(
-                    {
-                        "message": "Failed to save safety_order deal in the bot",
-                        "botId": str(findId),
-                    },
-                    200,
-                )
-                return resp
-
-            if index > length:
-                break
-            index += 1
-
-        return
 
     def long_take_profit_order(self):
         """
@@ -305,7 +241,7 @@ class Deal(Account):
         botId = app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
             {
-                "$set": {"deal.sell_price": order["price"]},
+                "$set": {"deal.take_profit_price": order["price"]},
                 "$push": {"orders": take_profit_order},
             },
         )
@@ -482,8 +418,8 @@ class Deal(Account):
                 order_errors.append(msg)
 
         # Subscribe to streams with corresponding symbol
-        streams = OrderUpdates(app)
-        streams.kline_stream(self.active_bot["pair"])
+        streams = KlineSockets(app, self.active_bot["pair"])
+        streams.start_stream()
 
         # If there is already a take profit do not execute
         # If there is no base order can't execute
