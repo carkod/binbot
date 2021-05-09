@@ -211,7 +211,7 @@ class DealUpdates(Account):
                     "$push": {"orders": safety_orders}, 
                     "$set": {
                         "deal.buy_price": supress_notation(response["price"], self.price_precision),
-                        "deal.take_profit_price": supress_notation(new_tp_price, self.price_precision)
+                        "deal.take_profit_price": supress_notation(new_tp_price, self.price_precision),
                         "deal.buy_total_qty": supress_notation(buy_total_qty, self.qty_precision),
                         "deal.safety_order_prices": new_so_prices,
                     },

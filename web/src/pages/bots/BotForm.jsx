@@ -330,7 +330,9 @@ class BotForm extends React.Component {
 
       if (!checkValue(value) && !checkBalance(value) && Object.values(safety_orders).length > 0) {
         const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
-        const safetyOrders = Object.values(safety_orders).reduce((v, a) => parseFloat(v.so_size) + parseFloat(a.so_size));
+        const safetyOrders = Object.values(safety_orders).reduce((v, a) => {
+          return parseFloat(v.so_size) + parseFloat(a.so_size)
+        }, {so_size: 0});
         const shortOrder = parseFloat(short_order);
         const updatedValue = (
           value -

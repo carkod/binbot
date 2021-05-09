@@ -154,10 +154,10 @@ class Deal(Account):
         # Remove follow line once redesign is finished
         self.base_order_price = order["price"]
 
-        tp_price = (float(base_order_deal["price"]) * 1 + (float(self.active_bot["take_profit"]) / 100))
+        tp_price = (float(order["price"]) * 1 + (float(self.active_bot["take_profit"]) / 100))
         so_prices = []
         for key, value in self.active_bot["safety_orders"].items():
-            prices = float(base_order_deal["price"]) - (float(base_order_deal["price"]) * (float(value["price_deviation_so"]) / 100))
+            prices = float(order["price"]) - (float(order["price"]) * (float(value["price_deviation_so"]) / 100))
             so_prices.append(prices)
 
         deal = {
@@ -417,10 +417,9 @@ class Deal(Account):
                 msg = base_order.json["message"]
                 order_errors.append(msg)
 
-        # Subscribe to streams with corresponding symbol
-        streams = KlineSockets(app, self.active_bot["pair"])
-        streams.start_stream()
 
+        # Below take profit order goes first, because stream does not return a value
+        
         # If there is already a take profit do not execute
         # If there is no base order can't execute
         check_bo = False
@@ -449,7 +448,12 @@ class Deal(Account):
                 msg = short_order.json["message"]
                 order_errors.append(msg)
 
-        return True, order_errors
+        # Subscribe to streams with corresponding symbol
+        streams = KlineSockets(app, self.active_bot["pair"])
+        streams.start_stream()
+
+        return order_errors
+        
 
     def close_deals(self):
         """

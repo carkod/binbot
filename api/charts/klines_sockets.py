@@ -4,7 +4,7 @@ import os
 import requests
 from api.deals.deal_updates import DealUpdates
 from websocket import WebSocketApp, enableTrace
-
+import threading
 class KlineSockets:
     def __init__(self, app, symbol="BNBBTC", subs=True, interval="1m"):
         self.key = os.getenv("BINANCE_KEY")
@@ -24,13 +24,7 @@ class KlineSockets:
         enableTrace(True)
 
     def start_stream(self):
-        """
-        Activate kline stream when bot activates SO
-        @params:
-        - id: ObjectId
-        - symbol: string (e.g. BNBBTC, later needs to be lowercased)
-        - subs: bool (True = SUBSCRIBE otherwise UNSUBSCRIBE)
-        """
+        # Start stream
         url = f"{self.base}{self.path}/{self.symbol.lower()}@kline_{self.interval}"
         ws = WebSocketApp(
             url,
@@ -39,8 +33,9 @@ class KlineSockets:
             on_close=self.close_stream,
             on_message=self.on_message,
         )
-
-        ws.run_forever()
+        wst = threading.Thread(target=ws.run_forever)
+        wst.start()
+        return
 
     def close_stream(self, ws):
         ws.close()

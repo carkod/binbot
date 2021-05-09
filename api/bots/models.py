@@ -127,44 +127,38 @@ class Bot(Account):
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            dealId, order_errors = Deal(bot, app).open_deal()
+            order_errors = Deal(bot, app).open_deal()
 
             # If error
-            if isinstance(dealId, Response):
-                resp = jsonResp(dealId.json, 200)
+            if len(order_errors) > 0:
+                resp = jsonResp({
+                    "message": f"Successfully activated bot, deals had errors {','.join(order_errors)}",
+                    "botId": str(findId),
+                }, 200)
                 return resp
 
-            if dealId and not order_errors:
-                bot["active"] = "true"
-                bot["deals"].append(dealId)
-                botId = app.db.bots.save(bot)
-                if botId:
-                    resp = jsonResp(
-                        {
-                            "message": "Successfully activated bot and triggered deals with no errors",
-                            "botId": str(findId),
-                        },
-                        200,
-                    )
-                return resp
-            elif dealId and order_errors:
-                bot["active"] = "true"
-                bot["deals"].append(dealId)
-                botId = app.db.bots.save(bot)
-                if botId:
-                    resp = jsonResp(
-                        {
-                            "message": f"Successfully activated bot, deals had errors {','.join(order_errors)}",
-                            "botId": str(findId),
-                        },
-                        200,
-                    )
-                return resp
+            botId = app.db.bots.find_one_and_update({"_id": findId}, {
+                "$set": {
+                    "active": "true"
+                }
+            })
+            if botId:
+                resp = jsonResp(
+                    {
+                        "message": "Successfully activated bot and triggered deals with no errors",
+                        "botId": str(findId),
+                    },
+                    200,
+                )
             else:
                 resp = jsonResp(
-                    {"message": "Deal base order failed", "botId": findId}, 400
+                    {
+                        "message": "Unable to save bot",
+                        "botId": str(findId),
+                    },
+                    200,
                 )
-
+            return resp
         else:
             resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp
