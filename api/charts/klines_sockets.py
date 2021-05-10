@@ -5,6 +5,7 @@ import requests
 from api.deals.deal_updates import DealUpdates
 from websocket import WebSocketApp, enableTrace
 import threading
+from api.app import create_app
 class KlineSockets:
     def __init__(self, app, symbol="BNBBTC", subs=True, interval="1m"):
         self.key = os.getenv("BINANCE_KEY")
@@ -23,7 +24,8 @@ class KlineSockets:
 
         enableTrace(True)
 
-    def start_stream(self):
+    def start_stream(self, app):
+        self.app = app
         # Start stream
         url = f"{self.base}{self.path}/{self.symbol.lower()}@kline_{self.interval}"
         ws = WebSocketApp(
@@ -35,7 +37,6 @@ class KlineSockets:
         )
         wst = threading.Thread(target=ws.run_forever)
         wst.start()
-        return
 
     def close_stream(self, ws):
         ws.close()
@@ -73,9 +74,10 @@ class KlineSockets:
             close_price = result["k"]["c"]
             close_time = result["k"]["T"]
             symbol = result["k"]["s"]
+            app = create_app()
 
             # Update Current price
-            bot = self.app.db.bots.find_one_and_update(
+            bot = app.db.bots.find_one_and_update(
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
             )
 
@@ -84,7 +86,7 @@ class KlineSockets:
                 for index, price in enumerate(bot["deal"]["safety_order_prices"]):
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(price) == float(close_price):
-                        deal = DealUpdates(bot, self.app)
+                        deal = DealUpdates(bot, app)
                         # No need to pass price to update deal
                         # The price already matched market price
                         deal.so_update_deal(index)

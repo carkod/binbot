@@ -5,10 +5,7 @@ import threading
 import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from flask import Flask
-from flask_cors import CORS
-from flask_mongoengine import MongoEngine
-from pymongo import MongoClient
+from api.app import create_app
 
 # Import Routes
 from api.account.models import Assets
@@ -23,19 +20,7 @@ from api.orders.routes import order_blueprint
 from api.tools.jsonresp import jsonResp
 from api.user.routes import user_blueprint
 
-app = Flask(__name__)
-# Schema
-# db = MongoEngine(app)
-# Enable CORS for all routes
-CORS(app)
-# Misc Config
-os.environ["TZ"] = os.environ["TIMEZONE"]
-
-mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
-mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(
-    os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"]
-)
-app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
+app = create_app()
 
 # Cronjob
 scheduler = BackgroundScheduler()

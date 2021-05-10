@@ -450,7 +450,7 @@ class Deal(Account):
 
         # Subscribe to streams with corresponding symbol
         streams = KlineSockets(app, self.active_bot["pair"])
-        streams.start_stream()
+        streams.start_stream(app)
 
         return order_errors
         
