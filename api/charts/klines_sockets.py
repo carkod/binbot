@@ -44,11 +44,15 @@ class KlineSockets:
 
     def on_open(self, ws):
         print("Sockets stream opened")
+        app = create_app()
+        params = []
+        bots = app.db.bots.find({"active": "true"})
+        for bot in list(bots):
+            params.append(f'{bot["pair"].lower()}@kline_{self.interval}')
+
         request = {
             "method": "SUBSCRIBE" if self.subs else "UNSUBSCRIBE",
-            "params": [
-                f"{self.symbol.lower()}@kline_{self.interval}",
-            ],
+            "params": params,
             "id": 2,
         }
         ws.send(json.dumps(request))

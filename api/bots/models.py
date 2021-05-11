@@ -129,6 +129,12 @@ class Bot(Account):
         if bot:
             order_errors = Deal(bot, app).open_deal()
 
+            botId = app.db.bots.find_one_and_update({"_id": ObjectId(findId)}, {
+                "$set": {
+                    "active": "true"
+                }
+            })
+
             # If error
             if len(order_errors) > 0:
                 resp = jsonResp({
@@ -137,11 +143,6 @@ class Bot(Account):
                 }, 200)
                 return resp
 
-            botId = app.db.bots.find_one_and_update({"_id": findId}, {
-                "$set": {
-                    "active": "true"
-                }
-            })
             if botId:
                 resp = jsonResp(
                     {
