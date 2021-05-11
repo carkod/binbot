@@ -116,6 +116,7 @@ class BotForm extends React.Component {
         balance_usage: this.props.bot.balance_usage,
         balance_usage_size: this.props.bot.balance_usage_size,
         base_order_size: this.props.bot.base_order_size,
+        deal: this.props.bot.deal,
         max_so_count: this.props.bot.max_so_count,
         name: this.props.bot.name,
         pair: this.props.bot.pair,
@@ -126,7 +127,7 @@ class BotForm extends React.Component {
         take_profit: this.props.bot.take_profit,
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
-        deals: this.props.bot.deals,
+        orders: this.props.bot.orders,
         short_order: this.props.bot.short_order,
         short_stop_price: this.props.bot.short_stop_price,
         stop_loss: this.props.bot.stop_loss,
@@ -179,15 +180,14 @@ class BotForm extends React.Component {
     ) {
       const { trace } = this.props.candlestick;
       if (trace.length > 0) {
-        const currentPrice = parseFloat(trace[0].close[trace.length - 1]);
+        const currentPrice = parseFloat(this.props.bot.deal.current_price);
+        const buyPrice = parseFloat(this.props.bot.deal.buy_price);
         if (
           !checkValue(this.props.bot) &&
-          this.props.bot.active === "true" &&
+          Object.keys(this.props.bot.deal).length > 0 &&
           !checkValue(this.props.bot.base_order_size)
         ) {
-          const profitChange =
-            (currentPrice - parseFloat(this.props.bot.base_order_size)) /
-            parseFloat(this.props.bot.base_order_size);
+          const profitChange = (currentPrice - buyPrice) / buyPrice;
           this.setState({ bot_profit: profitChange.toFixed(4) });
         } else {
           this.setState({ bot_profit: 0 });
@@ -510,8 +510,8 @@ class BotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <CardTitle tag="h5">
-                  {this.state.pair}{" "}
+                <CardTitle tag="h3">
+                  {this.state.pair} {' '}{' '}{' '}
                   {!checkValue(this.state.bot_profit) &&
                   this.state.active === "true" ? (
                     <Badge
@@ -520,7 +520,7 @@ class BotForm extends React.Component {
                       {this.state.bot_profit + "%"}
                     </Badge>
                   ) : (
-                    "Inactive"
+                    <Badge color="secondary" >Inactive</Badge>
                   )}
                 </CardTitle>
                 {intervalOptions.map((item) => (
@@ -541,7 +541,7 @@ class BotForm extends React.Component {
                 ))}
               </CardHeader>
               <CardBody>
-                {this.props.candlestick && this.state.pair !== "" ? (
+                {this.props.candlestick && !checkValue(this.state.pair)? (
                   <Candlestick data={this.props.candlestick} bot={this.state} />
                 ) : (
                   ""

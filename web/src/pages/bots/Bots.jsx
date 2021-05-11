@@ -10,6 +10,7 @@ import {
   Badge,
   Row,
 } from "reactstrap";
+import { checkValue } from "../../validations";
 import { deleteBot, getBots } from "./actions";
 
 class Bots extends React.Component {
@@ -30,14 +31,21 @@ class Bots extends React.Component {
     this.props.deleteBot(id);
   };
 
+  getProfit = (base_price, current_price) => {
+    if (!checkValue(base_price) && !checkValue(current_price)) {
+      const bp = parseFloat(base_price);
+      const cp = parseFloat(current_price);
+      const percent = (cp - bp) / base_price;
+      return percent.toFixed(2);
+    }
+    return 0
+  }
+
   render() {
     const { bots } = this.props;
     return (
       <>
         <div className="content">
-          <Row>
-            <Col md="12">{/* <Candlestick title={"BNBBTC"} /> */}</Col>
-          </Row>
           <Row>
             {bots &&
               bots.map((x, i) => (
@@ -57,7 +65,9 @@ class Bots extends React.Component {
                             tag="h5"
                             className="card-title u-uppercase"
                           >
-                            0
+                            <Badge color={this.getProfit(x.deal.buy_price, x.deal.current_price) > 0 ? "success" : "danger"} >
+                              {this.getProfit(x.deal.buy_price, x.deal.current_price)}
+                            </Badge>
                           </CardTitle>
                         </Col>
                       </Row>
@@ -84,8 +94,8 @@ class Bots extends React.Component {
                         <Col md="7" xs="12">
                           <div className="stats">
                             <p className="card-category">Balance Use</p>
-                            <p className="card-category">SO size</p>
-                            <p className="card-category">SO deviation</p>
+                            <p className="card-category"># Safety Orders</p>
+                            <p className="card-category">Bought @</p>
                             <p className="card-category">Take Profit</p>
                             {x.trailling === "true" && (
                               <p className="card-category">Trailling TP</p>
@@ -97,9 +107,9 @@ class Bots extends React.Component {
                             <p className="card-category">
                               {x.balance_usage + "%"}
                             </p>
-                            <p className="card-category">{x.so_size}</p>
+                            <p className="card-category">{x.max_so_count}</p>
                             <p className="card-category">
-                              {x.price_deviation_so + "%"}
+                              {x.deal.buy_price}
                             </p>
                             <p className="card-category">
                               {x.take_profit + "%"}

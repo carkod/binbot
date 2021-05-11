@@ -9,18 +9,51 @@ import { checkValue } from "../../validations";
 export const generateOrders = (data, bot) => {
   let annotations = [];
   let shapes = [];
-  let currentPrice, currentTime, takeProfitPrice, takeProfitTime;
+  let currentPrice, currentTime, takeProfit, takeProfitTime;
 
   // Match real base order price and time if active
   currentPrice = data.trace[0].close[data.trace[0].close.length - 1];
   currentTime = data.trace[0].x[data.trace[0].x.length - 1];
 
   // Match last order (last safety order triggered)
-  takeProfitPrice = data.trace[0].close[data.trace[0].close.length - 1];
+  takeProfit = data.trace[0].close[data.trace[0].close.length - 1];
   takeProfitTime = data.trace[0].x[data.trace[0].x.length - 1];
 
-  if (bot.deals.length > 0) {
-    const baseOrder = bot.deals.find((x) => x.deal_type === "base_order");
+  // Saved current price visual
+  if (!checkValue(bot.deal)) {
+    if ("current_price" in bot.deal) {
+      const currentPriceSA = {
+        x: currentTime,
+        y: bot.deal.current_price,
+        xref: "x",
+        yref: "y",
+        text: `CP`,
+        font: { color: "blue" },
+        showarrow: false,
+        xanchor: "left",
+        hovertext: bot.deal.current_price,
+      };
+      const currentPriceS = {
+        type: "line",
+        xref: "x",
+        yref: "y",
+        x0: currentTime,
+        y0: bot.deal.current_price,
+        x1: data.trace[0].x[195],
+        y1: bot.deal.current_price,
+        line: {
+          color: "blue",
+          width: 12,
+          dash: "dot",
+        },
+      };
+      shapes.push(currentPriceS);
+      annotations.push(currentPriceSA);
+    }
+  }
+
+  if (bot.orders.length > 0) {
+    const baseOrder = bot.orders.find((x) => x.deal_type === "base_order");
     if (!checkValue(baseOrder)) {
       currentPrice = baseOrder.price;
     }
@@ -32,10 +65,11 @@ export const generateOrders = (data, bot) => {
     y: currentPrice,
     xref: "x",
     yref: "y",
-    text: "Base order",
+    text: `Base order`,
     font: { color: "DarkOrange" },
     showarrow: false,
     xanchor: "left",
+    hovertext: currentPrice,
   };
   // Base order Shape
   const baseOrderS = {
@@ -48,7 +82,7 @@ export const generateOrders = (data, bot) => {
     y1: currentPrice,
     line: {
       color: "DarkOrange",
-      width: 4,
+      width: 2,
     },
   };
   shapes.push(baseOrderS);
@@ -121,19 +155,17 @@ export const generateOrders = (data, bot) => {
   }
 
   // Take profit order
-  const price = (
-    parseFloat(takeProfitPrice) +
-    parseFloat(takeProfitPrice) * (bot.take_profit / 100)
-  ).toFixed(8);
+  const takeProfitPrice = bot.orders.find((x) => x.deal_type === "take_profit");
   const takeProfitA = {
     x: takeProfitTime,
-    y: price,
+    y: takeProfitPrice,
     xref: "x",
     yref: "y",
     text: "Take profit order",
     font: { color: "green" },
     showarrow: false,
     xanchor: "left",
+    hovertext: takeProfitPrice,
   };
 
   const takeProfitS = {
@@ -141,9 +173,9 @@ export const generateOrders = (data, bot) => {
     xref: "x",
     yref: "y",
     x0: data.trace[0].x[0],
-    y0: price,
+    y0: takeProfitPrice,
     x1: takeProfitTime,
-    y1: price,
+    y1: takeProfitPrice,
     line: {
       color: "green",
       width: 4,
@@ -156,8 +188,8 @@ export const generateOrders = (data, bot) => {
     // Take profit trailling order
     // Should replace the take profit order, that's why uses takeProfitTime
     const traillingPrice = (
-      parseFloat(price) +
-      parseFloat(price) * (bot.take_profit / 100)
+      parseFloat(takeProfitPrice) +
+      parseFloat(takeProfitPrice) * (parseFloat(bot.trailling_deviation) / 100)
     ).toFixed(process.env.REACT_APP_DECIMALS);
     const traillingA = {
       x: takeProfitTime,
@@ -168,6 +200,7 @@ export const generateOrders = (data, bot) => {
       font: { color: "green" },
       showarrow: false,
       xanchor: "left",
+      hovertext: traillingPrice,
     };
     const traillingS = {
       type: "line",
@@ -189,20 +222,23 @@ export const generateOrders = (data, bot) => {
   const maxSoCount = parseInt(bot.max_so_count);
   const soOrders = bot.safety_orders;
   if (maxSoCount > 0 && Object.keys(soOrders).length > 0) {
-    let previousPrice = currentPrice;
+    let previousPrice = parseFloat(currentPrice);
     Object.keys(soOrders).forEach((element, i) => {
       const price =
-        previousPrice - (previousPrice * (soOrders[element].price_deviation_so / 100));
+        previousPrice -
+        previousPrice *
+          (parseFloat(soOrders[element].price_deviation_so) / 100);
       previousPrice = price;
       const safetyOrderA = {
         x: currentTime,
         y: price,
         xref: "x",
         yref: "y",
-        text: `Safety order ${i}`,
-        font: { color: "blue" },
+        text: `Safety order ${i + 1}`,
+        font: { color: "MediumPurple" },
         showarrow: false,
         xanchor: "left",
+        hovertext: price.toFixed(8),
       };
       const safetyOrderS = {
         type: "line",
@@ -213,8 +249,9 @@ export const generateOrders = (data, bot) => {
         x1: data.trace[0].x[150],
         y1: price,
         line: {
-          color: "blue",
-          width: 4,
+          color: "MediumPurple",
+          width: 2,
+          dash: "dot",
         },
       };
       annotations.push(safetyOrderA);
