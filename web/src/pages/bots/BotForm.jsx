@@ -43,8 +43,13 @@ import {
   loadCandlestick,
 } from "./actions";
 import { getQuoteAsset } from "./requests";
+import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
 import ShortTab from "./tabs/Short";
+import { nanoid } from 'nanoid';
+import produce from 'immer';
+import Deal from "../../components/Deal";
+
 class BotForm extends React.Component {
   constructor(props) {
     super(props);
@@ -82,10 +87,12 @@ class BotForm extends React.Component {
       activeTab: "main",
       candlestick_interval: intervalOptions[11],
       deals: [],
+      orders: [],
       quoteAsset: "",
       baseAsset: "",
       stop_loss: 0,
       stopLossError: false,
+      safety_orders: {}
     };
   }
 
@@ -109,6 +116,7 @@ class BotForm extends React.Component {
         balance_usage: this.props.bot.balance_usage,
         balance_usage_size: this.props.bot.balance_usage_size,
         base_order_size: this.props.bot.base_order_size,
+        deal: this.props.bot.deal,
         max_so_count: this.props.bot.max_so_count,
         name: this.props.bot.name,
         pair: this.props.bot.pair,
@@ -119,10 +127,11 @@ class BotForm extends React.Component {
         take_profit: this.props.bot.take_profit,
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
-        deals: this.props.bot.deals,
+        orders: this.props.bot.orders,
         short_order: this.props.bot.short_order,
         short_stop_price: this.props.bot.short_stop_price,
         stop_loss: this.props.bot.stop_loss,
+        safety_orders: this.props.bot.safety_orders
       });
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
@@ -167,19 +176,19 @@ class BotForm extends React.Component {
     // Candlestick data updates
     if (
       !checkValue(this.props.candlestick) &&
-      this.props.candlestick !== p.candlestick
+      this.props.candlestick !== p.candlestick &&
+      !checkValue(this.props.bot)
     ) {
       const { trace } = this.props.candlestick;
       if (trace.length > 0) {
-        const currentPrice = parseFloat(trace[0].close[trace.length - 1]);
+        const currentPrice = parseFloat(this.props.bot.deal.current_price);
+        const buyPrice = parseFloat(this.props.bot.deal.buy_price);
         if (
           !checkValue(this.props.bot) &&
-          this.props.bot.active === "true" &&
+          Object.keys(this.props.bot.deal).length > 0 &&
           !checkValue(this.props.bot.base_order_size)
         ) {
-          const profitChange =
-            (currentPrice - parseFloat(this.props.bot.base_order_size)) /
-            parseFloat(this.props.bot.base_order_size);
+          const profitChange = (currentPrice - buyPrice) / buyPrice;
           this.setState({ bot_profit: profitChange.toFixed(4) });
         } else {
           this.setState({ bot_profit: 0 });
@@ -190,6 +199,7 @@ class BotForm extends React.Component {
     if (this.state.quoteAsset !== s.quoteAsset && !checkValue(this.props.balances)) {
       this.computeAvailableBalance();
     }
+
   };
 
   requiredinValidation = () => {
@@ -279,8 +289,6 @@ class BotForm extends React.Component {
         max_so_count: this.state.max_so_count,
         name: this.state.name,
         pair: this.state.pair,
-        price_deviation_so: this.state.price_deviation_so,
-        so_size: this.state.so_size,
         start_condition: this.state.start_condition,
         strategy: this.state.strategy,
         take_profit: this.state.take_profit,
@@ -289,6 +297,7 @@ class BotForm extends React.Component {
         short_order: this.state.short_order,
         short_stop_price: this.state.short_stop_price,
         stop_loss: this.state.stop_loss,
+        safety_orders: this.state.safety_orders
       };
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -307,7 +316,7 @@ class BotForm extends React.Component {
     /**
      * Refer to bots.md
      */
-    const { base_order_size, so_size, max_so_count, short_order } = this.state;
+    const { base_order_size, safety_orders, short_order } = this.state;
     const { balances } = this.props;
 
     let value = "0";
@@ -320,9 +329,11 @@ class BotForm extends React.Component {
         }
       });
 
-      if (!checkValue(value) && !checkBalance(value)) {
+      if (!checkValue(value) && !checkBalance(value) && Object.values(safety_orders).length > 0) {
         const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
-        const safetyOrders = parseFloat(so_size) * parseInt(max_so_count);
+        const safetyOrders = Object.values(safety_orders).reduce((v, a) => {
+          return parseFloat(v.so_size) + parseFloat(a.so_size)
+        }, {so_size: 0});
         const shortOrder = parseFloat(short_order);
         const updatedValue = (
           value -
@@ -338,11 +349,6 @@ class BotForm extends React.Component {
             baseOrderSizeError: false,
             balanceAvailableError: false,
           });
-          if (parseFloat(this.state.so_size) > 0) {
-            this.setState({
-              soSizeError: false,
-            });
-          }
         } else {
           this.setState({ baseOrderSizeError: true, formIsValid: false });
         }
@@ -363,11 +369,12 @@ class BotForm extends React.Component {
     this.setState({ pair: value[0] });
   };
 
-  handlePairBlur = () =>
+  handlePairBlur = () => {
     this.props.loadCandlestick(
       this.state.pair,
       this.state.candlestick_interval
     );
+  }
 
   handleStrategy = (e) => {
     // Get pair base or quote asset and set new strategy
@@ -446,6 +453,57 @@ class BotForm extends React.Component {
     }
   };
 
+  renderSO = () => {
+    const count = parseInt(this.state.max_so_count);
+    const length = Object.keys(this.state.safety_orders).length;
+    let newState = {};
+    if (count > 0 && length === 0) {
+        for (let i = 0; i < count; i++) {
+          const id = nanoid();
+          newState[id] = {
+            so_size: "",
+            price_deviation_so: "0.63",
+            priceDevSoError: false,
+            soSizeError: false
+          }
+      }
+    } else if (count - length > 0) {
+      newState = this.state.safety_orders;
+      for (let i = 0; i < (count - length); i++) {
+        const id = nanoid();
+        newState[id] = {
+          so_size: "",
+          price_deviation_so: "0.63",
+          priceDevSoError: false,
+          soSizeError: false
+        }
+    }
+    } else if (count - length < 0) {
+      newState = this.state.safety_orders;
+      for (let i = 0; i < (length - count); i++) {
+        const id = Object.keys(newState)[length - 1];
+        delete newState[id];
+      }
+      
+    }
+    this.setState({ safety_orders: newState })
+  }
+
+  handleMaxSoChange = (e) => {
+    e.preventDefault();
+    const count = parseInt(this.state.max_so_count);
+    if (count !== parseInt(e.target.value)) {
+      this.setState({ [e.target.name]: e.target.value }, () => this.renderSO());
+    }
+  }
+
+  handleSoChange = (id) => (e) => {
+    e.preventDefault();
+    this.setState(produce(draft => {
+      draft.safety_orders[id][e.target.name] = e.target.value
+    }));
+  }
+
   render() {
     return (
       <div className="content">
@@ -453,8 +511,8 @@ class BotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <CardTitle tag="h5">
-                  {this.state.pair}{" "}
+                <CardTitle tag="h3">
+                  {this.state.pair} {' '}{' '}{' '}
                   {!checkValue(this.state.bot_profit) &&
                   this.state.active === "true" ? (
                     <Badge
@@ -463,7 +521,7 @@ class BotForm extends React.Component {
                       {this.state.bot_profit + "%"}
                     </Badge>
                   ) : (
-                    "Inactive"
+                    <Badge color="secondary" >Inactive</Badge>
                   )}
                 </CardTitle>
                 {intervalOptions.map((item) => (
@@ -484,7 +542,7 @@ class BotForm extends React.Component {
                 ))}
               </CardHeader>
               <CardBody>
-                {this.props.candlestick && this.state.pair !== "" ? (
+                {this.props.candlestick && !checkValue(this.state.pair)? (
                   <Candlestick data={this.props.candlestick} bot={this.state} />
                 ) : (
                   ""
@@ -493,15 +551,24 @@ class BotForm extends React.Component {
             </Card>
           </Col>
         </Row>
+        <Row>
+          {!checkValue(this.props.bot) &&
+            !checkValue(this.props.match.params.id) ? (
+              <Col md="7" sm="12">
+                <BotInfo bot={this.props.bot} />
+              </Col>
+            ) : (
+              ""
+          )}
+          {!checkValue(this.props.bot) && !checkValue(this.props.bot.deal) ?
+            <Col md="5" sm="12">
+              <Deal bot={this.props.bot} />
+            </Col>
+          : ""}
+        </Row>
         <Form onSubmit={this.handleSubmit}>
           <Row>
             <Col md="7" sm="12">
-              {!checkValue(this.props.bot) &&
-              !checkValue(this.props.match.params.id) ? (
-                <BotInfo bot={this.props.bot} />
-              ) : (
-                ""
-              )}
               <Card>
                 <CardHeader>
                   <CardTitle>
@@ -596,7 +663,7 @@ class BotForm extends React.Component {
                             invalid={this.state.maxSOCountError}
                             type="text"
                             name="max_so_count"
-                            onChange={this.handleChange}
+                            onChange={this.handleMaxSoChange}
                             onBlur={this.handleBlur}
                             value={this.state.max_so_count}
                           />
@@ -607,49 +674,19 @@ class BotForm extends React.Component {
                             If value = 0, Safety orders will be turned off
                           </small>
                         </Col>
-                        {parseInt(this.state.max_so_count) > 0 && (
-                          <Col md="6" sm="12">
-                            <Label for="so_size">Safety order size</Label>
-                            <Input
-                              invalid={this.state.soSizeError}
-                              type="text"
-                              name="so_size"
-                              id="so_size"
-                              onChange={this.handleSafety}
-                              onBlur={this.handleBlur}
-                              value={this.state.so_size}
-                            />
-                            <FormFeedback>
-                              <strong>Safety order size</strong> is required.
-                            </FormFeedback>
-                          </Col>
-                        )}
                       </Row>
-                      <Row className="u-margin-bottom">
-                        {parseInt(this.state.max_so_count) > 0 && (
-                          <Col md="10" sm="12">
-                            <Label htmlFor="price_deviation_so">
-                              Price deviation (%)
-                            </Label>
-                            <Input
-                              invalid={this.state.priceDevSoError}
-                              type="text"
-                              name="price_deviation_so"
-                              id="price_deviation_so"
-                              onChange={this.handleChange}
-                              onBlur={this.handleBlur}
-                              value={this.state.price_deviation_so}
-                            />
-                            <FormFeedback>
-                              <strong>Price deviation</strong> is required.
-                            </FormFeedback>
-                            <small>
-                              How much does the price have to drop to create a
-                              Safety Order?
-                            </small>
-                          </Col>
-                        )}
-                      </Row>
+                      {parseInt(this.state.max_so_count) > 0 && Object.keys(this.state.safety_orders).map(so => 
+                        <SafetyOrderField
+                          key={so}
+                          id={so}
+                          price_deviation_so={this.state.safety_orders[so].price_deviation_so}
+                          priceDevSoError={this.state.safety_orders[so].priceDevSoError}
+                          so_size={this.state.safety_orders[so].so_size}
+                          soSizeError={this.state.safety_orders[so].soSizeError}
+                          handleChange={this.handleSoChange}
+                          handleBlur={this.handleBlur}
+                        />
+                      )}
                     </TabPane>
 
                     {/*
@@ -722,7 +759,7 @@ class BotForm extends React.Component {
                         onClick={this.handleActivation}
                         disabled={checkValue(this.state._id)}
                       >
-                        Activate
+                        {!checkValue(this.state.bot) && Object.keys(this.state.bot.deal).length > 0 ? "Update deal" : "Deal"}
                       </ButtonToggle>
                     </div>
                     <div className="update ml-auto mr-auto">

@@ -54,7 +54,7 @@ class Header extends React.Component {
     });
   }
   getBrand() {
-    let brandName = "Default Brand";
+    let brandName = "Page not found";
     routes.map((prop, key) => {
       if (window.location.href.indexOf(prop.layout + prop.path) !== -1) {
         brandName = prop.name;
@@ -124,7 +124,7 @@ class Header extends React.Component {
             <NavbarBrand href="/">{this.getBrand()}</NavbarBrand>
             <div className="navbar-content">
               {window.location.href.indexOf("/admin/bots") !== -1 &&
-                <Button color="link" onClick={() => this.props.history.replace("/admin/create-bot")}>
+                <Button color="link" onClick={() => this.props.history.replace("/admin/bots-create")}>
                   New bot
                 </Button>
               }

@@ -6,14 +6,12 @@ import {
   REGISTER_USER,
 } from "./actions";
 
-const host = "http://localhost:5000/";
-
 /**
  * Github repos request/response handler
  */
 export function* postRegistration(body) {
   const { data } = body;
-  const requestURL = `${host}user/register`;
+  const requestURL = process.env.REACT_APP_REGISTRATION;
   try {
     yield call(request, requestURL, {
       method: "POST",

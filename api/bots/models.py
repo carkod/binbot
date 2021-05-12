@@ -23,15 +23,25 @@ class Bot(Account):
             "short_stop_price": "0",  # Flip to short strategy threshold
             "short_order": "0",  # Quantity flip to short
             "start_condition": "true",
-            "so_size": "0.0001",  # Top band
             "take_profit": "0.003",  # 3% take profit
-            "price_deviation_so": "0.63",  # % percentage
             "trailling": "false",
             "trailling_deviation": "0.63",
             "deal_min_value": "0",
-            "cooldown": "0",
             "deals": [],
+            "orders": [],
             "stop_loss": "0",
+            "deal": {
+                "buy_price": "",
+                "current_price": "",
+                "buy_total_qty": "",
+                "take_profit": "",
+            },
+            "safety_orders": {}
+        }
+        self.default_so = {
+            "so_size": "0",
+            "price": "0",
+            "price_deviation_so": "0.63"
         }
 
     def get(self):
@@ -54,12 +64,12 @@ class Bot(Account):
         return resp
 
     def create(self):
-        resp = jsonResp({"message": "Bot creation not available"}, 400)
         data = request.json
         data["name"] = (
             data["name"] if data["name"] != "" else f"{data['pair']}-{date.today()}"
         )
         self.defaults.update(data)
+        self.defaults["safety_orders"] = data["safety_orders"]
         botId = app.db.bots.save(self.defaults, {"$currentDate": {"createdAt": "true"}})
         if botId:
             resp = jsonResp(
@@ -71,10 +81,10 @@ class Bot(Account):
         return resp
 
     def edit(self):
-        resp = jsonResp({"message": "Bot update is not available"}, 400)
         data = request.json
         findId = request.view_args["id"]
         self.defaults.update(data)
+        self.defaults["safety_orders"] = data["safety_orders"]
         botId = app.db.bots.update_one(
             {"_id": ObjectId(findId)}, {"$set": self.defaults}, upsert=False
         )
@@ -117,44 +127,39 @@ class Bot(Account):
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            dealId, order_errors = Deal(bot, app).open_deal()
+            order_errors = Deal(bot, app).open_deal()
+
+            botId = app.db.bots.find_one_and_update({"_id": ObjectId(findId)}, {
+                "$set": {
+                    "active": "true"
+                }
+            })
 
             # If error
-            if isinstance(dealId, Response):
-                resp = jsonResp(dealId.json, 200)
+            if len(order_errors) > 0:
+                resp = jsonResp({
+                    "message": f"Successfully activated bot, deals had errors {','.join(order_errors)}",
+                    "botId": str(findId),
+                }, 200)
                 return resp
 
-            if dealId and not order_errors:
-                bot["active"] = "true"
-                bot["deals"].append(dealId)
-                botId = app.db.bots.save(bot)
-                if botId:
-                    resp = jsonResp(
-                        {
-                            "message": "Successfully activated bot and triggered deals with no errors",
-                            "botId": str(findId),
-                        },
-                        200,
-                    )
-                return resp
-            elif dealId and order_errors:
-                bot["active"] = "true"
-                bot["deals"].append(dealId)
-                botId = app.db.bots.save(bot)
-                if botId:
-                    resp = jsonResp(
-                        {
-                            "message": f"Successfully activated bot, deals had errors {','.join(order_errors)}",
-                            "botId": str(findId),
-                        },
-                        200,
-                    )
-                return resp
+            if botId:
+                resp = jsonResp(
+                    {
+                        "message": "Successfully activated bot and triggered deals with no errors",
+                        "botId": str(findId),
+                    },
+                    200,
+                )
             else:
                 resp = jsonResp(
-                    {"message": "Deal base order failed", "botId": findId}, 400
+                    {
+                        "message": "Unable to save bot",
+                        "botId": str(findId),
+                    },
+                    200,
                 )
-
+            return resp
         else:
             resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp

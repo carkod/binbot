@@ -2,15 +2,14 @@ import json
 import os
 
 import requests
-from flask import current_app
+from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
-from websocket import create_connection, enableTrace, WebSocketApp
-from api.deals.models import Deal
-from api.account.models import Account
+from flask import current_app
+from websocket import WebSocketApp, create_connection, enableTrace
 
 
-class OrderUpdates(Account):
+class OrderUpdates:
     def __init__(self, app):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
@@ -20,7 +19,7 @@ class OrderUpdates(Account):
 
         # streams
         self.base = os.getenv("WS_BASE")
-        self.path = "/ws"
+        self.path = "/stream"
         self.active_ws = None
         self.listenkey = None
         self.app = app
@@ -41,32 +40,41 @@ class OrderUpdates(Account):
         data = res.json()
         return data
 
-    def get_stream(self):
+    def run_stream(self):
         if not self.active_ws or not self.listen_key:
             self.listen_key = self.get_listenkey()["listenKey"]
 
-        url = self.base + self.path + "/" + self.listen_key
-        ws = create_connection(
+        url = f"{self.base}{self.path}?streams={self.listen_key}"
+        ws = WebSocketApp(
             url,
             on_open=self.on_open,
             on_error=self.on_error,
             on_close=self.close_stream,
+            on_message=self.on_message,
         )
-        result = ws.recv()
-        result = json.loads(result)
-        if result["e"] == "executionReport":
-            self.process_report_execution(result)
-
+        ws.run_forever()
+        
     def close_stream(self, ws):
-        if self.active_ws:
-            self.active_ws.close()
-            print("Active socket closed")
+        ws.close()
+        print("Active socket closed")
 
     def on_open(self, ws):
-        print("Open")
+        print("Sockets stream opened")
 
     def on_error(self, ws, error):
-        print(f"Error: {error}")
+        print(f"Websocket error: {error}")
+        ws.close()
+
+    def on_message(self, wsapp, message):
+        print("On Message executed")
+        response = json.loads(message)
+        try:
+            result = response["data"]
+        except KeyError:
+            print(f"Error: {result}")
+
+        if "e" in result and result["e"] == "executionReport":
+            self.process_report_execution(result)
 
     def process_report_execution(self, result):
         # Parse result. Print result for raw result from Binance
@@ -83,7 +91,7 @@ class OrderUpdates(Account):
             # Close successful orders
             completed = self.app.db.bots.find_one_and_update(
                 {
-                    "deals": {
+                    "orders": {
                         "$elemMatch": {"deal_type": "take_profit", "order_id": order_id }
                     }
                 },
@@ -96,7 +104,7 @@ class OrderUpdates(Account):
             order_price = float(result["p"])
             bot = self.app.db.bots.find_one(
                 {
-                    "deals": {
+                    "orders": {
                         "$elemMatch": {
                             "deal_type": "safety_order",
                             "order_id": order_id,
@@ -107,7 +115,7 @@ class OrderUpdates(Account):
 
             if bot:
                 # It is a safety order, now find safety order deal price
-                deal = Deal(bot, self.app)
+                deal = DealUpdates(bot, self.app)
                 deal.default_deal.update(bot)
                 order = deal.update_take_profit(order_id)
 

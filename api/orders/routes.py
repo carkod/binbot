@@ -60,8 +60,3 @@ def get_open_orders():
 @order_blueprint.route("/close/<symbol>/<orderid>", methods=["DELETE"])
 def delete_order(symbol, orderid):
     return Orders().delete_order()
-
-
-@order_blueprint.route("/order-updates", methods=["GET"])
-def orders_update():
-    return OrderUpdates().get_stream()
