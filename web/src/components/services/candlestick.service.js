@@ -1,3 +1,4 @@
+import { getBotSucceeded } from "../../pages/bots/actions";
 import { checkValue } from "../../validations";
 
 /**
@@ -155,7 +156,17 @@ export const generateOrders = (data, bot) => {
   }
 
   // Take profit order
-  const takeProfitPrice = bot.orders.find((x) => x.deal_type === "take_profit");
+  let takeProfitPrice = (
+    parseFloat(takeProfit) +
+    parseFloat(takeProfit) * (bot.take_profit / 100)
+  ).toFixed(8);
+  if (bot.orders.length > 0) {
+    const findTp = bot.orders.find((x) => x.deal_type === "take_profit");
+    if (!checkValue(findTp)) {
+      takeProfitPrice = findTp.price;   
+    }
+  }
+
   const takeProfitA = {
     x: takeProfitTime,
     y: takeProfitPrice,

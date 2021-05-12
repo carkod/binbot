@@ -157,8 +157,9 @@ class Deal(Account):
         tp_price = (float(order["price"]) * 1 + (float(self.active_bot["take_profit"]) / 100))
         so_prices = []
         for key, value in self.active_bot["safety_orders"].items():
-            prices = float(order["price"]) - (float(order["price"]) * (float(value["price_deviation_so"]) / 100))
-            so_prices.append(prices)
+            price = float(order["price"]) - (float(order["price"]) * (float(value["price_deviation_so"]) / 100))
+            price = supress_notation(price, self.price_precision)
+            so_prices.append(price)
 
         deal = {
             "last_order_id": order["orderId"],
@@ -418,6 +419,17 @@ class Deal(Account):
                 order_errors.append(msg)
 
 
+        # If short order is enabled
+        if float(self.active_bot["short_order"]) > 0:
+            short_stop_limit_order = self.short_stop_limit_order()
+            if isinstance(short_stop_limit_order, Response):
+                msg = short_stop_limit_order.json["message"]
+                order_errors.append(msg)
+
+            short_order = self.short_base_order()
+            if isinstance(short_order, Response):
+                msg = short_order.json["message"]
+                order_errors.append(msg)
         # Below take profit order goes first, because stream does not return a value
         
         # If there is already a take profit do not execute
@@ -434,18 +446,6 @@ class Deal(Account):
             long_take_profit_order = self.long_take_profit_order()
             if isinstance(long_take_profit_order, Response):
                 msg = long_take_profit_order.json["message"]
-                order_errors.append(msg)
-
-        # If short order is enabled
-        if float(self.active_bot["short_order"]) > 0:
-            short_stop_limit_order = self.short_stop_limit_order()
-            if isinstance(short_stop_limit_order, Response):
-                msg = short_stop_limit_order.json["message"]
-                order_errors.append(msg)
-
-            short_order = self.short_base_order()
-            if isinstance(short_order, Response):
-                msg = short_order.json["message"]
                 order_errors.append(msg)
 
         # Subscribe to streams with corresponding symbol

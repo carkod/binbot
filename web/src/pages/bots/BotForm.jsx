@@ -176,7 +176,8 @@ class BotForm extends React.Component {
     // Candlestick data updates
     if (
       !checkValue(this.props.candlestick) &&
-      this.props.candlestick !== p.candlestick
+      this.props.candlestick !== p.candlestick &&
+      !checkValue(this.props.bot)
     ) {
       const { trace } = this.props.candlestick;
       if (trace.length > 0) {
@@ -758,7 +759,7 @@ class BotForm extends React.Component {
                         onClick={this.handleActivation}
                         disabled={checkValue(this.state._id)}
                       >
-                        Deal
+                        {!checkValue(this.state.bot) && Object.keys(this.state.bot.deal).length > 0 ? "Update deal" : "Deal"}
                       </ButtonToggle>
                     </div>
                     <div className="update ml-auto mr-auto">

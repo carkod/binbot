@@ -203,7 +203,7 @@ class DealUpdates(Account):
             buy_total_qty = self.active_bot["base_order_size"]
         
         self.active_bot["deal"]["safety_order_prices"].remove(self.active_bot["deal"]["safety_order_prices"][so_index])
-        new_so_prices = self.active_bot["deal"]["safety_order_prices"]
+        new_so_prices = supress_notation(self.active_bot["deal"]["safety_order_prices"], self.price_precision)
 
         botId = self.app.db.bots.update_one(
             {"_id": self.active_bot["_id"]}, 

@@ -66,7 +66,7 @@ class Bots extends React.Component {
                             className="card-title u-uppercase"
                           >
                             <Badge color={this.getProfit(x.deal.buy_price, x.deal.current_price) > 0 ? "success" : "danger"} >
-                              {this.getProfit(x.deal.buy_price, x.deal.current_price)}
+                              {this.getProfit(x.deal.buy_price, x.deal.current_price) + "%"}
                             </Badge>
                           </CardTitle>
                         </Col>
@@ -100,12 +100,13 @@ class Bots extends React.Component {
                             {x.trailling === "true" && (
                               <p className="card-category">Trailling TP</p>
                             )}
+                            <p className="card-category">Total commissions</p>
                           </div>
                         </Col>
                         <Col md="4" xs="12">
                           <div className="stats">
                             <p className="card-category">
-                              {x.balance_usage + "%"}
+                              {parseFloat(x.balance_usage) * 100 + "%"}
                             </p>
                             <p className="card-category">{x.max_so_count}</p>
                             <p className="card-category">
@@ -119,6 +120,7 @@ class Bots extends React.Component {
                                 {x.trailling_deviation + "%"}
                               </p>
                             )}
+                            <p className="card-category">{x.deal.commission}</p>
                           </div>
                         </Col>
                       </Row>
