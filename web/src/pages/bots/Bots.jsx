@@ -47,7 +47,7 @@ class Bots extends React.Component {
       <>
         <div className="content">
           <Row>
-            {bots &&
+            {!checkValue(bots) ?
               bots.map((x, i) => (
                 <Col key={x._id.$oid} lg="4">
                   <Card className="card-stats">
@@ -65,9 +65,11 @@ class Bots extends React.Component {
                             tag="h5"
                             className="card-title u-uppercase"
                           >
+                            {!checkValue(x.deal) &&
                             <Badge color={this.getProfit(x.deal.buy_price, x.deal.current_price) > 0 ? "success" : "danger"} >
                               {this.getProfit(x.deal.buy_price, x.deal.current_price) + "%"}
                             </Badge>
+                            }
                           </CardTitle>
                         </Col>
                       </Row>
@@ -110,7 +112,9 @@ class Bots extends React.Component {
                             </p>
                             <p className="card-category">{x.max_so_count}</p>
                             <p className="card-category">
-                              {x.deal.buy_price}
+                            {!checkValue(x.deal) &&
+                              x.deal.buy_price
+                            }
                             </p>
                             <p className="card-category">
                               {x.take_profit + "%"}
@@ -120,7 +124,11 @@ class Bots extends React.Component {
                                 {x.trailling_deviation + "%"}
                               </p>
                             )}
-                            <p className="card-category">{x.deal.commission}</p>
+                            <p className="card-category">
+                              {!checkValue(x.deal) &&
+                                x.deal.commission
+                              }
+                            </p>
                           </div>
                         </Col>
                       </Row>
@@ -148,7 +156,7 @@ class Bots extends React.Component {
                     </CardFooter>
                   </Card>
                 </Col>
-              ))}
+              )) : "No data available"}
           </Row>
         </div>
       </>

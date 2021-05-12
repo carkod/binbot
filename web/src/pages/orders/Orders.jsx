@@ -53,6 +53,7 @@ class Orders extends React.Component {
   render() {
     return (
       <>
+      {this.props.orders ? 
         <div className="content">
           <Row>
             <Col md="12">
@@ -80,6 +81,7 @@ class Orders extends React.Component {
             </Col>
           </Row>
         </div>
+        : "No data available"}
       </>
     );
   }

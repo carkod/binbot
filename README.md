@@ -26,7 +26,7 @@ New packages or installing from scratch:
 2. Test on local:
   - `cd web && yarn build` This is to avoid docker javascript leap out of memory error
   - Build and test docker container `docker build --tag binbot . && docker run -ti -p 8000:80 binbot`
-  - 
+  - Publish to docker hub `docker build --tag binbot . && docker tag binbot carloswufei/binbot:latest && docker push carloswufei/binbot`
 2. Wait for check to pass. Github action will publish to Docker Hub
 
 If docker-compose doesn't exist:
