@@ -24,8 +24,6 @@ class OrderUpdates:
         self.listenkey = None
         self.app = app
 
-        enableTrace(True)
-
     def get_listenkey(self):
         url = self.user_datastream_listenkey
 

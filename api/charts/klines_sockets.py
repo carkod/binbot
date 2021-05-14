@@ -7,7 +7,7 @@ from websocket import WebSocketApp, enableTrace
 import threading
 from api.app import create_app
 class KlineSockets:
-    def __init__(self, app, symbol="BNBBTC", subs=True, interval="1m"):
+    def __init__(self, subs=True):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
@@ -17,17 +17,18 @@ class KlineSockets:
         # streams
         self.base = os.getenv("WS_BASE")
         self.path = "/ws"
-        self.app = app
-        self.symbol = symbol
         self.subs = subs
-        self.interval = interval
+        self.interval = "1m"
 
-        enableTrace(True)
+    def start_stream(self):
+        app = create_app()
+        params = []
+        bots = app.db.bots.find({"active": "true"})
+        for bot in list(bots):
+            params.append(f'{bot["pair"].lower()}@kline_{self.interval}')
 
-    def start_stream(self, app):
-        self.app = app
-        # Start stream
-        url = f"{self.base}{self.path}/{self.symbol.lower()}@kline_{self.interval}"
+        string_params = "/".join(params)
+        url = f"{self.base}{self.path}/{string_params}"
         ws = WebSocketApp(
             url,
             on_open=self.on_open,
@@ -40,22 +41,22 @@ class KlineSockets:
 
     def close_stream(self, ws):
         ws.close()
-        print("Active socket closed")
+        print("Kline stream closed")
 
     def on_open(self, ws):
-        print("Sockets stream opened")
-        app = create_app()
-        params = []
-        bots = app.db.bots.find({"active": "true"})
-        for bot in list(bots):
-            params.append(f'{bot["pair"].lower()}@kline_{self.interval}')
+        print("Klines stream opened")
+        # app = create_app()
+        # params = []
+        # bots = app.db.bots.find({"active": "true"})
+        # for bot in list(bots):
+        #     params.append(f'{bot["pair"].lower()}@kline_{self.interval}')
 
-        request = {
-            "method": "SUBSCRIBE" if self.subs else "UNSUBSCRIBE",
-            "params": params,
-            "id": 2,
-        }
-        ws.send(json.dumps(request))
+        # request = {
+        #     "method": "SUBSCRIBE" if self.subs else "UNSUBSCRIBE",
+        #     "params": params,
+        #     "id": 2,
+        # }
+        # ws.send(json.dumps(request))
 
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")

@@ -30,6 +30,9 @@ class Account:
         url = self.exchangeinfo_url
         self._exchange_info = requests.get(url=url).json()
 
+    def get_exchange_info(self):
+        return requests.get(url=url).json()
+
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
         # Get data for a single crypto e.g. BTT in BNB market

@@ -205,6 +205,10 @@ class DealUpdates(Account):
         self.active_bot["deal"]["safety_order_prices"].remove(self.active_bot["deal"]["safety_order_prices"][so_index])
         new_so_prices = supress_notation(self.active_bot["deal"]["safety_order_prices"], self.price_precision)
 
+
+        new_so_list = list(self.active_bot["safety_orders"].values())
+        del new_so_list[so_index]
+
         botId = self.app.db.bots.update_one(
             {"_id": self.active_bot["_id"]}, 
                 {
@@ -214,6 +218,7 @@ class DealUpdates(Account):
                         "deal.take_profit_price": supress_notation(new_tp_price, self.price_precision),
                         "deal.buy_total_qty": supress_notation(buy_total_qty, self.qty_precision),
                         "deal.safety_order_prices": new_so_prices,
+                        "safety_orders": new_so_list
                     },
                     "$inc": {
                         "deal.comission": commission
