@@ -1,5 +1,3 @@
-import json
-import math
 import os
 from decimal import Decimal
 
@@ -26,7 +24,6 @@ class DealUpdates(Account):
     bb_close_order_url = f"{bb_base_url}/order/close"
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
-
 
     def __init__(self, bot, app):
         # Inherit also the __init__ from parent class
@@ -57,8 +54,18 @@ class DealUpdates(Account):
         self.balances = 0
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot["pair"])
         # PRICE_FILTER decimals
-        self.price_precision = - (Decimal(str(self.price_filter_by_symbol(self.active_bot["pair"], "tickSize"))).as_tuple().exponent)
-        self.qty_precision = - (Decimal(str(self.lot_size_by_symbol(self.active_bot["pair"], "stepSize"))).as_tuple().exponent)
+        self.price_precision = -(
+            Decimal(
+                str(self.price_filter_by_symbol(self.active_bot["pair"], "tickSize"))
+            )
+            .as_tuple()
+            .exponent
+        )
+        self.qty_precision = -(
+            Decimal(str(self.lot_size_by_symbol(self.active_bot["pair"], "stepSize")))
+            .as_tuple()
+            .exponent
+        )
 
     def update_take_profit(self, order_id):
         """
@@ -112,12 +119,12 @@ class DealUpdates(Account):
                 res = requests.post(url=self.bb_sell_order_url, json=new_tp_order)
                 if isinstance(handle_error(res), Response):
                     return handle_error(res)
-                
+
                 # New take profit order successfully created
                 order = res.json()
 
                 # Replace take_profit order
-                take_profit_deal = {
+                take_profit_order = {
                     "deal_type": "take_profit",
                     "order_id": order["orderId"],
                     "strategy": "long",  # change accordingly
@@ -137,11 +144,11 @@ class DealUpdates(Account):
                         new_deals.append(d)
 
                 # Append now new take_profit deal
-                new_deals.append(take_profit_deal)
-                self.active_bot["deals"] = new_deals
+                new_deals.append(take_profit_order)
+                self.active_bot["orders"] = new_deals
                 botId = app.db.bots.update_one(
                     {"_id": self.active_bot["_id"]},
-                    {"$push": {"deals": take_profit_order}},
+                    {"$push": {"orders": take_profit_order}},
                 )
                 if not botId:
                     print(f"Failed to update take_profit deal: {botId}")
@@ -192,44 +199,53 @@ class DealUpdates(Account):
         }
 
         self.active_bot["orders"].append(safety_orders)
-        new_tp_price = float(response["price"]) * (1 + float(self.active_bot["take_profit"]) / 100)
+        new_tp_price = float(response["price"]) * (
+            1 + float(self.active_bot["take_profit"]) / 100
+        )
         commission = 0
         for chunk in response["fills"]:
             commission += float(chunk["commission"])
 
         if "buy_total_qty" in self.active_bot["deal"]:
-            buy_total_qty = float(self.active_bot["deal"]["buy_total_qty"]) + float(response["origQty"])
+            buy_total_qty = float(self.active_bot["deal"]["buy_total_qty"]) + float(
+                response["origQty"]
+            )
         else:
             buy_total_qty = self.active_bot["base_order_size"]
-        
-        self.active_bot["deal"]["safety_order_prices"].remove(self.active_bot["deal"]["safety_order_prices"][so_index])
-        new_so_prices = supress_notation(self.active_bot["deal"]["safety_order_prices"], self.price_precision)
 
+        del self.active_bot["deal"]["safety_order_prices"][so_index]
+        new_so_prices = supress_notation(
+            self.active_bot["deal"]["safety_order_prices"], self.price_precision
+        )
 
-        new_so_list = list(self.active_bot["safety_orders"].values())
-        del new_so_list[so_index]
+        key_to_remove = list(self.active_bot["safety_orders"].keys())[so_index]
+        del self.active_bot["safety_orders"][key_to_remove]
 
         botId = self.app.db.bots.update_one(
-            {"_id": self.active_bot["_id"]}, 
-                {
-                    "$push": {"orders": safety_orders}, 
-                    "$set": {
-                        "deal.buy_price": supress_notation(response["price"], self.price_precision),
-                        "deal.take_profit_price": supress_notation(new_tp_price, self.price_precision),
-                        "deal.buy_total_qty": supress_notation(buy_total_qty, self.qty_precision),
-                        "deal.safety_order_prices": new_so_prices,
-                        "safety_orders": new_so_list
-                    },
-                    "$inc": {
-                        "deal.comission": commission
-                    }
-                }
+            {"_id": self.active_bot["_id"]},
+            {
+                "$push": {"orders": safety_orders},
+                "$set": {
+                    "deal.buy_price": supress_notation(
+                        response["price"], self.price_precision
+                    ),
+                    "deal.take_profit_price": supress_notation(
+                        new_tp_price, self.price_precision
+                    ),
+                    "deal.buy_total_qty": supress_notation(
+                        buy_total_qty, self.qty_precision
+                    ),
+                    "deal.safety_order_prices": new_so_prices,
+                    "safety_orders": self.active_bot["safety_orders"],
+                },
+                "$inc": {"deal.comission": commission},
+            },
         )
         if not botId:
             resp = jsonResp(
                 {
                     "message": "Failed to save safety_order deal in the bot",
-                    "botId": str(findId),
+                    "botId": str(self.active_bot["_id"]),
                 },
                 200,
             )

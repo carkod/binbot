@@ -14,6 +14,7 @@ from api.tools.round_numbers import proper_round
 from api.tools.ticker import Conversion
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
+from api.app import create_app
 
 
 class Account:
@@ -27,11 +28,10 @@ class Account:
     ticker24_url = os.getenv("TICKER24")
 
     def __init__(self):
-        url = self.exchangeinfo_url
-        self._exchange_info = requests.get(url=url).json()
+        self._exchange_info = requests.get(url=self.exchangeinfo_url).json()
 
     def get_exchange_info(self):
-        return requests.get(url=url).json()
+        return requests.get(url=self.exchangeinfo_url).json()
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
@@ -95,7 +95,44 @@ class Account:
         resp = jsonResp({"data": data}, 200)
         return resp
 
-    def get_balances(self):
+    def get_raw_balance(self):
+        """
+        Unrestricted balance
+        """
+        data = self.request_data()["balances"]
+        df = pd.DataFrame(data)
+        df["free"] = pd.to_numeric(df["free"])
+        df["locked"] = pd.to_numeric(df["locked"])
+        df["asset"] = df["asset"].astype(str)
+        # Get table with > 0
+        balances = df[(df["free"] > 0) | (df["locked"] > 0)].to_dict("records")
+
+        # filter out empty
+        # Return response
+        resp = jsonResp(balances, 200)
+        return resp
+
+    def get_binbot_balance(self):
+        """
+        More strict balance
+        - No locked
+        - Minus safety orders
+        """
+        app = create_app()
+        # Get a list of safety orders
+        so_list = list(app.db.bots.aggregate(
+            [
+                {
+                    "$addFields": {
+                        "so_num": {"$size": {"$objectToArray": "$safety_orders"}},
+                    }
+                },
+                {"$match": {"so_num": {"$ne": 0}}},
+                {"$addFields": {"s_os": {"$objectToArray": "$safety_orders"}}},
+                {"$unwind": "$safety_orders"},
+                {"$group": {"_id": {"so": "$s_os.v.so_size", "pair": "$pair"}}},
+            ]
+        ))
         data = self.request_data()["balances"]
         df = pd.DataFrame(data)
         df["free"] = pd.to_numeric(df["free"])
@@ -103,7 +140,14 @@ class Account:
         df.drop("locked", axis=1, inplace=True)
         df.reset_index(drop=True, inplace=True)
         # Get table with > 0
-        balances = df[df["free"] > 0.000000].to_dict("records")
+        balances = df[df["free"] > 0].to_dict("records")
+
+        # Include safety orders
+        for b in balances:
+            for item in so_list:
+                if b["asset"] in item["_id"]["pair"]:
+                    total_so = sum([float(x) for x in item["_id"]["so"]])
+                    b["free"] = float(b["free"]) - total_so
 
         # filter out empty
         # Return response
@@ -139,7 +183,7 @@ class Account:
                     x_rate = self.get_ticker_price(market + "BTC")
                     x_value = float(qty) * float(rate)
                     btc_value = float(x_value) * float(x_rate)
-                
+
                 # Only tether coins for hedging
                 if b["asset"] == "USDT":
                     rate = self.get_ticker_price("BTCUSDT")
@@ -231,7 +275,7 @@ class Account:
         price_filter = next(
             (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"), None
         )
-        return price_filter[filter_limit].rstrip('.0')
+        return price_filter[filter_limit].rstrip(".0")
 
     def lot_size_by_symbol(self, symbol, lot_size_limit):
         """
@@ -245,7 +289,7 @@ class Account:
         quantity_filter = next(
             (m for m in market["filters"] if m["filterType"] == "LOT_SIZE"), None
         )
-        return quantity_filter[lot_size_limit].rstrip('.0')
+        return quantity_filter[lot_size_limit].rstrip(".0")
 
     def min_notional_by_symbol(self, symbol, min_notional_limit="minNotional"):
         """

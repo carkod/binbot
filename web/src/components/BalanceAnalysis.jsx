@@ -15,7 +15,7 @@ export default function BalanceAnalysis({
       <CardBody>
         <Row className="u-margin-bottom">
           <Col md="8" sm="12">
-            Balance usage ({100 * balance_usage}%)
+            Total available balance (minus all SOs)
           </Col>
           <Col md="4" sm="12">
             {balances &&
@@ -28,7 +28,7 @@ export default function BalanceAnalysis({
         </Row>
         <Row>
           <Col md="8" sm="12">
-            Balance available for Safety Orders
+            Remaining balance for Safety Orders
           </Col>
           <Col md="4" sm="12">
             <div className="u-primary-color">

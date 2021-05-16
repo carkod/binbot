@@ -64,7 +64,6 @@ class OrderUpdates:
         ws.close()
 
     def on_message(self, wsapp, message):
-        print("On Message executed")
         response = json.loads(message)
         try:
             result = response["data"]

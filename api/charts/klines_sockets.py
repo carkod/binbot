@@ -1,9 +1,8 @@
 import json
 import os
 
-import requests
 from api.deals.deal_updates import DealUpdates
-from websocket import WebSocketApp, enableTrace
+from websocket import WebSocketApp
 import threading
 from api.app import create_app
 class KlineSockets:
@@ -62,7 +61,6 @@ class KlineSockets:
         print(f"Websocket error: {error}")
 
     def on_message(self, wsapp, message):
-        print("On Message executed")
         response = json.loads(message)
 
         if "result" in response and response["result"]:
@@ -77,7 +75,6 @@ class KlineSockets:
     def process_kline_stream(self, result):
         if result["k"]["x"]:
             close_price = result["k"]["c"]
-            close_time = result["k"]["T"]
             symbol = result["k"]["s"]
             app = create_app()
 
