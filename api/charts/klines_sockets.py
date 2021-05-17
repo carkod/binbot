@@ -84,11 +84,12 @@ class KlineSockets:
             )
 
             # Open safety orders
-            if "safety_order_prices" in bot["deal"]:
-                for index, price in enumerate(bot["deal"]["safety_order_prices"]):
+            # When bot = None, when bot doesn't exist (unclosed websocket)
+            if bot and "safety_order_prices" in bot["deal"]:
+                for key, value in bot["deal"]["safety_order_prices"].items():
                     # Index is the ID of the safety order price that matches safety_orders list
-                    if float(price) == float(close_price):
+                    if float(value) >= float(close_price):
                         deal = DealUpdates(bot, app)
                         # No need to pass price to update deal
                         # The price already matched market price
-                        deal.so_update_deal(index)
+                        deal.so_update_deal(key)

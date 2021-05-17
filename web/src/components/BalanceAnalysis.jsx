@@ -32,17 +32,11 @@ export default function BalanceAnalysis({
           </Col>
           <Col md="4" sm="12">
             <div className="u-primary-color">
-              <strong>{`${balance_available} ${balance_available_asset}`}</strong>
-            </div>
-          </Col>
-        </Row>
-        <Row>
-          <Col md="8" sm="12">
-            Total Base Order
-          </Col>
-          <Col md="4" sm="12">
-            <div className="u-primary-color">
-              <strong>{`${balance_available} ${balance_available_asset}`}</strong>
+              <strong>{`${
+                parseFloat(balance_available) > 0
+                  ? balance_available.toFixed(8)
+                  : 0
+              } ${balance_available_asset}`}</strong>
             </div>
           </Col>
         </Row>

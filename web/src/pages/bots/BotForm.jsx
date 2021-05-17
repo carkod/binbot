@@ -21,18 +21,17 @@ import {
   NavLink,
   Row,
   TabContent,
-  TabPane
+  TabPane,
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import Candlestick from "../../components/Candlestick";
-import Deal from "../../components/Deal";
 import {
   checkBalance,
   checkMinValue,
   checkValue,
   getCurrentPairBalance,
-  intervalOptions
+  intervalOptions,
 } from "../../validations.js";
 import { getBalance } from "../dashboard/actions";
 import {
@@ -43,7 +42,7 @@ import {
   getBot,
   getSymbolInfo,
   getSymbols,
-  loadCandlestick
+  loadCandlestick,
 } from "./actions";
 import { getQuoteAsset } from "./requests";
 import SafetyOrderField from "./SafetyOrderField";
@@ -344,10 +343,12 @@ class BotForm extends React.Component {
           { so_size: 0 }
         );
         const shortOrder = parseFloat(short_order);
-        const updatedValue = (
-          value -
-          (baseOrder + safetyOrders + shortOrder)
-        ).toFixed(8);
+        const checkBaseOrder = this.state.orders.find(x => x.deal_type === "base_order");
+        let updatedValue = value - (baseOrder + safetyOrders + shortOrder)
+        if (!checkValue(checkBaseOrder) && "deal_type" in checkBaseOrder) {
+          updatedValue = baseOrder + updatedValue;
+        }
+        updatedValue.toFixed(8);
 
         // Check that we have enough funds
         // If not return error
@@ -500,7 +501,8 @@ class BotForm extends React.Component {
   handleMaxSoChange = (e) => {
     e.preventDefault();
     const count = parseInt(this.state.max_so_count);
-    if (count !== parseInt(e.target.value)) {
+    const value = parseInt(e.target.value);
+    if (count !== value) {
       this.setState({ [e.target.name]: e.target.value }, () => this.renderSO());
     }
   };
@@ -566,13 +568,6 @@ class BotForm extends React.Component {
           !checkValue(this.props.match.params.id) ? (
             <Col md="7" sm="12">
               <BotInfo bot={this.props.bot} />
-            </Col>
-          ) : (
-            ""
-          )}
-          {!checkValue(this.props.bot) && !checkValue(this.props.bot.deal) ? (
-            <Col md="5" sm="12">
-              <Deal bot={this.props.bot} />
             </Col>
           ) : (
             ""

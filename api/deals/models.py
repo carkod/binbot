@@ -1,5 +1,3 @@
-import json
-import math
 import os
 from decimal import Decimal
 
@@ -155,11 +153,14 @@ class Deal(Account):
         self.base_order_price = order["price"]
 
         tp_price = (float(order["price"]) * 1 + (float(self.active_bot["take_profit"]) / 100))
-        so_prices = []
+
+        so_prices = {}
+        so_num = 1
         for key, value in self.active_bot["safety_orders"].items():
             price = float(order["price"]) - (float(order["price"]) * (float(value["price_deviation_so"]) / 100))
             price = supress_notation(price, self.price_precision)
-            so_prices.append(price)
+            so_prices[str(so_num)] = price
+            so_num += 1
 
         deal = {
             "last_order_id": order["orderId"],
@@ -170,6 +171,7 @@ class Deal(Account):
             "safety_order_prices": so_prices,
             "commission": 0,
         }
+
         for chunk in order["fills"]:
             deal["commission"] += float(chunk["commission"])
 
@@ -179,7 +181,7 @@ class Deal(Account):
         )
         if not botId:
             resp = jsonResp(
-                {"message": "Failed to save Base order", "botId": str(findId)},
+                {"message": "Failed to save Base order", "botId": str(self.active_bot["_id"])},
                 200,
             )
             return resp
@@ -250,7 +252,7 @@ class Deal(Account):
             resp = jsonResp(
                 {
                     "message": "Failed to save take_profit deal in the bot",
-                    "botId": str(findId),
+                    "botId": str(self.active_bot["_id"]),
                 },
                 200,
             )
@@ -328,7 +330,7 @@ class Deal(Account):
             resp = jsonResp(
                 {
                     "message": "Failed to save short order stop_limit deal in the bot",
-                    "botId": str(findId),
+                    "botId": str(self.active_bot["_id"]),
                 },
                 200,
             )
@@ -390,7 +392,7 @@ class Deal(Account):
             resp = jsonResp(
                 {
                     "message": "Failed to save short deal in the bot",
-                    "botId": str(findId),
+                    "botId": str(self.active_bot["_id"]),
                 },
                 200,
             )
@@ -418,7 +420,6 @@ class Deal(Account):
                 msg = base_order.json["message"]
                 order_errors.append(msg)
 
-
         # If short order is enabled
         if float(self.active_bot["short_order"]) > 0:
             short_stop_limit_order = self.short_stop_limit_order()
@@ -431,15 +432,15 @@ class Deal(Account):
                 msg = short_order.json["message"]
                 order_errors.append(msg)
         # Below take profit order goes first, because stream does not return a value
-        
         # If there is already a take profit do not execute
         # If there is no base order can't execute
+        bot = self.app.db.bots.find_one({"_id": self.active_bot["_id"]})
         check_bo = False
         check_tp = True
-        for deal in self.active_bot["orders"]:
-            if len(deal) > 0 and (deal["deal_type"] == "base_order"):
+        for order in bot["orders"]:
+            if len(order) > 0 and (order["deal_type"] == "base_order"):
                 check_bo = True
-            if len(deal) > 0 and deal["deal_type"] == "take_profit":
+            if len(order) > 0 and order["deal_type"] == "take_profit":
                 check_tp = False
 
         if check_bo and check_tp:
@@ -453,7 +454,6 @@ class Deal(Account):
         streams.start_stream()
 
         return order_errors
-        
 
     def close_deals(self):
         """

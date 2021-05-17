@@ -1,4 +1,3 @@
-import { getBotSucceeded } from "../../pages/bots/actions";
 import { checkValue } from "../../validations";
 
 /**

@@ -10,12 +10,12 @@ import requests
 from flask import current_app as app, request
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
-from api.tools.round_numbers import proper_round
+from api.tools.round_numbers import proper_round, round_numbers
 from api.tools.ticker import Conversion
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from api.app import create_app
-
+from decimal import Decimal
 
 class Account:
 
@@ -146,8 +146,9 @@ class Account:
         for b in balances:
             for item in so_list:
                 if b["asset"] in item["_id"]["pair"]:
-                    total_so = sum([float(x) for x in item["_id"]["so"]])
-                    b["free"] = float(b["free"]) - total_so
+                    decimals = -(Decimal(self.price_filter_by_symbol(item["_id"]["pair"], "tickSize")).as_tuple().exponent)
+                    total_so = sum([float(x) if x != "" else 0 for x in item["_id"]["so"]])
+                    b["free"] = round_numbers(float(b["free"]) - total_so, decimals)
 
         # filter out empty
         # Return response
@@ -205,7 +206,7 @@ class Account:
         return resp
 
     def get_one_balance(self, symbol="BTC"):
-        data = json.loads(self.get_balances().data)
+        data = json.loads(self.get_raw_balance().data)
         return next((x["free"] for x in data if x["asset"] == symbol), None)
 
     def find_quoteAsset(self, symbol):
@@ -362,6 +363,11 @@ class Assets(Account, Conversion):
             if b["asset"] != "BTC":
                 # Only tether coins for hedging
                 if "USD" in b["asset"]:
+                    if "locked" in b:
+                        qty = b["free"] + b["locked"]
+                    else:
+                        qty = b["free"]
+
                     rate = self.get_ticker_price("BTC" + b["asset"])
                     btc_value = float(qty) / float(rate)
                 else:

@@ -162,9 +162,13 @@ class DealUpdates(Account):
         - Klines websocket triggers condition price = safety order price
         - Get qty and price (use trade books so it can sell immediately at limit)
         - Update deal.price, deal.qty
+        - Cancel old take profit order
+        - Update DB with new deal data
+        - Create new take profit order
+        - Update DB with new take profit deal data
         """
         pair = self.active_bot["pair"]
-        so_qty = list(self.active_bot["safety_orders"].values())[so_index]["so_size"]
+        so_qty = list(self.active_bot["safety_orders"].values())[int(so_index) - 1]["so_size"]
         book_order = Book_Order(pair)
         price = float(book_order.matching_engine(False, so_qty))
         qty = round_numbers(
@@ -183,7 +187,7 @@ class DealUpdates(Account):
 
         response = res.json()
 
-        safety_orders = {
+        safety_order = {
             "order_id": response["orderId"],
             "deal_type": "safety_order",
             "strategy": "long",  # change accordingly
@@ -198,10 +202,11 @@ class DealUpdates(Account):
             "status": response["status"],
         }
 
-        self.active_bot["orders"].append(safety_orders)
+        self.active_bot["orders"].append(safety_order)
         new_tp_price = float(response["price"]) * (
             1 + float(self.active_bot["take_profit"]) / 100
         )
+
         commission = 0
         for chunk in response["fills"]:
             commission += float(chunk["commission"])
@@ -213,18 +218,67 @@ class DealUpdates(Account):
         else:
             buy_total_qty = self.active_bot["base_order_size"]
 
-        del self.active_bot["deal"]["safety_order_prices"][so_index]
         new_so_prices = supress_notation(
-            self.active_bot["deal"]["safety_order_prices"], self.price_precision
+            self.active_bot["deal"]["safety_order_prices"][so_index], self.price_precision
         )
+        del self.active_bot["deal"]["safety_order_prices"][so_index]
 
-        key_to_remove = list(self.active_bot["safety_orders"].keys())[so_index]
+        key_to_remove = list(self.active_bot["safety_orders"].keys())[int(so_index) - 1]
         del self.active_bot["safety_orders"][key_to_remove]
+
+        # New take profit order
+        self.active_bot["deal"]["take_profit_price"] = new_tp_price
+        order_id = None
+        for order in self.active_bot["orders"]:
+            if order["deal_type"] == "take_profit":
+                order_id = order["order_id"]
+                self.active_bot["orders"].remove(order)
+                break
+
+        if order_id:
+            # First cancel old order to unlock balance
+            close_order_params = {"symbol": self.active_bot["pair"], "orderId": order_id}
+            cancel_response = requests.post(
+                url=self.bb_close_order_url, params=close_order_params
+            )
+            if cancel_response.status_code != 200:
+                print("Take profit order not found, no need to cancel")
+            else:
+                print("Old take profit order cancelled")
+
+            qty = round_numbers(self.active_bot["deal"]["buy_total_qty"], self.qty_precision)
+            new_tp_order = {
+                "pair": self.active_bot["pair"],
+                "qty": qty,
+                "price": supress_notation(new_tp_price, self.price_precision),
+            }
+            res = requests.post(url=self.bb_sell_order_url, json=new_tp_order)
+            if isinstance(handle_error(res), Response):
+                return handle_error(res)
+
+            # New take profit order successfully created
+            tp_response = res.json()
+
+            # Replace take_profit order
+            take_profit_order = {
+                "deal_type": "take_profit",
+                "order_id": tp_response["orderId"],
+                "strategy": "long",  # change accordingly
+                "pair": tp_response["symbol"],
+                "order_side": tp_response["side"],
+                "order_type": tp_response["type"],
+                "price": tp_response["price"],
+                "qty": tp_response["origQty"],
+                "fills": tp_response["fills"],
+                "time_in_force": tp_response["timeInForce"],
+                "status": tp_response["status"],
+            }
+
+            self.active_bot["orders"].append(take_profit_order)
 
         botId = self.app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
             {
-                "$push": {"orders": safety_orders},
                 "$set": {
                     "deal.buy_price": supress_notation(
                         response["price"], self.price_precision
@@ -237,6 +291,7 @@ class DealUpdates(Account):
                     ),
                     "deal.safety_order_prices": new_so_prices,
                     "safety_orders": self.active_bot["safety_orders"],
+                    "orders": self.active_bot["orders"]
                 },
                 "$inc": {"deal.comission": commission},
             },
