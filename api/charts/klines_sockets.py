@@ -44,18 +44,6 @@ class KlineSockets:
 
     def on_open(self, ws):
         print("Klines stream opened")
-        # app = create_app()
-        # params = []
-        # bots = app.db.bots.find({"active": "true"})
-        # for bot in list(bots):
-        #     params.append(f'{bot["pair"].lower()}@kline_{self.interval}')
-
-        # request = {
-        #     "method": "SUBSCRIBE" if self.subs else "UNSUBSCRIBE",
-        #     "params": params,
-        #     "id": 2,
-        # }
-        # ws.send(json.dumps(request))
 
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
@@ -90,6 +78,7 @@ class KlineSockets:
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(value) >= float(close_price):
                         deal = DealUpdates(bot, app)
+                        print("Update deal executed")
                         # No need to pass price to update deal
                         # The price already matched market price
                         deal.so_update_deal(key)

@@ -237,9 +237,8 @@ class DealUpdates(Account):
 
         if order_id:
             # First cancel old order to unlock balance
-            close_order_params = {"symbol": self.active_bot["pair"], "orderId": order_id}
-            cancel_response = requests.post(
-                url=self.bb_close_order_url, params=close_order_params
+            cancel_response = requests.delete(
+                url=f"{self.bb_close_order_url}/{self.active_bot['pair']}/{order_id}"
             )
             if cancel_response.status_code != 200:
                 print("Take profit order not found, no need to cancel")
