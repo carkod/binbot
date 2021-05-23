@@ -22,8 +22,7 @@ class Candlestick:
             request.view_args["interval"] if "interval" in request.view_args else "5m"
         )
         params = {"symbol": pair, "interval": interval, "limit": "200"}
-        url = self.candlestick_url
-        res = requests.get(url=url, params=params)
+        res = requests.get(url=self.candlestick_url, params=params)
         self.data = res.json()
         self.dates = None
 

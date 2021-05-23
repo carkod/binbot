@@ -5,7 +5,8 @@ import time as tm
 from urllib.parse import urlparse
 
 import requests
-from flask import request, current_app as app
+from flask import request
+from api.app import create_app
 from api.tools.enum_definitions import EnumDefinitions
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
@@ -25,14 +26,14 @@ class Orders(Account):
     all_orders_url = os.getenv("ALL_ORDERS")
     order_url = os.getenv("ORDER")
 
-    def __init__(self, app=None):
+    def __init__(self):
 
         # Buy order
         self.side = EnumDefinitions.order_side[0]
         # Required by API for Limit orders
         self.timeInForce = EnumDefinitions.time_in_force[0]
         # Instance of app for cron jobs
-        self.app = app
+        self.app = create_app()
 
     def get_all_orders(self):
         # here we want to get the value of user (i.e. ?user=some-value)
@@ -40,7 +41,7 @@ class Orders(Account):
         offset = (
             0 if not request.args.get("offset") else int(request.args.get("offset"))
         )
-        pages = app.db.orders.count()
+        self.pages = self.app.db.orders.count()
         status = request.args.get("status", None)
         startTime = (
             int(request.args.get("start-time", None))
@@ -57,26 +58,26 @@ class Orders(Account):
             args["time"] = {"$gte": startTime}
 
         orders = list(
-            app.db.orders.find(args)
+            self.app.db.orders.find(args)
             .sort([("updateTime", -1)])
             .skip(offset)
             .limit(limit)
         )
         if orders:
-            resp = jsonResp({"data": orders, "pages": pages}, 200)
+            resp = jsonResp({"data": orders, "pages": self.pages}, 200)
         else:
             resp = jsonResp({"message": "Orders not found!"}, 200)
         return resp
 
-    def poll_historical_orders(self, app):
+    def poll_historical_orders(self):
         global poll_percentage
         url = self.all_orders_url
         symbols = self.get_exchange_info()["symbols"]
         symbols_count = len(symbols)
 
         # Empty collection first
-        app.db.orders.remove()
-        with app.app_context():
+        self.app.db.orders.remove()
+        with self.app.app_context():
             for i in range(symbols_count):
 
                 timestamp = int(round(tm.time() * 1000))
@@ -109,7 +110,7 @@ class Orders(Account):
                 if (len(data) > 0) and self.app:
                     for o in data:
                         # Save in the DB
-                        self.app.db.orders.save(
+                        self.self.app.db.orders.save(
                             o, {"$currentDate": {"createdAt": "true"}}
                         )
                         if i == (symbols_count - 1):

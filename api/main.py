@@ -1,8 +1,5 @@
 import atexit
-import logging
-import os
 import threading
-import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from api.app import create_app
@@ -19,13 +16,14 @@ from api.orders.models.orders import Orders
 from api.orders.routes import order_blueprint
 from api.tools.jsonresp import jsonResp
 from api.user.routes import user_blueprint
+from api.research.routes import research_blueprint
 
 app = create_app()
 
 # Cronjob
 scheduler = BackgroundScheduler()
 assets = Assets(app)
-orders = Orders(app)
+orders = Orders()
 
 scheduler.add_job(
     func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=0, minute=1
@@ -33,7 +31,6 @@ scheduler.add_job(
 scheduler.add_job(
     func=orders.poll_historical_orders,
     trigger="cron",
-    args=[app],
     timezone="Europe/London",
     hour=1,
     minute=1,
@@ -48,6 +45,7 @@ app.register_blueprint(bot_blueprint, url_prefix="/bot")
 app.register_blueprint(deal_blueprint, url_prefix="/deal")
 app.register_blueprint(order_blueprint, url_prefix="/order")
 app.register_blueprint(charts_blueprint, url_prefix="/charts")
+app.register_blueprint(research_blueprint, url_prefix="/research")
 
 # Index Route
 @app.route("/")
