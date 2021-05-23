@@ -1,13 +1,12 @@
 import json
 import os
 
-import requests
 from api.deals.deal_updates import DealUpdates
-from websocket import WebSocketApp, enableTrace
+from websocket import WebSocketApp
 import threading
 from api.app import create_app
 class KlineSockets:
-    def __init__(self, app, symbol="BNBBTC", subs=True, interval="1m"):
+    def __init__(self, subs=True):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
@@ -17,17 +16,18 @@ class KlineSockets:
         # streams
         self.base = os.getenv("WS_BASE")
         self.path = "/ws"
-        self.app = app
-        self.symbol = symbol
         self.subs = subs
-        self.interval = interval
+        self.interval = "1m"
 
-        enableTrace(True)
+    def start_stream(self):
+        app = create_app()
+        params = []
+        bots = app.db.bots.find({"active": "true"})
+        for bot in list(bots):
+            params.append(f'{bot["pair"].lower()}@kline_{self.interval}')
 
-    def start_stream(self, app):
-        self.app = app
-        # Start stream
-        url = f"{self.base}{self.path}/{self.symbol.lower()}@kline_{self.interval}"
+        string_params = "/".join(params)
+        url = f"{self.base}{self.path}/{string_params}"
         ws = WebSocketApp(
             url,
             on_open=self.on_open,
@@ -40,28 +40,15 @@ class KlineSockets:
 
     def close_stream(self, ws):
         ws.close()
-        print("Active socket closed")
+        print("Kline stream closed")
 
     def on_open(self, ws):
-        print("Sockets stream opened")
-        app = create_app()
-        params = []
-        bots = app.db.bots.find({"active": "true"})
-        for bot in list(bots):
-            params.append(f'{bot["pair"].lower()}@kline_{self.interval}')
-
-        request = {
-            "method": "SUBSCRIBE" if self.subs else "UNSUBSCRIBE",
-            "params": params,
-            "id": 2,
-        }
-        ws.send(json.dumps(request))
+        print("Klines stream opened")
 
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
 
     def on_message(self, wsapp, message):
-        print("On Message executed")
         response = json.loads(message)
 
         if "result" in response and response["result"]:
@@ -76,7 +63,6 @@ class KlineSockets:
     def process_kline_stream(self, result):
         if result["k"]["x"]:
             close_price = result["k"]["c"]
-            close_time = result["k"]["T"]
             symbol = result["k"]["s"]
             app = create_app()
 
@@ -86,11 +72,13 @@ class KlineSockets:
             )
 
             # Open safety orders
-            if "safety_order_prices" in bot["deal"]:
-                for index, price in enumerate(bot["deal"]["safety_order_prices"]):
+            # When bot = None, when bot doesn't exist (unclosed websocket)
+            if bot and "safety_order_prices" in bot["deal"]:
+                for key, value in bot["deal"]["safety_order_prices"].items():
                     # Index is the ID of the safety order price that matches safety_orders list
-                    if float(price) == float(close_price):
+                    if float(value) >= float(close_price):
                         deal = DealUpdates(bot, app)
+                        print("Update deal executed")
                         # No need to pass price to update deal
                         # The price already matched market price
-                        deal.so_update_deal(index)
+                        deal.so_update_deal(key)

@@ -27,8 +27,6 @@ mongo_db
 .env.prod
 .env.development.local
 .env.test.local
-.env.production.local
-web/.env.production
 /.env
 .vscode/settings.json
 

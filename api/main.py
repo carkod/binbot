@@ -59,3 +59,8 @@ order_updates = OrderUpdates(app)
 # start a worker process to move the received stream_data from the stream_buffer to a print function
 worker_thread = threading.Thread(target=order_updates.run_stream)
 worker_thread.start()
+
+kline_updates = KlineSockets()
+# start a worker process to move the received stream_data from the stream_buffer to a print function
+kline_thread = threading.Thread(target=kline_updates.start_stream)
+kline_thread.start()

@@ -71,7 +71,7 @@ class Orders(Account):
     def poll_historical_orders(self, app):
         global poll_percentage
         url = self.all_orders_url
-        symbols = self._exchange_info()["symbols"]
+        symbols = self.get_exchange_info()["symbols"]
         symbols_count = len(symbols)
 
         # Empty collection first

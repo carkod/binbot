@@ -1,3 +1,5 @@
+import produce from "immer";
+import { nanoid } from "nanoid";
 import React from "react";
 import { connect } from "react-redux";
 import {
@@ -46,9 +48,6 @@ import { getQuoteAsset } from "./requests";
 import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
 import ShortTab from "./tabs/Short";
-import { nanoid } from 'nanoid';
-import produce from 'immer';
-import Deal from "../../components/Deal";
 
 class BotForm extends React.Component {
   constructor(props) {
@@ -92,7 +91,7 @@ class BotForm extends React.Component {
       baseAsset: "",
       stop_loss: 0,
       stopLossError: false,
-      safety_orders: {}
+      safety_orders: {},
     };
   }
 
@@ -131,7 +130,7 @@ class BotForm extends React.Component {
         short_order: this.props.bot.short_order,
         short_stop_price: this.props.bot.short_stop_price,
         stop_loss: this.props.bot.stop_loss,
-        safety_orders: this.props.bot.safety_orders
+        safety_orders: this.props.bot.safety_orders,
       });
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
@@ -196,10 +195,12 @@ class BotForm extends React.Component {
       }
     }
 
-    if (this.state.quoteAsset !== s.quoteAsset && !checkValue(this.props.balances)) {
+    if (
+      this.state.quoteAsset !== s.quoteAsset &&
+      !checkValue(this.props.balances)
+    ) {
       this.computeAvailableBalance();
     }
-
   };
 
   requiredinValidation = () => {
@@ -297,7 +298,7 @@ class BotForm extends React.Component {
         short_order: this.state.short_order,
         short_stop_price: this.state.short_stop_price,
         stop_loss: this.state.stop_loss,
-        safety_orders: this.state.safety_orders
+        safety_orders: this.state.safety_orders,
       };
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -329,16 +330,25 @@ class BotForm extends React.Component {
         }
       });
 
-      if (!checkValue(value) && !checkBalance(value) && Object.values(safety_orders).length > 0) {
+      if (
+        !checkValue(value) &&
+        !checkBalance(value) &&
+        Object.values(safety_orders).length > 0
+      ) {
         const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
-        const safetyOrders = Object.values(safety_orders).reduce((v, a) => {
-          return parseFloat(v.so_size) + parseFloat(a.so_size)
-        }, {so_size: 0});
+        const safetyOrders = Object.values(safety_orders).reduce(
+          (v, a) => {
+            return parseFloat(v.so_size) + parseFloat(a.so_size);
+          },
+          { so_size: 0 }
+        );
         const shortOrder = parseFloat(short_order);
-        const updatedValue = (
-          value -
-          (baseOrder + safetyOrders + shortOrder)
-        ).toFixed(8);
+        const checkBaseOrder = this.state.orders.find(x => x.deal_type === "base_order");
+        let updatedValue = value - (baseOrder + safetyOrders + shortOrder)
+        if (!checkValue(checkBaseOrder) && "deal_type" in checkBaseOrder) {
+          updatedValue = baseOrder + updatedValue;
+        }
+        updatedValue.toFixed(8);
 
         // Check that we have enough funds
         // If not return error
@@ -374,7 +384,7 @@ class BotForm extends React.Component {
       this.state.pair,
       this.state.candlestick_interval
     );
-  }
+  };
 
   handleStrategy = (e) => {
     // Get pair base or quote asset and set new strategy
@@ -458,51 +468,53 @@ class BotForm extends React.Component {
     const length = Object.keys(this.state.safety_orders).length;
     let newState = {};
     if (count > 0 && length === 0) {
-        for (let i = 0; i < count; i++) {
-          const id = nanoid();
-          newState[id] = {
-            so_size: "",
-            price_deviation_so: "0.63",
-            priceDevSoError: false,
-            soSizeError: false
-          }
-      }
-    } else if (count - length > 0) {
-      newState = this.state.safety_orders;
-      for (let i = 0; i < (count - length); i++) {
+      for (let i = 0; i < count; i++) {
         const id = nanoid();
         newState[id] = {
           so_size: "",
           price_deviation_so: "0.63",
           priceDevSoError: false,
-          soSizeError: false
-        }
-    }
+          soSizeError: false,
+        };
+      }
+    } else if (count - length > 0) {
+      newState = this.state.safety_orders;
+      for (let i = 0; i < count - length; i++) {
+        const id = nanoid();
+        newState[id] = {
+          so_size: "",
+          price_deviation_so: "0.63",
+          priceDevSoError: false,
+          soSizeError: false,
+        };
+      }
     } else if (count - length < 0) {
       newState = this.state.safety_orders;
-      for (let i = 0; i < (length - count); i++) {
+      for (let i = 0; i < length - count; i++) {
         const id = Object.keys(newState)[length - 1];
         delete newState[id];
       }
-      
     }
-    this.setState({ safety_orders: newState })
-  }
+    this.setState({ safety_orders: newState });
+  };
 
   handleMaxSoChange = (e) => {
     e.preventDefault();
     const count = parseInt(this.state.max_so_count);
-    if (count !== parseInt(e.target.value)) {
+    const value = parseInt(e.target.value);
+    if (count !== value) {
       this.setState({ [e.target.name]: e.target.value }, () => this.renderSO());
     }
-  }
+  };
 
   handleSoChange = (id) => (e) => {
     e.preventDefault();
-    this.setState(produce(draft => {
-      draft.safety_orders[id][e.target.name] = e.target.value
-    }));
-  }
+    this.setState(
+      produce((draft) => {
+        draft.safety_orders[id][e.target.name] = e.target.value;
+      })
+    );
+  };
 
   render() {
     return (
@@ -512,7 +524,7 @@ class BotForm extends React.Component {
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
                 <CardTitle tag="h3">
-                  {this.state.pair} {' '}{' '}{' '}
+                  {this.state.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
                   this.state.active === "true" ? (
                     <Badge
@@ -521,7 +533,7 @@ class BotForm extends React.Component {
                       {this.state.bot_profit + "%"}
                     </Badge>
                   ) : (
-                    <Badge color="secondary" >Inactive</Badge>
+                    <Badge color="secondary">Inactive</Badge>
                   )}
                 </CardTitle>
                 {intervalOptions.map((item) => (
@@ -542,7 +554,7 @@ class BotForm extends React.Component {
                 ))}
               </CardHeader>
               <CardBody>
-                {this.props.candlestick && !checkValue(this.state.pair)? (
+                {this.props.candlestick && !checkValue(this.state.pair) ? (
                   <Candlestick data={this.props.candlestick} bot={this.state} />
                 ) : (
                   ""
@@ -553,18 +565,13 @@ class BotForm extends React.Component {
         </Row>
         <Row>
           {!checkValue(this.props.bot) &&
-            !checkValue(this.props.match.params.id) ? (
-              <Col md="7" sm="12">
-                <BotInfo bot={this.props.bot} />
-              </Col>
-            ) : (
-              ""
-          )}
-          {!checkValue(this.props.bot) && !checkValue(this.props.bot.deal) ?
-            <Col md="5" sm="12">
-              <Deal bot={this.props.bot} />
+          !checkValue(this.props.match.params.id) ? (
+            <Col md="7" sm="12">
+              <BotInfo bot={this.props.bot} />
             </Col>
-          : ""}
+          ) : (
+            ""
+          )}
         </Row>
         <Form onSubmit={this.handleSubmit}>
           <Row>
@@ -675,18 +682,25 @@ class BotForm extends React.Component {
                           </small>
                         </Col>
                       </Row>
-                      {parseInt(this.state.max_so_count) > 0 && Object.keys(this.state.safety_orders).map(so => 
-                        <SafetyOrderField
-                          key={so}
-                          id={so}
-                          price_deviation_so={this.state.safety_orders[so].price_deviation_so}
-                          priceDevSoError={this.state.safety_orders[so].priceDevSoError}
-                          so_size={this.state.safety_orders[so].so_size}
-                          soSizeError={this.state.safety_orders[so].soSizeError}
-                          handleChange={this.handleSoChange}
-                          handleBlur={this.handleBlur}
-                        />
-                      )}
+                      {parseInt(this.state.max_so_count) > 0 &&
+                        Object.keys(this.state.safety_orders).map((so) => (
+                          <SafetyOrderField
+                            key={so}
+                            id={so}
+                            price_deviation_so={
+                              this.state.safety_orders[so].price_deviation_so
+                            }
+                            priceDevSoError={
+                              this.state.safety_orders[so].priceDevSoError
+                            }
+                            so_size={this.state.safety_orders[so].so_size}
+                            soSizeError={
+                              this.state.safety_orders[so].soSizeError
+                            }
+                            handleChange={this.handleSoChange}
+                            handleBlur={this.handleBlur}
+                          />
+                        ))}
                     </TabPane>
 
                     {/*
@@ -759,7 +773,10 @@ class BotForm extends React.Component {
                         onClick={this.handleActivation}
                         disabled={checkValue(this.state._id)}
                       >
-                        {!checkValue(this.state.bot) && Object.keys(this.state.bot.deal).length > 0 ? "Update deal" : "Deal"}
+                        {!checkValue(this.state.bot) &&
+                        Object.keys(this.state.bot.deal).length > 0
+                          ? "Update deal"
+                          : "Deal"}
                       </ButtonToggle>
                     </div>
                     <div className="update ml-auto mr-auto">

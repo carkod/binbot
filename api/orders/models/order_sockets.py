@@ -24,8 +24,6 @@ class OrderUpdates:
         self.listenkey = None
         self.app = app
 
-        enableTrace(True)
-
     def get_listenkey(self):
         url = self.user_datastream_listenkey
 
@@ -66,7 +64,6 @@ class OrderUpdates:
         ws.close()
 
     def on_message(self, wsapp, message):
-        print("On Message executed")
         response = json.loads(message)
         try:
             result = response["data"]
