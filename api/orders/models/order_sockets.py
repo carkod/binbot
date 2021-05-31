@@ -4,10 +4,7 @@ import os
 import requests
 from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
-from api.tools.jsonresp import jsonResp, jsonResp_message
-from flask import current_app
-from websocket import WebSocketApp, create_connection, enableTrace
-
+from websocket import WebSocketApp
 
 class OrderUpdates:
     def __init__(self, app):
@@ -76,13 +73,6 @@ class OrderUpdates:
     def process_report_execution(self, result):
         # Parse result. Print result for raw result from Binance
         order_id = result["i"]
-        order_result = {
-            "symbol": result["s"],
-            "order_status": result["X"],
-            "timestamp": result["E"],
-            "order_id": order_id,
-            "created_at": result["O"],
-        }
 
         if result["X"] == "FILLED":
             # Close successful orders
@@ -98,7 +88,6 @@ class OrderUpdates:
                 print(f"Bot take_profit completed! Bot {completed['_id']} deactivated")
 
             # Update Safety orders
-            order_price = float(result["p"])
             bot = self.app.db.bots.find_one(
                 {
                     "orders": {
@@ -114,7 +103,7 @@ class OrderUpdates:
                 # It is a safety order, now find safety order deal price
                 deal = DealUpdates(bot, self.app)
                 deal.default_deal.update(bot)
-                order = deal.update_take_profit(order_id)
+                deal.update_take_profit(order_id)
 
         else:
             print(f"No bot found with order client order id: {order_id}")
