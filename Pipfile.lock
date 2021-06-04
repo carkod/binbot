@@ -368,11 +368,11 @@
         },
         "websocket-client": {
             "hashes": [
-                "sha256:44b5df8f08c74c3d82d28100fdc81f4536809ce98a17f0757557813275fbb663",
-                "sha256:63509b41d158ae5b7f67eb4ad20fecbb4eee99434e73e140354dc3ff8e09716f"
+                "sha256:3e2bf58191d4619b161389a95bdce84ce9e0b24eb8107e7e590db682c2d0ca81",
+                "sha256:abf306dc6351dcef07f4d40453037e51cc5d9da2ef60d0fc5d0fe3bcda255372"
             ],
             "index": "pypi",
-            "version": "==0.58.0"
+            "version": "==1.0.1"
         },
         "werkzeug": {
             "hashes": [
