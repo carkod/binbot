@@ -70,6 +70,39 @@ class MarketUpdates:
         else:
             print(f"Error: {response}")
 
+    def _weak_signals(self, close_price, open_price, ma_7, ma_25, ma_100):
+        """
+        Weak bullying
+        - This detects prices that go up and go down (both bullying and bearing)
+        - Weak signals, as they happen more frequently and do not entail a lot of profit
+        """
+        bollinguer_bands_signal = None
+
+        # MA-25 line crossed MA-7
+        ma_25_crossed_7 = True if ma_25[len(ma_7) - 1] == ma_100[len(ma_100) - 1] else False
+        # Bottom of candlestick crossed MA-100
+        top_green_candle = True if close_price > ma_25[len(ma_25) - 1] else False
+        # Tip of candlestick crossed MA-100
+        bottom_green_candle = True if open_price > ma_25[len(ma_25) - 1] else False
+        # Second to last Tip of candlestick crossed MA-100
+        previous_top_green_candle = True if open_price > ma_25[len(ma_25) - 2] else False
+
+        # Downward/Bearing conditions
+        # Bottom of red candlestick crossed MA-100
+        top_red_candle = True if open_price < ma_25[len(ma_25) - 1] else False
+        # Tip of red candlestick crossed MA-100
+        bottom_red_candle = True if close_price < ma_25[len(ma_25) - 1] else False
+        # Second to last Tip of candlestick crossed MA-100
+        previous_bottom_red_candle = True if close_price < ma_25[len(ma_25) - 2] else False
+
+        if ma_25_crossed_7 and top_green_candle and bottom_green_candle:
+            bollinguer_bands_signal = "WEAK BUY"
+
+        if ma_25_crossed_7 and top_red_candle and bottom_red_candle:
+            bollinguer_bands_signal = "WEAK SELL"
+
+        return bollinguer_bands_signal
+
     def process_kline_stream(self, result):
         if result["k"]["x"]:
             close_price = float(result["k"]["c"])
@@ -105,11 +138,15 @@ class MarketUpdates:
             # Second to last Tip of candlestick crossed MA-100
             previous_bottom_red_candle = True if close_price < ma_100[len(ma_100) - 2] else False
 
+            # Weak signals
+            bollinguer_bands_signal = self._weak_signals(close_price, open_price, ma_7, ma_25, ma_100)
+
+            # Strong signals
             if ma_25_crossed and ma_7_crossed and top_green_candle and bottom_green_candle and previous_top_green_candle:
-                bollinguer_bands_signal = "BUY"
+                bollinguer_bands_signal = "STRONG BUY"
 
             if ma_25_crossed and ma_7_crossed and top_red_candle and bottom_red_candle and previous_bottom_red_candle:
-                bollinguer_bands_signal = "SELL"
+                bollinguer_bands_signal = "STRONG SELL"
 
             # Update Current price
             correlations = self.app.db.correlations.find_one_and_update(

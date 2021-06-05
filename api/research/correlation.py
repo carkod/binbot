@@ -9,6 +9,7 @@ from api.tools.round_numbers import round_numbers
 from scipy import stats
 from flask import request
 
+
 class Correlation(Account):
     candlestick_url = os.getenv("CANDLESTICK")
 
@@ -57,7 +58,9 @@ class Correlation(Account):
                 }
                 app.db.correlations.insert_one(data)
                 if total_count <= ((symbols_count) - 1):
-                    poll_percentage = round_numbers((total_count / symbols_count) * 100, 0)
+                    poll_percentage = round_numbers(
+                        (total_count / symbols_count) * 100, 0
+                    )
                     total_count += 1
 
                 print(f"Pearson correlation scanning: {poll_percentage}%")
@@ -75,15 +78,19 @@ class Correlation(Account):
         if request.args.get("filter"):
             value = request.args.get("filter")
             if value == "positive":
-                args["r_correlation"] = {
-                    "$gt": 0
-                }
+                args["r_correlation"] = {"$gt": 0}
             else:
-                args["r_correlation"] = {
-                    "$lt": 0
-                }
+                args["r_correlation"] = {"$lt": 0}
 
         query = self.app.db.correlations.find(args).sort("r_correlation", 1)
+        data = list(query)
+        resp = jsonResp({"data": data}, 200)
+        return resp
+
+    def get_signals(self):
+        args = {"bollinguer_bands_signal": {"$exists": True}}
+
+        query = self.app.db.correlations.find(args)
         data = list(query)
         resp = jsonResp({"data": data}, 200)
         return resp
