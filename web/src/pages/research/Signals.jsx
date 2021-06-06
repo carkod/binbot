@@ -1,6 +1,7 @@
 import React from "react";
 import { Button, Table } from "reactstrap";
 import moment from "moment";
+import { roundDecimals } from "../../validations";
 
 export default function Signals({ data, setPair }) {
   return (
@@ -9,6 +10,8 @@ export default function Signals({ data, setPair }) {
         <tr>
           <th>Market</th>
           <th>Signal</th>
+          <th>Spread (L vs H)</th>
+          <th>Last Volume</th>
         </tr>
       </thead>
       <tbody>
@@ -34,6 +37,8 @@ export default function Signals({ data, setPair }) {
                 <small>{moment(item.lastModified.$date).fromNow()}</small>
               }
             </td>
+            <td>{item.spread}</td>
+            <td>{roundDecimals(item.last_volume, 4)}</td>
           </tr>
         ))}
       </tbody>

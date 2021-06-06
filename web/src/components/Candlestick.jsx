@@ -34,11 +34,6 @@ function Candlestick({ data, bot = null, ma = null }) {
     layout.shapes = shapes
   }
 
-  if (!checkValue(ma)) {
-
-  }
-  
-
   return (
     <Plot
       data={data.trace}

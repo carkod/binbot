@@ -6,7 +6,6 @@ from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
 from api.app import create_app
 import pandas
-import logging
 import math
 
 
@@ -19,6 +18,9 @@ class MarketUpdates:
     order_url = os.getenv("ORDER")
     candlestick_url = os.getenv("CANDLESTICK")
 
+    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}:{os.getenv("FLASK_PORT")}'
+    bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
+
     # streams
     base = os.getenv("WS_BASE")
 
@@ -26,11 +28,11 @@ class MarketUpdates:
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
-        self.interval = "1m"
+        self.interval = "1h"
 
     def _get_candlestick(self, market):
-        params = {"symbol": market, "interval": self.interval, "limit": "200"}
-        res = requests.get(url=self.candlestick_url, params=params)
+        url = f"{self.bb_candlestick_url}/{market}/{self.interval}"
+        res = requests.get(url=url)
         handle_error(res)
         return res.json()
 
@@ -165,33 +167,15 @@ class MarketUpdates:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
-            kline_data = self._get_candlestick(symbol)
+            data = self._get_candlestick(symbol)["trace"]
+            ma_100 = data[1]["y"]
+            ma_25 = data[2]["y"]
+            ma_7 = data[3]["y"]
+            volatility = pandas.Series(data[0]["close"]).astype(float).std(0)
 
-            kline_df = pandas.DataFrame(kline_data)
-            ma_100 = (
-                kline_df[4]
-                .rolling(window=100)
-                .mean()
-                .dropna()
-                .reset_index(drop=True)
-                .values.tolist()
-            )
-            ma_25 = (
-                kline_df[4]
-                .rolling(window=25)
-                .mean()
-                .dropna()
-                .reset_index(drop=True)
-                .values.tolist()
-            )
-            ma_7 = (
-                kline_df[4]
-                .rolling(window=7)
-                .mean()
-                .dropna()
-                .reset_index(drop=True)
-                .values.tolist()
-            )
+            highest_price = max(data[0]["high"])
+            lowest_price = max(data[0]["low"])
+            spread = (float(highest_price) / float(lowest_price)) - 1
 
             bollinguer_bands_signal = None
 
@@ -206,14 +190,17 @@ class MarketUpdates:
 
             # Update Current price
             if bollinguer_bands_signal:
-                correlations = self.app.db.correlations.find_one_and_update(
+                self.app.db.correlations.find_one_and_update(
                     {"market_a": symbol},
                     {
+                        "$currentDate": {"lastModified": True},
                         "$set": {
-                            "lastModified": "$$NOW",
                             "current_price": result["k"]["c"],
                             "bollinguer_bands_signal": bollinguer_bands_signal,
+                            "volatility": volatility,
+                            "last_volume": float(result["k"]["v"]) + float(result["k"]["q"]),
+                            "spread": spread
                         },
                     },
                 )
-            print(f"{symbol} Bollinguer signal:{bollinguer_bands_signal}")
+            print(f"{symbol} Bollinguer signal: {bollinguer_bands_signal}")

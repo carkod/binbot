@@ -20,7 +20,7 @@ class Research extends React.Component {
     super(props);
     this.state = {
       activeTab: "signals",
-      candlestick_interval: "1d",
+      candlestick_interval: "1h",
     };
   }
 
@@ -38,7 +38,7 @@ class Research extends React.Component {
       );
     }
 
-    if (!checkValue(this.state.pair) && !checkValue(this.state.interval) && this.state.interval !== s.pair) {
+    if (!checkValue(this.state.pair) && !checkValue(this.state.candlestick_interval) && this.state.candlestick_interval !== s.candlestick_interval) {
       this.props.loadCandlestick(
         this.state.pair,
         this.state.candlestick_interval
@@ -60,23 +60,8 @@ class Research extends React.Component {
               <Col md="12">
                 <Card style={{ minHeight: "650px" }}>
                   <CardHeader>
-                    <CardTitle tag="h3">{this.state.pair} </CardTitle>
-                    {intervalOptions.map((item) => (
-                      <Badge
-                        key={item}
-                        onClick={() =>
-                          this.setState({ candlestick_interval: item })
-                        }
-                        color={
-                          this.state.candlestick_interval === item
-                            ? "primary"
-                            : "secondary"
-                        }
-                        className="btn"
-                      >
-                        {item}
-                      </Badge>
-                    ))}
+                    <CardTitle tag="h3">{this.state.pair}</CardTitle>
+                      1 minute interval only. Signals update with websockets every 1 minute.
                   </CardHeader>
                   <CardBody>
                     {this.props.candlestick && !checkValue(this.state.pair) ? (
@@ -90,11 +75,12 @@ class Research extends React.Component {
             </Row>
           )}
           <Row>
-            <Col md="3" sm="3">
+            <Col md="6" sm="3">
               <Card>
                 <CardHeader>
                   <CardTitle>
                     <h2>Signals</h2>
+                    <small>1 minute</small>
                   </CardTitle>
                 </CardHeader>
                 <CardBody>
@@ -109,7 +95,7 @@ class Research extends React.Component {
                 </CardBody>
               </Card>
             </Col>
-            <Col md="9" sm="7">
+            <Col md="6" sm="7">
               <Card>
                 <CardHeader>
                   <CardTitle>

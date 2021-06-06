@@ -78,7 +78,7 @@
   > thead > tr > td,
   > tbody > tr > td,
   > tfoot > tr > td {
-    padding: 12px 7px;
+    padding: $padding-base-horizontal $padding-base-vertical;
     vertical-align: middle;
   }
 

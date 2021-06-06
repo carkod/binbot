@@ -90,7 +90,7 @@ class Correlation(Account):
     def get_signals(self):
         args = {"bollinguer_bands_signal": {"$exists": True, "$ne": None}}
 
-        query = self.app.db.correlations.find(args)
+        query = self.app.db.correlations.find(args).sort([["bollinguer_bands_signal", 1], ["lastModified", -1]])
         data = list(query)
         resp = jsonResp({"data": data}, 200)
         return resp
