@@ -110,7 +110,7 @@ class Orders(Account):
                 if (len(data) > 0) and self.app:
                     for o in data:
                         # Save in the DB
-                        self.self.app.db.orders.save(
+                        self.app.db.orders.save(
                             o, {"$currentDate": {"createdAt": "true"}}
                         )
                         if i == (symbols_count - 1):

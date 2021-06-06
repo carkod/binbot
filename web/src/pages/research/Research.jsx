@@ -1,19 +1,17 @@
 import React from "react";
 import { connect } from "react-redux";
-// reactstrap components
 import {
+  Badge,
   Card,
   CardBody,
   CardHeader,
   CardTitle,
   Col,
-  Nav,
-  NavItem,
-  NavLink,
   Row,
-  TabContent,
-  TabPane,
 } from "reactstrap";
+import Candlestick from "../../components/Candlestick";
+import { checkValue, intervalOptions } from "../../validations";
+import { loadCandlestick } from "../bots/actions";
 import { getResearchData } from "./actions";
 import Signals from "./Signals";
 
@@ -22,64 +20,103 @@ class Research extends React.Component {
     super(props);
     this.state = {
       activeTab: "signals",
+      candlestick_interval: "1d",
     };
   }
 
   componentDidMount = () => {
     this.props.getResearchData();
-  }
+  };
 
-  toggle = (tab) => {
-    const { activeTab } = this.state;
-    if (activeTab !== tab) this.setState({ activeTab: tab });
+  componentDidUpdate = (p, s) => {
+    // Candlestick data updates
+    if (!checkValue(this.props.pair) && this.props.pair !== p.pair) {
+      this.setState({ pair: this.props.pair });
+      this.props.loadCandlestick(
+        this.props.pair,
+        this.state.candlestick_interval
+      );
+    }
+
+    if (!checkValue(this.state.pair) && !checkValue(this.state.interval) && this.state.interval !== s.pair) {
+      this.props.loadCandlestick(
+        this.state.pair,
+        this.state.candlestick_interval
+      );
+    }
+  };
+
+  handleSetPair = (pair) => {
+    this.props.loadCandlestick(pair, this.state.candlestick_interval);
+    this.setState({ pair: pair });
   };
 
   render() {
     return (
       <>
         <div className="content">
+          {this.state.pair && (
+            <Row>
+              <Col md="12">
+                <Card style={{ minHeight: "650px" }}>
+                  <CardHeader>
+                    <CardTitle tag="h3">{this.state.pair} </CardTitle>
+                    {intervalOptions.map((item) => (
+                      <Badge
+                        key={item}
+                        onClick={() =>
+                          this.setState({ candlestick_interval: item })
+                        }
+                        color={
+                          this.state.candlestick_interval === item
+                            ? "primary"
+                            : "secondary"
+                        }
+                        className="btn"
+                      >
+                        {item}
+                      </Badge>
+                    ))}
+                  </CardHeader>
+                  <CardBody>
+                    {this.props.candlestick && !checkValue(this.state.pair) ? (
+                      <Candlestick data={this.props.candlestick} />
+                    ) : (
+                      ""
+                    )}
+                  </CardBody>
+                </Card>
+              </Col>
+            </Row>
+          )}
           <Row>
-            <Col md="6" sm="12">
+            <Col md="3" sm="3">
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    <Nav tabs>
-                      <NavItem>
-                        <NavLink
-                          className={
-                            this.state.activeTab === "signals" ? "active" : ""
-                          }
-                          onClick={() => this.toggle("signals")}
-                        >
-                          Bolliguer band signals
-                        </NavLink>
-                      </NavItem>
-                      <NavItem>
-                        <NavLink
-                          className={
-                            this.state.activeTab === "correlations"
-                              ? "active"
-                              : ""
-                          }
-                          onClick={() => this.toggle("correlations")}
-                        >
-                          Correlations
-                        </NavLink>
-                      </NavItem>
-                    </Nav>
+                    <h2>Signals</h2>
                   </CardTitle>
                 </CardHeader>
                 <CardBody>
-                  {/*
-                    Tab contents
-                  */}
-                  <TabContent activeTab={this.state.activeTab}>
-                    {this.props.research &&
-                      <Signals data={this.props.research} />
-                    }
-                    <TabPane tabId="correlations">Correlations</TabPane>
-                  </TabContent>
+                  {this.props.research && this.props.research.length > 0 ? (
+                    <Signals
+                      data={this.props.research}
+                      setPair={this.handleSetPair}
+                    />
+                  ) : (
+                    "No signals available"
+                  )}
                 </CardBody>
+              </Card>
+            </Col>
+            <Col md="9" sm="7">
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    <h2>Correlations</h2>
+                  </CardTitle>
+                </CardHeader>
+                <CardBody>Correlations content</CardBody>
               </Card>
             </Col>
           </Row>
@@ -90,10 +127,14 @@ class Research extends React.Component {
 }
 
 const mapStateToProps = (state) => {
-  const { data } = state.researchReducer;
+  const { data: research } = state.researchReducer;
+  const { data: candlestick } = state.candlestickReducer;
   return {
-    research: data,
+    research: research,
+    candlestick: candlestick,
   };
 };
 
-export default connect(mapStateToProps, { getResearchData })(Research);
+export default connect(mapStateToProps, { getResearchData, loadCandlestick })(
+  Research
+);

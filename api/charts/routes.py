@@ -8,7 +8,6 @@ charts_blueprint = Blueprint("charts", __name__)
 def get(pair, interval):
     return Candlestick().get()
 
-
 @charts_blueprint.route("/change/<pair>/<interval>", methods=["GET"])
 def get_diff(pair, interval):
     return Candlestick().get_diff()

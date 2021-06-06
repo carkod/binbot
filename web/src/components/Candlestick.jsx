@@ -1,10 +1,10 @@
 import React from "react";
 import Plot from "react-plotly.js";
-import { generateOrders } from "./services/candlestick.service";
+import { checkValue } from "../validations";
+import { botCandlestick } from "./services/bot.service";
 
-function Candlestick({ data, bot }) {
-  const { annotations, shapes } = generateOrders(data, bot);
-  const layout = {
+function Candlestick({ data, bot = null, ma = null }) {
+  let layout = {
     dragmode: "zoom",
     autosize: true,
     line_width: 50,
@@ -26,9 +26,18 @@ function Candlestick({ data, bot }) {
       type: "linear",
       maxPoints: 50,
     },
-    annotations: annotations,
-    shapes: shapes,
   };
+
+  if (!checkValue(bot)) {
+    const { annotations, shapes } = botCandlestick(data, bot);
+    layout.annotations = annotations;
+    layout.shapes = shapes
+  }
+
+  if (!checkValue(ma)) {
+
+  }
+  
 
   return (
     <Plot

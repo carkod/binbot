@@ -88,7 +88,7 @@ class Correlation(Account):
         return resp
 
     def get_signals(self):
-        args = {"bollinguer_bands_signal": {"$exists": True}}
+        args = {"bollinguer_bands_signal": {"$exists": True, "$ne": None}}
 
         query = self.app.db.correlations.find(args)
         data = list(query)

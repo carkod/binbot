@@ -6,6 +6,9 @@ from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
 from api.app import create_app
 import pandas
+import logging
+import math
+
 
 class MarketUpdates:
 
@@ -35,7 +38,7 @@ class MarketUpdates:
         self.list_markets = self.app.db.correlations.distinct("market_a")
         params = []
         for market in self.list_markets:
-            params.append(f'{market.lower()}@kline_{self.interval}')
+            params.append(f"{market.lower()}@kline_{self.interval}")
 
         string_params = "/".join(params)
         url = f"{self.base}/ws/{string_params}"
@@ -79,27 +82,81 @@ class MarketUpdates:
         bollinguer_bands_signal = None
 
         # MA-25 line crossed MA-7
-        ma_25_crossed_7 = True if ma_25[len(ma_7) - 1] == ma_100[len(ma_100) - 1] else False
+        # Using isclose relative tolerance, as values don't usually match
+        ma_25_crossed_7 = (
+            True
+            if math.isclose(ma_25[len(ma_25) - 1], ma_7[len(ma_7) - 1], rel_tol=1e-3)
+            else False
+        )
         # Bottom of candlestick crossed MA-100
         top_green_candle = True if close_price > ma_25[len(ma_25) - 1] else False
         # Tip of candlestick crossed MA-100
-        bottom_green_candle = True if open_price > ma_25[len(ma_25) - 1] else False
+        bottom_green_candle = True if open_price < ma_25[len(ma_25) - 1] else False
+
+        # Downward/Bearing conditions
+        top_red_candle = True if open_price > ma_25[len(ma_25) - 1] else False
+        bottom_red_candle = True if close_price < ma_25[len(ma_25) - 1] else False
+
+        if ma_25_crossed_7:
+            if top_green_candle and bottom_green_candle:
+                bollinguer_bands_signal = "WEAK BUY"
+
+            if top_red_candle and bottom_red_candle:
+                bollinguer_bands_signal = "WEAK SELL"
+
+        return bollinguer_bands_signal
+
+    def _strong_signals(self, close_price, open_price, ma_7, ma_25, ma_100):
+        """
+        Strong signals use the MA_100
+        Happen less frequently, but there is a higher profit margin
+        Higher volatility
+        """
+
+        bollinguer_bands_signal = None
+
+        # MA-25 line crossed MA-100
+        ma_25_crossed = (
+            True
+            if math.isclose(
+                ma_25[len(ma_25) - 1], ma_100[len(ma_100) - 1], rel_tol=1e-3
+            )
+            else False
+        )
+        # MA-7 line crossed MA-100
+        ma_7_crossed = (
+            True
+            if math.isclose(ma_7[len(ma_7) - 1], ma_100[len(ma_100) - 1], rel_tol=1e-3)
+            else False
+        )
+
+        # Upward/Bullying conditions
+        # Bottom of candlestick crossed MA-100
+        top_green_candle = True if close_price > ma_100[len(ma_100) - 1] else False
+        # Tip of candlestick crossed MA-100
+        bottom_green_candle = True if open_price > ma_100[len(ma_100) - 1] else False
         # Second to last Tip of candlestick crossed MA-100
-        previous_top_green_candle = True if open_price > ma_25[len(ma_25) - 2] else False
+        previous_top_green_candle = (
+            True if open_price > ma_100[len(ma_100) - 2] else False
+        )
 
         # Downward/Bearing conditions
         # Bottom of red candlestick crossed MA-100
-        top_red_candle = True if open_price < ma_25[len(ma_25) - 1] else False
+        top_red_candle = True if open_price < ma_100[len(ma_100) - 1] else False
         # Tip of red candlestick crossed MA-100
-        bottom_red_candle = True if close_price < ma_25[len(ma_25) - 1] else False
+        bottom_red_candle = True if close_price < ma_100[len(ma_100) - 1] else False
         # Second to last Tip of candlestick crossed MA-100
-        previous_bottom_red_candle = True if close_price < ma_25[len(ma_25) - 2] else False
+        previous_bottom_red_candle = (
+            True if close_price < ma_100[len(ma_100) - 2] else False
+        )
 
-        if ma_25_crossed_7 and top_green_candle and bottom_green_candle:
-            bollinguer_bands_signal = "WEAK BUY"
+        # Strong signals
+        if ma_25_crossed and ma_7_crossed:
+            if top_green_candle and bottom_green_candle and previous_top_green_candle:
+                bollinguer_bands_signal = "STRONG BUY"
 
-        if ma_25_crossed_7 and top_red_candle and bottom_red_candle:
-            bollinguer_bands_signal = "WEAK SELL"
+            if top_red_candle and bottom_red_candle and previous_bottom_red_candle:
+                bollinguer_bands_signal = "STRONG SELL"
 
         return bollinguer_bands_signal
 
@@ -111,50 +168,52 @@ class MarketUpdates:
             kline_data = self._get_candlestick(symbol)
 
             kline_df = pandas.DataFrame(kline_data)
-            ma_100 = kline_df[4].rolling(window=100).mean().dropna().reset_index(drop=True).values.tolist()
-            ma_25 = kline_df[4].rolling(window=25).mean().dropna().reset_index(drop=True).values.tolist()
-            ma_7 = kline_df[4].rolling(window=7).mean().dropna().reset_index(drop=True).values.tolist()
+            ma_100 = (
+                kline_df[4]
+                .rolling(window=100)
+                .mean()
+                .dropna()
+                .reset_index(drop=True)
+                .values.tolist()
+            )
+            ma_25 = (
+                kline_df[4]
+                .rolling(window=25)
+                .mean()
+                .dropna()
+                .reset_index(drop=True)
+                .values.tolist()
+            )
+            ma_7 = (
+                kline_df[4]
+                .rolling(window=7)
+                .mean()
+                .dropna()
+                .reset_index(drop=True)
+                .values.tolist()
+            )
 
             bollinguer_bands_signal = None
 
-            # MA-25 line crossed MA-100
-            ma_25_crossed = True if ma_25[len(ma_25) - 1] == ma_100[len(ma_100) - 1] else False
-            # MA-7 line crossed MA-100
-            ma_7_crossed = True if ma_7[len(ma_7) - 1] == ma_100[len(ma_100) - 1] else False
+            bollinguer_bands_signal = self._strong_signals(
+                close_price, open_price, ma_7, ma_25, ma_100
+            )
 
-            # Upward/Bullying conditions
-            # Bottom of candlestick crossed MA-100
-            top_green_candle = True if close_price > ma_100[len(ma_100) - 1] else False
-            # Tip of candlestick crossed MA-100
-            bottom_green_candle = True if open_price > ma_100[len(ma_100) - 1] else False
-            # Second to last Tip of candlestick crossed MA-100
-            previous_top_green_candle = True if open_price > ma_100[len(ma_100) - 2] else False
-
-            # Downward/Bearing conditions
-            # Bottom of red candlestick crossed MA-100
-            top_red_candle = True if open_price < ma_100[len(ma_100) - 1] else False
-            # Tip of red candlestick crossed MA-100
-            bottom_red_candle = True if close_price < ma_100[len(ma_100) - 1] else False
-            # Second to last Tip of candlestick crossed MA-100
-            previous_bottom_red_candle = True if close_price < ma_100[len(ma_100) - 2] else False
-
-            # Weak signals
-            bollinguer_bands_signal = self._weak_signals(close_price, open_price, ma_7, ma_25, ma_100)
-
-            # Strong signals
-            if ma_25_crossed and ma_7_crossed and top_green_candle and bottom_green_candle and previous_top_green_candle:
-                bollinguer_bands_signal = "STRONG BUY"
-
-            if ma_25_crossed and ma_7_crossed and top_red_candle and bottom_red_candle and previous_bottom_red_candle:
-                bollinguer_bands_signal = "STRONG SELL"
+            if not bollinguer_bands_signal:
+                bollinguer_bands_signal = self._weak_signals(
+                    close_price, open_price, ma_7, ma_25, ma_100
+                )
 
             # Update Current price
-            correlations = self.app.db.correlations.find_one_and_update(
-                {"market_a": symbol}, {
-                    "$set": {
-                        "current_price": result["k"]["c"],
-                        "bollinguer_bands_signal": bollinguer_bands_signal
-                    }
-                }
-            )
+            if bollinguer_bands_signal:
+                correlations = self.app.db.correlations.find_one_and_update(
+                    {"market_a": symbol},
+                    {
+                        "$set": {
+                            "lastModified": "$$NOW",
+                            "current_price": result["k"]["c"],
+                            "bollinguer_bands_signal": bollinguer_bands_signal,
+                        },
+                    },
+                )
             print(f"{symbol} Bollinguer signal:{bollinguer_bands_signal}")

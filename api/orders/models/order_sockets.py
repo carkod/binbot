@@ -6,6 +6,7 @@ from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
 
+
 class OrderUpdates:
     def __init__(self, app):
         self.key = os.getenv("BINANCE_KEY")
@@ -48,13 +49,13 @@ class OrderUpdates:
             on_message=self.on_message,
         )
         ws.run_forever()
-        
+
     def close_stream(self, ws):
         ws.close()
         print("Active socket closed")
 
     def on_open(self, ws):
-        print("Sockets stream opened")
+        print("Orders websockets opened")
 
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
@@ -79,7 +80,7 @@ class OrderUpdates:
             completed = self.app.db.bots.find_one_and_update(
                 {
                     "orders": {
-                        "$elemMatch": {"deal_type": "take_profit", "order_id": order_id }
+                        "$elemMatch": {"deal_type": "take_profit", "order_id": order_id}
                     }
                 },
                 {"$set": {"active": "false"}},

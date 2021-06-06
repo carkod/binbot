@@ -73,8 +73,8 @@ class KlineSockets:
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
-            if bot and "safety_order_prices" in bot["deal"]:
-                for key, value in bot["deal"]["safety_order_prices"].items():
+            if bot and "safety_order_prices" in bot["deal"] and len(bot["deal"]["safety_order_prices"]) > 0:
+                for key, value in bot["deal"]["safety_order_prices"]:
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(value) >= float(close_price):
                         deal = DealUpdates(bot, app)
