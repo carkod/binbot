@@ -28,7 +28,7 @@ class MarketUpdates:
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
-        self.interval = "1h"
+        self.interval = "1m"
 
     def _get_candlestick(self, market):
         url = f"{self.bb_candlestick_url}/{market}/{self.interval}"
@@ -175,7 +175,7 @@ class MarketUpdates:
 
             highest_price = max(data[0]["high"])
             lowest_price = max(data[0]["low"])
-            spread = (float(highest_price) / float(lowest_price)) - 1
+            spread = ((float(highest_price) / float(lowest_price)) - 1)
 
             bollinguer_bands_signal = None
 

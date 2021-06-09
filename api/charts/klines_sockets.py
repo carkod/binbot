@@ -6,7 +6,7 @@ from websocket import WebSocketApp
 import threading
 from api.app import create_app
 class KlineSockets:
-    def __init__(self, subs=True):
+    def __init__(self, interval="1m", subs=True):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
@@ -17,7 +17,7 @@ class KlineSockets:
         self.base = os.getenv("WS_BASE")
         self.path = "/ws"
         self.subs = subs
-        self.interval = "1m"
+        self.interval = interval
 
     def start_stream(self):
         app = create_app()

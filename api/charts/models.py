@@ -6,6 +6,7 @@ import requests
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp
 from flask import request
+import threading
 
 
 class Candlestick:
@@ -16,11 +17,8 @@ class Candlestick:
 
     candlestick_url = os.getenv("CANDLESTICK")
 
-    def __init__(self, limit="200"):
+    def __init__(self, interval="1m", limit="200"):
         pair = request.view_args["pair"]
-        interval = (
-            request.view_args["interval"] if "interval" in request.view_args else "1m"
-        )
         params = {"symbol": pair, "interval": interval, "limit": limit}
         res = requests.get(url=self.candlestick_url, params=params)
         self.data = res.json()
@@ -116,6 +114,8 @@ class Candlestick:
         return ma_100, ma_25, ma_7
 
     def get(self):
+        for thread in threading.enumerate():
+            print(thread.name)
         trace = self.candlestick_trace()
         ma_100, ma_25, ma_7 = self.bollinguer_bands()
         resp = jsonResp({"trace": [trace, ma_100, ma_25, ma_7]}, 200)

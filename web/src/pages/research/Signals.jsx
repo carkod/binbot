@@ -37,7 +37,7 @@ export default function Signals({ data, setPair }) {
                 <small>{moment(item.lastModified.$date).fromNow()}</small>
               }
             </td>
-            <td>{item.spread}</td>
+            <td>{roundDecimals(item.spread * 100, 4) + "%"}</td>
             <td>{roundDecimals(item.last_volume, 4)}</td>
           </tr>
         ))}

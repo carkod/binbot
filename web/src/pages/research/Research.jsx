@@ -7,6 +7,9 @@ import {
   CardHeader,
   CardTitle,
   Col,
+  FormGroup,
+  Input,
+  Label,
   Row,
 } from "reactstrap";
 import Candlestick from "../../components/Candlestick";
@@ -14,13 +17,16 @@ import { checkValue, intervalOptions } from "../../validations";
 import { loadCandlestick } from "../bots/actions";
 import { getResearchData } from "./actions";
 import Signals from "./Signals";
+import { Typeahead } from "react-bootstrap-typeahead";
+import "react-bootstrap-typeahead/css/Typeahead.css";
+
 
 class Research extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       activeTab: "signals",
-      candlestick_interval: "1h",
+      candlestick_interval: ["1m"],
     };
   }
 
@@ -51,6 +57,14 @@ class Research extends React.Component {
     this.setState({ pair: pair });
   };
 
+  handleInterval = (e) => {
+    e.preventDefault();
+    if (!checkValue(this.state.pair)) {
+      this.props.loadCandlestick(this.state.pair, e.target.value);
+    }
+    this.setState({ candlestick_interval: e.target.value });
+  };
+
   render() {
     return (
       <>
@@ -61,7 +75,7 @@ class Research extends React.Component {
                 <Card style={{ minHeight: "650px" }}>
                   <CardHeader>
                     <CardTitle tag="h3">{this.state.pair}</CardTitle>
-                      1 minute interval only. Signals update with websockets every 1 minute.
+                      Interval: {this.state.candlestick_interval}
                   </CardHeader>
                   <CardBody>
                     {this.props.candlestick && !checkValue(this.state.pair) ? (
@@ -80,7 +94,14 @@ class Research extends React.Component {
                 <CardHeader>
                   <CardTitle>
                     <h2>Signals</h2>
-                    <small>1 minute</small>
+                    <FormGroup>
+                      <Label for="candlestick_interval">Select Interval</Label>
+                      <Input type="select" name="candlestick_interval" id="interval" onChange={this.handleInterval}>
+                        {intervalOptions.map((x, i) => 
+                          <option key={x} value={x}>{x}</option>
+                        )}
+                      </Input>
+                    </FormGroup>
                   </CardTitle>
                 </CardHeader>
                 <CardBody>
