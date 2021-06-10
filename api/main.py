@@ -17,7 +17,6 @@ from api.orders.routes import order_blueprint
 from api.tools.jsonresp import jsonResp
 from api.user.routes import user_blueprint
 from api.research.routes import research_blueprint
-from api.research.market_updates import MarketUpdates
 from api.threads import market_update_thread
 
 app = create_app()

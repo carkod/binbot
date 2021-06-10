@@ -26,7 +26,7 @@ class MarketUpdates:
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
-        self.interval = "1m"
+        self.interval = "1h"
 
     def _get_candlestick(self, market):
         url = f"{self.bb_candlestick_url}/{market}/{self.interval}"

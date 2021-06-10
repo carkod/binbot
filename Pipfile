@@ -22,6 +22,7 @@ apscheduler = "*"
 gunicorn = "*"
 websocket-client = "*"
 flask-mongoengine = "*"
+scipy = "*"
 
 [requires]
 python_version = "3.8"

@@ -1,7 +1,7 @@
 import React from "react";
+import "react-bootstrap-typeahead/css/Typeahead.css";
 import { connect } from "react-redux";
 import {
-  Badge,
   Card,
   CardBody,
   CardHeader,
@@ -17,21 +17,23 @@ import { checkValue, intervalOptions } from "../../validations";
 import { loadCandlestick } from "../bots/actions";
 import { getResearchData } from "./actions";
 import Signals from "./Signals";
-import { Typeahead } from "react-bootstrap-typeahead";
-import "react-bootstrap-typeahead/css/Typeahead.css";
-
 
 class Research extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       activeTab: "signals",
-      candlestick_interval: ["1m"],
+      candlestick_interval: "1h",
     };
   }
 
   componentDidMount = () => {
-    this.props.getResearchData();
+    setTimeout(() => this.props.getResearchData(), 3000)
+    if (!("Notification" in window)) {
+      alert("This browser does not support desktop notification");
+    } else {
+      Notification.requestPermission();
+    }
   };
 
   componentDidUpdate = (p, s) => {
@@ -44,11 +46,31 @@ class Research extends React.Component {
       );
     }
 
-    if (!checkValue(this.state.pair) && !checkValue(this.state.candlestick_interval) && this.state.candlestick_interval !== s.candlestick_interval) {
+    if (
+      !checkValue(this.state.pair) &&
+      !checkValue(this.state.candlestick_interval) &&
+      this.state.candlestick_interval !== s.candlestick_interval
+    ) {
       this.props.loadCandlestick(
         this.state.pair,
         this.state.candlestick_interval
       );
+    }
+
+    if (!checkValue(this.props.research) && this.props.research !== p.research) {
+      let strongest = [];
+      this.props.research.forEach(element => {
+        if (element.bollinguer_bands_signal === "STRONG BUY" && element.spread > 0.003) {
+          const strongBuy = {
+            pair: element.market_a,
+            spread: element.spread
+          }
+          strongest.push(strongBuy);
+        }
+      });
+      const maxSpread = Math.max.apply(Math, strongest.map((element) => element.spread))
+      const maxPair = strongest.find(x => x.spread === maxSpread);
+      this.showNotification(`STRONG BUY signal for ${maxPair.pair}`)
     }
   };
 
@@ -65,6 +87,10 @@ class Research extends React.Component {
     this.setState({ candlestick_interval: e.target.value });
   };
 
+  showNotification(message) {
+    new Notification(message)
+  }
+
   render() {
     return (
       <>
@@ -75,7 +101,7 @@ class Research extends React.Component {
                 <Card style={{ minHeight: "650px" }}>
                   <CardHeader>
                     <CardTitle tag="h3">{this.state.pair}</CardTitle>
-                      Interval: {this.state.candlestick_interval}
+                    Interval: {this.state.candlestick_interval}
                   </CardHeader>
                   <CardBody>
                     {this.props.candlestick && !checkValue(this.state.pair) ? (
@@ -96,10 +122,17 @@ class Research extends React.Component {
                     <h2>Signals</h2>
                     <FormGroup>
                       <Label for="candlestick_interval">Select Interval</Label>
-                      <Input type="select" name="candlestick_interval" id="interval" onChange={this.handleInterval}>
-                        {intervalOptions.map((x, i) => 
-                          <option key={x} value={x}>{x}</option>
-                        )}
+                      <Input
+                        type="select"
+                        name="candlestick_interval"
+                        id="interval"
+                        onChange={this.handleInterval}
+                      >
+                        {intervalOptions.map((x, i) => (
+                          <option key={x} value={x}>
+                            {x}
+                          </option>
+                        ))}
                       </Input>
                     </FormGroup>
                   </CardTitle>
