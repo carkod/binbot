@@ -7,8 +7,6 @@ from websocket import WebSocketApp
 from api.app import create_app
 import pandas
 import math
-
-
 class MarketUpdates:
 
     key = os.getenv("BINANCE_KEY")
@@ -51,11 +49,14 @@ class MarketUpdates:
             on_close=self.close_stream,
             on_message=self.on_message,
         )
+        # For thread management
+        self.markets_streams = ws
         ws.run_forever()
 
     def close_stream(self, ws):
         ws.close()
         print("Active socket closed")
+        self.start_stream()
 
     def on_open(self, ws):
         print("Market data updates socket opened")
@@ -203,4 +204,4 @@ class MarketUpdates:
                         },
                     },
                 )
-            print(f"{symbol} Bollinguer signal: {bollinguer_bands_signal}")
+            print(f"{symbol} Bollinguer signal: {bollinguer_bands_signal}, interval: {self.interval}")

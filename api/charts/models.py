@@ -7,6 +7,7 @@ from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp
 from flask import request
 import threading
+from api.threads import market_update_thread
 
 
 class Candlestick:
@@ -25,6 +26,7 @@ class Candlestick:
         df = pd.DataFrame(self.data)
         dates = df[0].tolist()
         self.dates = dates
+        self.interval = interval
 
     def _close_prices(self):
         data = self.data
@@ -115,7 +117,11 @@ class Candlestick:
 
     def get(self):
         for thread in threading.enumerate():
-            print(thread.name)
+            if thread.name == "market_updates_thread":
+                if thread._target.__self__.interval != self.interval:
+                    thread._target.__self__.markets_streams.close()
+                    market_update_thread()
+
         trace = self.candlestick_trace()
         ma_100, ma_25, ma_7 = self.bollinguer_bands()
         resp = jsonResp({"trace": [trace, ma_100, ma_25, ma_7]}, 200)

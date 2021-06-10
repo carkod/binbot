@@ -18,6 +18,7 @@ from api.tools.jsonresp import jsonResp
 from api.user.routes import user_blueprint
 from api.research.routes import research_blueprint
 from api.research.market_updates import MarketUpdates
+from api.threads import market_update_thread
 
 app = create_app()
 
@@ -56,7 +57,7 @@ def index():
 
 order_updates = OrderUpdates(app)
 # start a worker process to move the received stream_data from the stream_buffer to a print function
-worker_thread = threading.Thread(target=order_updates.run_stream)
+worker_thread = threading.Thread(name="order_updates_thread", target=order_updates.run_stream)
 worker_thread.start()
 
 kline_updates = KlineSockets()
@@ -65,6 +66,4 @@ kline_thread = threading.Thread(target=kline_updates.start_stream)
 kline_thread.start()
 
 # Research market updates
-market_data_updates = MarketUpdates()
-market_updates_thread = threading.Thread(target=market_data_updates.start_stream)
-market_updates_thread.start()
+market_update_thread()
