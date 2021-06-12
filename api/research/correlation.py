@@ -27,7 +27,7 @@ class Correlation(Account):
         res = requests.get(url=self.candlestick_url, params=params)
         return res.json()
 
-    def trigger_r(self, interval, limit):
+    def trigger_r(self, interval="1d", limit="20"):
         app = self.app
         symbols = self.get_exchange_info()["symbols"]
         symbols_count = len(symbols) * 2

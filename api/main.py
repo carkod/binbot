@@ -18,6 +18,7 @@ from api.tools.jsonresp import jsonResp
 from api.user.routes import user_blueprint
 from api.research.routes import research_blueprint
 from api.threads import market_update_thread
+from api.research.correlation import Correlation
 
 app = create_app()
 
@@ -25,6 +26,7 @@ app = create_app()
 scheduler = BackgroundScheduler()
 assets = Assets(app)
 orders = Orders()
+research_data = Correlation()
 
 scheduler.add_job(
     func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=0, minute=1
@@ -34,6 +36,13 @@ scheduler.add_job(
     trigger="cron",
     timezone="Europe/London",
     hour=1,
+    minute=1,
+)
+scheduler.add_job(
+    func=research_data.trigger_r,
+    trigger="cron",
+    timezone="Europe/London",
+    hour=2,
     minute=1,
 )
 scheduler.start()
@@ -54,10 +63,10 @@ def index():
     return jsonResp({"status": "Online"}, 200)
 
 
-# order_updates = OrderUpdates(app)
-# # start a worker process to move the received stream_data from the stream_buffer to a print function
-# worker_thread = threading.Thread(name="order_updates_thread", target=order_updates.run_stream)
-# worker_thread.start()
+order_updates = OrderUpdates(app)
+# start a worker process to move the received stream_data from the stream_buffer to a print function
+worker_thread = threading.Thread(name="order_updates_thread", target=order_updates.run_stream)
+worker_thread.start()
 
 kline_updates = KlineSockets()
 # start a worker process to move the received stream_data from the stream_buffer to a print function

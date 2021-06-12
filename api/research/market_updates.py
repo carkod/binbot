@@ -16,17 +16,17 @@ class MarketUpdates:
     order_url = os.getenv("ORDER")
     candlestick_url = os.getenv("CANDLESTICK")
 
-    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}:{os.getenv("FLASK_PORT")}'
+    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
     bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
 
     # streams
     base = os.getenv("WS_BASE")
 
-    def __init__(self):
+    def __init__(self, interval="1m"):
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
-        self.interval = "1h"
+        self.interval = interval
 
     def _get_candlestick(self, market):
         url = f"{self.bb_candlestick_url}/{market}/{self.interval}"
@@ -42,8 +42,6 @@ class MarketUpdates:
 
         string_params = "/".join(params)
         url = f"{self.base}/ws/{string_params}"
-        print("Hello")
-        print(url)
         ws = WebSocketApp(
             url,
             on_open=self.on_open,
@@ -66,6 +64,8 @@ class MarketUpdates:
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
         ws.close()
+        if error == "[Errno 104] Connection reset by peer":
+            self.start_stream()
 
     def on_message(self, wsapp, message):
         response = json.loads(message)
@@ -170,7 +170,9 @@ class MarketUpdates:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
+            print(f"market_update kline {symbol}")
             data = self._get_candlestick(symbol)["trace"]
+            print("market_update kline after data")
             ma_100 = data[1]["y"]
             ma_25 = data[2]["y"]
             ma_7 = data[3]["y"]
@@ -190,7 +192,6 @@ class MarketUpdates:
                 bollinguer_bands_signal = self._weak_signals(
                     close_price, open_price, ma_7, ma_25, ma_100
                 )
-
             # Update Current price
             if bollinguer_bands_signal:
                 self.app.db.correlations.find_one_and_update(
