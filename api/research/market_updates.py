@@ -42,6 +42,8 @@ class MarketUpdates:
 
         string_params = "/".join(params)
         url = f"{self.base}/ws/{string_params}"
+        print("Hello")
+        print(url)
         ws = WebSocketApp(
             url,
             on_open=self.on_open,
