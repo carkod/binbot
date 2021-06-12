@@ -68,9 +68,11 @@ class Research extends React.Component {
           strongest.push(strongBuy);
         }
       });
-      const maxSpread = Math.max.apply(Math, strongest.map((element) => element.spread))
-      const maxPair = strongest.find(x => x.spread === maxSpread);
-      this.showNotification(`STRONG BUY signal for ${maxPair.pair}`)
+      if (strongest.length > 0) {
+        const maxSpread = Math.max.apply(Math, strongest.map((element) => element.spread))
+        const maxPair = strongest.find(x => x.spread === maxSpread);
+        this.showNotification(`STRONG BUY signal for ${maxPair.pair}`)
+      }
     }
   };
 
