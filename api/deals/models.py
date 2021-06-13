@@ -13,7 +13,7 @@ from flask import current_app as app
 
 class Deal(Account):
     order_book_url = os.getenv("ORDER_BOOK")
-    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}:{os.getenv("FLASK_PORT")}'
+    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
     bb_buy_order_url = f"{bb_base_url}/order/buy"
     bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
     bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"

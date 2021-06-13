@@ -6,7 +6,7 @@ import { checkValue } from "../../validations";
  * @param {*} bot
  * @returns annotations, shapes
  */
-export const generateOrders = (data, bot) => {
+export const botCandlestick = (data, bot) => {
   let annotations = [];
   let shapes = [];
   let currentPrice, currentTime, takeProfit, takeProfitTime;

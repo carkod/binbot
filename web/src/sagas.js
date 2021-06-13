@@ -22,6 +22,7 @@ import {
   watchOpenOrders,
   watchPollOrders,
 } from "./pages/orders/saga";
+import { watchResearchApi } from "./pages/research/saga";
 
 export default function* rootSaga() {
   yield all([
@@ -42,5 +43,6 @@ export default function* rootSaga() {
     watchDeactivateBot(),
     watchGetBalanceDiff(),
     watchGetBalanceInBtc(),
+    watchResearchApi(),
   ]);
 }
