@@ -3,6 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 COPY /web/build/ /usr/share/nginx/html
 COPY ./nginx.conf /etc/nginx/sites-enabled/default
 COPY Pipfile Pipfile.lock start ./
+RUN rm -rf .env.local
 RUN chmod +x start
 RUN pip install --upgrade pip && pip install pipenv gunicorn
 RUN pipenv install --system --deploy --ignore-pipfile

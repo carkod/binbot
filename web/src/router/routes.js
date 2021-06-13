@@ -4,6 +4,7 @@ import Registration from "../containers/registration/Registration";
 import BotForm from "../pages/bots/BotForm";
 import Bots from "../pages/bots/Bots";
 import Orders from "../pages/orders/Orders";
+import Research from "../pages/research/Research";
 
 const routes = [
   {
@@ -19,7 +20,7 @@ const routes = [
     path: "/bots",
     exact: true,
     name: "Bots",
-    icon: "nc-icon nc-tile-56",
+    icon: "nc-icon nc-laptop",
     component: Bots,
     layout: "/admin",
     nav: true,
@@ -29,7 +30,7 @@ const routes = [
     path: "/bots-create",
     exact: true,
     name: "Create new Bot",
-    icon: "nc-icon nc-tile-56",
+    icon: "nc-icon nc-laptop",
     component: BotForm,
     layout: "/admin",
     nav: false,
@@ -38,7 +39,7 @@ const routes = [
   {
     path: "/bots-edit/:id",
     name: "Edit Bot",
-    icon: "nc-icon nc-tile-56",
+    icon: "nc-icon nc-laptop",
     component: BotForm,
     layout: "/admin",
     nav: false,
@@ -47,7 +48,7 @@ const routes = [
   {
     path: "/orders",
     name: "Orders",
-    icon: "nc-icon nc-tile-56",
+    icon: "nc-icon nc-briefcase-24",
     component: Orders,
     layout: "/admin",
     nav: true,
@@ -56,8 +57,8 @@ const routes = [
   {
     path: "/research",
     name: "Research",
-    icon: "nc-icon nc-single-02",
-    component: UserPage,
+    icon: "nc-icon nc-ruler-pencil",
+    component: Research,
     layout: "/admin",
     nav: true,
     private: true,

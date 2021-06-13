@@ -402,3 +402,7 @@ textarea.form-control {
     margin-top: 6px;
   }
 }
+
+select .form-control {
+  padding: $padding-small-vertical  $padding-small-vertical;
+}

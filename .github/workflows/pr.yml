@@ -1,10 +1,27 @@
 name: PR checks
 on: pull_request
+env:
+  ACTIONS_RUNNER_DEBUG: true
+  TIMEZONE: US/Eastern
+  SECRET_KEY: test
+  ENVIRONMENT: development
+  FLASK_DIRECTORY: /api/
+  FLASK_DOMAIN: http://localhost
+  FRONTEND_DOMAIN: http://localhost:3000
+  MONGO_AUTH_USERNAME: root
+  MONGO_AUTH_PASSWORD: rootPassXXX
+  MONGO_APP_DATABASE: binbot
 
 jobs:
   push_to_registry:
     name: Test and deploy docker image
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: mongo
+        ports:
+          - 27018:27017
+
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
@@ -15,8 +32,11 @@ jobs:
           yarn run build \
       - name: Build image
         run: docker build -t binbot .
+      # - name: Test api
+      #   run: docker run -d --attach STDERR --network host binbot & curl --head --fail --retry-delay 3 --retry 30 --retry-connrefused http://localhost:8006
       - name: Test app
-        run: docker run --detach --network host binbot & curl --head --fail --retry-delay 1 --retry 30 --retry-connrefused http://localhost
+        run: |
+          docker run --detach --network host binbot & curl --head --fail --retry-delay 1 --retry 30 --retry-connrefused http://localhost
       - name: Tag image
         run: docker tag binbot carloswufei/binbot
       - name: Push to Docker Hub

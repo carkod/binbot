@@ -1,6 +1,6 @@
-import { Typeahead } from "react-bootstrap-typeahead";
 import Form from "react-bootstrap/Form";
 import { checkValue } from "../validations.js";
+import { Typeahead } from "react-bootstrap-typeahead";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 
 export default function SymbolSearch({

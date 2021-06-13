@@ -65,3 +65,15 @@
   background-color: $success-color;
   padding: 0.3em;
 }
+
+.u-td-bg-color--success {
+  background-color: $success-color;
+}
+
+.u-td-bg-color--danger {
+  background-color: $danger-color;
+}
+
+.u-td-bg-color--disabled {
+  background-color: $link-disabled-color;
+}
