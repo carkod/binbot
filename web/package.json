@@ -8,7 +8,7 @@
     "history": "^5.0.0",
     "immer": "^9.0.2",
     "moment": "^2.29.1",
-    "nanoid": "^3.1.22",
+    "nanoid": "^3.1.23",
     "plotly.js": "^1.57.1",
     "react": "^17.0.1",
     "react-bootstrap": "^1.4.0",
