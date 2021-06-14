@@ -14,17 +14,17 @@ services:
     volumes:
       - ./mongo_data:/data/db
   
-  api:
-    image: binbot:staging
-    restart: on-failure
-    container_name: binbot
-    depends_on:
-      - db
-    env_file:
-      - .env
-    ports:
-      - 8007:80
-      - 8008:8006
+  # api:
+  #   image: binbot:staging
+  #   restart: on-failure
+  #   container_name: binbot
+  #   depends_on:
+  #     - db
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - 8007:80
+  #     - 8008:8006
 
 volumes:
   mongo_data:

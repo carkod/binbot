@@ -24,7 +24,7 @@ class MarketUpdates:
     # streams
     base = os.getenv("WS_BASE")
 
-    def __init__(self, interval="1m"):
+    def __init__(self, interval="30m"):
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
@@ -164,23 +164,22 @@ class MarketUpdates:
         # Strong signals
         if ma_25_crossed and ma_7_crossed:
             if top_green_candle and bottom_green_candle and previous_top_green_candle:
-                signal_strength = "STRONG BUY"
+                signal_strength = "STRONG"
                 signal_side = EnumDefinitions.order_side[0]
 
             if top_red_candle and bottom_red_candle and previous_bottom_red_candle:
-                signal_strength = "STRONG SELL"
+                signal_strength = "STRONG"
                 signal_side = EnumDefinitions.order_side[1]
 
         return signal_strength, signal_side
 
     def process_kline_stream(self, result):
-        if result["k"]["x"]:
+        # Check if closed result["k"]["x"]
+        if result["k"]:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
-            print(f"market_update kline {symbol}")
             data = self._get_candlestick(symbol)["trace"]
-            print("market_update kline after data")
             ma_100 = data[1]["y"]
             ma_25 = data[2]["y"]
             ma_7 = data[3]["y"]

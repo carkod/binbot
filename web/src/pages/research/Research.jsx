@@ -8,8 +8,8 @@ import {
   CardTitle,
   Col,
   FormGroup,
-  Input,
   Label,
+  Input,
   Row,
 } from "reactstrap";
 import Candlestick from "../../components/Candlestick";
@@ -24,6 +24,8 @@ class Research extends React.Component {
     this.state = {
       activeTab: "signals",
       candlestick_interval: "1h",
+      orderSpread: "desc",
+      orderVolume: "desc"
     };
   }
 
@@ -60,7 +62,7 @@ class Research extends React.Component {
     if (!checkValue(this.props.research) && this.props.research !== p.research) {
       let strongest = [];
       this.props.research.forEach(element => {
-        if (element.bollinguer_bands_signal === "STRONG" && element.spread > 0.003) {
+        if (element.bollinguer_bands_signal === "STRONG" && element.spread > 0.0003) {
           const strongBuy = {
             pair: element.market_a,
             spread: element.spread
@@ -91,6 +93,15 @@ class Research extends React.Component {
 
   showNotification(message) {
     new Notification(message)
+  }
+
+  handleSignalsOrder = (type) => {
+    if (type === "spread") {
+      this.props.getResearchData()
+    }
+    if (type === "volume") {
+
+    }
   }
 
   render() {
@@ -129,6 +140,7 @@ class Research extends React.Component {
                         name="candlestick_interval"
                         id="interval"
                         onChange={this.handleInterval}
+                        defaultValue={this.state.candlestick_interval}
                       >
                         {intervalOptions.map((x, i) => (
                           <option key={x} value={x}>
@@ -144,6 +156,7 @@ class Research extends React.Component {
                     <Signals
                       data={this.props.research}
                       setPair={this.handleSetPair}
+                      orderBy={this.handleSignalsOrder}
                     />
                   ) : (
                     "No signals available"
