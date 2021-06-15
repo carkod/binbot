@@ -88,9 +88,23 @@ class Correlation(Account):
         return resp
 
     def get_signals(self):
-        args = {"bollinguer_bands_signal": {"$exists": True, "$ne": None}}
+        args = {"signal_strength": {"$exists": True, "$ne": None}}
+        sort = [["signal_strength", 1], ["lastModified", -1]]
+        if request.args.get("filter_by") == "signal_side":
+            signal_side = {
+                "signal_side": request.args.get("filter")
+            }
+            args.update(signal_side)
+        if request.args.get("filter_by") == "signal_strength":
+            signal_side = {
+                "signal_strength": request.args.get("filter")
+            }
+            args.update(signal_side)
 
-        query = self.app.db.correlations.find(args).sort([["bollinguer_bands_signal", 1], ["lastModified", -1]])
+        if request.args.get("order_by") == "spread":
+            sort.insert(0, ["spread", int(request.args.get("order"))])
+
+        query = self.app.db.correlations.find(args).sort(sort)
         data = list(query)
         resp = jsonResp({"data": data}, 200)
         return resp

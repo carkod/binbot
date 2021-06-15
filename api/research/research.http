@@ -12,3 +12,6 @@ GET http://localhost:5000/research/correlation?market_a=BTCUSDT HTTP/1.1
 
 ### Get Bolliguer buy/sell signals
 GET http://localhost:5000/research/signals HTTP/1.1
+
+### Signals with filters and orderby
+GET http://localhost:5000/research/signals?filterby=side&filter=BUY&orderby=spread&order=-1 HTTP/1.1

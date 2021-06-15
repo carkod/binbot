@@ -38,13 +38,7 @@ scheduler.add_job(
     hour=1,
     minute=1,
 )
-scheduler.add_job(
-    func=research_data.trigger_r,
-    trigger="cron",
-    timezone="Europe/London",
-    hour=2,
-    minute=1,
-)
+
 scheduler.start()
 atexit.register(lambda: scheduler.shutdown(wait=False))
 
@@ -74,4 +68,4 @@ kline_thread = threading.Thread(target=kline_updates.start_stream)
 kline_thread.start()
 
 # Research market updates
-market_update_thread()
+# market_update_thread()

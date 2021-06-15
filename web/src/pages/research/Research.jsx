@@ -8,8 +8,8 @@ import {
   CardTitle,
   Col,
   FormGroup,
-  Input,
   Label,
+  Input,
   Row,
 } from "reactstrap";
 import Candlestick from "../../components/Candlestick";
@@ -18,17 +18,24 @@ import { loadCandlestick } from "../bots/actions";
 import { getResearchData } from "./actions";
 import Signals from "./Signals";
 
+
+const filterOptions = ["", "BUY", "SELL", "STRONG", "WEAK"];
 class Research extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       activeTab: "signals",
       candlestick_interval: "1h",
+      order: true, // true = desc = -1, false = asc = 1
+      filter: ""
     };
   }
 
   componentDidMount = () => {
-    setTimeout(() => this.props.getResearchData(), 3000)
+    this.props.getResearchData();
+    setTimeout(() => {
+      this.props.getResearchData();
+    }, 180000)
     if (!("Notification" in window)) {
       alert("This browser does not support desktop notification");
     } else {
@@ -60,7 +67,7 @@ class Research extends React.Component {
     if (!checkValue(this.props.research) && this.props.research !== p.research) {
       let strongest = [];
       this.props.research.forEach(element => {
-        if (element.bollinguer_bands_signal === "STRONG BUY" && element.spread > 0.003) {
+        if (element.bollinguer_bands_signal === "STRONG" && element.spread > 0.0003) {
           const strongBuy = {
             pair: element.market_a,
             spread: element.spread
@@ -93,6 +100,37 @@ class Research extends React.Component {
     new Notification(message)
   }
 
+  handleSignalsOrder = (type) => {
+    const { order } = this.state;
+    const params = {
+      order_by: type,
+      order: order ? 1 : -1,
+    }
+    this.setState({ order: !order })
+    this.props.getResearchData(params);
+  }
+
+  handleSignalsFilter = (e) => {
+    let filterBy, filter;
+    if (e.target.value === "BUY" || e.target.value === "SELL") {
+      filter = e.target.value;
+      filterBy = "signal_side";
+    }
+
+    if (e.target.value === "STRONG" || e.target.value === "WEAK") {
+      filter = e.target.value;
+      filterBy = "signal_strength";
+    }
+
+    this.setState({ filter: e.target.value })
+
+    const params = {
+      filter_by: filterBy,
+      filter: filter,
+    }
+    this.props.getResearchData(params)
+  }
+
   render() {
     return (
       <>
@@ -122,21 +160,44 @@ class Research extends React.Component {
                 <CardHeader>
                   <CardTitle>
                     <h2>Signals</h2>
-                    <FormGroup>
-                      <Label for="candlestick_interval">Select Interval</Label>
-                      <Input
-                        type="select"
-                        name="candlestick_interval"
-                        id="interval"
-                        onChange={this.handleInterval}
-                      >
-                        {intervalOptions.map((x, i) => (
-                          <option key={x} value={x}>
-                            {x}
-                          </option>
-                        ))}
-                      </Input>
-                    </FormGroup>
+                    <Row>
+                      <Col md="6">
+                        <FormGroup>
+                          <Label for="candlestick_interval">Select Interval</Label>
+                          <Input
+                            type="select"
+                            name="candlestick_interval"
+                            id="interval"
+                            onChange={this.handleInterval}
+                            defaultValue={this.state.candlestick_interval}
+                          >
+                            {intervalOptions.map((x, i) => (
+                              <option key={x} value={x}>
+                                {x}
+                              </option>
+                            ))}
+                          </Input>
+                        </FormGroup>
+                      </Col>
+                      <Col md="6">
+                        <FormGroup>
+                          <Label for="activeFilter">Filter by:</Label>
+                          <Input
+                            type="select"
+                            name="activeFilter"
+                            id="filter-by"
+                            onChange={this.handleSignalsFilter}
+                            defaultValue={this.state.activeFilter}
+                          >
+                            {filterOptions.map((x, i) => (
+                              <option key={i} value={x}>
+                                {x}
+                              </option>
+                            ))}
+                          </Input>
+                        </FormGroup>
+                      </Col>
+                    </Row>
                   </CardTitle>
                 </CardHeader>
                 <CardBody>
@@ -144,6 +205,7 @@ class Research extends React.Component {
                     <Signals
                       data={this.props.research}
                       setPair={this.handleSetPair}
+                      orderBy={this.handleSignalsOrder}
                     />
                   ) : (
                     "No signals available"

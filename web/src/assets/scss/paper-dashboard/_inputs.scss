@@ -244,8 +244,7 @@
 
   & + .form-control,
   & ~ .form-control {
-    @include input-size($padding-base-vertical - 1, $padding-base-horizontal);
-    padding-left: 18px;
+    @include input-size($padding-base-vertical, $padding-base-horizontal);
   }
 
   i {

@@ -3,10 +3,12 @@ import os
 
 import requests
 from api.tools.handle_error import handle_error
+from api.tools.enum_definitions import EnumDefinitions
 from websocket import WebSocketApp
 from api.app import create_app
 import pandas
 import math
+
 class MarketUpdates:
 
     key = os.getenv("BINANCE_KEY")
@@ -22,7 +24,7 @@ class MarketUpdates:
     # streams
     base = os.getenv("WS_BASE")
 
-    def __init__(self, interval="1m"):
+    def __init__(self, interval="30m"):
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
@@ -84,7 +86,8 @@ class MarketUpdates:
         - This detects prices that go up and go down (both bullying and bearing)
         - Weak signals, as they happen more frequently and do not entail a lot of profit
         """
-        bollinguer_bands_signal = None
+        signal_strength = None
+        signal_side = None
 
         # MA-25 line crossed MA-7
         # Using isclose relative tolerance, as values don't usually match
@@ -104,12 +107,14 @@ class MarketUpdates:
 
         if ma_25_crossed_7:
             if top_green_candle and bottom_green_candle:
-                bollinguer_bands_signal = "WEAK BUY"
+                signal_strength = "WEAK"
+                signal_side = EnumDefinitions.order_side[0]
 
             if top_red_candle and bottom_red_candle:
-                bollinguer_bands_signal = "WEAK SELL"
+                signal_strength = "WEAK"
+                signal_side = EnumDefinitions.order_side[1]
 
-        return bollinguer_bands_signal
+        return signal_strength, signal_side
 
     def _strong_signals(self, close_price, open_price, ma_7, ma_25, ma_100):
         """
@@ -118,7 +123,8 @@ class MarketUpdates:
         Higher volatility
         """
 
-        bollinguer_bands_signal = None
+        signal_strength = None
+        signal_side = None
 
         # MA-25 line crossed MA-100
         ma_25_crossed = (
@@ -158,21 +164,22 @@ class MarketUpdates:
         # Strong signals
         if ma_25_crossed and ma_7_crossed:
             if top_green_candle and bottom_green_candle and previous_top_green_candle:
-                bollinguer_bands_signal = "STRONG BUY"
+                signal_strength = "STRONG"
+                signal_side = EnumDefinitions.order_side[0]
 
             if top_red_candle and bottom_red_candle and previous_bottom_red_candle:
-                bollinguer_bands_signal = "STRONG SELL"
+                signal_strength = "STRONG"
+                signal_side = EnumDefinitions.order_side[1]
 
-        return bollinguer_bands_signal
+        return signal_strength, signal_side
 
     def process_kline_stream(self, result):
-        if result["k"]["x"]:
+        # Check if closed result["k"]["x"]
+        if result["k"]:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
-            print(f"market_update kline {symbol}")
             data = self._get_candlestick(symbol)["trace"]
-            print("market_update kline after data")
             ma_100 = data[1]["y"]
             ma_25 = data[2]["y"]
             ma_7 = data[3]["y"]
@@ -182,29 +189,30 @@ class MarketUpdates:
             lowest_price = max(data[0]["low"])
             spread = ((float(highest_price) / float(lowest_price)) - 1)
 
-            bollinguer_bands_signal = None
+            signal_strength = None
 
-            bollinguer_bands_signal = self._strong_signals(
+            signal_strength, signal_side = self._strong_signals(
                 close_price, open_price, ma_7, ma_25, ma_100
             )
 
-            if not bollinguer_bands_signal:
-                bollinguer_bands_signal = self._weak_signals(
+            if not signal_strength:
+                signal_strength, signal_side = self._weak_signals(
                     close_price, open_price, ma_7, ma_25, ma_100
                 )
             # Update Current price
-            if bollinguer_bands_signal:
+            if signal_strength:
                 self.app.db.correlations.find_one_and_update(
                     {"market_a": symbol},
                     {
                         "$currentDate": {"lastModified": True},
                         "$set": {
                             "current_price": result["k"]["c"],
-                            "bollinguer_bands_signal": bollinguer_bands_signal,
+                            "signal_strength": signal_strength,
+                            "signal_side": signal_side,
                             "volatility": volatility,
                             "last_volume": float(result["k"]["v"]) + float(result["k"]["q"]),
                             "spread": spread
                         },
                     },
                 )
-            print(f"{symbol} Bollinguer signal: {bollinguer_bands_signal}, interval: {self.interval}")
+            print(f"{symbol} Bollinguer signal: {signal_strength}, interval: {self.interval}")
