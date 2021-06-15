@@ -12,11 +12,12 @@ export const GET_RESEARCH_ERROR = "GET_RESEARCH_ERROR";
  * @param  {string} username The current username
  * @return {object} An action object with a type of BOT_SUCCESS passing the repos
  */
-export function getResearchData() {
+export function getResearchData(params) {
   return {
     type: GET_RESEARCH,
     isLoading: false,
     isError: false,
+    params
   };
 }
 

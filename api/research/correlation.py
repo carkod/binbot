@@ -90,14 +90,19 @@ class Correlation(Account):
     def get_signals(self):
         args = {"signal_strength": {"$exists": True, "$ne": None}}
         sort = [["signal_strength", 1], ["lastModified", -1]]
-        if request.args.get("filterby") == "side":
-            signal_side = {"signal_side": request.args.get("filter")}
+        if request.args.get("filter_by") == "signal_side":
+            signal_side = {
+                "signal_side": request.args.get("filter")
+            }
             args.update(signal_side)
-        if request.args.get("orderby") == "spread":
-            if request.args.get("order") == "asc":
-                sort.append(["spread", 1])
-            else:
-                sort.append(["spread", -1])
+        if request.args.get("filter_by") == "signal_strength":
+            signal_side = {
+                "signal_strength": request.args.get("filter")
+            }
+            args.update(signal_side)
+
+        if request.args.get("order_by") == "spread":
+            sort.insert(0, ["spread", int(request.args.get("order"))])
 
         query = self.app.db.correlations.find(args).sort(sort)
         data = list(query)

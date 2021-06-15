@@ -18,19 +18,24 @@ import { loadCandlestick } from "../bots/actions";
 import { getResearchData } from "./actions";
 import Signals from "./Signals";
 
+
+const filterOptions = ["", "BUY", "SELL", "STRONG", "WEAK"];
 class Research extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       activeTab: "signals",
       candlestick_interval: "1h",
-      orderSpread: "desc",
-      orderVolume: "desc"
+      order: true, // true = desc = -1, false = asc = 1
+      filter: ""
     };
   }
 
   componentDidMount = () => {
-    setTimeout(() => this.props.getResearchData(), 3000)
+    this.props.getResearchData();
+    setTimeout(() => {
+      this.props.getResearchData();
+    }, 180000)
     if (!("Notification" in window)) {
       alert("This browser does not support desktop notification");
     } else {
@@ -96,12 +101,34 @@ class Research extends React.Component {
   }
 
   handleSignalsOrder = (type) => {
-    if (type === "spread") {
-      this.props.getResearchData()
+    const { order } = this.state;
+    const params = {
+      order_by: type,
+      order: order ? 1 : -1,
     }
-    if (type === "volume") {
+    this.setState({ order: !order })
+    this.props.getResearchData(params);
+  }
 
+  handleSignalsFilter = (e) => {
+    let filterBy, filter;
+    if (e.target.value === "BUY" || e.target.value === "SELL") {
+      filter = e.target.value;
+      filterBy = "signal_side";
     }
+
+    if (e.target.value === "STRONG" || e.target.value === "WEAK") {
+      filter = e.target.value;
+      filterBy = "signal_strength";
+    }
+
+    this.setState({ filter: e.target.value })
+
+    const params = {
+      filter_by: filterBy,
+      filter: filter,
+    }
+    this.props.getResearchData(params)
   }
 
   render() {
@@ -133,22 +160,44 @@ class Research extends React.Component {
                 <CardHeader>
                   <CardTitle>
                     <h2>Signals</h2>
-                    <FormGroup>
-                      <Label for="candlestick_interval">Select Interval</Label>
-                      <Input
-                        type="select"
-                        name="candlestick_interval"
-                        id="interval"
-                        onChange={this.handleInterval}
-                        defaultValue={this.state.candlestick_interval}
-                      >
-                        {intervalOptions.map((x, i) => (
-                          <option key={x} value={x}>
-                            {x}
-                          </option>
-                        ))}
-                      </Input>
-                    </FormGroup>
+                    <Row>
+                      <Col md="6">
+                        <FormGroup>
+                          <Label for="candlestick_interval">Select Interval</Label>
+                          <Input
+                            type="select"
+                            name="candlestick_interval"
+                            id="interval"
+                            onChange={this.handleInterval}
+                            defaultValue={this.state.candlestick_interval}
+                          >
+                            {intervalOptions.map((x, i) => (
+                              <option key={x} value={x}>
+                                {x}
+                              </option>
+                            ))}
+                          </Input>
+                        </FormGroup>
+                      </Col>
+                      <Col md="6">
+                        <FormGroup>
+                          <Label for="activeFilter">Filter by:</Label>
+                          <Input
+                            type="select"
+                            name="activeFilter"
+                            id="filter-by"
+                            onChange={this.handleSignalsFilter}
+                            defaultValue={this.state.activeFilter}
+                          >
+                            {filterOptions.map((x, i) => (
+                              <option key={i} value={x}>
+                                {x}
+                              </option>
+                            ))}
+                          </Input>
+                        </FormGroup>
+                      </Col>
+                    </Row>
                   </CardTitle>
                 </CardHeader>
                 <CardBody>

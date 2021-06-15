@@ -11,10 +11,10 @@ export default function Signals({ data, setPair, orderBy }) {
           <th>Market</th>
           <th>Signal</th>
           <th>
-            <Button onClick={orderBy("spread")}>Spread (L vs H)</Button>
+            <button className="btn-reset" onClick={() => orderBy("spread")}>Spread (L vs H)</button>
           </th>
           <th>
-          <Button onClick={orderBy("volume")}>Last Volume</Button>
+          <button className="btn-reset" onClick={() => orderBy("volume")}>Last Volume</button>
           </th>
         </tr>
       </thead>
@@ -38,7 +38,7 @@ export default function Signals({ data, setPair, orderBy }) {
                   : "u-td-bg-color--disabled"
               }
             >
-              {`${item.signal_side} ${item.signal_strength}`}
+              {`${item.signal_strength} ${item.signal_side}`}
               <br />
               {item.lastModified && (
                 <small>{moment(item.lastModified.$date).fromNow()}</small>
