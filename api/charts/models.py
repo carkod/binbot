@@ -18,7 +18,7 @@ class Candlestick:
 
     candlestick_url = os.getenv("CANDLESTICK")
 
-    def __init__(self, interval="1m", limit="200"):
+    def __init__(self, interval="1d", limit="200"):
         pair = request.view_args["pair"]
         params = {"symbol": pair, "interval": interval, "limit": limit}
         res = requests.get(url=self.candlestick_url, params=params)
@@ -124,7 +124,7 @@ class Candlestick:
 
         trace = self.candlestick_trace()
         ma_100, ma_25, ma_7 = self.bollinguer_bands()
-        resp = jsonResp({"trace": [trace, ma_100, ma_25, ma_7]}, 200)
+        resp = jsonResp({"trace": [trace, ma_100, ma_25, ma_7], "interval": self.interval}, 200)
         return resp
 
     def get_diff(self):

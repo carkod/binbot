@@ -101,10 +101,12 @@ class Research extends React.Component {
   }
 
   handleSignalsOrder = (type) => {
-    const { order } = this.state;
+    const { order, filter_by, filter} = this.state;
     const params = {
       order_by: type,
       order: order ? 1 : -1,
+      filter_by: filter_by,
+      filter: filter,
     }
     this.setState({ order: !order })
     this.props.getResearchData(params);
@@ -122,7 +124,7 @@ class Research extends React.Component {
       filterBy = "signal_strength";
     }
 
-    this.setState({ filter: e.target.value })
+    this.setState({ filter: e.target.value, filter_by: filterBy })
 
     const params = {
       filter_by: filterBy,
