@@ -49,22 +49,19 @@ class Bots extends React.Component {
           <Row>
             {!checkValue(bots) ?
               bots.map((x, i) => (
-                <Col key={x._id.$oid} lg="4">
+                <Col key={x._id.$oid} lg="3">
                   <Card className="card-stats">
                     <CardBody>
                       <Row>
-                        <Col md="7" xs="12">
+                        <Col md="8" xs="12">
                           <div className="stats">
                             <CardTitle tag="h5" className="card-title">
                               {x.pair}
                             </CardTitle>
                           </div>
                         </Col>
-                        <Col md="5" xs="12">
-                          <CardTitle
-                            tag="h5"
-                            className="card-title u-uppercase"
-                          >
+                        <Col md="4" xs="12">
+                          <CardTitle tag="h5" className="card-title u-uppercase">
                             {!checkValue(x.deal) &&
                             <Badge color={this.getProfit(x.deal.buy_price, x.deal.current_price) > 0 ? "success" : "danger"} >
                               {this.getProfit(x.deal.buy_price, x.deal.current_price) + "%"}
@@ -74,12 +71,12 @@ class Bots extends React.Component {
                         </Col>
                       </Row>
                       <Row className="u-align-baseline">
-                        <Col md="7" xs="12">
+                        <Col md="8" xs="12">
                           <div className="stats">
                             <p className="card-category">{x.name}</p>
                           </div>
                         </Col>
-                        <Col md="5" xs="12">
+                        <Col md="4" xs="12">
                           <div className="stats">
                             <Badge
                               color={
@@ -93,7 +90,7 @@ class Bots extends React.Component {
                       </Row>
                       <hr />
                       <Row>
-                        <Col md="7" xs="12">
+                        <Col md="6" xs="12">
                           <div className="stats">
                             <p className="card-category">Balance Use</p>
                             <p className="card-category"># Safety Orders</p>
@@ -102,10 +99,10 @@ class Bots extends React.Component {
                             {x.trailling === "true" && (
                               <p className="card-category">Trailling TP</p>
                             )}
-                            <p className="card-category">Total commissions</p>
+                            <p className="card-category">Commissions</p>
                           </div>
                         </Col>
-                        <Col md="4" xs="12">
+                        <Col md="6" xs="12">
                           <div className="stats">
                             <p className="card-category">
                               {parseFloat(x.balance_usage) * 100 + "%"}

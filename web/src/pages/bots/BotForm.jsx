@@ -536,22 +536,24 @@ class BotForm extends React.Component {
                     <Badge color="secondary">Inactive</Badge>
                   )}
                 </CardTitle>
-                {intervalOptions.map((item) => (
-                  <Badge
-                    key={item}
-                    onClick={() =>
-                      this.setState({ candlestick_interval: item })
-                    }
-                    color={
-                      this.state.candlestick_interval === item
-                        ? "primary"
-                        : "secondary"
-                    }
-                    className="btn"
-                  >
-                    {item}
-                  </Badge>
-                ))}
+                <div className="">
+                  {intervalOptions.map((item) => (
+                    <Badge
+                      key={item}
+                      onClick={() =>
+                        this.setState({ candlestick_interval: item })
+                      }
+                      color={
+                        this.state.candlestick_interval === item
+                          ? "primary"
+                          : "secondary"
+                      }
+                      className="btn btn-margin-right"
+                    >
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
               </CardHeader>
               <CardBody>
                 {this.props.candlestick && !checkValue(this.state.pair) ? (

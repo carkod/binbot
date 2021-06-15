@@ -6,7 +6,6 @@
   line-height: $line-height;
   text-transform: uppercase;
   border: none;
-  margin: 10px 1px;
   border-radius: $border-radius-small;
   padding: $padding-btn-vertical $padding-btn-horizontal;
   cursor: pointer;
@@ -273,4 +272,8 @@
   &:focus {
     outline: none;
   }
+}
+
+.btn-margin-right {
+  margin-right: $margin-base-vertical;
 }
