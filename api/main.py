@@ -68,4 +68,4 @@ kline_thread = threading.Thread(target=kline_updates.start_stream)
 kline_thread.start()
 
 # Research market updates
-# market_update_thread()
+market_update_thread()

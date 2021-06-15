@@ -20,22 +20,41 @@ import Signals from "./Signals";
 
 
 const filterOptions = ["", "BUY", "SELL", "STRONG", "WEAK"];
+
 class Research extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      activeTab: "signals",
       candlestick_interval: "1h",
-      order: true, // true = desc = -1, false = asc = 1
+      order: false, // true = desc = -1, false = asc = 1
       filter: ""
     };
   }
 
+  getData = (filterValue) => {
+    let filterBy, filter;
+    if (filterValue === "BUY" || filterValue === "SELL") {
+      filter = filterValue;
+      filterBy = "signal_side";
+    }
+
+    if (filterValue === "STRONG" || filterValue === "WEAK") {
+      filter = filterValue;
+      filterBy = "signal_strength";
+    }
+
+    this.setState({ filter: filterValue, filter_by: filterBy })
+
+    const params = {
+      filter_by: filterBy,
+      filter: filter,
+    }
+    this.props.getResearchData(params)
+  }
+
   componentDidMount = () => {
     this.props.getResearchData();
-    setTimeout(() => {
-      this.props.getResearchData();
-    }, 180000)
+    this.pollData = setInterval(() => this.getData(this.state.filter), 10000)
     if (!("Notification" in window)) {
       alert("This browser does not support desktop notification");
     } else {
@@ -83,6 +102,8 @@ class Research extends React.Component {
     }
   };
 
+  componentWillUnmount = () => this.pollData = null;
+
   handleSetPair = (pair) => {
     this.props.loadCandlestick(pair, this.state.candlestick_interval);
     this.setState({ pair: pair });
@@ -101,34 +122,19 @@ class Research extends React.Component {
   }
 
   handleSignalsOrder = (type) => {
-    const { order } = this.state;
+    const { order, filter_by, filter} = this.state;
     const params = {
       order_by: type,
       order: order ? 1 : -1,
+      filter_by: filter_by,
+      filter: filter,
     }
     this.setState({ order: !order })
     this.props.getResearchData(params);
   }
 
   handleSignalsFilter = (e) => {
-    let filterBy, filter;
-    if (e.target.value === "BUY" || e.target.value === "SELL") {
-      filter = e.target.value;
-      filterBy = "signal_side";
-    }
-
-    if (e.target.value === "STRONG" || e.target.value === "WEAK") {
-      filter = e.target.value;
-      filterBy = "signal_strength";
-    }
-
-    this.setState({ filter: e.target.value })
-
-    const params = {
-      filter_by: filterBy,
-      filter: filter,
-    }
-    this.props.getResearchData(params)
+    this.getData(e.target.value);
   }
 
   render() {
