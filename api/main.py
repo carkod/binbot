@@ -1,5 +1,6 @@
 import atexit
 import threading
+import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from api.app import create_app
@@ -68,4 +69,5 @@ kline_thread = threading.Thread(target=kline_updates.start_stream)
 kline_thread.start()
 
 # Research market updates
-market_update_thread()
+if os.environ["ENVIRONMENT"] != "development":
+    market_update_thread()

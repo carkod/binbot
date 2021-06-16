@@ -102,7 +102,9 @@ class Research extends React.Component {
     }
   };
 
-  componentWillUnmount = () => this.pollData = null;
+  componentWillUnmount = () => {
+    this.pollData = null;
+  }
 
   handleSetPair = (pair) => {
     this.props.loadCandlestick(pair, this.state.candlestick_interval);
