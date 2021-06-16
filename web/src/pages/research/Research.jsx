@@ -27,7 +27,8 @@ class Research extends React.Component {
     this.state = {
       candlestick_interval: "1h",
       order: false, // true = desc = -1, false = asc = 1
-      filter: ""
+      filter: "",
+      signal_notification: null,
     };
   }
 
@@ -86,7 +87,7 @@ class Research extends React.Component {
     if (!checkValue(this.props.research) && this.props.research !== p.research) {
       let strongest = [];
       this.props.research.forEach(element => {
-        if (element.bollinguer_bands_signal === "STRONG" && element.spread > 0.0003) {
+        if (element.signal_strength === "STRONG") {
           const strongBuy = {
             pair: element.market_a,
             spread: element.spread
@@ -97,7 +98,10 @@ class Research extends React.Component {
       if (strongest.length > 0) {
         const maxSpread = Math.max.apply(Math, strongest.map((element) => element.spread))
         const maxPair = strongest.find(x => x.spread === maxSpread);
-        this.showNotification(`STRONG BUY signal for ${maxPair.pair}`)
+        if (maxPair.pair !== this.state.signal_notification) {
+          this.setState({ signal_notification: maxPair.pair });
+          this.showNotification(`STRONG BUY signal for ${maxPair.pair}`)
+        }
       }
     }
   };
