@@ -29,6 +29,7 @@ class Research extends React.Component {
       order: false, // true = desc = -1, false = asc = 1
       filter: "",
       signal_notification: null,
+      poll_ms: 10000,
     };
   }
 
@@ -55,7 +56,7 @@ class Research extends React.Component {
 
   componentDidMount = () => {
     this.props.getResearchData();
-    this.pollData = setInterval(() => this.getData(this.state.filter), 10000)
+    this.pollData = setInterval(() => this.getData(this.state.filter), this.state.poll_ms)
     if (!("Notification" in window)) {
       alert("This browser does not support desktop notification");
     } else {
@@ -140,7 +141,8 @@ class Research extends React.Component {
   }
 
   handleSignalsFilter = (e) => {
-    this.getData(e.target.value);
+    this.pollData = null;
+    this.pollData = setInterval(() => this.getData(e.target.value), this.state.poll_ms);
   }
 
   render() {
@@ -167,7 +169,7 @@ class Research extends React.Component {
             </Row>
           )}
           <Row>
-            <Col md="6" sm="3">
+            <Col md="12" sm="3">
               <Card>
                 <CardHeader>
                   <CardTitle>
@@ -223,16 +225,6 @@ class Research extends React.Component {
                     "No signals available"
                   )}
                 </CardBody>
-              </Card>
-            </Col>
-            <Col md="6" sm="7">
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    <h2>Correlations</h2>
-                  </CardTitle>
-                </CardHeader>
-                <CardBody>Correlations content</CardBody>
               </Card>
             </Col>
           </Row>
