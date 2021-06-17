@@ -20,6 +20,7 @@ export default function Signals({ data, setPair, orderBy }) {
               Last Volume
             </button>
           </th>
+          <th>24hr Change</th>
         </tr>
       </thead>
       <tbody>
@@ -50,6 +51,7 @@ export default function Signals({ data, setPair, orderBy }) {
             </td>
             <td>{roundDecimals(item.spread * 100, 4) + "%"}</td>
             <td>{roundDecimals(item.last_volume, 4)}</td>
+            <td>{!checkValue(item.price_change_24) ? item.price_change_24 + "%" : ""}</td>
           </tr>
         ))}
       </tbody>

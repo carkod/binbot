@@ -25,7 +25,7 @@ class Research extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      candlestick_interval: "1h",
+      candlestick_interval: "30m",
       order: false, // true = desc = -1, false = asc = 1
       filter: "",
       signal_notification: null,
@@ -33,19 +33,19 @@ class Research extends React.Component {
     };
   }
 
-  getData = (filterValue) => {
+  getData = () => {
     let filterBy, filter;
-    if (filterValue === "BUY" || filterValue === "SELL") {
-      filter = filterValue;
+    if (this.state.filter === "BUY" || this.state.filter === "SELL") {
+      filter = this.state.filter;
       filterBy = "signal_side";
     }
 
-    if (filterValue === "STRONG" || filterValue === "WEAK") {
-      filter = filterValue;
+    if (this.state.filter === "STRONG" || this.state.filter === "WEAK") {
+      filter = this.state.filter;
       filterBy = "signal_strength";
     }
 
-    this.setState({ filter: filterValue, filter_by: filterBy })
+    this.setState({ filter: this.state.filter, filter_by: filterBy });
 
     const params = {
       filter_by: filterBy,
@@ -141,8 +141,12 @@ class Research extends React.Component {
   }
 
   handleSignalsFilter = (e) => {
-    this.pollData = null;
-    this.pollData = setInterval(() => this.getData(e.target.value), this.state.poll_ms);
+    this.setState({ filter: e.target.value }, () => {
+      this.pollData = null;
+      this.getData(e.target.value);
+      this.pollData = setInterval(() => this.getData(), this.state.poll_ms);
+    });
+    
   }
 
   render() {

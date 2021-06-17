@@ -69,5 +69,5 @@ kline_thread = threading.Thread(target=kline_updates.start_stream)
 kline_thread.start()
 
 # Research market updates
-if os.environ["ENVIRONMENT"] != "development":
-    market_update_thread()
+# if os.environ["ENVIRONMENT"] != "development":
+market_update_thread()
