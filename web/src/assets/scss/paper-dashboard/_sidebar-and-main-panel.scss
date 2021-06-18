@@ -77,7 +77,7 @@
       }
 
       > a {
-        margin: 10px 15px 0;
+        margin: $margin-base-horizontal $margin-base-vertical;
         color: $white-color;
         display: block;
         text-decoration: none;
@@ -85,13 +85,13 @@
         text-transform: uppercase;
         cursor: pointer;
         font-size: 12px;
-        padding: 10px 8px;
+        padding: $padding-base-vertical $padding-btn-horizontal;
         line-height: 30px;
         opacity: 0.7;
       }
 
       .nav > li > a {
-        padding: 5px 8px;
+        padding: $padding-base-vertical $padding-btn-horizontal;
       }
 
       &.active > a,
@@ -106,7 +106,7 @@
     }
 
     i {
-      font-size: 24px;
+      font-size: $btn-icon-font-size-regular;
       float: left;
       margin-right: 12px;
       line-height: 30px;

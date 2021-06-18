@@ -20,6 +20,7 @@ class MarketUpdates:
 
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
     bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
+    bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
 
     # streams
     base = os.getenv("WS_BASE")
@@ -35,6 +36,13 @@ class MarketUpdates:
         res = requests.get(url=url)
         handle_error(res)
         return res.json()
+
+    def _get_24_ticker(self, market):
+        url = f"{self.bb_24_ticker_url}/{market}"
+        res = requests.get(url=url)
+        handle_error(res)
+        data = res.json()["data"]
+        return data
 
     def start_stream(self):
         self.list_markets = self.app.db.correlations.distinct("market_a")
@@ -199,6 +207,8 @@ class MarketUpdates:
                 signal_strength, signal_side = self._weak_signals(
                     close_price, open_price, ma_7, ma_25, ma_100
                 )
+
+            price_change_24 = self._get_24_ticker(symbol)["priceChangePercent"]
             # Update Current price
             if signal_strength:
                 self.app.db.correlations.find_one_and_update(
@@ -211,7 +221,8 @@ class MarketUpdates:
                             "signal_side": signal_side,
                             "volatility": volatility,
                             "last_volume": float(result["k"]["v"]) + float(result["k"]["q"]),
-                            "spread": spread
+                            "spread": spread,
+                            "price_change_24": price_change_24
                         },
                     },
                 )

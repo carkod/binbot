@@ -129,19 +129,28 @@ class Bot(Account):
         if bot:
             order_errors = Deal(bot, app).open_deal()
 
+            # If error
+            if len(order_errors) > 0:
+                # If base order fails makes no sense to activate
+                if "base_order_error" in order_errors[0]:
+                    resp = jsonResp({
+                        "message": f'Failed to activate bot, {order_errors[0]["base_order_error"]}',
+                        "botId": str(findId),
+                        "error": 1
+                    }, 200)
+                else:
+                    resp = jsonResp({
+                        "message": f"Failed to activate bot, {','.join(order_errors)}",
+                        "botId": str(findId),
+                        "error": 1
+                    }, 200)
+                return resp
+
             botId = app.db.bots.find_one_and_update({"_id": ObjectId(findId)}, {
                 "$set": {
                     "active": "true"
                 }
             })
-
-            # If error
-            if len(order_errors) > 0:
-                resp = jsonResp({
-                    "message": f"Successfully activated bot, deals had errors {','.join(order_errors)}",
-                    "botId": str(findId),
-                }, 200)
-                return resp
 
             if botId:
                 resp = jsonResp(

@@ -336,69 +336,6 @@ class Deal(Account):
             )
             return resp
 
-    def short_base_order(self):
-        """
-        Part II of Short bot order: Short sell buy back order
-        After safety orders are executed, if price keeps going down, execute Stop Loss order
-        Then execute this short base order to buy back
-        This order replaces the initial base order
-        """
-        # Buy back order
-        pair = self.active_bot["pair"]
-        base_asset = self.find_baseAsset(pair)
-        base_order_deal = next(
-            (
-                bo_deal
-                for bo_deal in self.active_bot["deals"]
-                if bo_deal["deal_type"] == "base_order"
-            ),
-            None,
-        )
-        price = float(base_order_deal["price"])
-        short_order = price * int(self.active_bot["short_stop_price"]) / 100
-        stop_loss_price = price - short_order
-
-        order = {
-            "pair": pair,
-            "qty": self.asset_qty,
-            "price": supress_notation(
-                price, self.price_precision
-            ),  # Theoretically stop_price, as we don't have book orders
-            "stop_price": supress_notation(price, self.price_precision),
-        }
-        res = requests.post(url=self.bb_stop_buy_order_url, json=order)
-        if isinstance(handle_error(res), Response):
-            return handle_error(res)
-        order = res.json()
-
-        short_order = {
-            "deal_type": "short_order",
-            "order_id": order["orderId"],
-            "strategy": "long",  # change accordingly
-            "pair": order["symbol"],
-            "order_side": order["side"],
-            "order_type": order["type"],
-            "price": order["price"],
-            "qty": order["origQty"],
-            "fills": order["fills"],
-            "time_in_force": order["timeInForce"],
-            "status": order["status"],
-        }
-        self.active_bot["deals"].append(short_order)
-        botId = app.db.bots.update_one(
-            {"_id": self.active_bot["_id"]}, {"$push": {"deals": short_order}}
-        )
-        if not botId:
-            resp = jsonResp(
-                {
-                    "message": "Failed to save short deal in the bot",
-                    "botId": str(self.active_bot["_id"]),
-                },
-                200,
-            )
-            return resp
-        return order
-
     def open_deal(self):
         order_errors = []
         can_initialize = self.initialization()
@@ -418,7 +355,10 @@ class Deal(Account):
             base_order = self.base_order()
             if isinstance(base_order, Response):
                 msg = base_order.json["message"]
-                order_errors.append(msg)
+                order_errors.append({
+                    "base_order_error": msg
+                })
+                return order_errors
 
         # If short order is enabled
         if float(self.active_bot["short_order"]) > 0:

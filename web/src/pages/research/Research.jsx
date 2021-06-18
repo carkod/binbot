@@ -19,23 +19,44 @@ import { getResearchData } from "./actions";
 import Signals from "./Signals";
 
 
-const filterOptions = ["", "BUY", "SELL", "STRONG", "WEAK"];
+const filterStrengthOptions = ["ALL", "STRONG", "WEAK"];
+const filterSideOptions = ["ALL", "BUY", "SELL"];
+
 class Research extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      activeTab: "signals",
-      candlestick_interval: "1h",
-      order: true, // true = desc = -1, false = asc = 1
-      filter: ""
+      candlestick_interval: "30m",
+      order: false, // true = desc = -1, false = asc = 1
+      strengthFilter: "ALL",
+      sideFilter: "BUY",
+      signal_notification: null,
+      poll_ms: 10000,
     };
   }
 
+  getData = () => {
+    let filterBy, filter = null;
+    if (this.state.sideFilter === "BUY" || this.state.sideFilter === "SELL") {
+      filter = this.state.sideFilter;
+      filterBy = "signal_side";
+    }
+
+    if (this.state.strengthFilter === "STRONG" || this.state.strengthFilter === "WEAK") {
+      filter = this.state.strengthFilter;
+      filterBy = "signal_strength";
+    }
+
+    const params = {
+      filter_by: filterBy,
+      filter: filter,
+    }
+    this.props.getResearchData(params)
+  }
+
   componentDidMount = () => {
-    this.props.getResearchData();
-    setTimeout(() => {
-      this.props.getResearchData();
-    }, 180000)
+    this.getData();
+    this.pollData = setInterval(() => this.getData(), this.state.poll_ms)
     if (!("Notification" in window)) {
       alert("This browser does not support desktop notification");
     } else {
@@ -67,7 +88,7 @@ class Research extends React.Component {
     if (!checkValue(this.props.research) && this.props.research !== p.research) {
       let strongest = [];
       this.props.research.forEach(element => {
-        if (element.bollinguer_bands_signal === "STRONG" && element.spread > 0.0003) {
+        if (element.signal_strength === "STRONG") {
           const strongBuy = {
             pair: element.market_a,
             spread: element.spread
@@ -78,10 +99,17 @@ class Research extends React.Component {
       if (strongest.length > 0) {
         const maxSpread = Math.max.apply(Math, strongest.map((element) => element.spread))
         const maxPair = strongest.find(x => x.spread === maxSpread);
-        this.showNotification(`STRONG BUY signal for ${maxPair.pair}`)
+        if (maxPair.pair !== this.state.signal_notification) {
+          this.setState({ signal_notification: maxPair.pair });
+          this.showNotification(`STRONG BUY signal for ${maxPair.pair}`)
+        }
       }
     }
   };
+
+  componentWillUnmount = () => {
+    this.pollData = null;
+  }
 
   handleSetPair = (pair) => {
     this.props.loadCandlestick(pair, this.state.candlestick_interval);
@@ -113,24 +141,12 @@ class Research extends React.Component {
   }
 
   handleSignalsFilter = (e) => {
-    let filterBy, filter;
-    if (e.target.value === "BUY" || e.target.value === "SELL") {
-      filter = e.target.value;
-      filterBy = "signal_side";
-    }
-
-    if (e.target.value === "STRONG" || e.target.value === "WEAK") {
-      filter = e.target.value;
-      filterBy = "signal_strength";
-    }
-
-    this.setState({ filter: e.target.value, filter_by: filterBy })
-
-    const params = {
-      filter_by: filterBy,
-      filter: filter,
-    }
-    this.props.getResearchData(params)
+    this.pollData = null;
+    this.setState({ [e.target.name]: e.target.value }, () => {
+      this.getData(e.target.value);
+      this.pollData = setInterval(() => this.getData(), this.state.poll_ms);
+    });
+    
   }
 
   render() {
@@ -157,13 +173,13 @@ class Research extends React.Component {
             </Row>
           )}
           <Row>
-            <Col md="6" sm="3">
+            <Col md="12" sm="3">
               <Card>
                 <CardHeader>
                   <CardTitle>
                     <h2>Signals</h2>
                     <Row>
-                      <Col md="6">
+                      <Col md="4">
                         <FormGroup>
                           <Label for="candlestick_interval">Select Interval</Label>
                           <Input
@@ -181,17 +197,35 @@ class Research extends React.Component {
                           </Input>
                         </FormGroup>
                       </Col>
-                      <Col md="6">
+                      <Col md="4">
                         <FormGroup>
-                          <Label for="activeFilter">Filter by:</Label>
+                          <Label for="strengthFilter">Filter by strength:</Label>
                           <Input
                             type="select"
-                            name="activeFilter"
-                            id="filter-by"
+                            name="strengthFilter"
+                            id="strength-filter"
                             onChange={this.handleSignalsFilter}
-                            defaultValue={this.state.activeFilter}
+                            defaultValue={this.state.strengthFilter}
                           >
-                            {filterOptions.map((x, i) => (
+                            {filterStrengthOptions.map((x, i) => (
+                              <option key={i} value={x}>
+                                {x}
+                              </option>
+                            ))}
+                          </Input>
+                        </FormGroup>
+                      </Col>
+                      <Col md="4">
+                        <FormGroup>
+                          <Label for="sideFilter">Filter by side:</Label>
+                          <Input
+                            type="select"
+                            name="sideFilter"
+                            id="side-filter"
+                            onChange={this.handleSignalsFilter}
+                            defaultValue={this.state.sideFilter}
+                          >
+                            {filterSideOptions.map((x, i) => (
                               <option key={i} value={x}>
                                 {x}
                               </option>
@@ -213,16 +247,6 @@ class Research extends React.Component {
                     "No signals available"
                   )}
                 </CardBody>
-              </Card>
-            </Col>
-            <Col md="6" sm="7">
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    <h2>Correlations</h2>
-                  </CardTitle>
-                </CardHeader>
-                <CardBody>Correlations content</CardBody>
               </Card>
             </Col>
           </Row>

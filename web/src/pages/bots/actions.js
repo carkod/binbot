@@ -304,9 +304,10 @@ export function activateBot(id) {
 }
 
 export function activateBotSucceeded(res) {
-  const type = res.error === "true" ? "error" : "success";
+  const type = parseInt(res.error) === 1 ? "error" : "success";
+  const title = parseInt(res.error) === 1 ? "Bot activation failed" : "Bot activation succeeded";
   if (res.message) {
-    addNotification("Bot activation succeeded", res.message, type);
+    addNotification(title, res.message, type);
   }
   return {
     type: ACTIVATE_BOT_SUCCESS,
@@ -317,7 +318,7 @@ export function activateBotSucceeded(res) {
 }
 
 export function activateBotFailed(error) {
-  addNotification(ACTIVATE_BOT_SUCCESS, error.message, "error");
+  addNotification("Failed to fetch", error.message, "error");
   return {
     type: ACTIVATE_BOT_SUCCESS,
     isLoading: false,

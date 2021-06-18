@@ -1,6 +1,6 @@
 import moment from "moment";
 import React from "react";
-import { Button, Table } from "reactstrap";
+import { Table } from "reactstrap";
 import { checkValue, roundDecimals } from "../../validations";
 
 export default function Signals({ data, setPair, orderBy }) {
@@ -11,11 +11,16 @@ export default function Signals({ data, setPair, orderBy }) {
           <th>Market</th>
           <th>Signal</th>
           <th>
-            <button className="btn-reset" onClick={() => orderBy("spread")}>Spread (L vs H)</button>
+            <button className="btn-reset" onClick={() => orderBy("spread")}>
+              Spread (L vs H)
+            </button>
           </th>
           <th>
-          <button className="btn-reset" onClick={() => orderBy("volume")}>Last Volume</button>
+            <button className="btn-reset" onClick={() => orderBy("volume")}>
+              Last Volume
+            </button>
           </th>
+          <th>24hr Change</th>
         </tr>
       </thead>
       <tbody>
@@ -46,6 +51,7 @@ export default function Signals({ data, setPair, orderBy }) {
             </td>
             <td>{roundDecimals(item.spread * 100, 4) + "%"}</td>
             <td>{roundDecimals(item.last_volume, 4)}</td>
+            <td>{!checkValue(item.price_change_24) ? item.price_change_24 + "%" : ""}</td>
           </tr>
         ))}
       </tbody>
