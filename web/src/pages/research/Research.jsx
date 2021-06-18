@@ -19,7 +19,8 @@ import { getResearchData } from "./actions";
 import Signals from "./Signals";
 
 
-const filterOptions = ["", "BUY", "SELL", "STRONG", "WEAK"];
+const filterStrengthOptions = ["ALL", "STRONG", "WEAK"];
+const filterSideOptions = ["ALL", "BUY", "SELL"];
 
 class Research extends React.Component {
   constructor(props) {
@@ -27,25 +28,24 @@ class Research extends React.Component {
     this.state = {
       candlestick_interval: "30m",
       order: false, // true = desc = -1, false = asc = 1
-      filter: "",
+      strengthFilter: "ALL",
+      sideFilter: "BUY",
       signal_notification: null,
       poll_ms: 10000,
     };
   }
 
   getData = () => {
-    let filterBy, filter;
-    if (this.state.filter === "BUY" || this.state.filter === "SELL") {
-      filter = this.state.filter;
+    let filterBy, filter = null;
+    if (this.state.sideFilter === "BUY" || this.state.sideFilter === "SELL") {
+      filter = this.state.sideFilter;
       filterBy = "signal_side";
     }
 
-    if (this.state.filter === "STRONG" || this.state.filter === "WEAK") {
-      filter = this.state.filter;
+    if (this.state.strengthFilter === "STRONG" || this.state.strengthFilter === "WEAK") {
+      filter = this.state.strengthFilter;
       filterBy = "signal_strength";
     }
-
-    this.setState({ filter: this.state.filter, filter_by: filterBy });
 
     const params = {
       filter_by: filterBy,
@@ -55,8 +55,8 @@ class Research extends React.Component {
   }
 
   componentDidMount = () => {
-    this.props.getResearchData();
-    this.pollData = setInterval(() => this.getData(this.state.filter), this.state.poll_ms)
+    this.getData();
+    this.pollData = setInterval(() => this.getData(), this.state.poll_ms)
     if (!("Notification" in window)) {
       alert("This browser does not support desktop notification");
     } else {
@@ -141,8 +141,8 @@ class Research extends React.Component {
   }
 
   handleSignalsFilter = (e) => {
-    this.setState({ filter: e.target.value }, () => {
-      this.pollData = null;
+    this.pollData = null;
+    this.setState({ [e.target.name]: e.target.value }, () => {
       this.getData(e.target.value);
       this.pollData = setInterval(() => this.getData(), this.state.poll_ms);
     });
@@ -179,7 +179,7 @@ class Research extends React.Component {
                   <CardTitle>
                     <h2>Signals</h2>
                     <Row>
-                      <Col md="6">
+                      <Col md="4">
                         <FormGroup>
                           <Label for="candlestick_interval">Select Interval</Label>
                           <Input
@@ -197,17 +197,35 @@ class Research extends React.Component {
                           </Input>
                         </FormGroup>
                       </Col>
-                      <Col md="6">
+                      <Col md="4">
                         <FormGroup>
-                          <Label for="activeFilter">Filter by:</Label>
+                          <Label for="strengthFilter">Filter by strength:</Label>
                           <Input
                             type="select"
-                            name="activeFilter"
-                            id="filter-by"
+                            name="strengthFilter"
+                            id="strength-filter"
                             onChange={this.handleSignalsFilter}
-                            defaultValue={this.state.activeFilter}
+                            defaultValue={this.state.strengthFilter}
                           >
-                            {filterOptions.map((x, i) => (
+                            {filterStrengthOptions.map((x, i) => (
+                              <option key={i} value={x}>
+                                {x}
+                              </option>
+                            ))}
+                          </Input>
+                        </FormGroup>
+                      </Col>
+                      <Col md="4">
+                        <FormGroup>
+                          <Label for="sideFilter">Filter by side:</Label>
+                          <Input
+                            type="select"
+                            name="sideFilter"
+                            id="side-filter"
+                            onChange={this.handleSignalsFilter}
+                            defaultValue={this.state.sideFilter}
+                          >
+                            {filterSideOptions.map((x, i) => (
                               <option key={i} value={x}>
                                 {x}
                               </option>

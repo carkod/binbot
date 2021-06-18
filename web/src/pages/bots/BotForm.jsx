@@ -47,7 +47,6 @@ import {
 import { getQuoteAsset } from "./requests";
 import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
-import ShortTab from "./tabs/Short";
 
 class BotForm extends React.Component {
   constructor(props) {
@@ -63,8 +62,6 @@ class BotForm extends React.Component {
       balance_usage_size: "0", // Computed
       base_order_size: "",
       baseOrderSizeError: false,
-      short_order: "0",
-      shortOrderError: false,
       short_stop_price: 0,
       max_so_count: "0",
       maxSOCountError: false,
@@ -343,8 +340,10 @@ class BotForm extends React.Component {
           { so_size: 0 }
         );
         const shortOrder = parseFloat(short_order);
-        const checkBaseOrder = this.state.orders.find(x => x.deal_type === "base_order");
-        let updatedValue = value - (baseOrder + safetyOrders + shortOrder)
+        const checkBaseOrder = this.state.orders.find(
+          (x) => x.deal_type === "base_order"
+        );
+        let updatedValue = value - (baseOrder + safetyOrders + shortOrder);
         if (!checkValue(checkBaseOrder) && "deal_type" in checkBaseOrder) {
           updatedValue = baseOrder + updatedValue;
         }
@@ -650,13 +649,6 @@ class BotForm extends React.Component {
                       handleBaseChange={this.handleBaseChange}
                       handleBlur={this.handleBlur}
                       addAll={this.addAll}
-                    />
-
-                    <ShortTab
-                      state={this.state}
-                      handleChange={this.handleChange}
-                      handleBlur={this.handleBlur}
-                      handleShortOrder={this.handleShortOrder}
                     />
 
                     {/*
