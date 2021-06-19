@@ -31,6 +31,12 @@ class MarketUpdates:
         self.app = create_app()
         self.interval = interval
 
+    def _get_raw_klines(self, pair):
+        params = {"symbol": pair, "interval": self.interval, "limit": "200"}
+        res = requests.get(url=self.candlestick_url, params=params)
+        handle_error(res)
+        return res.json()
+
     def _get_candlestick(self, market):
         url = f"{self.bb_candlestick_url}/{market}/{self.interval}"
         res = requests.get(url=url)
@@ -193,9 +199,14 @@ class MarketUpdates:
             ma_7 = data[3]["y"]
             volatility = pandas.Series(data[0]["close"]).astype(float).std(0)
 
+            # raw df
+            df = pandas.DataFrame(self._get_raw_klines(symbol))
+            df["candle_spread"] = (pandas.to_numeric(df[1]) / pandas.to_numeric(df[4])) - 1
+            avg_candle_spread = df["candle_spread"].mean()
+
             highest_price = max(data[0]["high"])
             lowest_price = max(data[0]["low"])
-            spread = ((float(highest_price) / float(lowest_price)) - 1)
+            spread = (float(highest_price) / float(lowest_price)) - 1
 
             signal_strength = None
 
@@ -222,7 +233,8 @@ class MarketUpdates:
                             "volatility": volatility,
                             "last_volume": float(result["k"]["v"]) + float(result["k"]["q"]),
                             "spread": spread,
-                            "price_change_24": price_change_24
+                            "price_change_24": price_change_24,
+                            "avg_candle_spread": avg_candle_spread
                         },
                     },
                 )

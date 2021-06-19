@@ -21,6 +21,7 @@ export default function Signals({ data, setPair, orderBy }) {
             </button>
           </th>
           <th>24hr Change</th>
+          <th>Avg Candle spread</th>
         </tr>
       </thead>
       <tbody>
@@ -52,6 +53,7 @@ export default function Signals({ data, setPair, orderBy }) {
             <td>{roundDecimals(item.spread * 100, 4) + "%"}</td>
             <td>{roundDecimals(item.last_volume, 4)}</td>
             <td>{!checkValue(item.price_change_24) ? item.price_change_24 + "%" : ""}</td>
+            <td>{!checkValue(item.avg_candle_spread) ? roundDecimals(item.avg_candle_spread * 100, 4) + "%" : ""}</td>
           </tr>
         ))}
       </tbody>
