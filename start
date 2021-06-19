@@ -1,3 +1,4 @@
 #!/bin/bash
-gunicorn -w 3 -b :8006 -t 90 --access-logfile /var/log/access.log --error-logfile /var/log/error.log --capture-output --log-level debug -D api.main:app
+gunicorn -w 3 -b :8006 -t 90 --access-logfile "-" --error-logfile "-" --capture-output --log-level debug -D api.main:app
+ln -sf /dev/stdout /var/log/nginx/web-access.log && ln -sf /dev/stderr /var/log/nginx/web-error.log
 nginx -g 'daemon off;'
