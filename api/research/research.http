@@ -15,3 +15,7 @@ GET http://localhost:5000/research/signals HTTP/1.1
 
 ### Signals with filters and orderby
 GET http://localhost:5000/research/signals?filterby=side&filter=BUY&orderby=spread&order=-1 HTTP/1.1
+
+
+### Get historical signals with filters and orderby
+GET http://localhost:5000/research/historical-signals HTTP/1.1

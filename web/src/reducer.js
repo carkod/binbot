@@ -18,7 +18,7 @@ import {
 import { ordersReducer, openOrdersReducer } from "./pages/orders/reducer";
 import { reducer as toastrReducer } from "react-redux-toastr";
 import { loadingReducer } from "./containers/spinner/reducer";
-import { researchReducer } from "./pages/research/reducer";
+import { researchReducer, historicalResearchReducer } from "./pages/research/reducer";
 const rootReducer = combineReducers({
   registrationReducer,
   loginReducer,
@@ -36,6 +36,7 @@ const rootReducer = combineReducers({
   toastr: toastrReducer,
   balanceInBtcReducer,
   loadingReducer,
-  researchReducer
+  researchReducer,
+  historicalResearchReducer,
 });
 export default rootReducer;

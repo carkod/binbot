@@ -36,6 +36,7 @@
     "analyze": "source-map-explorer build/static/js/main.*"
   },
   "devDependencies": {
+    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
     "@testing-library/jest-dom": "^5.11.6",
     "@testing-library/react": "^11.2.7",
     "@testing-library/user-event": "^13.1.9",

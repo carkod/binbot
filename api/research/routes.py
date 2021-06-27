@@ -18,3 +18,8 @@ def get_pearson():
 @research_blueprint.route("/signals", methods=["GET"])
 def get_signals():
     return Correlation().get_signals()
+
+
+@research_blueprint.route("/historical-signals", methods=["GET"])
+def get_historical_signals():
+    return Correlation().get_historical_signals()

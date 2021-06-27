@@ -1,7 +1,7 @@
 import moment from "moment";
 import React from "react";
 import { Table } from "reactstrap";
-import { checkValue, roundDecimals } from "../../validations";
+import { checkValue, roundDecimals } from "../validations";
 
 export default function Signals({ data, setPair, orderBy }) {
   return (
@@ -20,8 +20,12 @@ export default function Signals({ data, setPair, orderBy }) {
               Last Volume
             </button>
           </th>
-          <th>24hr Change</th>
-          <th>Avg Candle spread</th>
+          <th>
+            <button className="btn-reset" onClick={() => orderBy("24hr-change")}>
+            24hr Change
+            </button>
+          </th>
+          <th>Candle jump</th>
         </tr>
       </thead>
       <tbody>
@@ -53,7 +57,15 @@ export default function Signals({ data, setPair, orderBy }) {
             <td>{roundDecimals(item.spread * 100, 4) + "%"}</td>
             <td>{roundDecimals(item.last_volume, 4)}</td>
             <td>{!checkValue(item.price_change_24) ? item.price_change_24 + "%" : ""}</td>
-            <td>{!checkValue(item.avg_candle_spread) ? roundDecimals(item.avg_candle_spread * 100, 4) + "%" : ""}</td>
+            <td
+              className={
+                item.candlestick_signal === "positive"
+                  ? "u-td-bg-color--success"
+                  : item.candlestick_signal === "negative"
+                  ? "u-td-bg-color--danger"
+                  : "u-td-bg-color--disabled"
+              }
+            ></td>
           </tr>
         ))}
       </tbody>

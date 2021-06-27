@@ -211,9 +211,11 @@ class Account:
 
     def find_quoteAsset(self, symbol):
         symbols = self._exchange_info["symbols"]
-        quote_asset = next((s for s in symbols if s["symbol"] == symbol), None)[
-            "quoteAsset"
-        ]
+        quote_asset = next((s for s in symbols if s["symbol"] == symbol), None)
+        if quote_asset:
+            quote_asset = quote_asset["quoteAsset"]
+        else:
+            print("failed to match quote_asset symbol:", symbol)
         return quote_asset
 
     def find_baseAsset(self, symbol):
@@ -233,7 +235,11 @@ class Account:
 
     def find_market(self, quote):
         symbols = self._exchange_info["symbols"]
-        market = next((s for s in symbols if s["baseAsset"] == quote), None)["symbol"]
+        market = next((s for s in symbols if s["baseAsset"] == quote), None)
+        if market:
+            market = market["symbol"]
+        else:
+            print("market did not match, symbols", symbols)
         return market
 
     def get_symbol_info(self):
