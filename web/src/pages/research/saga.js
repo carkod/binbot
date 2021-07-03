@@ -16,10 +16,24 @@ import {
 export function* getResearchApi({ params }) {
   let url = new URL(process.env.REACT_APP_RESEARCH_SIGNALS)
   if (!checkValue(params)) {
-    url.search = new URLSearchParams(params).toString()
+    Object.keys(params).forEach(key => {
+      if (key === "order") {
+        if (params["order"]) {
+          params["order"] = 1
+        } else {
+          params["order"] = -1
+        }
+      }
+      if (checkValue(params[key])) {
+        delete params[key];
+      } else {
+        url.searchParams.append(key, params[key]);
+      }
+      
+    });
   }
   try {
-    const res = yield call(request, url, defaultOptions);
+    const res = yield call(request, url.toString(), defaultOptions);
     yield put(getResearchSucceeded(res));
   } catch (err) {
     yield put(getResearchFailed(err));

@@ -19,13 +19,12 @@ class Research extends React.Component {
       signal_notification: null,
       poll_ms: 10000,
       activeTab: "signalTab",
+      candlestickSignalFilter: "positive",
     };
-    this.pollData = 0;
   }
 
   getData = () => {
     clearInterval(this.pollData);
-    this.pollData = 0;
     let filterBy,
       filter = null;
     if (this.state.sideFilter === "BUY" || this.state.sideFilter === "SELL") {
@@ -41,20 +40,33 @@ class Research extends React.Component {
       filterBy = "signal_strength";
     }
 
+    if (
+      this.state.candlestickSignalFilter === "positive" ||
+      this.state.candlestickSignalFilter === "negative"
+    ) {
+      filter = this.state.candlestickSignalFilter;
+      filterBy = "candlestick_signal";
+    }
+
     const params = {
       order_by: this.state.order_by,
       order: this.state.order,
       filter_by: filterBy,
       filter: filter,
     };
-    if ((!checkValue(params.filter_by) && !checkValue(params.filter)) || (!checkValue(params.order_by))) {
+    if (
+      (!checkValue(params.filter_by) && !checkValue(params.filter)) ||
+      !checkValue(params.order_by)
+    ) {
       this.props.getResearchData(params);
+    } else {
+      this.props.getResearchData();
     }
-    this.props.getResearchData();
   };
 
   componentDidMount = () => {
-    clearInterval(this.pollData); this.pollData = setInterval(this.getData, this.state.poll_ms);
+    this.getData();
+    this.pollData = setInterval(this.getData, this.state.poll_ms);
     if (!("Notification" in window)) {
       alert("This browser does not support desktop notification");
     } else {
@@ -113,7 +125,6 @@ class Research extends React.Component {
 
   componentWillUnmount = () => {
     clearInterval(this.pollData);
-    this.pollData = 0;
   };
 
   handleSetPair = (pair) => {
@@ -131,34 +142,25 @@ class Research extends React.Component {
 
   showNotification = (message) => {
     new Notification(message);
-  }
+  };
 
   handleSignalsOrder = (type) => {
     const { order } = this.state;
     this.setState({ order: !order, order_by: type }, () => {
-      clearInterval(this.pollData); 
       this.pollData = setInterval(this.getData, this.state.poll_ms);
     });
   };
 
   handleSignalsFilter = (e) => {
-    this.setState({ [e.target.name]: e.target.value }, () => { 
-      clearInterval(this.pollData); 
-      this.pollData = setInterval(this.getData, this.state.poll_ms)
+    this.setState({ [e.target.name]: e.target.value }, () => {
+      this.pollData = setInterval(this.getData, this.state.poll_ms);
     });
   };
 
   toggleSignalTab = () => {
-    this.setState({ activeTab: "signalTab" }, () => { 
-      clearInterval(this.pollData);
+    this.setState({ activeTab: "signalTab" }, () => {
       this.pollData = setInterval(this.getData, this.state.poll_ms);
     });
-  }
-
-  toggleHistoricalTab = () => {
-    this.pollData = null;
-    this.props.getHistoricalResearchData();
-    this.setState({ activeTab: "historicalTab" });
   };
 
   render() {
@@ -174,16 +176,6 @@ class Research extends React.Component {
                 Signals
               </NavLink>
             </NavItem>
-            <NavItem>
-              {/* <NavLink
-                className={
-                  this.state.activeTab === "historicalTab" ? "active" : ""
-                }
-                onClick={this.toggleHistoricalTab}
-              >
-                Historical
-              </NavLink> */}
-            </NavItem>
           </Nav>
           <TabContent activeTab={this.state.activeTab}>
             <TabPane tabId="signalTab">
@@ -194,18 +186,12 @@ class Research extends React.Component {
                 strengthFilter={this.state.strengthFilter}
                 research={this.props.research}
                 sideFilter={this.state.sideFilter}
+                candlestickSignalFilter={this.state.candlestickSignalFilter}
                 handleInterval={this.handleInterval}
                 handleSignalsFilter={this.handleSignalsFilter}
                 handleSetPair={this.handleSetPair}
                 handleSignalsOrder={this.handleSignalsOrder}
               />
-            </TabPane>
-            <TabPane tabId="historicalTab">
-              {/* { this.props.historicalSignalReducer && <HistoricalTab research={this.props.historicalSignalReducer} pair={this.state.pair}
-                strengthFilter={this.state.strengthFilter}
-                sideFilter={this.state.sideFilter}
-                handleSetPair={this.handleSetPair}
-                handleSignalsOrder={this.handleSignalsOrder}/>} */}
             </TabPane>
           </TabContent>
         </div>
@@ -225,6 +211,8 @@ const mapStateToProps = (state) => {
   };
 };
 
-export default connect(mapStateToProps, { getResearchData, loadCandlestick, getHistoricalResearchData })(
-  Research
-);
+export default connect(mapStateToProps, {
+  getResearchData,
+  loadCandlestick,
+  getHistoricalResearchData,
+})(Research);

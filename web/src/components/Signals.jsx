@@ -21,11 +21,13 @@ export default function Signals({ data, setPair, orderBy }) {
             </button>
           </th>
           <th>
-            <button className="btn-reset" onClick={() => orderBy("24hr-change")}>
+            <button className="btn-reset" onClick={() => orderBy("price_change_24")}>
             24hr Change
             </button>
           </th>
-          <th>Candle jump</th>
+          <th>
+            Candle jump
+          </th>
         </tr>
       </thead>
       <tbody>

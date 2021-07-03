@@ -18,8 +18,9 @@ import Signals from "../../components/Signals";
 
 const filterStrengthOptions = ["ALL", "STRONG", "WEAK"];
 const filterSideOptions = ["ALL", "BUY", "SELL"];
+const filterCandlestickSignalOptions = ["ALL", "positive", "negative"];
 
-export default function SignalsTab({ candlestick, pair, candlestick_interval, strengthFilter, research, sideFilter, handleInterval, handleSignalsFilter, handleSetPair, handleSignalsOrder }) {
+export default function SignalsTab({ candlestick, pair, candlestick_interval, strengthFilter, research, sideFilter, candlestickSignalFilter, handleInterval, handleSignalsFilter, handleSetPair, handleSignalsOrder }) {
   return (
     <>
       {pair && (
@@ -47,7 +48,7 @@ export default function SignalsTab({ candlestick, pair, candlestick_interval, st
             <CardHeader>
               <CardTitle>
                 <Row>
-                  <Col md="4">
+                  <Col md="3">
                     <FormGroup>
                       <Label for="candlestick_interval">Select Interval</Label>
                       <Input
@@ -65,7 +66,7 @@ export default function SignalsTab({ candlestick, pair, candlestick_interval, st
                       </Input>
                     </FormGroup>
                   </Col>
-                  <Col md="4">
+                  <Col md="3">
                     <FormGroup>
                       <Label for="strengthFilter">Filter by strength:</Label>
                       <Input
@@ -83,7 +84,7 @@ export default function SignalsTab({ candlestick, pair, candlestick_interval, st
                       </Input>
                     </FormGroup>
                   </Col>
-                  <Col md="4">
+                  <Col md="3">
                     <FormGroup>
                       <Label for="sideFilter">Filter by side:</Label>
                       <Input
@@ -94,6 +95,24 @@ export default function SignalsTab({ candlestick, pair, candlestick_interval, st
                         defaultValue={sideFilter}
                       >
                         {filterSideOptions.map((x, i) => (
+                          <option key={i} value={x}>
+                            {x}
+                          </option>
+                        ))}
+                      </Input>
+                    </FormGroup>
+                  </Col>
+                  <Col md="3">
+                    <FormGroup>
+                      <Label for="candlestickSignalFilter">Filter by candlestick signal:</Label>
+                      <Input
+                        type="select"
+                        name="candlestickSignalFilter"
+                        id="candlestick-signal-filter"
+                        onChange={handleSignalsFilter}
+                        defaultValue={candlestickSignalFilter}
+                      >
+                        {filterCandlestickSignalOptions.map((x, i) => (
                           <option key={i} value={x}>
                             {x}
                           </option>

@@ -89,7 +89,7 @@ class Correlation(Account):
 
     def get_signals(self):
         args = {"candlestick_signal": {"$exists": True, "$ne": None}}
-        sort = [["lastModified", -1]]
+        sort = []
         if request.args.get("filter_by") == "signal_side":
             signal_side = {
                 "signal_side": request.args.get("filter")
@@ -101,35 +101,22 @@ class Correlation(Account):
             }
             args.update(signal_side)
 
-        if request.args.get("order_by") == "spread":
-            sort.insert(0, ["spread", int(request.args.get("order"))])
-
-        if request.args.get("order_by") == "24hr-change":
-            sort.insert(0, ["24hr-change", int(request.args.get("order"))])
-
-        query = self.app.db.correlations.find(args).sort(sort)
-        data = list(query)
-        resp = jsonResp({"data": data}, 200)
-        return resp
-
-    def get_historical_signals(self):
-        args = {}
-        sort = [["lastModified", -1]]
-        if request.args.get("filter_by") == "signal_side":
+        if request.args.get("filter_by") == "candlestick_signal":
             signal_side = {
-                "signal_side": request.args.get("filter")
-            }
-            args.update(signal_side)
-        if request.args.get("filter_by") == "signal_strength":
-            signal_side = {
-                "signal_strength": request.args.get("filter")
+                "candlestick_signal": request.args.get("filter")
             }
             args.update(signal_side)
 
-        if request.args.get("order_by") == "spread":
-            sort.insert(0, ["spread", int(request.args.get("order"))])
+        query = self.app.db.correlations.find(args)
 
-        query = self.app.db.historical_signals.find(args).sort(sort)
+        if request.args.get("order_by") == "spread":
+            sort = [["spread", int(request.args.get("order"))]]
+            query.sort(sort)
+
+        if request.args.get("order_by") == "price_change_24":
+            sort = [["price_change_24", int(request.args.get("order"))]]
+            query.sort(sort)
+
         data = list(query)
         resp = jsonResp({"data": data}, 200)
         return resp

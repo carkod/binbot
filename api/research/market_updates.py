@@ -125,7 +125,7 @@ class MarketUpdates:
                 "volatility": volatility,
                 "last_volume": float(result["k"]["v"]) + float(result["k"]["q"]),
                 "spread": spread,
-                "price_change_24": price_change_24,
+                "price_change_24": float(price_change_24),  # MongoDB can't sort string decimals
                 "candlestick_signal": candlestick_signal,
             }
             if signal_strength:
