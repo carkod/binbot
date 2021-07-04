@@ -2,7 +2,7 @@ from flask import Response, current_app as app
 from flask import request
 from datetime import date
 
-from api.account.models import Account
+from api.account.account import Account
 from api.deals.models import Deal
 from bson.objectid import ObjectId
 from api.tools.jsonresp import jsonResp

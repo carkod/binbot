@@ -6,7 +6,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from api.app import create_app
 
 # Import Routes
-from api.account.models import Assets
+from api.account.assets import Assets
 from api.account.routes import account_blueprint
 from api.bots.routes import bot_blueprint
 from api.charts.routes import charts_blueprint

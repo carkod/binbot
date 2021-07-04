@@ -2,7 +2,7 @@ import os
 from decimal import Decimal
 
 import requests
-from api.account.models import Account
+from api.account.account import Account
 from api.charts.klines_sockets import KlineSockets
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message

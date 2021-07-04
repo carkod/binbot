@@ -1,8 +1,8 @@
 import os
 
 from flask import Blueprint
-from api.account.models import Account, Assets
-
+from api.account.account import Account
+from api.account.assets import Assets
 
 # initialization
 os.environ["CORS_HEADERS"] = "Content-Type"
@@ -65,3 +65,8 @@ def get_value(interval):
 @account_blueprint.route("/pnl", methods=["GET"])
 def get_pnl():
     return Assets().get_pnl()
+
+
+@account_blueprint.route("/gbp", methods=["GET"])
+def get_gbp_balance():
+    return Account().get_gbp_balance()
