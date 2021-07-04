@@ -8,10 +8,11 @@ from bson.objectid import ObjectId
 
 
 class Assets(Account, Conversion):
+
     def __init__(self, app=None):
         self.usd_balance = 0
         self.app = app
-        return super().__init__()
+        # return super(Account, self).__init__()
 
     def get_usd_balance(self):
         """
@@ -49,57 +50,53 @@ class Assets(Account, Conversion):
         resp = jsonResp({"data": data}, 200)
         return resp
 
+    def _check_locked(self, b):
+        qty = 0
+        if "locked" in b:
+            qty = b["free"] + b["locked"]
+        else:
+            qty = b["free"]
+        return qty
+
     def store_balance(self):
         """
         Alternative PnL data that runs as a cronjob everyday once at 1200
         Store current balance in Db
         """
         print("Store balance starting...")
-        balances = self.get_balances().json
+        balances = self.get_raw_balance().json
         current_time = datetime.utcnow()
+        total_gbp = 0
         total_btc = 0
         rate = 0
         for b in balances:
-            if b["asset"] != "BTC":
-                # Only tether coins for hedging
-                if "USD" in b["asset"]:
-                    if "locked" in b:
-                        qty = b["free"] + b["locked"]
-                    else:
-                        qty = b["free"]
+            # Only tether coins for hedging
+            if "USD" in b["asset"]:
 
-                    rate = self.get_ticker_price("BTC" + b["asset"])
-                    btc_value = float(qty) / float(rate)
-                else:
-                    symbol = self.find_market(b["asset"])
-                    market = self.find_quoteAsset(symbol)
-                    rate = self.get_ticker_price(symbol)
-
-                    if "locked" in b:
-                        qty = b["free"] + b["locked"]
-                    else:
-                        qty = b["free"]
-
-                    btc_value = float(qty) * float(rate)
-
-                    # Non-btc markets
-                    if market != "BTC":
-                        x_rate = self.get_ticker_price(market + "BTC")
-                        x_value = float(qty) * float(rate)
-                        btc_value = float(x_value) * float(x_rate)
+                qty = self._check_locked(b)
+                rate = self.get_conversion(current_time, "BTC", "GBP")
+                total_gbp += float(qty) / float(rate)
+            elif "GBP" in b["asset"]:
+                total_gbp += self._check_locked(b)
             else:
-                if "locked" in b:
-                    btc_value = b["free"] + b["locked"]
-                else:
-                    btc_value = b["free"]
+                # BTC and ALT markets
+                symbol = self.find_market(b["asset"])
+                market = self.find_quoteAsset(symbol)
+                rate = self.get_ticker_price(symbol)
+                qty = self._check_locked(b)
+                total = float(qty) * float(rate)
+                gbp_rate = self.get_conversion(current_time, market, "GBP")
 
-            total_btc += btc_value
+                total_gbp += float(total) * float(gbp_rate)
 
-        total_usd = self.get_conversion(current_time, "BTC", "USD")
+        # BTC value estimation from GBP
+        gbp_btc_rate = self.get_conversion(current_time, "BTC", "GBP")
+        total_btc = float(total_gbp) / float(gbp_btc_rate)
+
         balance = {
             "time": current_time.strftime("%Y-%m-%d"),
             "estimated_total_btc": total_btc,
-            "estimated_total_usd": total_usd,
+            "estimated_total_gbp": total_gbp,
         }
         balanceId = self.app.db.balances.insert_one(
             balance, {"$currentDate": {"createdAt": "true"}}

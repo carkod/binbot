@@ -15,11 +15,6 @@ GET http://localhost:5000/account/ticker/BTCUSDT HTTP/1.1
 ###
 GET http://localhost:5000/account/ticker24/BTCUSDT HTTP/1.1
 
-
-### Assets endpoint
-GET http://localhost:5000/account/update-assets HTTP/1.1
-
-
 ### Get PNL
 GET http://localhost:5000/account/pnl?days=7 HTTP/1.1
 
@@ -29,3 +24,6 @@ GET http://localhost:5000/account/find-quote/BNBBTC HTTP/1.1
 
 ### Balance with Fiat
 GET http://localhost:5000/account/gbp HTTP/1.1
+
+### Store balance
+GET http://localhost:5000/account/store-balance HTTP/1.1

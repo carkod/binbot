@@ -26,7 +26,11 @@ class Account:
     ticker24_url = os.getenv("TICKER24")
 
     def __init__(self):
-        self._exchange_info = requests.get(url=self.exchangeinfo_url).json()
+        pass
+
+    def _exchange_info(self):
+        exchange_info = requests.get(url=self.exchangeinfo_url).json()
+        return exchange_info
 
     def request_data(self):
         timestamp = int(round(tm.time() * 1000))
@@ -205,7 +209,7 @@ class Account:
         return next((x["free"] for x in data if x["asset"] == symbol), None)
 
     def find_quoteAsset(self, symbol):
-        symbols = self._exchange_info["symbols"]
+        symbols = self._exchange_info()["symbols"]
         quote_asset = next((s for s in symbols if s["symbol"] == symbol), None)
         if quote_asset:
             quote_asset = quote_asset["quoteAsset"]
@@ -214,7 +218,7 @@ class Account:
         return quote_asset
 
     def find_baseAsset(self, symbol):
-        symbols = self._exchange_info["symbols"]
+        symbols = self._exchange_info()["symbols"]
         base_asset = next((s for s in symbols if s["symbol"] == symbol), None)[
             "baseAsset"
         ]
@@ -229,7 +233,7 @@ class Account:
         return jsonResp({"data": data}, 200)
 
     def find_market(self, quote):
-        symbols = self._exchange_info["symbols"]
+        symbols = self._exchange_info()["symbols"]
         market = next((s for s in symbols if s["baseAsset"] == quote), None)
         if market:
             market = market["symbol"]
@@ -238,7 +242,7 @@ class Account:
         return market
 
     def get_symbol_info(self):
-        symbols = self._exchange_info["symbols"]
+        symbols = self._exchange_info()["symbols"]
         pair = request.view_args["pair"]
         symbol = next((s for s in symbols if s["symbol"] == pair), None)
         if symbol:
@@ -258,7 +262,7 @@ class Account:
         @params quote: boolean - quote=True, base=False
         @params symbol: string - market e.g. BNBBTC
         """
-        symbols = self._exchange_info["symbols"]
+        symbols = self._exchange_info()["symbols"]
         market = next((s for s in symbols if s["symbol"] == symbol), None)
         asset_precision = (
             market["quoteAssetPrecision"] if quote else market["baseAssetPrecision"]
@@ -272,7 +276,7 @@ class Account:
             - symbol: string - pair/market e.g. BNBBTC
             - filter_limit: string - minPrice or maxPrice
         """
-        symbols = self._exchange_info["symbols"]
+        symbols = self._exchange_info()["symbols"]
         market = next((s for s in symbols if s["symbol"] == symbol), None)
         price_filter = next(
             (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"), None
@@ -286,7 +290,7 @@ class Account:
             - symbol: string - pair/market e.g. BNBBTC
             - lot_size_limit: string - minQty, maxQty, stepSize
         """
-        symbols = self._exchange_info["symbols"]
+        symbols = self._exchange_info()["symbols"]
         market = next((s for s in symbols if s["symbol"] == symbol), None)
         quantity_filter = next(
             (m for m in market["filters"] if m["filterType"] == "LOT_SIZE"), None
@@ -300,7 +304,7 @@ class Account:
             - symbol: string - pair/market e.g. BNBBTC
             - min_notional_limit: string - minNotional
         """
-        symbols = self._exchange_info["symbols"]
+        symbols = self._exchange_info()["symbols"]
         market = next((s for s in symbols if s["symbol"] == symbol), None)
         min_notional_filter = next(
             (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
@@ -312,3 +316,4 @@ class Account:
         data = next((x["free"] for x in res["balances"] if x["asset"] == "GBP"), None)
         resp = jsonResp({"data": float(data)}, 200)
         return resp
+

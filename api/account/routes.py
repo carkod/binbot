@@ -70,3 +70,7 @@ def get_pnl():
 @account_blueprint.route("/gbp", methods=["GET"])
 def get_gbp_balance():
     return Account().get_gbp_balance()
+
+@account_blueprint.route("/store-balance", methods=["GET"])
+def store_balance():
+    return Assets().store_balance()
