@@ -40,7 +40,7 @@
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^11.2.7",
     "@testing-library/user-event": "^13.1.9",
-    "node-sass": "^5.0.0",
+    "node-sass": "^6.0.1",
     "prettier": "^2.3.1",
     "react-scripts": "^4.0.2",
     "source-map-explorer": "^2.5.2",
