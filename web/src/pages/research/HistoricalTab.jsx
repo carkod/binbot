@@ -3,7 +3,7 @@ import React from "react";
 import { Table } from "reactstrap";
 import { checkValue, roundDecimals } from "../../validations";
 
-export default function Signals({ data, setPair, orderBy }) {
+export default function historicalTab({ research, setPair, orderBy }) {
   return (
     <Table hover>
       <thead>
@@ -21,10 +21,11 @@ export default function Signals({ data, setPair, orderBy }) {
             </button>
           </th>
           <th>24hr Change</th>
+          <th>Avg Candle spread</th>
         </tr>
       </thead>
       <tbody>
-        {data.map((item, i) => (
+        {research.map((item, i) => (
           <tr key={i}>
             <th scope="row">
               <button
@@ -51,7 +52,16 @@ export default function Signals({ data, setPair, orderBy }) {
             </td>
             <td>{roundDecimals(item.spread * 100, 4) + "%"}</td>
             <td>{roundDecimals(item.last_volume, 4)}</td>
-            <td>{!checkValue(item.price_change_24) ? item.price_change_24 + "%" : ""}</td>
+            <td>
+              {!checkValue(item.price_change_24)
+                ? item.price_change_24 + "%"
+                : ""}
+            </td>
+            <td>
+              {!checkValue(item.avg_candle_spread)
+                ? roundDecimals(item.avg_candle_spread * 100, 4) + "%"
+                : ""}
+            </td>
           </tr>
         ))}
       </tbody>

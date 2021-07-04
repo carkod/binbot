@@ -88,8 +88,8 @@ class Correlation(Account):
         return resp
 
     def get_signals(self):
-        args = {"signal_strength": {"$exists": True, "$ne": None}}
-        sort = [["signal_strength", 1], ["lastModified", -1]]
+        args = {"candlestick_signal": {"$exists": True, "$ne": None}}
+        sort = []
         if request.args.get("filter_by") == "signal_side":
             signal_side = {
                 "signal_side": request.args.get("filter")
@@ -101,10 +101,22 @@ class Correlation(Account):
             }
             args.update(signal_side)
 
-        if request.args.get("order_by") == "spread":
-            sort.insert(0, ["spread", int(request.args.get("order"))])
+        if request.args.get("filter_by") == "candlestick_signal":
+            signal_side = {
+                "candlestick_signal": request.args.get("filter")
+            }
+            args.update(signal_side)
 
-        query = self.app.db.correlations.find(args).sort(sort)
+        query = self.app.db.correlations.find(args)
+
+        if request.args.get("order_by") == "spread":
+            sort = [["spread", int(request.args.get("order"))]]
+            query.sort(sort)
+
+        if request.args.get("order_by") == "price_change_24":
+            sort = [["price_change_24", int(request.args.get("order"))]]
+            query.sort(sort)
+
         data = list(query)
         resp = jsonResp({"data": data}, 200)
         return resp

@@ -29,19 +29,20 @@ assets = Assets(app)
 orders = Orders()
 research_data = Correlation()
 
-scheduler.add_job(
-    func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=0, minute=1
-)
-scheduler.add_job(
-    func=orders.poll_historical_orders,
-    trigger="cron",
-    timezone="Europe/London",
-    hour=1,
-    minute=1,
-)
+if os.environ["ENVIRONMENT"] != "development":
+    scheduler.add_job(
+        func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=0, minute=1
+    )
+    scheduler.add_job(
+        func=orders.poll_historical_orders,
+        trigger="cron",
+        timezone="Europe/London",
+        hour=1,
+        minute=1,
+    )
 
-scheduler.start()
-atexit.register(lambda: scheduler.shutdown(wait=False))
+    scheduler.start()
+    atexit.register(lambda: scheduler.shutdown(wait=False))
 
 # Register Blueprints
 app.register_blueprint(user_blueprint, url_prefix="/user")
