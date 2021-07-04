@@ -29,6 +29,9 @@ class Account:
         pass
 
     def _exchange_info(self):
+        """
+        This must be a separate method because classes use it with inheritance
+        """
         exchange_info = requests.get(url=self.exchangeinfo_url).json()
         return exchange_info
 
@@ -213,8 +216,6 @@ class Account:
         quote_asset = next((s for s in symbols if s["symbol"] == symbol), None)
         if quote_asset:
             quote_asset = quote_asset["quoteAsset"]
-        else:
-            print("failed to match quote_asset symbol:", symbol)
         return quote_asset
 
     def find_baseAsset(self, symbol):
@@ -237,8 +238,6 @@ class Account:
         market = next((s for s in symbols if s["baseAsset"] == quote), None)
         if market:
             market = market["symbol"]
-        else:
-            print("market did not match, symbols", symbols)
         return market
 
     def get_symbol_info(self):

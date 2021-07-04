@@ -93,6 +93,8 @@ class OrderUpdates:
             )
             if completed:
                 print(f"Bot take_profit completed! Bot {completed['_id']} deactivated")
+                # Logic to convert market coin into GBP here
+                
 
             # Update Safety orders
             bot = self.app.db.bots.find_one(

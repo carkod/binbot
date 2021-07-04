@@ -601,16 +601,6 @@ class BotForm extends React.Component {
                       <NavItem>
                         <NavLink
                           className={
-                            this.state.activeTab === "short" ? "active" : ""
-                          }
-                          onClick={() => this.toggle("short")}
-                        >
-                          Short
-                        </NavLink>
-                      </NavItem>
-                      <NavItem>
-                        <NavLink
-                          className={
                             this.state.activeTab === "safety-orders"
                               ? "active"
                               : ""
