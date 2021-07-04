@@ -4,10 +4,10 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pylint = "*"
+pylint = "2.9.3"
 flake8 = "*"
 autopep8 = "*"
-isort = "*"
+isort = "5.9.1"
 
 [packages]
 flask = "*"
@@ -16,13 +16,13 @@ pymongo = "*"
 python-jose = "*"
 passlib = "*"
 pytz = "*"
-pandas = "*"
+pandas = "1.2.5"
 requests = "*"
 apscheduler = "*"
 gunicorn = "*"
 websocket-client = "*"
 flask-mongoengine = "*"
-scipy = "*"
+scipy = "1.7.0"
 
 [requires]
 python_version = "3.8"
