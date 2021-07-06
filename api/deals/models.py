@@ -99,6 +99,10 @@ class Deal(Account):
             return jsonResp_message("[Deal init error] Not enough GBP balance", 200)
 
     def sell_gbp_balance(self):
+        """
+        To sell GBP e.g.:
+        - BNBGBP market buy BNB with GBP
+        """
         pair = self.active_bot["pair"]
         market = self.find_quoteAsset(pair)
         new_pair = f"{market}GBP"
@@ -136,6 +140,60 @@ class Deal(Account):
                 "qty": qty,
             }
             res = requests.post(url=self.bb_buy_market_order_url, json=order)
+
+        if isinstance(handle_error(res), Response):
+            resp = jsonResp(
+                {
+                    "message": f"Failed to buy {pair} using GBP balance",
+                    "botId": str(self.active_bot["_id"]),
+                },
+                200,
+            )
+            return resp
+        return
+
+    def buy_gbp_balance(self):
+        """
+        To buy GBP e.g.:
+        - BNBGBP market sell BNB with GBP
+        """
+        pair = self.active_bot["pair"]
+        market = self.find_quoteAsset(pair)
+        new_pair = f"{market}GBP"
+
+        bo_size = self.active_bot["base_order_size"]
+        book_order = Book_Order(new_pair)
+        price = float(book_order.matching_engine(False, bo_size))
+        # Precision for balance conversion, not for the deal
+        qty_precision = -(
+            Decimal(str(self.lot_size_by_symbol(new_pair, "stepSize")))
+            .as_tuple()
+            .exponent
+        )
+        price_precision = -(
+            Decimal(str(self.price_filter_by_symbol(new_pair, "tickSize")))
+            .as_tuple()
+            .exponent
+        )
+        qty = round_numbers(
+            float(bo_size),
+            qty_precision,
+        )
+
+        if price:
+            order = {
+                "pair": new_pair,
+                "qty": qty,
+                "price": supress_notation(price, price_precision),
+            }
+            res = requests.post(url=self.bb_sell_order_url, json=order)
+        else:
+            # Matching engine failed - market order
+            order = {
+                "pair": new_pair,
+                "qty": qty,
+            }
+            res = requests.post(url=self.bb_sell_market_order_url, json=order)
 
         if isinstance(handle_error(res), Response):
             resp = jsonResp(

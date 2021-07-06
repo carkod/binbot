@@ -28,7 +28,6 @@ import BotInfo from "../../components/BotInfo";
 import Candlestick from "../../components/Candlestick";
 import {
   checkBalance,
-  checkMinValue,
   checkValue,
   getCurrentPairBalance,
   intervalOptions,
@@ -202,10 +201,8 @@ class BotForm extends React.Component {
 
   requiredinValidation = () => {
     const {
-      balance_usage,
       pair,
       take_profit,
-      base_order_size,
       max_so_count,
       so_size,
       trailling,
@@ -215,25 +212,11 @@ class BotForm extends React.Component {
     // If everything below is ok, form will be valid
     this.setState({ formIsValid: true });
 
-    if (checkValue(balance_usage) && checkMinValue(balance_usage)) {
-      this.setState({ balanceUsageError: true, formIsValid: false });
-      return false;
-    } else {
-      this.setState({ balanceUsageError: false });
-    }
-
     if (checkValue(pair)) {
       this.setState({ pairError: true, formIsValid: false });
       return false;
     } else {
       this.setState({ pairError: false });
-    }
-
-    if (checkValue(base_order_size) && checkBalance(base_order_size)) {
-      this.setState({ baseOrderSizeError: true, formIsValid: false });
-      return false;
-    } else {
-      this.setState({ baseOrderSizeError: false });
     }
 
     if (checkValue(take_profit) && checkBalance(take_profit)) {
@@ -262,13 +245,6 @@ class BotForm extends React.Component {
       } else {
         this.setState({ traillingDeviationError: false });
       }
-    }
-    if (
-      checkValue(this.state.balance_available) ||
-      parseFloat(this.state.balance_available) === 0
-    ) {
-      this.setState({ soSizeError: true, formIsValid: false });
-      return false;
     }
 
     return true;
