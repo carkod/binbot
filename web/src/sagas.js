@@ -11,24 +11,18 @@ import watchBot, {
   watchGetCandlestick,
 } from "./pages/bots/saga";
 import {
-  watchGbpBalanceApi,
-  watchAssetsValue,
-  watchGetBalanceDiff,
-  watchGetBalanceInBtc,
-} from "./pages/dashboard/saga";
-import {
   watchDeleteOpenOrders,
   watchGetOrders,
   watchOpenOrders,
   watchPollOrders,
 } from "./pages/orders/saga";
 import { watchHistoricalResearchApi, watchResearchApi } from "./pages/research/saga";
+import { watchGetBalanceApi } from "./state/balances/saga";
 
 export default function* rootSaga() {
   yield all([
     watchPostRegistration(),
     watchPostLogin(),
-    watchGbpBalanceApi(),
     watchBot(),
     watchCreateBot(),
     watchEditBot(),
@@ -38,12 +32,10 @@ export default function* rootSaga() {
     watchOpenOrders(),
     watchPollOrders(),
     watchDeleteOpenOrders(),
-    watchAssetsValue(),
     watchActivateBot(),
     watchDeactivateBot(),
-    watchGetBalanceDiff(),
-    watchGetBalanceInBtc(),
     watchResearchApi(),
     watchHistoricalResearchApi(),
+    watchGetBalanceApi()
   ]);
 }

@@ -29,10 +29,9 @@ import Candlestick from "../../components/Candlestick";
 import {
   checkBalance,
   checkValue,
-  getCurrentPairBalance,
   intervalOptions,
 } from "../../validations.js";
-import { getBalance } from "../dashboard/actions";
+import { getBalance } from "../../state/balances/actions";
 import {
   activateBot,
   createBot,
@@ -369,37 +368,31 @@ class BotForm extends React.Component {
   };
 
   handleBaseChange = (e) => {
-    const { balance_available_asset } = this.state;
-    const qty = getCurrentPairBalance(
-      this.props.balances,
-      balance_available_asset
-    );
-    const updatedValue = qty - e.target.value * 1;
-
-    // Check that we have enough funds
-    // If not return error
-    if (parseFloat(updatedValue) >= 0) {
-      this.setState({
-        [e.target.name]: e.target.value,
-        balance_available: updatedValue,
-        baseOrderSizeError: false,
-      });
-    } else {
-      this.setState({
-        [e.target.name]: e.target.value,
-        baseOrderSizeError: true,
-        formIsValid: false,
-      });
-    }
+    // const { balance_available_asset } = this.state;
+    this.setState({
+      base_order_size: e.target.value
+    })
   };
 
-  addAll = () => {
-    const { pair, balance_available } = this.state;
+  addMin = () => {
+    const { pair, quoteAsset } = this.state;
     if (!checkValue(pair)) {
       this.props.getSymbolInfo(pair);
-      this.setState({ base_order_size: balance_available });
-    } else {
-      this.setState({ balanceAvailableError: true, formIsValid: false });
+      let minAmount = "";
+      switch (quoteAsset) {
+        case "BTC":
+          minAmount = 0.001;
+          break;
+        case "BNB":
+          minAmount = 0.051;
+          break;
+        case "GBP":
+          minAmount = 10;
+          break;
+        default:
+          break;
+      }
+      this.setState({ base_order_size: minAmount });
     }
   };
 
@@ -614,7 +607,7 @@ class BotForm extends React.Component {
                       handleChange={this.handleChange}
                       handleBaseChange={this.handleBaseChange}
                       handleBlur={this.handleBlur}
-                      addAll={this.addAll}
+                      addMin={this.addMin}
                     />
 
                     {/*
@@ -781,12 +774,11 @@ class BotForm extends React.Component {
               </Card>
             </Col>
             <Col md="5" sm="12">
-              <BalanceAnalysis
-                balances={this.props.balances}
-                balance_usage={this.state.balance_usage}
-                balance_available={this.state.balance_available}
-                balance_available_asset={this.state.balance_available_asset}
-              />
+              {this.props.lastBalance && 
+                <BalanceAnalysis
+                  balance={this.props.lastBalance}
+                />
+              }
             </Col>
           </Row>
         </Form>
@@ -796,13 +788,19 @@ class BotForm extends React.Component {
 }
 
 const mapStateToProps = (state) => {
-  const { data: balances } = state.balanceReducer;
+  let { data: balance } = state.balanceReducer;
   const { data: symbols } = state.symbolReducer;
   const { data: bot } = state.getSingleBotReducer;
   const { data: candlestick } = state.candlestickReducer;
   const { botId, botActive } = state.botReducer;
+
+  let lastBalance = null
+  if (!checkValue(balance) && balance.length > 0) {
+    lastBalance = balance[0];
+  }
+
   return {
-    balances: balances,
+    lastBalance: lastBalance,
     symbols: symbols,
     bot: bot,
     candlestick: candlestick,

@@ -211,9 +211,11 @@ class Assets(Account, Conversion):
             print(f"{current_time} Unable to store balance! Error: {balanceId}")
 
     def get_value(self):
-        resp = jsonResp({"message": "No balance found"}, 200)
-        interval = request.view_args["interval"]
-        filter = {}
+        try:
+            interval = request.view_args["interval"]
+        except KeyError:
+            interval = None
+            filter = None
 
         # last 24 hours
         if interval == "1d":

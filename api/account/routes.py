@@ -18,12 +18,8 @@ def get_balances_btc():
 
 @account_blueprint.route("/balance", methods=["GET"])
 def raw_balance():
-    return Assets().get_raw_balance()
+    return Assets().get_value()
 
-
-@account_blueprint.route("/balance/binbot", methods=["GET"])
-def binbot_balance():
-    return Assets().get_binbot_balance()
 
 @account_blueprint.route("/symbols/", methods=["GET"])
 def get_symbols():
@@ -66,10 +62,6 @@ def get_value(interval):
 def get_pnl():
     return Assets().get_pnl()
 
-
-@account_blueprint.route("/gbp", methods=["GET"])
-def get_gbp_balance():
-    return Account().get_gbp_balance()
 
 @account_blueprint.route("/store-balance", methods=["GET"])
 def store_balance():

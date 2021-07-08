@@ -20,7 +20,7 @@ export default function MainTab({
   handleChange,
   handleBaseChange,
   handleBlur,
-  addAll,
+  addMin,
 }) {
   return (
     <TabPane tabId="main">
@@ -65,8 +65,8 @@ export default function MainTab({
           <FormFeedback valid={!state.baseOrderSizeError}>
             Not enough balance
           </FormFeedback>
-          <Badge color="secondary" onClick={addAll}>
-            All
+          <Badge color="secondary" onClick={addMin}>
+            Min {state.quoteAsset === "BTC" ? 0.001 : (state.quoteAsset === "BNB" ? 0.051 : (state.quoteAsset === "GBP" ? 10 : ""))}
           </Badge>
         </Col>
       </Row>

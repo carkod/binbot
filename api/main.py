@@ -28,6 +28,8 @@ assets = Assets()
 orders = Orders()
 research_data = Correlation()
 
+assets.store_balance()
+
 if os.environ["ENVIRONMENT"] != "development":
     scheduler.add_job(
         func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=00, minute=1

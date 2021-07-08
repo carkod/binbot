@@ -2,7 +2,6 @@ import React from "react";
 import { connect } from "react-redux";
 import { Card, CardBody, CardFooter, CardTitle, Col, Row } from "reactstrap";
 import { checkValue, listCssColors, roundDecimals } from "../../validations";
-import { getAssets, getBalanceDiff, getBalanceInBtc } from "./actions";
 import { AssetsPie } from "./AssetsPie";
 import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
@@ -29,9 +28,6 @@ class Dashboard extends React.Component {
   }
 
   componentDidMount = () => {
-    this.props.getBalanceInBtc();
-    this.props.getAssets();
-    this.props.getBalanceDiff("7");
   };
 
   componentDidUpdate = (p, s) => {
@@ -374,23 +370,20 @@ class Dashboard extends React.Component {
 }
 
 const mapStateToProps = (s) => {
-  const { data: account } = s.balanceInBtcReducer;
-  const { data: assets } = s.assetsReducer;
-  const { data: balanceDiff } = s.balanceDiffReducer;
-  const { loading } = s.loadingReducer;
-  let props = {
-    balances: !checkValue(account) ? account.balances : null,
-    totalBtcBalance: !checkValue(account) ? account.total_btc : null,
-    assets: assets,
-    balanceDiff: balanceDiff,
-    load: loading
-  };
-  return props;
+  // const { data: account } = s.balanceInBtcReducer;
+  // const { data: assets } = s.assetsReducer;
+  // const { data: balanceDiff } = s.balanceDiffReducer;
+  // const { loading } = s.loadingReducer;
+  // let props = {
+  //   balances: !checkValue(account) ? account.balances : null,
+  //   totalBtcBalance: !checkValue(account) ? account.total_btc : null,
+  //   assets: assets,
+  //   balanceDiff: balanceDiff,
+  //   load: loading
+  // };
+  return s;
 };
 
 export default connect(mapStateToProps, {
-  getBalanceInBtc,
-  getAssets,
-  getBalanceDiff,
   loading
 })(Dashboard);
