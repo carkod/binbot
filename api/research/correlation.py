@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 import requests
-from api.account.models import Account
+from api.account.account import Account
 from api.app import create_app
 from api.tools.jsonresp import jsonResp_message, jsonResp
 from api.tools.round_numbers import round_numbers

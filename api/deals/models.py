@@ -2,8 +2,7 @@ import os
 from decimal import Decimal
 
 import requests
-from api.account.models import Account
-from api.charts.klines_sockets import KlineSockets
+from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
@@ -79,22 +78,142 @@ class Deal(Account):
     def initialization(self):
         """
         Initial checks to see if the deal is possible
-        - Do we have enough balance?
+        - Do we have enough GBP balance?
         - If we have enough balance allocate division
         - If long position, check base (left) asset
         - If short position, check quote (right) asset
         """
 
         asset = self.find_quoteAsset(self.active_bot["pair"])
-        self.balance = self.get_one_balance(asset)
+        find_market = self.find_market(self.active_bot["pair"])
+        bo_size = self.active_bot["base_order_size"]
+        if find_market != "GBP":
+            rate = self.get_ticker_price(f"{asset}GBP")
+            gbp_amount = float(bo_size) * float(rate)
+            self.balance = self.get_one_balance("GBP")
+        else:
+            gbp_amount = bo_size
 
-        if not self.balance:
-            return jsonResp_message(f"[Deal init error] No {asset} balance", 200)
+        if self.balance <= gbp_amount:
+            return jsonResp_message("[Deal init error] Not enough GBP balance", 200)
 
-        self.active_bot["balance_usage_size"] = self.get_one_balance(asset)
+    def sell_gbp_balance(self):
+        """
+        To sell GBP e.g.:
+        - BNBGBP market buy BNB with GBP
+        """
+        pair = self.active_bot["pair"]
+        market = self.find_quoteAsset(pair)
+        new_pair = f"{market}GBP"
+
+        bo_size = self.active_bot["base_order_size"]
+        book_order = Book_Order(new_pair)
+        price = float(book_order.matching_engine(False, bo_size))
+        # Precision for balance conversion, not for the deal
+        qty_precision = -(
+            Decimal(str(self.lot_size_by_symbol(new_pair, "stepSize")))
+            .as_tuple()
+            .exponent
+        )
+        price_precision = -(
+            Decimal(str(self.price_filter_by_symbol(new_pair, "tickSize")))
+            .as_tuple()
+            .exponent
+        )
+        qty = round_numbers(
+            float(bo_size),
+            qty_precision,
+        )
+
+        if price:
+            order = {
+                "pair": new_pair,
+                "qty": qty,
+                "price": supress_notation(price, price_precision),
+            }
+            res = requests.post(url=self.bb_buy_order_url, json=order)
+        else:
+            # Matching engine failed - market order
+            order = {
+                "pair": new_pair,
+                "qty": qty,
+            }
+            res = requests.post(url=self.bb_buy_market_order_url, json=order)
+
+        if isinstance(handle_error(res), Response):
+            resp = jsonResp(
+                {
+                    "message": f"Failed to buy {pair} using GBP balance",
+                    "botId": str(self.active_bot["_id"]),
+                },
+                200,
+            )
+            return resp
+        return
+
+    def buy_gbp_balance(self):
+        """
+        To buy GBP e.g.:
+        - BNBGBP market sell BNB with GBP
+        """
+        pair = self.active_bot["pair"]
+        market = self.find_quoteAsset(pair)
+        new_pair = f"{market}GBP"
+
+        bo_size = self.active_bot["base_order_size"]
+        book_order = Book_Order(new_pair)
+        price = float(book_order.matching_engine(False, bo_size))
+        # Precision for balance conversion, not for the deal
+        qty_precision = -(
+            Decimal(str(self.lot_size_by_symbol(new_pair, "stepSize")))
+            .as_tuple()
+            .exponent
+        )
+        price_precision = -(
+            Decimal(str(self.price_filter_by_symbol(new_pair, "tickSize")))
+            .as_tuple()
+            .exponent
+        )
+        qty = round_numbers(
+            float(bo_size),
+            qty_precision,
+        )
+
+        if price:
+            order = {
+                "pair": new_pair,
+                "qty": qty,
+                "price": supress_notation(price, price_precision),
+            }
+            res = requests.post(url=self.bb_sell_order_url, json=order)
+        else:
+            # Matching engine failed - market order
+            order = {
+                "pair": new_pair,
+                "qty": qty,
+            }
+            res = requests.post(url=self.bb_sell_market_order_url, json=order)
+
+        if isinstance(handle_error(res), Response):
+            resp = jsonResp(
+                {
+                    "message": f"Failed to buy {pair} using GBP balance",
+                    "botId": str(self.active_bot["_id"]),
+                },
+                200,
+            )
+            return resp
+        return
 
     def base_order(self):
+        # Transform GBP balance to required market balance
+        # e.g. BNBBTC - sell GBP and buy BTC
+        transformed_balance = self.sell_gbp_balance()
+        if isinstance(transformed_balance, Response):
+            return transformed_balance
+
         pair = self.active_bot["pair"]
+
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
         book_order = Book_Order(pair)
@@ -106,18 +225,10 @@ class Deal(Account):
         price = float(book_order.matching_engine(False, qty))
         self.price = price
         amount = float(qty) * float(price)
-        self.total_amount = qty
+        self.total_amount = amount
 
         if price:
-            if price <= float(self.MIN_PRICE):
-                return jsonResp_message("[Base order error] Price too low", 200)
-        # Avoid common rate limits
-        if qty <= float(self.MIN_QTY):
-            return jsonResp_message("[Base order error] Quantity too low", 200)
-        if amount <= float(self.MIN_NOTIONAL):
-            return jsonResp_message("[Base order error] Price x Quantity too low", 200)
-
-        if price:
+            # Cheaper commissions - limit order
             order = {
                 "pair": pair,
                 "qty": qty,
@@ -149,15 +260,17 @@ class Deal(Account):
             "time_in_force": order["timeInForce"],
             "status": order["status"],
         }
-        # Remove follow line once redesign is finished
-        self.base_order_price = order["price"]
 
-        tp_price = (float(order["price"]) * 1 + (float(self.active_bot["take_profit"]) / 100))
+        tp_price = float(order["price"]) * 1 + (
+            float(self.active_bot["take_profit"]) / 100
+        )
 
         so_prices = {}
         so_num = 1
         for key, value in self.active_bot["safety_orders"].items():
-            price = float(order["price"]) - (float(order["price"]) * (float(value["price_deviation_so"]) / 100))
+            price = float(order["price"]) - (
+                float(order["price"]) * (float(value["price_deviation_so"]) / 100)
+            )
             price = supress_notation(price, self.price_precision)
             so_prices[str(so_num)] = price
             so_num += 1
@@ -181,7 +294,10 @@ class Deal(Account):
         )
         if not botId:
             resp = jsonResp(
-                {"message": "Failed to save Base order", "botId": str(self.active_bot["_id"])},
+                {
+                    "message": "Failed to save Base order",
+                    "botId": str(self.active_bot["_id"]),
+                },
                 200,
             )
             return resp
@@ -197,25 +313,16 @@ class Deal(Account):
         - take_profit order can ONLY be executed once base order is filled (on Binance)
         """
         pair = self.active_bot["pair"]
+        updated_bot = self.app.db.bots.find_one({"_id": self.active_bot["_id"]})
+        deal_buy_price = updated_bot["deal"]["buy_price"]
+        buy_total_qty = updated_bot["deal"]["buy_total_qty"]
         price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(
-            self.active_bot["deal"]["buy_price"]
+            deal_buy_price
         )
         qty = round_numbers(
-            self.active_bot["deal"]["buy_total_qty"], self.qty_precision
+            buy_total_qty, self.qty_precision
         )
         price = round_numbers(price, self.price_precision)
-
-        # Validations
-        if price:
-            if price <= float(self.MIN_PRICE):
-                return jsonResp_message("[Take profit order error] Price too low", 200)
-        # Avoid common rate limits
-        if qty <= float(self.MIN_QTY):
-            return jsonResp_message("[Take profit order error] Quantity too low", 200)
-        if price * qty <= float(self.MIN_NOTIONAL):
-            return jsonResp_message(
-                "[Take profit order error] Price x Quantity too low", 200
-            )
 
         order = {
             "pair": pair,
@@ -355,22 +462,9 @@ class Deal(Account):
             base_order = self.base_order()
             if isinstance(base_order, Response):
                 msg = base_order.json["message"]
-                order_errors.append({
-                    "base_order_error": msg
-                })
+                order_errors.append({"base_order_error": msg})
                 return order_errors
 
-        # If short order is enabled
-        if float(self.active_bot["short_order"]) > 0:
-            short_stop_limit_order = self.short_stop_limit_order()
-            if isinstance(short_stop_limit_order, Response):
-                msg = short_stop_limit_order.json["message"]
-                order_errors.append(msg)
-
-            short_order = self.short_base_order()
-            if isinstance(short_order, Response):
-                msg = short_order.json["message"]
-                order_errors.append(msg)
         # Below take profit order goes first, because stream does not return a value
         # If there is already a take profit do not execute
         # If there is no base order can't execute

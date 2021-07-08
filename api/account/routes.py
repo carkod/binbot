@@ -1,8 +1,8 @@
 import os
 
 from flask import Blueprint
-from api.account.models import Account, Assets
-
+from api.account.account import Account
+from api.account.assets import Assets
 
 # initialization
 os.environ["CORS_HEADERS"] = "Content-Type"
@@ -13,17 +13,17 @@ account_blueprint = Blueprint("account", __name__)
 
 @account_blueprint.route("/btc-balance", methods=["GET"])
 def get_balances_btc():
-    return Account().get_balances_btc()
+    return Assets().get_balances_btc()
 
 
 @account_blueprint.route("/balance", methods=["GET"])
 def raw_balance():
-    return Account().get_raw_balance()
+    return Assets().get_raw_balance()
 
 
 @account_blueprint.route("/balance/binbot", methods=["GET"])
 def binbot_balance():
-    return Account().get_binbot_balance()
+    return Assets().get_binbot_balance()
 
 @account_blueprint.route("/symbols/", methods=["GET"])
 def get_symbols():
@@ -65,3 +65,12 @@ def get_value(interval):
 @account_blueprint.route("/pnl", methods=["GET"])
 def get_pnl():
     return Assets().get_pnl()
+
+
+@account_blueprint.route("/gbp", methods=["GET"])
+def get_gbp_balance():
+    return Account().get_gbp_balance()
+
+@account_blueprint.route("/store-balance", methods=["GET"])
+def store_balance():
+    return Assets().store_balance()

@@ -19,8 +19,8 @@ import {
 /**
  * Account request/response handler
  */
-export function* getBalanceAll() {
-  const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE_ALL;
+export function* getBalanceGbpApi() {
+  const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE_GBP;
   const options = {
     method: "GET",
     mode: "cors", // no-cors, *cors, same-origin
@@ -34,8 +34,8 @@ export function* getBalanceAll() {
   }
 }
 
-export function* watchGetBalanceAll() {
-  yield takeLatest(GET_BALANCE, getBalanceAll);
+export function* watchGbpBalanceApi() {
+  yield takeLatest(GET_BALANCE, getBalanceGbpApi);
 }
 
 /**

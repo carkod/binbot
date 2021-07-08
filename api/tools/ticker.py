@@ -26,7 +26,7 @@ class Conversion:
     coin_api_key = os.environ["COINAPI_KEY"]
     url = os.environ["COINAPI_EXG_URL"]
 
-    def get_conversion(self, time, base="BTC", quote="USD"):
+    def get_conversion(self, time, base="BTC", quote="GBP"):
 
         params = {
             "apikey": self.coin_api_key,

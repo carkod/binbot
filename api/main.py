@@ -6,13 +6,12 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from api.app import create_app
 
 # Import Routes
-from api.account.models import Assets
+from api.account.assets import Assets
 from api.account.routes import account_blueprint
 from api.bots.routes import bot_blueprint
 from api.charts.routes import charts_blueprint
 from api.deals.routes import deal_blueprint
 from api.orders.models.order_sockets import OrderUpdates
-from api.charts.klines_sockets import KlineSockets
 from api.orders.models.orders import Orders
 from api.orders.routes import order_blueprint
 from api.tools.jsonresp import jsonResp
@@ -25,13 +24,16 @@ app = create_app()
 
 # Cronjob
 scheduler = BackgroundScheduler()
-assets = Assets(app)
+assets = Assets()
 orders = Orders()
 research_data = Correlation()
 
 if os.environ["ENVIRONMENT"] != "development":
     scheduler.add_job(
-        func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=0, minute=1
+        func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=00, minute=1
+    )
+    scheduler.add_job(
+        func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=12, minute=1
     )
     scheduler.add_job(
         func=orders.poll_historical_orders,
@@ -64,11 +66,6 @@ order_updates = OrderUpdates(app)
 worker_thread = threading.Thread(name="order_updates_thread", target=order_updates.run_stream)
 worker_thread.start()
 
-kline_updates = KlineSockets()
-# start a worker process to move the received stream_data from the stream_buffer to a print function
-kline_thread = threading.Thread(target=kline_updates.start_stream)
-kline_thread.start()
-
 # Research market updates
-# if os.environ["ENVIRONMENT"] != "development":
-market_update_thread()
+if os.environ["ENVIRONMENT"] != "development":
+    market_update_thread()

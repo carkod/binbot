@@ -32,6 +32,8 @@ export default function BotInfo({ bot }) {
                     <td>{deal.order_side}</td>
                   </tr>
                 );
+              } else {
+                return ("")
               }
             })}
           </tbody>

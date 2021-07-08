@@ -55,6 +55,6 @@ If issues are encountered downloading prod DB to local
 2. Find the name of the reducer in the `mapStateToProps` function e.g. `state.balanceReducer`
 3. Search for this reducer e.g. `balanceReducer`
 4. Copy the main action type e.g. `GET_BALANCE`
-5. Find this constant in the saga e.g. `watchGetBalanceAll`
+5. Find this constant in the saga e.g. `watchGbpBalanceApi`
 6. In the generator function e.g. `getBalanceAll` you will find the `requestUrl`
 7. This URL will have a constant variable which is usually located in the `env`

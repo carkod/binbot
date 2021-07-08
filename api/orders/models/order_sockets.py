@@ -5,7 +5,7 @@ import requests
 from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
-
+from api.deals.models import Deal
 
 class OrderUpdates:
     def __init__(self, app):
@@ -77,16 +77,21 @@ class OrderUpdates:
 
         if result["X"] == "FILLED":
             # Close successful orders
-            completed = self.app.db.bots.find_one_and_update(
+            bot = self.app.db.bots.find_one_and_update(
                 {
                     "orders": {
                         "$elemMatch": {"deal_type": "take_profit", "order_id": order_id}
                     }
                 },
-                {"$set": {"active": "false"}},
+                {
+                    "$set": {"active": "false", "deal.current_price": result["p"]},
+                    "$inc": {"deal.commission": result["n"]}
+                }
             )
-            if completed:
-                print(f"Bot take_profit completed! Bot {completed['_id']} deactivated")
+            if bot:
+                print(f"Bot take_profit completed! Bot {bot['_id']} deactivated")
+                # Logic to convert market coin into GBP here
+                Deal(bot, self.app).buy_gbp_balance()
 
             # Update Safety orders
             bot = self.app.db.bots.find_one(
@@ -108,3 +113,4 @@ class OrderUpdates:
 
         else:
             print(f"No bot found with order client order id: {order_id}")
+

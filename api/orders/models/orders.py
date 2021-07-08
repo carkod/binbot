@@ -10,7 +10,7 @@ from api.app import create_app
 from api.tools.enum_definitions import EnumDefinitions
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
-from api.account.models import Account
+from api.account.account import Account
 from api.tools.round_numbers import round_numbers
 
 poll_percentage = 0
