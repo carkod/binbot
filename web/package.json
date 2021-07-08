@@ -1,12 +1,12 @@
 {
   "name": "binbot",
-  "version": "1",
+  "version": "2",
   "private": true,
   "homepage": ".",
   "dependencies": {
     "bootstrap": "^4.3.1",
     "history": "^5.0.0",
-    "immer": "^9.0.2",
+    "immer": "^9.0.5",
     "moment": "^2.29.1",
     "nanoid": "^3.1.23",
     "plotly.js": "^1.57.1",
@@ -29,7 +29,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "install:clean": "yarn run clean && yarn install && yarn start",
-    "clean": "rm -rf node_modules/ && rm -rf package-lock.json && rm -rf build",
+    "clean": "rm -rf node_modules/ && rm -rf package-lock.json && rm -rf yarn.lock && rm -rf build",
     "compile-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css",
     "minify-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.min.css --output-style compressed",
     "map-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css --source-map true",
@@ -40,11 +40,10 @@
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^11.2.7",
     "@testing-library/user-event": "^13.1.9",
-    "node-sass": "^5.0.0",
+    "node-sass": "^6.0.1",
     "prettier": "^2.3.1",
     "react-scripts": "^4.0.2",
-    "source-map-explorer": "^2.5.2",
-    "web-vitals": "^2.1.0"
+    "source-map-explorer": "^2.5.2"
   },
   "eslintConfig": {
     "extends": [
