@@ -11,7 +11,7 @@ import watchBot, {
   watchGetCandlestick,
 } from "./pages/bots/saga";
 import {
-  watchGetBalanceAll,
+  watchGbpBalanceApi,
   watchAssetsValue,
   watchGetBalanceDiff,
   watchGetBalanceInBtc,
@@ -28,7 +28,7 @@ export default function* rootSaga() {
   yield all([
     watchPostRegistration(),
     watchPostLogin(),
-    watchGetBalanceAll(),
+    watchGbpBalanceApi(),
     watchBot(),
     watchCreateBot(),
     watchEditBot(),

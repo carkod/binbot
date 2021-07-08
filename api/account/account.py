@@ -1,19 +1,14 @@
 import hashlib
 import hmac
-import json
 import os
+import json
 import time as tm
 from urllib.parse import urlparse
 
-import pandas as pd
 import requests
 from flask import request
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
-from api.tools.round_numbers import round_numbers
-from api.app import create_app
-from decimal import Decimal
-
 
 class Account:
 
@@ -79,9 +74,7 @@ class Account:
 
     def get_ticker_price(self, symbol):
         url = self.ticker_price
-        params = None
-        if symbol:
-            params = {"symbol": symbol}
+        params = {"symbol": symbol}
         res = requests.get(url=url, params=params)
         handle_error(res)
         data = res.json()
@@ -96,120 +89,6 @@ class Account:
         data = res.json()
         resp = jsonResp({"data": data}, 200)
         return resp
-
-    def get_raw_balance(self):
-        """
-        Unrestricted balance
-        """
-        data = self.request_data()["balances"]
-        df = pd.DataFrame(data)
-        df["free"] = pd.to_numeric(df["free"])
-        df["locked"] = pd.to_numeric(df["locked"])
-        df["asset"] = df["asset"].astype(str)
-        # Get table with > 0
-        balances = df[(df["free"] > 0) | (df["locked"] > 0)].to_dict("records")
-
-        # filter out empty
-        # Return response
-        resp = jsonResp(balances, 200)
-        return resp
-
-    def get_binbot_balance(self):
-        """
-        More strict balance
-        - No locked
-        - Minus safety orders
-        """
-        app = create_app()
-        # Get a list of safety orders
-        so_list = list(app.db.bots.aggregate(
-            [
-                {
-                    "$addFields": {
-                        "so_num": {"$size": {"$objectToArray": "$safety_orders"}},
-                    }
-                },
-                {"$match": {"so_num": {"$ne": 0}}},
-                {"$addFields": {"s_os": {"$objectToArray": "$safety_orders"}}},
-                {"$unwind": "$safety_orders"},
-                {"$group": {"_id": {"so": "$s_os.v.so_size", "pair": "$pair"}}},
-            ]
-        ))
-        data = self.request_data()["balances"]
-        df = pd.DataFrame(data)
-        df["free"] = pd.to_numeric(df["free"])
-        df["asset"] = df["asset"].astype(str)
-        df.drop("locked", axis=1, inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        # Get table with > 0
-        balances = df[df["free"] > 0].to_dict("records")
-
-        # Include safety orders
-        for b in balances:
-            for item in so_list:
-                if b["asset"] in item["_id"]["pair"]:
-                    decimals = -(Decimal(self.price_filter_by_symbol(item["_id"]["pair"], "tickSize")).as_tuple().exponent)
-                    total_so = sum([float(x) if x != "" else 0 for x in item["_id"]["so"]])
-                    b["free"] = round_numbers(float(b["free"]) - total_so, decimals)
-
-        # filter out empty
-        # Return response
-        resp = jsonResp(balances, 200)
-        return resp
-
-    def get_balances_btc(self):
-        data = self.request_data()["balances"]
-        df = pd.DataFrame(data)
-        df["free"] = pd.to_numeric(df["free"])
-        df["asset"] = df["asset"].astype(str)
-        df.drop("locked", axis=1, inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        # Get table with > 0
-        balances = df[df["free"] > 0.000000].to_dict("records")
-        data = {"total_btc": 0, "balances": []}
-        for b in balances:
-            symbol = self.find_market(b["asset"])
-            market = self.find_quoteAsset(symbol)
-            rate = 0
-            if b["asset"] != "BTC":
-                rate = self.get_ticker_price(symbol)
-
-                if "locked" in b:
-                    qty = b["free"] + b["locked"]
-                else:
-                    qty = b["free"]
-
-                btc_value = float(qty) * float(rate)
-
-                # Non-btc markets
-                if market != "BTC" and b["asset"] != "USDT":
-                    x_rate = self.get_ticker_price(market + "BTC")
-                    x_value = float(qty) * float(rate)
-                    btc_value = float(x_value) * float(x_rate)
-
-                # Only tether coins for hedging
-                if b["asset"] == "USDT":
-                    rate = self.get_ticker_price("BTCUSDT")
-                    btc_value = float(qty) / float(rate)
-
-            else:
-                if "locked" in b:
-                    btc_value = b["free"] + b["locked"]
-                else:
-                    btc_value = b["free"]
-
-            data["total_btc"] += btc_value
-            assets = {"asset": b["asset"], "btc_value": btc_value}
-            data["balances"].append(assets)
-
-        # filter out empty
-        # Return response
-        resp = jsonResp(data, 200)
-        return resp
-
-    def get_one_balance(self, symbol="BTC"):
-        data = json.loads(self.get_raw_balance().data)
-        return next((x["free"] for x in data if x["asset"] == symbol), None)
 
     def find_quoteAsset(self, symbol):
         symbols = self._exchange_info()["symbols"]
@@ -310,9 +189,6 @@ class Account:
         )
         return min_notional_filter[min_notional_limit]
 
-    def get_gbp_balance(self):
-        res = self.request_data()
-        data = next((x["free"] for x in res["balances"] if x["asset"] == "GBP"), None)
-        resp = jsonResp({"data": float(data)}, 200)
-        return resp
-
+    def get_one_balance(self, symbol="BTC"):
+        data = json.loads(self.get_raw_balance().data)
+        return next((x["free"] for x in data if x["asset"] == symbol), None)

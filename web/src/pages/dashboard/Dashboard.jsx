@@ -228,8 +228,7 @@ class Dashboard extends React.Component {
     return (
       <>
         <div className="content">
-          {!this.props.load &&
-            (!checkValue(balances) ? (
+          {!this.props.load ? (
               <>
                 <Row>
                   <Col lg="4" md="6" sm="6">
@@ -367,7 +366,7 @@ class Dashboard extends React.Component {
                   <h1>No balance data available</h1>
                 </Col>
               </Row>
-            ))}
+            )}
         </div>
       </>
     );

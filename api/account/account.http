@@ -1,9 +1,6 @@
 GET http://localhost:5000/account HTTP/1.1
 
 ###
-GET http://localhost:5000/account/balance HTTP/1.1
-
-###
 GET http://localhost:5000/account/symbols HTTP/1.1
 
 ###
@@ -21,9 +18,6 @@ GET http://localhost:5000/account/pnl?days=7 HTTP/1.1
 
 ### Find quote asset
 GET http://localhost:5000/account/find-quote/BNBBTC HTTP/1.1
-
-### Balance with Fiat
-GET http://localhost:5000/account/gbp HTTP/1.1
 
 ### Store balance
 GET http://localhost:5000/account/store-balance HTTP/1.1

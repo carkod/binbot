@@ -7,6 +7,7 @@ from websocket import WebSocketApp
 from api.app import create_app
 import pandas
 from api.research.signals import Signals
+from api.deals.deal_updates import DealUpdates
 
 class MarketUpdates:
 
@@ -89,11 +90,42 @@ class MarketUpdates:
 
         elif "e" in response and response["e"] == "kline":
             self.process_kline_stream(response)
+            self.process_deals(response)
 
         else:
             print(f"Error: {response}")
 
+    def process_deals(self, result):
+        """
+        Updates deals with klines websockets,
+        when price and symbol match existent deal
+        """
+        if result["k"]["x"]:
+            close_price = result["k"]["c"]
+            symbol = result["k"]["s"]
+            app = create_app()
+
+            # Update Current price
+            bot = app.db.bots.find_one_and_update(
+                {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
+            )
+
+            # Open safety orders
+            # When bot = None, when bot doesn't exist (unclosed websocket)
+            if bot and "safety_order_prices" in bot["deal"] and len(bot["deal"]["safety_order_prices"]) > 0:
+                for key, value in bot["deal"]["safety_order_prices"]:
+                    # Index is the ID of the safety order price that matches safety_orders list
+                    if float(value) >= float(close_price):
+                        deal = DealUpdates(bot, app)
+                        print("Update deal executed")
+                        # No need to pass price to update deal
+                        # The price already matched market price
+                        deal.so_update_deal(key)
+
     def process_kline_stream(self, result):
+        """
+        Updates market data in DB for research
+        """
         # Check if closed result["k"]["x"]
         if result["k"]:
             close_price = float(result["k"]["c"])

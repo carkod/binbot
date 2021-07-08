@@ -13,17 +13,17 @@ account_blueprint = Blueprint("account", __name__)
 
 @account_blueprint.route("/btc-balance", methods=["GET"])
 def get_balances_btc():
-    return Account().get_balances_btc()
+    return Assets().get_balances_btc()
 
 
 @account_blueprint.route("/balance", methods=["GET"])
 def raw_balance():
-    return Account().get_raw_balance()
+    return Assets().get_raw_balance()
 
 
 @account_blueprint.route("/balance/binbot", methods=["GET"])
 def binbot_balance():
-    return Account().get_binbot_balance()
+    return Assets().get_binbot_balance()
 
 @account_blueprint.route("/symbols/", methods=["GET"])
 def get_symbols():

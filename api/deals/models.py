@@ -3,7 +3,6 @@ from decimal import Decimal
 
 import requests
 from api.account.account import Account
-from api.charts.klines_sockets import KlineSockets
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
