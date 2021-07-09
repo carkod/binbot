@@ -1,7 +1,6 @@
 import hashlib
 import hmac
 import os
-import json
 import time as tm
 from urllib.parse import urlparse
 
@@ -188,7 +187,3 @@ class Account:
             (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
         )
         return min_notional_filter[min_notional_limit]
-
-    def get_one_balance(self, symbol="BTC"):
-        data = json.loads(self.get_raw_balance().data)
-        return next((x["free"] for x in data if x["asset"] == symbol), None)

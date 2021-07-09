@@ -6,7 +6,7 @@ from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
 from api.deals.models import Deal
-
+from api.account.assets import Assets
 class OrderUpdates:
     def __init__(self, app):
         self.key = os.getenv("BINANCE_KEY")
@@ -71,6 +71,11 @@ class OrderUpdates:
         if "e" in result and result["e"] == "executionReport":
             self.process_report_execution(result)
 
+        # account balance has changed and contains the assets that were possibly changed by the event that generated the balance change
+        # https://binance-docs.github.io/apidocs/spot/en/#payload-account-update
+        if "e" in result and result["e"] == "outboundAccountPosition":
+            self.process_account_update(result)
+
     def process_report_execution(self, result):
         # Parse result. Print result for raw result from Binance
         order_id = result["i"]
@@ -114,3 +119,8 @@ class OrderUpdates:
         else:
             print(f"No bot found with order client order id: {order_id}")
 
+    def process_account_update(self, result):
+        balance = result["B"]
+        if len(balance) > 0:
+            assets = Assets()
+            assets.store_balance()

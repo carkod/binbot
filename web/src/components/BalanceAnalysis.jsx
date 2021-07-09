@@ -2,10 +2,7 @@ import React from "react";
 import { Card, CardBody, CardHeader, CardTitle, Col, Row } from "reactstrap";
 
 export default function BalanceAnalysis({
-  balances,
-  balance_usage,
-  balance_available,
-  balance_available_asset,
+  balance,
 }) {
   return (
     <Card>
@@ -15,28 +12,43 @@ export default function BalanceAnalysis({
       <CardBody>
         <Row className="u-margin-bottom">
           <Col md="8" sm="12">
-            Total available balance (minus all SOs)
+            Total GBP balance
           </Col>
           <Col md="4" sm="12">
-            {balances &&
-              balances.map((e, i) => (
+            <div className="u-primary-color">
+              <strong>{`${
+                parseFloat(balance.estimated_total_gbp) > 0
+                  ? balance.estimated_total_gbp.toFixed(2)
+                  : 0
+              } Pounds`}</strong>
+            </div>
+          </Col>
+        </Row>
+        <Row>
+          <Col md="8" sm="12">
+            Porfolio of assets
+          </Col>
+          <Col md="4" sm="12">
+            {
+              balance.balances.map((e, i) => (
                 <div key={i} className="u-primary-color">
                   <strong>{`${e.free} ${e.asset}`}</strong>
                 </div>
               ))}
           </Col>
         </Row>
+        <hr />
         <Row>
           <Col md="8" sm="12">
-            Remaining balance for Safety Orders
+            Estimated BTC value
           </Col>
           <Col md="4" sm="12">
             <div className="u-primary-color">
               <strong>{`${
-                parseFloat(balance_available) > 0
-                  ? balance_available.toFixed(8)
+                parseFloat(balance.estimated_total_btc) > 0
+                  ? balance.estimated_total_btc.toFixed(8)
                   : 0
-              } ${balance_available_asset}`}</strong>
+              } Bitcoin`}</strong>
             </div>
           </Col>
         </Row>

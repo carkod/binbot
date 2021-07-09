@@ -129,6 +129,9 @@ class Bot(Account):
         if bot:
             order_errors = Deal(bot, app).open_deal()
 
+            if isinstance(order_errors, Response):
+                return order_errors
+
             # If error
             if len(order_errors) > 0:
                 # If base order fails makes no sense to activate

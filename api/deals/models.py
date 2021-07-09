@@ -23,6 +23,7 @@ class Deal(Account):
     bb_close_order_url = f"{bb_base_url}/order/close"
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
+    bb_balance_url = f"{bb_base_url}/account/balance"
 
     def __init__(self, bot, app):
         # Inherit also the __init__ from parent class
@@ -75,27 +76,13 @@ class Deal(Account):
             "commission": 0,
         }
 
-    def initialization(self):
-        """
-        Initial checks to see if the deal is possible
-        - Do we have enough GBP balance?
-        - If we have enough balance allocate division
-        - If long position, check base (left) asset
-        - If short position, check quote (right) asset
-        """
-
-        asset = self.find_quoteAsset(self.active_bot["pair"])
-        find_market = self.find_market(self.active_bot["pair"])
-        bo_size = self.active_bot["base_order_size"]
-        if find_market != "GBP":
-            rate = self.get_ticker_price(f"{asset}GBP")
-            gbp_amount = float(bo_size) * float(rate)
-            self.balance = self.get_one_balance("GBP")
-        else:
-            gbp_amount = bo_size
-
-        if self.balance <= gbp_amount:
-            return jsonResp_message("[Deal init error] Not enough GBP balance", 200)
+    def get_one_balance(self, symbol="BTC"):
+        # Response after request
+        res = requests.get(url=self.bb_balance_url)
+        handle_error(res)
+        data = res.json()
+        symbol_balance = next((x["free"] for x in data["data"][0]["balances"] if x["asset"] == symbol), None)
+        return symbol_balance
 
     def sell_gbp_balance(self):
         """
@@ -445,9 +432,6 @@ class Deal(Account):
 
     def open_deal(self):
         order_errors = []
-        can_initialize = self.initialization()
-        if isinstance(can_initialize, Response):
-            return can_initialize
 
         # If there is already a base order do not execute
         base_order_deal = next(
@@ -482,10 +466,6 @@ class Deal(Account):
             if isinstance(long_take_profit_order, Response):
                 msg = long_take_profit_order.json["message"]
                 order_errors.append(msg)
-
-        # Subscribe to streams with corresponding symbol
-        streams = KlineSockets()
-        streams.start_stream()
 
         return order_errors
 
