@@ -84,7 +84,6 @@ class Deal(Account):
         symbol_balance = next((x["free"] for x in data["data"][0]["balances"] if x["asset"] == symbol), None)
         return symbol_balance
 
-
     def sell_gbp_balance(self):
         """
         To sell GBP e.g.:

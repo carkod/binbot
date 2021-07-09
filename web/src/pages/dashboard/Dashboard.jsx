@@ -2,13 +2,13 @@ import React from "react";
 import { connect } from "react-redux";
 import { Card, CardBody, CardFooter, CardTitle, Col, Row } from "reactstrap";
 import { checkValue, listCssColors, roundDecimals } from "../../validations";
-import { AssetsPie } from "./AssetsPie";
+import { AssetsTable } from "../../components/AssetsTable";
 import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
 import request from "../../request";
 import { loading } from "../../containers/spinner/actions";
-
+import { getBalance } from "../../state/balances/actions";
 class Dashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -28,17 +28,15 @@ class Dashboard extends React.Component {
   }
 
   componentDidMount = () => {
+    this.props.getBalance();
   };
 
   componentDidUpdate = (p, s) => {
     if (
       !checkValue(this.props.balances) &&
-      p.balances !== this.props.balances &&
-      !checkValue(this.props.totalBtcBalance) &&
-      p.totalBtcBalance !== this.props.totalBtcBalance
+      p.balances !== this.props.balances
     ) {
-      this.computePieChart(this.props.balances, this.props.totalBtcBalance);
-      this.computeUsdBalance(this.props.balances);
+      this.computeLineChart(this.props.balances);
     }
     if (
       !checkValue(this.props.balanceDiff) &&
@@ -46,7 +44,6 @@ class Dashboard extends React.Component {
     ) {
       this.computeDiffAssets(this.props.balanceDiff);
       this.computeNetWorth(this.props.balanceDiff);
-      this.computeLineChart(this.props.balanceDiff);
       this.computeDailyPnL(this.props.balanceDiff);
     }
   };
@@ -74,18 +71,10 @@ class Dashboard extends React.Component {
      */
     const dates = [];
     const values = [];
-    let value = 0;
-    for (let i = 0; i < assets.length; i++) {
-      if (i === 0) continue;
-      const previous =
-        assets[i - 1].estimated_total_btc * assets[i - 1].estimated_total_usd;
-      const current =
-        assets[i].estimated_total_btc * assets[i].estimated_total_usd;
-      value += ((previous - current) / previous) * 100;
-      const date = assets[i].time;
-      dates.push(date);
-      values.push(value);
-    }
+    assets.forEach((x, i) => {
+      dates.push(x.time);
+      values.push(x.estimated_total_btc);
+    });
 
     const trace = {
       x: dates,
@@ -233,22 +222,20 @@ class Dashboard extends React.Component {
                         <Row>
                           <Col md="12">
                             <div className="stats">
-                              <p className="card-category">Balance</p>
-                              {balances && (
-                                <CardTitle tag="h5" className={`card-title`}>
+                              <p className="card-category">Total Balance</p>
+                              {!checkValue(balances) && balances.length > 0 ? (
+                                <CardTitle tag="h3" className={`card-title`}>
                                   {`${roundDecimals(
-                                    balances.reduce(
-                                      (accumulator, current) =>
-                                        parseFloat(accumulator) +
-                                        parseFloat(current.btc_value),
-                                      0
-                                    ),
-                                    6
+                                    balances[0].estimated_total_gbp,
+                                    2
+                                  )} £`}
+                                  <hr />
+                                  {`${roundDecimals(
+                                    balances[0].estimated_total_btc,
+                                    8
                                   )} BTC`}
-                                  <br />
-                                  {`$${this.state.usdBalance}`}
                                 </CardTitle>
-                              )}
+                              ) : ""}
                             </div>
                           </Col>
                         </Row>
@@ -297,39 +284,15 @@ class Dashboard extends React.Component {
                       </CardFooter>
                     </Card>
                   </Col>
-                  <Col lg="4" md="6" sm="6">
-                    <Card className="card-stats">
-                      <CardBody>
-                        <Row>
-                          <Col md="4" xs="5">
-                            <div className="icon-big text-center icon-warning">
-                              <i className="nc-icon nc-vector text-danger" />
-                            </div>
-                          </Col>
-                          <Col md="8" xs="7">
-                            <div className="numbers">
-                              <p className="card-category">Errors</p>
-                              <CardTitle tag="p">23</CardTitle>
-                              <p />
-                            </div>
-                          </Col>
-                        </Row>
-                      </CardBody>
-                      <CardFooter>
-                        <hr />
-                        <div className="stats">
-                          <i className="far fa-clock" /> In the last hour
-                        </div>
-                      </CardFooter>
-                    </Card>
-                  </Col>
                 </Row>
                 <Row>
                   <Col md="4">
-                    <AssetsPie
-                      data={this.state.pieChartData}
-                      legend={this.state.pieChartLegend}
+                  {!checkValue(balances) && balances.length > 0 ? (
+                    <AssetsTable
+                      data={this.props.balances[0]["balances"]}
+                      headers={["Symbol", "Free", "Locked"]}
                     />
+                  ) : ""}
                   </Col>
                   <Col md="8">
                     {this.state.lineChartData && (
@@ -341,18 +304,13 @@ class Dashboard extends React.Component {
                   </Col>
                 </Row>
                 <Row>
-                  <Col md="4">
+                  <Col md="12">
                     {this.state.netWorth && (
                       <NetWorthChart data={this.state.netWorth} />
                     )}
                     {this.state.dailyPnL && (
                       <ProfitLossBars data={this.state.dailyPnL} />
                     )}
-                  </Col>
-                  <Col md="8">
-                    <div className="t-jumbotron">
-                      <h2>Failed bots</h2>
-                    </div>
                   </Col>
                 </Row>
               </>
@@ -370,20 +328,16 @@ class Dashboard extends React.Component {
 }
 
 const mapStateToProps = (s) => {
-  // const { data: account } = s.balanceInBtcReducer;
-  // const { data: assets } = s.assetsReducer;
-  // const { data: balanceDiff } = s.balanceDiffReducer;
-  // const { loading } = s.loadingReducer;
-  // let props = {
-  //   balances: !checkValue(account) ? account.balances : null,
-  //   totalBtcBalance: !checkValue(account) ? account.total_btc : null,
-  //   assets: assets,
-  //   balanceDiff: balanceDiff,
-  //   load: loading
-  // };
-  return s;
+  const { loading } = s.loadingReducer;
+  const { data: balances } = s.balanceReducer;
+  return {
+    ...s,
+    balances: balances,
+    loading: loading
+  };
 };
 
 export default connect(mapStateToProps, {
+  getBalance,
   loading
 })(Dashboard);
