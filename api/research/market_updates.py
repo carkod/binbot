@@ -8,7 +8,7 @@ from api.app import create_app
 import pandas
 from api.research.signals import Signals
 from api.deals.deal_updates import DealUpdates
-
+from api.telegram_bot import TelegramBot
 class MarketUpdates:
 
     key = os.getenv("BINANCE_KEY")
@@ -30,6 +30,8 @@ class MarketUpdates:
         self.markets_streams = None
         self.app = create_app()
         self.interval = interval
+        self.last_processed_kline_symbol = None
+        self.last_processed_kline_time = 0
 
     def _get_raw_klines(self, pair):
         params = {"symbol": pair, "interval": self.interval, "limit": "200"}
@@ -160,18 +162,29 @@ class MarketUpdates:
                 "price_change_24": float(price_change_24),  # MongoDB can't sort string decimals
                 "candlestick_signal": candlestick_signal,
             }
+
             if signal_strength:
                 setObject["signal_strength"] = signal_strength
                 setObject["signal_side"] = signal_side
                 setObject["signal_timestamp"] = time.time()
-            # Update Current price
-            # if signal_strength or float(price_change_24) > 6 or curr_candle_spread > avg_candle_spread:
-            self.app.db.correlations.find_one_and_update(
-                {"market_a": symbol},
-                {
-                    "$currentDate": {"lastModified": True},
-                    "$set": setObject,
-                },
-            )
 
-            print(f"{symbol} Updated, interval: {self.interval}")
+                if ((time.time() - self.last_processed_kline_time) > 1800) and self.last_processed_kline_symbol != symbol and curr_candle_spread > avg_candle_spread:
+                    # Send Telegram
+                    msg = f"{signal_side} {symbol} - Candlestick jump http://binbot.in/admin/research"
+                    print(msg)
+                    TelegramBot().send_msg(msg)
+
+            if self.last_processed_kline_symbol != symbol and ((time.time() - self.last_processed_kline_time) > 1800):
+                # Update Current price
+                self.app.db.correlations.find_one_and_update(
+                    {"market_a": symbol},
+                    {
+                        "$currentDate": {"lastModified": True},
+                        "$set": setObject,
+                    },
+                )
+                # avoid repeated updates
+                self.last_processed_kline_symbol = result["k"]["s"]
+                self.last_processed_kline_time = time.time()
+
+                print(f"{symbol} Updated, interval: {self.interval}")
