@@ -2,7 +2,6 @@ name: PR checks
 on: pull_request
 env:
   ACTIONS_RUNNER_DEBUG: true
-  TIMEZONE: US/Eastern
   SECRET_KEY: test
   ENVIRONMENT: development
   FLASK_DIRECTORY: /api/

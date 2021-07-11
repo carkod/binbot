@@ -9,9 +9,6 @@ def create_app():
     # db = MongoEngine(app)
     # Enable CORS for all routes
     CORS(app)
-    # Misc Config
-    os.environ["TZ"] = os.environ["TIMEZONE"]
-
     mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
     mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(
         os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"]

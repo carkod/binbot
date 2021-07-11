@@ -2,12 +2,6 @@
 GET http://localhost:5000/research/save-correlation/1d/20 HTTP/1.1
 
 ###
-GET http://localhost:5000/research/correlation HTTP/1.1
-
-### Get only negative
-GET http://localhost:5000/research/correlation?filter=negative HTTP/1.1
-
-###
 GET http://localhost:5000/research/correlation?market_a=BTCUSDT HTTP/1.1
 
 ### Get Bolliguer buy/sell signals

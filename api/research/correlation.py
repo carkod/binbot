@@ -14,12 +14,6 @@ class Correlation(Account):
     candlestick_url = os.getenv("CANDLESTICK")
 
     def __init__(self):
-        self.correlation_data = {
-            "market_a": "",
-            "market_b": "",
-            "r_correlation": "",
-            "p_value": "",
-        }
         self.app = create_app()
 
     def candlestick_request(self, pair, interval="5m", limit="300"):
@@ -37,24 +31,26 @@ class Correlation(Account):
         app.db.correlations.remove()
         for i in range(symbols_count):
             for j in range(symbols_count):
-                market_a = symbols[j]["symbol"]
-                market_b = symbols[i]["symbol"]
-                if market_a == market_b:
+                market = symbols[j]["symbol"]
+                r_market = symbols[i]["symbol"]
+                if market == r_market:
                     break
-                candlestick_a = self.candlestick_request(market_a, interval, limit)
+                candlestick_a = self.candlestick_request(market, interval, limit)
                 df_a = pd.DataFrame(candlestick_a)
                 close_a = df_a[4].astype(float).tolist()
 
-                candlestick_b = self.candlestick_request(market_b, interval, limit)
+                candlestick_b = self.candlestick_request(r_market, interval, limit)
                 df_b = pd.DataFrame(candlestick_b)
                 close_b = df_b[4].astype(float).tolist()
 
                 r = stats.pearsonr(close_a, close_b)
                 data = {
-                    "market_a": market_a,
-                    "market_b": market_b,
-                    "r_correlation": r[0],
-                    "p_value": r[1],
+                    "market": market,
+                    "r_correlation": {
+                        "r_market": r_market,
+                        "r": r[0],
+                        "p_value": r[1],
+                    }
                 }
                 app.db.correlations.insert_one(data)
                 if total_count <= ((symbols_count) - 1):
@@ -67,24 +63,6 @@ class Correlation(Account):
 
     def response(self):
         resp = jsonResp_message("Pearson correlation scanning started", 200)
-        return resp
-
-    def get_pearson(self):
-        args = {}
-        if request.args.get("market_b"):
-            args["market_b"] = request.args.get("market_b")
-        if request.args.get("market_a"):
-            args["market_a"] = request.args.get("market_a")
-        if request.args.get("filter"):
-            value = request.args.get("filter")
-            if value == "positive":
-                args["r_correlation"] = {"$gt": 0}
-            else:
-                args["r_correlation"] = {"$lt": 0}
-
-        query = self.app.db.correlations.find(args).sort("r_correlation", 1)
-        data = list(query)
-        resp = jsonResp({"data": data}, 200)
         return resp
 
     def get_signals(self):

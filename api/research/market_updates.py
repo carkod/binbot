@@ -32,6 +32,7 @@ class MarketUpdates:
         self.interval = interval
         self.last_processed_kline_symbol = None
         self.last_processed_kline_time = 0
+        self.black_list = ["TRXBTC", "WPRBTC"]
 
     def _get_raw_klines(self, pair):
         params = {"symbol": pair, "interval": self.interval, "limit": "200"}
@@ -168,13 +169,13 @@ class MarketUpdates:
                 setObject["signal_side"] = signal_side
                 setObject["signal_timestamp"] = time.time()
 
-                if ((time.time() - self.last_processed_kline_time) > 1800) and self.last_processed_kline_symbol != symbol and curr_candle_spread > avg_candle_spread:
+                if symbol not in self.black_list and signal_side == "BUY" and ((time.time() - self.last_processed_kline_time) > 800) and curr_candle_spread > avg_candle_spread:
                     # Send Telegram
                     msg = f"{signal_side} {symbol} - Candlestick jump http://binbot.in/admin/research"
                     print(msg)
                     TelegramBot().send_msg(msg)
 
-            if self.last_processed_kline_symbol != symbol and ((time.time() - self.last_processed_kline_time) > 1800):
+            if self.last_processed_kline_symbol != symbol and ((time.time() - self.last_processed_kline_time) > 800):
                 # Update Current price
                 self.app.db.correlations.find_one_and_update(
                     {"market_a": symbol},

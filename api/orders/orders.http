@@ -27,7 +27,7 @@ GET http://localhost:5000/order/all HTTP/1.1
 GET http://localhost:5000/order/all?limit=50&offset=10&status=CANCEL HTTP/1.1
 
 ### Get all orders with specified start time
-GET http://localhost:5000/order/all?start-time=1578614400000 HTTP/1.1
+GET http://localhost:5000/order/all?start-time=1626026400 HTTP/1.1
 
 ### Get all open orders
 GET http://localhost:5000/order/open HTTP/1.1
