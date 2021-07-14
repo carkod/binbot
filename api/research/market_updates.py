@@ -6,7 +6,7 @@ from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
 from api.app import create_app
 import pandas
-from api.research.signals import Signals
+from api.research.signals import MASignals
 from api.deals.deal_updates import DealUpdates
 from api.telegram_bot import TelegramBot
 class MarketUpdates:
@@ -30,9 +30,8 @@ class MarketUpdates:
         self.markets_streams = None
         self.app = create_app()
         self.interval = interval
-        self.last_processed_kline_symbol = None
-        self.last_processed_kline_time = 0
-        self.black_list = ["TRXBTC", "WPRBTC"]
+        self.last_processed_kline = {}
+        self.black_list = ["TRXBTC", "WPRBTC", "NEOBTC", "BTCUSDT", "ETHBTC", "BNBBTC", "ETHBTC", "LTCBTC", "ETHUSDT", "ETCBTC", "BNBETH", "EOSBTC", "DASHETH", "FUNBTC", "EOSBTC", "SNGLSBTC", "YOYOBTC", "LINKETH", "XVGBTC", "SNTBTC", "DASHBTC", "VIBBTC"]
 
     def _get_raw_klines(self, pair):
         params = {"symbol": pair, "interval": self.interval, "limit": "200"}
@@ -54,9 +53,11 @@ class MarketUpdates:
         return data
 
     def start_stream(self):
-        self.list_markets = self.app.db.correlations.distinct("market_a")
+        markets = set(self.app.db.correlations.distinct("market_a"))
+        black_list = set(self.black_list)
+        self.list_markets = markets - black_list
         params = []
-        for market in self.list_markets:
+        for market in list(self.list_markets):
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         string_params = "/".join(params)
@@ -130,7 +131,7 @@ class MarketUpdates:
         Updates market data in DB for research
         """
         # Check if closed result["k"]["x"]
-        if result["k"]:
+        if result["k"] and result["k"]["s"]:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
@@ -138,20 +139,23 @@ class MarketUpdates:
             ma_100 = data[1]["y"]
             ma_25 = data[2]["y"]
             ma_7 = data[3]["y"]
-            volatility = pandas.Series(data[0]["close"]).astype(float).std(0)
+            volatility = pandas.Series(data[0]["close"]).astype(float).std(0) 
 
             # raw df
             df = pandas.DataFrame(self._get_raw_klines(symbol))
-            df["candle_spread"] = (pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
+            df["candle_spread"] = abs(pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
             curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
-            avg_candle_spread = abs(df["candle_spread"].mean())
+            avg_candle_spread = df["candle_spread"].median()
             candlestick_signal = "positive" if float(curr_candle_spread) > float(avg_candle_spread) else "negative"
+
+            df["volume_spread"] = abs(pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
+            curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
+            avg_volume_spread = df["volume_spread"].median()
+            volume_signal = "positive" if float(curr_candle_spread) > float(avg_candle_spread) else "negative"
 
             highest_price = max(data[0]["high"])
             lowest_price = max(data[0]["low"])
             spread = (float(highest_price) / float(lowest_price)) - 1
-
-            signal_strength, signal_side = Signals().get_signals(close_price, open_price, ma_7, ma_25, ma_100)
 
             price_change_24 = self._get_24_ticker(symbol)["priceChangePercent"]
 
@@ -164,18 +168,21 @@ class MarketUpdates:
                 "candlestick_signal": candlestick_signal,
             }
 
-            if signal_strength:
-                setObject["signal_strength"] = signal_strength
-                setObject["signal_side"] = signal_side
-                setObject["signal_timestamp"] = time.time()
+            setObject = MASignals().get_signals(close_price, open_price, ma_7, ma_25, ma_100, setObject)
 
-                if symbol not in self.black_list and signal_side == "BUY" and ((time.time() - self.last_processed_kline_time) > 800) and curr_candle_spread > avg_candle_spread:
+            if symbol not in self.last_processed_kline:
+                if (
+                    float(close_price) > float(open_price) and (curr_candle_spread > avg_candle_spread and curr_volume_spread > avg_volume_spread)
+                ):
                     # Send Telegram
-                    msg = f"{signal_side} {symbol} - Candlestick jump http://binbot.in/admin/research"
-                    print(msg)
+                    msg = f"Open signal {symbol} - Candlestick jump http://binbot.in/admin/research"
                     TelegramBot().send_msg(msg)
+                    self.last_processed_kline[symbol] = time.time()
+                    # If more than half an hour (interval = 30m) has passed
+                    # Then we should resume sending signals for given symbol
+                    if (float(time.time()) - float(self.last_processed_kline[symbol])) > 1800:
+                        del self.last_processed_kline[symbol]
 
-            if self.last_processed_kline_symbol != symbol and ((time.time() - self.last_processed_kline_time) > 800):
                 # Update Current price
                 self.app.db.correlations.find_one_and_update(
                     {"market_a": symbol},
@@ -184,8 +191,5 @@ class MarketUpdates:
                         "$set": setObject,
                     },
                 )
-                # avoid repeated updates
-                self.last_processed_kline_symbol = result["k"]["s"]
-                self.last_processed_kline_time = time.time()
 
                 print(f"{symbol} Updated, interval: {self.interval}")

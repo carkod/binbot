@@ -24,3 +24,8 @@ class ResearchDataModel(dict):
         self.signal_strength = signal_strength
         self.signal_side = signal_side
         self.signal_timestamp = signal_timestamp
+
+
+class BlackListedModel(dict):
+    symbol = ""
+    reason = ""
