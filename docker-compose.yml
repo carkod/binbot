@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   db:
-    image: mongo:4.2
+    image: mongo:4
     container_name: binbot_db
     restart: on-failure
     env_file: .env
@@ -13,7 +13,7 @@ services:
       - 27018:27017
     volumes:
       - ./mongo_data:/data/db
-  
+
   # api:
   #   image: carloswufei/binbot
   #   restart: always

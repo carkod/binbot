@@ -12,10 +12,7 @@
         "FLASK_ENV": "development",
         "FLASK_DEBUG": "1"
       },
-      "args": [
-        "run",
-        "--no-reload"
-      ],
+      "args": ["run", "--no-reload"],
       "jinja": true
     },
     {
