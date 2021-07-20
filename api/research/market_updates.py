@@ -212,11 +212,15 @@ class MarketUpdates:
                     price_change_24
                 ),  # MongoDB can't sort string decimals
                 "candlestick_signal": candlestick_signal,
+                "blacklisted": False,
             }
 
             setObject = MASignals().get_signals(
                 close_price, open_price, ma_7, ma_25, ma_100, setObject
             )
+
+            if symbol in self.black_list:
+                setObject["blacklisted"] = True
 
             if symbol not in self.last_processed_kline:
                 if float(close_price) > float(open_price) and (
