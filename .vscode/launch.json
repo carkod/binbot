@@ -16,6 +16,16 @@
       "jinja": true
     },
     {
+      "name": "Python: Gunicorn",
+      "type": "python",
+      "request": "launch",
+      "program": "/Users/carkod/.local/share/virtualenvs/binbot-dNwtV6z7/bin/gunicorn",
+      "gevent": true,
+      "console": "integratedTerminal",
+      "args": ["api.main:app", "--bind=127.0.0.1:8006", "--preload","--reload", "-w", "3", "--capture-output"],
+      "postDebugTask": "killdebugger"
+    },
+    {
       "type": "chrome",
       "request": "launch",
       "name": "Launch Chrome against localhost",

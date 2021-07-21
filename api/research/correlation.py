@@ -23,7 +23,7 @@ class Correlation(Account):
 
     def trigger_r(self, interval="1d", limit="20"):
         app = self.app
-        symbols = self.get_exchange_info()["symbols"]
+        symbols = self._exchange_info()["symbols"]
         symbols_count = len(symbols) * 2
         total_count = 0
         poll_percentage = 0
@@ -50,7 +50,15 @@ class Correlation(Account):
                         "r_market": r_market,
                         "r": r[0],
                         "p_value": r[1],
-                    }
+                    },
+                    "current_price": "",
+                    "volatility": "",
+                    "last_volume": 0,
+                    "spread": 0,
+                    "price_change_24": 0,  # MongoDB can't sort string decimals
+                    "candlestick_signal": "",
+                    "blacklisted": False,
+                    "blacklisted_reason": ""
                 }
                 app.db.correlations.insert_one(data)
                 if total_count <= ((symbols_count) - 1):
@@ -60,6 +68,8 @@ class Correlation(Account):
                     total_count += 1
 
                 print(f"Pearson correlation scanning: {poll_percentage}%")
+                if poll_percentage == 100:
+                    print(f"Pearson correlation scanning complete!")
 
     def response(self):
         resp = jsonResp_message("Pearson correlation scanning started", 200)
@@ -98,3 +108,32 @@ class Correlation(Account):
         data = list(query)
         resp = jsonResp({"data": data}, 200)
         return resp
+
+    def post_blacklisted(self):
+        args = {}
+        set = {}
+        data = request.json
+        if data.get("symbol"):
+            args["market"] = data.get("symbol")
+            set["blacklisted"] = True
+            set["blacklisted_reason"] = data.get("reason")
+
+        query = self.app.db.correlations.find_one_and_update(args, {"$set": set})
+
+        if query:
+            resp = jsonResp({"data": query}, 200)
+            return resp
+        else:
+            resp = jsonResp({"error": 1, "data": query}, 200)
+
+    def get_blacklisted(self):
+        """
+        Get blacklisted symbol research data
+        """
+        args = {"candlestick_signal": {"$exists": True, "$ne": None}}
+        query = self.app.db.correlations.find(args)
+        if query:
+            resp = jsonResp({"error": 0, "data": query}, 200)
+            return resp
+        else:
+            resp = jsonResp({"error": 1, "data": query}, 200)

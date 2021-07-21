@@ -1,7 +1,6 @@
 from flask import Blueprint
 from api.research.correlation import Correlation
 from threading import Thread
-from api.research.blacklisted import Blacklisted
 
 research_blueprint = Blueprint("research", __name__)
 
@@ -20,11 +19,10 @@ def get_signals():
 def get_historical_signals():
     return Correlation().get_historical_signals()
 
+@research_blueprint.route("/blacklisted", methods=["POST"])
+def post_blacklisted():
+    return Correlation().post_blacklisted()
 
 @research_blueprint.route("/blacklisted", methods=["GET"])
 def get_blacklisted():
-    return Blacklisted().get_blacklisted()
-
-@research_blueprint.route("/blacklisted", methods=["POST"])
-def save_blacklisted():
-    return Blacklisted().save_blacklisted()
+    return Correlation().get_blacklisted()

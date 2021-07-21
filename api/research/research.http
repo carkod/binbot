@@ -2,7 +2,7 @@
 GET http://localhost:5000/research/save-correlation/1d/20 HTTP/1.1
 
 ###
-GET http://localhost:5000/research/correlation?market_a=BTCUSDT HTTP/1.1
+GET http://localhost:5000/research/correlation?market=BTCUSDT HTTP/1.1
 
 ### Get Bolliguer buy/sell signals
 GET http://localhost:5000/research/signals HTTP/1.1
@@ -18,8 +18,6 @@ GET http://localhost:5000/research/historical-signals HTTP/1.1
 
 ### Add blacklist
 POST http://localhost:5000/research/blacklisted HTTP/1.1
+content-Type: application/json
 
-{
-    "symbol": "TRXBTC",
-    "reason": "Controlled graph",
-}
+{ "symbol": "TRXBTC", "reason": "Controlled graph" }

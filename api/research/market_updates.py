@@ -34,6 +34,7 @@ class MarketUpdates:
         self.app = create_app()
         self.interval = interval
         self.last_processed_kline = {}
+        # This blacklist is necessary to keep prod and local DB synched
         self.black_list = [
             "TRXBTC",
             "WPRBTC",
@@ -85,7 +86,7 @@ class MarketUpdates:
         return data
 
     def start_stream(self):
-        markets = set(self.app.db.correlations.distinct("market_a"))
+        markets = set(self.app.db.correlations.distinct("market"))
         black_list = set(self.black_list)
         self.list_markets = markets - black_list
         params = []
@@ -94,6 +95,7 @@ class MarketUpdates:
 
         string_params = "/".join(params)
         url = f"{self.base}/ws/{string_params}"
+        print("Websocket URL:", url)
         ws = WebSocketApp(
             url,
             on_open=self.on_open,
@@ -213,6 +215,7 @@ class MarketUpdates:
                 ),  # MongoDB can't sort string decimals
                 "candlestick_signal": candlestick_signal,
                 "blacklisted": False,
+                "blacklisted_reason": None
             }
 
             setObject = MASignals().get_signals(
@@ -236,7 +239,7 @@ class MarketUpdates:
 
                 # Update Current price
                 self.app.db.correlations.find_one_and_update(
-                    {"market_a": symbol},
+                    {"market": symbol},
                     {
                         "$currentDate": {"lastModified": True},
                         "$set": setObject,

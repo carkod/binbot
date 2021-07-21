@@ -103,7 +103,7 @@ class Research extends React.Component {
       this.props.research.forEach((element) => {
         if (element.signal_strength === "STRONG") {
           const strongBuy = {
-            pair: element.market_a,
+            pair: element.market,
             spread: element.spread,
           };
           strongest.push(strongBuy);
