@@ -114,7 +114,7 @@ class OrderUpdates:
 
             if bot:
                 # It is a safety order, now find safety order deal price
-                deal = DealUpdates(bot, self.app)
+                deal = DealUpdates(bot)
                 deal.default_deal.update(bot)
                 deal.update_take_profit(order_id)
 

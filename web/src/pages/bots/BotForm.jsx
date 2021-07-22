@@ -45,6 +45,7 @@ import {
 import { getQuoteAsset } from "./requests";
 import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
+import StopLoss from "./tabs/StopLoss";
 
 class BotForm extends React.Component {
   constructor(props) {
@@ -206,6 +207,7 @@ class BotForm extends React.Component {
       so_size,
       trailling,
       trailling_deviation,
+      stop_loss,
     } = this.state;
 
     // If everything below is ok, form will be valid
@@ -231,6 +233,14 @@ class BotForm extends React.Component {
         return false;
       } else {
         this.setState({ soSizeError: false });
+      }
+    }
+
+    if (!checkValue(stop_loss)) {
+      if (parseFloat(stop_loss) > 100 || parseFloat(stop_loss) < 0) {
+        this.setState({ stopLossError: true, formIsValid: false })
+      } else {
+        this.setState({ stopLossError: false });
       }
     }
 
@@ -368,7 +378,6 @@ class BotForm extends React.Component {
   };
 
   handleBaseChange = (e) => {
-    // const { balance_available_asset } = this.state;
     this.setState({
       base_order_size: e.target.value
     })
@@ -582,6 +591,18 @@ class BotForm extends React.Component {
                       <NavItem>
                         <NavLink
                           className={
+                            this.state.activeTab === "stop-loss"
+                              ? "active"
+                              : ""
+                          }
+                          onClick={() => this.toggle("stop-loss")}
+                        >
+                          Stop Loss
+                        </NavLink>
+                      </NavItem>
+                      <NavItem>
+                        <NavLink
+                          className={
                             this.state.activeTab === "take-profit"
                               ? "active"
                               : ""
@@ -655,6 +676,13 @@ class BotForm extends React.Component {
                           />
                         ))}
                     </TabPane>
+
+                    <StopLoss
+                      stop_loss={this.state.stop_loss}
+                      stopLossError={this.state.stopLossError}
+                      handleChange={this.handleChange}
+                      handleBlur={this.handleBlur}
+                    />
 
                     {/*
                       Take profit tab

@@ -305,3 +305,66 @@ class DealUpdates(Account):
             )
             return resp
         return
+
+    def update_stop_limit(self, price):
+        """
+        Update stop limit after websocket
+        - Sell initial amount crypto in deal
+        - Close current opened take profit order
+        - Deactivate bot
+        """
+        bot = self.active_bot
+        qty = bot["deal"]["buy_total_qty"]
+        book_order = Book_Order(bot["pair"])
+        price = float(book_order.matching_engine(False, qty))
+
+        order_id = None
+        for order in self.active_bot["orders"]:
+            if order["deal_type"] == "take_profit":
+                order_id = order["order_id"]
+                self.active_bot["orders"].remove(order)
+                break
+
+        if order_id:
+            # First cancel old order to unlock balance
+            cancel_response = requests.delete(
+                url=f"{self.bb_close_order_url}/{self.active_bot['pair']}/{order_id}"
+            )
+            if cancel_response.status_code != 200:
+                print("Take profit order not found, no need to cancel")
+            else:
+                print("Old take profit order cancelled")
+
+            stop_limit_order = {
+                "pair": bot["pair"],
+                "qty": qty,
+                "price": supress_notation(price, self.price_precision),
+            }
+            res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
+            if isinstance(handle_error(res), Response):
+                return handle_error(res)
+
+            # Append now stop_limit deal
+            stop_limit_response = {
+                "deal_type": "stop_limit",
+                "order_id": res["orderId"],
+                "pair": res["symbol"],
+                "order_side": res["side"],
+                "order_type": res["type"],
+                "price": res["price"],
+                "qty": res["origQty"],
+                "fills": res["fills"],
+                "time_in_force": res["timeInForce"],
+                "status": res["status"],
+            }
+            new_orders = bot["orders"]
+            new_orders.append(stop_limit_response)
+            botId = app.db.bots.update_one(
+                {"_id": bot["_id"]},
+                {"$push": {"orders": new_orders}, "$set": {"active": False}},
+            )
+            if not botId:
+                print(f"Failed to update stop_limit deal: {botId}")
+            else:
+                print(f"New stop_limit deal successfully updated: {botId}")
+            return

@@ -75,6 +75,7 @@ class Correlation(Account):
                         (total_count / (symbols_count * 2)) * 100, 0
                     )
                     total_count += 1
+
                 print(f"Pearson correlation scanning: {poll_percentage}%")
 
     def response(self):

@@ -8,7 +8,7 @@ from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from flask import current_app as app
-
+from api.app import create_app
 
 class Deal(Account):
     order_book_url = os.getenv("ORDER_BOOK")
@@ -25,7 +25,7 @@ class Deal(Account):
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
     bb_balance_url = f"{bb_base_url}/account/balance"
 
-    def __init__(self, bot, app):
+    def __init__(self, bot):
         # Inherit also the __init__ from parent class
         super(self.__class__, self).__init__()
 
@@ -35,7 +35,7 @@ class Deal(Account):
         )
         self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
         self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
-        self.app = app
+        self.app = create_app()
         self.default_deal = {
             "order_id": "",
             "deal_type": "base_order",
@@ -466,6 +466,17 @@ class Deal(Account):
             if isinstance(long_take_profit_order, Response):
                 msg = long_take_profit_order.json["message"]
                 order_errors.append(msg)
+
+        # Update stop loss regarless of base order
+        if "stop_loss" in bot and float(bot["stop_loss"]) > 0:
+            buy_price = float(bot["deal"]["buy_price"])
+            stop_loss_price = buy_price - (buy_price * float(bot["stop_loss"]) / 100)
+            bot["deal"]["stop_loss"] = supress_notation(stop_loss_price, self.price_precision)
+            botId = app.db.bots.update_one(
+                {"_id": bot["_id"]}, {"$set": {"deal": bot["deal"]}}
+            )
+            if not botId:
+                order_errors.append("Failed to save short order stop_limit deal in the bot")
 
         return order_errors
 

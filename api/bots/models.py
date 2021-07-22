@@ -127,7 +127,7 @@ class Bot(Account):
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            order_errors = Deal(bot, app).open_deal()
+            order_errors = Deal(bot).open_deal()
 
             if isinstance(order_errors, Response):
                 return order_errors

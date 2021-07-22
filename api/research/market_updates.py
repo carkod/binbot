@@ -64,7 +64,11 @@ class MarketUpdates(Account):
             "XMRBTC",
             "WAVESBNB",
             "QSPBTC",
-            "WPRBTC"
+            "WPRBTC",
+            "MKRBTC",
+            "MKRUSDT",
+            "MKRBUSD",
+            "MKRBNB"
         ]
         self.telegram_bot = TelegramBot()
         self.max_request = 300  # Avoid HTTP 411 error by splitting into multiple websockets
@@ -137,8 +141,7 @@ class MarketUpdates(Account):
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
         ws.close()
-        if error == "[Errno 104] Connection reset by peer":
-            self.start_stream()
+        self.start_stream()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -168,6 +171,10 @@ class MarketUpdates(Account):
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
             )
 
+            # Stop loss
+            if bot["deal"]["stop_loss"]:
+                deal = DealUpdates(bot)
+                deal.update_stop_limit(close_price)
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
             if (
@@ -178,7 +185,7 @@ class MarketUpdates(Account):
                 for key, value in bot["deal"]["safety_order_prices"]:
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(value) >= float(close_price):
-                        deal = DealUpdates(bot, app)
+                        deal = DealUpdates(bot)
                         print("Update deal executed")
                         # No need to pass price to update deal
                         # The price already matched market price
