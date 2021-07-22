@@ -25,7 +25,7 @@ class Correlation(Account):
     def trigger_r(self, interval="1d", limit="20"):
         app = self.app
         symbols = self._exchange_info()["symbols"]
-        symbols_count = len(symbols) * 2
+        symbols_count = len(symbols)
         total_count = 0
         global poll_percentage
         poll_percentage = 0
@@ -45,14 +45,21 @@ class Correlation(Account):
                 df_b = pd.DataFrame(candlestick_b)
                 close_b = df_b[4].astype(float).tolist()
 
-                r = stats.pearsonr(close_a, close_b)
-                data = {
-                    "market": market,
-                    "r_correlation": {
+                # Not enough data to calculate r_correlation
+                # New crytos have little data from Binance API
+                if len(close_a) < int(limit) or len(close_b) < int(limit):
+                    r_correlation = None
+                else:
+                    r = stats.pearsonr(close_a, close_b)
+                    r_correlation = {
                         "r_market": r_market,
                         "r": r[0],
                         "p_value": r[1],
-                    },
+                    }
+
+                data = {
+                    "market": market,
+                    "r_correlation": r_correlation,
                     "current_price": "",
                     "volatility": "",
                     "last_volume": 0,
@@ -63,14 +70,12 @@ class Correlation(Account):
                     "blacklisted_reason": ""
                 }
                 app.db.correlations.insert_one(data)
-                if total_count <= ((symbols_count) - 1):
+                if i <= ((symbols_count) - 1):
                     poll_percentage = round_numbers(
-                        (total_count / symbols_count) * 100, 0
+                        (total_count / (symbols_count * 2)) * 100, 0
                     )
                     total_count += 1
-
-                if poll_percentage == 100:
-                    print("Pearson correlation scanning complete!")
+                print(f"Pearson correlation scanning: {poll_percentage}%")
 
     def response(self):
         """
@@ -84,7 +89,7 @@ class Correlation(Account):
         Scanning already in progress
         """
         global poll_percentage
-        resp = jsonResp_message(f"There is a Pearson correlation scanning is in progress {poll_percentage}%", 200)
+        resp = jsonResp_message(f"Pearson correlation scanning is in progress {poll_percentage}%", 200)
         return resp
 
     def get_signals(self):

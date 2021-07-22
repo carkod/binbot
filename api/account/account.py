@@ -136,7 +136,9 @@ class Account:
 
     def get_symbols(self):
         app = create_app()
-        query = app.db.correlations.find({"blacklisted": False}, {"market": 1, "_id": 0})
+        args = {"blacklisted": False}
+        project = {"market": 1, "_id": 0}
+        query = app.db.correlations.find(args, project)
         symbols_list = list(query.distinct("market"))
         symbols_list.sort()
         return jsonResp({"data": symbols_list}, 200)

@@ -94,8 +94,7 @@ class MarketUpdates:
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         string_params = "/".join(params)
-        url = f"{self.base}/ws/{string_params}"
-        print("Websocket URL:", url)
+        url = f"{self.base}/stream?streams={string_params}"
         ws = WebSocketApp(
             url,
             on_open=self.on_open,
@@ -123,6 +122,7 @@ class MarketUpdates:
 
     def on_message(self, wsapp, message):
         response = json.loads(message)
+        response = response["data"]
         if "result" in response and response["result"]:
             print(f'Subscriptions: {response["result"]}')
 
