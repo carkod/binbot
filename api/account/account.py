@@ -8,6 +8,7 @@ import requests
 from flask import request
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
+from api.app import create_app
 
 class Account:
 
@@ -127,9 +128,16 @@ class Account:
         else:
             return jsonResp_message("Pair not found", 200)
 
-    def get_symbols(self):
+    def get_symbols_raw(self):
         symbols = self._ticker_price()
         symbols_list = [x["symbol"] for x in symbols]
+        symbols_list.sort()
+        return jsonResp({"data": symbols_list}, 200)
+
+    def get_symbols(self):
+        app = create_app()
+        query = app.db.correlations.find({"blacklisted": False}, {"market": 1, "_id": 0})
+        symbols_list = list(query.distinct("market"))
         symbols_list.sort()
         return jsonResp({"data": symbols_list}, 200)
 

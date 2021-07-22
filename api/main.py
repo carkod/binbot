@@ -28,8 +28,6 @@ assets = Assets()
 orders = Orders()
 research_data = Correlation()
 
-assets.store_balance()
-
 if os.environ["ENVIRONMENT"] != "development":
     scheduler.add_job(
         func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=00, minute=1
@@ -57,17 +55,18 @@ app.register_blueprint(order_blueprint, url_prefix="/order")
 app.register_blueprint(charts_blueprint, url_prefix="/charts")
 app.register_blueprint(research_blueprint, url_prefix="/research")
 
+
 # Index Route
 @app.route("/")
 def index():
     return jsonResp({"status": "Online"}, 200)
 
 
-order_updates = OrderUpdates(app)
+order_updates = OrderUpdates()
 # start a worker process to move the received stream_data from the stream_buffer to a print function
 worker_thread = threading.Thread(name="order_updates_thread", target=order_updates.run_stream)
 worker_thread.start()
 
 # Research market updates
-if os.environ["ENVIRONMENT"] != "development":
-    market_update_thread()
+# if os.environ["ENVIRONMENT"] != "development":
+market_update_thread()

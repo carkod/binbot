@@ -1,13 +1,16 @@
 import json
 import os
-import requests
 import time
+
+import pandas
+import requests
+from api.app import create_app
+from api.deals.deal_updates import DealUpdates
+from api.research.signals import MASignals
+from api.telegram_bot import TelegramBot
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
-from api.app import create_app
-import pandas
-from api.research.signals import Signals
-from api.deals.deal_updates import DealUpdates
+
 
 class MarketUpdates:
 
@@ -30,6 +33,38 @@ class MarketUpdates:
         self.markets_streams = None
         self.app = create_app()
         self.interval = interval
+        self.last_processed_kline = {}
+        # This blacklist is necessary to keep prod and local DB synched
+        self.black_list = [
+            "TRXBTC",
+            "WPRBTC",
+            "NEOBTC",
+            "BTCUSDT",
+            "ETHBTC",
+            "BNBBTC",
+            "ETHBTC",
+            "LTCBTC",
+            "ETHUSDT",
+            "ETCBTC",
+            "BNBETH",
+            "EOSBTC",
+            "DASHETH",
+            "FUNBTC",
+            "EOSBTC",
+            "SNGLSBTC",
+            "YOYOBTC",
+            "LINKETH",
+            "XVGBTC",
+            "SNTBTC",
+            "DASHBTC",
+            "VIBBTC",
+            "XMRBTC",
+            "WAVESBNB",
+            "QSPBTC",
+            "WPRBTC"
+        ]
+        self.telegram_bot = TelegramBot()
+        self.count = 0
 
     def _get_raw_klines(self, pair):
         params = {"symbol": pair, "interval": self.interval, "limit": "200"}
@@ -51,13 +86,16 @@ class MarketUpdates:
         return data
 
     def start_stream(self):
-        self.list_markets = self.app.db.correlations.distinct("market_a")
+        markets = set(self.app.db.correlations.distinct("market"))
+        black_list = set(self.black_list)
+        self.list_markets = markets - black_list
         params = []
-        for market in self.list_markets:
+        for market in list(self.list_markets):
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         string_params = "/".join(params)
         url = f"{self.base}/ws/{string_params}"
+        print("Websocket URL:", url)
         ws = WebSocketApp(
             url,
             on_open=self.on_open,
@@ -112,7 +150,11 @@ class MarketUpdates:
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
-            if bot and "safety_order_prices" in bot["deal"] and len(bot["deal"]["safety_order_prices"]) > 0:
+            if (
+                bot
+                and "safety_order_prices" in bot["deal"]
+                and len(bot["deal"]["safety_order_prices"]) > 0
+            ):
                 for key, value in bot["deal"]["safety_order_prices"]:
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(value) >= float(close_price):
@@ -127,7 +169,7 @@ class MarketUpdates:
         Updates market data in DB for research
         """
         # Check if closed result["k"]["x"]
-        if result["k"]:
+        if result["k"] and result["k"]["s"]:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
@@ -139,16 +181,27 @@ class MarketUpdates:
 
             # raw df
             df = pandas.DataFrame(self._get_raw_klines(symbol))
-            df["candle_spread"] = (pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
+            df["candle_spread"] = abs(
+                pandas.to_numeric(df[1]) - pandas.to_numeric(df[4])
+            )
             curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
-            avg_candle_spread = abs(df["candle_spread"].mean())
-            candlestick_signal = "positive" if float(curr_candle_spread) > float(avg_candle_spread) else "negative"
+            avg_candle_spread = df["candle_spread"].median()
+            candlestick_signal = (
+                "positive"
+                if float(curr_candle_spread) > float(avg_candle_spread)
+                else "negative"
+            )
+
+            df["volume_spread"] = abs(
+                pandas.to_numeric(df[1]) - pandas.to_numeric(df[4])
+            )
+            curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
+            avg_volume_spread = df["volume_spread"].median()
+            # volume_signal = "positive" if float(curr_candle_spread) > float(avg_candle_spread) else "negative"
 
             highest_price = max(data[0]["high"])
             lowest_price = max(data[0]["low"])
             spread = (float(highest_price) / float(lowest_price)) - 1
-
-            signal_strength, signal_side = Signals().get_signals(close_price, open_price, ma_7, ma_25, ma_100)
 
             price_change_24 = self._get_24_ticker(symbol)["priceChangePercent"]
 
@@ -157,21 +210,48 @@ class MarketUpdates:
                 "volatility": volatility,
                 "last_volume": float(result["k"]["v"]) + float(result["k"]["q"]),
                 "spread": spread,
-                "price_change_24": float(price_change_24),  # MongoDB can't sort string decimals
+                "price_change_24": float(
+                    price_change_24
+                ),  # MongoDB can't sort string decimals
                 "candlestick_signal": candlestick_signal,
+                "blacklisted": False,
+                "blacklisted_reason": None
             }
-            if signal_strength:
-                setObject["signal_strength"] = signal_strength
-                setObject["signal_side"] = signal_side
-                setObject["signal_timestamp"] = time.time()
-            # Update Current price
-            # if signal_strength or float(price_change_24) > 6 or curr_candle_spread > avg_candle_spread:
-            self.app.db.correlations.find_one_and_update(
-                {"market_a": symbol},
-                {
-                    "$currentDate": {"lastModified": True},
-                    "$set": setObject,
-                },
+
+            setObject = MASignals().get_signals(
+                close_price, open_price, ma_7, ma_25, ma_100, setObject
             )
 
-            print(f"{symbol} Updated, interval: {self.interval}")
+            if symbol in self.black_list:
+                setObject["blacklisted"] = True
+
+            if symbol not in self.last_processed_kline:
+                if float(close_price) > float(open_price) and (
+                    curr_candle_spread > avg_candle_spread
+                    and curr_volume_spread > avg_volume_spread
+                ):
+                    # Send Telegram
+                    msg = f"Open signal {symbol} - Candlestick jump https://www.binance.com/en/trade/{symbol}"
+                    # Avoid duplicate bot error
+                    self.telegram_bot.run_bot()
+                    self.telegram_bot.send_msg(msg)
+                    self.telegram_bot.stop()
+
+                # Update Current price
+                self.app.db.correlations.find_one_and_update(
+                    {"market": symbol},
+                    {
+                        "$currentDate": {"lastModified": True},
+                        "$set": setObject,
+                    },
+                )
+
+                print(f"{symbol} Updated, interval: {self.interval}")
+
+                self.last_processed_kline[symbol] = time.time()
+                # If more than half an hour (interval = 30m) has passed
+                # Then we should resume sending signals for given symbol
+                if (
+                    float(time.time()) - float(self.last_processed_kline[symbol])
+                ) > 800:
+                    del self.last_processed_kline[symbol]

@@ -14,12 +14,6 @@ class Correlation(Account):
     candlestick_url = os.getenv("CANDLESTICK")
 
     def __init__(self):
-        self.correlation_data = {
-            "market_a": "",
-            "market_b": "",
-            "r_correlation": "",
-            "p_value": "",
-        }
         self.app = create_app()
 
     def candlestick_request(self, pair, interval="5m", limit="300"):
@@ -29,7 +23,7 @@ class Correlation(Account):
 
     def trigger_r(self, interval="1d", limit="20"):
         app = self.app
-        symbols = self.get_exchange_info()["symbols"]
+        symbols = self._exchange_info()["symbols"]
         symbols_count = len(symbols) * 2
         total_count = 0
         poll_percentage = 0
@@ -37,24 +31,34 @@ class Correlation(Account):
         app.db.correlations.remove()
         for i in range(symbols_count):
             for j in range(symbols_count):
-                market_a = symbols[j]["symbol"]
-                market_b = symbols[i]["symbol"]
-                if market_a == market_b:
+                market = symbols[j]["symbol"]
+                r_market = symbols[i]["symbol"]
+                if market == r_market:
                     break
-                candlestick_a = self.candlestick_request(market_a, interval, limit)
+                candlestick_a = self.candlestick_request(market, interval, limit)
                 df_a = pd.DataFrame(candlestick_a)
                 close_a = df_a[4].astype(float).tolist()
 
-                candlestick_b = self.candlestick_request(market_b, interval, limit)
+                candlestick_b = self.candlestick_request(r_market, interval, limit)
                 df_b = pd.DataFrame(candlestick_b)
                 close_b = df_b[4].astype(float).tolist()
 
                 r = stats.pearsonr(close_a, close_b)
                 data = {
-                    "market_a": market_a,
-                    "market_b": market_b,
-                    "r_correlation": r[0],
-                    "p_value": r[1],
+                    "market": market,
+                    "r_correlation": {
+                        "r_market": r_market,
+                        "r": r[0],
+                        "p_value": r[1],
+                    },
+                    "current_price": "",
+                    "volatility": "",
+                    "last_volume": 0,
+                    "spread": 0,
+                    "price_change_24": 0,  # MongoDB can't sort string decimals
+                    "candlestick_signal": "",
+                    "blacklisted": False,
+                    "blacklisted_reason": ""
                 }
                 app.db.correlations.insert_one(data)
                 if total_count <= ((symbols_count) - 1):
@@ -64,27 +68,11 @@ class Correlation(Account):
                     total_count += 1
 
                 print(f"Pearson correlation scanning: {poll_percentage}%")
+                if poll_percentage == 100:
+                    print(f"Pearson correlation scanning complete!")
 
     def response(self):
         resp = jsonResp_message("Pearson correlation scanning started", 200)
-        return resp
-
-    def get_pearson(self):
-        args = {}
-        if request.args.get("market_b"):
-            args["market_b"] = request.args.get("market_b")
-        if request.args.get("market_a"):
-            args["market_a"] = request.args.get("market_a")
-        if request.args.get("filter"):
-            value = request.args.get("filter")
-            if value == "positive":
-                args["r_correlation"] = {"$gt": 0}
-            else:
-                args["r_correlation"] = {"$lt": 0}
-
-        query = self.app.db.correlations.find(args).sort("r_correlation", 1)
-        data = list(query)
-        resp = jsonResp({"data": data}, 200)
         return resp
 
     def get_signals(self):
@@ -120,3 +108,32 @@ class Correlation(Account):
         data = list(query)
         resp = jsonResp({"data": data}, 200)
         return resp
+
+    def post_blacklisted(self):
+        args = {}
+        set = {}
+        data = request.json
+        if data.get("symbol"):
+            args["market"] = data.get("symbol")
+            set["blacklisted"] = True
+            set["blacklisted_reason"] = data.get("reason")
+
+        query = self.app.db.correlations.find_one_and_update(args, {"$set": set})
+
+        if query:
+            resp = jsonResp({"data": query}, 200)
+            return resp
+        else:
+            resp = jsonResp({"error": 1, "data": query}, 200)
+
+    def get_blacklisted(self):
+        """
+        Get blacklisted symbol research data
+        """
+        args = {"candlestick_signal": {"$exists": True, "$ne": None}}
+        query = self.app.db.correlations.find(args)
+        if query:
+            resp = jsonResp({"error": 0, "data": query}, 200)
+            return resp
+        else:
+            resp = jsonResp({"error": 1, "data": query}, 200)
