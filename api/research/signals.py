@@ -1,9 +1,9 @@
 import math
-
+import time
 from api.tools.enum_definitions import EnumDefinitions
 
 
-class Signals:
+class MASignals:
     def __init__(self):
         pass
 
@@ -100,7 +100,7 @@ class Signals:
 
         return signal_strength, signal_side
 
-    def get_signals(self, close_price, open_price, ma_7, ma_25, ma_100):
+    def get_signals(self, close_price, open_price, ma_7, ma_25, ma_100, set_object):
         signal_strength, signal_side = self._strong_signals(
             close_price, open_price, ma_7, ma_25, ma_100
         )
@@ -110,4 +110,9 @@ class Signals:
                 close_price, open_price, ma_7, ma_25, ma_100
             )
 
-        return signal_strength, signal_side
+        if signal_strength:
+            set_object["signal_strength"] = signal_strength
+            set_object["signal_side"] = signal_side
+            set_object["signal_timestamp"] = time.time()
+
+        return set_object

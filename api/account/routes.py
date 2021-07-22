@@ -21,7 +21,7 @@ def raw_balance():
     return Assets().get_value()
 
 
-@account_blueprint.route("/symbols/", methods=["GET"])
+@account_blueprint.route("/symbols", methods=["GET"])
 def get_symbols():
     return Account().get_symbols()
 

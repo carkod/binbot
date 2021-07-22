@@ -2,7 +2,6 @@ name: PR checks
 on: pull_request
 env:
   ACTIONS_RUNNER_DEBUG: true
-  TIMEZONE: US/Eastern
   SECRET_KEY: test
   ENVIRONMENT: development
   FLASK_DIRECTORY: /api/
@@ -38,7 +37,9 @@ jobs:
         run: |
           docker run --detach --network host binbot & curl --head --fail --retry-delay 1 --retry 30 --retry-connrefused http://localhost
       - name: Tag image
-        run: docker tag binbot carloswufei/binbot
+        run: |
+          docker commit binbot &
+          docker tag binbot carloswufei/binbot
       - name: Push to Docker Hub
         uses: elgohr/Publish-Docker-Github-Action@master
         with:

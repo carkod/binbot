@@ -7,8 +7,10 @@ from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
 from api.deals.models import Deal
 from api.account.assets import Assets
+from api.app import create_app
+
 class OrderUpdates:
-    def __init__(self, app):
+    def __init__(self):
         self.key = os.getenv("BINANCE_KEY")
         self.secret = os.getenv("BINANCE_SECRET")
         self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
@@ -20,7 +22,7 @@ class OrderUpdates:
         self.path = "/stream"
         self.active_ws = None
         self.listenkey = None
-        self.app = app
+        self.app = create_app()
 
     def get_listenkey(self):
         url = self.user_datastream_listenkey

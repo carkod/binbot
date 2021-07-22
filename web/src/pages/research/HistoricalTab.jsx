@@ -30,9 +30,9 @@ export default function historicalTab({ research, setPair, orderBy }) {
             <th scope="row">
               <button
                 className="btn-reset"
-                onClick={() => setPair(item.market_a)}
+                onClick={() => setPair(item.market)}
               >
-                {item.market_a}
+                {item.market}
               </button>
             </th>
             <td
