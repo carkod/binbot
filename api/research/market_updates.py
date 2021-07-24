@@ -9,10 +9,13 @@ from api.deals.deal_updates import DealUpdates
 from api.research.signals import MASignals
 from api.telegram_bot import TelegramBot
 from api.tools.handle_error import handle_error
+from api.account.account import Account
 from websocket import WebSocketApp
 
-
-class MarketUpdates:
+class MarketUpdates(Account):
+    """
+    Further explanation in docs/market_updates.md
+    """
 
     key = os.getenv("BINANCE_KEY")
     secret = os.getenv("BINANCE_SECRET")
@@ -64,7 +67,7 @@ class MarketUpdates:
             "WPRBTC"
         ]
         self.telegram_bot = TelegramBot()
-        self.count = 0
+        self.max_request = 300  # Avoid HTTP 411 error by splitting into multiple websockets
 
     def _get_raw_klines(self, pair):
         params = {"symbol": pair, "interval": self.interval, "limit": "200"}
@@ -93,18 +96,35 @@ class MarketUpdates:
         for market in list(self.list_markets):
             params.append(f"{market.lower()}@kline_{self.interval}")
 
-        string_params = "/".join(params)
-        url = f"{self.base}/stream?streams={string_params}"
-        ws = WebSocketApp(
-            url,
-            on_open=self.on_open,
-            on_error=self.on_error,
-            on_close=self.close_stream,
-            on_message=self.on_message,
-        )
-        # For thread management
-        self.markets_streams = ws
-        ws.run_forever()
+        loop = len(params) // self.max_request  # python-binance streams limit
+        loop = (loop + 1) if (len(params) % self.max_request) > 0 else loop
+        for index in range(loop):
+            if index == 0:
+                streams = params[0:self.max_request]
+                string_params = "/".join(streams)
+                url = f"{self.base}/stream?streams={string_params}"
+                ws = WebSocketApp(
+                    url,
+                    on_open=self.on_open,
+                    on_error=self.on_error,
+                    on_close=self.close_stream,
+                    on_message=self.on_message,
+                )
+                ws.run_forever()
+
+            else:
+                slice_index = self.max_request * index
+                streams = params[slice_index:]
+                string_params = "/".join(streams)
+                url = f"{self.base}/stream?streams={string_params}"
+                ws = WebSocketApp(
+                    url,
+                    on_open=self.on_open,
+                    on_error=self.on_error,
+                    on_close=self.close_stream,
+                    on_message=self.on_message,
+                )
+                ws.run_forever()
 
     def close_stream(self, ws):
         ws.close()
@@ -120,11 +140,11 @@ class MarketUpdates:
         if error == "[Errno 104] Connection reset by peer":
             self.start_stream()
 
-    def on_message(self, wsapp, message):
-        response = json.loads(message)
-        response = response["data"]
-        if "result" in response and response["result"]:
-            print(f'Subscriptions: {response["result"]}')
+    def on_message(self, ws, message):
+        json_response = json.loads(message)
+        response = json_response["data"]
+        if "result" in json_response and json_response["result"]:
+            print(f'Subscriptions: {json_response["result"]}')
 
         elif "e" in response and response["e"] == "kline":
             self.process_kline_stream(response)
@@ -218,9 +238,11 @@ class MarketUpdates:
                 "blacklisted_reason": None
             }
 
-            setObject = MASignals().get_signals(
-                close_price, open_price, ma_7, ma_25, ma_100, setObject
-            )
+            # Not possible to do MA analyis if data < 200
+            if len(ma_100) > 200:
+                setObject = MASignals().get_signals(
+                    close_price, open_price, ma_7, ma_25, ma_100, setObject
+                )
 
             if symbol in self.black_list:
                 setObject["blacklisted"] = True
