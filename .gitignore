@@ -20,6 +20,7 @@ node_modules/
 coverage/
 build/
 mongo_data
+mongo_data_old
 mongo_db
 
 .DS_Store
