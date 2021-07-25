@@ -27,7 +27,7 @@ class Deal(Account):
 
     def __init__(self, bot):
         # Inherit also the __init__ from parent class
-        super(self.__class__, self).__init__()
+        return super(self.__class__, self).__init__()
 
         self.active_bot = bot
         self.MIN_PRICE = float(
@@ -75,6 +75,7 @@ class Deal(Account):
             "so_prices": [],
             "commission": 0,
         }
+        self.initial_comission = 0
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
@@ -83,6 +84,17 @@ class Deal(Account):
         data = res.json()
         symbol_balance = next((x["free"] for x in data["data"][0]["balances"] if x["asset"] == symbol), None)
         return symbol_balance
+
+    def get_commission(self, order):
+        """
+        @params order: response.json
+        @returns accumulated commission (if multiple orders required to fulfill)
+        """
+        commission = 0
+        for chunk in order["fills"]:
+            commission += float(chunk["commission"])
+
+        return commission
 
     def sell_gbp_balance(self):
         """
@@ -136,6 +148,12 @@ class Deal(Account):
                 200,
             )
             return resp
+
+        # Store commission for posterior DB storage
+        order = res.json
+        self.initial_comission = 0
+        self.initial_comission = self.get_commission(order)
+
         return
 
     def buy_gbp_balance(self):
@@ -274,6 +292,8 @@ class Deal(Account):
 
         for chunk in order["fills"]:
             deal["commission"] += float(chunk["commission"])
+
+        deal["commission"] += self.initial_comission
 
         botId = app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
