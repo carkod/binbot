@@ -32,7 +32,7 @@ class MarketUpdates(Account):
     # streams
     base = os.getenv("WS_BASE")
 
-    def __init__(self, interval="1h"):
+    def __init__(self, interval="1d"):
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
@@ -74,22 +74,29 @@ class MarketUpdates(Account):
             "GASBTC",  # test
             "OMGBTC",
             "LINKBTC",
-            "QTUMBTC"
+            "QTUMBTC",
+            "BCHBTC",
+            "BCHUSDT",
+            "BCHBUSD",
+            "BCHBNB",
+            "BCHTUSD",
+            "BCHUSDC"
         ]
-        self.telegram_bot = TelegramBot()
         self.max_request = 961  # Avoid HTTP 411 error by splitting into multiple websockets
+        self.telegram_bot = TelegramBot()
 
-    def _get_raw_klines(self, pair):
-        params = {"symbol": pair, "interval": self.interval, "limit": "200"}
+    def _get_raw_klines(self, pair, limit="200"):
+        params = {"symbol": pair, "interval": self.interval, "limit": limit}
         res = requests.get(url=self.candlestick_url, params=params)
         handle_error(res)
         return res.json()
 
-    def _get_candlestick(self, market):
-        url = f"{self.bb_candlestick_url}/{market}/{self.interval}"
+    def _get_candlestick(self, market, interval):
+        url = f"{self.bb_candlestick_url}/{market}/{interval}"
         res = requests.get(url=url)
         handle_error(res)
-        return res.json()
+        data = res.json()
+        return data["trace"]
 
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"
@@ -104,10 +111,10 @@ class MarketUpdates(Account):
         To avoid Conflict - duplicate Bot error
         /t command will still be available in telegram bot
         """
+        if not hasattr(self.telegram_bot, "updater"):
+            self.telegram_bot.run_bot()
 
-        self.telegram_bot.run_bot()
         self.telegram_bot.send_msg(msg)
-        self.telegram_bot.stop()
         return
 
     def _run_streams(self, stream, index):
@@ -208,13 +215,11 @@ class MarketUpdates(Account):
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
-            data = self._get_candlestick(symbol)["trace"]
+            data = self._get_candlestick(symbol, self.interval)
             ma_100 = data[1]["y"]
             ma_25 = data[2]["y"]
             ma_7 = data[3]["y"]
             volatility = pandas.Series(data[0]["close"]).astype(float).std(0)
-            lowest_price = min(ma_100)
-            highest_price = max(ma_100)
 
             # raw df
             df = pandas.DataFrame(self._get_raw_klines(symbol))
@@ -236,11 +241,14 @@ class MarketUpdates(Account):
             avg_volume_spread = df["volume_spread"].median()
             # volume_signal = "positive" if float(curr_candle_spread) > float(avg_candle_spread) else "negative"
 
-            highest_price = max(data[0]["high"])
-            lowest_price = max(data[0]["low"])
-            spread = (float(highest_price) / float(lowest_price)) - 1
+            high_price = max(data[0]["high"])
+            low_price = max(data[0]["low"])
+            spread = (float(high_price) / float(low_price)) - 1
 
             price_change_24 = self._get_24_ticker(symbol)["priceChangePercent"]
+
+            df2 = pandas.DataFrame(self._get_raw_klines(symbol, 400))
+            all_time_low = df2[3].min()
 
             setObject = {
                 "current_price": result["k"]["c"],
@@ -264,12 +272,8 @@ class MarketUpdates(Account):
             if symbol in self.black_list:
                 setObject["blacklisted"] = True
 
-            if close_price < lowest_price:
-                msg = f"Lowest price in 100 days {symbol} - https://www.binance.com/en/trade/{symbol}"
-                self._send_msg(msg)
-
-            if close_price > highest_price:
-                msg = f"Highest price in 100 days {symbol} - https://www.binance.com/en/trade/{symbol}"
+            if close_price < float(all_time_low):
+                msg = f"All time low in 100 hours {symbol} - https://www.binance.com/en/trade/{symbol}"
                 self._send_msg(msg)
 
             if symbol not in self.last_processed_kline:
