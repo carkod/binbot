@@ -29,7 +29,6 @@ def get_symbols():
 def get_symbols_raw():
     return Account().get_symbols_raw()
 
-
 @account_blueprint.route("/symbol/<pair>", methods=["GET"])
 def get_symbol_info(pair):
     return Account().get_symbol_info()

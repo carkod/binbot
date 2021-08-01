@@ -1,7 +1,7 @@
 import json
 import os
 import time
-
+import threading
 import pandas
 import requests
 from api.app import create_app
@@ -27,11 +27,12 @@ class MarketUpdates(Account):
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
     bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
     bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
+    bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
 
     # streams
     base = os.getenv("WS_BASE")
 
-    def __init__(self, interval="30m"):
+    def __init__(self, interval="1d"):
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
@@ -64,22 +65,38 @@ class MarketUpdates(Account):
             "XMRBTC",
             "WAVESBNB",
             "QSPBTC",
-            "WPRBTC"
+            "WPRBTC",
+            "MKRBTC",
+            "MKRUSDT",
+            "MKRBUSD",
+            "MKRBNB",
+            "MTHBTC",
+            "GASBTC",  # test
+            "OMGBTC",
+            "LINKBTC",
+            "QTUMBTC",
+            "BCHBTC",
+            "BCHUSDT",
+            "BCHBUSD",
+            "BCHBNB",
+            "BCHTUSD",
+            "BCHUSDC"
         ]
+        self.max_request = 961  # Avoid HTTP 411 error by splitting into multiple websockets
         self.telegram_bot = TelegramBot()
-        self.max_request = 300  # Avoid HTTP 411 error by splitting into multiple websockets
 
-    def _get_raw_klines(self, pair):
-        params = {"symbol": pair, "interval": self.interval, "limit": "200"}
+    def _get_raw_klines(self, pair, limit="200"):
+        params = {"symbol": pair, "interval": self.interval, "limit": limit}
         res = requests.get(url=self.candlestick_url, params=params)
         handle_error(res)
         return res.json()
 
-    def _get_candlestick(self, market):
-        url = f"{self.bb_candlestick_url}/{market}/{self.interval}"
+    def _get_candlestick(self, market, interval):
+        url = f"{self.bb_candlestick_url}/{market}/{interval}"
         res = requests.get(url=url)
         handle_error(res)
-        return res.json()
+        data = res.json()
+        return data["trace"]
 
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"
@@ -88,43 +105,45 @@ class MarketUpdates(Account):
         data = res.json()["data"]
         return data
 
+    def _send_msg(self, msg):
+        """
+        Send message with telegram bot
+        To avoid Conflict - duplicate Bot error
+        /t command will still be available in telegram bot
+        """
+        if not hasattr(self.telegram_bot, "updater"):
+            self.telegram_bot.run_bot()
+
+        self.telegram_bot.send_msg(msg)
+        return
+
+    def _run_streams(self, stream, index):
+        string_params = "/".join(stream)
+        url = f"{self.base}/stream?streams={string_params}"
+        ws = WebSocketApp(
+            url,
+            on_open=self.on_open,
+            on_error=self.on_error,
+            on_close=self.close_stream,
+            on_message=self.on_message,
+        )
+        worker_thread = threading.Thread(name=f"market_updates_{index}", target=ws.run_forever)
+        worker_thread.start()
+
     def start_stream(self):
-        markets = set(self.app.db.correlations.distinct("market"))
+        raw_symbols = self.get_symbols_raw().json
+        markets = set(raw_symbols["data"])
         black_list = set(self.black_list)
         self.list_markets = markets - black_list
         params = []
         for market in list(self.list_markets):
             params.append(f"{market.lower()}@kline_{self.interval}")
 
-        loop = len(params) // self.max_request  # python-binance streams limit
-        loop = (loop + 1) if (len(params) % self.max_request) > 0 else loop
-        for index in range(loop):
-            if index == 0:
-                streams = params[0:self.max_request]
-                string_params = "/".join(streams)
-                url = f"{self.base}/stream?streams={string_params}"
-                ws = WebSocketApp(
-                    url,
-                    on_open=self.on_open,
-                    on_error=self.on_error,
-                    on_close=self.close_stream,
-                    on_message=self.on_message,
-                )
-                ws.run_forever()
+        stream_1 = params[:self.max_request]
+        stream_2 = params[(self.max_request + 1):]
 
-            else:
-                slice_index = self.max_request * index
-                streams = params[slice_index:]
-                string_params = "/".join(streams)
-                url = f"{self.base}/stream?streams={string_params}"
-                ws = WebSocketApp(
-                    url,
-                    on_open=self.on_open,
-                    on_error=self.on_error,
-                    on_close=self.close_stream,
-                    on_message=self.on_message,
-                )
-                ws.run_forever()
+        self._run_streams(stream_1, 1)
+        self._run_streams(stream_2, 2)
 
     def close_stream(self, ws):
         ws.close()
@@ -137,8 +156,7 @@ class MarketUpdates(Account):
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
         ws.close()
-        if error == "[Errno 104] Connection reset by peer":
-            self.start_stream()
+        self.start_stream()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -168,6 +186,10 @@ class MarketUpdates(Account):
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
             )
 
+            # Stop loss
+            if bot["deal"]["stop_loss"]:
+                deal = DealUpdates(bot)
+                deal.update_stop_limit(close_price)
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
             if (
@@ -178,7 +200,7 @@ class MarketUpdates(Account):
                 for key, value in bot["deal"]["safety_order_prices"]:
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(value) >= float(close_price):
-                        deal = DealUpdates(bot, app)
+                        deal = DealUpdates(bot)
                         print("Update deal executed")
                         # No need to pass price to update deal
                         # The price already matched market price
@@ -193,7 +215,7 @@ class MarketUpdates(Account):
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
-            data = self._get_candlestick(symbol)["trace"]
+            data = self._get_candlestick(symbol, self.interval)
             ma_100 = data[1]["y"]
             ma_25 = data[2]["y"]
             ma_7 = data[3]["y"]
@@ -219,11 +241,14 @@ class MarketUpdates(Account):
             avg_volume_spread = df["volume_spread"].median()
             # volume_signal = "positive" if float(curr_candle_spread) > float(avg_candle_spread) else "negative"
 
-            highest_price = max(data[0]["high"])
-            lowest_price = max(data[0]["low"])
-            spread = (float(highest_price) / float(lowest_price)) - 1
+            high_price = max(data[0]["high"])
+            low_price = max(data[0]["low"])
+            spread = (float(high_price) / float(low_price)) - 1
 
             price_change_24 = self._get_24_ticker(symbol)["priceChangePercent"]
+
+            df2 = pandas.DataFrame(self._get_raw_klines(symbol, 400))
+            all_time_low = df2[3].min()
 
             setObject = {
                 "current_price": result["k"]["c"],
@@ -247,6 +272,10 @@ class MarketUpdates(Account):
             if symbol in self.black_list:
                 setObject["blacklisted"] = True
 
+            if close_price < float(all_time_low):
+                msg = f"All time low in 100 hours {symbol} - https://www.binance.com/en/trade/{symbol}"
+                self._send_msg(msg)
+
             if symbol not in self.last_processed_kline:
                 if float(close_price) > float(open_price) and (
                     curr_candle_spread > avg_candle_spread
@@ -254,10 +283,7 @@ class MarketUpdates(Account):
                 ):
                     # Send Telegram
                     msg = f"Open signal {symbol} - Candlestick jump https://www.binance.com/en/trade/{symbol}"
-                    # Avoid duplicate bot error
-                    self.telegram_bot.run_bot()
-                    self.telegram_bot.send_msg(msg)
-                    self.telegram_bot.stop()
+                    self._send_msg(msg)
 
                 # Update Current price
                 self.app.db.correlations.find_one_and_update(
