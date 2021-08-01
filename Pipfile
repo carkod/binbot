@@ -7,7 +7,7 @@ verify_ssl = true
 pylint = "2.9.3"
 flake8 = "*"
 autopep8 = "*"
-isort = "5.9.1"
+isort = "5.9.3"
 
 [packages]
 flask = "*"
