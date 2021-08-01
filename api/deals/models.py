@@ -6,8 +6,7 @@ from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
-from flask import Response
-from flask import current_app as app
+from flask import Response, current_app as app
 from api.app import create_app
 
 class Deal(Account):
@@ -500,53 +499,56 @@ class Deal(Account):
 
         return order_errors
 
-    def close_deals(self):
+    def close_all(self):
         """
-        Close all deals
-        - Deals should be stored as an array of orderIds
-        - Delete (cancel) endpoint, with symbold and orderId
+        Close all deals and sell pair
+        1. Close all deals
+        2. Sell Coins
+        3. Delete bot
         """
-        deals = self.active_bot["deals"]
+        orders = self.active_bot["orders"]
 
-        for d in deals:
-            if "deal_type" in d and (
-                d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
-            ):
-                order_id = d["order_id"]
-                res = requests.delete(
-                    url=f'{self.bb_close_order_url}/{self.active_bot["pair"]}/{order_id}'
-                )
+        # Close all active orders
+        if len(orders) > 0:
+            for d in orders:
+                if "deal_type" in d and (
+                    d["deal_type"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
+                ):
+                    order_id = d["order_id"]
+                    res = requests.delete(
+                        url=f'{self.bb_close_order_url}/{self.active_bot["pair"]}/{order_id}'
+                    )
 
-                if isinstance(handle_error(res), Response):
-                    return handle_error(res)
+                    if isinstance(handle_error(res), Response):
+                        return handle_error(res)
 
         # Sell everything
         pair = self.active_bot["pair"]
         base_asset = self.find_baseAsset(pair)
-        balance = self.get_balances().json
-        qty = round_numbers(
-            float(next((s for s in symbols if s["symbol"] == symbol), None)["free"]),
-            self.qty_precision,
-        )
-        book_order = Book_Order(pair)
-        price = float(book_order.matching_engine(True, qty))
+        balance = self.get_one_balance(base_asset)
+        if balance:
+            qty = round_numbers(balance, self.qty_precision)
+            book_order = Book_Order(pair)
+            price = float(book_order.matching_engine(True, qty))
 
-        if price:
-            order = {
-                "pair": pair,
-                "qty": qty,
-                "price": supress_notation(price, self.price_precision),
-            }
-            res = requests.post(url=self.bb_sell_order_url, json=order)
-        else:
-            order = {
-                "pair": pair,
-                "qty": qty,
-            }
-            res = requests.post(url=self.bb_sell_market_order_url, json=order)
+            if price:
+                order = {
+                    "pair": pair,
+                    "qty": qty,
+                    "price": supress_notation(price, self.price_precision),
+                }
+                res = requests.post(url=self.bb_sell_order_url, json=order)
+            else:
+                order = {
+                    "pair": pair,
+                    "qty": qty,
+                }
+                res = requests.post(url=self.bb_sell_market_order_url, json=order)
 
-        if isinstance(handle_error(res), Response):
-            return handle_error(res)
+            if isinstance(handle_error(res), Response):
+                return handle_error(res)
 
-        response = jsonResp_message("Deals closed successfully", 200)
-        return response
+            transformed_balance = self.sell_gbp_balance()
+            return transformed_balance
+
+        return

@@ -4,6 +4,7 @@ import watchPostLogin from "./containers/login/saga";
 import watchPostRegistration from "./containers/registration/saga";
 import watchBot, {
   watchActivateBot,
+  watchcloseBotApi,
   watchCreateBot,
   watchDeactivateBot,
   watchEditBot,
@@ -27,6 +28,7 @@ export default function* rootSaga() {
     watchCreateBot(),
     watchEditBot(),
     watchGetBot(),
+    watchcloseBotApi(),
     watchGetCandlestick(),
     watchGetOrders(),
     watchOpenOrders(),

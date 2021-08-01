@@ -17,6 +17,7 @@ export const EDIT_BOT_ERROR = "EDIT_BOT_ERROR";
 export const DELETE_BOT = "DELETE_BOT";
 export const DELETE_BOT_SUCCESS = "DELETE_BOT_SUCCESS";
 export const DELETE_BOT_ERROR = "DELETE_BOT_ERROR";
+export const CLOSE_BOT = "CLOSE_BOT";
 
 export const ACTIVATE_BOT = "ACTIVATE_BOT";
 export const ACTIVATE_BOT_SUCCESS = "ACTIVATE_BOT_SUCCESS";
@@ -240,9 +241,8 @@ export function editBotFailed(error) {
 }
 
 /**
- * Create new user
- *
- * @return {object} An action object with a type of BOT
+ * Simple Delete bot
+ * @return {objectId} 
  */
 export function deleteBot(id) {
   return {
@@ -252,6 +252,19 @@ export function deleteBot(id) {
     data: id,
   };
 }
+/**
+ * Close deal, sell coins and delete bot
+ * @return {objectId} 
+ */
+export function closeBot(id) {
+  return {
+    type: CLOSE_BOT,
+    isLoading: true,
+    isError: false,
+    data: id,
+  };
+}
+
 
 /**
  * Dispatched when the repositories are loaded by the request saga

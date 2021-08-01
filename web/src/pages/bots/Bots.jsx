@@ -11,12 +11,14 @@ import {
   Row,
 } from "reactstrap";
 import { checkValue } from "../../validations";
-import { deleteBot, getBots } from "./actions";
-
+import { deleteBot, getBots, closeBot } from "./actions";
+import ConfirmModal from "../../components/ConfirmModal";
 class Bots extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.state = {
+      confirmModal: null
+    };
   }
 
   componentDidMount = () => {
@@ -28,8 +30,19 @@ class Bots extends React.Component {
   };
 
   handleDelete = (id) => {
-    this.props.deleteBot(id);
+    this.setState({ confirmModal: id });
   };
+
+  confirmDelete = (option) => {
+    option = parseInt(option)
+    if (option === 1) {
+      this.props.deleteBot(this.state.confirmModal);
+    } else {
+      this.props.closeBot(this.state.confirmModal);
+    }
+    this.setState({ confirmModal: null })
+    
+  }
 
   getProfit = (base_price, current_price) => {
     if (!checkValue(base_price) && !checkValue(current_price)) {
@@ -156,6 +169,9 @@ class Bots extends React.Component {
               )) : "No data available"}
           </Row>
         </div>
+        <ConfirmModal close={() => this.setState({ confirmModal: null })} modal={this.state.confirmModal} handleActions={this.confirmDelete} acceptText={"Close orders, sell coins and delete bot"} cancelText={"Just delete bot"}>
+          Closing deals will close outstanding orders, sell coins and delete bot
+        </ConfirmModal>
       </>
     );
   }
@@ -193,4 +209,5 @@ const mapStateToProps = (state) => {
 export default connect(mapStateToProps, {
   getBots,
   deleteBot,
+  closeBot,
 })(Bots);

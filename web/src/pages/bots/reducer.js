@@ -5,6 +5,7 @@ import {
   DELETE_BOT,
   DELETE_BOT_ERROR,
   DELETE_BOT_SUCCESS,
+  CLOSE_BOT,
   EDIT_BOT,
   EDIT_BOT_ERROR,
   EDIT_BOT_SUCCESS,
@@ -113,6 +114,16 @@ function botReducer(state = initialState, action) {
 
       return newState;
     }
+
+    case CLOSE_BOT: {
+      const newState = {
+        data: state.data,
+        botActive: state.botActive,
+      };
+
+      return newState;
+    }
+
     case DELETE_BOT_SUCCESS: {
       const newState = {
         ...state,

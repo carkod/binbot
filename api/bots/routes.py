@@ -28,12 +28,14 @@ def edit(id):
 def delete(id):
     return Bot().delete()
 
-
 @bot_blueprint.route("/activate/<botId>", methods=["GET"])
 def activate(botId):
     return Bot().activate()
 
-
 @bot_blueprint.route("/deactivate/<botId>", methods=["GET"])
 def deactivate(botId):
     return Bot().deactivate()
+
+@bot_blueprint.route("/close/<botId>", methods=["DELETE"])
+def close(botId):
+    return Bot().close()

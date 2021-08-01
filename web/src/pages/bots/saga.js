@@ -4,6 +4,7 @@ import {
   activateBotFailed,
   activateBotSucceeded,
   ACTIVATE_BOT,
+  CLOSE_BOT,
   createBotFailed,
   createBotSucceeded,
   CREATE_BOT,
@@ -131,6 +132,26 @@ export function* deleteBot(payload) {
   } catch (err) {
     yield put(deleteBotFailed(err));
   }
+}
+
+export function* closeBotApi(payload) {
+  const id = payload.data;
+  const requestURL = `${process.env.REACT_APP_CLOSE_BOT}/${id}`;
+  const options = {
+    method: "DELETE",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+  };
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(deleteBotSucceeded(res));
+  } catch (err) {
+    yield put(deleteBotFailed(err));
+  }
+}
+
+export function* watchcloseBotApi() {
+  yield takeLatest(CLOSE_BOT, closeBotApi);
 }
 
 export function* getSymbols() {
