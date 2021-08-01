@@ -25,9 +25,6 @@ class Deal(Account):
     bb_balance_url = f"{bb_base_url}/account/balance"
 
     def __init__(self, bot):
-        # Inherit also the __init__ from parent class
-        return super(self.__class__, self).__init__()
-
         self.active_bot = bot
         self.MIN_PRICE = float(
             self.price_filter_by_symbol(self.active_bot["pair"], "minPrice")
@@ -75,6 +72,8 @@ class Deal(Account):
             "commission": 0,
         }
         self.initial_comission = 0
+
+        return super(self.__class__, self).__init__()
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
@@ -550,5 +549,5 @@ class Deal(Account):
 
             transformed_balance = self.sell_gbp_balance()
             return transformed_balance
-
+        
         return

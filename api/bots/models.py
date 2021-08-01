@@ -220,13 +220,15 @@ class Bot(Account):
         2. Sell Coins
         3. Delete bot
         """
-        findId = request.view_args["botId"]
+        findId = request.view_args["id"]
         bot = app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
             close_response = Deal(bot).close_all()
             if isinstance(close_response, Response):
                 return close_response
+
+            self.delete()
 
             response = jsonResp({"message": "Successfully closed bots", "botId": findId}, 400)
             return response
