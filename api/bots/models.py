@@ -5,7 +5,7 @@ from datetime import date
 from api.account.account import Account
 from api.deals.models import Deal
 from bson.objectid import ObjectId
-from api.tools.jsonresp import jsonResp
+from api.tools.jsonresp import jsonResp, jsonResp_message
 
 
 class Bot(Account):
@@ -191,7 +191,7 @@ class Bot(Account):
         if bot:
 
             # Close deals and sell everything
-            dealId = Deal(bot, app).close_deals()
+            dealId = Deal(bot).close_deals()
 
             # If error
             if isinstance(dealId, Response):
@@ -212,3 +212,28 @@ class Bot(Account):
         else:
             resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp
+
+    def close(self):
+        """
+        Close all deals and sell pair
+        1. Close all deals
+        2. Sell Coins
+        3. Delete bot
+        """
+        findId = request.view_args["id"]
+        bot = app.db.bots.find_one({"_id": ObjectId(findId)})
+
+        if bot:
+            close_response = Deal(bot).close_all()
+            if isinstance(close_response, Response):
+                return close_response
+
+            self.delete()
+
+            response = jsonResp({"message": "Successfully closed bots", "botId": findId}, 400)
+            return response
+
+        else:
+            response = jsonResp({"message": "Bot not found", "botId": findId}, 400)
+
+        return response
