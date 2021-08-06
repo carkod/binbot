@@ -6,11 +6,12 @@ import pandas
 import requests
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
-from api.research.signals import MASignals
 from api.telegram_bot import TelegramBot
 from api.tools.handle_error import handle_error
 from api.account.account import Account
 from websocket import WebSocketApp
+from time import sleep
+from datetime import datetime, timedelta
 
 class MarketUpdates(Account):
     """
@@ -32,7 +33,7 @@ class MarketUpdates(Account):
     # streams
     base = os.getenv("WS_BASE")
 
-    def __init__(self, interval="1d"):
+    def __init__(self, interval="1h"):
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
@@ -82,8 +83,9 @@ class MarketUpdates(Account):
             "BCHTUSD",
             "BCHUSDC"
         ]
-        self.max_request = 961  # Avoid HTTP 411 error by splitting into multiple websockets
+        self.max_request = 960  # Avoid HTTP 411 error by splitting into multiple websockets
         self.telegram_bot = TelegramBot()
+        self.time_to_death = datetime.now() + timedelta(hours=24)
 
     def _get_raw_klines(self, pair, limit="200"):
         params = {"symbol": pair, "interval": self.interval, "limit": limit}
@@ -148,6 +150,7 @@ class MarketUpdates(Account):
     def close_stream(self, ws):
         ws.close()
         print("Active socket closed")
+        sleep(10)
         self.start_stream()
 
     def on_open(self, ws):
@@ -156,11 +159,14 @@ class MarketUpdates(Account):
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
         ws.close()
-        self.start_stream()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
         response = json_response["data"]
+
+        delta = self.time_to_death - datetime.now()
+        print(delta)
+
         if "result" in json_response and json_response["result"]:
             print(f'Subscriptions: {json_response["result"]}')
 
@@ -216,13 +222,10 @@ class MarketUpdates(Account):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             data = self._get_candlestick(symbol, self.interval)
-            ma_100 = data[1]["y"]
-            ma_25 = data[2]["y"]
-            ma_7 = data[3]["y"]
             volatility = pandas.Series(data[0]["close"]).astype(float).std(0)
 
             # raw df
-            df = pandas.DataFrame(self._get_raw_klines(symbol))
+            df = pandas.DataFrame(self._get_raw_klines(symbol, 1000))
             df["candle_spread"] = abs(
                 pandas.to_numeric(df[1]) - pandas.to_numeric(df[4])
             )
@@ -247,8 +250,7 @@ class MarketUpdates(Account):
 
             price_change_24 = self._get_24_ticker(symbol)["priceChangePercent"]
 
-            df2 = pandas.DataFrame(self._get_raw_klines(symbol, 400))
-            all_time_low = df2[3].min()
+            all_time_low = pandas.to_numeric(df[3]).min()
 
             setObject = {
                 "current_price": result["k"]["c"],
@@ -263,27 +265,22 @@ class MarketUpdates(Account):
                 "blacklisted_reason": None
             }
 
-            # Not possible to do MA analyis if data < 200
-            if len(ma_100) > 200:
-                setObject = MASignals().get_signals(
-                    close_price, open_price, ma_7, ma_25, ma_100, setObject
-                )
-
             if symbol in self.black_list:
                 setObject["blacklisted"] = True
 
-            if close_price < float(all_time_low):
-                msg = f"All time low in 100 hours {symbol} - https://www.binance.com/en/trade/{symbol}"
-                self._send_msg(msg)
-
             if symbol not in self.last_processed_kline:
                 if float(close_price) > float(open_price) and (
-                    curr_candle_spread > avg_candle_spread
+                    curr_candle_spread > (avg_candle_spread * 2)
                     and curr_volume_spread > avg_volume_spread
                 ):
                     # Send Telegram
-                    msg = f"Open signal {symbol} - Candlestick jump https://www.binance.com/en/trade/{symbol}"
-                    self._send_msg(msg)
+                    msg = f"Open signal {symbol}, spread {spread} - Candlestick jump https://www.binance.com/en/trade/{symbol}"
+
+                    if close_price < float(all_time_low):
+                        msg = f"Open signal, spread {spread}, all time low in 100 hours {symbol} - https://www.binance.com/en/trade/{symbol}"
+
+                    if msg:
+                        self._send_msg(msg)
 
                 # Update Current price
                 self.app.db.correlations.find_one_and_update(
