@@ -368,3 +368,49 @@ class DealUpdates(Account):
             else:
                 print(f"New stop_limit deal successfully updated: {botId}")
             return
+
+    def trailling_take_profit(self, price):
+        """
+        Update stop limit after websocket
+        - Sell initial amount crypto in deal
+        - Close current opened take profit order
+        - Deactivate bot
+        """
+        bot = self.active_bot
+        qty = bot["deal"]["buy_total_qty"]
+        book_order = Book_Order(bot["pair"])
+        price = float(book_order.matching_engine(False, qty))
+
+        trailling_take_profit_order = {
+            "pair": bot["pair"],
+            "qty": qty,
+            "price": supress_notation(price, self.price_precision),
+        }
+        res = requests.post(url=self.bb_sell_order_url, json=trailling_take_profit_order)
+        if isinstance(handle_error(res), Response):
+            return handle_error(res)
+
+        # Append now stop_limit deal
+        trailling_take_profit_response = {
+            "deal_type": "stop_limit",
+            "order_id": res["orderId"],
+            "pair": res["symbol"],
+            "order_side": res["side"],
+            "order_type": res["type"],
+            "price": res["price"],
+            "qty": res["origQty"],
+            "fills": res["fills"],
+            "time_in_force": res["timeInForce"],
+            "status": res["status"],
+        }
+        new_orders = bot["orders"]
+        new_orders.append(trailling_take_profit_response)
+        botId = app.db.bots.update_one(
+            {"_id": bot["_id"]},
+            {"$push": {"orders": new_orders}, "$set": {"active": False}},
+        )
+        if not botId:
+            print(f"Failed to update stop_limit deal: {botId}")
+        else:
+            print(f"New stop_limit deal successfully updated: {botId}")
+        return

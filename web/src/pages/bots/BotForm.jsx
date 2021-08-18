@@ -46,6 +46,7 @@ import { getQuoteAsset } from "./requests";
 import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
 import StopLoss from "./tabs/StopLoss";
+import TakeProfit from "./tabs/TakeProfit";
 
 class BotForm extends React.Component {
   constructor(props) {
@@ -493,6 +494,11 @@ class BotForm extends React.Component {
     );
   };
 
+  toggleTrailling = () =>
+  this.setState({
+    trailling: this.state.trailling === "true" ? "false" : "true",
+  })
+
   render() {
     return (
       <div className="content">
@@ -684,67 +690,16 @@ class BotForm extends React.Component {
                       handleBlur={this.handleBlur}
                     />
 
-                    {/*
-                      Take profit tab
-                    */}
-                    <TabPane tabId="take-profit">
-                      <Row className="u-margin-bottom">
-                        <Col md="8" sm="12">
-                          <Label for="take_profit">
-                            Take profit at (%):{" "}
-                            <span className="u-required">*</span>
-                          </Label>
-                          <Input
-                            invalid={this.state.takeProfitError}
-                            type="text"
-                            name="take_profit"
-                            id="take_profit"
-                            onChange={this.handleChange}
-                            onBlur={this.handleBlur}
-                            value={this.state.take_profit}
-                          />
-                          <FormFeedback>
-                            <strong>Take profit</strong> is required.
-                          </FormFeedback>
-                        </Col>
-                      </Row>
-                      <Row className="u-margin-bottom">
-                        <Col md="6" sm="12">
-                          <label>Trailling</label>
-                          <Button
-                            color={
-                              this.state.trailling === "true"
-                                ? "success"
-                                : "secondary"
-                            }
-                            onClick={() =>
-                              this.setState({
-                                trailling:
-                                  this.state.trailling === "true"
-                                    ? "false"
-                                    : "true",
-                              })
-                            }
-                          >
-                            {this.state.trailling === "true" ? "On" : "Off"}
-                          </Button>
-                        </Col>
-                        {this.state.trailling === "true" && (
-                          <Col md="6" sm="12">
-                            <Label htmlFor="trailling_deviation">
-                              Trailling deviation (%)
-                            </Label>
-                            <Input
-                              type="text"
-                              name="trailling_deviation"
-                              onChange={this.handleChange}
-                              onBlur={this.handleBlur}
-                              value={this.state.trailling_deviation}
-                            />
-                          </Col>
-                        )}
-                      </Row>
-                    </TabPane>
+                    <TakeProfit
+                      takeProfitError={this.state.takeProfitError}
+                      take_profit={this.state.take_profit}
+                      trailling={this.state.trailling}
+                      trailling_deviation={this.state.trailling_deviation}
+                      handleChange={this.handleChange}
+                      handleBlur={this.handleBlur}
+                      toggleTrailling={this.toggleTrailling}
+                    />
+
                   </TabContent>
                   <Row>
                     <div className="update ml-auto mr-auto">

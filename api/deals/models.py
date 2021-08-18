@@ -72,7 +72,7 @@ class Deal(Account):
             "commission": 0,
         }
         self.initial_comission = 0
-
+        # Inherit from parent class
         return super(self.__class__, self).__init__()
 
     def get_one_balance(self, symbol="BTC"):
@@ -448,24 +448,44 @@ class Deal(Account):
             )
             return resp
 
+    def trailling_profit(self):
+        updated_bot = self.app.db.bots.find_one({"_id": self.active_bot["_id"]})
+        deal_buy_price = updated_bot["deal"]["buy_price"]
+        price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(
+            deal_buy_price
+        )
+        price = round_numbers(price, self.price_precision)
+        botId = app.db.bots.find_one_and_update(
+            {"_id": self.active_bot["_id"]}, {"$set": {"deal.take_profit": "", "deal.trailling_profit": price}}
+        )
+        if not botId:
+            resp = jsonResp(
+                {
+                    "message": "Failed to save trailling deviation",
+                    "botId": str(self.active_bot["_id"]),
+                },
+                200,
+            )
+            return resp
+
     def open_deal(self):
         order_errors = []
 
         # If there is already a base order do not execute
-        base_order_deal = next(
-            (
-                bo_deal
-                for bo_deal in self.active_bot["orders"]
-                if len(bo_deal) > 0 and (bo_deal["deal_type"] == "base_order")
-            ),
-            None,
-        )
-        if not base_order_deal:
-            base_order = self.base_order()
-            if isinstance(base_order, Response):
-                msg = base_order.json["message"]
-                order_errors.append({"base_order_error": msg})
-                return order_errors
+        # base_order_deal = next(
+        #     (
+        #         bo_deal
+        #         for bo_deal in self.active_bot["orders"]
+        #         if len(bo_deal) > 0 and (bo_deal["deal_type"] == "base_order")
+        #     ),
+        #     None,
+        # )
+        # if not base_order_deal:
+        #     base_order = self.base_order()
+        #     if isinstance(base_order, Response):
+        #         msg = base_order.json["message"]
+        #         order_errors.append({"base_order_error": msg})
+        #         return order_errors
 
         # Below take profit order goes first, because stream does not return a value
         # If there is already a take profit do not execute
@@ -480,7 +500,11 @@ class Deal(Account):
                 check_tp = False
 
         if check_bo and check_tp:
-            long_take_profit_order = self.long_take_profit_order()
+            if bot["trailling"] == "true":
+                long_take_profit_order = self.trailling_profit()
+            else:
+                long_take_profit_order = self.long_take_profit_order()
+
             if isinstance(long_take_profit_order, Response):
                 msg = long_take_profit_order.json["message"]
                 order_errors.append(msg)

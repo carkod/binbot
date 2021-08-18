@@ -158,6 +158,8 @@ class MarketUpdates(Account):
 
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
+        if error == "Connection to remote host was lost.":
+            self.start_stream()
         ws.close()
 
     def on_message(self, ws, message):
@@ -196,6 +198,16 @@ class MarketUpdates(Account):
             if bot["deal"]["stop_loss"]:
                 deal = DealUpdates(bot)
                 deal.update_stop_limit(close_price)
+
+            if bot["trailling"] == "true" and "trailling_profit" in bot["deal"] and float(close_price) > float(bot["deal"]["trailling_profit"]):
+                price = float(bot["trailling_profit"]) - (float(bot["trailling_deviation"]) * float(bot["trailling_profit"]))
+                if float(close_price) < float(price):
+                    deal = DealUpdates(bot)
+                    print("Trailling take profit executed!")
+                    # No need to pass price to update deal
+                    # The price already matched market price
+                    deal.so_update_deal(price)
+
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
             if (
