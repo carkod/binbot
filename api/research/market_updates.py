@@ -158,7 +158,7 @@ class MarketUpdates(Account):
 
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
-        if error == "Connection to remote host was lost.":
+        if error.args[0] == "Connection to remote host was lost.":
             self.start_stream()
         ws.close()
 
