@@ -26,5 +26,17 @@ services:
   #     - 8007:80
   #     - 8008:8006
 
+  websockets:
+    image: carloswufei/binbot
+    restart: always
+    container_name: binbot
+    depends_on:
+      - db
+      - api
+    env_file:
+      - .env
+    ports:
+      - 8007:80
+
 volumes:
   mongo_data:
