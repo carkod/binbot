@@ -236,6 +236,8 @@ class MarketUpdates(Account):
             data = self._get_candlestick(symbol, self.interval)
             volatility = pandas.Series(data[0]["close"]).astype(float).std(0)
 
+            ma_100 = data[1]["y"]
+
             # raw df
             df = pandas.DataFrame(self._get_raw_klines(symbol, 1000))
             df["candle_spread"] = abs(
@@ -280,7 +282,7 @@ class MarketUpdates(Account):
             if symbol in self.black_list:
                 setObject["blacklisted"] = True
 
-            if symbol not in self.last_processed_kline:
+            if symbol not in self.last_processed_kline and close_price > ma_100[len(ma_100)-1]:
                 if float(close_price) > float(open_price) and (
                     curr_candle_spread > (avg_candle_spread * 2)
                     and curr_volume_spread > avg_volume_spread
