@@ -12,6 +12,7 @@ from api.account.account import Account
 from websocket import WebSocketApp
 from time import sleep
 from datetime import datetime, timedelta
+from api.tools.round_numbers import supress_notation
 
 class MarketUpdates(Account):
     """
@@ -282,16 +283,13 @@ class MarketUpdates(Account):
             if symbol in self.black_list:
                 setObject["blacklisted"] = True
 
-            if symbol not in self.last_processed_kline and close_price > ma_100[len(ma_100)-1]:
-                if float(close_price) > float(open_price) and (
-                    curr_candle_spread > (avg_candle_spread * 2)
-                    and curr_volume_spread > avg_volume_spread
-                ):
+            if symbol not in self.last_processed_kline:
+                if float(close_price) > float(open_price) and (curr_candle_spread > (avg_candle_spread * 2) and curr_volume_spread > avg_volume_spread) and (close_price > ma_100[len(ma_100)-1]):
                     # Send Telegram
-                    msg = f"Open signal {symbol}, spread {spread} - Candlestick jump https://www.binance.com/en/trade/{symbol}"
+                    msg = f"- Candlesick jump <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol}"
 
                     if close_price < float(all_time_low):
-                        msg = f"Open signal, spread {spread}, all time low in 100 hours {symbol} - https://www.binance.com/en/trade/{symbol}"
+                        msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol}"
 
                     if msg:
                         self._send_msg(msg)
@@ -312,5 +310,5 @@ class MarketUpdates(Account):
                 # Then we should resume sending signals for given symbol
                 if (
                     float(time.time()) - float(self.last_processed_kline[symbol])
-                ) > 800:
+                ) > 400:
                     del self.last_processed_kline[symbol]
