@@ -2,9 +2,13 @@ import os
 from flask import Flask
 from flask_cors import CORS
 from pymongo import MongoClient
+from api.apis import BinanceApi, CoinBaseApi
 
 def create_app():
     app = Flask(__name__)
+    app.binance = BinanceApi()
+    app.coinbase = CoinBaseApi()
+
     # Schema
     # db = MongoEngine(app)
     # Enable CORS for all routes
