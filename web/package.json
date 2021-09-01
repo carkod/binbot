@@ -6,7 +6,7 @@
   "dependencies": {
     "bootstrap": "^4.3.1",
     "history": "^5.0.0",
-    "immer": "^9.0.5",
+    "immer": "^9.0.6",
     "moment": "^2.29.1",
     "nanoid": "^3.1.23",
     "plotly.js": "^2.3.1",
