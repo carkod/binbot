@@ -4,7 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pylint = "2.9.4"
+pylint = "2.10.2"
 flake8 = "*"
 autopep8 = "*"
 isort = "5.9.2"
