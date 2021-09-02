@@ -62,6 +62,8 @@ class BotForm extends React.Component {
       balance_usage_size: "0", // Computed
       base_order_size: "",
       baseOrderSizeError: false,
+      balance_to_use: "GBP",
+      bot_profit: 0,
       short_stop_price: 0,
       max_so_count: "0",
       maxSOCountError: false,
@@ -268,6 +270,7 @@ class BotForm extends React.Component {
         active: String(this.state.active),
         balance_available: this.state.balance_available,
         balance_usage: this.state.balance_usage,
+        balance_to_use: this.state.balance_to_use,
         base_order_size: String(this.state.base_order_size),
         deal_min_value: this.state.deal_min_value,
         max_so_count: this.state.max_so_count,
@@ -414,7 +417,7 @@ class BotForm extends React.Component {
 
   handleChange = (e) => {
     e.preventDefault();
-    setTimeout(this.setState({ [e.target.name]: e.target.value }), 3000);
+    this.setState({ [e.target.name]: e.target.value });
   };
 
   handleBlur = () => {

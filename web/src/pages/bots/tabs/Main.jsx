@@ -2,6 +2,7 @@ import {
   Badge,
   Col,
   FormFeedback,
+  FormGroup,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -68,6 +69,25 @@ export default function MainTab({
           <Badge color="secondary" onClick={addMin}>
             Min {state.quoteAsset === "BTC" ? 0.001 : (state.quoteAsset === "BNB" ? 0.051 : (state.quoteAsset === "GBP" ? 10 : ""))}
           </Badge>
+        </Col>
+        <Col md="6" sm="12">
+          <Label htmlFor="balance_to_use">
+            Balance to use<span className="u-required">*</span>
+          </Label>
+          <FormGroup check style={{
+            display: "flex",
+            alignItems: "center",
+            fontSize: "1.5rem"
+          }}>
+            <Label check>
+              <Input type="radio" name="balance_to_use" checked={state.balance_to_use === state.quoteAsset} value={state.quoteAsset} onChange={handleChange}/>{' '}
+              {state.quoteAsset}
+            </Label>
+            <Label check>
+              <Input type="radio" name="balance_to_use" checked={state.balance_to_use === "GBP"} value={"GBP"} onChange={handleChange}/>{' '}
+              GBP
+            </Label>
+          </FormGroup>
         </Col>
       </Row>
     </TabPane>

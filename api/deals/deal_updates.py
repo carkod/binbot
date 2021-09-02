@@ -12,7 +12,6 @@ from flask import current_app as app
 
 class DealUpdates(Account):
 
-    order_book_url = os.getenv("ORDER_BOOK")
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
     bb_buy_order_url = f"{bb_base_url}/order/buy"
     bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
@@ -407,7 +406,7 @@ class DealUpdates(Account):
         new_orders.append(trailling_take_profit_response)
         botId = app.db.bots.update_one(
             {"_id": bot["_id"]},
-            {"$push": {"orders": new_orders}, "$set": {"active": False}},
+            {"$push": {"orders": new_orders}, "$set": {"active": "true", "deal.take_profit_price": res["price"] }},
         )
         if not botId:
             print(f"Failed to update stop_limit deal: {botId}")

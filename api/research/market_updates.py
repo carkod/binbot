@@ -201,13 +201,13 @@ class MarketUpdates(Account):
                 deal.update_stop_limit(close_price)
 
             if bot["trailling"] == "true" and "trailling_profit" in bot["deal"] and float(close_price) > float(bot["deal"]["trailling_profit"]):
-                price = float(bot["trailling_profit"]) - (float(bot["trailling_deviation"]) * float(bot["trailling_profit"]))
+                price = float(bot["deal"]["current_price"]) - (float(bot["trailling_deviation"]) * float(bot["deal"]["current_price"]))
                 if float(close_price) < float(price):
                     deal = DealUpdates(bot)
                     print("Trailling take profit executed!")
                     # No need to pass price to update deal
                     # The price already matched market price
-                    deal.so_update_deal(price)
+                    deal.trailling_take_profit(price)
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
