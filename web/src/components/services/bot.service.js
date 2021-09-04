@@ -157,11 +157,12 @@ export const botCandlestick = (data, bot) => {
   let takeProfitPrice = 0;
 
   if (bot.trailling === "true") {
-    takeProfitPrice = (
-      bot.deal.take_profit_price
-    ).toFixed(8);
     if (checkValue(bot.deal.take_profit_price)) {
       takeProfitPrice = 0;
+    } else {
+      takeProfitPrice = (
+        bot.deal.take_profit_price
+      ).toFixed(8);
     }
   } else {
     // Take profit order

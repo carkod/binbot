@@ -406,7 +406,7 @@ class DealUpdates(Account):
         new_orders.append(trailling_take_profit_response)
         botId = app.db.bots.update_one(
             {"_id": bot["_id"]},
-            {"$push": {"orders": new_orders}, "$set": {"active": "true", "deal.take_profit_price": res["price"] }},
+            {"$push": {"orders": new_orders}, "$set": {"active": "true", "deal.take_profit_price": res["price"]}},
         )
         if not botId:
             print(f"Failed to update stop_limit deal: {botId}")
