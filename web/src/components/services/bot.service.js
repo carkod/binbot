@@ -133,6 +133,7 @@ export const botCandlestick = (data, bot) => {
         parseFloat(bot.deal.buy_price) +
         parseFloat(bot.deal.buy_price) * (bot.take_profit / 100)
       ).toFixed(8);
+      // Add trailling activation here
       traillingStopPrice = (
         parseFloat(bot.deal.buy_price) -
         parseFloat(bot.deal.buy_price) * (parseFloat(bot.trailling_deviation) / 100)

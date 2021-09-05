@@ -35,6 +35,7 @@ class MarketUpdates(Account):
     base = os.getenv("WS_BASE")
 
     def __init__(self, interval="1h"):
+        self.app = create_app()
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
@@ -185,45 +186,60 @@ class MarketUpdates(Account):
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        if result["k"]["x"]:
+        # result["k"]["x"]
+        if result["k"]:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
-            app = create_app()
 
             # Update Current price
-            bot = app.db.bots.find_one_and_update(
+            bot = self.app.db.bots.find_one_and_update(
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
             )
-
-            # Stop loss
-            if bot["deal"]["stop_loss"]:
-                deal = DealUpdates(bot)
-                deal.update_stop_limit(close_price)
-
-            if bot["trailling"] == "true" and "trailling_profit" in bot["deal"] and float(close_price) > float(bot["deal"]["trailling_profit"]):
-                price = float(bot["deal"]["current_price"]) - (float(bot["trailling_deviation"]) * float(bot["deal"]["current_price"]))
-                if float(close_price) < float(price):
+            if bot and "deal" in bot:
+                # Stop loss
+                if "stop_loss" in bot["deal"]:
                     deal = DealUpdates(bot)
-                    print("Trailling take profit executed!")
-                    # No need to pass price to update deal
-                    # The price already matched market price
-                    deal.trailling_take_profit(price)
+                    deal.update_stop_limit(close_price)
 
-            # Open safety orders
-            # When bot = None, when bot doesn't exist (unclosed websocket)
-            if (
-                bot
-                and "safety_order_prices" in bot["deal"]
-                and len(bot["deal"]["safety_order_prices"]) > 0
-            ):
-                for key, value in bot["deal"]["safety_order_prices"]:
-                    # Index is the ID of the safety order price that matches safety_orders list
-                    if float(value) >= float(close_price):
-                        deal = DealUpdates(bot)
-                        print("Update deal executed")
-                        # No need to pass price to update deal
-                        # The price already matched market price
-                        deal.so_update_deal(key)
+                if bot["trailling"] == "true":
+                    # Check if trailling profit reached the first time
+                    current_take_profit_price = float(bot["deal"]["buy_price"]) * (1 + (float(bot["take_profit"]) / 100))
+                    if current_take_profit_price >= float(close_price):
+                        # Update deal take_profit
+                        bot["deal"]["take_profit_price"] = bot["deal"]["trailling_profit"]
+                        # Update trailling_stop_loss
+                        bot["deal"]["trailling_stop_loss_price"] = float(current_take_profit_price) - (float(current_take_profit_price) * (float(bot["trailling_deviation"]) / 100))
+
+                        updated_bot = self.app.db.bots.find_one_and_update(
+                            {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
+                        )
+                        if not updated_bot:
+                            print(f"Error updating trailling order {updated_bot}")
+
+                    if "trailling_stop_loss_price" in bot["deal"]:    
+                        price = bot["deal"]["trailling_stop_loss_price"]
+                        if float(close_price) < float(price):
+                            deal = DealUpdates(bot)
+                            print("Trailling Stop loss executing...")
+                            # No need to pass price to update deal
+                            # The price already matched market price
+                            deal.trailling_take_profit(price)
+
+                # Open safety orders
+                # When bot = None, when bot doesn't exist (unclosed websocket)
+                if (
+                    "safety_order_prices" in bot["deal"]
+                    and len(bot["deal"]["safety_order_prices"]) > 0
+                ):
+                    for key, value in bot["deal"]["safety_order_prices"]:
+                        # Index is the ID of the safety order price that matches safety_orders list
+                        if float(value) >= float(close_price):
+                            deal = DealUpdates(bot)
+                            print("Update deal executed")
+                            # No need to pass price to update deal
+                            # The price already matched market price
+                            deal.so_update_deal(key)
+            return
 
     def process_kline_stream(self, result):
         """

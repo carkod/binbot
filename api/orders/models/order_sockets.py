@@ -91,7 +91,7 @@ class OrderUpdates:
                     }
                 },
                 {
-                    "$set": {"active": "false", "deal.current_price": result["p"]},
+                    "$set": {"status": "inactive", "deal.current_price": result["p"]},
                     "$inc": {"deal.commission": result["n"]}
                 }
             )

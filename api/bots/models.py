@@ -13,7 +13,7 @@ class Bot(Account):
         self.app = create_app()
         self.defaults = {
             "pair": "",
-            "active": "false",
+            "status": "inactive",  # New replacement for active (inactive, active, completed)
             "strategy": "long",
             "name": "Default Bot",
             "max_so_count": "0",
@@ -28,6 +28,7 @@ class Bot(Account):
             "take_profit": "0.003",  # 3% take profit
             "trailling": "false",
             "trailling_deviation": "0.63",
+            "trailling_profit": 0,  # Trailling activation (first take profit hit)
             "deal_min_value": "0",
             "deals": [],
             "orders": [],
@@ -153,7 +154,7 @@ class Bot(Account):
 
             botId = self.app.db.bots.find_one_and_update({"_id": ObjectId(findId)}, {
                 "$set": {
-                    "active": "true"
+                    "status": "active"
                 }
             })
 
@@ -201,11 +202,9 @@ class Bot(Account):
                 return resp
 
             if dealId:
-                bot["active"] = "false"
-                bot["deals"] = []
                 botId = self.app.db.bots.update_one(
                     {"_id": ObjectId(findId)},
-                    {"$set": {"deals": [], "active": "false"}},
+                    {"$set": {"deals": [], "status": "inactive"}},
                 )
                 if botId:
                     resp = jsonResp(

@@ -4,7 +4,7 @@ Create, Edit body
 
 ```
 "pair": "", # Required
-"active": "false",
+"status": "inactive", # inactive, active, completed
 "strategy": "long",
 "name": "Default Bot",
 "max_so_count": "3",

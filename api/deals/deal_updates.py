@@ -38,7 +38,7 @@ class DealUpdates(Account):
         self.default_deal = {
             "order_id": "",
             "deal_type": "base_order",
-            "active": "true",
+            "status": "active",
             "strategy": "long",  # change accordingly
             "pair": "",
             "order_side": "BUY",
@@ -360,7 +360,7 @@ class DealUpdates(Account):
             new_orders.append(stop_limit_response)
             botId = app.db.bots.update_one(
                 {"_id": bot["_id"]},
-                {"$push": {"orders": new_orders}, "$set": {"active": False}},
+                {"$push": {"orders": new_orders}, "$set": {"status": "inactive"}},
             )
             if not botId:
                 print(f"Failed to update stop_limit deal: {botId}")
@@ -380,12 +380,12 @@ class DealUpdates(Account):
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(False, qty))
 
-        trailling_take_profit_order = {
+        trailling_stop_loss = {
             "pair": bot["pair"],
             "qty": qty,
             "price": supress_notation(price, self.price_precision),
         }
-        res = requests.post(url=self.bb_sell_order_url, json=trailling_take_profit_order)
+        res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
         if isinstance(handle_error(res), Response):
             return handle_error(res)
 
@@ -406,10 +406,10 @@ class DealUpdates(Account):
         new_orders.append(trailling_take_profit_response)
         botId = app.db.bots.update_one(
             {"_id": bot["_id"]},
-            {"$push": {"orders": new_orders}, "$set": {"active": "true", "deal.take_profit_price": res["price"]}},
+            {"$push": {"orders": new_orders}, "$set": {"status": "inactive", "deal.take_profit_price": res["price"]}},
         )
         if not botId:
             print(f"Failed to update stop_limit deal: {botId}")
         else:
-            print(f"New stop_limit deal successfully updated: {botId}")
+            print(f"Successfully sold!")
         return

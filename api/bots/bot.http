@@ -11,7 +11,7 @@ content-Type: application/json
 
 {
     "pair": "BNBBUSD",
-    "active": "false",
+    "status": "inactive",
     "strategy": "short",
     "name": "Test short take profit",
     "so_size": "0",

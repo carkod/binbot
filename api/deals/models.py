@@ -35,7 +35,6 @@ class Deal(Account):
         self.default_deal = {
             "order_id": "",
             "deal_type": "base_order",
-            "active": "true",
             "strategy": "long",  # change accordingly
             "pair": "",
             "order_side": "BUY",
