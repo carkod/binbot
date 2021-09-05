@@ -742,8 +742,8 @@ class BotForm extends React.Component {
                         onClick={this.handleActivation}
                         disabled={checkValue(this.state._id)}
                       >
-                        {!checkValue(this.state.bot) &&
-                        Object.keys(this.state.bot.deal).length > 0
+                        {this.state.active &&
+                        Object.keys(this.props.bot.deal).length > 0
                           ? "Update deal"
                           : "Deal"}
                       </ButtonToggle>
