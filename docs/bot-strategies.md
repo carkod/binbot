@@ -5,8 +5,8 @@ When telgram bullying signal is received, open bot and set this trailling profit
 
 The great thing about this strategy is that, if prices go up, we will not sell, we will keep tracking/trailling the prices until it bounces down. So the result is, we either make a high profit or a small profit.
 
-- Bots using this feature, will have `trailling_stop_loss` set
-- If prices reach take profit (which is set dynamically), API will switch on the `trailling_stop_loss` property, which means trailling has been activated, the take profit is no longer a fixed sell order, it becomes a moving "ceilling" that is used to set a stop loss when prices go down. This means that the bot will only sell and close on that trailling stop loss.
+- Bots using this feature, will have `trailling_stop_loss_price` set
+- If prices reach take profit (which is set dynamically), API will switch on the `trailling_stop_loss_price` property, which means trailling has been activated, the take profit is no longer a fixed sell order, it becomes a moving "ceilling" that is used to set a stop loss when prices go down. This means that the bot will only sell and close on that trailling stop loss.
 
 ## Stop limit
 Most of the time, stop limits (SL) should only be used to limit losses. If prices are likely to go up and then drop, use Trailling profit

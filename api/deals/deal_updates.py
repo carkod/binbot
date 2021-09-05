@@ -390,7 +390,7 @@ class DealUpdates(Account):
             return handle_error(res)
 
         # Append now stop_limit deal
-        trailling_take_profit_response = {
+        trailling_stop_loss_response = {
             "deal_type": "stop_limit",
             "order_id": res["orderId"],
             "pair": res["symbol"],
@@ -402,14 +402,13 @@ class DealUpdates(Account):
             "time_in_force": res["timeInForce"],
             "status": res["status"],
         }
-        new_orders = bot["orders"]
-        new_orders.append(trailling_take_profit_response)
+        bot["orders"].append(trailling_stop_loss_response)
         botId = app.db.bots.update_one(
             {"_id": bot["_id"]},
-            {"$push": {"orders": new_orders}, "$set": {"status": "inactive", "deal.take_profit_price": res["price"]}},
+            {"$push": {"orders": bot["orders"]}, "$set": {"status": "completed", "deal.take_profit_price": res["price"]}},
         )
         if not botId:
             print(f"Failed to update stop_limit deal: {botId}")
         else:
-            print(f"Successfully sold!")
+            print("Successfully sold!")
         return

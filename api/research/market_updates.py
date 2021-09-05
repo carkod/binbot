@@ -87,7 +87,6 @@ class MarketUpdates(Account):
         ]
         self.max_request = 960  # Avoid HTTP 411 error by splitting into multiple websockets
         self.telegram_bot = TelegramBot()
-        self.time_to_death = datetime.now() + timedelta(hours=24)
 
     def _get_raw_klines(self, pair, limit="200"):
         params = {"symbol": pair, "interval": self.interval, "limit": limit}
@@ -168,9 +167,6 @@ class MarketUpdates(Account):
         json_response = json.loads(message)
         response = json_response["data"]
 
-        delta = self.time_to_death - datetime.now()
-        print(delta)
-
         if "result" in json_response and json_response["result"]:
             print(f'Subscriptions: {json_response["result"]}')
 
@@ -190,6 +186,7 @@ class MarketUpdates(Account):
         if result["k"]:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
+            
 
             # Update Current price
             bot = self.app.db.bots.find_one_and_update(
@@ -204,7 +201,7 @@ class MarketUpdates(Account):
                 if bot["trailling"] == "true":
                     # Check if trailling profit reached the first time
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (1 + (float(bot["take_profit"]) / 100))
-                    if current_take_profit_price >= float(close_price):
+                    if float(close_price) >= current_take_profit_price:
                         # Update deal take_profit
                         bot["deal"]["take_profit_price"] = bot["deal"]["trailling_profit"]
                         # Update trailling_stop_loss
@@ -216,9 +213,9 @@ class MarketUpdates(Account):
                         if not updated_bot:
                             print(f"Error updating trailling order {updated_bot}")
 
-                    if "trailling_stop_loss_price" in bot["deal"]:    
+                    if "trailling_stop_loss_price" in bot["deal"]:
                         price = bot["deal"]["trailling_stop_loss_price"]
-                        if float(close_price) < float(price):
+                        if float(close_price) <= float(price):
                             deal = DealUpdates(bot)
                             print("Trailling Stop loss executing...")
                             # No need to pass price to update deal
@@ -251,7 +248,6 @@ class MarketUpdates(Account):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             data = self._get_candlestick(symbol, self.interval)
-            volatility = pandas.Series(data[0]["close"]).astype(float).std(0)
 
             ma_100 = data[1]["y"]
 
@@ -262,42 +258,18 @@ class MarketUpdates(Account):
             )
             curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
             avg_candle_spread = df["candle_spread"].median()
-            candlestick_signal = (
-                "positive"
-                if float(curr_candle_spread) > float(avg_candle_spread)
-                else "negative"
-            )
 
             df["volume_spread"] = abs(
                 pandas.to_numeric(df[1]) - pandas.to_numeric(df[4])
             )
             curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
             avg_volume_spread = df["volume_spread"].median()
-            # volume_signal = "positive" if float(curr_candle_spread) > float(avg_candle_spread) else "negative"
 
             high_price = max(data[0]["high"])
             low_price = max(data[0]["low"])
             spread = (float(high_price) / float(low_price)) - 1
 
-            price_change_24 = self._get_24_ticker(symbol)["priceChangePercent"]
-
             all_time_low = pandas.to_numeric(df[3]).min()
-
-            setObject = {
-                "current_price": result["k"]["c"],
-                "volatility": volatility,
-                "last_volume": float(result["k"]["v"]) + float(result["k"]["q"]),
-                "spread": spread,
-                "price_change_24": float(
-                    price_change_24
-                ),  # MongoDB can't sort string decimals
-                "candlestick_signal": candlestick_signal,
-                "blacklisted": False,
-                "blacklisted_reason": None
-            }
-
-            if symbol in self.black_list:
-                setObject["blacklisted"] = True
 
             if symbol not in self.last_processed_kline:
                 if float(close_price) > float(open_price) and (curr_candle_spread > (avg_candle_spread * 2) and curr_volume_spread > avg_volume_spread) and (close_price > ma_100[len(ma_100)-1]):
@@ -309,17 +281,6 @@ class MarketUpdates(Account):
 
                     if msg:
                         self._send_msg(msg)
-
-                # Update Current price
-                self.app.db.correlations.find_one_and_update(
-                    {"market": symbol},
-                    {
-                        "$currentDate": {"lastModified": True},
-                        "$set": setObject,
-                    },
-                )
-
-                print(f"{symbol} Updated, interval: {self.interval}")
 
                 self.last_processed_kline[symbol] = time.time()
                 # If more than half an hour (interval = 30m) has passed

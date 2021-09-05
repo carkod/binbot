@@ -54,6 +54,7 @@ class BotForm extends React.Component {
     this.state = {
       _id: props.match.params.id ? props.match.params.id : null,
       active: false,
+      status: "inactive",
       balance_available: "0",
       balance_available_asset: "",
       balanceAvailableError: false,
@@ -112,6 +113,7 @@ class BotForm extends React.Component {
     if (p.bot !== this.props.bot) {
       this.setState({
         active: this.props.bot.active,
+        status: this.props.bot.status,
         balance_usage: this.props.bot.balance_usage,
         balance_usage_size: this.props.bot.balance_usage_size,
         base_order_size: this.props.bot.base_order_size,
@@ -541,7 +543,7 @@ class BotForm extends React.Component {
                 <CardTitle tag="h3">
                   {this.state.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
-                  this.state.active === "true" ? (
+                  (this.state.active === "true" || this.state.status === "active") ? (
                     <Badge
                       color={this.state.bot_profit > 0 ? "success" : "danger"}
                     >
@@ -742,7 +744,7 @@ class BotForm extends React.Component {
                         onClick={this.handleActivation}
                         disabled={checkValue(this.state._id)}
                       >
-                        {this.state.active &&
+                        {(this.state.status === "active" || this.state.active === "true") &&
                         Object.keys(this.props.bot.deal).length > 0
                           ? "Update deal"
                           : "Deal"}
