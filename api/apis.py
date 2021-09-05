@@ -12,12 +12,16 @@ class CoinBaseApi:
     def get_conversion(self, time, base="BTC", quote="GBP"):
 
         params = {
-            "apikey": self.coin_api_key,
+            "apikey": os.environ["COINAPI_KEY"],
             "date": time.strftime('%Y-%m-%d'),
         }
         url = f"{self.EXG_URL}/{base}-{quote}/spot"
         data = get(url, params).json()
-        rate = float(data["data"]["amount"])
+        try:
+            rate = float(data["data"]["amount"])    
+        except KeyError as e:
+            print(e)
+
         return rate
 
 class BinanceApi:

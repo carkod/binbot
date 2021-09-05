@@ -286,10 +286,10 @@ class MarketUpdates(Account):
             if symbol not in self.last_processed_kline:
                 if float(close_price) > float(open_price) and (curr_candle_spread > (avg_candle_spread * 2) and curr_volume_spread > avg_volume_spread) and (close_price > ma_100[len(ma_100)-1]):
                     # Send Telegram
-                    msg = f"- Candlesick jump <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol}"
+                    msg = f"- Candlesick jump <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
                     if close_price < float(all_time_low):
-                        msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol}"
+                        msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
                     if msg:
                         self._send_msg(msg)

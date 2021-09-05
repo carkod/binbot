@@ -12,6 +12,7 @@ import {
   TabPane,
 } from "reactstrap";
 import SymbolSearch from "../../../components/SymbolSearch";
+import { checkValue } from "../../../validations";
 
 export default function MainTab({
   symbols,
@@ -22,6 +23,7 @@ export default function MainTab({
   handleBaseChange,
   handleBlur,
   addMin,
+  addAll,
 }) {
   return (
     <TabPane tabId="main">
@@ -69,6 +71,13 @@ export default function MainTab({
           <Badge color="secondary" onClick={addMin}>
             Min {state.quoteAsset === "BTC" ? 0.001 : (state.quoteAsset === "BNB" ? 0.051 : (state.quoteAsset === "GBP" ? 10 : ""))}
           </Badge>
+          {' '}
+          <Badge color="secondary" onClick={addAll}>
+            Add all
+          </Badge>
+          <FormFeedback valid={!checkValue(state.addAllError)}>
+            state.addAllError
+          </FormFeedback>
         </Col>
         <Col md="6" sm="12">
           <Label htmlFor="balance_to_use">

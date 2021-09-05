@@ -3,9 +3,6 @@ import requests
 from api.tools.handle_error import handle_error
 from api.tools.enum_definitions import EnumDefinitions
 import pandas as pd
-from api.tools.round_numbers import round_numbers
-
-
 class Book_Order:
     def __init__(self, symbol):
         self.key = os.getenv("BINANCE_KEY")
@@ -71,7 +68,11 @@ class Book_Order:
             if limit_index == 4:
                 return None
             self.matching_engine(order_side, qty, limit_index)
-        final_qty = match_qty["price"].iloc[0]
+        try:
+            final_qty = match_qty["price"].iloc[0]
+        except IndexError as e:
+            print(e)
+            print(f'Matching engine error {match_qty["price"]}')
         return final_qty
 
     def ticker_price(self):

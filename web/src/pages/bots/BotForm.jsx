@@ -31,7 +31,7 @@ import {
   checkValue,
   intervalOptions,
 } from "../../validations.js";
-import { getBalance } from "../../state/balances/actions";
+import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import {
   activateBot,
   createBot,
@@ -42,7 +42,7 @@ import {
   getSymbols,
   loadCandlestick,
 } from "./actions";
-import { getQuoteAsset } from "./requests";
+import { convertGBP, getQuoteAsset } from "./requests";
 import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
 import StopLoss from "./tabs/StopLoss";
@@ -95,6 +95,7 @@ class BotForm extends React.Component {
   }
 
   componentDidMount = () => {
+    this.props.getBalanceRaw();
     this.props.getBalance();
     this.props.getSymbols();
     if (!checkValue(this.props.match.params.id)) {
@@ -409,6 +410,34 @@ class BotForm extends React.Component {
     }
   };
 
+  addAll = async () => {
+    const { pair, quoteAsset } = this.state;
+    const { balance_raw: balances } = this.props;
+    if (!checkValue(pair) && balances.length > 0) {
+      this.props.getSymbolInfo(pair);
+      let totalBalance = 0;
+      for (let x of balances) {
+        if (x.asset === "GBP") {
+          const rate = await convertGBP(quoteAsset+"GBP");
+          if ("code" in rate.data) {
+            this.setState({ addAllError: "Conversion for this crypto not available"})
+          }
+          const cryptoBalance = parseFloat(x.free) / parseFloat(rate.data.price);
+          totalBalance += parseFloat(Math.floor(cryptoBalance * 100000) / 100000);
+        }
+        if (x.asset === quoteAsset) {
+          totalBalance += parseFloat(x.free);
+        }
+      };
+      
+      if (totalBalance <= 0) {
+        this.setState({ addAllError: "No balance available to add" });
+      } else {
+        this.setState({ base_order_size: totalBalance });
+      }
+    }
+  }
+
   handleSafety = (e) => {
     const { pair } = this.state;
     this.props.getSymbolInfo(pair);
@@ -638,6 +667,7 @@ class BotForm extends React.Component {
                       handleBaseChange={this.handleBaseChange}
                       handleBlur={this.handleBlur}
                       addMin={this.addMin}
+                      addAll={this.addAll}
                     />
 
                     {/*
@@ -760,9 +790,10 @@ class BotForm extends React.Component {
               </Card>
             </Col>
             <Col md="5" sm="12">
-              {this.props.lastBalance && 
+              {this.props.lastBalance && this.props.balance_raw &&
                 <BalanceAnalysis
                   balance={this.props.lastBalance}
+                  balance_raw={this.props.balance_raw}
                 />
               }
             </Col>
@@ -775,6 +806,7 @@ class BotForm extends React.Component {
 
 const mapStateToProps = (state) => {
   let { data: balance } = state.balanceReducer;
+  const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
   const { data: bot } = state.getSingleBotReducer;
   const { data: candlestick } = state.candlestickReducer;
@@ -787,6 +819,7 @@ const mapStateToProps = (state) => {
 
   return {
     lastBalance: lastBalance,
+    balance_raw: balance_raw,
     symbols: symbols,
     bot: bot,
     candlestick: candlestick,
@@ -797,6 +830,7 @@ const mapStateToProps = (state) => {
 
 export default connect(mapStateToProps, {
   getBalance,
+  getBalanceRaw,
   getSymbols,
   getSymbolInfo,
   createBot,

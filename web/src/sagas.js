@@ -18,7 +18,7 @@ import {
   watchPollOrders,
 } from "./pages/orders/saga";
 import { watchHistoricalResearchApi, watchResearchApi } from "./pages/research/saga";
-import { watchGetBalanceApi } from "./state/balances/saga";
+import { watchGetBalanceApi, watchRawBalance } from "./state/balances/saga";
 
 export default function* rootSaga() {
   yield all([
@@ -38,6 +38,7 @@ export default function* rootSaga() {
     watchDeactivateBot(),
     watchResearchApi(),
     watchHistoricalResearchApi(),
-    watchGetBalanceApi()
+    watchGetBalanceApi(),
+    watchRawBalance(),
   ]);
 }

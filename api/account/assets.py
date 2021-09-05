@@ -8,7 +8,7 @@ from api.tools.jsonresp import jsonResp
 from api.account.account import Account
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
-
+from api.apis import CoinBaseApi
 class Assets(Account):
 
     def __init__(self):
@@ -30,7 +30,7 @@ class Assets(Account):
 
         # filter out empty
         # Return response
-        resp = jsonResp(balances, 200)
+        resp = jsonResp({"data": balances}, 200)
         return resp
 
     def get_binbot_balance(self):
@@ -229,3 +229,14 @@ class Assets(Account):
         if balance:
             resp = jsonResp({"data": balance}, 200)
         return resp
+
+    def currency_conversion(self):
+        base = request.args.get("base")
+        quote = request.args.get("quote")
+        qty = request.args.get("qty")
+
+        # Get conversion from coinbase
+        time = datetime.now()
+        rate = CoinBaseApi().get_conversion(time, base, quote)
+        total = float(rate) * float(qty)
+        return jsonResp({"data": total}, 200)
