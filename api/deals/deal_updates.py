@@ -12,7 +12,6 @@ from flask import current_app as app
 
 class DealUpdates(Account):
 
-    order_book_url = os.getenv("ORDER_BOOK")
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
     bb_buy_order_url = f"{bb_base_url}/order/buy"
     bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
@@ -39,7 +38,7 @@ class DealUpdates(Account):
         self.default_deal = {
             "order_id": "",
             "deal_type": "base_order",
-            "active": "true",
+            "status": "active",
             "strategy": "long",  # change accordingly
             "pair": "",
             "order_side": "BUY",
@@ -361,10 +360,55 @@ class DealUpdates(Account):
             new_orders.append(stop_limit_response)
             botId = app.db.bots.update_one(
                 {"_id": bot["_id"]},
-                {"$push": {"orders": new_orders}, "$set": {"active": False}},
+                {"$push": {"orders": new_orders}, "$set": {"status": "inactive"}},
             )
             if not botId:
                 print(f"Failed to update stop_limit deal: {botId}")
             else:
                 print(f"New stop_limit deal successfully updated: {botId}")
             return
+
+    def trailling_take_profit(self, price):
+        """
+        Update stop limit after websocket
+        - Sell initial amount crypto in deal
+        - Close current opened take profit order
+        - Deactivate bot
+        """
+        bot = self.active_bot
+        qty = bot["deal"]["buy_total_qty"]
+        book_order = Book_Order(bot["pair"])
+        price = float(book_order.matching_engine(False, qty))
+
+        trailling_stop_loss = {
+            "pair": bot["pair"],
+            "qty": qty,
+            "price": supress_notation(price, self.price_precision),
+        }
+        res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
+        if isinstance(handle_error(res), Response):
+            return handle_error(res)
+
+        # Append now stop_limit deal
+        trailling_stop_loss_response = {
+            "deal_type": "stop_limit",
+            "order_id": res["orderId"],
+            "pair": res["symbol"],
+            "order_side": res["side"],
+            "order_type": res["type"],
+            "price": res["price"],
+            "qty": res["origQty"],
+            "fills": res["fills"],
+            "time_in_force": res["timeInForce"],
+            "status": res["status"],
+        }
+        bot["orders"].append(trailling_stop_loss_response)
+        botId = app.db.bots.update_one(
+            {"_id": bot["_id"]},
+            {"$push": {"orders": bot["orders"]}, "$set": {"status": "completed", "deal.take_profit_price": res["price"]}},
+        )
+        if not botId:
+            print(f"Failed to update stop_limit deal: {botId}")
+        else:
+            print("Successfully sold!")
+        return

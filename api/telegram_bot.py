@@ -48,7 +48,7 @@ class TelegramBot:
         update.message.reply_text("Use /start to test this bot.")
 
     def send_msg(self, msg):
-        self.updater.bot.send_message(chat_id=self.chat_id, text=msg)
+        self.updater.bot.send_message(chat_id=self.chat_id, text=msg, parse_mode="HTML")
 
     def stop(self):
         self.updater.stop()

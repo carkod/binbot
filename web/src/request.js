@@ -2,7 +2,6 @@
  * Parses the JSON returned by a network request
  *
  * @param  {object} response A response from a network request
- *
  * @return {object}          The parsed JSON from the request
  */
 function parseJSON(response) {
@@ -16,7 +15,6 @@ function parseJSON(response) {
  * Checks if a network request came back fine, and throws an error if not
  *
  * @param  {object} response   A response from a network request
- *
  * @return {object|undefined} Returns either the response, or throws an error
  */
 function checkStatus(response) {

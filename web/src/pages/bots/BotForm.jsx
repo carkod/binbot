@@ -31,7 +31,7 @@ import {
   checkValue,
   intervalOptions,
 } from "../../validations.js";
-import { getBalance } from "../../state/balances/actions";
+import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import {
   activateBot,
   createBot,
@@ -42,10 +42,11 @@ import {
   getSymbols,
   loadCandlestick,
 } from "./actions";
-import { getQuoteAsset } from "./requests";
+import { convertGBP, getQuoteAsset } from "./requests";
 import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
 import StopLoss from "./tabs/StopLoss";
+import TakeProfit from "./tabs/TakeProfit";
 
 class BotForm extends React.Component {
   constructor(props) {
@@ -53,6 +54,7 @@ class BotForm extends React.Component {
     this.state = {
       _id: props.match.params.id ? props.match.params.id : null,
       active: false,
+      status: "inactive",
       balance_available: "0",
       balance_available_asset: "",
       balanceAvailableError: false,
@@ -61,6 +63,8 @@ class BotForm extends React.Component {
       balance_usage_size: "0", // Computed
       base_order_size: "",
       baseOrderSizeError: false,
+      balance_to_use: "GBP",
+      bot_profit: 0,
       short_stop_price: 0,
       max_so_count: "0",
       maxSOCountError: false,
@@ -92,6 +96,7 @@ class BotForm extends React.Component {
   }
 
   componentDidMount = () => {
+    this.props.getBalanceRaw();
     this.props.getBalance();
     this.props.getSymbols();
     if (!checkValue(this.props.match.params.id)) {
@@ -108,6 +113,7 @@ class BotForm extends React.Component {
     if (p.bot !== this.props.bot) {
       this.setState({
         active: this.props.bot.active,
+        status: this.props.bot.status,
         balance_usage: this.props.bot.balance_usage,
         balance_usage_size: this.props.bot.balance_usage_size,
         base_order_size: this.props.bot.base_order_size,
@@ -267,6 +273,7 @@ class BotForm extends React.Component {
         active: String(this.state.active),
         balance_available: this.state.balance_available,
         balance_usage: this.state.balance_usage,
+        balance_to_use: this.state.balance_to_use,
         base_order_size: String(this.state.base_order_size),
         deal_min_value: this.state.deal_min_value,
         max_so_count: this.state.max_so_count,
@@ -405,6 +412,34 @@ class BotForm extends React.Component {
     }
   };
 
+  addAll = async () => {
+    const { pair, quoteAsset } = this.state;
+    const { balance_raw: balances } = this.props;
+    if (!checkValue(pair) && balances.length > 0) {
+      this.props.getSymbolInfo(pair);
+      let totalBalance = 0;
+      for (let x of balances) {
+        if (x.asset === "GBP") {
+          const rate = await convertGBP(quoteAsset+"GBP");
+          if ("code" in rate.data) {
+            this.setState({ addAllError: "Conversion for this crypto not available"})
+          }
+          const cryptoBalance = parseFloat(x.free) / parseFloat(rate.data.price);
+          totalBalance += parseFloat(Math.floor(cryptoBalance * 100000) / 100000);
+        }
+        if (x.asset === quoteAsset) {
+          totalBalance += parseFloat(x.free);
+        }
+      };
+      
+      if (totalBalance <= 0) {
+        this.setState({ addAllError: "No balance available to add" });
+      } else {
+        this.setState({ base_order_size: totalBalance });
+      }
+    }
+  }
+
   handleSafety = (e) => {
     const { pair } = this.state;
     this.props.getSymbolInfo(pair);
@@ -413,7 +448,7 @@ class BotForm extends React.Component {
 
   handleChange = (e) => {
     e.preventDefault();
-    setTimeout(this.setState({ [e.target.name]: e.target.value }), 3000);
+    this.setState({ [e.target.name]: e.target.value });
   };
 
   handleBlur = () => {
@@ -493,6 +528,11 @@ class BotForm extends React.Component {
     );
   };
 
+  toggleTrailling = () =>
+  this.setState({
+    trailling: this.state.trailling === "true" ? "false" : "true",
+  })
+
   render() {
     return (
       <div className="content">
@@ -503,7 +543,7 @@ class BotForm extends React.Component {
                 <CardTitle tag="h3">
                   {this.state.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
-                  this.state.active === "true" ? (
+                  (this.state.active === "true" || this.state.status === "active") ? (
                     <Badge
                       color={this.state.bot_profit > 0 ? "success" : "danger"}
                     >
@@ -629,6 +669,7 @@ class BotForm extends React.Component {
                       handleBaseChange={this.handleBaseChange}
                       handleBlur={this.handleBlur}
                       addMin={this.addMin}
+                      addAll={this.addAll}
                     />
 
                     {/*
@@ -684,67 +725,16 @@ class BotForm extends React.Component {
                       handleBlur={this.handleBlur}
                     />
 
-                    {/*
-                      Take profit tab
-                    */}
-                    <TabPane tabId="take-profit">
-                      <Row className="u-margin-bottom">
-                        <Col md="8" sm="12">
-                          <Label for="take_profit">
-                            Take profit at (%):{" "}
-                            <span className="u-required">*</span>
-                          </Label>
-                          <Input
-                            invalid={this.state.takeProfitError}
-                            type="text"
-                            name="take_profit"
-                            id="take_profit"
-                            onChange={this.handleChange}
-                            onBlur={this.handleBlur}
-                            value={this.state.take_profit}
-                          />
-                          <FormFeedback>
-                            <strong>Take profit</strong> is required.
-                          </FormFeedback>
-                        </Col>
-                      </Row>
-                      <Row className="u-margin-bottom">
-                        <Col md="6" sm="12">
-                          <label>Trailling</label>
-                          <Button
-                            color={
-                              this.state.trailling === "true"
-                                ? "success"
-                                : "secondary"
-                            }
-                            onClick={() =>
-                              this.setState({
-                                trailling:
-                                  this.state.trailling === "true"
-                                    ? "false"
-                                    : "true",
-                              })
-                            }
-                          >
-                            {this.state.trailling === "true" ? "On" : "Off"}
-                          </Button>
-                        </Col>
-                        {this.state.trailling === "true" && (
-                          <Col md="6" sm="12">
-                            <Label htmlFor="trailling_deviation">
-                              Trailling deviation (%)
-                            </Label>
-                            <Input
-                              type="text"
-                              name="trailling_deviation"
-                              onChange={this.handleChange}
-                              onBlur={this.handleBlur}
-                              value={this.state.trailling_deviation}
-                            />
-                          </Col>
-                        )}
-                      </Row>
-                    </TabPane>
+                    <TakeProfit
+                      takeProfitError={this.state.takeProfitError}
+                      take_profit={this.state.take_profit}
+                      trailling={this.state.trailling}
+                      trailling_deviation={this.state.trailling_deviation}
+                      handleChange={this.handleChange}
+                      handleBlur={this.handleBlur}
+                      toggleTrailling={this.toggleTrailling}
+                    />
+
                   </TabContent>
                   <Row>
                     <div className="update ml-auto mr-auto">
@@ -754,8 +744,8 @@ class BotForm extends React.Component {
                         onClick={this.handleActivation}
                         disabled={checkValue(this.state._id)}
                       >
-                        {!checkValue(this.state.bot) &&
-                        Object.keys(this.state.bot.deal).length > 0
+                        {(this.state.status === "active" || this.state.active === "true") &&
+                        Object.keys(this.props.bot.deal).length > 0
                           ? "Update deal"
                           : "Deal"}
                       </ButtonToggle>
@@ -802,9 +792,10 @@ class BotForm extends React.Component {
               </Card>
             </Col>
             <Col md="5" sm="12">
-              {this.props.lastBalance && 
+              {this.props.lastBalance && this.props.balance_raw &&
                 <BalanceAnalysis
                   balance={this.props.lastBalance}
+                  balance_raw={this.props.balance_raw}
                 />
               }
             </Col>
@@ -817,6 +808,7 @@ class BotForm extends React.Component {
 
 const mapStateToProps = (state) => {
   let { data: balance } = state.balanceReducer;
+  const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
   const { data: bot } = state.getSingleBotReducer;
   const { data: candlestick } = state.candlestickReducer;
@@ -829,6 +821,7 @@ const mapStateToProps = (state) => {
 
   return {
     lastBalance: lastBalance,
+    balance_raw: balance_raw,
     symbols: symbols,
     bot: bot,
     candlestick: candlestick,
@@ -839,6 +832,7 @@ const mapStateToProps = (state) => {
 
 export default connect(mapStateToProps, {
   getBalance,
+  getBalanceRaw,
   getSymbols,
   getSymbolInfo,
   createBot,

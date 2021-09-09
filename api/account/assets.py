@@ -5,12 +5,11 @@ from decimal import Decimal
 
 from flask import current_app as app, request
 from api.tools.jsonresp import jsonResp
-from api.tools.ticker import Conversion
 from api.account.account import Account
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
-
-class Assets(Account, Conversion):
+from api.apis import CoinBaseApi
+class Assets(Account):
 
     def __init__(self):
         self.usd_balance = 0
@@ -31,7 +30,7 @@ class Assets(Account, Conversion):
 
         # filter out empty
         # Return response
-        resp = jsonResp(balances, 200)
+        resp = jsonResp({"data": balances}, 200)
         return resp
 
     def get_binbot_balance(self):
@@ -171,7 +170,7 @@ class Assets(Account, Conversion):
             if "USD" in b["asset"]:
 
                 qty = self._check_locked(b)
-                rate = self.get_conversion(current_time, "BTC", "GBP")
+                rate = self.app.coinbase.get_conversion(current_time, "BTC", "GBP")
                 total_gbp += float(qty) / float(rate)
             elif "GBP" in b["asset"]:
                 total_gbp += self._check_locked(b)
@@ -188,7 +187,7 @@ class Assets(Account, Conversion):
                 if market == "BNB":
                     gbp_rate = self.get_ticker_price("BNBGBP")
                 else:
-                    gbp_rate = self.get_conversion(current_time, market, "GBP")
+                    gbp_rate = self.app.coinbase.get_conversion(current_time, market, "GBP")
 
                 total_gbp += float(total) * float(gbp_rate)
 
@@ -230,3 +229,14 @@ class Assets(Account, Conversion):
         if balance:
             resp = jsonResp({"data": balance}, 200)
         return resp
+
+    def currency_conversion(self):
+        base = request.args.get("base")
+        quote = request.args.get("quote")
+        qty = request.args.get("qty")
+
+        # Get conversion from coinbase
+        time = datetime.now()
+        rate = CoinBaseApi().get_conversion(time, base, quote)
+        total = float(rate) * float(qty)
+        return jsonResp({"data": total}, 200)

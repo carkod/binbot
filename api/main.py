@@ -28,19 +28,12 @@ assets = Assets()
 orders = Orders()
 research_data = Correlation()
 
-if os.environ["ENVIRONMENT"] != "development":
+if os.environ["ENV"] != "development":
     scheduler.add_job(
         func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=00, minute=1
     )
     scheduler.add_job(
-        func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=12, minute=1
-    )
-    scheduler.add_job(
-        func=orders.poll_historical_orders,
-        trigger="cron",
-        timezone="Europe/London",
-        hour=1,
-        minute=1,
+        func=market_update_thread, trigger="interval", timezone="Europe/London", hours=2
     )
 
     scheduler.start()
@@ -68,5 +61,5 @@ worker_thread = threading.Thread(name="order_updates_thread", target=order_updat
 worker_thread.start()
 
 # Research market updates
-if os.environ["ENVIRONMENT"] != "development":
-    market_update_thread()
+# if os.environ["ENV"] != "development":
+# market_update_thread()

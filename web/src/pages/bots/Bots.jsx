@@ -93,10 +93,10 @@ class Bots extends React.Component {
                           <div className="stats">
                             <Badge
                               color={
-                                x.active === "true" ? "success" : "secondary"
+                                x.active === "true" || x.status === "active" ? "success" : "secondary"
                               }
                             >
-                              {x.active === "true" ? "ACTIVE" : "INACTIVE"}
+                              {!checkValue(x.status) && x.status.toUpperCase()}
                             </Badge>
                           </div>
                         </Col>

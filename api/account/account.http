@@ -6,8 +6,11 @@ GET http://localhost:5000/account/symbols HTTP/1.1
 ###
 GET http://localhost:5000/account/balance HTTP/1.1
 
+###
+GET http://localhost:5000/account/balance/raw HTTP/1.1
+
 ### With or without symbol
-GET http://localhost:5000/account/ticker/BTCUSDT HTTP/1.1
+GET http://localhost:5000/account/ticker/BTCGBP HTTP/1.1
 
 ###
 GET http://localhost:5000/account/ticker24/BTCUSDT HTTP/1.1
@@ -21,3 +24,6 @@ GET http://localhost:5000/account/find-quote/BNBBTC HTTP/1.1
 
 ### Store balance
 GET http://localhost:5000/account/store-balance HTTP/1.1
+
+### Convert 0.0003 BTC to GBP
+GET http://localhost:5000/account/conversion?base=BTC&quote=GBP&qty=0.0003 HTTP/1.1

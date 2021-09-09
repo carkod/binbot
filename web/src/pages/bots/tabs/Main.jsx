@@ -2,6 +2,7 @@ import {
   Badge,
   Col,
   FormFeedback,
+  FormGroup,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -11,6 +12,7 @@ import {
   TabPane,
 } from "reactstrap";
 import SymbolSearch from "../../../components/SymbolSearch";
+import { checkValue } from "../../../validations";
 
 export default function MainTab({
   symbols,
@@ -21,6 +23,7 @@ export default function MainTab({
   handleBaseChange,
   handleBlur,
   addMin,
+  addAll,
 }) {
   return (
     <TabPane tabId="main">
@@ -68,6 +71,32 @@ export default function MainTab({
           <Badge color="secondary" onClick={addMin}>
             Min {state.quoteAsset === "BTC" ? 0.001 : (state.quoteAsset === "BNB" ? 0.051 : (state.quoteAsset === "GBP" ? 10 : ""))}
           </Badge>
+          {' '}
+          <Badge color="secondary" onClick={addAll}>
+            Add all
+          </Badge>
+          <FormFeedback valid={!checkValue(state.addAllError)}>
+            state.addAllError
+          </FormFeedback>
+        </Col>
+        <Col md="6" sm="12">
+          <Label htmlFor="balance_to_use">
+            Balance to use<span className="u-required">*</span>
+          </Label>
+          <FormGroup check style={{
+            display: "flex",
+            alignItems: "center",
+            fontSize: "1.5rem"
+          }}>
+            <Label check>
+              <Input type="radio" name="balance_to_use" checked={state.balance_to_use === state.quoteAsset} value={state.quoteAsset} onChange={handleChange}/>{' '}
+              {state.quoteAsset}
+            </Label>
+            <Label check>
+              <Input type="radio" name="balance_to_use" checked={state.balance_to_use === "GBP"} value={"GBP"} onChange={handleChange}/>{' '}
+              GBP
+            </Label>
+          </FormGroup>
         </Col>
       </Row>
     </TabPane>

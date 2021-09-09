@@ -47,14 +47,3 @@ In production:
 If issues are encountered downloading prod DB to local
 1. Dump database: `docker exec -i binbot_db sh -c 'mongorestore --archive -u <MONGO_AUTH_USERNAME> -p <MONGO_AUTH_PASSWORD> --authenticationDatabase <MONGO_AUTH_DATABASE> ' < db.dump`
 2. On local, restore `docker exec -i binbot_db sh -c 'mongorestore --archive -u <MONGO_AUTH_USERNAME> -p <MONGO_AUTH_PASSWORD> --authenticationDatabase <MONGO_AUTH_DATABASE> ' < db.dump`
-
-
-## How to debug redux state in this app
-### Find the API endpoint called
-1. In the component find the props that return the data e.g. `this.props.balance`
-2. Find the name of the reducer in the `mapStateToProps` function e.g. `state.balanceReducer`
-3. Search for this reducer e.g. `balanceReducer`
-4. Copy the main action type e.g. `GET_BALANCE`
-5. Find this constant in the saga e.g. `watchGbpBalanceApi`
-6. In the generator function e.g. `getBalanceAll` you will find the `requestUrl`
-7. This URL will have a constant variable which is usually located in the `env`

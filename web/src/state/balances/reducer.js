@@ -2,6 +2,9 @@ import {
   GET_BALANCE,
   BALANCE_SUCCESS,
   BALANCE_ERROR,
+  GET_BALANCE_RAW,
+  BALANCE_RAW_SUCCESS,
+  BALANCE_RAW_ERROR,
 } from "./actions";
 
 // The initial state of the App
@@ -37,6 +40,30 @@ function balanceReducer(state = initialState, action) {
 }
 
 
+function balanceRawReducer(state = initialState, action) {
+  switch (action.type) {
+    case GET_BALANCE_RAW: {
+      return state;
+    }
+    case BALANCE_RAW_SUCCESS: {
+      const newState = {
+        ...state,
+        ...action,
+      };
+      return newState;
+    }
+    case BALANCE_RAW_ERROR: {
+      return {
+        ...state,
+        ...action,
+      };
+    }
+    default:
+      return state;
+  }
+}
+
 export {
   balanceReducer,
+  balanceRawReducer
 };

@@ -88,40 +88,11 @@ export const botCandlestick = (data, bot) => {
   shapes.push(baseOrderS);
   annotations.push(baseOrderA);
 
-  // Short (switch) order
-  const shortOrderPrice =
-    currentPrice - currentPrice * (bot.short_stop_price / 100);
   if (
     !checkValue(bot.short_stop_price) &&
     parseFloat(bot.short_stop_price > 0)
   ) {
-    // Annotation
-    const shortOrderA = {
-      x: currentTime,
-      y: shortOrderPrice,
-      xref: "x",
-      yref: "y",
-      text: "Short Order",
-      font: { color: "#FD9F23" },
-      showarrow: false,
-      xanchor: "left",
-    };
-    // Shape
-    const shortOrderS = {
-      type: "line",
-      xref: "x",
-      yref: "y",
-      x0: data.trace[0].x[0],
-      y0: shortOrderPrice,
-      x1: currentTime,
-      y1: shortOrderPrice,
-      line: {
-        color: "#FD9F23",
-        width: 4,
-      },
-    };
-    shapes.push(shortOrderS);
-    annotations.push(shortOrderA);
+    
 
     // Stop loss
     const stopLossPrice = currentPrice - currentPrice * (bot.stop_loss / 100);
@@ -154,24 +125,78 @@ export const botCandlestick = (data, bot) => {
     annotations.push(stopLossA);
   }
 
-  // Take profit order
-  let takeProfitPrice = (
-    parseFloat(takeProfit) +
-    parseFloat(takeProfit) * (bot.take_profit / 100)
-  ).toFixed(8);
-  if (bot.orders.length > 0) {
-    const findTp = bot.orders.find((x) => x.deal_type === "take_profit");
-    if (!checkValue(findTp)) {
-      takeProfitPrice = findTp.price;   
+  let takeProfitPrice = 0;
+  let traillingStopPrice = 0
+  if (bot.trailling === "true") {
+    if (!checkValue(bot.deal) && !checkValue(bot.deal.buy_price)) {
+      takeProfitPrice = (
+        parseFloat(bot.deal.buy_price) +
+        parseFloat(bot.deal.buy_price) * (bot.take_profit / 100)
+      ).toFixed(8);
+      // Add trailling activation here
+      traillingStopPrice = (
+        parseFloat(bot.deal.buy_price) -
+        parseFloat(bot.deal.buy_price) * (parseFloat(bot.trailling_deviation) / 100)
+      ).toFixed(8);
+    } else {
+      takeProfitPrice = (
+        parseFloat(currentPrice) +
+        parseFloat(currentPrice) * (bot.take_profit / 100)
+      ).toFixed(8);
+      traillingStopPrice = (
+        parseFloat(currentPrice) -
+        parseFloat(currentPrice) * (parseFloat(bot.trailling_deviation) / 100)
+      ).toFixed(8);
+    }
+
+    if (traillingStopPrice > 0) {
+      // Trailling stop loss annotations and shapes
+      const traillingStopA = {
+        x: takeProfitTime,
+        y: traillingStopPrice,
+        xref: "x",
+        yref: "y",
+        text: "Trailling stop loss (inactive)",
+        font: { color: "green" },
+        showarrow: false,
+        xanchor: "left",
+        hovertext: traillingStopPrice,
+      };
+      const traillingStopS = {
+        type: "line",
+        xref: "x",
+        yref: "y",
+        x0: takeProfitTime,
+        y0: traillingStopPrice,
+        x1: data.trace[0].x[150],
+        y1: traillingStopPrice,
+        line: {
+          color: "green",
+          width: 4,
+        },
+      };
+      shapes.push(traillingStopS);
+      annotations.push(traillingStopA);
+    }
+  } else {
+    // Take profit order
+    takeProfitPrice = (
+      parseFloat(takeProfit) +
+      parseFloat(takeProfit) * (bot.take_profit / 100)
+    ).toFixed(8);
+    if (bot.orders.length > 0) {
+      const findTp = bot.orders.find((x) => x.deal_type === "take_profit");
+      if (!checkValue(findTp)) {
+        takeProfitPrice = findTp.price;   
+      }
     }
   }
-
   const takeProfitA = {
     x: takeProfitTime,
     y: takeProfitPrice,
     xref: "x",
     yref: "y",
-    text: "Take profit order",
+    text: `Take profit order${bot.trailling === "true" ? " (trailling)" : ""}`,
     font: { color: "green" },
     showarrow: false,
     xanchor: "left",
@@ -193,41 +218,6 @@ export const botCandlestick = (data, bot) => {
   };
   shapes.push(takeProfitS);
   annotations.push(takeProfitA);
-
-  if (bot.trailling === "true") {
-    // Take profit trailling order
-    // Should replace the take profit order, that's why uses takeProfitTime
-    const traillingPrice = (
-      parseFloat(takeProfitPrice) +
-      parseFloat(takeProfitPrice) * (parseFloat(bot.trailling_deviation) / 100)
-    ).toFixed(process.env.REACT_APP_DECIMALS);
-    const traillingA = {
-      x: takeProfitTime,
-      y: traillingPrice,
-      xref: "x",
-      yref: "y",
-      text: "Trailling order",
-      font: { color: "green" },
-      showarrow: false,
-      xanchor: "left",
-      hovertext: traillingPrice,
-    };
-    const traillingS = {
-      type: "line",
-      xref: "x",
-      yref: "y",
-      x0: takeProfitTime,
-      y0: traillingPrice,
-      x1: data.trace[0].x[150],
-      y1: traillingPrice,
-      line: {
-        color: "green",
-        width: 4,
-      },
-    };
-    shapes.push(traillingS);
-    annotations.push(traillingA);
-  }
 
   const maxSoCount = parseInt(bot.max_so_count);
   const soOrders = bot.safety_orders;
@@ -268,6 +258,7 @@ export const botCandlestick = (data, bot) => {
       shapes.push(safetyOrderS);
     });
   }
+
   return {
     annotations: annotations,
     shapes: shapes,

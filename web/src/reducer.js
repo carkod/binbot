@@ -3,6 +3,7 @@ import registrationReducer from "./containers/registration/reducer";
 import loginReducer from "./containers/login/reducer";
 import {
   balanceReducer,
+  balanceRawReducer
 } from "./state/balances/reducer";
 import {
   botReducer,
@@ -21,6 +22,7 @@ const rootReducer = combineReducers({
   registrationReducer,
   loginReducer,
   balanceReducer,
+  balanceRawReducer,
   botReducer,
   symbolInfoReducer,
   symbolReducer,

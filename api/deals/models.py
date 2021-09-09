@@ -7,7 +7,6 @@ from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response, current_app as app
-from api.app import create_app
 
 class Deal(Account):
     order_book_url = os.getenv("ORDER_BOOK")
@@ -25,17 +24,17 @@ class Deal(Account):
     bb_balance_url = f"{bb_base_url}/account/balance"
 
     def __init__(self, bot):
+        # Inherit from parent class
+        super(self.__class__, self).__init__()
         self.active_bot = bot
         self.MIN_PRICE = float(
             self.price_filter_by_symbol(self.active_bot["pair"], "minPrice")
         )
         self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
         self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
-        self.app = create_app()
         self.default_deal = {
             "order_id": "",
             "deal_type": "base_order",
-            "active": "true",
             "strategy": "long",  # change accordingly
             "pair": "",
             "order_side": "BUY",
@@ -72,8 +71,6 @@ class Deal(Account):
             "commission": 0,
         }
         self.initial_comission = 0
-
-        return super(self.__class__, self).__init__()
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
@@ -148,7 +145,7 @@ class Deal(Account):
             return resp
 
         # Store commission for posterior DB storage
-        order = res.json
+        order = res.json()
         self.initial_comission = 0
         self.initial_comission = self.get_commission(order)
 
@@ -209,11 +206,17 @@ class Deal(Account):
         return
 
     def base_order(self):
+        """
+        Required initial order to trigger bot.
+        Other orders require this to execute,
+        therefore should fail if not successful
+        """
         # Transform GBP balance to required market balance
         # e.g. BNBBTC - sell GBP and buy BTC
-        transformed_balance = self.sell_gbp_balance()
-        if isinstance(transformed_balance, Response):
-            return transformed_balance
+        if self.active_bot["balance_to_use"] == "GBP":
+            transformed_balance = self.sell_gbp_balance()
+            if isinstance(transformed_balance, Response):
+                return transformed_balance
 
         pair = self.active_bot["pair"]
 
@@ -318,7 +321,7 @@ class Deal(Account):
         - take_profit order can ONLY be executed once base order is filled (on Binance)
         """
         pair = self.active_bot["pair"]
-        updated_bot = self.app.db.bots.find_one({"_id": self.active_bot["_id"]})
+        updated_bot = app.db.bots.find_one({"_id": self.active_bot["_id"]})
         deal_buy_price = updated_bot["deal"]["buy_price"]
         buy_total_qty = updated_bot["deal"]["buy_total_qty"]
         price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(
@@ -448,6 +451,26 @@ class Deal(Account):
             )
             return resp
 
+    def trailling_profit(self):
+        updated_bot = app.db.bots.find_one({"_id": self.active_bot["_id"]})
+        deal_buy_price = updated_bot["deal"]["buy_price"]
+        price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(
+            deal_buy_price
+        )
+        price = supress_notation(price, self.price_precision)
+        botId = app.db.bots.find_one_and_update(
+            {"_id": self.active_bot["_id"]}, {"$set": {"deal.take_profit_price": 0, "deal.trailling_profit": price}}
+        )
+        if not botId:
+            resp = jsonResp(
+                {
+                    "message": "Failed to save trailling deviation",
+                    "botId": str(self.active_bot["_id"]),
+                },
+                200,
+            )
+            return resp
+
     def open_deal(self):
         order_errors = []
 
@@ -470,7 +493,7 @@ class Deal(Account):
         # Below take profit order goes first, because stream does not return a value
         # If there is already a take profit do not execute
         # If there is no base order can't execute
-        bot = self.app.db.bots.find_one({"_id": self.active_bot["_id"]})
+        bot = app.db.bots.find_one({"_id": self.active_bot["_id"]})
         check_bo = False
         check_tp = True
         for order in bot["orders"]:
@@ -480,7 +503,11 @@ class Deal(Account):
                 check_tp = False
 
         if check_bo and check_tp:
-            long_take_profit_order = self.long_take_profit_order()
+            if bot["trailling"] == "true":
+                long_take_profit_order = self.trailling_profit()
+            else:
+                long_take_profit_order = self.long_take_profit_order()
+
             if isinstance(long_take_profit_order, Response):
                 msg = long_take_profit_order.json["message"]
                 order_errors.append(msg)

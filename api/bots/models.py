@@ -1,23 +1,25 @@
-from flask import Response, current_app as app
+from flask import Response
 from flask import request
 from datetime import date
 
 from api.account.account import Account
 from api.deals.models import Deal
 from bson.objectid import ObjectId
-from api.tools.jsonresp import jsonResp, jsonResp_message
-
+from api.tools.jsonresp import jsonResp
+from api.app import create_app
 
 class Bot(Account):
     def __init__(self):
+        self.app = create_app()
         self.defaults = {
             "pair": "",
-            "active": "false",
+            "status": "inactive",  # New replacement for active (inactive, active, completed)
             "strategy": "long",
             "name": "Default Bot",
             "max_so_count": "0",
             "balance_usage": "1",  # 100% of All Btc balance
             "balance_usage_size": "0.0001",
+            "balance_to_use": "GBP",
             "base_order_size": "3",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
             "short_stop_price": "0",  # Flip to short strategy threshold
@@ -26,6 +28,7 @@ class Bot(Account):
             "take_profit": "0.003",  # 3% take profit
             "trailling": "false",
             "trailling_deviation": "0.63",
+            "trailling_profit": 0,  # Trailling activation (first take profit hit)
             "deal_min_value": "0",
             "deals": [],
             "orders": [],
@@ -46,7 +49,7 @@ class Bot(Account):
 
     def get(self):
         resp = jsonResp({"message": "Endpoint failed"}, 200)
-        bot = list(app.db.bots.find())
+        bot = list(self.app.db.bots.find())
         if bot:
             resp = jsonResp({"data": bot}, 200)
         else:
@@ -56,7 +59,7 @@ class Bot(Account):
     def get_one(self):
         resp = jsonResp({"message": "No bots found"}, 200)
         findId = request.view_args["id"]
-        bot = app.db.bots.find_one({"_id": ObjectId(findId)})
+        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
             resp = jsonResp({"message": "Bot found", "data": bot}, 200)
         else:
@@ -70,7 +73,7 @@ class Bot(Account):
         )
         self.defaults.update(data)
         self.defaults["safety_orders"] = data["safety_orders"]
-        botId = app.db.bots.save(self.defaults, {"$currentDate": {"createdAt": "true"}})
+        botId = self.app.db.bots.save(self.defaults, {"$currentDate": {"createdAt": "true"}})
         if botId:
             resp = jsonResp(
                 {"message": "Successfully created new bot", "botId": str(botId)}, 200
@@ -85,8 +88,8 @@ class Bot(Account):
         findId = request.view_args["id"]
         self.defaults.update(data)
         self.defaults["safety_orders"] = data["safety_orders"]
-        botId = app.db.bots.update_one(
-            {"_id": ObjectId(findId)}, {"$set": self.defaults}, upsert=False
+        botId = self.app.db.bots.update_one(
+            {"_id": ObjectId(findId)}, {"$set": self.defaults}, upsert=True
         )
         if botId.acknowledged:
             resp = jsonResp(
@@ -100,7 +103,7 @@ class Bot(Account):
     def delete(self):
         resp = jsonResp({"message": "Bot update is not available"}, 400)
         findId = request.view_args["id"]
-        delete_action = app.db.bots.delete_one({"_id": ObjectId(findId)})
+        delete_action = self.app.db.bots.delete_one({"_id": ObjectId(findId)})
         if delete_action:
             resp = jsonResp(
                 {"message": "Successfully delete bot", "botId": findId}, 200
@@ -124,7 +127,7 @@ class Bot(Account):
 
     def activate(self):
         findId = request.view_args["botId"]
-        bot = app.db.bots.find_one({"_id": ObjectId(findId)})
+        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
             order_errors = Deal(bot).open_deal()
@@ -149,9 +152,9 @@ class Bot(Account):
                     }, 200)
                 return resp
 
-            botId = app.db.bots.find_one_and_update({"_id": ObjectId(findId)}, {
+            botId = self.app.db.bots.find_one_and_update({"_id": ObjectId(findId)}, {
                 "$set": {
-                    "active": "true"
+                    "status": "active"
                 }
             })
 
@@ -187,7 +190,7 @@ class Bot(Account):
         """
         resp = jsonResp({"message": "Bot deactivation is not available"}, 400)
         findId = request.view_args["botId"]
-        bot = app.db.bots.find_one({"_id": ObjectId(findId)})
+        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
 
             # Close deals and sell everything
@@ -199,11 +202,9 @@ class Bot(Account):
                 return resp
 
             if dealId:
-                bot["active"] = "false"
-                bot["deals"] = []
-                botId = app.db.bots.update_one(
+                botId = self.app.db.bots.update_one(
                     {"_id": ObjectId(findId)},
-                    {"$set": {"deals": [], "active": "false"}},
+                    {"$set": {"deals": [], "status": "inactive"}},
                 )
                 if botId:
                     resp = jsonResp(
@@ -221,7 +222,7 @@ class Bot(Account):
         3. Delete bot
         """
         findId = request.view_args["id"]
-        bot = app.db.bots.find_one({"_id": ObjectId(findId)})
+        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
             close_response = Deal(bot).close_all()
