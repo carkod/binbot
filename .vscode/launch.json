@@ -2,10 +2,10 @@
   "version": "0.0.2",
   "configurations": [
     {
-      "name": "Python: Websockets app",
+      "name": "Python: Research",
       "type": "python",
       "request": "launch",
-      "program": "websockets/main.py",
+      "program": "research/__init__.py",
       "console": "internalConsole"
     },
     {

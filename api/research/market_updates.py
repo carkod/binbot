@@ -1,18 +1,12 @@
 import json
 import os
-import time
 import threading
-import pandas
 import requests
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
-from api.telegram_bot import TelegramBot
 from api.tools.handle_error import handle_error
 from api.account.account import Account
 from websocket import WebSocketApp
-from time import sleep
-from datetime import datetime, timedelta
-from api.tools.round_numbers import supress_notation
 
 class MarketUpdates(Account):
     """
@@ -35,7 +29,6 @@ class MarketUpdates(Account):
     base = os.getenv("WS_BASE")
 
     def __init__(self, interval="1h"):
-        self.app = create_app()
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
@@ -86,7 +79,6 @@ class MarketUpdates(Account):
             "BCHUSDC"
         ]
         self.max_request = 960  # Avoid HTTP 411 error by splitting into multiple websockets
-        self.telegram_bot = TelegramBot()
 
     def _get_raw_klines(self, pair, limit="200"):
         params = {"symbol": pair, "interval": self.interval, "limit": limit}
@@ -108,20 +100,18 @@ class MarketUpdates(Account):
         data = res.json()["data"]
         return data
 
-    def _send_msg(self, msg):
+    def start_stream(self):
         """
-        Send message with telegram bot
-        To avoid Conflict - duplicate Bot error
-        /t command will still be available in telegram bot
+        Get list of cryptos currently trading bots
+
         """
-        if not hasattr(self.telegram_bot, "updater"):
-            self.telegram_bot.run_bot()
+        markets = list(self.app.db.bots.distinct("pair"))
+        self.list_markets = set(markets) - set(self.black_list)
+        params = []
+        for market in list(self.list_markets):
+            params.append(f"{market.lower()}@kline_{self.interval}")
 
-        self.telegram_bot.send_msg(msg)
-        return
-
-    def _run_streams(self, stream, index):
-        string_params = "/".join(stream)
+        string_params = "/".join(params)
         url = f"{self.base}/stream?streams={string_params}"
         ws = WebSocketApp(
             url,
@@ -130,29 +120,12 @@ class MarketUpdates(Account):
             on_close=self.close_stream,
             on_message=self.on_message,
         )
-        worker_thread = threading.Thread(name=f"market_updates_{index}", target=ws.run_forever)
+        worker_thread = threading.Thread(name="market_updates", target=ws.run_forever)
         worker_thread.start()
 
-    def start_stream(self):
-        raw_symbols = self.get_symbols_raw().json
-        markets = set(raw_symbols["data"])
-        black_list = set(self.black_list)
-        self.list_markets = markets - black_list
-        params = []
-        for market in list(self.list_markets):
-            params.append(f"{market.lower()}@kline_{self.interval}")
-
-        stream_1 = params[:self.max_request]
-        stream_2 = params[(self.max_request + 1):]
-
-        self._run_streams(stream_1, 1)
-        self._run_streams(stream_2, 2)
-
-    def close_stream(self, ws):
+    def close_stream(self, ws, close_status_code, close_msg):
         ws.close()
-        print("Active socket closed")
-        sleep(10)
-        self.start_stream()
+        print("Active socket closed", close_status_code, close_msg)
 
     def on_open(self, ws):
         print("Market data updates socket opened")
@@ -171,7 +144,6 @@ class MarketUpdates(Account):
             print(f'Subscriptions: {json_response["result"]}')
 
         elif "e" in response and response["e"] == "kline":
-            self.process_kline_stream(response)
             self.process_deals(response)
 
         else:
@@ -183,10 +155,9 @@ class MarketUpdates(Account):
         when price and symbol match existent deal
         """
         # result["k"]["x"]
-        if result["k"]:
+        if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
-            
 
             # Update Current price
             bot = self.app.db.bots.find_one_and_update(
@@ -217,17 +188,11 @@ class MarketUpdates(Account):
                         price = bot["deal"]["trailling_stop_loss_price"]
                         if float(close_price) <= float(price):
                             deal = DealUpdates(bot)
-                            print("Trailling Stop loss executing...")
-                            # No need to pass price to update deal
-                            # The price already matched market price
                             deal.trailling_take_profit(price)
 
                 # Open safety orders
                 # When bot = None, when bot doesn't exist (unclosed websocket)
-                if (
-                    "safety_order_prices" in bot["deal"]
-                    and len(bot["deal"]["safety_order_prices"]) > 0
-                ):
+                if "safety_order_prices" in bot["deal"] and len(bot["deal"]["safety_order_prices"]) > 0:
                     for key, value in bot["deal"]["safety_order_prices"]:
                         # Index is the ID of the safety order price that matches safety_orders list
                         if float(value) >= float(close_price):
@@ -237,55 +202,3 @@ class MarketUpdates(Account):
                             # The price already matched market price
                             deal.so_update_deal(key)
             return
-
-    def process_kline_stream(self, result):
-        """
-        Updates market data in DB for research
-        """
-        # Check if closed result["k"]["x"]
-        if result["k"] and result["k"]["s"]:
-            close_price = float(result["k"]["c"])
-            open_price = float(result["k"]["o"])
-            symbol = result["k"]["s"]
-            data = self._get_candlestick(symbol, self.interval)
-
-            ma_100 = data[1]["y"]
-
-            # raw df
-            df = pandas.DataFrame(self._get_raw_klines(symbol, 1000))
-            df["candle_spread"] = abs(
-                pandas.to_numeric(df[1]) - pandas.to_numeric(df[4])
-            )
-            curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
-            avg_candle_spread = df["candle_spread"].median()
-
-            df["volume_spread"] = abs(
-                pandas.to_numeric(df[1]) - pandas.to_numeric(df[4])
-            )
-            curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
-            avg_volume_spread = df["volume_spread"].median()
-
-            high_price = max(data[0]["high"])
-            low_price = max(data[0]["low"])
-            spread = (float(high_price) / float(low_price)) - 1
-
-            all_time_low = pandas.to_numeric(df[3]).min()
-
-            if symbol not in self.last_processed_kline:
-                if float(close_price) > float(open_price) and (curr_candle_spread > (avg_candle_spread * 2) and curr_volume_spread > avg_volume_spread) and (close_price > ma_100[len(ma_100)-1]):
-                    # Send Telegram
-                    msg = f"- Candlesick jump <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-
-                    if close_price < float(all_time_low):
-                        msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-
-                    if msg:
-                        self._send_msg(msg)
-
-                self.last_processed_kline[symbol] = time.time()
-                # If more than half an hour (interval = 30m) has passed
-                # Then we should resume sending signals for given symbol
-                if (
-                    float(time.time()) - float(self.last_processed_kline[symbol])
-                ) > 400:
-                    del self.last_processed_kline[symbol]

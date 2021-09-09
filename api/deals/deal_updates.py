@@ -375,6 +375,7 @@ class DealUpdates(Account):
         - Close current opened take profit order
         - Deactivate bot
         """
+        print("Trailling Stop loss executing...")
         bot = self.active_bot
         qty = bot["deal"]["buy_total_qty"]
         book_order = Book_Order(bot["pair"])

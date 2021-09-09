@@ -24,6 +24,7 @@ websocket-client = "1.2.1"
 flask-mongoengine = "*"
 scipy = "1.7.0"
 python-telegram-bot = "13.7"
+python-dotenv = "*"
 
 [requires]
 python_version = "3.8"
