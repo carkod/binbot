@@ -7,10 +7,8 @@ import requests
 from telegram_bot import TelegramBot
 from utils import handle_error
 from websocket import WebSocketApp
-from time import sleep
 from utils import supress_notation
 from pymongo import MongoClient
-from logging import basicConfig, DEBUG
 from apis import BinanceApi
 from dotenv import load_dotenv
 
@@ -18,7 +16,7 @@ load_dotenv()
 
 mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]), username=os.environ["MONGO_AUTH_USERNAME"], password=os.environ["MONGO_AUTH_PASSWORD"], authSource=os.environ["MONGO_AUTH_DATABASE"])
 
-bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
+bb_base_url = f'{os.getenv("RESEARCH_FLASK_DOMAIN")}'
 bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
 bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
 bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"

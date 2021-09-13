@@ -4,15 +4,12 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext, CallbackQueryHandler, CommandHandler, Updater, MessageHandler, Filters
 from dotenv import load_dotenv
 
-load_dotenv()
-
 class TelegramBot:
 
-    token = os.getenv("TELEGRAM_BOT_KEY")
-    chat_id = os.getenv("TELEGRAM_USER_ID")
-
     def __init__(self):
-        pass
+        load_dotenv()
+        self.token = os.getenv("TELEGRAM_BOT_KEY")
+        self.chat_id = os.getenv("TELEGRAM_USER_ID")
 
     def buy(self, update: Update, context: CallbackContext) -> None:
         """Sends a message with three inline buttons attached."""

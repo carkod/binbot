@@ -14,7 +14,6 @@ class Assets(Account):
     def __init__(self):
         self.usd_balance = 0
         self.app = create_app()
-        # return super(Account, self).__init__()
 
     def get_raw_balance(self):
         """

@@ -49,7 +49,7 @@ jobs:
           tags: "latest"
 
   push_research_to_registry:
-    name: Test and deploy Binbot_research research docker image
+    name: Test and deploy Binbot_research docker image
     runs-on: ubuntu-latest
     services:
       postgres:

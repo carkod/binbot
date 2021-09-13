@@ -105,7 +105,7 @@ class MarketUpdates(Account):
         Get list of cryptos currently trading bots
 
         """
-        markets = list(self.app.db.bots.distinct("pair"))
+        markets = list(self.app.db.bots.distinct("pair", {"status": "active"}))
         self.list_markets = set(markets) - set(self.black_list)
         params = []
         for market in list(self.list_markets):
