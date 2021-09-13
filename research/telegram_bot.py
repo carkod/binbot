@@ -54,10 +54,8 @@ class TelegramBot:
 
     def run_bot(self) -> None:
         """Run the bot."""
-        print("running the bot... token: ", self.token)
         self.updater = Updater(self.token)
         self.updater.dispatcher.add_handler(CommandHandler("t", self.buy))
         self.updater.dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, lambda u, c: u.message.reply_text(u.message.text)))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.button))
-        self.updater.run_async()
         return

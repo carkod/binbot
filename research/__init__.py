@@ -14,7 +14,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]), username=os.environ["MONGO_AUTH_USERNAME"], password=os.environ["MONGO_AUTH_PASSWORD"], authSource=os.environ["MONGO_AUTH_DATABASE"])
+mongo = MongoClient(
+    os.environ["MONGO_HOSTNAME"],
+    int(os.environ["MONGO_PORT"]),
+    username=os.environ["MONGO_AUTH_USERNAME"],
+    password=os.environ["MONGO_AUTH_PASSWORD"],
+    authSource=os.environ["MONGO_AUTH_DATABASE"],
+)
 
 bb_base_url = f'{os.getenv("RESEARCH_FLASK_DOMAIN")}'
 bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
@@ -70,17 +76,19 @@ black_list = [
     "BCHBUSD",
     "BCHBNB",
     "BCHTUSD",
-    "BCHUSDC"
+    "BCHUSDC",
 ]
 telegram_bot = TelegramBot()
-max_request = 960  # Avoid HTTP 411 error by separating streams
+max_request = 950  # Avoid HTTP 411 error by separating streams
+
 
 def _get_candlestick(market, interval):
     url = f"{bb_candlestick_url}/{market}/{interval}"
     res = requests.get(url=url)
-    handle_error(res)
+    print(handle_error(res))
     data = res.json()
     return data["trace"]
+
 
 def _get_24_ticker(market):
     url = f"{bb_24_ticker_url}/{market}"
@@ -88,6 +96,7 @@ def _get_24_ticker(market):
     handle_error(res)
     data = res.json()["data"]
     return data
+
 
 def _send_msg(msg):
     """
@@ -101,9 +110,11 @@ def _send_msg(msg):
     telegram_bot.send_msg(msg)
     return
 
+
 def close_stream(ws, close_status_code, close_msg):
-    ws.close()
     print("Active socket closed", close_status_code, close_msg)
+    ws.close()
+
 
 def _run_streams(stream, index):
     string_params = "/".join(stream)
@@ -115,8 +126,11 @@ def _run_streams(stream, index):
         on_close=close_stream,
         on_message=on_message,
     )
-    worker_thread = threading.Thread(name=f"market_updates_{index}", target=ws.run_forever)
+    worker_thread = threading.Thread(
+        name=f"market_updates_{index}", target=ws.run_forever
+    )
     worker_thread.start()
+
 
 def start_stream():
     raw_symbols = BinanceApi()._ticker_price()
@@ -128,19 +142,22 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1):]
+    stream_2 = params[(max_request + 1) :]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
 
+
 def on_open(ws):
     print("Market data updates socket opened")
 
+
 def on_error(ws, error):
     print(f"Websocket error: {error}")
-    # if error.args[0] == "Connection to remote host was lost.":
-    #     start_stream()
     ws.close()
+    if error.args[0] == "Connection to remote host was lost.":
+        start_stream()
+
 
 def on_message(ws, message):
     json_response = json.loads(message)
@@ -155,6 +172,7 @@ def on_message(ws, message):
     else:
         print(f"Error: {response}")
 
+
 def process_kline_stream(result):
     """
     Updates market data in DB for research
@@ -165,21 +183,16 @@ def process_kline_stream(result):
         open_price = float(result["k"]["o"])
         symbol = result["k"]["s"]
         data = _get_candlestick(symbol, interval)
-
         ma_100 = data[1]["y"]
 
         # raw df
         klines = BinanceApi()._get_raw_klines(symbol, 1000)
         df = pandas.DataFrame(klines)
-        df["candle_spread"] = abs(
-            pandas.to_numeric(df[1]) - pandas.to_numeric(df[4])
-        )
+        df["candle_spread"] = abs(pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
         curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
         avg_candle_spread = df["candle_spread"].median()
 
-        df["volume_spread"] = abs(
-            pandas.to_numeric(df[1]) - pandas.to_numeric(df[4])
-        )
+        df["volume_spread"] = abs(pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
         curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
         avg_volume_spread = df["volume_spread"].median()
 
@@ -190,7 +203,14 @@ def process_kline_stream(result):
         all_time_low = pandas.to_numeric(df[3]).min()
 
         if symbol not in last_processed_kline:
-            if float(close_price) > float(open_price) and (curr_candle_spread > (avg_candle_spread * 2) and curr_volume_spread > avg_volume_spread) and (close_price > ma_100[len(ma_100)-1]):
+            if (
+                float(close_price) > float(open_price)
+                and (
+                    curr_candle_spread > (avg_candle_spread * 2)
+                    and curr_volume_spread > avg_volume_spread
+                )
+                and (close_price > ma_100[len(ma_100) - 1])
+            ):
                 # Send Telegram
                 msg = f"- Candlesick jump <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
@@ -203,12 +223,9 @@ def process_kline_stream(result):
             last_processed_kline[symbol] = time.time()
             # If more than half an hour (interval = 30m) has passed
             # Then we should resume sending signals for given symbol
-            if (
-                float(time.time()) - float(last_processed_kline[symbol])
-            ) > 400:
+            if (float(time.time()) - float(last_processed_kline[symbol])) > 400:
                 del last_processed_kline[symbol]
 
 
 if __name__ == "__main__":
-    market_updates_thread = threading.Thread(name="research_thread", target=start_stream)
-    market_updates_thread.start()
+    start_stream()
