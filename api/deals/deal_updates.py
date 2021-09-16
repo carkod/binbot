@@ -7,8 +7,7 @@ from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
-from flask import current_app as app
-
+from api.app import create_app
 
 class DealUpdates(Account):
 
@@ -24,7 +23,7 @@ class DealUpdates(Account):
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
-    def __init__(self, bot, app):
+    def __init__(self, bot):
         # Inherit also the __init__ from parent class
         super(self.__class__, self).__init__()
 
@@ -34,7 +33,7 @@ class DealUpdates(Account):
         )
         self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
         self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
-        self.app = app
+        self.app = create_app()
         self.default_deal = {
             "order_id": "",
             "deal_type": "base_order",
@@ -145,7 +144,7 @@ class DealUpdates(Account):
                 # Append now new take_profit deal
                 new_deals.append(take_profit_order)
                 self.active_bot["orders"] = new_deals
-                botId = app.db.bots.update_one(
+                botId = self.app.db.bots.update_one(
                     {"_id": self.active_bot["_id"]},
                     {"$push": {"orders": take_profit_order}},
                 )
@@ -274,7 +273,7 @@ class DealUpdates(Account):
 
             self.active_bot["orders"].append(take_profit_order)
 
-        botId = self.app.db.bots.update_one(
+        botId = self.self.app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
             {
                 "$set": {
@@ -358,7 +357,7 @@ class DealUpdates(Account):
             }
             new_orders = bot["orders"]
             new_orders.append(stop_limit_response)
-            botId = app.db.bots.update_one(
+            botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {"$push": {"orders": new_orders}, "$set": {"status": "inactive"}},
             )
@@ -387,7 +386,11 @@ class DealUpdates(Account):
         }
         res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
         if isinstance(handle_error(res), Response):
-            return handle_error(res)
+            if handle_error(res)["code"] == -2010:
+                self.app.db.bots.find_one_and_update({"pair": bot["pair"]}, {"$set": {"status": "inactive", "active": "false"}})
+                print(f'Deactivated {bot["pair"]}, not enough funds to trigger trailling stop loss')
+            else:
+                return handle_error(res)
 
         # Append now stop_limit deal
         trailling_stop_loss_response = {
@@ -403,7 +406,7 @@ class DealUpdates(Account):
             "status": res["status"],
         }
         bot["orders"].append(trailling_stop_loss_response)
-        botId = app.db.bots.update_one(
+        botId = self.app.db.bots.update_one(
             {"_id": bot["_id"]},
             {"$push": {"orders": bot["orders"]}, "$set": {"status": "completed", "deal.take_profit_price": res["price"]}},
         )

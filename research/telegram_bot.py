@@ -2,15 +2,14 @@ import os
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext, CallbackQueryHandler, CommandHandler, Updater, MessageHandler, Filters
-from telegram.ext.dispatcher import run_async
-from threading import Thread
+from dotenv import load_dotenv
+
 class TelegramBot:
 
-    token = os.getenv("TELEGRAM_BOT_KEY")
-    chat_id = os.getenv("TELEGRAM_USER_ID")
-
     def __init__(self):
-        pass
+        load_dotenv()
+        self.token = os.getenv("TELEGRAM_BOT_KEY")
+        self.chat_id = os.getenv("TELEGRAM_USER_ID")
 
     def buy(self, update: Update, context: CallbackContext) -> None:
         """Sends a message with three inline buttons attached."""
@@ -59,5 +58,4 @@ class TelegramBot:
         self.updater.dispatcher.add_handler(CommandHandler("t", self.buy))
         self.updater.dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, lambda u, c: u.message.reply_text(u.message.text)))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.button))
-        self.updater.run_async()
         return

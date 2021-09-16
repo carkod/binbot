@@ -61,5 +61,4 @@ worker_thread = threading.Thread(name="order_updates_thread", target=order_updat
 worker_thread.start()
 
 # Research market updates
-# if os.environ["ENV"] != "development":
-# market_update_thread()
+market_update_thread()

@@ -9,11 +9,11 @@ env:
   FRONTEND_DOMAIN: http://localhost:3000
   MONGO_AUTH_USERNAME: root
   MONGO_AUTH_PASSWORD: rootPassXXX
-  MONGO_APP_DATABASE: binbot
+  MONGO_APP_DATABASE: binbot_research
 
 jobs:
   push_to_registry:
-    name: Test and deploy docker image
+    name: Test and deploy binbot
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -31,8 +31,6 @@ jobs:
           yarn run build \
       - name: Build image
         run: docker build -t binbot .
-      # - name: Test api
-      #   run: docker run -d --attach STDERR --network host binbot & curl --head --fail --retry-delay 3 --retry 30 --retry-connrefused http://localhost:8006
       - name: Test app
         run: |
           docker run --detach --network host binbot & curl --head --fail --retry-delay 1 --retry 30 --retry-connrefused http://localhost
@@ -46,4 +44,33 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           name: carloswufei/binbot
+          tags: "latest"
+
+  push_research_to_registry:
+    name: binbot_research docker image
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: mongo
+        ports:
+          - 27018:27017
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Build image
+        run: |
+          cd research
+          docker build -t binbot_research .
+      - name: Tag image
+        run: |
+          docker commit binbot_research &
+          docker tag binbot_research carloswufei/binbot_research
+      - name: Push to Docker Hub
+        uses: elgohr/Publish-Docker-Github-Action@master
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          workdir: research
+          name: carloswufei/binbot_research
           tags: "latest"

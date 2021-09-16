@@ -14,10 +14,8 @@ class Bot(Account):
         self.defaults = {
             "pair": "",
             "status": "inactive",  # New replacement for active (inactive, active, completed)
-            "strategy": "long",
             "name": "Default Bot",
             "max_so_count": "0",
-            "balance_usage": "1",  # 100% of All Btc balance
             "balance_usage_size": "0.0001",
             "balance_to_use": "GBP",
             "base_order_size": "3",  # MIN by Binance = 0.0001 BTC
@@ -30,7 +28,6 @@ class Bot(Account):
             "trailling_deviation": "0.63",
             "trailling_profit": 0,  # Trailling activation (first take profit hit)
             "deal_min_value": "0",
-            "deals": [],
             "orders": [],
             "stop_loss": "0",
             "deal": {
