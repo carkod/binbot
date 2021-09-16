@@ -3,11 +3,13 @@ from flask import Flask
 from flask_cors import CORS
 from pymongo import MongoClient
 from api.apis import BinanceApi, CoinBaseApi
+from flask_restplus import Api
 
 def create_app():
     app = Flask(__name__)
     app.binance = BinanceApi()
     app.coinbase = CoinBaseApi()
+    app = Api(app)
 
     # Schema
     # db = MongoEngine(app)

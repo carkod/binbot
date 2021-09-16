@@ -142,7 +142,7 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1) :]
+    stream_2 = params[(max_request + 1):]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
@@ -156,6 +156,7 @@ def on_error(ws, error):
     print(f"Websocket error: {error}")
     ws.close()
     if error.args[0] == "Connection to remote host was lost.":
+        ws.close()
         start_stream()
 
 
