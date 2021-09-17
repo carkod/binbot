@@ -112,7 +112,6 @@ class BotForm extends React.Component {
 
     if (p.bot !== this.props.bot) {
       this.setState({
-        active: this.props.bot.active,
         status: this.props.bot.status,
         balance_usage: this.props.bot.balance_usage,
         balance_usage_size: this.props.bot.balance_usage_size,
@@ -265,12 +264,11 @@ class BotForm extends React.Component {
     return true;
   };
 
-  handleSubmit = (e) => {
-    e.preventDefault();
+  handleSubmit = () => {
     const validation = this.requiredinValidation();
     if (validation) {
       const form = {
-        active: String(this.state.active),
+        status: this.state.status,
         balance_available: this.state.balance_available,
         balance_usage: this.state.balance_usage,
         balance_to_use: this.state.balance_to_use,
@@ -471,6 +469,7 @@ class BotForm extends React.Component {
   handleActivation = (e) => {
     const validation = this.requiredinValidation();
     if (validation) {
+      this.handleSubmit();
       this.props.activateBot(this.state._id);
     }
   };
@@ -813,6 +812,7 @@ const mapStateToProps = (state) => {
   const { data: bot } = state.getSingleBotReducer;
   const { data: candlestick } = state.candlestickReducer;
   const { botId, botActive } = state.botReducer;
+  const { loading } = state.loadingReducer;
 
   let lastBalance = null
   if (!checkValue(balance) && balance.length > 0) {
@@ -827,6 +827,7 @@ const mapStateToProps = (state) => {
     candlestick: candlestick,
     newBotId: botId,
     botActive: botActive,
+    loading: loading
   };
 };
 

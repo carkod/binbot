@@ -15,6 +15,7 @@ def supress_notation(num: float, precision: int = 0):
         decimal_points = Decimal(str(num)).as_tuple().exponent * -1
     return f"{num:.{decimal_points}f}"
 
+
 def handle_error(req):
     try:
         req.raise_for_status()
@@ -25,9 +26,7 @@ def handle_error(req):
 
                 response = req.json()
                 if response["code"] == -2010:
-                    return jsonResp(
-                        {"message": "Not enough funds", "error": 1}, 200
-                    )
+                    return jsonResp({"message": "Not enough funds", "error": 1}, 200)
 
                 # Uknown orders ignored, they are used as a trial an error endpoint to close orders (close deals)
                 if response["code"] == -2011:
