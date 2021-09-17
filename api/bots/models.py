@@ -98,7 +98,6 @@ class Bot(Account):
         return resp
 
     def delete(self):
-        resp = jsonResp({"message": "Bot update is not available"}, 400)
         findId = request.view_args["id"]
         delete_action = self.app.db.bots.delete_one({"_id": ObjectId(findId)})
         if delete_action:

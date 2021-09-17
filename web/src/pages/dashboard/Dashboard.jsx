@@ -331,7 +331,6 @@ const mapStateToProps = (s) => {
   const { loading } = s.loadingReducer;
   const { data: balances } = s.balanceReducer;
   return {
-    ...s,
     balances: balances,
     loading: loading
   };

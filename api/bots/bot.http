@@ -37,4 +37,4 @@ DELETE http://localhost:5000/bot/5f830c917cb67ea5d0bd5972 HTTP/1.1
 GET http://localhost:5000/bot/activate/6046b0e75b97144638063cf3 HTTP/1.1
 
 ### Close bot
-DELETE http://api.binbot.in/bot/close/6145098138e9b4fcf6e10634 HTTP/1.1
+DELETE http://localhost/bot/close/6145098138e9b4fcf6e10634 HTTP/1.1
