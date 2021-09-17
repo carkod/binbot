@@ -475,20 +475,20 @@ class Deal(Account):
         order_errors = []
 
         # If there is already a base order do not execute
-        # base_order_deal = next(
-        #     (
-        #         bo_deal
-        #         for bo_deal in self.active_bot["orders"]
-        #         if len(bo_deal) > 0 and (bo_deal["deal_type"] == "base_order")
-        #     ),
-        #     None,
-        # )
-        # if not base_order_deal:
-        #     base_order = self.base_order()
-        #     if isinstance(base_order, Response):
-        #         msg = base_order.json["message"]
-        #         order_errors.append({"base_order_error": msg})
-        #         return order_errors
+        base_order_deal = next(
+            (
+                bo_deal
+                for bo_deal in self.active_bot["orders"]
+                if len(bo_deal) > 0 and (bo_deal["deal_type"] == "base_order")
+            ),
+            None,
+        )
+        if not base_order_deal:
+            base_order = self.base_order()
+            if isinstance(base_order, Response):
+                msg = base_order.json["message"]
+                order_errors.append({"base_order_error": msg})
+                return order_errors
 
         # Below take profit order goes first, because stream does not return a value
         # If there is already a take profit do not execute

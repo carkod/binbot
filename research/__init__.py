@@ -113,7 +113,6 @@ def _send_msg(msg):
 
 def close_stream(ws, close_status_code, close_msg):
     print("Active socket closed", close_status_code, close_msg)
-    ws.close()
 
 
 def _run_streams(stream, index):
@@ -154,7 +153,6 @@ def on_open(ws):
 
 def on_error(ws, error):
     print(f"Websocket error: {error}")
-    ws.close()
     if error.args[0] == "Connection to remote host was lost.":
         start_stream()
 
