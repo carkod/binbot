@@ -115,6 +115,7 @@ class BotForm extends React.Component {
         status: this.props.bot.status,
         balance_usage: this.props.bot.balance_usage,
         balance_usage_size: this.props.bot.balance_usage_size,
+        balance_to_use: this.props.bot.balance_to_use,
         base_order_size: this.props.bot.base_order_size,
         deal: this.props.bot.deal,
         max_so_count: this.props.bot.max_so_count,
@@ -264,7 +265,8 @@ class BotForm extends React.Component {
     return true;
   };
 
-  handleSubmit = () => {
+  handleSubmit = (e) => {
+    e.preventDefault();
     const validation = this.requiredinValidation();
     if (validation) {
       const form = {
@@ -469,7 +471,7 @@ class BotForm extends React.Component {
   handleActivation = (e) => {
     const validation = this.requiredinValidation();
     if (validation) {
-      this.handleSubmit();
+      this.handleSubmit(e);
       this.props.activateBot(this.state._id);
     }
   };

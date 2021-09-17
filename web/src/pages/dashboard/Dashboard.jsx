@@ -208,12 +208,12 @@ class Dashboard extends React.Component {
   };
 
   render() {
-    const { balances } = this.props;
+    const { balances, load } = this.props;
 
     return (
       <>
         <div className="content">
-          {!this.props.load ? (
+          {!load ? (
               <>
                 <Row>
                   <Col lg="4" md="6" sm="6">

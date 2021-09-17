@@ -1,4 +1,5 @@
 import { call, put, takeLatest } from "redux-saga/effects";
+import { loading } from "../../containers/spinner/actions";
 import request, { defaultOptions } from "../../request";
 import {
   activateBotFailed,
@@ -118,7 +119,7 @@ export function* watchEditBot() {
 /**
  * DELETE bot
  */
-export function* deleteBot(payload) {
+export function* deleteBotApi(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
   const options = {
@@ -132,6 +133,10 @@ export function* deleteBot(payload) {
   } catch (err) {
     yield put(deleteBotFailed(err));
   }
+}
+
+export function* watchDeleteBotApi() {
+  yield takeLatest(DELETE_BOT, deleteBotApi);
 }
 
 export function* closeBotApi(payload) {
@@ -185,7 +190,6 @@ export function* getSymbolInfo(payload) {
 export default function* watchBot() {
   yield takeLatest(GET_SYMBOL_INFO, getSymbolInfo);
   yield takeLatest(GET_BOTS, getBots);
-  yield takeLatest(DELETE_BOT, deleteBot);
   yield takeLatest(GET_SYMBOLS, getSymbols);
 }
 
@@ -193,10 +197,13 @@ export function* activateBot(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_ACTIVATE_BOT}/${id}`;
   try {
+    yield put(loading(true))
     const res = yield call(request, requestURL, defaultOptions);
     yield put(activateBotSucceeded(res));
   } catch (err) {
     yield put(activateBotFailed(err));
+  } finally {
+    yield put(loading(false))
   }
 }
 
