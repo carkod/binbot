@@ -54,7 +54,6 @@ export const GET_BASE_ASSET_ERROR = "GET_BASE_ASSET_ERROR";
 export function getBots() {
   return {
     type: GET_BOTS,
-    isLoading: true,
     isError: false,
   };
 }
@@ -100,7 +99,6 @@ export function getBotsFailed(error) {
 export function getBot(id) {
   return {
     type: GET_BOT,
-    isLoading: true,
     isError: false,
     data: id,
   };
@@ -148,7 +146,6 @@ export function getBotFailed(error) {
 export function createBot(body) {
   return {
     type: CREATE_BOT,
-    isLoading: true,
     isError: false,
     data: body,
   };
@@ -198,7 +195,6 @@ export function createBotFailed(error) {
 export function editBot(id, body) {
   return {
     type: EDIT_BOT,
-    isLoading: true,
     isError: false,
     data: body,
     id: id,
@@ -247,7 +243,6 @@ export function editBotFailed(error) {
 export function deleteBot(id) {
   return {
     type: DELETE_BOT,
-    isLoading: true,
     isError: false,
     data: id,
   };
@@ -259,7 +254,6 @@ export function deleteBot(id) {
 export function closeBot(id) {
   return {
     type: CLOSE_BOT,
-    isLoading: true,
     isError: false,
     data: id,
   };
@@ -278,9 +272,7 @@ export function deleteBotSucceeded(res) {
   addNotification("SUCCESS!", res.message, "success");
   return {
     type: DELETE_BOT_SUCCESS,
-    isLoading: false,
-    isError: false,
-    data: res.botId,
+    removeId: res.botId,
     message: res.message,
   };
 }
@@ -296,7 +288,6 @@ export function deleteBotFailed(error) {
   addNotification("ERROR!", error.message, "error");
   return {
     type: DELETE_BOT_SUCCESS,
-    isLoading: false,
     isError: true,
     error: error.message,
   };
@@ -310,7 +301,6 @@ export function deleteBotFailed(error) {
 export function activateBot(id) {
   return {
     type: ACTIVATE_BOT,
-    isLoading: true,
     isError: false,
     data: id,
   };
@@ -347,7 +337,6 @@ export function activateBotFailed(error) {
 export function deactivateBot(id) {
   return {
     type: DEACTIVATE_BOT,
-    isLoading: true,
     isError: false,
     data: id,
   };
@@ -436,7 +425,6 @@ export function getSymbolInfoFailed(error) {
 export function loadCandlestick(pair, interval) {
   return {
     type: LOAD_CANDLESTICK,
-    isLoading: true,
     isError: false,
     trace: null,
     layout: null,
@@ -448,7 +436,6 @@ export function loadCandlestick(pair, interval) {
 export function loadCandlestickSucceeded(payload) {
   return {
     type: LOAD_CANDLESTICK_SUCCESS,
-    isLoading: true,
     isError: false,
     payload,
   };
@@ -457,7 +444,6 @@ export function loadCandlestickSucceeded(payload) {
 export function loadCandlestickFailed(payload) {
   return {
     type: LOAD_CANDLESTICK_ERROR,
-    isLoading: true,
     isError: false,
     payload,
   };

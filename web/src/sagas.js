@@ -7,6 +7,7 @@ import watchBot, {
   watchcloseBotApi,
   watchCreateBot,
   watchDeactivateBot,
+  watchDeleteBotApi,
   watchEditBot,
   watchGetBot,
   watchGetCandlestick,
@@ -40,5 +41,6 @@ export default function* rootSaga() {
     watchHistoricalResearchApi(),
     watchGetBalanceApi(),
     watchRawBalance(),
+    watchDeleteBotApi(),
   ]);
 }

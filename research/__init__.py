@@ -11,7 +11,6 @@ from utils import supress_notation
 from pymongo import MongoClient
 from apis import BinanceApi
 from dotenv import load_dotenv
-from flask import Response
 
 load_dotenv()
 
@@ -86,8 +85,7 @@ max_request = 950  # Avoid HTTP 411 error by separating streams
 def _get_candlestick(market, interval):
     url = f"{bb_candlestick_url}/{market}/{interval}"
     res = requests.get(url=url)
-    if isinstance(handle_error(res), Response):
-        print(handle_error(res))
+    res.raise_for_status()
     data = res.json()
     return data["trace"]
 

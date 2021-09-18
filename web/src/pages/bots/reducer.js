@@ -34,7 +34,6 @@ import {
 
 // The initial state of the App
 export const initialState = {
-  isLoading: false,
   isError: false,
   data: null,
   message: null,
@@ -45,7 +44,6 @@ function botReducer(state = initialState, action) {
     case GET_BOTS: {
       const newState = {
         ...state,
-        isLoading: true,
         isError: false,
         data: action.data,
       };
@@ -55,7 +53,6 @@ function botReducer(state = initialState, action) {
     case GET_BOTS_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
         isError: false,
         data: action.bots,
       };
@@ -66,7 +63,6 @@ function botReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
         isError: true,
       };
     }
@@ -74,7 +70,6 @@ function botReducer(state = initialState, action) {
     case CREATE_BOT: {
       const newState = {
         ...state,
-        isLoading: true,
         isError: false,
         data: state.data,
         botActive: false,
@@ -85,7 +80,6 @@ function botReducer(state = initialState, action) {
     case CREATE_BOT_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
         isError: false,
         botId: action.botId,
         botActive: false,
@@ -97,7 +91,6 @@ function botReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
         isError: true,
         data: action.data,
         botActive: false,
@@ -106,10 +99,9 @@ function botReducer(state = initialState, action) {
 
     case DELETE_BOT: {
       const newState = {
-        isLoading: true,
         isError: false,
         data: state.data,
-        botActive: state.botActive,
+        id: action.data,
       };
 
       return newState;
@@ -127,7 +119,6 @@ function botReducer(state = initialState, action) {
     case DELETE_BOT_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
         isError: false,
         data: state.data.filter((x) => x._id.$oid !== action.data),
         botActive: false,
@@ -139,7 +130,6 @@ function botReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
         isError: true,
         botActive: state.botActive,
       };
@@ -148,7 +138,6 @@ function botReducer(state = initialState, action) {
     case ACTIVATE_BOT: {
       const newState = {
         ...state,
-        isLoading: true,
         isError: false,
         botActive: false,
       };
@@ -158,7 +147,6 @@ function botReducer(state = initialState, action) {
     case ACTIVATE_BOT_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
         isError: false,
         message: action.message,
         botActive: true,
@@ -169,7 +157,6 @@ function botReducer(state = initialState, action) {
     case ACTIVATE_BOT_ERROR: {
       return {
         error: action.error,
-        isLoading: false,
         isError: true,
         data: action.state,
         botActive: false,
@@ -178,7 +165,6 @@ function botReducer(state = initialState, action) {
 
     case DEACTIVATE_BOT: {
       const newState = {
-        isLoading: true,
         isError: false,
         botActive: true,
       };
@@ -187,7 +173,6 @@ function botReducer(state = initialState, action) {
     }
     case DEACTIVATE_BOT_SUCCESS: {
       const newState = {
-        isLoading: false,
         isError: false,
         data: action.state,
         botActive: false,
@@ -198,7 +183,6 @@ function botReducer(state = initialState, action) {
     case DEACTIVATE_BOT_ERROR: {
       return {
         error: action.error,
-        isLoading: false,
         isError: true,
         data: action.state,
         botActive: true,
@@ -214,7 +198,6 @@ function symbolReducer(state = initialState, action) {
   switch (action.type) {
     case GET_SYMBOLS: {
       const newState = {
-        isLoading: true,
         isError: false,
         data: state.data,
       };
@@ -224,7 +207,6 @@ function symbolReducer(state = initialState, action) {
     case GET_SYMBOLS_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
         isError: false,
         data: action.data,
       };
@@ -235,7 +217,6 @@ function symbolReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
         isError: true,
         data: action.data,
       };
@@ -250,7 +231,6 @@ function symbolInfoReducer(state = initialState, action) {
   switch (action.type) {
     case GET_SYMBOL_INFO: {
       const newState = {
-        isLoading: true,
         isError: false,
         data: state.data,
       };
@@ -260,7 +240,6 @@ function symbolInfoReducer(state = initialState, action) {
     case GET_SYMBOL_INFO_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
         isError: false,
         data: action.data,
       };
@@ -271,7 +250,6 @@ function symbolInfoReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
         isError: true,
         data: action.data,
       };
@@ -287,7 +265,6 @@ function getSingleBotReducer(state = initialState, action) {
     case GET_BOT: {
       const newState = {
         ...state,
-        isLoading: true,
         isError: false,
         data: state.data,
       };
@@ -297,7 +274,6 @@ function getSingleBotReducer(state = initialState, action) {
     case GET_BOT_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
         isError: false,
         data: action.bots,
         message: action.message,
@@ -309,7 +285,6 @@ function getSingleBotReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
         isError: true,
       };
     }
@@ -324,7 +299,6 @@ function editBotReducer(state = initialState, action) {
     case EDIT_BOT: {
       const newState = {
         ...state,
-        isLoading: true,
         isError: false,
         data: action.data,
       };
@@ -334,7 +308,6 @@ function editBotReducer(state = initialState, action) {
     case EDIT_BOT_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
         isError: false,
         data: action.data,
       };
@@ -345,7 +318,6 @@ function editBotReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
         isError: true,
       };
     }
@@ -360,7 +332,6 @@ function candlestickReducer(state = initialState, action) {
     case LOAD_CANDLESTICK: {
       const newState = {
         ...state,
-        isLoading: true,
         isError: false,
         data: action.data,
       };
@@ -369,7 +340,6 @@ function candlestickReducer(state = initialState, action) {
     }
     case LOAD_CANDLESTICK_SUCCESS: {
       const newState = {
-        isLoading: false,
         isError: false,
         data: action.payload,
       };
@@ -380,7 +350,6 @@ function candlestickReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
         isError: true,
         data: state.data,
       };
