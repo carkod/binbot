@@ -28,7 +28,7 @@ class MarketUpdates(Account):
     # streams
     base = os.getenv("WS_BASE")
 
-    def __init__(self, interval="1h"):
+    def __init__(self, interval="5m"):
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
@@ -124,7 +124,6 @@ class MarketUpdates(Account):
         worker_thread.start()
 
     def close_stream(self, ws, close_status_code, close_msg):
-        ws.close()
         print("Active socket closed", close_status_code, close_msg)
 
     def on_open(self, ws):
@@ -134,7 +133,6 @@ class MarketUpdates(Account):
         print(f"Websocket error: {error}")
         if error.args[0] == "Connection to remote host was lost.":
             self.start_stream()
-        ws.close()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -155,7 +153,7 @@ class MarketUpdates(Account):
         when price and symbol match existent deal
         """
         # result["k"]["x"]
-        if "k" in result:
+        if "k" in result and result["k"]["x"]:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
 
@@ -163,6 +161,7 @@ class MarketUpdates(Account):
             bot = self.app.db.bots.find_one_and_update(
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
             )
+            print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
             if bot and "deal" in bot:
                 # Stop loss
                 if "stop_loss" in bot["deal"]:
