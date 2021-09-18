@@ -389,13 +389,11 @@ class DealUpdates(Account):
             if handle_error(res)["code"] == -2010:
                 self.app.db.bots.find_one_and_update(
                     {"pair": bot["pair"]},
-                    {"$push": {"errors": f'Deactivated bot {bot["pair"]}, not enough funds to trigger trailling stop loss'}},
-                    {"$set": {"status": "error"}}
-                )
-                print(f'Deactivated bot {bot["pair"]}, not enough funds to trigger trailling stop loss')
+                    {"$push": {"errors": f'Deactivated bot {bot["pair"]}, not enough funds to trigger trailling stop loss'}, "$set": {"status": "error"}
+                })
+                return "completed"
             else:
                 self.app.db.bots.find_one_and_update({"pair": bot["pair"]}, {"$push": {"errors": f'{handle_error(res)}'}})
-                print(handle_error(res))
         else:
             # Append now stop_limit deal
             trailling_stop_loss_response = {
