@@ -4,9 +4,6 @@ GET http://localhost:5000/account HTTP/1.1
 GET http://localhost:5000/account/symbols HTTP/1.1
 
 ###
-GET http://localhost:5000/account/balance HTTP/1.1
-
-###
 GET http://localhost:5000/account/balance/raw HTTP/1.1
 
 ### With or without symbol
