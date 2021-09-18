@@ -1,16 +1,22 @@
-from flask import Response
-from flask import request
+from api.threads import market_update_thread
+import threading
+from flask import Response, request, current_app
 from datetime import date
 
 from api.account.account import Account
 from api.deals.models import Deal
 from bson.objectid import ObjectId
 from api.tools.jsonresp import jsonResp
-from api.app import create_app
 
 class Bot(Account):
     def __init__(self):
-        self.app = create_app()
+        self.app = current_app
+        self.default_deal = {
+            "buy_price": "0",
+            "current_price": "0",
+            "buy_total_qty": "0",
+            "take_profit": "0",
+        },
         self.defaults = {
             "pair": "",
             "status": "inactive",  # New replacement for active (inactive, active, completed)
@@ -28,12 +34,7 @@ class Bot(Account):
             "deal_min_value": "0",
             "orders": [],
             "stop_loss": "0",
-            "deal": {
-                "buy_price": "",
-                "current_price": "",
-                "buy_total_qty": "",
-                "take_profit": "",
-            },
+            "deal": self.default_deal,
             "safety_orders": {},
             "errors": []
         }
@@ -53,7 +54,6 @@ class Bot(Account):
         return resp
 
     def get_one(self):
-        resp = jsonResp({"message": "No bots found"}, 200)
         findId = request.view_args["id"]
         bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
@@ -82,15 +82,24 @@ class Bot(Account):
     def edit(self):
         data = request.json
         findId = request.view_args["id"]
+        find_bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
         self.defaults.update(data)
         self.defaults["safety_orders"] = data["safety_orders"]
+        # Deal and orders are internal, should never be updated by outside data
+        self.defaults["deal"] = find_bot["deal"]
+        self.defaults["orders"] = find_bot["orders"]
         botId = self.app.db.bots.update_one(
-            {"_id": ObjectId(findId)}, {"$set": self.defaults}, upsert=True
+            {"_id": ObjectId(findId)}, {"$set": self.defaults}
         )
         if botId.acknowledged:
             resp = jsonResp(
                 {"message": "Successfully updated bot", "botId": findId}, 200
             )
+            # Notify market updates websockets to update
+            for thread in threading.enumerate():
+                if thread.name == "market_updates_thread":
+                    thread._target.__self__.markets_streams.close()
+                    market_update_thread()
         else:
             resp = jsonResp({"message": "Failed to update bot"}, 400)
 

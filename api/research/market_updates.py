@@ -120,8 +120,10 @@ class MarketUpdates(Account):
             on_close=self.close_stream,
             on_message=self.on_message,
         )
-        worker_thread = threading.Thread(name="market_updates", target=ws.run_forever)
-        worker_thread.start()
+        # This is required to allow the websocket to be closed anywhere in the app
+        self.markets_streams = ws
+        # Run the websocket
+        ws.run_forever()
 
     def close_stream(self, ws, close_status_code, close_msg):
         print("Active socket closed", close_status_code, close_msg)
@@ -170,6 +172,7 @@ class MarketUpdates(Account):
 
                 # Take profit trailling
                 if bot["trailling"] == "true":
+
                     # Check if trailling profit reached the first time
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (1 + (float(bot["take_profit"]) / 100))
                     if float(close_price) >= current_take_profit_price:

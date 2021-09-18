@@ -6,3 +6,9 @@
 - This is a centralized function, which is triggered by a number of events: changes in base order size, changes in strategy, changes in pair. they will all need to update the balance.
 - Long strategies require the base asset (Binance term)
 - Short strategies require the quote asset
+
+
+## Internal vs User parameters
+
+`deal` and `orders` are internal data used for the API to deal the bots
+All other params can be set by the user

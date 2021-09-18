@@ -118,23 +118,18 @@ class BotForm extends React.Component {
         balance_usage_size: this.props.bot.balance_usage_size,
         balance_to_use: this.props.bot.balance_to_use,
         base_order_size: this.props.bot.base_order_size,
-        deal: this.props.bot.deal,
         max_so_count: this.props.bot.max_so_count,
         name: this.props.bot.name,
         pair: this.props.bot.pair,
         price_deviation_so: this.props.bot.price_deviation_so,
         so_size: this.props.bot.so_size,
-        start_condition: this.props.bot.start_condition,
-        strategy: this.props.bot.strategy,
         take_profit: this.props.bot.take_profit,
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
         orders: this.props.bot.orders,
-        short_order: this.props.bot.short_order,
         short_stop_price: this.props.bot.short_stop_price,
         stop_loss: this.props.bot.stop_loss,
         safety_orders: this.props.bot.safety_orders,
-        errors: this.props.bot.errors
       });
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
@@ -271,7 +266,7 @@ class BotForm extends React.Component {
     e.preventDefault();
     const validation = this.requiredinValidation();
     if (validation) {
-      const form = {
+      let form = {
         status: this.state.status,
         balance_available: this.state.balance_available,
         balance_usage: this.state.balance_usage,
@@ -281,12 +276,9 @@ class BotForm extends React.Component {
         max_so_count: this.state.max_so_count,
         name: this.state.name,
         pair: this.state.pair,
-        start_condition: this.state.start_condition,
-        strategy: this.state.strategy,
         take_profit: this.state.take_profit,
         trailling: this.state.trailling,
         trailling_deviation: this.state.trailling_deviation,
-        short_order: this.state.short_order,
         short_stop_price: this.state.short_stop_price,
         stop_loss: this.state.stop_loss,
         safety_orders: this.state.safety_orders,
@@ -324,7 +316,8 @@ class BotForm extends React.Component {
       if (
         !checkValue(value) &&
         !checkBalance(value) &&
-        Object.values(safety_orders).length > 0
+        Object.values(safety_orders).length > 0 &&
+        this.props.bot
       ) {
         const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
         const safetyOrders = Object.values(safety_orders).reduce(
@@ -334,7 +327,7 @@ class BotForm extends React.Component {
           { so_size: 0 }
         );
         const shortOrder = parseFloat(short_order);
-        const checkBaseOrder = this.state.orders.find(
+        const checkBaseOrder = this.props.bot.orders.find(
           (x) => x.deal_type === "base_order"
         );
         let updatedValue = value - (baseOrder + safetyOrders + shortOrder);
