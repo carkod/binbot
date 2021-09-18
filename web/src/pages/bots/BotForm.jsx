@@ -47,6 +47,7 @@ import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
+import { ErrorLog } from "./ErrorLog";
 
 class BotForm extends React.Component {
   constructor(props) {
@@ -133,6 +134,7 @@ class BotForm extends React.Component {
         short_stop_price: this.props.bot.short_stop_price,
         stop_loss: this.props.bot.stop_loss,
         safety_orders: this.props.bot.safety_orders,
+        errors: this.props.bot.errors
       });
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
@@ -802,6 +804,13 @@ class BotForm extends React.Component {
             </Col>
           </Row>
         </Form>
+        {this.props.bot && this.props.bot.errors && this.props.bot.errors.length > 0 && (
+        <Row>
+          <Col md="12">
+            <ErrorLog errors={this.props.bot.errors} />
+          </Col>
+        </Row>
+        )}
       </div>
     );
   }

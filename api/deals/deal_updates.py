@@ -34,7 +34,7 @@ class DealUpdates(Account):
         self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
         self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
         self.app = create_app()
-        self.default_deal = {
+        self.order = {
             "order_id": "",
             "deal_type": "base_order",
             "status": "active",
@@ -387,31 +387,34 @@ class DealUpdates(Account):
         res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
         if isinstance(handle_error(res), Response):
             if handle_error(res)["code"] == -2010:
-                self.app.db.bots.find_one_and_update({"pair": bot["pair"]}, {"$set": {"status": "inactive", "active": "false"}})
-                print(f'Deactivated {bot["pair"]}, not enough funds to trigger trailling stop loss')
+                self.app.db.bots.find_one_and_update(
+                    {"pair": bot["pair"]},
+                    {"$push": {"errors": f'Deactivated bot {bot["pair"]}, not enough funds to trigger trailling stop loss'}},
+                    {"$set": {"status": "error"}}
+                )
+                print(f'Deactivated bot {bot["pair"]}, not enough funds to trigger trailling stop loss')
             else:
-                return handle_error(res)
-
-        # Append now stop_limit deal
-        trailling_stop_loss_response = {
-            "deal_type": "stop_limit",
-            "order_id": res["orderId"],
-            "pair": res["symbol"],
-            "order_side": res["side"],
-            "order_type": res["type"],
-            "price": res["price"],
-            "qty": res["origQty"],
-            "fills": res["fills"],
-            "time_in_force": res["timeInForce"],
-            "status": res["status"],
-        }
-        bot["orders"].append(trailling_stop_loss_response)
-        botId = self.app.db.bots.update_one(
-            {"_id": bot["_id"]},
-            {"$push": {"orders": bot["orders"]}, "$set": {"status": "completed", "deal.take_profit_price": res["price"]}},
-        )
-        if not botId:
-            print(f"Failed to update stop_limit deal: {botId}")
+                self.app.db.bots.find_one_and_update({"pair": bot["pair"]}, {"$push": {"errors": f'{handle_error(res)}'}})
+                print(handle_error(res))
         else:
-            print("Successfully sold!")
+            # Append now stop_limit deal
+            trailling_stop_loss_response = {
+                "deal_type": "stop_limit",
+                "order_id": res["orderId"],
+                "pair": res["symbol"],
+                "order_side": res["side"],
+                "order_type": res["type"],
+                "price": res["price"],
+                "qty": res["origQty"],
+                "fills": res["fills"],
+                "time_in_force": res["timeInForce"],
+                "status": res["status"],
+            }
+            botId = self.app.db.bots.update_one(
+                {"_id": bot["_id"]},
+                {"$push": {"orders": trailling_stop_loss_response}, "$set": {"status": "completed", "deal.take_profit_price": res["price"]}},
+            )
+            if botId:
+                print("Successfully finished take profit trailling!")
+                return "completed"
         return

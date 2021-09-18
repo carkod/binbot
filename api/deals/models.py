@@ -32,7 +32,7 @@ class Deal(Account):
         )
         self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
         self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
-        self.default_deal = {
+        self.order = {
             "order_id": "",
             "deal_type": "base_order",
             "strategy": "long",  # change accordingly

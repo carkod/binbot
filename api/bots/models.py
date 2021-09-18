@@ -18,12 +18,10 @@ class Bot(Account):
             "max_so_count": "0",
             "balance_usage_size": "0.0001",
             "balance_to_use": "GBP",
-            "base_order_size": "3",  # MIN by Binance = 0.0001 BTC
+            "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
             "short_stop_price": "0",  # Flip to short strategy threshold
-            "short_order": "0",  # Quantity flip to short
-            "start_condition": "true",
-            "take_profit": "0.003",  # 3% take profit
+            "take_profit": "3",
             "trailling": "false",
             "trailling_deviation": "0.63",
             "trailling_profit": 0,  # Trailling activation (first take profit hit)
@@ -36,7 +34,8 @@ class Bot(Account):
                 "buy_total_qty": "",
                 "take_profit": "",
             },
-            "safety_orders": {}
+            "safety_orders": {},
+            "errors": []
         }
         self.default_so = {
             "so_size": "0",

@@ -142,12 +142,12 @@ class MarketUpdates(Account):
             print(f'Subscriptions: {json_response["result"]}')
 
         elif "e" in response and response["e"] == "kline":
-            self.process_deals(response)
+            self.process_deals(response, ws)
 
         else:
             print(f"Error: {response}")
 
-    def process_deals(self, result):
+    def process_deals(self, result, ws):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
@@ -168,6 +168,7 @@ class MarketUpdates(Account):
                     deal = DealUpdates(bot)
                     deal.update_stop_limit(close_price)
 
+                # Take profit trailling
                 if bot["trailling"] == "true":
                     # Check if trailling profit reached the first time
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (1 + (float(bot["take_profit"]) / 100))
@@ -181,13 +182,18 @@ class MarketUpdates(Account):
                             {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
                         )
                         if not updated_bot:
-                            print(f"Error updating trailling order {updated_bot}")
+                            self.app.db.bots.find_one_and_update(
+                                {"pair": symbol}, {"$push": {"errors": f"Error updating trailling order {updated_bot}"}}
+                            )
 
                     if "trailling_stop_loss_price" in bot["deal"]:
                         price = bot["deal"]["trailling_stop_loss_price"]
                         if float(close_price) <= float(price):
                             deal = DealUpdates(bot)
-                            deal.trailling_take_profit(price)
+                            completion = deal.trailling_take_profit(price)
+                            if completion == "completed":
+                                ws.close()
+                                self.start_stream()
 
                 # Open safety orders
                 # When bot = None, when bot doesn't exist (unclosed websocket)
