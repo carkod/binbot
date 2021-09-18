@@ -11,6 +11,7 @@ from utils import supress_notation
 from pymongo import MongoClient
 from apis import BinanceApi
 from dotenv import load_dotenv
+from flask import Response
 
 load_dotenv()
 
@@ -85,7 +86,8 @@ max_request = 950  # Avoid HTTP 411 error by separating streams
 def _get_candlestick(market, interval):
     url = f"{bb_candlestick_url}/{market}/{interval}"
     res = requests.get(url=url)
-    print(handle_error(res))
+    if isinstance(handle_error(res), Response):
+        print(handle_error(res))
     data = res.json()
     return data["trace"]
 
@@ -141,7 +143,7 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1) :]
+    stream_2 = params[(max_request + 1):]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
@@ -176,7 +178,7 @@ def process_kline_stream(result):
     Updates market data in DB for research
     """
     # Check if closed result["k"]["x"]
-    if result["k"] and result["k"]["s"]:
+    if "k" in result and "s" in result["k"]:
         close_price = float(result["k"]["c"])
         open_price = float(result["k"]["o"])
         symbol = result["k"]["s"]

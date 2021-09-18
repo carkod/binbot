@@ -48,5 +48,5 @@ In production:
 
 If issues are encountered downloading prod DB to local
 
-1. Dump database: `docker exec <mongodb container> sh -c 'mongodump --authenticationDatabase admin -u <user> -p <password> --db <database> --archive' > db.dump`
+1. Dump database: `docker exec binbot_db sh -c 'mongodump --authenticationDatabase admin -u <user> -p <password> --db binbot --archive' > db.dump`
 2. On local, restore `docker exec -i binbot_db sh -c 'mongorestore --archive -u <MONGO_AUTH_USERNAME> -p <MONGO_AUTH_PASSWORD> --authenticationDatabase <MONGO_AUTH_DATABASE> ' < db.dump`
