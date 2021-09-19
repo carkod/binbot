@@ -1,6 +1,25 @@
 import os
 from requests import get
 
+
+class BinbotApi:
+    """
+    API endpoints on this project itself
+    """
+
+    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
+    bb_buy_order_url = f"{bb_base_url}/order/buy"
+    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
+    bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
+    bb_sell_order_url = f"{bb_base_url}/order/sell"
+    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
+    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
+    bb_opened_orders_url = f"{bb_base_url}/order/open"
+    bb_close_order_url = f"{bb_base_url}/order/close"
+    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
+    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
+
+
 class CoinBaseApi:
     """
     Currency and Cryptocurrency conversion service
@@ -30,20 +49,27 @@ class BinanceApi:
     """
 
     BASE = "https://api.binance.com"
-    TICKER24 = f"{BASE}/api/v1/ticker/24hr"
-    CANDLESTICK = f"{BASE}/api/v1/klines"
-    TICKER_PRICE = f"{BASE}/api/v3/ticker/price"
-    ACCOUNT = f"{BASE}/api/v3/account"
-    EXCHANGE_INFO = f"{BASE}/api/v1/exchangeInfo"
-    ORDER = f"{BASE}/api/v3/order"
-    OPEN_ORDERS = f"{BASE}/api/v3/openOrders"
-    ALL_ORDERS = f"{BASE}/api/v3/allOrders"
-    AVERAGE_PRICE = f"{BASE}/api/v3/avgPrice"
-    ORDER_BOOK = f"{BASE}/api/v3/depth"
     WAPI = f"{BASE}/api/v3/depth"
-    WITHDRAW = f"{BASE}/wapi/v3/withdraw.html"
-    DEPOSIT_HISTORY = f"{BASE}/wapi/v3/depositHistory.html"
-    WITHDRAW_HISTORY = f"{BASE}/wapi/v3/withdrawHistory.html"
-    DEPOSIT_ADDRESS = f"{BASE}/wapi/v3/depositAddress.html"
-    USER_DATA_STREAM = f"{BASE}/api/v3/userDataStream"
-    TRADE_FEE = f"{BASE}/sapi/v1/asset/tradeFee"
+    
+    recvWindow = os.getenv("RECV_WINDOW")
+    secret = os.getenv("BINANCE_SECRET")
+    key = os.getenv("BINANCE_KEY")
+    account_url = f"{BASE}/api/v3/account"
+    exchangeinfo_url = f"{BASE}/api/v1/exchangeInfo"
+    ticker_price = f"{BASE}/api/v3/ticker/price"
+    ticker24_url = f"{BASE}/api/v1/ticker/24hr"
+    candlestick_url = f"{BASE}/api/v1/klines"
+    order_url = f"{BASE}/api/v3/order"
+    order_book_url = f"{BASE}/api/v3/depth"
+    avg_price = f"{BASE}/api/v3/avgPrice"
+    open_orders = f"{BASE}/api/v3/openOrders"
+    all_orders_url = f"{BASE}/api/v3/allOrders"
+    user_data_stream = f"{BASE}/api/v3/userDataStream"
+    trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
+
+    withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
+    withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"
+    deposit_history_url = f"{BASE}/wapi/v3/depositHistory.html"
+    deposit_address_url = f"{BASE}/wapi/v3/depositAddress.html"
+    
+

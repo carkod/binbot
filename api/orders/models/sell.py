@@ -1,3 +1,4 @@
+from api.apis import BinanceApi
 import hashlib
 import hmac
 import json
@@ -11,19 +12,12 @@ from api.tools.handle_error import handle_error
 from api.tools.enum_definitions import EnumDefinitions
 
 
-class Sell_Order:
+class Sell_Order(BinanceApi):
     """Post order
 
     Returns:
         [type] -- [description]
     """
-
-    recvWindow = os.getenv("RECV_WINDOW")
-    min_funds = os.getenv("MIN_QTY")
-    key = os.getenv("BINANCE_KEY")
-    secret = os.getenv("BINANCE_SECRET")
-    order_url = os.getenv("ORDER")
-    order_book_url = os.getenv("ORDER_BOOK")
 
     def __init__(self):
 

@@ -1,21 +1,16 @@
+from api.apis import BinanceApi
 import os
 import requests
 from api.tools.handle_error import handle_error
 from api.tools.enum_definitions import EnumDefinitions
 import pandas as pd
-class Book_Order:
-    def __init__(self, symbol):
-        self.key = os.getenv("BINANCE_KEY")
-        self.secret = os.getenv("BINANCE_SECRET")
-        self.order_url = os.getenv("ORDER")
-        self.order_book_url = os.getenv("ORDER_BOOK")
-        self.price = os.getenv("TICKER_PRICE")
-        self.avg_price = os.getenv("AVERAGE_PRICE")
-        self.symbol = symbol
-
+class Book_Order(BinanceApi):
     """
     Simpler matching engine, no need for quantity
     """
+
+    def __init__(self, symbol):
+        self.symbol = symbol
 
     def last_price(self, order_side="bids"):
         url = self.order_book_url
@@ -76,9 +71,8 @@ class Book_Order:
         return final_qty
 
     def ticker_price(self):
-        url = self.price
         params = [("symbol", self.symbol)]
-        res = requests.get(url=url, params=params)
+        res = requests.get(url=self.ticker_price, params=params)
         handle_error(res)
         price = res.json()["price"]
         return price

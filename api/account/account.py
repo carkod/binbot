@@ -9,18 +9,12 @@ from flask import request
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.app import create_app
+from api.apis import BinanceApi
 
-class Account:
-
-    recvWindow = os.getenv("RECV_WINDOW")
-    secret = os.getenv("BINANCE_SECRET")
-    key = os.getenv("BINANCE_KEY")
-    account_url = os.getenv("ACCOUNT")
-    exchangeinfo_url = os.getenv("EXCHANGE_INFO")
-    ticker_price = os.getenv("TICKER_PRICE")
-    ticker24_url = os.getenv("TICKER24")
+class Account(BinanceApi):
 
     def __init__(self):
+        super(self.__class__, self).__init__()
         pass
 
     def _exchange_info(self):

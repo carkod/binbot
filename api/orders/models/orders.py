@@ -5,7 +5,7 @@ import time as tm
 from urllib.parse import urlparse
 
 import requests
-from flask import request
+from flask import request, current_app
 from api.app import create_app
 from api.tools.enum_definitions import EnumDefinitions
 from api.tools.handle_error import handle_error
@@ -18,14 +18,6 @@ poll_percentage = 0
 
 class Orders(Account):
 
-    recvWindow = os.getenv("RECV_WINDOW")
-    key = os.getenv("BINANCE_KEY")
-    secret = os.getenv("BINANCE_SECRET")
-    open_orders = os.getenv("OPEN_ORDERS")
-    delete_open_orders = os.getenv("ALL_OPEN_ORDERS")
-    all_orders_url = os.getenv("ALL_ORDERS")
-    order_url = os.getenv("ORDER")
-
     def __init__(self):
 
         # Buy order
@@ -33,7 +25,7 @@ class Orders(Account):
         # Required by API for Limit orders
         self.timeInForce = EnumDefinitions.time_in_force[0]
         # Instance of app for cron jobs
-        self.app = create_app()
+        self.app = current_app
 
     def get_all_orders(self):
         # here we want to get the value of user (i.e. ?user=some-value)
