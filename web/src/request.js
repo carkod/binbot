@@ -46,8 +46,11 @@ export default function request(url, options = {}) {
 const tokenName = "binbot-token";
 
 export function getToken() {
-  const parsedToken = JSON.parse(localStorage.getItem(tokenName));
-  return parsedToken;
+  const token = localStorage.getItem(tokenName);
+  if (token === "undefined" || token === "null" || token === "") {
+    return null;
+  }
+  return JSON.parse(token);;
 }
 
 export function setToken(token) {

@@ -21,7 +21,7 @@ class Deal(Account):
     bb_close_order_url = f"{bb_base_url}/order/close"
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
-    bb_balance_url = f"{bb_base_url}/account/balance"
+    bb_balance_url = f"{bb_base_url}/account/balance/raw"
 
     def __init__(self, bot):
         # Inherit from parent class
@@ -32,7 +32,7 @@ class Deal(Account):
         )
         self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
         self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
-        self.default_deal = {
+        self.order = {
             "order_id": "",
             "deal_type": "base_order",
             "strategy": "long",  # change accordingly
@@ -76,8 +76,8 @@ class Deal(Account):
         # Response after request
         res = requests.get(url=self.bb_balance_url)
         handle_error(res)
-        data = res.json()
-        symbol_balance = next((x["free"] for x in data["data"][0]["balances"] if x["asset"] == symbol), None)
+        data = res.json()["data"]
+        symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), None)
         return symbol_balance
 
     def get_commission(self, order):
@@ -538,7 +538,7 @@ class Deal(Account):
         if len(orders) > 0:
             for d in orders:
                 if "deal_type" in d and (
-                    d["deal_type"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
+                    d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
                 ):
                     order_id = d["order_id"]
                     res = requests.delete(

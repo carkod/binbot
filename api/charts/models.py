@@ -116,12 +116,6 @@ class Candlestick:
         return ma_100, ma_25, ma_7
 
     def get(self):
-        for thread in threading.enumerate():
-            if thread.name == "market_updates_thread":
-                if thread._target.__self__.interval != self.interval:
-                    thread._target.__self__.markets_streams.close()
-                    market_update_thread()
-
         trace = self.candlestick_trace()
         ma_100, ma_25, ma_7 = self.bollinguer_bands()
         resp = jsonResp({"trace": [trace, ma_100, ma_25, ma_7], "interval": self.interval}, 200)

@@ -28,7 +28,7 @@ class MarketUpdates(Account):
     # streams
     base = os.getenv("WS_BASE")
 
-    def __init__(self, interval="1h"):
+    def __init__(self, interval="5m"):
         self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
@@ -120,11 +120,12 @@ class MarketUpdates(Account):
             on_close=self.close_stream,
             on_message=self.on_message,
         )
-        worker_thread = threading.Thread(name="market_updates", target=ws.run_forever)
-        worker_thread.start()
+        # This is required to allow the websocket to be closed anywhere in the app
+        self.markets_streams = ws
+        # Run the websocket
+        ws.run_forever()
 
     def close_stream(self, ws, close_status_code, close_msg):
-        ws.close()
         print("Active socket closed", close_status_code, close_msg)
 
     def on_open(self, ws):
@@ -134,7 +135,6 @@ class MarketUpdates(Account):
         print(f"Websocket error: {error}")
         if error.args[0] == "Connection to remote host was lost.":
             self.start_stream()
-        ws.close()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -144,18 +144,18 @@ class MarketUpdates(Account):
             print(f'Subscriptions: {json_response["result"]}')
 
         elif "e" in response and response["e"] == "kline":
-            self.process_deals(response)
+            self.process_deals(response, ws)
 
         else:
             print(f"Error: {response}")
 
-    def process_deals(self, result):
+    def process_deals(self, result, ws):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
         # result["k"]["x"]
-        if "k" in result:
+        if "k" in result and result["k"]["x"]:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
 
@@ -163,13 +163,16 @@ class MarketUpdates(Account):
             bot = self.app.db.bots.find_one_and_update(
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
             )
+            print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
             if bot and "deal" in bot:
                 # Stop loss
                 if "stop_loss" in bot["deal"]:
                     deal = DealUpdates(bot)
                     deal.update_stop_limit(close_price)
 
+                # Take profit trailling
                 if bot["trailling"] == "true":
+
                     # Check if trailling profit reached the first time
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (1 + (float(bot["take_profit"]) / 100))
                     if float(close_price) >= current_take_profit_price:
@@ -182,13 +185,18 @@ class MarketUpdates(Account):
                             {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
                         )
                         if not updated_bot:
-                            print(f"Error updating trailling order {updated_bot}")
+                            self.app.db.bots.find_one_and_update(
+                                {"pair": symbol}, {"$push": {"errors": f"Error updating trailling order {updated_bot}"}}
+                            )
 
                     if "trailling_stop_loss_price" in bot["deal"]:
                         price = bot["deal"]["trailling_stop_loss_price"]
                         if float(close_price) <= float(price):
                             deal = DealUpdates(bot)
-                            deal.trailling_take_profit(price)
+                            completion = deal.trailling_take_profit(price)
+                            if completion == "completed":
+                                ws.close()
+                                self.start_stream()
 
                 # Open safety orders
                 # When bot = None, when bot doesn't exist (unclosed websocket)

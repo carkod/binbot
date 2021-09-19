@@ -1,6 +1,6 @@
 # Market Updates websockets connection
 
-Market Updates is a websocket class aimed at doing research on signals, that is, when to open or close bots or specifically when to create or open the deals the bots manage.
+API Market Updates is a websocket class executes orders for bot deals, to open or close bots or specifically when to create or open the deals the bots manage.
 
 Many options were explored before:
 - Using simple REST endpoints didn't work, because market volatility favored sudden jumps and drops in prices, so a more real-time method like websockets is required to keep the data up to date
@@ -12,6 +12,18 @@ Limitations:
 - Therefore, the only way it works is by subscribing to all streams at once, i.e. `/stream?streams=<streamName1>/<streamName2>/<streamName3>` or `/ws/<streamName>` as described in the (General WSS section)[https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md#general-wss-information]
 - Using a URIs that are too long would lead to a (414 error)[https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/414], therefore a loop was used to split it into multiple websocket connections
 - Sometimes, new cryptos are released on Binance, therefore, MA signals analysis cannot be performed, there is an `if` condition to skip signals for such cases.
+- Research vs API market updates are separated to increase current price updates. If updates don't come frequently enough (because there are too many cyrptocurrencies updating in a set interval of minutes or seconds) the window for optimal trading can be missed.
+
+Perks:
+- At /bots create and edit, the thread will access the websocket, close it, and restart it to get the new bots
+
+# Research Market updates websocket connection
+
+This research Market updates websocket connects, located `/research/__init__.py` aimed at creating telegram signals is a quite heavy websocket connection, that's why it has a separate python application:
+
+- Hundreds of cryptcurrency markets are being listened to
+- Only query string websocket channels seem to work with so many cyrptocurrencies (and counting) - This is due to the reasons mentioned in previous section.
+- `self.max_request` variable added to avoid Request URI too long errors
 
 ## Telegram
 

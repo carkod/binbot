@@ -227,6 +227,8 @@ class Assets(Account):
         balance = list(app.db.balances.find(filter).sort([("_id", -1)]))
         if balance:
             resp = jsonResp({"data": balance}, 200)
+        else:
+            resp = jsonResp({"data": [], "error": 1}, 200)
         return resp
 
     def currency_conversion(self):

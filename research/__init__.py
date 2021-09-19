@@ -85,7 +85,7 @@ max_request = 950  # Avoid HTTP 411 error by separating streams
 def _get_candlestick(market, interval):
     url = f"{bb_candlestick_url}/{market}/{interval}"
     res = requests.get(url=url)
-    print(handle_error(res))
+    res.raise_for_status()
     data = res.json()
     return data["trace"]
 
@@ -113,7 +113,6 @@ def _send_msg(msg):
 
 def close_stream(ws, close_status_code, close_msg):
     print("Active socket closed", close_status_code, close_msg)
-    ws.close()
 
 
 def _run_streams(stream, index):
@@ -142,7 +141,7 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1) :]
+    stream_2 = params[(max_request + 1):]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
@@ -154,7 +153,6 @@ def on_open(ws):
 
 def on_error(ws, error):
     print(f"Websocket error: {error}")
-    ws.close()
     if error.args[0] == "Connection to remote host was lost.":
         start_stream()
 
@@ -178,7 +176,7 @@ def process_kline_stream(result):
     Updates market data in DB for research
     """
     # Check if closed result["k"]["x"]
-    if result["k"] and result["k"]["s"]:
+    if "k" in result and "s" in result["k"]:
         close_price = float(result["k"]["c"])
         open_price = float(result["k"]["o"])
         symbol = result["k"]["s"]

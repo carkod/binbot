@@ -60,6 +60,7 @@ export default function MainTab({
               onChange={handleBaseChange}
               onBlur={handleBlur}
               value={state.base_order_size}
+              autoComplete="off"
             />
             <InputGroupAddon addonType="append">
               <InputGroupText>{state.quoteAsset}</InputGroupText>
@@ -88,10 +89,12 @@ export default function MainTab({
             alignItems: "center",
             fontSize: "1.5rem"
           }}>
-            <Label check>
-              <Input type="radio" name="balance_to_use" checked={state.balance_to_use === state.quoteAsset} value={state.quoteAsset} onChange={handleChange}/>{' '}
-              {state.quoteAsset}
-            </Label>
+            {state.quoteAsset &&
+              <Label check>
+                <Input type="radio" name="balance_to_use" checked={state.balance_to_use === state.quoteAsset} value={state.quoteAsset} onChange={handleChange}/>{' '}
+                {state.quoteAsset}
+              </Label>
+            }
             <Label check>
               <Input type="radio" name="balance_to_use" checked={state.balance_to_use === "GBP"} value={"GBP"} onChange={handleChange}/>{' '}
               GBP

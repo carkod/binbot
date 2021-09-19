@@ -4,20 +4,20 @@ import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from api.app import create_app
-
-# Import Routes
+from api.tools.jsonresp import jsonResp
 from api.account.assets import Assets
+from api.orders.models.order_sockets import OrderUpdates
+from api.research.market_updates import MarketUpdates
+
+# Routes
 from api.account.routes import account_blueprint
 from api.bots.routes import bot_blueprint
 from api.charts.routes import charts_blueprint
 from api.deals.routes import deal_blueprint
-from api.orders.models.order_sockets import OrderUpdates
 from api.orders.models.orders import Orders
 from api.orders.routes import order_blueprint
-from api.tools.jsonresp import jsonResp
 from api.user.routes import user_blueprint
 from api.research.routes import research_blueprint
-from api.threads import market_update_thread
 from api.research.correlation import Correlation
 
 app = create_app()
@@ -32,10 +32,6 @@ if os.environ["ENV"] != "development":
     scheduler.add_job(
         func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=00, minute=1
     )
-    scheduler.add_job(
-        func=market_update_thread, trigger="interval", timezone="Europe/London", hours=2
-    )
-
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))
 
@@ -61,4 +57,6 @@ worker_thread = threading.Thread(name="order_updates_thread", target=order_updat
 worker_thread.start()
 
 # Research market updates
-market_update_thread()
+market_updates = MarketUpdates()
+market_updates_thread = threading.Thread(name="market_updates_thread", target=market_updates.start_stream)
+market_updates_thread.start()
