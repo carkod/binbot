@@ -49,9 +49,9 @@ class BinanceApi:
     """
 
     BASE = "https://api.binance.com"
-    WS_BASE="wss://stream.binance.com:9443"
+    WS_BASE = "wss://stream.binance.com:9443"
     WAPI = f"{BASE}/api/v3/depth"
-    
+
     recvWindow = os.getenv("RECV_WINDOW")
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
@@ -72,5 +72,3 @@ class BinanceApi:
     withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"
     deposit_history_url = f"{BASE}/wapi/v3/depositHistory.html"
     deposit_address_url = f"{BASE}/wapi/v3/depositAddress.html"
-    
-
