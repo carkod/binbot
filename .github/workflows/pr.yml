@@ -34,6 +34,7 @@ jobs:
       - name: Test app
         run: |
           docker run --detach --network host binbot & curl --head --fail --retry-delay 1 --retry 30 --retry-connrefused http://localhost
+      if: github.actor != 'dependabot[bot]'
       - name: Tag image
         run: |
           docker commit binbot &
@@ -62,6 +63,7 @@ jobs:
         run: |
           cd research
           docker build -t binbot_research .
+      if: github.actor != 'dependabot[bot]'
       - name: Tag image
         run: |
           docker commit binbot_research &
