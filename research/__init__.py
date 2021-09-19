@@ -1,6 +1,5 @@
 import json
 import os
-import time
 import threading
 import pandas
 import requests
@@ -220,12 +219,6 @@ def process_kline_stream(result):
 
                 if msg:
                     _send_msg(msg)
-
-            # last_processed_kline[symbol] = time.time()
-            # If more than half an hour (interval = 30m) has passed
-            # Then we should resume sending signals for given symbol
-            # if (float(time.time()) - float(last_processed_kline[symbol])) > 400:
-            #     del last_processed_kline[symbol]
 
 
 if __name__ == "__main__":

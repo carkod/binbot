@@ -62,7 +62,6 @@ jobs:
         run: |
           cd research
           docker build -t binbot_research .
-      if: github.actor != 'dependabot[bot]'
       - name: Tag image
         run: |
           docker commit binbot_research &
