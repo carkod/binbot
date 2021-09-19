@@ -9,7 +9,7 @@ import {
 
 // The initial state of the App
 export const initialState = {
-  isLoading: false,
+  
   isError: false,
   data: null,
   message: null,

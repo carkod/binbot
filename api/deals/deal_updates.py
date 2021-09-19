@@ -9,6 +9,7 @@ from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from api.app import create_app
 
+
 class DealUpdates(Account):
 
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
@@ -166,7 +167,9 @@ class DealUpdates(Account):
         - Update DB with new take profit deal data
         """
         pair = self.active_bot["pair"]
-        so_qty = list(self.active_bot["safety_orders"].values())[int(so_index) - 1]["so_size"]
+        so_qty = list(self.active_bot["safety_orders"].values())[int(so_index) - 1][
+            "so_size"
+        ]
         book_order = Book_Order(pair)
         price = float(book_order.matching_engine(False, so_qty))
         qty = round_numbers(
@@ -217,7 +220,8 @@ class DealUpdates(Account):
             buy_total_qty = self.active_bot["base_order_size"]
 
         new_so_prices = supress_notation(
-            self.active_bot["deal"]["safety_order_prices"][so_index], self.price_precision
+            self.active_bot["deal"]["safety_order_prices"][so_index],
+            self.price_precision,
         )
         del self.active_bot["deal"]["safety_order_prices"][so_index]
 
@@ -243,7 +247,9 @@ class DealUpdates(Account):
             else:
                 print("Old take profit order cancelled")
 
-            qty = round_numbers(self.active_bot["deal"]["buy_total_qty"], self.qty_precision)
+            qty = round_numbers(
+                self.active_bot["deal"]["buy_total_qty"], self.qty_precision
+            )
             new_tp_order = {
                 "pair": self.active_bot["pair"],
                 "qty": qty,
@@ -288,7 +294,7 @@ class DealUpdates(Account):
                     ),
                     "deal.safety_order_prices": new_so_prices,
                     "safety_orders": self.active_bot["safety_orders"],
-                    "orders": self.active_bot["orders"]
+                    "orders": self.active_bot["orders"],
                 },
                 "$inc": {"deal.comission": commission},
             },
@@ -389,11 +395,18 @@ class DealUpdates(Account):
             if handle_error(res)["code"] == -2010:
                 self.app.db.bots.find_one_and_update(
                     {"pair": bot["pair"]},
-                    {"$push": {"errors": f'Deactivated bot {bot["pair"]}, not enough funds to trigger trailling stop loss'}, "$set": {"status": "error"}
-                })
+                    {
+                        "$push": {
+                            "errors": f'Deactivated bot {bot["pair"]}, not enough funds to trigger trailling stop loss'
+                        },
+                        "$set": {"status": "error"},
+                    },
+                )
                 return "completed"
             else:
-                self.app.db.bots.find_one_and_update({"pair": bot["pair"]}, {"$push": {"errors": f'{handle_error(res)}'}})
+                self.app.db.bots.find_one_and_update(
+                    {"pair": bot["pair"]}, {"$push": {"errors": f"{handle_error(res)}"}}
+                )
         else:
             # Append now stop_limit deal
             trailling_stop_loss_response = {
@@ -410,7 +423,13 @@ class DealUpdates(Account):
             }
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
-                {"$push": {"orders": trailling_stop_loss_response}, "$set": {"status": "completed", "deal.take_profit_price": res["price"]}},
+                {
+                    "$push": {"orders": trailling_stop_loss_response},
+                    "$set": {
+                        "status": "completed",
+                        "deal.take_profit_price": res["price"],
+                    },
+                },
             )
             if botId:
                 print("Successfully finished take profit trailling!")

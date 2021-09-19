@@ -49,6 +49,7 @@ class BinanceApi:
     """
 
     BASE = "https://api.binance.com"
+    WS_BASE="wss://stream.binance.com:9443"
     WAPI = f"{BASE}/api/v3/depth"
     
     recvWindow = os.getenv("RECV_WINDOW")

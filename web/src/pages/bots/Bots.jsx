@@ -34,21 +34,18 @@ class Bots extends React.Component {
   };
 
   confirmDelete = (option) => {
-    option = parseInt(option)
-    if (option === 1) {
+    if (parseInt(option) === 1) {
       this.props.deleteBot(this.state.confirmModal);
     } else {
       this.props.closeBot(this.state.confirmModal);
     }
-    this.setState({ confirmModal: null })
-    
+    this.setState({ confirmModal: null });
+    // this.props.getBots();
   }
 
   getProfit = (base_price, current_price) => {
     if (!checkValue(base_price) && !checkValue(current_price)) {
-      const bp = parseFloat(base_price);
-      const cp = parseFloat(current_price);
-      const percent = (cp - bp) / base_price;
+      const percent = (parseFloat(current_price) - parseFloat(base_price)) / base_price;
       return percent.toFixed(2);
     }
     return 0

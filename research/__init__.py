@@ -11,6 +11,7 @@ from utils import supress_notation
 from pymongo import MongoClient
 from apis import BinanceApi
 from dotenv import load_dotenv
+from time import sleep
 
 load_dotenv()
 
@@ -141,7 +142,7 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1):]
+    stream_2 = params[(max_request + 1) :]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
@@ -154,6 +155,7 @@ def on_open(ws):
 def on_error(ws, error):
     print(f"Websocket error: {error}")
     if error.args[0] == "Connection to remote host was lost.":
+        sleep(10)
         start_stream()
 
 

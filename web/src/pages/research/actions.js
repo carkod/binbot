@@ -18,7 +18,7 @@ export const GET_HISTORICAL_RESEARCH_ERROR = "GET_HISTORICAL_RESEARCH_ERROR";
 export function getResearchData(params) {
   return {
     type: GET_RESEARCH,
-    isLoading: false,
+    
     isError: false,
     params
   };
@@ -34,7 +34,7 @@ export function getResearchFailed(error) {
   addNotification("FAILED!", error.message, "error");
   return {
     type: GET_RESEARCH_ERROR,
-    isLoading: false,
+    
     isError: true,
     data: error,
     message: error.message,
@@ -48,7 +48,7 @@ export function getResearchSucceeded(res) {
   }
   return {
     type: GET_RESEARCH_SUCCESS,
-    isLoading: false,
+    
     isError: false,
     data: res.data,
   };
@@ -66,7 +66,7 @@ export function getResearchSucceeded(res) {
  export function getHistoricalResearchData(params) {
   return {
     type: GET_HISTORICAL_RESEARCH,
-    isLoading: false,
+    
     isError: false,
     params
   };
@@ -82,7 +82,7 @@ export function getHistoricalResearchDataFailed(error) {
   addNotification("FAILED!", error.message, "error");
   return {
     type: GET_HISTORICAL_RESEARCH_ERROR,
-    isLoading: false,
+    
     isError: true,
     data: error,
     message: error.message,
@@ -96,7 +96,7 @@ export function getHistoricalResearchDataSucceeded(res) {
   }
   return {
     type: GET_HISTORICAL_RESEARCH_SUCCESS,
-    isLoading: false,
+    
     isError: false,
     data: res.data,
   };

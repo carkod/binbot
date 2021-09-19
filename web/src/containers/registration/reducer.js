@@ -6,8 +6,6 @@ import {
 
 // The initial state of the App
 export const initialState = {
-  isLoading: false,
-  isError: false,
   data: null,
   message: null,
 };
@@ -17,8 +15,6 @@ function registrationReducer(state = initialState, action) {
     case REGISTER_USER: {
       const newState = {
         ...state,
-        isLoading: true,
-        isError: false,
         data: action.data,
       };
 

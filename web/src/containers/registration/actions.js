@@ -22,8 +22,6 @@ export const DEFAULT_LOCALE = "en";
 export function registerUser(body) {
   return {
     type: REGISTER_USER,
-    isLoading: true,
-    isError: false,
     data: body,
   };
 }
@@ -39,8 +37,6 @@ export function registerUser(body) {
 export function registerUserSucceded(msg) {
   return {
     type: REGISTER_USER_SUCCESS,
-    isLoading: false,
-    isError: false,
     message: msg,
   };
 }
@@ -55,8 +51,6 @@ export function registerUserSucceded(msg) {
 export function registerUserFailed(error) {
   return {
     type: REGISTER_USER_ERROR,
-    isLoading: false,
-    isError: true,
     message: error,
   };
 }

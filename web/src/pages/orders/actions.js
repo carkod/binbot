@@ -22,8 +22,6 @@ export const DEFAULT_LOCALE = "en";
 export function getOrders({ limit, offset, status }) {
   return {
     type: GET_ALL_ORDERS,
-    isLoading: true,
-    isError: false,
     data: {
       limit: limit,
       offset: offset,
@@ -43,8 +41,6 @@ export function getOrders({ limit, offset, status }) {
 export function getOrdersSucceeded(res) {
   return {
     type: GET_ALL_ORDERS_SUCCESS,
-    isLoading: false,
-    isError: false,
     orders: res.data,
     pages: res.pages,
     status: res.status,
@@ -61,8 +57,6 @@ export function getOrdersSucceeded(res) {
 export function getOrdersFailed(error) {
   return {
     type: GET_ALL_ORDERS_ERROR,
-    isLoading: false,
-    isError: true,
     data: error,
   };
 }
@@ -75,16 +69,12 @@ export function getOrdersFailed(error) {
 export function getOpenOrders() {
   return {
     type: GET_OPEN_ORDERS,
-    isLoading: true,
-    isError: false,
   };
 }
 
 export function getOpenOrdersSucceeded(res) {
   return {
     type: GET_OPEN_ORDERS_SUCCESS,
-    isLoading: false,
-    isError: false,
     data: res.data,
     message: res.message,
   };
@@ -93,8 +83,6 @@ export function getOpenOrdersSucceeded(res) {
 export function getOpenOrdersFailed(error) {
   return {
     type: GET_OPEN_ORDERS_ERROR,
-    isLoading: false,
-    isError: true,
     data: error,
   };
 }
@@ -107,8 +95,6 @@ export function getOpenOrdersFailed(error) {
 export function deleteOpenOrders(payload) {
   return {
     type: DELETE_OPEN_ORDERS,
-    isLoading: true,
-    isError: false,
     data: payload,
   };
 }
@@ -116,8 +102,6 @@ export function deleteOpenOrders(payload) {
 export function deleteOpenOrdersSucceeded(res) {
   return {
     type: DELETE_OPEN_ORDERS_SUCCESS,
-    isLoading: false,
-    isError: false,
     data: res.data,
     message: res.message,
   };
@@ -126,8 +110,6 @@ export function deleteOpenOrdersSucceeded(res) {
 export function deleteOpenOrdersFailed(error) {
   return {
     type: DELETE_OPEN_ORDERS_ERROR,
-    isLoading: false,
-    isError: true,
     data: error,
   };
 }
@@ -140,8 +122,6 @@ export function deleteOpenOrdersFailed(error) {
 export function pollOrders() {
   return {
     type: POLL_ORDERS,
-    isLoading: true,
-    isError: false,
   };
 }
 
@@ -156,8 +136,6 @@ export function pollOrders() {
 export function pollOrdersSucceeded(res) {
   return {
     type: POLL_ORDERS_SUCCESS,
-    isLoading: false,
-    isError: false,
     bots: res.botId,
     message: res.message,
   };
@@ -173,8 +151,6 @@ export function pollOrdersSucceeded(res) {
 export function pollOrdersFailed(error) {
   return {
     type: POLL_ORDERS_ERROR,
-    isLoading: false,
-    isError: true,
     data: error,
     message: error.message,
   };
