@@ -233,9 +233,7 @@ class Bot(Account):
             if isinstance(close_response, Response):
                 return close_response
 
-            self.delete()
-
-            response = jsonResp({"message": "Successfully closed bots", "botId": findId}, 400)
+            response = self.delete()
             return response
 
         else:

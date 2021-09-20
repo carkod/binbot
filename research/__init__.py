@@ -155,7 +155,8 @@ def on_open(ws):
 def on_error(ws, error):
     print(f"Websocket error: {error}")
     if error.args[0] == "Connection to remote host was lost.":
-        sleep(10)
+        print("Restarting in 30 seconds...")
+        sleep(30)
         start_stream()
 
 
@@ -220,11 +221,11 @@ def process_kline_stream(result):
                 if msg:
                     _send_msg(msg)
 
-            last_processed_kline[symbol] = time.time()
+            # last_processed_kline[symbol] = time.time()
             # If more than half an hour (interval = 30m) has passed
             # Then we should resume sending signals for given symbol
-            if (float(time.time()) - float(last_processed_kline[symbol])) > 400:
-                del last_processed_kline[symbol]
+            # if (float(time.time()) - float(last_processed_kline[symbol])) > 400:
+            #     del last_processed_kline[symbol]
 
 
 if __name__ == "__main__":

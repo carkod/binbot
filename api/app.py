@@ -6,8 +6,6 @@ from api.apis import BinanceApi, CoinBaseApi
 
 def create_app():
     app = Flask(__name__)
-    app.binance = BinanceApi()
-    app.coinbase = CoinBaseApi()
 
     # Schema
     # db = MongoEngine(app)
