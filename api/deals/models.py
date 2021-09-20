@@ -578,7 +578,7 @@ class Deal(Account):
             if isinstance(handle_error(res), Response):
                 return handle_error(res)
 
-            transformed_balance = self.sell_gbp_balance()
-            return transformed_balance
+            self.buy_gbp_balance()
+            return
 
         return

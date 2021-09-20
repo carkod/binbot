@@ -141,7 +141,7 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1) :]
+    stream_2 = params[(max_request + 1):]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
