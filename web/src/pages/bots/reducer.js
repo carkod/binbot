@@ -142,8 +142,8 @@ function botReducer(state = initialState, action) {
     }
     case ACTIVATE_BOT_SUCCESS: {
       const newState = {
-        ...state,
         isError: false,
+        data: state.data,
         message: action.message,
         botActive: true,
       };
@@ -154,7 +154,7 @@ function botReducer(state = initialState, action) {
       return {
         error: action.error,
         isError: true,
-        data: action.state,
+        data: state.data,
         botActive: false,
       };
     }

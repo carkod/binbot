@@ -192,7 +192,6 @@ class Bot(Account):
         - After above actions succeed, update the DB with all these changes
         The bot is kept for archive purposes
         """
-        resp = jsonResp({"message": "Bot deactivation is not available"}, 400)
         findId = request.view_args["botId"]
         bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
