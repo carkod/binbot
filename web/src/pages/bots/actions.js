@@ -69,7 +69,6 @@ export function getBots() {
 export function getBotsSucceeded(res) {
   return {
     type: GET_BOTS_SUCCESS,
-    isLoading: false,
     isError: false,
     bots: res.data,
   };
@@ -85,7 +84,6 @@ export function getBotsSucceeded(res) {
 export function getBotsFailed(error) {
   return {
     type: GET_BOTS_ERROR,
-    isLoading: false,
     isError: true,
     data: error,
   };
@@ -115,8 +113,6 @@ export function getBot(id) {
 export function getBotSucceeded(res) {
   return {
     type: GET_BOT_SUCCESS,
-    isLoading: false,
-    isError: false,
     bots: res.data,
     message: res.message,
   };
@@ -132,8 +128,6 @@ export function getBotSucceeded(res) {
 export function getBotFailed(error) {
   return {
     type: GET_BOT_ERROR,
-    isLoading: false,
-    isError: true,
     data: error,
   };
 }
@@ -146,7 +140,6 @@ export function getBotFailed(error) {
 export function createBot(body) {
   return {
     type: CREATE_BOT,
-    isError: false,
     data: body,
   };
 }
@@ -163,8 +156,6 @@ export function createBotSucceeded(res) {
   addNotification("SUCCESS!", res.message, "success");
   return {
     type: CREATE_BOT_SUCCESS,
-    isLoading: false,
-    isError: false,
     botId: res.botId,
   };
 }
@@ -180,8 +171,6 @@ export function createBotFailed(error) {
   addNotification("FAILED!", error.message, "error");
   return {
     type: CREATE_BOT_ERROR,
-    isLoading: false,
-    isError: true,
     data: error,
     message: error.message,
   };
@@ -195,7 +184,6 @@ export function createBotFailed(error) {
 export function editBot(id, body) {
   return {
     type: EDIT_BOT,
-    isError: false,
     data: body,
     id: id,
   };
@@ -213,8 +201,6 @@ export function editBotSucceeded(res) {
   addNotification("SUCCESS!", res.message, "success");
   return {
     type: EDIT_BOT_SUCCESS,
-    isLoading: false,
-    isError: false,
     bots: res,
   };
 }
@@ -230,8 +216,6 @@ export function editBotFailed(error) {
   addNotification("FAILED!", error.message, "error");
   return {
     type: EDIT_BOT_ERROR,
-    isLoading: false,
-    isError: true,
     data: error,
   };
 }
@@ -243,7 +227,6 @@ export function editBotFailed(error) {
 export function deleteBot(id) {
   return {
     type: DELETE_BOT,
-    isError: false,
     data: id,
   };
 }
@@ -254,7 +237,6 @@ export function deleteBot(id) {
 export function closeBot(id) {
   return {
     type: CLOSE_BOT,
-    isError: false,
     data: id,
   };
 }
@@ -288,7 +270,6 @@ export function deleteBotFailed(error) {
   addNotification("ERROR!", error.message, "error");
   return {
     type: DELETE_BOT_SUCCESS,
-    isError: true,
     error: error.message,
   };
 }
@@ -301,7 +282,6 @@ export function deleteBotFailed(error) {
 export function activateBot(id) {
   return {
     type: ACTIVATE_BOT,
-    isError: false,
     data: id,
   };
 }
@@ -314,8 +294,6 @@ export function activateBotSucceeded(res) {
   }
   return {
     type: ACTIVATE_BOT_SUCCESS,
-    isLoading: false,
-    isError: false,
     data: res.botId,
   };
 }
@@ -324,8 +302,6 @@ export function activateBotFailed(error) {
   addNotification("Failed to fetch", error.message, "error");
   return {
     type: ACTIVATE_BOT_SUCCESS,
-    isLoading: false,
-    isError: true,
   };
 }
 
@@ -337,7 +313,6 @@ export function activateBotFailed(error) {
 export function deactivateBot(id) {
   return {
     type: DEACTIVATE_BOT,
-    isError: false,
     data: id,
   };
 }
@@ -348,8 +323,6 @@ export function deactivateBotSucceeded(res) {
   }
   return {
     type: DEACTIVATE_BOT_SUCCESS,
-    isLoading: false,
-    isError: false,
     data: res.botId,
     message: res.message,
   };
@@ -358,8 +331,6 @@ export function deactivateBotSucceeded(res) {
 export function deactivateBotFailed(error) {
   return {
     type: DEACTIVATE_BOT_SUCCESS,
-    isLoading: false,
-    isError: true,
     error: error.message,
   };
 }
@@ -372,16 +343,12 @@ export function deactivateBotFailed(error) {
 export function getSymbols() {
   return {
     type: GET_SYMBOLS,
-    isLoading: false,
-    isError: false,
   };
 }
 
 export function getSymbolsSucceeded(res) {
   return {
     type: GET_SYMBOLS_SUCCESS,
-    isLoading: false,
-    isError: false,
     data: res.data,
   };
 }
@@ -389,8 +356,6 @@ export function getSymbolsSucceeded(res) {
 export function getSymbolsFailed(error) {
   return {
     type: GET_SYMBOLS_ERROR,
-    isLoading: false,
-    isError: true,
     error: error.message,
   };
 }
@@ -398,8 +363,6 @@ export function getSymbolsFailed(error) {
 export function getSymbolInfo(pair) {
   return {
     type: GET_SYMBOL_INFO,
-    isLoading: false,
-    isError: false,
     data: pair,
   };
 }
@@ -407,8 +370,6 @@ export function getSymbolInfo(pair) {
 export function getSymbolInfoSucceeded(res) {
   return {
     type: GET_SYMBOL_INFO_SUCCESS,
-    isLoading: false,
-    isError: false,
     data: res.data,
   };
 }
@@ -416,8 +377,6 @@ export function getSymbolInfoSucceeded(res) {
 export function getSymbolInfoFailed(error) {
   return {
     type: GET_SYMBOL_INFO_ERROR,
-    isLoading: false,
-    isError: true,
     error: error.message,
   };
 }
@@ -425,7 +384,6 @@ export function getSymbolInfoFailed(error) {
 export function loadCandlestick(pair, interval) {
   return {
     type: LOAD_CANDLESTICK,
-    isError: false,
     trace: null,
     layout: null,
     pair,
@@ -444,7 +402,6 @@ export function loadCandlestickSucceeded(payload) {
 export function loadCandlestickFailed(payload) {
   return {
     type: LOAD_CANDLESTICK_ERROR,
-    isError: false,
     payload,
   };
 }

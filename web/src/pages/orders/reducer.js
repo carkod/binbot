@@ -15,7 +15,6 @@ import {
 
 // The initial state of the App
 export const initialState = {
-  isLoading: false,
   isError: false,
   data: null,
   message: null,
@@ -28,8 +27,6 @@ function ordersReducer(state = initialState, action) {
     case GET_ALL_ORDERS: {
       const newState = {
         ...state,
-        isLoading: true,
-        isError: false,
         params: action.data,
         data: null,
       };
@@ -88,8 +85,6 @@ function openOrdersReducer(state = initialState, action) {
     case GET_OPEN_ORDERS: {
       const newState = {
         ...state,
-        isLoading: true,
-        isError: false,
         data: state.data,
       };
 
@@ -118,8 +113,6 @@ function openOrdersReducer(state = initialState, action) {
     case DELETE_OPEN_ORDERS: {
       const newState = {
         ...state,
-        isLoading: true,
-        isError: false,
         data: state.data,
       };
 

@@ -11,6 +11,7 @@ from utils import supress_notation
 from pymongo import MongoClient
 from apis import BinanceApi
 from dotenv import load_dotenv
+from time import sleep
 
 load_dotenv()
 
@@ -141,7 +142,7 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1):]
+    stream_2 = params[(max_request + 1) :]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
@@ -154,6 +155,8 @@ def on_open(ws):
 def on_error(ws, error):
     print(f"Websocket error: {error}")
     if error.args[0] == "Connection to remote host was lost.":
+        print("Restarting in 30 seconds...")
+        sleep(30)
         start_stream()
 
 
@@ -218,11 +221,11 @@ def process_kline_stream(result):
                 if msg:
                     _send_msg(msg)
 
-            last_processed_kline[symbol] = time.time()
+            # last_processed_kline[symbol] = time.time()
             # If more than half an hour (interval = 30m) has passed
             # Then we should resume sending signals for given symbol
-            if (float(time.time()) - float(last_processed_kline[symbol])) > 400:
-                del last_processed_kline[symbol]
+            # if (float(time.time()) - float(last_processed_kline[symbol])) > 400:
+            #     del last_processed_kline[symbol]
 
 
 if __name__ == "__main__":

@@ -14,8 +14,6 @@ export const DEFAULT_LOCALE = "en";
 export function login(body) {
   return {
     type: LOGIN,
-    isLoading: true,
-    isError: false,
     data: body,
   };
 }
@@ -33,7 +31,6 @@ export function loginSucceeded(res) {
     addNotification("ERROR!", res.message, "error");
     return {
       type: LOGIN_ERROR,
-      isLoading: false,
       isError: true,
       message: res.message,
     };  
@@ -41,7 +38,6 @@ export function loginSucceeded(res) {
   setToken(res.access_token);
   return {
     type: LOGIN_SUCCESS,
-    isLoading: false,
     isError: false,
   };
 }
@@ -56,7 +52,6 @@ export function loginSucceeded(res) {
 export function loginFailed(error) {
   return {
     type: LOGIN_ERROR,
-    isLoading: false,
     isError: true,
     message: error.message,
   };

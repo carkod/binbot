@@ -9,7 +9,7 @@ import {
 
 // The initial state of the App
 export const initialState = {
-  isLoading: false,
+  
   isError: false,
   data: null,
   message: null,
@@ -20,8 +20,6 @@ function researchReducer(state = initialState, action) {
     case GET_RESEARCH: {
       const newState = {
         ...state,
-        isLoading: true,
-        isError: false,
         data: action.data,
       };
 
@@ -30,7 +28,7 @@ function researchReducer(state = initialState, action) {
     case GET_RESEARCH_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
+        
         isError: false,
         data: action.data,
       };
@@ -41,7 +39,7 @@ function researchReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
+        
         isError: true,
       };
     }
@@ -55,8 +53,6 @@ function historicalResearchReducer(state = initialState, action) {
     case GET_HISTORICAL_RESEARCH: {
       const newState = {
         ...state,
-        isLoading: true,
-        isError: false,
         data: action.data,
       };
 
@@ -65,7 +61,7 @@ function historicalResearchReducer(state = initialState, action) {
     case GET_HISTORICAL_RESEARCH_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
+        
         isError: false,
         data: action.data,
       };
@@ -76,7 +72,7 @@ function historicalResearchReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        isLoading: false,
+        
         isError: true,
       };
     }

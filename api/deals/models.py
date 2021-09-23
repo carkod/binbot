@@ -25,7 +25,6 @@ class Deal(Account):
 
     def __init__(self, bot):
         # Inherit from parent class
-        super(self.__class__, self).__init__()
         self.active_bot = bot
         self.MIN_PRICE = float(
             self.price_filter_by_symbol(self.active_bot["pair"], "minPrice")
@@ -87,6 +86,11 @@ class Deal(Account):
         """
         commission = 0
         for chunk in order["fills"]:
+            try:
+                float(chunk["commission"])
+            except ValueError:
+                print(f"Commission format error {chunk['commission']}")
+
             commission += float(chunk["commission"])
 
         return commission
@@ -576,5 +580,5 @@ class Deal(Account):
 
             transformed_balance = self.sell_gbp_balance()
             return transformed_balance
-        
+
         return

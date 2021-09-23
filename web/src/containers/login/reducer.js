@@ -2,7 +2,7 @@ import { LOGIN, LOGIN_SUCCESS, LOGIN_ERROR } from "./actions";
 
 // The initial state of the App
 export const initialState = {
-  isLoading: false,
+  
   isError: false,
   data: null,
   message: null,
@@ -13,7 +13,6 @@ function loginReducer(state = initialState, action) {
     case LOGIN: {
       const newState = {
         ...state,
-        isLoading: true,
         isError: false,
         data: action.data,
       };
@@ -23,7 +22,6 @@ function loginReducer(state = initialState, action) {
     case LOGIN_SUCCESS: {
       const newState = {
         ...state,
-        isLoading: false,
         isError: false,
         data: action.data,
       };
@@ -35,14 +33,12 @@ function loginReducer(state = initialState, action) {
         return {
           ...state,
           error: true,
-          isLoading: false,
           message: action.message
         }
       }
       return {
         ...state,
         error: false,
-        isLoading: false,
         message: action.message,
       };
     }

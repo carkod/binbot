@@ -1,3 +1,4 @@
+from api.apis import BinanceApi
 import hashlib
 import hmac
 import json
@@ -19,7 +20,7 @@ from main import auth, tools
 from passlib.hash import pbkdf2_sha256
 
 
-class Buy_Order:
+class Buy_Order(BinanceApi):
     """Post order
 
     Returns:
@@ -32,10 +33,6 @@ class Buy_Order:
 
     def __init__(self, symbol, quantity, order_type, price):
 
-        self.key = os.getenv("BINANCE_KEY")
-        self.secret = os.getenv("BINANCE_SECRET")
-        self.order_url = os.getenv("ORDER")
-        self.order_book_url = os.getenv("ORDER_BOOK")
         # Buy order
         self.side = EnumDefinitions.order_side[0]
         # Required by API for Limit orders

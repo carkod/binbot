@@ -1,3 +1,4 @@
+from api.apis import BinanceApi
 import os
 from datetime import datetime, timedelta
 
@@ -10,13 +11,11 @@ import threading
 from api.threads import market_update_thread
 
 
-class Candlestick:
+class Candlestick(BinanceApi):
     """
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
     """
-
-    candlestick_url = os.getenv("CANDLESTICK")
 
     def __init__(self, interval="1d", limit="200"):
         pair = request.view_args["pair"]
