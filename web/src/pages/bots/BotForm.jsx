@@ -186,7 +186,7 @@ class BotForm extends React.Component {
           Object.keys(this.props.bot.deal).length > 0 &&
           !checkValue(this.props.bot.base_order_size)
         ) {
-          const profitChange = (currentPrice - buyPrice) / buyPrice;
+          const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
           this.setState({ bot_profit: profitChange.toFixed(4) });
         } else {
           this.setState({ bot_profit: 0 });
@@ -570,7 +570,7 @@ class BotForm extends React.Component {
               </CardHeader>
               <CardBody>
                 {this.props.candlestick && !checkValue(this.state.pair) ? (
-                  <Candlestick data={this.props.candlestick} bot={this.state} />
+                  <Candlestick data={this.props.candlestick} bot={this.state} deal={this.props.bot && this.props.bot.deal ? this.props.bot.deal : null}/>
                 ) : (
                   ""
                 )}

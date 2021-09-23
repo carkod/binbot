@@ -26,7 +26,6 @@ class DealUpdates(Account):
 
     def __init__(self, bot):
         # Inherit also the __init__ from parent class
-        super(self.__class__, self).__init__()
 
         self.active_bot = bot
         self.MIN_PRICE = float(
@@ -39,7 +38,6 @@ class DealUpdates(Account):
             "order_id": "",
             "deal_type": "base_order",
             "status": "active",
-            "strategy": "long",  # change accordingly
             "pair": "",
             "order_side": "BUY",
             "order_type": "LIMIT",  # always limit orders
@@ -126,7 +124,6 @@ class DealUpdates(Account):
                 take_profit_order = {
                     "deal_type": "take_profit",
                     "order_id": order["orderId"],
-                    "strategy": "long",  # change accordingly
                     "pair": order["symbol"],
                     "order_side": order["side"],
                     "order_type": order["type"],
@@ -191,7 +188,6 @@ class DealUpdates(Account):
         safety_order = {
             "order_id": response["orderId"],
             "deal_type": "safety_order",
-            "strategy": "long",  # change accordingly
             "pair": response["symbol"],
             "order_side": response["side"],
             "order_type": response["type"],
@@ -266,7 +262,6 @@ class DealUpdates(Account):
             take_profit_order = {
                 "deal_type": "take_profit",
                 "order_id": tp_response["orderId"],
-                "strategy": "long",  # change accordingly
                 "pair": tp_response["symbol"],
                 "order_side": tp_response["side"],
                 "order_type": tp_response["type"],
@@ -373,7 +368,7 @@ class DealUpdates(Account):
                 print(f"New stop_limit deal successfully updated: {botId}")
             return
 
-    def trailling_take_profit(self, price):
+    def trailling_stop_loss(self, price):
         """
         Update stop limit after websocket
         - Sell initial amount crypto in deal
@@ -405,7 +400,7 @@ class DealUpdates(Account):
                 return "completed"
             else:
                 self.app.db.bots.find_one_and_update(
-                    {"pair": bot["pair"]}, {"$push": {"errors": f"{handle_error(res)}"}}
+                    {"pair": bot["pair"]}, {"$push": {"errors": f"{handle_error(res)}"}, "$set": {"status": "error"}}
                 )
         else:
             # Append now stop_limit deal

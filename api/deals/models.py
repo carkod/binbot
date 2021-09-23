@@ -34,7 +34,6 @@ class Deal(Account):
         self.order = {
             "order_id": "",
             "deal_type": "base_order",
-            "strategy": "long",  # change accordingly
             "pair": "",
             "order_side": "BUY",
             "order_type": "LIMIT",  # always limit orders
@@ -43,7 +42,6 @@ class Deal(Account):
             "fills": "0",
             "time_in_force": "GTC",
         }
-        self.total_amount = 0
         self.max_so_count = int(bot["max_so_count"])
         self.balances = 0
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot["pair"])
@@ -234,8 +232,6 @@ class Deal(Account):
         )
         price = float(book_order.matching_engine(False, qty))
         self.price = price
-        amount = float(qty) * float(price)
-        self.total_amount = amount
 
         if price:
             # Cheaper commissions - limit order
@@ -258,9 +254,9 @@ class Deal(Account):
         order = res.json()
 
         base_deal = {
+            "timestamp": order["transactTime"],
             "order_id": order["orderId"],
             "deal_type": "base_order",
-            "strategy": "long",  # change accordingly
             "pair": order["symbol"],
             "order_side": order["side"],
             "order_type": order["type"],
@@ -318,7 +314,6 @@ class Deal(Account):
 
     def long_take_profit_order(self):
         """
-        Execute long strategy (buy and sell higher)
         take profit order (Binance take_profit)
         - We only have stop_price, because there are no book bids/asks in t0
         - Perform validations so we can avoid hitting endpoint errors
@@ -349,7 +344,6 @@ class Deal(Account):
         take_profit_order = {
             "deal_type": "take_profit",
             "order_id": order["orderId"],
-            "strategy": "long",  # change accordingly
             "pair": order["symbol"],
             "order_side": order["side"],
             "order_type": order["type"],
@@ -430,7 +424,6 @@ class Deal(Account):
         stop_limit_order = {
             "deal_type": "stop_limit",
             "order_id": stop_limit_order["orderId"],
-            "strategy": "long",  # change accordingly
             "pair": stop_limit_order["symbol"],
             "order_side": stop_limit_order["side"],
             "order_type": stop_limit_order["type"],
@@ -575,10 +568,9 @@ class Deal(Account):
                 }
                 res = requests.post(url=self.bb_sell_market_order_url, json=order)
 
-            if isinstance(handle_error(res), Response):
-                return handle_error(res)
+                if isinstance(handle_error(res), Response):
+                    return handle_error(res)
 
-            self.buy_gbp_balance()
-            return
-
+        # Hedge with GBP
+        self.buy_gbp_balance()
         return

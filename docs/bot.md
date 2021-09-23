@@ -5,7 +5,6 @@ Create, Edit body
 ```
 "pair": "", # Required
 "status": "inactive", # inactive, active, completed
-"strategy": "long",
 "name": "Default Bot",
 "max_so_count": "3",
 "balance_usage": "1",  # 100% of All Btc balance

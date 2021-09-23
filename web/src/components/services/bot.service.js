@@ -6,7 +6,7 @@ import { checkValue } from "../../validations";
  * @param {*} bot
  * @returns annotations, shapes
  */
-export const botCandlestick = (data, bot) => {
+export const botCandlestick = (data, bot, deal = null) => {
   let annotations = [];
   let shapes = [];
   let currentPrice, currentTime, takeProfit, takeProfitTime;
@@ -20,27 +20,27 @@ export const botCandlestick = (data, bot) => {
   takeProfitTime = data.trace[0].x[data.trace[0].x.length - 1];
 
   // Saved current price visual
-  if (!checkValue(bot.deal)) {
-    if ("current_price" in bot.deal) {
+  if (!checkValue(deal)) {
+    if ("current_price" in deal) {
       const currentPriceSA = {
         x: currentTime,
-        y: bot.deal.current_price,
+        y: deal.current_price,
         xref: "x",
         yref: "y",
         text: `CP`,
         font: { color: "blue" },
         showarrow: false,
         xanchor: "left",
-        hovertext: bot.deal.current_price,
+        hovertext: deal.current_price,
       };
       const currentPriceS = {
         type: "line",
         xref: "x",
         yref: "y",
         x0: currentTime,
-        y0: bot.deal.current_price,
+        y0: deal.current_price,
         x1: data.trace[0].x[195],
-        y1: bot.deal.current_price,
+        y1: deal.current_price,
         line: {
           color: "blue",
           width: 12,
@@ -128,16 +128,9 @@ export const botCandlestick = (data, bot) => {
   let takeProfitPrice = 0;
   let traillingStopPrice = 0
   if (bot.trailling === "true") {
-    if (!checkValue(bot.deal) && !checkValue(bot.deal.buy_price)) {
-      takeProfitPrice = (
-        parseFloat(bot.deal.buy_price) +
-        parseFloat(bot.deal.buy_price) * (bot.take_profit / 100)
-      ).toFixed(8);
-      // Add trailling activation here
-      traillingStopPrice = (
-        parseFloat(bot.deal.buy_price) -
-        parseFloat(bot.deal.buy_price) * (parseFloat(bot.trailling_deviation) / 100)
-      ).toFixed(8);
+    if (!checkValue(deal) && !checkValue(deal.buy_price)) {
+      takeProfitPrice = parseFloat(deal.trailling_profit).toFixed(8);
+      traillingStopPrice = parseFloat(deal.trailling_stop_loss_price).toFixed(8);
     } else {
       takeProfitPrice = (
         parseFloat(currentPrice) +
@@ -156,7 +149,7 @@ export const botCandlestick = (data, bot) => {
         y: traillingStopPrice,
         xref: "x",
         yref: "y",
-        text: "Trailling stop loss (inactive)",
+        text: `Trailling stop loss ${checkValue(deal.trailling_stop_loss_price) ? "(inactive)" : ""}`,
         font: { color: "green" },
         showarrow: false,
         xanchor: "left",

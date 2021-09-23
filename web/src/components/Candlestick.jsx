@@ -3,7 +3,7 @@ import Plot from "react-plotly.js";
 import { checkValue } from "../validations";
 import { botCandlestick } from "./services/bot.service";
 
-function Candlestick({ data, bot = null, ma = null }) {
+function Candlestick({ data, bot = null, deal = null }) {
   let layout = {
     dragmode: "zoom",
     autosize: true,
@@ -29,7 +29,7 @@ function Candlestick({ data, bot = null, ma = null }) {
   };
 
   if (!checkValue(bot)) {
-    const { annotations, shapes } = botCandlestick(data, bot);
+    const { annotations, shapes } = botCandlestick(data, bot, deal);
     layout.annotations = annotations;
     layout.shapes = shapes
   }

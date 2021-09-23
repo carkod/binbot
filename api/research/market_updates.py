@@ -1,6 +1,5 @@
 import json
 import os
-import threading
 import requests
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
@@ -122,8 +121,8 @@ class MarketUpdates(Account):
         )
         # This is required to allow the websocket to be closed anywhere in the app
         self.markets_streams = ws
-        # Run the websocket
-        ws.run_forever()
+        # Run the websocket with ping intervals to avoid disconnection
+        ws.run_forever(ping_interval=70, ping_timeout=10)
 
     def close_stream(self, ws, close_status_code, close_msg):
         print("Active socket closed", close_status_code, close_msg)
@@ -154,8 +153,7 @@ class MarketUpdates(Account):
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        # result["k"]["x"]
-        if "k" in result and result["k"]["x"]:
+        if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
 
@@ -176,10 +174,12 @@ class MarketUpdates(Account):
                     # Check if trailling profit reached the first time
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (1 + (float(bot["take_profit"]) / 100))
                     if float(close_price) >= current_take_profit_price:
+                        new_take_profit = current_take_profit_price * (1 + (float(bot["take_profit"]) / 100))
                         # Update deal take_profit
-                        bot["deal"]["take_profit_price"] = bot["deal"]["trailling_profit"]
+                        bot["deal"]["take_profit_price"] = new_take_profit
+                        bot["deal"]["trailling_profit"] = new_take_profit
                         # Update trailling_stop_loss
-                        bot["deal"]["trailling_stop_loss_price"] = float(current_take_profit_price) - (float(current_take_profit_price) * (float(bot["trailling_deviation"]) / 100))
+                        bot["deal"]["trailling_stop_loss_price"] = float(new_take_profit) - (float(new_take_profit) * (float(bot["trailling_deviation"]) / 100))
 
                         updated_bot = self.app.db.bots.find_one_and_update(
                             {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
@@ -188,12 +188,14 @@ class MarketUpdates(Account):
                             self.app.db.bots.find_one_and_update(
                                 {"pair": symbol}, {"$push": {"errors": f"Error updating trailling order {updated_bot}"}}
                             )
-
+                        else:
+                            print(f"{symbol} Trailling updated! {current_take_profit_price}")
+                    # Sell after hitting trailling stop_loss
                     if "trailling_stop_loss_price" in bot["deal"]:
                         price = bot["deal"]["trailling_stop_loss_price"]
                         if float(close_price) <= float(price):
                             deal = DealUpdates(bot)
-                            completion = deal.trailling_take_profit(price)
+                            completion = deal.trailling_stop_loss(price)
                             if completion == "completed":
                                 ws.close()
                                 self.start_stream()
