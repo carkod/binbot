@@ -200,6 +200,7 @@ class Deal(Account):
             resp = jsonResp(
                 {
                     "message": f"Failed to buy {pair} using GBP balance",
+                    "error": 1,
                     "botId": str(self.active_bot["_id"]),
                 },
                 200,
@@ -568,8 +569,8 @@ class Deal(Account):
                 }
                 res = requests.post(url=self.bb_sell_market_order_url, json=order)
 
-                if isinstance(handle_error(res), Response):
-                    return handle_error(res)
+            if isinstance(handle_error(res), Response):
+                return handle_error(res)
 
         # Hedge with GBP
         self.buy_gbp_balance()
