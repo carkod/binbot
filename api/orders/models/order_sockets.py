@@ -1,39 +1,30 @@
 import json
-import os
 
 import requests
-from api.deals.deal_updates import DealUpdates
-from api.tools.handle_error import handle_error
-from websocket import WebSocketApp
-from api.deals.models import Deal
 from api.account.assets import Assets
 from api.app import create_app
+from api.deals.deal_updates import DealUpdates
+from api.deals.models import Deal
+from api.tools.handle_error import handle_error
+from websocket import WebSocketApp
+from api.apis import BinanceApi
 
-class OrderUpdates:
+class OrderUpdates(BinanceApi):
     def __init__(self):
-        self.key = os.getenv("BINANCE_KEY")
-        self.secret = os.getenv("BINANCE_SECRET")
-        self.user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
-        self.all_orders_url = os.getenv("ALL_ORDERS")
-        self.order_url = os.getenv("ORDER")
-
-        # streams
-        self.base = os.getenv("WS_BASE")
-        self.path = "/stream"
         self.active_ws = None
         self.listenkey = None
+
+        # Websockets do not get responses and requests
+        # Therefore there is no context
         self.app = create_app()
 
     def get_listenkey(self):
-        url = self.user_datastream_listenkey
-
         # Get data for a single crypto e.g. BTT in BNB market
         params = []
         headers = {"X-MBX-APIKEY": self.key}
-        url = self.user_datastream_listenkey
 
         # Response after request
-        res = requests.post(url=url, params=params, headers=headers)
+        res = requests.post(url=self.user_data_stream, params=params, headers=headers)
         handle_error(res)
         data = res.json()
         return data
@@ -42,9 +33,8 @@ class OrderUpdates:
         if not self.active_ws or not self.listen_key:
             self.listen_key = self.get_listenkey()["listenKey"]
 
-        url = f"{self.base}{self.path}?streams={self.listen_key}"
         ws = WebSocketApp(
-            url,
+            self.streams_url,
             on_open=self.on_open,
             on_error=self.on_error,
             on_close=self.close_stream,
@@ -92,8 +82,8 @@ class OrderUpdates:
                 },
                 {
                     "$set": {"status": "inactive", "deal.current_price": result["p"]},
-                    "$inc": {"deal.commission": result["n"]}
-                }
+                    "$inc": {"deal.commission": result["n"]},
+                },
             )
             if bot:
                 print(f"Bot take_profit completed! Bot {bot['_id']} deactivated")

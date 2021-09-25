@@ -1,23 +1,18 @@
 import json
 import os
+
 import requests
+from api.account.account import Account
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
-from api.account.account import Account
 from websocket import WebSocketApp
+
 
 class MarketUpdates(Account):
     """
     Further explanation in docs/market_updates.md
     """
-
-    key = os.getenv("BINANCE_KEY")
-    secret = os.getenv("BINANCE_SECRET")
-    user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
-    all_orders_url = os.getenv("ALL_ORDERS")
-    order_url = os.getenv("ORDER")
-    candlestick_url = os.getenv("CANDLESTICK")
 
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
     bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
@@ -75,9 +70,11 @@ class MarketUpdates(Account):
             "BCHBUSD",
             "BCHBNB",
             "BCHTUSD",
-            "BCHUSDC"
+            "BCHUSDC",
         ]
-        self.max_request = 960  # Avoid HTTP 411 error by splitting into multiple websockets
+        self.max_request = (
+            960  # Avoid HTTP 411 error by splitting into multiple websockets
+        )
 
     def _get_raw_klines(self, pair, limit="200"):
         params = {"symbol": pair, "interval": self.interval, "limit": limit}
@@ -111,7 +108,7 @@ class MarketUpdates(Account):
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         string_params = "/".join(params)
-        url = f"{self.base}/stream?streams={string_params}"
+        url = f"{self.WS_BASE}{string_params}"
         ws = WebSocketApp(
             url,
             on_open=self.on_open,
@@ -172,24 +169,39 @@ class MarketUpdates(Account):
                 if bot["trailling"] == "true":
 
                     # Check if trailling profit reached the first time
-                    current_take_profit_price = float(bot["deal"]["buy_price"]) * (1 + (float(bot["take_profit"]) / 100))
+                    current_take_profit_price = float(bot["deal"]["buy_price"]) * (
+                        1 + (float(bot["take_profit"]) / 100)
+                    )
                     if float(close_price) >= current_take_profit_price:
-                        new_take_profit = current_take_profit_price * (1 + (float(bot["take_profit"]) / 100))
+                        new_take_profit = current_take_profit_price * (
+                            1 + (float(bot["take_profit"]) / 100)
+                        )
                         # Update deal take_profit
                         bot["deal"]["take_profit_price"] = new_take_profit
                         bot["deal"]["trailling_profit"] = new_take_profit
                         # Update trailling_stop_loss
-                        bot["deal"]["trailling_stop_loss_price"] = float(new_take_profit) - (float(new_take_profit) * (float(bot["trailling_deviation"]) / 100))
+                        bot["deal"]["trailling_stop_loss_price"] = float(
+                            new_take_profit
+                        ) - (
+                            float(new_take_profit) * (float(bot["trailling_deviation"]) / 100)
+                        )
 
                         updated_bot = self.app.db.bots.find_one_and_update(
                             {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
                         )
                         if not updated_bot:
                             self.app.db.bots.find_one_and_update(
-                                {"pair": symbol}, {"$push": {"errors": f"Error updating trailling order {updated_bot}"}}
+                                {"pair": symbol},
+                                {
+                                    "$push": {
+                                        "errors": f"Error updating trailling order {updated_bot}"
+                                    }
+                                },
                             )
                         else:
-                            print(f"{symbol} Trailling updated! {current_take_profit_price}")
+                            print(
+                                f"{symbol} Trailling updated! {current_take_profit_price}"
+                            )
                     # Sell after hitting trailling stop_loss
                     if "trailling_stop_loss_price" in bot["deal"]:
                         price = bot["deal"]["trailling_stop_loss_price"]
@@ -202,7 +214,10 @@ class MarketUpdates(Account):
 
                 # Open safety orders
                 # When bot = None, when bot doesn't exist (unclosed websocket)
-                if "safety_order_prices" in bot["deal"] and len(bot["deal"]["safety_order_prices"]) > 0:
+                if (
+                    "safety_order_prices" in bot["deal"]
+                    and len(bot["deal"]["safety_order_prices"]) > 0
+                ):
                     for key, value in bot["deal"]["safety_order_prices"]:
                         # Index is the ID of the safety order price that matches safety_orders list
                         if float(value) >= float(close_price):
