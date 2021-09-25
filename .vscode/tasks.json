@@ -28,6 +28,19 @@
       "options": {
         "cwd": "web"
       }
+    },
+    {
+      "label": "stopApp",
+      "type": "shell",
+      "command": "echo ${input:terminateAll}",
+    },
+  ],
+  "inputs": [
+    {
+      "id": "terminateAll",
+      "type": "command",
+      "command": "workbench.action.tasks.terminate",
+      "args": "terminateAll"
     }
   ]
 }

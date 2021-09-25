@@ -29,6 +29,7 @@
       "url": "http://localhost:3000",
       "webRoot": "${workspaceFolder}/web/src",
       "preLaunchTask": "startApp",
+      "postDebugTask": "stopApp",
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/*"
       }
