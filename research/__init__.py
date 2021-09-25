@@ -10,7 +10,7 @@ from utils import supress_notation
 from pymongo import MongoClient
 from apis import BinanceApi
 from dotenv import load_dotenv
-from time import sleep
+from time import sleep, time
 
 load_dotenv()
 
@@ -141,7 +141,7 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1):]
+    stream_2 = params[(max_request + 1) :]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
@@ -219,6 +219,13 @@ def process_kline_stream(result):
 
                 if msg:
                     _send_msg(msg)
+            
+            last_processed_kline[symbol] = time()
+            # If more than half an hour (interval = 30m) has passed
+            # Then we should resume sending signals for given symbol
+            if (float(time()) - float(last_processed_kline[symbol])) > 400:
+                del last_processed_kline[symbol]
+
 
 
 if __name__ == "__main__":

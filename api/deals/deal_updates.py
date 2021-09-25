@@ -387,7 +387,7 @@ class DealUpdates(Account):
         }
         res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
         if isinstance(handle_error(res), Response):
-            if handle_error(res)["code"] == -2010:
+            if handle_error(res).json["error"] == 1:
                 self.app.db.bots.find_one_and_update(
                     {"pair": bot["pair"]},
                     {
@@ -399,8 +399,9 @@ class DealUpdates(Account):
                 )
                 return "completed"
             else:
+                msg = handle_error(res).json["message"]
                 self.app.db.bots.find_one_and_update(
-                    {"pair": bot["pair"]}, {"$push": {"errors": f"{handle_error(res)}"}, "$set": {"status": "error"}}
+                    {"pair": bot["pair"]}, {"$push": {"errors": f"{msg}"}, "$set": {"status": "error"}}
                 )
         else:
             # Append now stop_limit deal

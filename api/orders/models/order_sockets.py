@@ -34,24 +34,24 @@ class OrderUpdates(BinanceApi):
             self.listen_key = self.get_listenkey()["listenKey"]
 
         ws = WebSocketApp(
-            self.streams_url,
+            f'{self.streams_url}{self.listen_key}',
             on_open=self.on_open,
             on_error=self.on_error,
             on_close=self.close_stream,
             on_message=self.on_message,
         )
-        ws.run_forever()
+        ws.run_forever(ping_interval=70, ping_timeout=10)
 
-    def close_stream(self, ws):
-        ws.close()
-        print("Active socket closed")
+    def close_stream(self, ws, close_status_code, close_msg):
+        print("Active socket closed", close_status_code, close_msg)
 
     def on_open(self, ws):
         print("Orders websockets opened")
 
     def on_error(self, ws, error):
         print(f"Websocket error: {error}")
-        ws.close()
+        if error.args[0] == "Connection to remote host was lost.":
+            self.run_stream()
 
     def on_message(self, wsapp, message):
         response = json.loads(message)

@@ -23,58 +23,9 @@ class MarketUpdates(Account):
     base = os.getenv("WS_BASE")
 
     def __init__(self, interval="5m"):
-        self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
         self.interval = interval
-        self.last_processed_kline = {}
-        # This blacklist is necessary to keep prod and local DB synched
-        self.black_list = [
-            "TRXBTC",
-            "WPRBTC",
-            "NEOBTC",
-            "BTCUSDT",
-            "ETHBTC",
-            "BNBBTC",
-            "ETHBTC",
-            "LTCBTC",
-            "ETHUSDT",
-            "ETCBTC",
-            "BNBETH",
-            "EOSBTC",
-            "DASHETH",
-            "FUNBTC",
-            "EOSBTC",
-            "SNGLSBTC",
-            "YOYOBTC",
-            "LINKETH",
-            "XVGBTC",
-            "SNTBTC",
-            "DASHBTC",
-            "VIBBTC",
-            "XMRBTC",
-            "WAVESBNB",
-            "QSPBTC",
-            "WPRBTC",
-            "MKRBTC",
-            "MKRUSDT",
-            "MKRBUSD",
-            "MKRBNB",
-            "MTHBTC",
-            "GASBTC",  # test
-            "OMGBTC",
-            "LINKBTC",
-            "QTUMBTC",
-            "BCHBTC",
-            "BCHUSDT",
-            "BCHBUSD",
-            "BCHBNB",
-            "BCHTUSD",
-            "BCHUSDC",
-        ]
-        self.max_request = (
-            960  # Avoid HTTP 411 error by splitting into multiple websockets
-        )
 
     def _get_raw_klines(self, pair, limit="200"):
         params = {"symbol": pair, "interval": self.interval, "limit": limit}
@@ -101,10 +52,13 @@ class MarketUpdates(Account):
         Get list of cryptos currently trading bots
 
         """
+        # Close websocekts before starting
+        if self.markets_streams:
+            self.markets_streams.close()
+
         markets = list(self.app.db.bots.distinct("pair", {"status": "active"}))
-        self.list_markets = set(markets) - set(self.black_list)
         params = []
-        for market in list(self.list_markets):
+        for market in markets:
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         string_params = "/".join(params)
@@ -134,16 +88,15 @@ class MarketUpdates(Account):
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
-        response = json_response["data"]
 
-        if "result" in json_response and json_response["result"]:
+        if "result" in json_response:
             print(f'Subscriptions: {json_response["result"]}')
 
-        elif "e" in response and response["e"] == "kline":
-            self.process_deals(response, ws)
-
-        else:
-            print(f"Error: {response}")
+        if "data" in json_response:
+            if "e" in json_response["data"] and json_response["data"]["e"] == "kline":
+                self.process_deals(json_response["data"], ws)
+            else:
+                print(f'Error: {json_response["data"]}')
 
     def process_deals(self, result, ws):
         """
@@ -209,7 +162,6 @@ class MarketUpdates(Account):
                             deal = DealUpdates(bot)
                             completion = deal.trailling_stop_loss(price)
                             if completion == "completed":
-                                ws.close()
                                 self.start_stream()
 
                 # Open safety orders
@@ -226,4 +178,3 @@ class MarketUpdates(Account):
                             # No need to pass price to update deal
                             # The price already matched market price
                             deal.so_update_deal(key)
-            return

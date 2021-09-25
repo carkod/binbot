@@ -55,7 +55,7 @@ class BinanceApi:
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
-    recvWindow = os.getenv("RECV_WINDOW")
+    recvWindow = 5000
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
     account_url = f"{BASE}/api/v3/account"
@@ -72,7 +72,7 @@ class BinanceApi:
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
 
     user_data_stream = f'{BASE}/api/v3/userDataStream'
-    streams_url = f'{WS_BASE}{user_data_stream}'
+    streams_url = f'{WS_BASE}'
 
     withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
     withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"

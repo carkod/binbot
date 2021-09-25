@@ -801,7 +801,9 @@ class BotForm extends React.Component {
         {this.props.bot && this.props.bot.errors && this.props.bot.errors.length > 0 && (
         <Row>
           <Col md="12">
-            <ErrorLog errors={this.props.bot.errors} />
+            {this.props.bot && this.props.bot.errors && this.props.bot.errors.length > 0 &&
+              <ErrorLog errors={this.props.bot.errors} />
+            }
           </Col>
         </Row>
         )}
