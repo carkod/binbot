@@ -69,10 +69,8 @@ class User:
                     200,
                 )
 
-                return resp
             else:
-                resp = jsonResp({"message": "Password verification failed"}, 200)
-                return resp
+                resp = jsonResp({"message": "Incorrect password", "error": 1}, 200)
         else:
             resp = jsonResp({"message": "Credentials are incorrect", "error": 1}, 200)
         return resp

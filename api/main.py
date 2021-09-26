@@ -13,7 +13,6 @@ from api.research.market_updates import MarketUpdates
 from api.account.routes import account_blueprint
 from api.bots.routes import bot_blueprint
 from api.charts.routes import charts_blueprint
-from api.deals.routes import deal_blueprint
 from api.orders.models.orders import Orders
 from api.orders.routes import order_blueprint
 from api.user.routes import user_blueprint
@@ -39,7 +38,6 @@ if os.environ["ENV"] != "development":
 app.register_blueprint(user_blueprint, url_prefix="/user")
 app.register_blueprint(account_blueprint, url_prefix="/account")
 app.register_blueprint(bot_blueprint, url_prefix="/bot")
-app.register_blueprint(deal_blueprint, url_prefix="/deal")
 app.register_blueprint(order_blueprint, url_prefix="/order")
 app.register_blueprint(charts_blueprint, url_prefix="/charts")
 app.register_blueprint(research_blueprint, url_prefix="/research")

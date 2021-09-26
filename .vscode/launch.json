@@ -23,16 +23,17 @@
       "jinja": true
     },
     {
-      "type": "chrome",
+      "type": "pwa-chrome",
       "request": "launch",
-      "name": "Launch Chrome against localhost",
+      "name": "React: Web",
       "url": "http://localhost:3000",
       "webRoot": "${workspaceFolder}/web/src",
+      "preLaunchTask": "startApp",
+      "postDebugTask": "stopApp",
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/*"
       }
     },
-
     {
       "name": "Python: Gunicorn",
       "type": "python",

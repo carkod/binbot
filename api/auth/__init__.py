@@ -1,10 +1,11 @@
-from flask import current_app as app
-from flask import request
-from functools import wraps
-from api.tools.jsonresp import jsonResp
-from jose import jwt
 import datetime
 import os
+from functools import wraps
+
+from api.tools.jsonresp import jsonResp
+from flask import request
+from jose import jwt
+
 
 # Auth Decorator
 def token_required(f):
@@ -52,22 +53,3 @@ def encodeRefreshToken(user_id, email):
     )
 
     return refreshToken
-
-
-# def refreshAccessToken(refresh_token):
-
-#     # If the refresh_token is still valid, create a new access_token and return it
-#     try:
-#         user = app.db.users.find_one(
-#             {"refresh_token": refresh_token}, {"_id": 0, "id": 1, "email": 1, "plan": 1}
-#         )
-
-#         if user:
-#             decoded = jwt.decode(refresh_token, os.environ["SECRET_KEY"])
-#             new_access_token = encodeAccessToken(decoded["user_id"], decoded["email"])
-#             result = jwt.decode(new_access_token, os.environ["SECRET_KEY"])
-#             result["new_access_token"] = new_access_token
-#             resp = jsonResp(result, 200)
-#         else:
-#             result = {"message": "Auth refresh token has expired"}
-#             resp = jsonResp(result, 403)

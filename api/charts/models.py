@@ -1,15 +1,11 @@
-from api.apis import BinanceApi
-import os
 from datetime import datetime, timedelta
 
 import pandas as pd
 import requests
+from api.apis import BinanceApi
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp
 from flask import request
-import threading
-from api.threads import market_update_thread
-
 
 class Candlestick(BinanceApi):
     """
@@ -23,8 +19,7 @@ class Candlestick(BinanceApi):
         res = requests.get(url=self.candlestick_url, params=params)
         self.data = res.json()
         df = pd.DataFrame(self.data)
-        dates = df[0].tolist()
-        self.dates = dates
+        self.dates = df[0].tolist()
         self.interval = interval
 
     def _close_prices(self):
@@ -95,19 +90,34 @@ class Candlestick(BinanceApi):
 
         ma_100 = {
             "x": dates,
-            "y": kline_df_100[0].rolling(window=100).mean().dropna().reset_index(drop=True).values.tolist(),
+            "y": kline_df_100[0]
+            .rolling(window=100)
+            .mean()
+            .dropna()
+            .reset_index(drop=True)
+            .values.tolist(),
             "line": {"color": "#9368e9"},
             "type": "scatter",
         }
         ma_25 = {
             "x": dates,
-            "y": kline_df_25[0].rolling(window=25).mean().dropna().reset_index(drop=True).values.tolist()[76:],
+            "y": kline_df_25[0]
+            .rolling(window=25)
+            .mean()
+            .dropna()
+            .reset_index(drop=True)
+            .values.tolist()[76:],
             "line": {"color": "#fb404b"},
             "type": "scatter",
         }
         ma_7 = {
             "x": dates,
-            "y": kline_df_7[0].rolling(window=7).mean().dropna().reset_index(drop=True).values.tolist()[94:],
+            "y": kline_df_7[0]
+            .rolling(window=7)
+            .mean()
+            .dropna()
+            .reset_index(drop=True)
+            .values.tolist()[94:],
             "line": {"color": "#ffa534"},
             "type": "scatter",
         }
@@ -117,7 +127,9 @@ class Candlestick(BinanceApi):
     def get(self):
         trace = self.candlestick_trace()
         ma_100, ma_25, ma_7 = self.bollinguer_bands()
-        resp = jsonResp({"trace": [trace, ma_100, ma_25, ma_7], "interval": self.interval}, 200)
+        resp = jsonResp(
+            {"trace": [trace, ma_100, ma_25, ma_7], "interval": self.interval}, 200
+        )
         return resp
 
     def get_diff(self):

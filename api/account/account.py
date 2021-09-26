@@ -1,20 +1,18 @@
 import hashlib
 import hmac
-import os
 import time as tm
 from urllib.parse import urlparse
 
 import requests
-from flask import request
+from api.apis import BinanceApi
+from api.app import create_app
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
-from api.app import create_app
-from api.apis import BinanceApi
+from flask import request
+
 
 class Account(BinanceApi):
-
     def __init__(self):
-        super(self.__class__, self).__init__()
         pass
 
     def _exchange_info(self):

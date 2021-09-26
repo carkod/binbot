@@ -1,24 +1,18 @@
 import json
 import os
-import threading
+
 import requests
+from api.account.account import Account
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
-from api.account.account import Account
 from websocket import WebSocketApp
+
 
 class MarketUpdates(Account):
     """
     Further explanation in docs/market_updates.md
     """
-
-    key = os.getenv("BINANCE_KEY")
-    secret = os.getenv("BINANCE_SECRET")
-    user_datastream_listenkey = os.getenv("USER_DATA_STREAM")
-    all_orders_url = os.getenv("ALL_ORDERS")
-    order_url = os.getenv("ORDER")
-    candlestick_url = os.getenv("CANDLESTICK")
 
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
     bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
@@ -29,56 +23,9 @@ class MarketUpdates(Account):
     base = os.getenv("WS_BASE")
 
     def __init__(self, interval="5m"):
-        self.list_markets = []
         self.markets_streams = None
         self.app = create_app()
         self.interval = interval
-        self.last_processed_kline = {}
-        # This blacklist is necessary to keep prod and local DB synched
-        self.black_list = [
-            "TRXBTC",
-            "WPRBTC",
-            "NEOBTC",
-            "BTCUSDT",
-            "ETHBTC",
-            "BNBBTC",
-            "ETHBTC",
-            "LTCBTC",
-            "ETHUSDT",
-            "ETCBTC",
-            "BNBETH",
-            "EOSBTC",
-            "DASHETH",
-            "FUNBTC",
-            "EOSBTC",
-            "SNGLSBTC",
-            "YOYOBTC",
-            "LINKETH",
-            "XVGBTC",
-            "SNTBTC",
-            "DASHBTC",
-            "VIBBTC",
-            "XMRBTC",
-            "WAVESBNB",
-            "QSPBTC",
-            "WPRBTC",
-            "MKRBTC",
-            "MKRUSDT",
-            "MKRBUSD",
-            "MKRBNB",
-            "MTHBTC",
-            "GASBTC",  # test
-            "OMGBTC",
-            "LINKBTC",
-            "QTUMBTC",
-            "BCHBTC",
-            "BCHUSDT",
-            "BCHBUSD",
-            "BCHBNB",
-            "BCHTUSD",
-            "BCHUSDC"
-        ]
-        self.max_request = 960  # Avoid HTTP 411 error by splitting into multiple websockets
 
     def _get_raw_klines(self, pair, limit="200"):
         params = {"symbol": pair, "interval": self.interval, "limit": limit}
@@ -105,14 +52,17 @@ class MarketUpdates(Account):
         Get list of cryptos currently trading bots
 
         """
+        # Close websocekts before starting
+        if self.markets_streams:
+            self.markets_streams.close()
+
         markets = list(self.app.db.bots.distinct("pair", {"status": "active"}))
-        self.list_markets = set(markets) - set(self.black_list)
         params = []
-        for market in list(self.list_markets):
+        for market in markets:
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         string_params = "/".join(params)
-        url = f"{self.base}/stream?streams={string_params}"
+        url = f"{self.WS_BASE}{string_params}"
         ws = WebSocketApp(
             url,
             on_open=self.on_open,
@@ -122,8 +72,8 @@ class MarketUpdates(Account):
         )
         # This is required to allow the websocket to be closed anywhere in the app
         self.markets_streams = ws
-        # Run the websocket
-        ws.run_forever()
+        # Run the websocket with ping intervals to avoid disconnection
+        ws.run_forever(ping_interval=70, ping_timeout=10)
 
     def close_stream(self, ws, close_status_code, close_msg):
         print("Active socket closed", close_status_code, close_msg)
@@ -138,24 +88,22 @@ class MarketUpdates(Account):
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
-        response = json_response["data"]
 
-        if "result" in json_response and json_response["result"]:
+        if "result" in json_response:
             print(f'Subscriptions: {json_response["result"]}')
 
-        elif "e" in response and response["e"] == "kline":
-            self.process_deals(response, ws)
-
-        else:
-            print(f"Error: {response}")
+        if "data" in json_response:
+            if "e" in json_response["data"] and json_response["data"]["e"] == "kline":
+                self.process_deals(json_response["data"], ws)
+            else:
+                print(f'Error: {json_response["data"]}')
 
     def process_deals(self, result, ws):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        # result["k"]["x"]
-        if "k" in result and result["k"]["x"]:
+        if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
 
@@ -174,33 +122,54 @@ class MarketUpdates(Account):
                 if bot["trailling"] == "true":
 
                     # Check if trailling profit reached the first time
-                    current_take_profit_price = float(bot["deal"]["buy_price"]) * (1 + (float(bot["take_profit"]) / 100))
+                    current_take_profit_price = float(bot["deal"]["buy_price"]) * (
+                        1 + (float(bot["take_profit"]) / 100)
+                    )
                     if float(close_price) >= current_take_profit_price:
+                        new_take_profit = current_take_profit_price * (
+                            1 + (float(bot["take_profit"]) / 100)
+                        )
                         # Update deal take_profit
-                        bot["deal"]["take_profit_price"] = bot["deal"]["trailling_profit"]
+                        bot["deal"]["take_profit_price"] = new_take_profit
+                        bot["deal"]["trailling_profit"] = new_take_profit
                         # Update trailling_stop_loss
-                        bot["deal"]["trailling_stop_loss_price"] = float(current_take_profit_price) - (float(current_take_profit_price) * (float(bot["trailling_deviation"]) / 100))
+                        bot["deal"]["trailling_stop_loss_price"] = float(
+                            new_take_profit
+                        ) - (
+                            float(new_take_profit) * (float(bot["trailling_deviation"]) / 100)
+                        )
 
                         updated_bot = self.app.db.bots.find_one_and_update(
                             {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
                         )
                         if not updated_bot:
                             self.app.db.bots.find_one_and_update(
-                                {"pair": symbol}, {"$push": {"errors": f"Error updating trailling order {updated_bot}"}}
+                                {"pair": symbol},
+                                {
+                                    "$push": {
+                                        "errors": f"Error updating trailling order {updated_bot}"
+                                    }
+                                },
                             )
-
+                        else:
+                            print(
+                                f"{symbol} Trailling updated! {current_take_profit_price}"
+                            )
+                    # Sell after hitting trailling stop_loss
                     if "trailling_stop_loss_price" in bot["deal"]:
                         price = bot["deal"]["trailling_stop_loss_price"]
                         if float(close_price) <= float(price):
                             deal = DealUpdates(bot)
-                            completion = deal.trailling_take_profit(price)
+                            completion = deal.trailling_stop_loss(price)
                             if completion == "completed":
-                                ws.close()
                                 self.start_stream()
 
                 # Open safety orders
                 # When bot = None, when bot doesn't exist (unclosed websocket)
-                if "safety_order_prices" in bot["deal"] and len(bot["deal"]["safety_order_prices"]) > 0:
+                if (
+                    "safety_order_prices" in bot["deal"]
+                    and len(bot["deal"]["safety_order_prices"]) > 0
+                ):
                     for key, value in bot["deal"]["safety_order_prices"]:
                         # Index is the ID of the safety order price that matches safety_orders list
                         if float(value) >= float(close_price):
@@ -209,4 +178,3 @@ class MarketUpdates(Account):
                             # No need to pass price to update deal
                             # The price already matched market price
                             deal.so_update_deal(key)
-            return

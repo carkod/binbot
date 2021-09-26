@@ -1,12 +1,9 @@
 import {
-  CREATE_BOT,
+  ACTIVATE_BOT, ACTIVATE_BOT_ERROR, ACTIVATE_BOT_SUCCESS, CLOSE_BOT, CREATE_BOT,
   CREATE_BOT_ERROR,
-  CREATE_BOT_SUCCESS,
-  DELETE_BOT,
+  CREATE_BOT_SUCCESS, DEACTIVATE_BOT, DEACTIVATE_BOT_ERROR, DEACTIVATE_BOT_SUCCESS, DELETE_BOT,
   DELETE_BOT_ERROR,
-  DELETE_BOT_SUCCESS,
-  CLOSE_BOT,
-  EDIT_BOT,
+  DELETE_BOT_SUCCESS, EDIT_BOT,
   EDIT_BOT_ERROR,
   EDIT_BOT_SUCCESS,
   GET_BOT,
@@ -15,21 +12,9 @@ import {
   GET_BOTS_SUCCESS,
   GET_BOT_ERROR,
   GET_BOT_SUCCESS,
-  GET_SYMBOLS,
-  GET_SYMBOLS_SUCCESS,
-  GET_SYMBOLS_ERROR,
-  GET_SYMBOL_INFO,
-  GET_SYMBOL_INFO_SUCCESS,
-  GET_SYMBOL_INFO_ERROR,
-  LOAD_CANDLESTICK,
+  GET_SYMBOLS, GET_SYMBOLS_ERROR, GET_SYMBOLS_SUCCESS, GET_SYMBOL_INFO, GET_SYMBOL_INFO_ERROR, GET_SYMBOL_INFO_SUCCESS, LOAD_CANDLESTICK,
   LOAD_CANDLESTICK_ERROR,
-  LOAD_CANDLESTICK_SUCCESS,
-  ACTIVATE_BOT,
-  ACTIVATE_BOT_SUCCESS,
-  ACTIVATE_BOT_ERROR,
-  DEACTIVATE_BOT,
-  DEACTIVATE_BOT_SUCCESS,
-  DEACTIVATE_BOT_ERROR,
+  LOAD_CANDLESTICK_SUCCESS
 } from "./actions";
 
 // The initial state of the App
@@ -142,8 +127,8 @@ function botReducer(state = initialState, action) {
     }
     case ACTIVATE_BOT_SUCCESS: {
       const newState = {
-        ...state,
         isError: false,
+        data: state.data,
         message: action.message,
         botActive: true,
       };
@@ -154,7 +139,7 @@ function botReducer(state = initialState, action) {
       return {
         error: action.error,
         isError: true,
-        data: action.state,
+        data: state.data,
         botActive: false,
       };
     }

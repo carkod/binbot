@@ -1,7 +1,19 @@
 import requests
 import json
 from api.tools.jsonresp import jsonResp_message, jsonResp
+from flask import Response, current_app
+from bson.objectid import ObjectId
 
+def bot_errors(error: Response, bot):
+    if isinstance(error, Response):
+        bot["errors"].append(error)
+        bot = current_app.db.bots.find_one_and_update(
+            {"_id": ObjectId(bot["_id"])},
+            {
+                "$set": {"status": "error", "errors": bot["errors"]}
+            }
+        )
+    return bot
 
 def handle_error(req):
     try:

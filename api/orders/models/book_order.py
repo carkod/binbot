@@ -1,9 +1,10 @@
-from api.apis import BinanceApi
-import os
-import requests
-from api.tools.handle_error import handle_error
-from api.tools.enum_definitions import EnumDefinitions
 import pandas as pd
+import requests
+from api.apis import BinanceApi
+from api.tools.enum_definitions import EnumDefinitions
+from api.tools.handle_error import handle_error
+
+
 class Book_Order(BinanceApi):
     """
     Simpler matching engine, no need for quantity

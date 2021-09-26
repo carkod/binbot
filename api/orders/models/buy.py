@@ -1,14 +1,13 @@
-from api.apis import BinanceApi
 import hashlib
 import hmac
-import os
 import time as tm
-from flask import request
 from urllib.parse import urlparse
 
 import requests
-from api.tools.handle_error import handle_error
+from api.apis import BinanceApi
 from api.tools.enum_definitions import EnumDefinitions
+from api.tools.handle_error import handle_error
+from flask import request
 
 
 class Buy_Order(BinanceApi):

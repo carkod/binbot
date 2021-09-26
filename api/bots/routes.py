@@ -38,4 +38,8 @@ def deactivate(botId):
 
 @bot_blueprint.route("/close/<id>", methods=["DELETE"])
 def close(id):
-    return Bot().close()
+    """
+    Deactivation means closing all deals and selling to GBP
+    Otherwise losses will be incurred
+    """
+    return Bot().deactivate()

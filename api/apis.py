@@ -18,6 +18,9 @@ class BinbotApi:
     bb_close_order_url = f"{bb_base_url}/order/close"
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
+    bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
+    bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
+    bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
 
 
 class CoinBaseApi:
@@ -45,14 +48,14 @@ class CoinBaseApi:
 
 class BinanceApi:
     """
-    Binance Api URLs
+    Binance API URLs
     """
 
     BASE = "https://api.binance.com"
-    WS_BASE="wss://stream.binance.com:9443"
     WAPI = f"{BASE}/api/v3/depth"
-    
-    recvWindow = os.getenv("RECV_WINDOW")
+    WS_BASE = "wss://stream.binance.com:9443/stream?streams="
+
+    recvWindow = 5000
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
     account_url = f"{BASE}/api/v3/account"
@@ -68,9 +71,10 @@ class BinanceApi:
     user_data_stream = f"{BASE}/api/v3/userDataStream"
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
 
+    user_data_stream = f'{BASE}/api/v3/userDataStream'
+    streams_url = f'{WS_BASE}'
+
     withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
     withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"
     deposit_history_url = f"{BASE}/wapi/v3/depositHistory.html"
     deposit_address_url = f"{BASE}/wapi/v3/depositAddress.html"
-    
-

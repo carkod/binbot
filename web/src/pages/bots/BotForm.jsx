@@ -179,14 +179,16 @@ class BotForm extends React.Component {
     ) {
       const { trace } = this.props.candlestick;
       if (trace.length > 0) {
-        const currentPrice = parseFloat(this.props.bot.deal.current_price);
-        const buyPrice = parseFloat(this.props.bot.deal.buy_price);
+          this.setState({ bot_profit: 0 });
         if (
           !checkValue(this.props.bot) &&
+          !checkValue(this.props.deal) &&
           Object.keys(this.props.bot.deal).length > 0 &&
           !checkValue(this.props.bot.base_order_size)
         ) {
-          const profitChange = (currentPrice - buyPrice) / buyPrice;
+          const currentPrice = parseFloat(this.props.bot.deal.current_price);
+          const buyPrice = parseFloat(this.props.bot.deal.buy_price);
+          const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
           this.setState({ bot_profit: profitChange.toFixed(4) });
         } else {
           this.setState({ bot_profit: 0 });
@@ -541,7 +543,7 @@ class BotForm extends React.Component {
                   {!checkValue(this.state.bot_profit) &&
                   (this.state.active === "true" || this.state.status === "active") ? (
                     <Badge
-                      color={this.state.bot_profit > 0 ? "success" : "danger"}
+                      color={this.state.bot_profit ? "success" : "danger"}
                     >
                       {this.state.bot_profit + "%"}
                     </Badge>
@@ -570,7 +572,7 @@ class BotForm extends React.Component {
               </CardHeader>
               <CardBody>
                 {this.props.candlestick && !checkValue(this.state.pair) ? (
-                  <Candlestick data={this.props.candlestick} bot={this.state} />
+                  <Candlestick data={this.props.candlestick} bot={this.state} deal={this.props.bot && this.props.bot.deal ? this.props.bot.deal : null}/>
                 ) : (
                   ""
                 )}
@@ -801,7 +803,9 @@ class BotForm extends React.Component {
         {this.props.bot && this.props.bot.errors && this.props.bot.errors.length > 0 && (
         <Row>
           <Col md="12">
-            <ErrorLog errors={this.props.bot.errors} />
+            {this.props.bot && this.props.bot.errors && this.props.bot.errors.length > 0 &&
+              <ErrorLog errors={this.props.bot.errors} />
+            }
           </Col>
         </Row>
         )}

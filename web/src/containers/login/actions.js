@@ -11,10 +11,10 @@ export const DEFAULT_LOCALE = "en";
  *
  * @return {object} An action object with a type of LOGIN
  */
-export function login(body) {
+export function login(data) {
   return {
     type: LOGIN,
-    data: body,
+    data: data,
   };
 }
 
@@ -34,12 +34,14 @@ export function loginSucceeded(res) {
       isError: true,
       message: res.message,
     };  
+  } else {
+    setToken(res.access_token);
+    return {
+      type: LOGIN_SUCCESS,
+      isError: false,
+      data: res
+    };
   }
-  setToken(res.access_token);
-  return {
-    type: LOGIN_SUCCESS,
-    isError: false,
-  };
 }
 
 /**

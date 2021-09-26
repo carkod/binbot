@@ -1,22 +1,17 @@
-import { combineReducers } from "redux";
-import registrationReducer from "./containers/registration/reducer";
-import loginReducer from "./containers/login/reducer";
-import {
-  balanceReducer,
-  balanceRawReducer
-} from "./state/balances/reducer";
-import {
-  botReducer,
-  symbolInfoReducer,
-  symbolReducer,
-  getSingleBotReducer,
-  editBotReducer,
-  candlestickReducer,
-} from "./pages/bots/reducer";
-import { ordersReducer, openOrdersReducer } from "./pages/orders/reducer";
 import { reducer as toastrReducer } from "react-redux-toastr";
+import { combineReducers } from "redux";
+import loginReducer from "./containers/login/reducer";
+import registrationReducer from "./containers/registration/reducer";
 import { loadingReducer } from "./containers/spinner/reducer";
-import { researchReducer, historicalResearchReducer } from "./pages/research/reducer";
+import {
+  botReducer, candlestickReducer, editBotReducer, getSingleBotReducer, symbolInfoReducer,
+  symbolReducer
+} from "./pages/bots/reducer";
+import { openOrdersReducer, ordersReducer } from "./pages/orders/reducer";
+import { historicalResearchReducer, researchReducer } from "./pages/research/reducer";
+import {
+  balanceRawReducer, balanceReducer
+} from "./state/balances/reducer";
 
 const rootReducer = combineReducers({
   registrationReducer,

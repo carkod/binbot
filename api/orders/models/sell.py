@@ -1,22 +1,19 @@
-from api.apis import BinanceApi
 import hashlib
 import hmac
 import json
-import os
 import time as tm
 from urllib.parse import urlparse
 
 import requests
-from flask import request
-from api.tools.handle_error import handle_error
+from api.apis import BinanceApi
 from api.tools.enum_definitions import EnumDefinitions
+from api.tools.handle_error import handle_error
+from flask import request
 
 
 class Sell_Order(BinanceApi):
-    """Post order
-
-    Returns:
-        [type] -- [description]
+    """
+    Simple Binance Sell Order
     """
 
     def __init__(self):

@@ -1,17 +1,15 @@
 import hashlib
 import hmac
-import os
 import time as tm
 from urllib.parse import urlparse
 
 import requests
-from flask import request, current_app
-from api.app import create_app
+from api.account.account import Account
 from api.tools.enum_definitions import EnumDefinitions
 from api.tools.handle_error import handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
-from api.account.account import Account
 from api.tools.round_numbers import round_numbers
+from flask import current_app, request
 
 poll_percentage = 0
 

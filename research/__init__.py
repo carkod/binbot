@@ -1,6 +1,5 @@
 import json
 import os
-import time
 import threading
 import pandas
 import requests
@@ -11,7 +10,7 @@ from utils import supress_notation
 from pymongo import MongoClient
 from apis import BinanceApi
 from dotenv import load_dotenv
-from time import sleep
+from time import sleep, time
 
 load_dotenv()
 
@@ -220,12 +219,13 @@ def process_kline_stream(result):
 
                 if msg:
                     _send_msg(msg)
-
-            # last_processed_kline[symbol] = time.time()
+            
+            last_processed_kline[symbol] = time()
             # If more than half an hour (interval = 30m) has passed
             # Then we should resume sending signals for given symbol
-            # if (float(time.time()) - float(last_processed_kline[symbol])) > 400:
-            #     del last_processed_kline[symbol]
+            if (float(time()) - float(last_processed_kline[symbol])) > 400:
+                del last_processed_kline[symbol]
+
 
 
 if __name__ == "__main__":
