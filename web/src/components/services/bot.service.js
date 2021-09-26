@@ -149,7 +149,7 @@ export const botCandlestick = (data, bot, deal = null) => {
         y: traillingStopPrice,
         xref: "x",
         yref: "y",
-        text: `Trailling stop loss ${checkValue(deal.trailling_stop_loss_price) ? "(inactive)" : ""}`,
+        text: `Trailling stop loss ${!checkValue(deal) && checkValue(deal.trailling_stop_loss_price) ? "(inactive)" : ""}`,
         font: { color: "green" },
         showarrow: false,
         xanchor: "left",

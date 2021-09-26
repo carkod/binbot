@@ -206,7 +206,7 @@ class Deal(Account):
                 200,
             )
             return resp
-        return
+        return True
 
     def base_order(self):
         """
@@ -572,6 +572,14 @@ class Deal(Account):
             if isinstance(handle_error(res), Response):
                 return handle_error(res)
 
-        # Hedge with GBP
-        self.buy_gbp_balance()
+        # Hedge with GBP and complete bot
+        buy_gbp_result = self.buy_gbp_balance()
+        if not isinstance(buy_gbp_result, Response):
+            botId = app.db.bots.find_one_and_update_one(
+                {"pair": pair}, {"$set": {"status": "completed"}}
+            )
+            if not botId:
+                app.db.bots.find_one_and_update_one(
+                    {"pair": pair}, {"$set": {"status": "errors"}, "push": {"errors": botId}}
+                )
         return

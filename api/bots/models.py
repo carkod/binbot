@@ -204,7 +204,7 @@ class Bot(Account):
 
             updated_bot = self.app.db.bots.update_one(
                 {"_id": ObjectId(findId)},
-                {"$set": {"deal": None, "status": "inactive"}},
+                {"$set": {"deal": self.default_deal, "status": "inactive"}},
             )
             if updated_bot:
                 # We don't want to automatically delete after closing

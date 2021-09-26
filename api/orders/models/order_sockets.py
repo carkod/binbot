@@ -82,7 +82,7 @@ class OrderUpdates(BinanceApi):
                 },
                 {
                     "$set": {"status": "inactive", "deal.current_price": result["p"]},
-                    "$inc": {"deal.commission": result["n"]},
+                    "$inc": {"deal.commission": float(result["n"])},
                 },
             )
             if bot:

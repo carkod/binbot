@@ -10,13 +10,15 @@ export default function App() {
     <>
       <Route exact path="/login" component={Login} />
       <Route exact path="/" render={() => <Redirect to="/admin/dashboard" />} />
+      <Route exact path="/admin" render={() => <Redirect to="/admin/dashboard" />} />
       <Route
         render={(props) => {
           const token = getToken();
           if (!checkValue(token)) {
             return <Admin path="/admin/dashboard" {...props} />
+          } else {
+            return <Redirect to="/login" {...props} />
           }
-          return <Redirect to="/login" {...props} />
           }
         }
       />

@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-// reactstrap components
 import {
   Button,
   Card,
@@ -7,12 +6,11 @@ import {
   CardHeader,
   CardTitle,
   Col,
-  Form,
-  FormGroup,
+  Form, FormFeedback, FormGroup,
   Input,
-  Row,
-  FormFeedback,
+  Row
 } from "reactstrap";
+import { checkValue } from "../validations";
 
 class LoginForm extends Component {
   state = {
@@ -28,13 +26,13 @@ class LoginForm extends Component {
 
   requiredinValidation = () => {
     const { email, password } = this.state;
-    if (email === "" || email === null || email === undefined) {
+    if (!checkValue(email)) {
       this.setState({ emailIsRequiredError: true, formIsValid: false });
     } else {
       this.setState({ emailIsRequiredError: false });
     }
 
-    if (password === "" || password === null || password === undefined) {
+    if (!checkValue(password)) {
       this.setState({ passwordIsRequiredError: true, formIsValid: false });
     } else {
       this.setState({ passwordIsRequiredError: false });
@@ -52,7 +50,11 @@ class LoginForm extends Component {
     e.preventDefault();
     this.requiredinValidation();
     if (this.state.formIsValid) {
-      this.props.onSubmit(this.state);
+      const { email, password } = this.state;
+      this.props.onSubmit({
+        email: email,
+        password: password
+      });
     }
   };
 
