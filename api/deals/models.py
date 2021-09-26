@@ -153,16 +153,22 @@ class Deal(Account):
 
         return
 
-    def buy_gbp_balance(self):
+    def buy_gbp_balance(self, sell_deal_qty=False):
         """
         To buy GBP e.g.:
         - BNBGBP market sell BNB with GBP
+
+        Set sell_deal_qty=True if want to sell only the deal quantity.
+        By default sells all market balance (i.e. BTC, BNB etc...)
         """
         pair = self.active_bot["pair"]
         market = self.find_quoteAsset(pair)
         new_pair = f"{market}GBP"
 
-        bo_size = self.active_bot["base_order_size"]
+        if sell_deal_qty:
+            bo_size = self.active_bot["base_order_size"]
+        else:
+            bo_size = self.get_one_balance(market)
         book_order = Book_Order(new_pair)
         price = float(book_order.matching_engine(False, bo_size))
         # Precision for balance conversion, not for the deal
@@ -570,16 +576,21 @@ class Deal(Account):
                 res = requests.post(url=self.bb_sell_market_order_url, json=order)
 
             if isinstance(handle_error(res), Response):
-                return handle_error(res)
+                if handle_error(res).json["message"]["code"] == -1013:
+                    # Continue to sell to GBP when quantity is invalid
+                    # It may be an already closed or errored bot
+                    pass
+                else:
+                    return handle_error(res)
 
         # Hedge with GBP and complete bot
         buy_gbp_result = self.buy_gbp_balance()
         if not isinstance(buy_gbp_result, Response):
-            botId = app.db.bots.find_one_and_update_one(
+            botId = app.db.bots.find_one_and_update(
                 {"pair": pair}, {"$set": {"status": "completed"}}
             )
             if not botId:
-                app.db.bots.find_one_and_update_one(
+                app.db.bots.find_one_and_update(
                     {"pair": pair}, {"$set": {"status": "errors"}, "push": {"errors": botId}}
                 )
         return

@@ -84,7 +84,7 @@ class Buy_Order(BinanceApi):
         Returns validation failed order (MIN_NOTIONAL, LOT_SIZE etc..)
         """
         # Limit order
-        type = EnumDefinitions.order_types[0]
+        order_type = EnumDefinitions.order_types[0]
         timestamp = int(round(tm.time() * 1000))
         url = self.order_url
         if limit_price:
@@ -98,7 +98,7 @@ class Buy_Order(BinanceApi):
             ("timestamp", timestamp),
             ("symbol", self.symbol),
             ("side", self.side),
-            ("type", type),
+            ("type", order_type),
             ("timeInForce", self.timeInForce),
             ("price", price),
             ("quantity", qty),

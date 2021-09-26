@@ -211,6 +211,7 @@ def process_kline_stream(result):
                     and curr_volume_spread > avg_volume_spread
                 )
                 and (close_price > ma_100[len(ma_100) - 1])
+                and spread > 0.1
             ):
                 # Send Telegram
                 msg = f"- Candlesick jump <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
@@ -221,11 +222,11 @@ def process_kline_stream(result):
                 if msg:
                     _send_msg(msg)
 
-            last_processed_kline[symbol] = time()
-            # If more than half an hour (interval = 30m) has passed
-            # Then we should resume sending signals for given symbol
-            if (float(time()) - float(last_processed_kline[symbol])) > 200:
-                del last_processed_kline[symbol]
+            # last_processed_kline[symbol] = time()
+            # # If more than half an hour (interval = 30m) has passed
+            # # Then we should resume sending signals for given symbol
+            # if (float(time()) - float(last_processed_kline[symbol])) > 200:
+            #     del last_processed_kline[symbol]
 
 
 if __name__ == "__main__":

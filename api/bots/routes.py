@@ -32,10 +32,6 @@ def delete(id):
 def activate(botId):
     return Bot().activate()
 
-@bot_blueprint.route("/deactivate/<botId>", methods=["GET"])
-def deactivate(botId):
-    return Bot().deactivate()
-
 @bot_blueprint.route("/close/<id>", methods=["DELETE"])
 def close(id):
     """
