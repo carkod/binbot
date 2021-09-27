@@ -11,7 +11,7 @@ from api.tools.handle_error import handle_error
 from flask import request
 
 
-class Sell_Order(BinanceApi):
+class SellOrder(BinanceApi):
     """
     Simple Binance Sell Order
     """
