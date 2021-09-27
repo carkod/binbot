@@ -585,7 +585,7 @@ class BotForm extends React.Component {
           this.props.bot.orders.length > 0 &&
           !checkValue(this.props.match.params.id) ? (
             <Col md="7" sm="12">
-              <BotInfo bot={this.props.bot} />
+              <BotInfo bot={this.props.bot}/>
             </Col>
           ) : (
             ""

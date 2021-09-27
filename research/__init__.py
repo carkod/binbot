@@ -127,7 +127,7 @@ def _run_streams(stream, index):
         on_message=on_message,
     )
     worker_thread = threading.Thread(
-        name=f"market_updates_{index}", target=ws.run_forever
+        name=f"market_updates_{index}", target=ws.run_forever, kwargs={'ping_interval': 60}
     )
     worker_thread.start()
 
@@ -222,11 +222,11 @@ def process_kline_stream(result):
                 if msg:
                     _send_msg(msg)
 
-            # last_processed_kline[symbol] = time()
-            # # If more than half an hour (interval = 30m) has passed
-            # # Then we should resume sending signals for given symbol
-            # if (float(time()) - float(last_processed_kline[symbol])) > 200:
-            #     del last_processed_kline[symbol]
+            last_processed_kline[symbol] = time()
+            # If more than half an hour (interval = 30m) has passed
+            # Then we should resume sending signals for given symbol
+            if (float(time()) - float(last_processed_kline[symbol])) > 120:
+                del last_processed_kline[symbol]
 
 
 if __name__ == "__main__":

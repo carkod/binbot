@@ -73,7 +73,7 @@ class MarketUpdates(Account):
         # This is required to allow the websocket to be closed anywhere in the app
         self.markets_streams = ws
         # Run the websocket with ping intervals to avoid disconnection
-        ws.run_forever(ping_interval=70, ping_timeout=10)
+        ws.run_forever(ping_interval=70)
 
     def close_stream(self, ws, close_status_code, close_msg):
         print("Active socket closed", close_status_code, close_msg)
