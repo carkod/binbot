@@ -541,14 +541,14 @@ class BotForm extends React.Component {
                 <CardTitle tag="h3">
                   {this.state.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
-                  (this.state.active === "true" || this.state.status === "active") ? (
+                  (this.state.status === "active") ? (
                     <Badge
                       color={this.state.bot_profit ? "success" : "danger"}
                     >
                       {this.state.bot_profit + "%"}
                     </Badge>
                   ) : (
-                    <Badge color="secondary">Inactive</Badge>
+                    <Badge color="secondary">{this.state.status}</Badge>
                   )}
                 </CardTitle>
                 <div className="">

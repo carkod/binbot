@@ -137,9 +137,14 @@ class Deal(Account):
             res = requests.post(url=self.bb_buy_market_order_url, json=order)
 
         if isinstance(handle_error(res), Response):
+            if res.json()["code"] == -2010:
+                msg = "Not enough GBP balance"
+            else:
+                msg = f"Failed to buy {pair} using GBP balance"
+
             resp = jsonResp(
                 {
-                    "message": f"Failed to buy {pair} using GBP balance",
+                    "message": msg,
                     "botId": str(self.active_bot["_id"]),
                 },
                 200,

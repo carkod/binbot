@@ -89,11 +89,10 @@ export const botCandlestick = (data, bot, deal = null) => {
   annotations.push(baseOrderA);
 
   if (
-    !checkValue(bot.short_stop_price) &&
-    parseFloat(bot.short_stop_price > 0)
+    !checkValue(bot.stop_loss) &&
+    parseFloat(bot.stop_loss) > 0
   ) {
     
-
     // Stop loss
     const stopLossPrice = currentPrice - currentPrice * (bot.stop_loss / 100);
     // Annotation
