@@ -7,7 +7,7 @@ from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
-
+from flask import Response
 
 class MarketUpdates(Account):
     """
@@ -114,9 +114,11 @@ class MarketUpdates(Account):
             print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
             if bot and "deal" in bot:
                 # Stop loss
-                if "stop_loss" in bot["deal"]:
+                if "stop_loss" in bot["deal"] and float(bot["deal"]["stop_loss"]) > float(close_price):
                     deal = DealUpdates(bot)
-                    deal.update_stop_limit(close_price)
+                    res = deal.update_stop_limit(close_price)
+                    if isinstance(handle_error(res), Response):
+                        self.start_stream()
 
                 # Take profit trailling
                 if bot["trailling"] == "true":
@@ -151,6 +153,8 @@ class MarketUpdates(Account):
                                     }
                                 },
                             )
+                            # restart scanner
+                            self.start_stream()
                         else:
                             print(
                                 f"{symbol} Trailling updated! {current_take_profit_price}"

@@ -1,4 +1,3 @@
-import os
 from decimal import Decimal
 
 import requests
@@ -6,23 +5,11 @@ from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
-from flask import Response, current_app as app
+from flask import Response
+from flask import current_app as app
+
 
 class Deal(Account):
-    order_book_url = os.getenv("ORDER_BOOK")
-    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
-    bb_buy_order_url = f"{bb_base_url}/order/buy"
-    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
-    bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
-    bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
-    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
-    bb_opened_orders_url = f"{bb_base_url}/order/open"
-    bb_close_order_url = f"{bb_base_url}/order/close"
-    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
-    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
-    bb_balance_url = f"{bb_base_url}/account/balance/raw"
-
     def __init__(self, bot):
         # Inherit from parent class
         self.active_bot = bot
@@ -338,9 +325,7 @@ class Deal(Account):
         price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(
             deal_buy_price
         )
-        qty = round_numbers(
-            buy_total_qty, self.qty_precision
-        )
+        qty = round_numbers(buy_total_qty, self.qty_precision)
         price = round_numbers(price, self.price_precision)
 
         order = {
@@ -468,7 +453,8 @@ class Deal(Account):
         )
         price = supress_notation(price, self.price_precision)
         botId = app.db.bots.find_one_and_update(
-            {"_id": self.active_bot["_id"]}, {"$set": {"deal.take_profit_price": price, "deal.trailling_profit": price}}
+            {"_id": self.active_bot["_id"]},
+            {"$set": {"deal.take_profit_price": price, "deal.trailling_profit": price}},
         )
         if not botId:
             resp = jsonResp(
@@ -525,12 +511,16 @@ class Deal(Account):
         if "stop_loss" in bot and float(bot["stop_loss"]) > 0:
             buy_price = float(bot["deal"]["buy_price"])
             stop_loss_price = buy_price - (buy_price * float(bot["stop_loss"]) / 100)
-            bot["deal"]["stop_loss"] = supress_notation(stop_loss_price, self.price_precision)
+            bot["deal"]["stop_loss"] = supress_notation(
+                stop_loss_price, self.price_precision
+            )
             botId = app.db.bots.update_one(
                 {"_id": bot["_id"]}, {"$set": {"deal": bot["deal"]}}
             )
             if not botId:
-                order_errors.append("Failed to save short order stop_limit deal in the bot")
+                order_errors.append(
+                    "Failed to save short order stop_limit deal in the bot"
+                )
 
         return order_errors
 
@@ -596,6 +586,7 @@ class Deal(Account):
             )
             if not botId:
                 app.db.bots.find_one_and_update(
-                    {"pair": pair}, {"$set": {"status": "errors"}, "push": {"errors": botId}}
+                    {"pair": pair},
+                    {"$set": {"status": "errors"}, "push": {"errors": botId}},
                 )
         return

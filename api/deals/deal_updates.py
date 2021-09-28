@@ -1,6 +1,5 @@
 import os
 from decimal import Decimal
-
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
@@ -25,7 +24,6 @@ class DealUpdates(Account):
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
     def __init__(self, bot):
-        # Inherit also the __init__ from parent class
 
         self.active_bot = bot
         self.MIN_PRICE = float(
@@ -350,6 +348,11 @@ class DealUpdates(Account):
         }
         res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
         if isinstance(handle_error(res), Response):
+            error = handle_error(res).json["msg"]
+            botId = self.app.db.bots.update_one(
+                {"_id": bot["_id"]},
+                {"$push": {"errors": error}, "$set": {"status": "error"}},
+            )
             return handle_error(res)
 
         # Append now stop_limit deal
@@ -410,7 +413,8 @@ class DealUpdates(Account):
             else:
                 msg = handle_error(res).json["message"]
                 self.app.db.bots.find_one_and_update(
-                    {"pair": bot["pair"]}, {"$push": {"errors": f"{msg}"}, "$set": {"status": "error"}}
+                    {"pair": bot["pair"]},
+                    {"$push": {"errors": f"{msg}"}, "$set": {"status": "error"}},
                 )
         else:
             # Append now stop_limit deal
