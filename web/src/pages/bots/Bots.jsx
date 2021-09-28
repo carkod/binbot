@@ -44,7 +44,7 @@ class Bots extends React.Component {
 
   getProfit = (base_price, current_price) => {
     if (!checkValue(base_price) && !checkValue(current_price)) {
-      const percent = (parseFloat(current_price) - parseFloat(base_price)) / base_price;
+      const percent = ((parseFloat(current_price) - parseFloat(base_price)) / parseFloat(base_price)) * 100;
       return percent.toFixed(2);
     }
     return 0

@@ -64,6 +64,14 @@ class DealUpdates(Account):
             .exponent
         )
 
+    def get_one_balance(self, symbol="BTC"):
+        # Response after request
+        res = requests.get(url=self.bb_balance_url)
+        handle_error(res)
+        data = res.json()["data"]
+        symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), None)
+        return symbol_balance
+
     def update_take_profit(self, order_id):
         """
         Update take profit after websocket order endpoint triggered
@@ -313,15 +321,16 @@ class DealUpdates(Account):
         - Deactivate bot
         """
         bot = self.active_bot
-        qty = bot["deal"]["buy_total_qty"]
+        asset = self.find_baseAsset(bot["pair"])
+        qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(False, qty))
 
         order_id = None
-        for order in self.active_bot["orders"]:
+        for order in bot["orders"]:
             if order["deal_type"] == "take_profit":
                 order_id = order["order_id"]
-                self.active_bot["orders"].remove(order)
+                bot["orders"].remove(order)
                 break
 
         if order_id:
@@ -334,39 +343,39 @@ class DealUpdates(Account):
             else:
                 print("Old take profit order cancelled")
 
-            stop_limit_order = {
-                "pair": bot["pair"],
-                "qty": qty,
-                "price": supress_notation(price, self.price_precision),
-            }
-            res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
-            if isinstance(handle_error(res), Response):
-                return handle_error(res)
+        stop_limit_order = {
+            "pair": bot["pair"],
+            "qty": qty,
+            "price": supress_notation(price, self.price_precision),
+        }
+        res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
+        if isinstance(handle_error(res), Response):
+            return handle_error(res)
 
-            # Append now stop_limit deal
-            stop_limit_response = {
-                "deal_type": "stop_limit",
-                "order_id": res["orderId"],
-                "pair": res["symbol"],
-                "order_side": res["side"],
-                "order_type": res["type"],
-                "price": res["price"],
-                "qty": res["origQty"],
-                "fills": res["fills"],
-                "time_in_force": res["timeInForce"],
-                "status": res["status"],
-            }
-            new_orders = bot["orders"]
-            new_orders.append(stop_limit_response)
-            botId = self.app.db.bots.update_one(
-                {"_id": bot["_id"]},
-                {"$push": {"orders": new_orders}, "$set": {"status": "inactive"}},
-            )
-            if not botId:
-                print(f"Failed to update stop_limit deal: {botId}")
-            else:
-                print(f"New stop_limit deal successfully updated: {botId}")
-            return
+        # Append now stop_limit deal
+        stop_limit_response = {
+            "deal_type": "stop_limit",
+            "order_id": res["orderId"],
+            "pair": res["symbol"],
+            "order_side": res["side"],
+            "order_type": res["type"],
+            "price": res["price"],
+            "qty": res["origQty"],
+            "fills": res["fills"],
+            "time_in_force": res["timeInForce"],
+            "status": res["status"],
+        }
+        new_orders = bot["orders"]
+        new_orders.append(stop_limit_response)
+        botId = self.app.db.bots.update_one(
+            {"_id": bot["_id"]},
+            {"$push": {"orders": new_orders}, "$set": {"status": "loss"}},
+        )
+        if not botId:
+            print(f"Failed to update stop_limit deal: {botId}")
+        else:
+            print(f"New stop_limit deal successfully updated: {botId}")
+        return
 
     def trailling_stop_loss(self, price):
         """

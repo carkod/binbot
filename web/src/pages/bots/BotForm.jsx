@@ -179,10 +179,9 @@ class BotForm extends React.Component {
     ) {
       const { trace } = this.props.candlestick;
       if (trace.length > 0) {
-          this.setState({ bot_profit: 0 });
         if (
           !checkValue(this.props.bot) &&
-          !checkValue(this.props.deal) &&
+          !checkValue(this.props.bot.deal) &&
           Object.keys(this.props.bot.deal).length > 0 &&
           !checkValue(this.props.bot.base_order_size)
         ) {
@@ -543,7 +542,7 @@ class BotForm extends React.Component {
                   {!checkValue(this.state.bot_profit) &&
                   (this.state.status === "active") ? (
                     <Badge
-                      color={this.state.bot_profit ? "success" : "danger"}
+                      color={parseFloat(this.state.bot_profit) > 0 ? "success" : "danger"}
                     >
                       {this.state.bot_profit + "%"}
                     </Badge>

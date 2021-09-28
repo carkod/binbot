@@ -468,7 +468,7 @@ class Deal(Account):
         )
         price = supress_notation(price, self.price_precision)
         botId = app.db.bots.find_one_and_update(
-            {"_id": self.active_bot["_id"]}, {"$set": {"deal.take_profit_price": 0, "deal.trailling_profit": price}}
+            {"_id": self.active_bot["_id"]}, {"$set": {"deal.take_profit_price": price, "deal.trailling_profit": price}}
         )
         if not botId:
             resp = jsonResp(

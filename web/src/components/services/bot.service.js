@@ -127,7 +127,7 @@ export const botCandlestick = (data, bot, deal = null) => {
   let takeProfitPrice = 0;
   let traillingStopPrice = 0
   if (bot.trailling === "true") {
-    if (!checkValue(deal) && !checkValue(deal.buy_price)) {
+    if (!checkValue(deal) && !checkValue(deal.trailling_stop_loss_price)) {
       takeProfitPrice = parseFloat(deal.trailling_profit).toFixed(8);
       traillingStopPrice = parseFloat(deal.trailling_stop_loss_price).toFixed(8);
     } else {
