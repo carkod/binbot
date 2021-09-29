@@ -68,6 +68,15 @@ class BinbotApi(BinanceApi):
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
     bb_balance_url = f"{bb_base_url}/account/balance/raw"
+    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
+    bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
+    bb_sell_order_url = f"{bb_base_url}/order/sell"
+    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
+    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
+    bb_opened_orders_url = f"{bb_base_url}/order/open"
+    bb_close_order_url = f"{bb_base_url}/order/close"
+    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
+    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
 
 class CoinBaseApi:

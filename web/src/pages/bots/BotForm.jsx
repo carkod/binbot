@@ -540,6 +540,7 @@ class BotForm extends React.Component {
                 <CardTitle tag="h3">
                   {this.state.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
+                  !isNaN(this.state.bot_profit) &&
                   (this.state.status === "active") ? (
                     <Badge
                       color={parseFloat(this.state.bot_profit) > 0 ? "success" : "danger"}

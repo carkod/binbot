@@ -1,28 +1,15 @@
-import os
 from decimal import Decimal
+
 import requests
-from api.account.account import Account
+from api.app import create_app
+from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.jsonresp import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
-from api.app import create_app
 
 
-class DealUpdates(Account):
-
-    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
-    bb_buy_order_url = f"{bb_base_url}/order/buy"
-    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
-    bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
-    bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
-    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
-    bb_opened_orders_url = f"{bb_base_url}/order/open"
-    bb_close_order_url = f"{bb_base_url}/order/close"
-    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
-    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
-
+class DealUpdates(Deal):
     def __init__(self, bot):
 
         self.active_bot = bot
@@ -61,14 +48,6 @@ class DealUpdates(Account):
             .as_tuple()
             .exponent
         )
-
-    def get_one_balance(self, symbol="BTC"):
-        # Response after request
-        res = requests.get(url=self.bb_balance_url)
-        handle_error(res)
-        data = res.json()["data"]
-        symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), None)
-        return symbol_balance
 
     def update_take_profit(self, order_id):
         """
@@ -348,7 +327,7 @@ class DealUpdates(Account):
         }
         res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
         if isinstance(handle_error(res), Response):
-            error = handle_error(res).json["msg"]
+            error = res.json()["msg"]
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {"$push": {"errors": error}, "$set": {"status": "error"}},
@@ -377,6 +356,7 @@ class DealUpdates(Account):
         if not botId:
             print(f"Failed to update stop_limit deal: {botId}")
         else:
+            buy_gbp_result = self.buy_gbp_balance()
             print(f"New stop_limit deal successfully updated: {botId}")
         return
 
@@ -441,6 +421,7 @@ class DealUpdates(Account):
                 },
             )
             if botId:
+                buy_gbp_result = self.buy_gbp_balance()
                 print("Successfully finished take profit trailling!")
                 return "completed"
         return

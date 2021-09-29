@@ -19,39 +19,6 @@ export const botCandlestick = (data, bot, deal = null) => {
   takeProfit = data.trace[0].close[data.trace[0].close.length - 1];
   takeProfitTime = data.trace[0].x[data.trace[0].x.length - 1];
 
-  // Saved current price visual
-  if (!checkValue(deal)) {
-    if ("current_price" in deal) {
-      const currentPriceSA = {
-        x: currentTime,
-        y: deal.current_price,
-        xref: "x",
-        yref: "y",
-        text: `CP`,
-        font: { color: "blue" },
-        showarrow: false,
-        xanchor: "left",
-        hovertext: deal.current_price,
-      };
-      const currentPriceS = {
-        type: "line",
-        xref: "x",
-        yref: "y",
-        x0: currentTime,
-        y0: deal.current_price,
-        x1: data.trace[0].x[195],
-        y1: deal.current_price,
-        line: {
-          color: "blue",
-          width: 12,
-          dash: "dot",
-        },
-      };
-      shapes.push(currentPriceS);
-      annotations.push(currentPriceSA);
-    }
-  }
-
   if (bot.orders.length > 0) {
     const baseOrder = bot.orders.find((x) => x.deal_type === "base_order");
     if (!checkValue(baseOrder)) {
