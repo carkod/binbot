@@ -8,7 +8,7 @@ class BinanceApi:
     Binance API URLs
     """
 
-    BASE = "https://api.binance.com"
+    BASE = "https://api2.binance.com"
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
@@ -35,6 +35,8 @@ class BinanceApi:
     withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"
     deposit_history_url = f"{BASE}/wapi/v3/depositHistory.html"
     deposit_address_url = f"{BASE}/wapi/v3/depositAddress.html"
+
+    dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
 
 
 class BinbotApi(BinanceApi):
