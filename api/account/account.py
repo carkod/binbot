@@ -7,7 +7,7 @@ import requests
 from api.apis import BinbotApi
 from api.app import create_app
 from api.tools.handle_error import handle_error
-from api.tools.jsonresp import jsonResp, jsonResp_message
+from api.tools.handle_error import jsonResp, jsonResp_message
 from flask import request
 
 

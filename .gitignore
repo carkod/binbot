@@ -22,6 +22,7 @@ build/
 mongo_data
 mongo_data.old
 mongo_db
+db.dump
 
 .DS_Store
 .env.local

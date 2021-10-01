@@ -1,7 +1,8 @@
 import os
 from flask import Flask
 from flask_cors import CORS
-from pymongo import MongoClient
+from pymongo import ASCENDING, MongoClient, errors
+from urllib.parse import quote_plus
 
 def create_app():
     app = Flask(__name__)
@@ -10,10 +11,20 @@ def create_app():
     # db = MongoEngine(app)
     # Enable CORS for all routes
     CORS(app)
-    mongo = MongoClient(os.environ["MONGO_HOSTNAME"], int(os.environ["MONGO_PORT"]))
-    mongo[os.environ["MONGO_AUTH_DATABASE"]].authenticate(
-        os.environ["MONGO_AUTH_USERNAME"], os.environ["MONGO_AUTH_PASSWORD"]
-    )
-    app.db = mongo[os.environ["MONGO_APP_DATABASE"]]
+    try:
+        mongo = MongoClient(host=os.getenv("MONGO_HOSTNAME"), port=int(os.getenv("MONGO_PORT")))
+    except errors.ConnectionFailure as mongo_error:
+        raise mongo_error
+
+    app.db = mongo
+    if os.getenv("ENV") != "ci":
+        mongo[os.getenv("MONGO_AUTH_DATABASE")].authenticate(
+            quote_plus(os.getenv("MONGO_AUTH_USERNAME")), quote_plus(os.getenv("MONGO_AUTH_PASSWORD"))
+        )
+        app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
+        # Set default indexes for db
+        app.db.bots.create_index([
+            ("pair", ASCENDING)
+        ])
 
     return app

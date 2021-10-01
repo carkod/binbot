@@ -6,7 +6,7 @@ from datetime import date
 from api.account.account import Account
 from api.deals.models import Deal
 from bson.objectid import ObjectId
-from api.tools.jsonresp import jsonResp
+from api.tools.handle_error import jsonResp
 from api.tools.handle_error import bot_errors
 
 class Bot(Account):

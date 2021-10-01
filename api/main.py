@@ -1,23 +1,23 @@
 import atexit
-import threading
 import os
+import threading
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from api.app import create_app
-from api.tools.jsonresp import jsonResp
-from api.account.assets import Assets
-from api.orders.models.order_sockets import OrderUpdates
-from api.research.market_updates import MarketUpdates
 
+from api.account.assets import Assets
 # Routes
 from api.account.routes import account_blueprint
+from api.app import create_app
 from api.bots.routes import bot_blueprint
 from api.charts.routes import charts_blueprint
+from api.orders.models.order_sockets import OrderUpdates
 from api.orders.models.orders import Orders
 from api.orders.routes import order_blueprint
-from api.user.routes import user_blueprint
-from api.research.routes import research_blueprint
 from api.research.correlation import Correlation
+from api.research.market_updates import MarketUpdates
+from api.research.routes import research_blueprint
+from api.tools.handle_error import jsonResp
+from api.user.routes import user_blueprint
 
 app = create_app()
 
@@ -27,7 +27,7 @@ assets = Assets()
 orders = Orders()
 research_data = Correlation()
 
-if os.environ["ENV"] != "development":
+if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
     scheduler.add_job(
         func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=00, minute=1
     )
@@ -49,12 +49,13 @@ def index():
     return jsonResp({"status": "Online"}, 200)
 
 
-order_updates = OrderUpdates()
-# start a worker process to move the received stream_data from the stream_buffer to a print function
-worker_thread = threading.Thread(name="order_updates_thread", target=order_updates.run_stream)
-worker_thread.start()
+if os.getenv("ENV") != "ci":
+    order_updates = OrderUpdates()
+    # start a worker process to move the received stream_data from the stream_buffer to a print function
+    worker_thread = threading.Thread(name="order_updates_thread", target=order_updates.run_stream)
+    worker_thread.start()
 
-# Research market updates
-market_updates = MarketUpdates()
-market_updates_thread = threading.Thread(name="market_updates_thread", target=market_updates.start_stream)
-market_updates_thread.start()
+    # Research market updates
+    market_updates = MarketUpdates()
+    market_updates_thread = threading.Thread(name="market_updates_thread", target=market_updates.start_stream)
+    market_updates_thread.start()

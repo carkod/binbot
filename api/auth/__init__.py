@@ -2,7 +2,7 @@ import datetime
 import os
 from functools import wraps
 
-from api.tools.jsonresp import jsonResp
+from api.tools.handle_error import jsonResp
 from flask import request
 from jose import jwt
 

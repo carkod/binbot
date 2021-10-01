@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 from api.apis import BinanceApi
 from api.tools.handle_error import handle_error
-from api.tools.jsonresp import jsonResp
+from api.tools.handle_error import jsonResp
 from flask import request
 
 class Candlestick(BinanceApi):

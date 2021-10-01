@@ -4,7 +4,8 @@ import requests
 from api.app import create_app
 from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.jsonresp import jsonResp, jsonResp_message
+from api.tools.handle_error import handle_binance_errors
+from api.tools.handle_error import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 
@@ -48,6 +49,16 @@ class DealUpdates(Deal):
             .as_tuple()
             .exponent
         )
+    
+    def _compute_qty(self, pair):
+        """
+        Helper function to compute buy_price.
+        Previous qty = bot["deal"]["buy_total_qty"]
+        """
+
+        asset = self.find_baseAsset(pair)
+        qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
+        return qty
 
     def update_take_profit(self, order_id):
         """
@@ -298,8 +309,7 @@ class DealUpdates(Deal):
         - Deactivate bot
         """
         bot = self.active_bot
-        asset = self.find_baseAsset(bot["pair"])
-        qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
+        qty = self._compute_qty(bot["pair"])
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(False, qty))
 
@@ -368,7 +378,7 @@ class DealUpdates(Deal):
         - Deactivate bot
         """
         bot = self.active_bot
-        qty = bot["deal"]["buy_total_qty"]
+        qty = self._compute_qty(bot["pair"])
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(False, qty))
 
@@ -378,24 +388,14 @@ class DealUpdates(Deal):
             "price": supress_notation(price, self.price_precision),
         }
         res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
-        if isinstance(handle_error(res), Response):
-            if handle_error(res).json["error"] == 1:
-                self.app.db.bots.find_one_and_update(
-                    {"pair": bot["pair"]},
-                    {
-                        "$push": {
-                            "errors": f'Deactivated bot {bot["pair"]}, not enough funds to trigger trailling stop loss'
-                        },
-                        "$set": {"status": "error"},
-                    },
-                )
-                return "completed"
-            else:
-                msg = handle_error(res).json["message"]
-                self.app.db.bots.find_one_and_update(
-                    {"pair": bot["pair"]},
-                    {"$push": {"errors": f"{msg}"}, "$set": {"status": "error"}},
-                )
+        result = handle_binance_errors(res)
+        if result["error"] == 1:
+            error_message = f'Trailling stop loss error: {result["message"]}'
+            self.app.db.bots.find_one_and_update(
+                {"pair": bot["pair"]},
+                {"$push": {"errors": error_message}, "$set": {"status": "error"}},
+            )
+            return "completed"
         else:
             # Append now stop_limit deal
             trailling_stop_loss_response = {
@@ -410,13 +410,14 @@ class DealUpdates(Deal):
                 "time_in_force": res["timeInForce"],
                 "status": res["status"],
             }
+            bot["orders"].append(trailling_stop_loss_response)
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {
-                    "$push": {"orders": trailling_stop_loss_response},
                     "$set": {
                         "status": "completed",
                         "deal.take_profit_price": res["price"],
+                        "orders": bot["orders"]
                     },
                 },
             )

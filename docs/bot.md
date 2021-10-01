@@ -1,3 +1,17 @@
+# About API `api/bots`
+
+# Profit canibalization
+
+## Context
+To avoid one bot eating the profit of another bot, "Composite bot" feature was added and posteriorly removed. This is because if one bot is opened with certain parameters and another is opened with different parameters, they will remove/add cryptocurrencies and eventually break the strategy and most likely cause errors and losses. Also there is the possibility of eating each other's profit, if accidently one bot is opened for a down trend and another is opened for up trend.
+
+
+## Pair uniqueness
+Therefore, on the DB level, there is a restriction for **pair uniqueness** in `/app.py`. This means, there will never be a situation where bots are created using the samae pair.
+
+This also helps avoid errors in websockets, where once a trailling or safety order closes, they will get "Invalid quantity" errors because the initial `bot["deal"]["buy_total_qty"]` does not match the available amount in the balance.
+
+
 # Bot parameters
 
 Create, Edit body
@@ -23,6 +37,38 @@ Create, Edit body
 "deals": [],
 ```
 
+
+# About Dashboard `web/bots`
+
+## Key function `computeAvailableBalance` for updating balance
+
+- The function `this.props.getSymbolInfo(pair);` will trigger the API endpoint `/account/symbol/pair` to get exchange info of the specified `pair`
+- Because `this.props.getSymbolInfo(pair)` is a dispatcher (notice the `this.props`), it will dispatch that API call, and trigger `componentDidUpdate()`
+- `componentDidUpdate()` will check for changes in the props, and will trigger the `computeAvailableBalance()` and update the Available balance count.
+- This is a centralized function, which is triggered by a number of events: changes in base order size, changes in strategy, changes in pair. they will all need to update the balance.
+- Long strategies require the base asset (Binance term)
+- Short strategies require the quote asset
+
+
+## Internal vs User parameters
+
+`deal` and `orders` are internal data used for the API to deal the bots
+All other params can be set by the user
+
+## Key function `computeAvailableBalance` for updating balance
+
+- The function `this.props.getSymbolInfo(pair);` will trigger the API endpoint `/account/symbol/pair` to get exchange info of the specified `pair`
+- Because `this.props.getSymbolInfo(pair)` is a dispatcher (notice the `this.props`), it will dispatch that API call, and trigger `componentDidUpdate()`
+- `componentDidUpdate()` will check for changes in the props, and will trigger the `computeAvailableBalance()` and update the Available balance count.
+- This is a centralized function, which is triggered by a number of events: changes in base order size, changes in strategy, changes in pair. they will all need to update the balance.
+- Long strategies require the base asset (Binance term)
+- Short strategies require the quote asset
+
+
+## Internal vs User parameters
+
+`deal` and `orders` are internal data used for the API to deal the bots
+All other params can be set by the user
 
 # FAQs
 

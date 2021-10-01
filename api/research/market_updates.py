@@ -94,11 +94,11 @@ class MarketUpdates(Account):
 
         if "data" in json_response:
             if "e" in json_response["data"] and json_response["data"]["e"] == "kline":
-                self.process_deals(json_response["data"], ws)
+                self.process_deals(json_response["data"])
             else:
                 print(f'Error: {json_response["data"]}')
 
-    def process_deals(self, result, ws):
+    def process_deals(self, result):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
