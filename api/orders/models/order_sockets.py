@@ -57,8 +57,8 @@ class OrderUpdates(BinanceApi):
         response = json.loads(message)
         try:
             result = response["data"]
-        except KeyError:
-            print(f"Error: {result}")
+        except KeyError as error:
+            print(f"Error: {error}")
 
         if "e" in result and result["e"] == "executionReport":
             self.process_report_execution(result)
