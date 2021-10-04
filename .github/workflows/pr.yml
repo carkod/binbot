@@ -2,6 +2,7 @@ name: PR checks
 on: pull_request
 env:
   ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_STEP_DEBUG: true
   SECRET_KEY: test
   ENV: ci
   FLASK_DIRECTORY: /api/
@@ -21,17 +22,13 @@ jobs:
     services:
       binbot_db:
         image: mongo:latest
-        ports:
-          - 27018:27017
         options: >-
           --health-cmd mongo
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        env:
-          MONGO_INITDB_ROOT_USERNAME: ${{ env.MONGO_AUTH_USERNAME }}
-          MONGO_INITDB_ROOT_PASSWORD: ${{ env.MONGO_AUTH_PASSWORD }}
-          MONGO_INITDB_DATABASE: ${{ env.MONGO_APP_DATABASE }}
+        ports:
+          - 27018:27017
 
     steps:
       - name: Check out the repo
@@ -50,9 +47,10 @@ jobs:
           curl --head --fail --retry-delay 5 --retry 3 --retry-connrefused http://localhost
       - name: Test api
         run: |
-          docker run --name binbot_api -p 8006:8006 -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} -e MONGO_PORT=${{ env.MONGO_PORT }} -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE  }} -e MONGO_AUTH_DATABASE=${{ env.MONGO_AUTH_DATABASE }} -e BINANCE_KEY=${{ secrets.BINANCE_KEY }} -e BINANCE_SECRET=${{ secrets.BINANCE_SECRET }} -e TELEGRAM_BOT_KEY=${{ secrets.TELEGRAM_BOT_KEY }} -d binbot
+          docker run --name binbot_api -p 8006:8006 -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} -e MONGO_PORT=${{ env.MONGO_PORT }} -e ENV=ci -d binbot
           sleep 10
-          docker exec -i binbot_api sh -c 'cat /var/log/nginx/web-error.log && curl -I localhost:8006'
+          docker ps
+          docker exec -i binbot_api sh -c 'cat /var/log/nginx/web-error.log && curl -I http://localhost:8006'
         # curl --head --fail --retry-delay 30 --retry 5 --retry-connrefused http://localhost:8006
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}

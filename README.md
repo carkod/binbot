@@ -1,3 +1,4 @@
+![Deploy Binbot](https://github.com/carkod/binbot/actions/workflows/pr.yml/badge.svg)
 ## Requirements
 
 - Docker and docker-compose

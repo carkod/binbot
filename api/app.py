@@ -14,10 +14,12 @@ def create_app():
     mongo = MongoClient(
         host=os.getenv("MONGO_HOSTNAME"),
         port=int(os.getenv("MONGO_PORT")),
-        authSource=os.getenv("MONGO_AUTH_DATABASE"),
-        username=os.getenv("MONGO_AUTH_USERNAME"),
-        password=os.getenv("MONGO_AUTH_PASSWORD")
+        # authSource=os.getenv("MONGO_AUTH_DATABASE"),
+        # username=os.getenv("MONGO_AUTH_USERNAME"),
+        # password=os.getenv("MONGO_AUTH_PASSWORD")
     )
+    print("Db status")
+    print(mongo.server_info())
     app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
 
     if "bots" not in app.db.list_collection_names():

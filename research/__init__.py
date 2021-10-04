@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from websocket import WebSocketApp
 
-from apis import BinanceApi
+from apis import BinbotApi
 from telegram_bot import TelegramBot
-from utils import handle_error, supress_notation
+from utils import supress_notation
 
 load_dotenv()
 
@@ -22,11 +22,6 @@ mongo = MongoClient(
     password=os.environ["MONGO_AUTH_PASSWORD"],
     authSource=os.environ["MONGO_AUTH_DATABASE"],
 )
-
-bb_base_url = f'{os.getenv("RESEARCH_FLASK_DOMAIN")}'
-bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
-bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
-bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
 
 # streams
 base = os.getenv("WS_BASE")
@@ -81,23 +76,7 @@ black_list = [
 ]
 telegram_bot = TelegramBot()
 max_request = 950  # Avoid HTTP 411 error by separating streams
-
-
-def _get_candlestick(market, interval):
-    url = f"{bb_candlestick_url}/{market}/{interval}"
-    res = requests.get(url=url)
-    res.raise_for_status()
-    data = res.json()
-    return data["trace"]
-
-
-def _get_24_ticker(market):
-    url = f"{bb_24_ticker_url}/{market}"
-    res = requests.get(url=url)
-    handle_error(res)
-    data = res.json()["data"]
-    return data
-
+binbot_api = BinbotApi()
 
 def _send_msg(msg):
     """
@@ -118,7 +97,7 @@ def close_stream(ws, close_status_code, close_msg):
 
 def _run_streams(stream, index):
     string_params = "/".join(stream)
-    url = f"{base}/stream?streams={string_params}"
+    url = f"{binbot_api.WS_BASE}{string_params}"
     ws = WebSocketApp(
         url,
         on_open=on_open,
@@ -133,7 +112,7 @@ def _run_streams(stream, index):
 
 
 def start_stream():
-    raw_symbols = BinanceApi()._ticker_price()
+    raw_symbols = binbot_api._ticker_price()
     markets = set([item["symbol"] for item in raw_symbols])
     subtract_list = set(black_list)
     list_markets = markets - subtract_list
@@ -183,11 +162,11 @@ def process_kline_stream(result):
         close_price = float(result["k"]["c"])
         open_price = float(result["k"]["o"])
         symbol = result["k"]["s"]
-        data = _get_candlestick(symbol, interval)
+        data = binbot_api._get_candlestick(symbol, interval)
         ma_100 = data[1]["y"]
 
         # raw df
-        klines = BinanceApi()._get_raw_klines(symbol, 1000)
+        klines = binbot_api._get_raw_klines(symbol, 1000)
         df = pandas.DataFrame(klines)
         df["candle_spread"] = abs(pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
         curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
