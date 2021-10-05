@@ -11,20 +11,26 @@ def create_app():
     # db = MongoEngine(app)
     # Enable CORS for all routes
     CORS(app)
+    mongo = MongoClient(
+        host=os.getenv("MONGO_HOSTNAME"),
+        port=int(os.getenv("MONGO_PORT")),
+        # authSource=os.getenv("MONGO_AUTH_DATABASE"),
+        username=os.getenv("MONGO_AUTH_USERNAME"),
+        password=os.getenv("MONGO_AUTH_PASSWORD")
+    )
+    
     try:
-        mongo = MongoClient(host=os.getenv("MONGO_HOSTNAME"), port=int(os.getenv("MONGO_PORT")))
-    except errors.ConnectionFailure as mongo_error:
-        raise mongo_error
-
-    app.db = mongo
-    if os.getenv("ENV") != "ci":
-        mongo[os.getenv("MONGO_AUTH_DATABASE")].authenticate(
-            quote_plus(os.getenv("MONGO_AUTH_USERNAME")), quote_plus(os.getenv("MONGO_AUTH_PASSWORD"))
-        )
         app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
-        # Set default indexes for db
-        app.db.bots.create_index([
-            ("pair", ASCENDING)
-        ])
+    except TypeError:
+        app.db = mongo
+        pass
 
+    # if "bots" not in app.db.list_collection_names():
+    #     app.db.create_collection("bots")
+
+    # # Set default indexes for db
+    # app.db.bots.create_index([
+    #     ("pair", ASCENDING)
+    # ])
+    
     return app
