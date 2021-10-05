@@ -1,8 +1,28 @@
-import requests
 import json
-from api.tools.jsonresp import jsonResp_message, jsonResp
-from flask import Response, current_app
+from time import sleep
+
 from bson.objectid import ObjectId
+from flask import Response, current_app
+from requests.exceptions import HTTPError, RequestException, Timeout
+from bson import json_util
+from flask import Response
+
+
+def jsonResp(data, status=200):
+    return Response(
+        json.dumps(data, default=json_util.default),
+        mimetype="application/json",
+        status=status,
+    )
+
+def jsonResp_message(message, status):
+    message = {"message": message, "error": 0}
+    return jsonResp(message, status)
+
+def jsonResp_error_message(message, status):
+    body = {"message": message, "error": 1}
+    return jsonResp(body, status)
+    
 
 def bot_errors(error: Response, bot):
     if isinstance(error, Response):
@@ -35,18 +55,34 @@ def handle_error(req):
 
                 return jsonResp_message(json.loads(req.content), 200)
 
-    except requests.exceptions.HTTPError as err:
+    except HTTPError as err:
         if err:
             print(req.json())
             return jsonResp_message(req.json(), 200)
         else:
             return err
-    except requests.exceptions.Timeout:
+    except Timeout:
         # Maybe set up for a retry, or continue in a retry loop
         return jsonResp_message("handle_error: Timeout", 408)
-    except requests.exceptions.TooManyRedirects:
-        # Tell the user their URL was bad and try a different one
-        return jsonResp_message("handle_error: Too many Redirects", 429)
-    except requests.exceptions.RequestException as e:
+    except RequestException as e:
         # catastrophic error. bail.
         return jsonResp_message(f"Catastrophic error: {e}", 500)
+
+
+def handle_binance_errors(response):
+    """
+    Better handling of errors Binance errors
+    e.g. {"code": -1013, "msg": "Invalid quantity"}
+    """
+    if isinstance(json.loads(response.content), dict) and "code" in json.loads(response.content).keys():
+        content = response.json()
+        if content["code"] == -2010 or content["code"] == -1013:
+            # Not enough funds. Ignore, send to bot errors
+            # Need to be dealt with at higher levels
+            return jsonResp_error_message(content["msg"])
+
+        if content["code"] == -1003:
+            # Too many requests, most likely exceeded API rate limits
+            # Back off for > 5 minutes, which is Binance's ban time
+            sleep(35)
+            return

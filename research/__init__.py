@@ -1,16 +1,17 @@
 import json
 import os
 import threading
+from time import sleep, time
+
 import pandas
 import requests
-from telegram_bot import TelegramBot
-from utils import handle_error
-from websocket import WebSocketApp
-from utils import supress_notation
-from pymongo import MongoClient
-from apis import BinanceApi
 from dotenv import load_dotenv
-from time import sleep, time
+from pymongo import MongoClient
+from websocket import WebSocketApp
+
+from apis import BinanceApi
+from telegram_bot import TelegramBot
+from utils import handle_error, supress_notation
 
 load_dotenv()
 
@@ -126,7 +127,7 @@ def _run_streams(stream, index):
         on_message=on_message,
     )
     worker_thread = threading.Thread(
-        name=f"market_updates_{index}", target=ws.run_forever
+        name=f"market_updates_{index}", target=ws.run_forever, kwargs={'ping_interval': 60}
     )
     worker_thread.start()
 
@@ -141,7 +142,7 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1) :]
+    stream_2 = params[(max_request + 1):]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
@@ -210,6 +211,7 @@ def process_kline_stream(result):
                     and curr_volume_spread > avg_volume_spread
                 )
                 and (close_price > ma_100[len(ma_100) - 1])
+                and spread > 0.1
             ):
                 # Send Telegram
                 msg = f"- Candlesick jump <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
@@ -219,13 +221,12 @@ def process_kline_stream(result):
 
                 if msg:
                     _send_msg(msg)
-            
+
             last_processed_kline[symbol] = time()
             # If more than half an hour (interval = 30m) has passed
             # Then we should resume sending signals for given symbol
-            if (float(time()) - float(last_processed_kline[symbol])) > 400:
+            if (float(time()) - float(last_processed_kline[symbol])) > 120:
                 del last_processed_kline[symbol]
-
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from api.tools.handle_error import handle_error
 from flask import request
 
 
-class Buy_Order(BinanceApi):
+class BuyOrder(BinanceApi):
     """
     Binance Post order
     """

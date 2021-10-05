@@ -40,12 +40,11 @@ class Bots extends React.Component {
       this.props.closeBot(this.state.confirmModal);
     }
     this.setState({ confirmModal: null });
-    // this.props.getBots();
   }
 
   getProfit = (base_price, current_price) => {
     if (!checkValue(base_price) && !checkValue(current_price)) {
-      const percent = (parseFloat(current_price) - parseFloat(base_price)) / base_price;
+      const percent = ((parseFloat(current_price) - parseFloat(base_price)) / parseFloat(base_price)) * 100;
       return percent.toFixed(2);
     }
     return 0
@@ -179,14 +178,7 @@ const mapStateToProps = (state) => {
   if (state.botReducer.data && state.botReducer.data.length > 0) {
     // Sort active status first
     const bots = state.botReducer.data.filter((a, b) => {
-      if (a.active === "true") {
-        return -1;
-      } else {
-        return 1;
-      }
-    });
-    const inactiveBots = state.botReducer.data.filter((a, b) => {
-      if (a.active === "false") {
+      if (a.status === "active") {
         return -1;
       } else {
         return 1;
@@ -195,7 +187,6 @@ const mapStateToProps = (state) => {
     return {
       ...state.botReducer,
       bots: bots,
-      inactive: inactiveBots,
       message: message,
     };
   }

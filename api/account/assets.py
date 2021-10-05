@@ -4,13 +4,14 @@ from api.app import create_app
 from decimal import Decimal
 
 from flask import current_app as app, request
-from api.tools.jsonresp import jsonResp
+from api.tools.handle_error import jsonResp
 from api.account.account import Account
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from api.apis import CoinBaseApi
-class Assets(Account):
 
+
+class Assets(Account):
     def __init__(self):
         self.usd_balance = 0
         self.app = create_app()
@@ -40,19 +41,21 @@ class Assets(Account):
         """
         app = create_app()
         # Get a list of safety orders
-        so_list = list(app.db.bots.aggregate(
-            [
-                {
-                    "$addFields": {
-                        "so_num": {"$size": {"$objectToArray": "$safety_orders"}},
-                    }
-                },
-                {"$match": {"so_num": {"$ne": 0}}},
-                {"$addFields": {"s_os": {"$objectToArray": "$safety_orders"}}},
-                {"$unwind": "$safety_orders"},
-                {"$group": {"_id": {"so": "$s_os.v.so_size", "pair": "$pair"}}},
-            ]
-        ))
+        so_list = list(
+            app.db.bots.aggregate(
+                [
+                    {
+                        "$addFields": {
+                            "so_num": {"$size": {"$objectToArray": "$safety_orders"}},
+                        }
+                    },
+                    {"$match": {"so_num": {"$ne": 0}}},
+                    {"$addFields": {"s_os": {"$objectToArray": "$safety_orders"}}},
+                    {"$unwind": "$safety_orders"},
+                    {"$group": {"_id": {"so": "$s_os.v.so_size", "pair": "$pair"}}},
+                ]
+            )
+        )
         data = self.request_data()["balances"]
         df = pd.DataFrame(data)
         df["free"] = pd.to_numeric(df["free"])
@@ -66,8 +69,16 @@ class Assets(Account):
         for b in balances:
             for item in so_list:
                 if b["asset"] in item["_id"]["pair"]:
-                    decimals = -(Decimal(self.price_filter_by_symbol(item["_id"]["pair"], "tickSize")).as_tuple().exponent)
-                    total_so = sum([float(x) if x != "" else 0 for x in item["_id"]["so"]])
+                    decimals = -(
+                        Decimal(
+                            self.price_filter_by_symbol(item["_id"]["pair"], "tickSize")
+                        )
+                        .as_tuple()
+                        .exponent
+                    )
+                    total_so = sum(
+                        [float(x) if x != "" else 0 for x in item["_id"]["so"]]
+                    )
                     b["free"] = round_numbers(float(b["free"]) - total_so, decimals)
 
         # filter out empty
@@ -186,7 +197,9 @@ class Assets(Account):
                 if market == "BNB":
                     gbp_rate = self.get_ticker_price("BNBGBP")
                 else:
-                    gbp_rate = self.app.coinbase.get_conversion(current_time, market, "GBP")
+                    gbp_rate = self.app.coinbase.get_conversion(
+                        current_time, market, "GBP"
+                    )
 
                 total_gbp += float(total) * float(gbp_rate)
 
@@ -241,3 +254,4 @@ class Assets(Account):
         rate = CoinBaseApi().get_conversion(time, base, quote)
         total = float(rate) * float(qty)
         return jsonResp({"data": total}, 200)
+

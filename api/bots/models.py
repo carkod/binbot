@@ -6,7 +6,7 @@ from datetime import date
 from api.account.account import Account
 from api.deals.models import Deal
 from bson.objectid import ObjectId
-from api.tools.jsonresp import jsonResp
+from api.tools.handle_error import jsonResp
 from api.tools.handle_error import bot_errors
 
 class Bot(Account):
@@ -204,7 +204,7 @@ class Bot(Account):
 
             updated_bot = self.app.db.bots.update_one(
                 {"_id": ObjectId(findId)},
-                {"$set": {"deal": self.default_deal, "status": "inactive"}},
+                {"$set": {"deal": self.default_deal, "status": "closed"}},
             )
             if updated_bot:
                 # We don't want to automatically delete after closing

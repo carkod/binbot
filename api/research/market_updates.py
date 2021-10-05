@@ -7,7 +7,7 @@ from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
-
+from flask import Response
 
 class MarketUpdates(Account):
     """
@@ -73,7 +73,7 @@ class MarketUpdates(Account):
         # This is required to allow the websocket to be closed anywhere in the app
         self.markets_streams = ws
         # Run the websocket with ping intervals to avoid disconnection
-        ws.run_forever(ping_interval=70, ping_timeout=10)
+        ws.run_forever(ping_interval=70)
 
     def close_stream(self, ws, close_status_code, close_msg):
         print("Active socket closed", close_status_code, close_msg)
@@ -94,11 +94,11 @@ class MarketUpdates(Account):
 
         if "data" in json_response:
             if "e" in json_response["data"] and json_response["data"]["e"] == "kline":
-                self.process_deals(json_response["data"], ws)
+                self.process_deals(json_response["data"])
             else:
                 print(f'Error: {json_response["data"]}')
 
-    def process_deals(self, result, ws):
+    def process_deals(self, result):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
@@ -114,17 +114,26 @@ class MarketUpdates(Account):
             print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
             if bot and "deal" in bot:
                 # Stop loss
-                if "stop_loss" in bot["deal"]:
+                if "stop_loss" in bot["deal"] and float(bot["deal"]["stop_loss"]) > float(close_price):
                     deal = DealUpdates(bot)
-                    deal.update_stop_limit(close_price)
+                    res = deal.update_stop_limit(close_price)
+                    if isinstance(res, Response):
+                        self.start_stream()
 
                 # Take profit trailling
                 if bot["trailling"] == "true":
 
-                    # Check if trailling profit reached the first time
-                    current_take_profit_price = float(bot["deal"]["buy_price"]) * (
-                        1 + (float(bot["take_profit"]) / 100)
-                    )
+                    # Update trailling profit reached the first time
+                    if ("take_profit_price" not in bot["deal"]) or float(bot["deal"]["take_profit_price"]) <= 0:
+                        current_take_profit_price = float(bot["deal"]["buy_price"]) * (
+                            1 + (float(bot["take_profit"]) / 100)
+                        )
+                    else:
+                        # Update trailling profit after first time
+                        current_take_profit_price = float(bot["deal"]["trailling_profit"]) * (
+                            1 + (float(bot["take_profit"]) / 100)
+                        )
+
                     if float(close_price) >= current_take_profit_price:
                         new_take_profit = current_take_profit_price * (
                             1 + (float(bot["take_profit"]) / 100)
@@ -151,6 +160,8 @@ class MarketUpdates(Account):
                                     }
                                 },
                             )
+                            # restart scanner
+                            self.start_stream()
                         else:
                             print(
                                 f"{symbol} Trailling updated! {current_take_profit_price}"

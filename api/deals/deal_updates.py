@@ -1,31 +1,17 @@
-import os
 from decimal import Decimal
 
 import requests
-from api.account.account import Account
+from api.app import create_app
+from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.jsonresp import jsonResp, jsonResp_message
+from api.tools.handle_error import handle_binance_errors
+from api.tools.handle_error import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
-from api.app import create_app
 
 
-class DealUpdates(Account):
-
-    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
-    bb_buy_order_url = f"{bb_base_url}/order/buy"
-    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
-    bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
-    bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
-    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
-    bb_opened_orders_url = f"{bb_base_url}/order/open"
-    bb_close_order_url = f"{bb_base_url}/order/close"
-    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
-    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
-
+class DealUpdates(Deal):
     def __init__(self, bot):
-        # Inherit also the __init__ from parent class
 
         self.active_bot = bot
         self.MIN_PRICE = float(
@@ -63,6 +49,16 @@ class DealUpdates(Account):
             .as_tuple()
             .exponent
         )
+    
+    def _compute_qty(self, pair):
+        """
+        Helper function to compute buy_price.
+        Previous qty = bot["deal"]["buy_total_qty"]
+        """
+
+        asset = self.find_baseAsset(pair)
+        qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
+        return qty
 
     def update_take_profit(self, order_id):
         """
@@ -313,15 +309,15 @@ class DealUpdates(Account):
         - Deactivate bot
         """
         bot = self.active_bot
-        qty = bot["deal"]["buy_total_qty"]
+        qty = self._compute_qty(bot["pair"])
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(False, qty))
 
         order_id = None
-        for order in self.active_bot["orders"]:
+        for order in bot["orders"]:
             if order["deal_type"] == "take_profit":
                 order_id = order["order_id"]
-                self.active_bot["orders"].remove(order)
+                bot["orders"].remove(order)
                 break
 
         if order_id:
@@ -334,39 +330,45 @@ class DealUpdates(Account):
             else:
                 print("Old take profit order cancelled")
 
-            stop_limit_order = {
-                "pair": bot["pair"],
-                "qty": qty,
-                "price": supress_notation(price, self.price_precision),
-            }
-            res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
-            if isinstance(handle_error(res), Response):
-                return handle_error(res)
-
-            # Append now stop_limit deal
-            stop_limit_response = {
-                "deal_type": "stop_limit",
-                "order_id": res["orderId"],
-                "pair": res["symbol"],
-                "order_side": res["side"],
-                "order_type": res["type"],
-                "price": res["price"],
-                "qty": res["origQty"],
-                "fills": res["fills"],
-                "time_in_force": res["timeInForce"],
-                "status": res["status"],
-            }
-            new_orders = bot["orders"]
-            new_orders.append(stop_limit_response)
+        stop_limit_order = {
+            "pair": bot["pair"],
+            "qty": qty,
+            "price": supress_notation(price, self.price_precision),
+        }
+        res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
+        if isinstance(handle_error(res), Response):
+            error = res.json()["msg"]
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
-                {"$push": {"orders": new_orders}, "$set": {"status": "inactive"}},
+                {"$push": {"errors": error}, "$set": {"status": "error"}},
             )
-            if not botId:
-                print(f"Failed to update stop_limit deal: {botId}")
-            else:
-                print(f"New stop_limit deal successfully updated: {botId}")
-            return
+            return handle_error(res)
+
+        # Append now stop_limit deal
+        stop_limit_response = {
+            "deal_type": "stop_limit",
+            "order_id": res["orderId"],
+            "pair": res["symbol"],
+            "order_side": res["side"],
+            "order_type": res["type"],
+            "price": res["price"],
+            "qty": res["origQty"],
+            "fills": res["fills"],
+            "time_in_force": res["timeInForce"],
+            "status": res["status"],
+        }
+        new_orders = bot["orders"]
+        new_orders.append(stop_limit_response)
+        botId = self.app.db.bots.update_one(
+            {"_id": bot["_id"]},
+            {"$push": {"orders": new_orders}, "$set": {"status": "loss"}},
+        )
+        if not botId:
+            print(f"Failed to update stop_limit deal: {botId}")
+        else:
+            buy_gbp_result = self.buy_gbp_balance()
+            print(f"New stop_limit deal successfully updated: {botId}")
+        return
 
     def trailling_stop_loss(self, price):
         """
@@ -376,7 +378,7 @@ class DealUpdates(Account):
         - Deactivate bot
         """
         bot = self.active_bot
-        qty = bot["deal"]["buy_total_qty"]
+        qty = self._compute_qty(bot["pair"])
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(False, qty))
 
@@ -386,23 +388,14 @@ class DealUpdates(Account):
             "price": supress_notation(price, self.price_precision),
         }
         res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
-        if isinstance(handle_error(res), Response):
-            if handle_error(res).json["error"] == 1:
-                self.app.db.bots.find_one_and_update(
-                    {"pair": bot["pair"]},
-                    {
-                        "$push": {
-                            "errors": f'Deactivated bot {bot["pair"]}, not enough funds to trigger trailling stop loss'
-                        },
-                        "$set": {"status": "error"},
-                    },
-                )
-                return "completed"
-            else:
-                msg = handle_error(res).json["message"]
-                self.app.db.bots.find_one_and_update(
-                    {"pair": bot["pair"]}, {"$push": {"errors": f"{msg}"}, "$set": {"status": "error"}}
-                )
+        result = handle_binance_errors(res)
+        if result["error"] == 1:
+            error_message = f'Trailling stop loss error: {result["message"]}'
+            self.app.db.bots.find_one_and_update(
+                {"pair": bot["pair"]},
+                {"$push": {"errors": error_message}, "$set": {"status": "error"}},
+            )
+            return "completed"
         else:
             # Append now stop_limit deal
             trailling_stop_loss_response = {
@@ -417,17 +410,19 @@ class DealUpdates(Account):
                 "time_in_force": res["timeInForce"],
                 "status": res["status"],
             }
+            bot["orders"].append(trailling_stop_loss_response)
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {
-                    "$push": {"orders": trailling_stop_loss_response},
                     "$set": {
                         "status": "completed",
                         "deal.take_profit_price": res["price"],
+                        "orders": bot["orders"]
                     },
                 },
             )
             if botId:
+                buy_gbp_result = self.buy_gbp_balance()
                 print("Successfully finished take profit trailling!")
                 return "completed"
         return

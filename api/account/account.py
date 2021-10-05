@@ -4,14 +4,14 @@ import time as tm
 from urllib.parse import urlparse
 
 import requests
-from api.apis import BinanceApi
+from api.apis import BinbotApi
 from api.app import create_app
 from api.tools.handle_error import handle_error
-from api.tools.jsonresp import jsonResp, jsonResp_message
+from api.tools.handle_error import jsonResp, jsonResp_message
 from flask import request
 
 
-class Account(BinanceApi):
+class Account(BinbotApi):
     def __init__(self):
         pass
 

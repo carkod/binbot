@@ -2,23 +2,27 @@
 import { all } from "redux-saga/effects";
 import watchPostLogin from "./containers/login/saga";
 import watchPostRegistration from "./containers/registration/saga";
-import watchBot, {
+import watchGetBotApi, {
   watchActivateBot,
+  watchBot,
   watchcloseBotApi,
   watchCreateBot,
   watchDeactivateBot,
   watchDeleteBotApi,
   watchEditBot,
   watchGetBot,
-  watchGetCandlestick,
+  watchGetCandlestick
 } from "./pages/bots/saga";
 import {
   watchDeleteOpenOrders,
   watchGetOrders,
   watchOpenOrders,
-  watchPollOrders,
+  watchPollOrders
 } from "./pages/orders/saga";
-import { watchHistoricalResearchApi, watchResearchApi } from "./pages/research/saga";
+import {
+  watchHistoricalResearchApi,
+  watchResearchApi
+} from "./pages/research/saga";
 import { watchGetBalanceApi, watchRawBalance } from "./state/balances/saga";
 
 export default function* rootSaga() {
@@ -26,6 +30,7 @@ export default function* rootSaga() {
     watchPostRegistration(),
     watchPostLogin(),
     watchBot(),
+    watchGetBotApi(),
     watchCreateBot(),
     watchEditBot(),
     watchGetBot(),

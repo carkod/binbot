@@ -1,5 +1,7 @@
 import React from "react";
 import { Card, CardBody, CardHeader, CardTitle, Table } from "reactstrap";
+import { checkValue } from "../validations";
+  
 
 export default function BotInfo({ bot }) {
   return (
@@ -38,6 +40,26 @@ export default function BotInfo({ bot }) {
             })}
           </tbody>
         </Table>
+        <hr />
+        {!checkValue(bot.deal) && !checkValue(bot.deal.buy_price) && (
+          <>
+          <h5>Deal information</h5>
+          <Table responsive>
+            <thead>
+              <tr>
+                {Object.keys(bot.deal).map((x,i) => <th key={i}>{x}</th> )}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {Object.values(bot.deal).map((x,i) =>
+                  <td key={i}>{String(x)}</td>
+                )}
+              </tr>
+            </tbody>
+          </Table>
+          </>
+        )}
       </CardBody>
     </Card>
   );

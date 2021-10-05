@@ -11,16 +11,12 @@ from api.apis import BinanceApi
 from api.tools import EnumDefinitions, handle_error
 
 
-class Buy_Order(BinanceApi):
+class BuyOrder(BinanceApi):
     """Post order
 
     Returns:
         [type] -- [description]
     """
-
-    recvWindow = 10000
-    # Min amount to be considered for investing (BNB)
-    min_funds = 0.000000
 
     def __init__(self, symbol, quantity, order_type, price):
 
@@ -84,7 +80,7 @@ class Buy_Order(BinanceApi):
         Returns validation failed order (MIN_NOTIONAL, LOT_SIZE etc..)
         """
         # Limit order
-        type = EnumDefinitions.order_types[0]
+        order_type = EnumDefinitions.order_types[0]
         timestamp = int(round(tm.time() * 1000))
         url = self.order_url
         if limit_price:
@@ -98,7 +94,7 @@ class Buy_Order(BinanceApi):
             ("timestamp", timestamp),
             ("symbol", self.symbol),
             ("side", self.side),
-            ("type", type),
+            ("type", order_type),
             ("timeInForce", self.timeInForce),
             ("price", price),
             ("quantity", qty),

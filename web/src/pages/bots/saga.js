@@ -38,7 +38,7 @@ import {
 /**
  * Bots request/response handler
  */
-export function* getBots() {
+export function* getBotsApi() {
   const requestURL = process.env.REACT_APP_GET_BOTS;
   try {
     const res = yield call(request, requestURL, defaultOptions);
@@ -46,6 +46,10 @@ export function* getBots() {
   } catch (err) {
     yield put(getBotsFailed(err));
   }
+}
+
+export default function* watchGetBotApi() {
+  yield takeLatest(GET_BOTS, getBotsApi);
 }
 
 /**
@@ -187,9 +191,8 @@ export function* getSymbolInfo(payload) {
  * It returns task descriptor (just like fork) so we can continue execution
  * It will be cancelled automatically on component unmount
  */
-export default function* watchBot() {
+export function* watchBot() {
   yield takeLatest(GET_SYMBOL_INFO, getSymbolInfo);
-  yield takeLatest(GET_BOTS, getBots);
   yield takeLatest(GET_SYMBOLS, getSymbols);
 }
 

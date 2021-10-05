@@ -40,7 +40,7 @@ class OrderUpdates(BinanceApi):
             on_close=self.close_stream,
             on_message=self.on_message,
         )
-        ws.run_forever(ping_interval=70, ping_timeout=10)
+        ws.run_forever(ping_interval=70)
 
     def close_stream(self, ws, close_status_code, close_msg):
         print("Active socket closed", close_status_code, close_msg)

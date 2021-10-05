@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 from api.account.account import Account
 from api.app import create_app
-from api.tools.jsonresp import jsonResp_message, jsonResp
+from api.tools.handle_error import jsonResp_message, jsonResp
 from api.tools.round_numbers import round_numbers
 from scipy import stats
 from flask import request

@@ -179,10 +179,9 @@ class BotForm extends React.Component {
     ) {
       const { trace } = this.props.candlestick;
       if (trace.length > 0) {
-          this.setState({ bot_profit: 0 });
         if (
           !checkValue(this.props.bot) &&
-          !checkValue(this.props.deal) &&
+          !checkValue(this.props.bot.deal) &&
           Object.keys(this.props.bot.deal).length > 0 &&
           !checkValue(this.props.bot.base_order_size)
         ) {
@@ -541,14 +540,15 @@ class BotForm extends React.Component {
                 <CardTitle tag="h3">
                   {this.state.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
-                  (this.state.active === "true" || this.state.status === "active") ? (
+                  !isNaN(this.state.bot_profit) &&
+                  (this.state.status === "active") ? (
                     <Badge
-                      color={this.state.bot_profit ? "success" : "danger"}
+                      color={parseFloat(this.state.bot_profit) > 0 ? "success" : "danger"}
                     >
                       {this.state.bot_profit + "%"}
                     </Badge>
                   ) : (
-                    <Badge color="secondary">Inactive</Badge>
+                    <Badge color="secondary">{this.state.status}</Badge>
                   )}
                 </CardTitle>
                 <div className="">
@@ -585,7 +585,7 @@ class BotForm extends React.Component {
           this.props.bot.orders.length > 0 &&
           !checkValue(this.props.match.params.id) ? (
             <Col md="7" sm="12">
-              <BotInfo bot={this.props.bot} />
+              <BotInfo bot={this.props.bot}/>
             </Col>
           ) : (
             ""
