@@ -14,9 +14,9 @@ def create_app():
     mongo = MongoClient(
         host=os.getenv("MONGO_HOSTNAME"),
         port=int(os.getenv("MONGO_PORT")),
-        # authSource=os.getenv("MONGO_AUTH_DATABASE"),
-        # username=os.getenv("MONGO_AUTH_USERNAME"),
-        # password=os.getenv("MONGO_AUTH_PASSWORD")
+        authSource="admin",
+        username=os.getenv("MONGO_AUTH_USERNAME"),
+        password=os.getenv("MONGO_AUTH_PASSWORD")
     )
     app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
     

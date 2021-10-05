@@ -26,6 +26,9 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        env:
+          MONGO_INITDB_ROOT_USERNAME: ${{ env.MONGO_AUTH_USERNAME }}
+          MONGO_INITDB_ROOT_PASSWORD: ${{ env.MONGO_AUTH_PASSWORD }}
         ports:
           - 27018:27017
 
@@ -50,6 +53,8 @@ jobs:
           -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
           -e MONGO_PORT=${{ env.MONGO_PORT }} \
           -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
+          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
+          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e ENV=ci -d binbot
           sleep 10
           docker exec -i binbot_api sh -c 'cat /var/log/nginx/web-error.log'
