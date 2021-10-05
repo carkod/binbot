@@ -30,6 +30,7 @@ class Bot(Account):
             "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
             "short_stop_price": "0",  # Flip to short strategy threshold
+            "candlestick_interval": "15m",
             "take_profit": "3",
             "trailling": "false",
             "trailling_deviation": "0.63",
