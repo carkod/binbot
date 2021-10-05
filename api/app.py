@@ -15,16 +15,11 @@ def create_app():
         host=os.getenv("MONGO_HOSTNAME"),
         port=int(os.getenv("MONGO_PORT")),
         # authSource=os.getenv("MONGO_AUTH_DATABASE"),
-        username=os.getenv("MONGO_AUTH_USERNAME"),
-        password=os.getenv("MONGO_AUTH_PASSWORD")
+        # username=os.getenv("MONGO_AUTH_USERNAME"),
+        # password=os.getenv("MONGO_AUTH_PASSWORD")
     )
+    app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
     
-    try:
-        app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
-    except TypeError:
-        app.db = mongo
-        pass
-
     # if "bots" not in app.db.list_collection_names():
     #     app.db.create_collection("bots")
 
