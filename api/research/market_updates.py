@@ -19,9 +19,6 @@ class MarketUpdates(Account):
     bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
     bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
 
-    # streams
-    base = os.getenv("WS_BASE")
-
     def __init__(self, interval="5m"):
         self.markets_streams = None
         self.app = create_app()

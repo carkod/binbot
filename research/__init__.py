@@ -162,6 +162,7 @@ def process_kline_stream(result):
         symbol = result["k"]["s"]
         data = binbot_api._get_candlestick(symbol, interval)
         ma_100 = data[1]["y"]
+        ma_7 = data[3]["y"]
 
         # raw df
         klines = binbot_api._get_raw_klines(symbol, 1000)
@@ -179,6 +180,7 @@ def process_kline_stream(result):
         spread = (float(high_price) / float(low_price)) - 1
 
         all_time_low = pandas.to_numeric(df[3]).min()
+        msg = None
 
         if symbol not in last_processed_kline:
             if (
@@ -191,13 +193,24 @@ def process_kline_stream(result):
                 and spread > 0.1
             ):
                 # Send Telegram
-                msg = f"- Candlesick jump <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                msg = f"- Candlesick <strong>jump</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
                 if close_price < float(all_time_low):
                     msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
-                if msg:
-                    _send_msg(msg)
+            if (
+                float(close_price) > float(open_price)
+                and (close_price > ma_7[len(ma_7) - 1] and open_price > ma_7[len(ma_7) - 1])
+                and (close_price > ma_7[len(ma_7) - 2] and open_price > ma_7[len(ma_7) - 2])
+                and (close_price > ma_7[len(ma_7) - 3] and open_price > ma_7[len(ma_7) - 3])
+                and (close_price > ma_7[len(ma_7) - 4] and open_price > ma_7[len(ma_7) - 4])
+                and (close_price > ma_7[len(ma_7) - 5] and open_price > ma_7[len(ma_7) - 5])
+                and (close_price > ma_100[len(ma_100) - 1] and open_price > ma_100[len(ma_100) - 1])
+            ):
+                msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+
+            if msg:
+                _send_msg(msg)
 
             last_processed_kline[symbol] = time()
             # If more than half an hour (interval = 30m) has passed

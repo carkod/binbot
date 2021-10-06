@@ -125,6 +125,13 @@ class Candlestick(BinanceApi):
         return ma_100, ma_25, ma_7
 
     def get(self):
+        """
+        Get candlestick graph data
+        Index 0: trace
+        Index 1: ma_100
+        Index 2: ma_25
+        Index 3: ma_7
+        """
         trace = self.candlestick_trace()
         ma_100, ma_25, ma_7 = self.bollinguer_bands()
         resp = jsonResp(
