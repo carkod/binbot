@@ -46,8 +46,7 @@ class MarketUpdates(Account):
 
     def start_stream(self):
         """
-        Get list of cryptos currently trading bots
-
+        Start/restart websocket streams
         """
         # Close websocekts before starting
         if self.markets_streams:

@@ -130,12 +130,8 @@ class BotForm extends React.Component {
         short_stop_price: this.props.bot.short_stop_price,
         stop_loss: this.props.bot.stop_loss,
         safety_orders: this.props.bot.safety_orders,
+        candlestick_interval: !checkValue(this.props.bot.candlestick_interval) ? this.props.bot.candlestick_interval : intervalOptions[11]
       });
-      if (!checkValue(p.bot) && p.bot.candlestick_interval !== this.props.bot.candlestick_interval) {
-        this.setState({
-          candlestick_interval: this.props.bot.candlestick_interval
-        });
-      }
     }
     if (s.candlestick_interval !== this.state.candlestick_interval) {
       this.props.loadCandlestick(
@@ -539,6 +535,7 @@ class BotForm extends React.Component {
   render() {
     return (
       <div className="content">
+        {console.log(this.state.candlestick_interval)}
         <Row>
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>

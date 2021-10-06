@@ -377,9 +377,8 @@ class DealUpdates(Deal):
             
         else:
             asset = self.find_baseAsset(bot["pair"])
-            error = f'No {asset} found in balance. Bot might have been closed already.'
             buy_gbp_result = self.buy_gbp_balance()
-            msg = f'Bot errored, GBP balance buy back {"successful" if buy_gbp_result else "failed"}'
+            error = f'No {asset} found in balance. Bot might have been closed already. GBP balance buy back {"successful" if buy_gbp_result else "failed"}'
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {"$push": {"errors": error, "errors": msg}, "$set": {"status": "error"}},

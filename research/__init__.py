@@ -130,7 +130,7 @@ def on_open(ws):
 
 
 def on_error(ws, error):
-    print(f"Websocket error: {error}")
+    print(f"Websocket error: {error}. Symbol: {ws.symbol}")
     if error.args[0] == "Connection to remote host was lost.":
         print("Restarting in 30 seconds...")
         sleep(30)
@@ -145,13 +145,13 @@ def on_message(ws, message):
         print(f'Subscriptions: {json_response["result"]}')
 
     elif "e" in response and response["e"] == "kline":
-        process_kline_stream(response)
+        process_kline_stream(response, ws)
 
     else:
         print(f"Error: {response}")
 
 
-def process_kline_stream(result):
+def process_kline_stream(result, ws):
     """
     Updates market data in DB for research
     """
@@ -160,7 +160,10 @@ def process_kline_stream(result):
         close_price = float(result["k"]["c"])
         open_price = float(result["k"]["o"])
         symbol = result["k"]["s"]
+        ws.symbol = symbol
         data = binbot_api._get_candlestick(symbol, interval)
+        if len(data[0]["x"]) < 100:
+            print(f"Not enough data to do research on {symbol}")
         ma_100 = data[1]["y"]
         ma_7 = data[3]["y"]
 
