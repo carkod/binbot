@@ -131,9 +131,9 @@ class BotForm extends React.Component {
         stop_loss: this.props.bot.stop_loss,
         safety_orders: this.props.bot.safety_orders,
       });
-      if (p.bot.candlestick !== this.props.bot.candlestick) {
+      if (!checkValue(this.props.bot.candlestick_interval) && p.bot.candlestick_interval !== this.props.bot.candlestick_interval) {
         this.setState({
-          candlestick_interval: this.props.bot.candlestick
+          candlestick_interval: this.props.bot.candlestick_interval
         });
       }
     }

@@ -47,19 +47,6 @@ class BinanceApi:
         r = get(url=self.ticker_price)
         return r.json()
 
-    def _get_candlestick(self, market, interval):
-        url = f"{self.bb_candlestick_url}/{market}/{interval}"
-        res = get(url=url)
-        res.raise_for_status()
-        data = res.json()
-        return data["trace"]
-
-    def _get_24_ticker(market):
-        url = f"{bb_24_ticker_url}/{market}"
-        res = get(url=url)
-        handle_error(res)
-        data = res.json()["data"]
-        return data
 
 class BinbotApi(BinanceApi):
     """
@@ -101,3 +88,17 @@ class BinbotApi(BinanceApi):
     bb_close_order_url = f"{bb_base_url}/order/close"
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
+
+    def _get_24_ticker(self, market):
+        url = f"{self.bb_24_ticker_url}/{market}"
+        res = get(url=url)
+        handle_error(res)
+        data = res.json()["data"]
+        return data
+    
+    def _get_candlestick(self, market, interval):
+        url = f"{self.bb_candlestick_url}/{market}/{interval}"
+        res = get(url=url)
+        res.raise_for_status()
+        data = res.json()
+        return data["trace"]

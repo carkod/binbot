@@ -117,14 +117,14 @@ class MarketUpdates(Account):
                 if "stop_loss" in bot["deal"] and float(bot["deal"]["stop_loss"]) > float(close_price):
                     deal = DealUpdates(bot)
                     res = deal.update_stop_limit(close_price)
-                    if isinstance(res, Response):
+                    if res == "completed":
                         self.start_stream()
 
                 # Take profit trailling
                 if bot["trailling"] == "true":
 
                     # Update trailling profit reached the first time
-                    if ("take_profit_price" not in bot["deal"]) or float(bot["deal"]["take_profit_price"]) <= 0:
+                    if ("trailling_profit" not in bot["deal"]) or float(bot["deal"]["take_profit_price"]) <= 0:
                         current_take_profit_price = float(bot["deal"]["buy_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
                         )

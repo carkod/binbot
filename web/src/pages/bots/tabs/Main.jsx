@@ -61,6 +61,7 @@ export default function MainTab({
               onBlur={handleBlur}
               value={state.base_order_size}
               autoComplete="off"
+              disabled={state.status === "active"}
             />
             <InputGroupAddon addonType="append">
               <InputGroupText>{state.quoteAsset}</InputGroupText>
@@ -69,17 +70,22 @@ export default function MainTab({
           <FormFeedback valid={!state.baseOrderSizeError}>
             Not enough balance
           </FormFeedback>
-          <Badge color="secondary" onClick={addMin}>
-            Min {state.quoteAsset === "BTC" ? 0.001 : (state.quoteAsset === "BNB" ? 0.051 : (state.quoteAsset === "GBP" ? 10 : ""))}
-          </Badge>
-          {' '}
-          <Badge color="secondary" onClick={addAll}>
-            Add all
-          </Badge>
+          {state.status !== "active" &&
+            <>
+            <Badge color="secondary" onClick={addMin}>
+                Min {state.quoteAsset === "BTC" ? 0.001 : (state.quoteAsset === "BNB" ? 0.051 : (state.quoteAsset === "GBP" ? 10 : ""))}
+              </Badge>
+              {' '}
+              <Badge color="secondary" onClick={addAll}>
+                Add all
+              </Badge>
+            </>
+          }
           <FormFeedback valid={!checkValue(state.addAllError)}>
             state.addAllError
           </FormFeedback>
         </Col>
+        {state.status !== "active" && 
         <Col md="6" sm="12">
           <Label htmlFor="balance_to_use">
             Balance to use<span className="u-required">*</span>
@@ -101,6 +107,7 @@ export default function MainTab({
             </Label>
           </FormGroup>
         </Col>
+        }
       </Row>
     </TabPane>
   );
