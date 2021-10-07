@@ -78,9 +78,11 @@ class MarketUpdates(Account):
         print("Market data updates socket opened")
 
     def on_error(self, ws, error):
-        print(f"Websocket error: {error}")
+        error_msg = f"Deal Websocket error: {error}. Symbol: {ws.symbol}"
+        print(error_msg)
         if error.args[0] == "Connection to remote host was lost.":
             self.start_stream()
+        self.app.db.research_controller.find_one_and_update({"_id": "settings"}, {"$push": { "error": error_msg }})
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -90,11 +92,11 @@ class MarketUpdates(Account):
 
         if "data" in json_response:
             if "e" in json_response["data"] and json_response["data"]["e"] == "kline":
-                self.process_deals(json_response["data"])
+                self.process_deals(json_response["data"], ws)
             else:
                 print(f'Error: {json_response["data"]}')
 
-    def process_deals(self, result):
+    def process_deals(self, result, ws):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
@@ -102,7 +104,7 @@ class MarketUpdates(Account):
         if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
-
+            ws.symbol = symbol
             # Update Current price
             bot = self.app.db.bots.find_one_and_update(
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}

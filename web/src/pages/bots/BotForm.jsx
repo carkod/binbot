@@ -535,7 +535,6 @@ class BotForm extends React.Component {
   render() {
     return (
       <div className="content">
-        {console.log(this.state.candlestick_interval)}
         <Row>
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>

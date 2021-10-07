@@ -201,13 +201,7 @@ class Bot(Account):
 
         if bot:
             close_response = Deal(bot).close_all()
-            bot_errors(close_response, bot)
-
-            updated_bot = self.app.db.bots.update_one(
-                {"_id": ObjectId(findId)},
-                {"$set": {"deal": self.default_deal, "status": "closed"}},
-            )
-            if updated_bot:
+            if close_response:
                 # We don't want to automatically delete after closing
                 # As this closing function may be executed by algo
                 resp = jsonResp(
@@ -218,7 +212,6 @@ class Bot(Account):
                 )
                 return resp
             else:
-                bot_errors(updated_bot, bot)
                 resp = jsonResp(
                     {
                         "message": "Active orders closed, sold base asset, bought back GBP, deactivation failed"

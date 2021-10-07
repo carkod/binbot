@@ -130,7 +130,7 @@ def on_open(ws):
 
 
 def on_error(ws, error):
-    print(f"Websocket error: {error}. Symbol: {ws.symbol}")
+    print(f"Research Websocket error: {error}. Symbol: {ws.symbol}")
     if error.args[0] == "Connection to remote host was lost.":
         print("Restarting in 30 seconds...")
         sleep(30)

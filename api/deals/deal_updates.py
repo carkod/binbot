@@ -415,7 +415,7 @@ class DealUpdates(Deal):
             )
             return "completed"
         else:
-            # Append now stop_limit deal
+            # Append now stop_loss deal
             trailling_stop_loss_response = {
                 "deal_type": "stop_limit",
                 "order_id": res["orderId"],
@@ -439,8 +439,8 @@ class DealUpdates(Deal):
                     },
                 },
             )
-            if botId:
-                buy_gbp_result = self.buy_gbp_balance()
-                print("Successfully finished take profit trailling!")
-                return "completed"
+            buy_gbp_result = self.buy_gbp_balance()
+            msg = f'Successfully finished take profit trailling! GBP {"successfully" if buy_gbp_result else "failed to be"} bought back.'
+            bot_errors(msg, bot)
+            return "completed"
         return

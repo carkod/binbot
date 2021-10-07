@@ -49,7 +49,7 @@ class OrderUpdates(BinanceApi):
         print("Orders websockets opened")
 
     def on_error(self, ws, error):
-        print(f"Websocket error: {error}")
+        print(f"Order Websocket error: {error}")
         if error.args[0] == "Connection to remote host was lost.":
             self.run_stream()
 
