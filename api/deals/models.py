@@ -3,7 +3,7 @@ from decimal import Decimal
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import jsonResp, jsonResp_message
+from api.tools.handle_error import bot_errors, jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from flask import current_app as app
@@ -179,6 +179,12 @@ class Deal(Account):
             qty_precision,
         )
 
+        if qty == 0.00:
+            # Fix repeated action
+            error = f'No balance to buy. Bot probably closed, and already sold balance'
+            bot_errors(error, self.active_bot)
+            return
+
         if price:
             order = {
                 "pair": new_pair,
@@ -194,17 +200,8 @@ class Deal(Account):
             }
             res = requests.post(url=self.bb_sell_market_order_url, json=order)
 
-        if isinstance(handle_error(res), Response):
-            resp = jsonResp(
-                {
-                    "message": f"Failed to buy {pair} using GBP balance",
-                    "error": 1,
-                    "botId": str(self.active_bot["_id"]),
-                },
-                200,
-            )
-            return resp
-        return True
+        bot_errors(res, self.active_bot)
+        return
 
     def base_order(self):
         """

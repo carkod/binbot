@@ -4,7 +4,7 @@ import requests
 from api.app import create_app
 from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import handle_binance_errors
+from api.tools.handle_error import bot_errors, handle_binance_errors
 from api.tools.handle_error import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
@@ -369,10 +369,12 @@ class DealUpdates(Deal):
                 {"$push": {"orders": new_orders}, "$set": {"status": "loss"}},
             )
             if not botId:
+                # Not likely to happen to remove in the future.
                 print(f"Failed to update stop_limit deal: {botId}")
             else:
                 buy_gbp_result = self.buy_gbp_balance()
-                print(f"New stop_limit deal successfully updated: {botId}")
+                msg = f"New stop_limit deal successfully updated"
+                bot_errors(msg, bot)
             return "completed"
             
         else:

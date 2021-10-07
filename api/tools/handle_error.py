@@ -2,14 +2,14 @@ import json
 from time import sleep
 
 from bson.objectid import ObjectId
-from flask import Response, current_app
+from flask import current_app, Response as FlaskResponse
+from requests import exceptions, Response
 from requests.exceptions import HTTPError, RequestException, Timeout
 from bson import json_util
-from flask import Response
 
 
 def jsonResp(data, status=200):
-    return Response(
+    return FlaskResponse(
         json.dumps(data, default=json_util.default),
         mimetype="application/json",
         status=status,
@@ -24,15 +24,23 @@ def jsonResp_error_message(message, status):
     return jsonResp(body, status)
     
 
-def bot_errors(error: Response, bot):
+def bot_errors(error, bot):
     if isinstance(error, Response):
-        bot["errors"].append(error)
-        bot = current_app.db.bots.find_one_and_update(
-            {"_id": ObjectId(bot["_id"])},
-            {
-                "$set": {"status": "error", "errors": bot["errors"]}
-            }
-        )
+        try:
+            error = error.json()["msg"]
+        except KeyError:
+            error = error.json()["message"]
+    else:
+        error = error
+
+    bot["errors"].append(error)
+    bot = current_app.db.bots.find_one_and_update(
+        {"_id": ObjectId(bot["_id"])},
+        {
+            "$set": {"status": "error", "errors": bot["errors"]}
+        }
+    )
+
     return bot
 
 def handle_error(req):
