@@ -145,22 +145,17 @@ class Deal(Account):
 
         return
 
-    def buy_gbp_balance(self, sell_deal_qty=False):
+    def buy_gbp_balance(self):
         """
         To buy GBP e.g.:
         - BNBGBP market sell BNB with GBP
 
-        Set sell_deal_qty=True if want to sell only the deal quantity.
-        By default sells all market balance (i.e. BTC, BNB etc...)
+        Sell whatever is in the balance e.g. Sell all BNB
         """
         pair = self.active_bot["pair"]
         market = self.find_quoteAsset(pair)
         new_pair = f"{market}GBP"
-
-        if sell_deal_qty:
-            bo_size = self.active_bot["base_order_size"]
-        else:
-            bo_size = self.get_one_balance(market)
+        bo_size = self.get_one_balance(market)
         book_order = Book_Order(new_pair)
         price = float(book_order.matching_engine(False, bo_size))
         # Precision for balance conversion, not for the deal
