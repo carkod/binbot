@@ -1,13 +1,15 @@
-from api.threads import market_update_thread
 import threading
-from flask import Response, request, current_app
 from datetime import date
 
 from api.account.account import Account
 from api.deals.models import Deal
+from api.orders.models.book_order import Book_Order
+from api.threads import market_update_thread
+from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp
+from api.tools.round_numbers import round_numbers, supress_notation
 from bson.objectid import ObjectId
-from api.tools.handle_error import jsonResp
-from api.tools.handle_error import bot_errors
+from flask import Response, current_app, request
+from requests import delete, post
 
 
 class Bot(Account):
@@ -199,25 +201,72 @@ class Bot(Account):
         bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            close_response = Deal(bot).close_all()
-            if close_response:
-                # We don't want to automatically delete after closing
-                # As this closing function may be executed by algo
-                resp = jsonResp(
-                    {
-                        "message": "Active orders closed, sold base asset, bought back GBP, deactivated"
-                    }
-                )
-                return resp
-            else:
-                resp = jsonResp(
-                    {
-                        "message": "Active orders closed, sold base asset, bought back GBP, deactivation failed"
-                    }
-                )
-                return resp
+            orders = bot["orders"]
 
+            # Close all active orders
+            if len(orders) > 0:
+                for d in orders:
+                    if "deal_type" in d and (
+                        d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
+                    ):
+                        order_id = d["order_id"]
+                        res = delete(
+                            url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
+                        )
+                        error_msg = f'Failed to delete opened order {order_id}.'
+                        # Handle error and continue
+                        handle_binance_errors(res, message=error_msg)
+
+            # Sell everything
+            pair = bot["pair"]
+            base_asset = self.find_baseAsset(pair)
+            deal_object = Deal(bot)
+            balance = deal_object.get_one_balance(base_asset)
+            if balance:
+                qty = round_numbers(balance, self.qty_precision)
+                book_order = Book_Order(pair)
+                price = float(book_order.matching_engine(True, qty))
+
+                if price:
+                    order = {
+                        "pair": pair,
+                        "qty": qty,
+                        "price": supress_notation(price, self.price_precision),
+                    }
+                    res = post(url=self.bb_sell_order_url, json=order)
+                else:
+                    order = {
+                        "pair": pair,
+                        "qty": qty,
+                    }
+                    res = post(url=self.bb_sell_market_order_url, json=order)
+
+                handle_binance_errors(res)
+
+        # Hedge with GBP and complete bot
+        deal_object.buy_gbp_balance()
+        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
+        if "errors" in bot and len(bot["errors"]) > 0:
+            self.app.db.bots.find_one_and_update(
+                {"pair": pair},
+                {"$set": {"status": "errors"}},
+            )
+            resp = jsonResp(
+                {
+                    "message": "Errors encountered during deactivation, please check bot errors.",
+                    "error": 1
+                }
+            )
+            
         else:
-            response = jsonResp({"message": "Bot not found", "botId": findId}, 400)
+            self.app.db.bots.find_one_and_update(
+                {"pair": pair}, {"$set": {"status": "completed"}}
+            )
+            resp = jsonResp(
+                {
+                    "message": "Active orders closed, sold base asset, bought back GBP, deactivated",
+                    "error": 0
+                }
+            )
 
-        return response
+        return resp

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from bson.objectid import ObjectId
 
 import requests
 from api.app import create_app
@@ -411,18 +412,18 @@ class DealUpdates(Deal):
             # Append now stop_loss deal
             trailling_stop_loss_response = {
                 "deal_type": "stop_limit",
-                "order_id": res["orderId"],
-                "pair": res["symbol"],
-                "order_side": res["side"],
-                "order_type": res["type"],
-                "price": res["price"],
-                "qty": res["origQty"],
-                "fills": res["fills"],
-                "time_in_force": res["timeInForce"],
-                "status": res["status"],
+                "order_id": result["orderId"],
+                "pair": result["symbol"],
+                "order_side": result["side"],
+                "order_type": result["type"],
+                "price": result["price"],
+                "qty": result["origQty"],
+                "fills": result["fills"],
+                "time_in_force": result["timeInForce"],
+                "status": result["status"],
             }
             bot["orders"].append(trailling_stop_loss_response)
-            botId = self.app.db.bots.update_one(
+            self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {
                     "$set": {
@@ -432,8 +433,8 @@ class DealUpdates(Deal):
                     },
                 },
             )
-            buy_gbp_result = self.buy_gbp_balance()
-            msg = f'Successfully finished take profit trailling! GBP {"successfully" if buy_gbp_result else "failed to be"} bought back.'
+            self.buy_gbp_balance()
+            bot = self.app.db.bots.find_one({"_id": ObjectId(bot["_id"])})
+            msg = f'Finished take profit trailling! {"Errors encountered" if len(bot["errors"]) > 0 else ""}'
             bot_errors(msg, bot)
             return "completed"
-        return

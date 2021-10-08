@@ -78,7 +78,7 @@ def handle_error(req):
         return jsonResp_message(f"Catastrophic error: {e}", 500)
 
 
-def handle_binance_errors(response, bot=None, **kwargs):
+def handle_binance_errors(response: Response, bot=None, **kwargs):
     """
     Combine Binance errors
     e.g. {"code": -1013, "msg": "Invalid quantity"}
@@ -107,6 +107,7 @@ def handle_binance_errors(response, bot=None, **kwargs):
         if content["code"] == -1003:
             # Too many requests, most likely exceeded API rate limits
             # Back off for > 5 minutes, which is Binance's ban time
+            print('Too many requests. Back off for 5 min...')
             sleep(35)
             return
     else:
