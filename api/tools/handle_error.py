@@ -94,7 +94,7 @@ def handle_binance_errors(response, bot=None, **kwargs):
             if not bot:
                 return jsonResp_error_message(content["msg"])
             else:
-                error = f'{kwargs["message"] + content["msg"] if "message" in kwargs else content["msg"]}'
+                error = f'{kwargs.get("message") + content["msg"] if kwargs.get("message") else content["msg"]}'
                 bot["errors"].append(error)
                 app = create_app()
                 bot = app.db.bots.find_one_and_update(
