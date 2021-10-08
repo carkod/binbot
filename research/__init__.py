@@ -22,10 +22,11 @@ mongo = MongoClient(
     password=os.environ["MONGO_AUTH_PASSWORD"],
     authSource=os.environ["MONGO_AUTH_DATABASE"],
 )
-
+db = mongo["binbot"]
+interval = "1h"
 list_markets = []
 markets_streams = None
-interval = "1h"
+
 last_processed_kline = {}
 # This blacklist is necessary to keep prod and local DB synched
 black_list = [
@@ -75,6 +76,16 @@ telegram_bot = TelegramBot()
 max_request = 950  # Avoid HTTP 411 error by separating streams
 binbot_api = BinbotApi()
 
+
+# Dynamic data
+settings = db.research_controller.find_one({"_id": "settings"})
+blacklist_data = list(db.blacklist.find())
+
+if settings:
+    interval = settings["candlestick_interval"]
+
+if blacklist_data:
+    black_list = blacklist_data["blacklisst"]
 
 def _send_msg(msg):
     """
@@ -165,6 +176,7 @@ def process_kline_stream(result, ws):
         if len(data[0]["x"]) < 100:
             print(f"Not enough data to do research on {symbol}")
         ma_100 = data[1]["y"]
+        ma_25 = data[2]["y"]
         ma_7 = data[3]["y"]
 
         # raw df
@@ -209,6 +221,11 @@ def process_kline_stream(result, ws):
                 and (close_price > ma_7[len(ma_7) - 4] and open_price > ma_7[len(ma_7) - 4])
                 and (close_price > ma_7[len(ma_7) - 5] and open_price > ma_7[len(ma_7) - 5])
                 and (close_price > ma_100[len(ma_100) - 1] and open_price > ma_100[len(ma_100) - 1])
+                and (close_price > ma_25[len(ma_25) - 1] and open_price > ma_25[len(ma_25) - 1])
+                and (close_price > ma_25[len(ma_25) - 2] and open_price > ma_25[len(ma_25) - 2])
+                and (close_price > ma_25[len(ma_25) - 3] and open_price > ma_25[len(ma_25) - 3])
+                and (close_price > ma_25[len(ma_25) - 4] and open_price > ma_25[len(ma_25) - 4])
+                and (close_price > ma_25[len(ma_25) - 5] and open_price > ma_25[len(ma_25) - 5])
             ):
                 msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
