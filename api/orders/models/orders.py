@@ -54,9 +54,9 @@ class Orders(Account):
             .limit(limit)
         )
         if orders:
-            resp = jsonResp({"data": orders, "pages": self.pages}, 200)
+            resp = jsonResp({"data": orders, "pages": self.pages})
         else:
-            resp = jsonResp({"message": "Orders not found!"}, 200)
+            resp = jsonResp({"message": "Orders not found!"})
         return resp
 
     def poll_historical_orders(self):
@@ -134,9 +134,9 @@ class Orders(Account):
         data = res.json()
 
         if len(data) > 0:
-            resp = jsonResp({"message": "Open orders found!", "data": data}, 200)
+            resp = jsonResp({"message": "Open orders found!", "data": data})
         else:
-            resp = jsonResp_message("No open orders found!", 200)
+            resp = jsonResp_message("No open orders found!")
         return resp
 
     def delete_order(self):
@@ -175,9 +175,9 @@ class Orders(Account):
         data = res.json()
 
         if len(data) > 0:
-            resp = jsonResp({"message": "Order deleted!", "data": data}, 200)
+            resp = jsonResp({"message": "Order deleted!", "data": data})
         else:
-            resp = jsonResp_message("Failed to delete order", 200)
+            resp = jsonResp_message("Failed to delete order")
         return resp
 
     def delete_all_orders(self):
@@ -217,7 +217,7 @@ class Orders(Account):
         data = res.json()
 
         if len(data) > 0:
-            resp = jsonResp({"message": "Orders deleted", "data": data}, 200)
+            resp = jsonResp({"message": "Orders deleted", "data": data})
         else:
-            resp = jsonResp_message("No open orders found!", 200)
+            resp = jsonResp_message("No open orders found!")
         return resp

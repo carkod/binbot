@@ -176,7 +176,7 @@ class Deal(Account):
 
         if qty == 0.00:
             # Fix repeated action
-            error = f'No balance to buy. Bot probably closed, and already sold balance'
+            error = f"No balance to buy. Bot probably closed, and already sold balance"
             bot_errors(error, self.active_bot)
             return
 
@@ -387,14 +387,12 @@ class Deal(Account):
         # Validations
         if price:
             if price <= float(self.MIN_PRICE):
-                return jsonResp_message("[Short stop loss order] Price too low", 200)
+                return jsonResp_message("[Short stop loss order] Price too low")
         # Avoid common rate limits
         if float(self.asset_qty) <= float(self.MIN_QTY):
-            return jsonResp_message("[Short stop loss order] Quantity too low", 200)
+            return jsonResp_message("[Short stop loss order] Quantity too low")
         if price * float(self.asset_qty) <= float(self.MIN_NOTIONAL):
-            return jsonResp_message(
-                "[Short stop loss order] Price x Quantity too low", 200
-            )
+            return jsonResp_message("[Short stop loss order] Price x Quantity too low")
 
         order = {
             "pair": pair,

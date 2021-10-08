@@ -96,16 +96,14 @@ class DealUpdates(Deal):
                 if new_tp_price:
                     if new_tp_price <= float(self.MIN_PRICE):
                         return jsonResp_message(
-                            "[Take profit order error] Price too low", 200
+                            "[Take profit order error] Price too low"
                         )
                 if qty <= float(self.MIN_QTY):
                     return jsonResp_message(
-                        "[Take profit order error] Quantity too low", 200
+                        "[Take profit order error] Quantity too low"
                     )
                 if new_tp_price * qty <= float(self.MIN_NOTIONAL):
-                    return jsonResp_message(
-                        "[Take profit order error] Price x Quantity too low", 200
-                    )
+                    return jsonResp_message("[Take profit order error] Price x Quantity too low")
 
                 new_tp_order = {
                     "pair": bot["pair"],
@@ -406,13 +404,8 @@ class DealUpdates(Deal):
             "price": supress_notation(price, self.price_precision),
         }
         res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
-        result = handle_binance_errors(res)
-        if result["error"] == 1:
-            error_message = f'Trailling stop loss error: {result["message"]}'
-            self.app.db.bots.find_one_and_update(
-                {"pair": bot["pair"]},
-                {"$push": {"errors": error_message}, "$set": {"status": "error"}},
-            )
+        result = handle_binance_errors(res, bot, message="Trailling stop loss")
+        if result == "errored":
             return "completed"
         else:
             # Append now stop_loss deal

@@ -24,9 +24,9 @@ class User:
         # token_data = jwt.decode(request.headers.get('AccessToken'), os.environ['SECRET_KEY'])
         users = list(app.db.users.find())
         if users:
-            resp = jsonResp_message(users, 200)
+            resp = jsonResp_message(users)
         else:
-            resp = jsonResp_message("No users found", 200)
+            resp = jsonResp_message("No users found")
 
         return resp
 
@@ -35,7 +35,7 @@ class User:
         user = app.db.users.find_one({"_id": ObjectId(findId)})
 
         if user:
-            resp = jsonResp({"message": "User found", "data": user}, 200)
+            resp = jsonResp({"message": "User found", "data": user})
         else:
             resp = jsonResp({"message": "User not found", "error": 1}, 404)
         return resp
@@ -70,9 +70,9 @@ class User:
                 )
 
             else:
-                resp = jsonResp({"message": "Incorrect password", "error": 1}, 200)
+                resp = jsonResp({"message": "Incorrect password", "error": 1})
         else:
-            resp = jsonResp({"message": "Credentials are incorrect", "error": 1}, 200)
+            resp = jsonResp({"message": "Credentials are incorrect", "error": 1})
         return resp
 
     def logout(self):
@@ -88,7 +88,7 @@ class User:
         except:
             pass
 
-        resp = jsonResp_message("User logged out", 200)
+        resp = jsonResp_message("User logged out")
 
         return resp
 
@@ -139,14 +139,14 @@ class User:
                 )
 
             else:
-                resp = jsonResp_message("User could not be added", 200)
+                resp = jsonResp_message("User could not be added")
         return resp
 
     def delete(self):
         findId = request.view_args["id"]
         count = app.db.users.delete_one({"_id": ObjectId(findId)}).deleted_count
         if count > 0:
-            resp = jsonResp({"message": "Successfully deleted user"}, 200)
+            resp = jsonResp({"message": "Successfully deleted user"})
         else:
-            resp = jsonResp({"message": "Not found user, cannot delete"}, 200)
+            resp = jsonResp({"message": "Not found user, cannot delete"})
         return resp

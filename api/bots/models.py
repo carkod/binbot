@@ -9,6 +9,7 @@ from bson.objectid import ObjectId
 from api.tools.handle_error import jsonResp
 from api.tools.handle_error import bot_errors
 
+
 class Bot(Account):
     def __init__(self):
         self.app = current_app
@@ -45,19 +46,19 @@ class Bot(Account):
         self.default_so = {"so_size": "0", "price": "0", "price_deviation_so": "0.63"}
 
     def get(self):
-        resp = jsonResp({"message": "Endpoint failed"}, 200)
+        resp = jsonResp({"message": "Endpoint failed"})
         bot = list(self.app.db.bots.find())
         if bot:
-            resp = jsonResp({"data": bot}, 200)
+            resp = jsonResp({"data": bot})
         else:
-            resp = jsonResp({"message": "Bots not found", "data": []}, 200)
+            resp = jsonResp({"message": "Bots not found", "data": []})
         return resp
 
     def get_one(self):
         findId = request.view_args["id"]
         bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
-            resp = jsonResp({"message": "Bot found", "data": bot}, 200)
+            resp = jsonResp({"message": "Bot found", "data": bot})
         else:
             resp = jsonResp({"message": "Bots not found"}, 404)
         return resp
@@ -150,8 +151,7 @@ class Bot(Account):
                             "message": f'Failed to activate bot, {order_errors[0]["base_order_error"]}',
                             "botId": str(findId),
                             "error": 1,
-                        },
-                        200,
+                        }
                     )
                 else:
                     resp = jsonResp(
@@ -159,8 +159,7 @@ class Bot(Account):
                             "message": f"Failed to activate bot, {','.join(order_errors)}",
                             "botId": str(findId),
                             "error": 1,
-                        },
-                        200,
+                        }
                     )
                 return resp
 
@@ -207,16 +206,14 @@ class Bot(Account):
                 resp = jsonResp(
                     {
                         "message": "Active orders closed, sold base asset, bought back GBP, deactivated"
-                    },
-                    200,
+                    }
                 )
                 return resp
             else:
                 resp = jsonResp(
                     {
                         "message": "Active orders closed, sold base asset, bought back GBP, deactivation failed"
-                    },
-                    200,
+                    }
                 )
                 return resp
 

@@ -172,5 +172,5 @@ class Candlestick(BinanceApi):
             "type": "scatter",
             "mode": "lines+markers",
         }
-        resp = jsonResp({"message": "Successfully retrieved data", "data": trace}, 200)
+        resp = jsonResp({"message": "Successfully retrieved data", "data": trace})
         return resp

@@ -82,7 +82,7 @@ class Correlation(Account):
         """
         Start scanning
         """
-        resp = jsonResp_message("Pearson correlation scanning started", 200)
+        resp = jsonResp_message("Pearson correlation scanning started")
         return resp
 
     def block_response(self):
@@ -90,7 +90,7 @@ class Correlation(Account):
         Scanning already in progress
         """
         global poll_percentage
-        resp = jsonResp_message(f"Pearson correlation scanning is in progress {poll_percentage}%", 200)
+        resp = jsonResp_message(f"Pearson correlation scanning is in progress {poll_percentage}%")
         return resp
 
     def get_signals(self):
@@ -124,7 +124,7 @@ class Correlation(Account):
             query.sort(sort)
 
         data = list(query)
-        resp = jsonResp({"data": data}, 200)
+        resp = jsonResp({"data": data})
         return resp
 
     def post_blacklisted(self):
@@ -139,10 +139,10 @@ class Correlation(Account):
         query = self.app.db.correlations.find_one_and_update(args, {"$set": set})
 
         if query:
-            resp = jsonResp({"data": query}, 200)
+            resp = jsonResp({"data": query})
             return resp
         else:
-            resp = jsonResp({"error": 1, "data": query}, 200)
+            resp = jsonResp({"error": 1, "data": query})
 
     def get_blacklisted(self):
         """
@@ -151,7 +151,7 @@ class Correlation(Account):
         args = {"candlestick_signal": {"$exists": True, "$ne": None}}
         query = self.app.db.correlations.find(args)
         if query:
-            resp = jsonResp({"error": 0, "data": query}, 200)
+            resp = jsonResp({"error": 0, "data": query})
             return resp
         else:
-            resp = jsonResp({"error": 1, "data": query}, 200)
+            resp = jsonResp({"error": 1, "data": query})

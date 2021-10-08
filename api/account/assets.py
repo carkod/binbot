@@ -30,7 +30,7 @@ class Assets(Account):
 
         # filter out empty
         # Return response
-        resp = jsonResp({"data": balances}, 200)
+        resp = jsonResp({"data": balances})
         return resp
 
     def get_binbot_balance(self):
@@ -83,7 +83,7 @@ class Assets(Account):
 
         # filter out empty
         # Return response
-        resp = jsonResp(balances, 200)
+        resp = jsonResp(balances)
         return resp
 
     def get_balances_btc(self):
@@ -133,7 +133,7 @@ class Assets(Account):
 
         # filter out empty
         # Return response
-        resp = jsonResp(data, 200)
+        resp = jsonResp(data)
         return resp
 
     def get_pnl(self):
@@ -153,7 +153,7 @@ class Assets(Account):
                 }
             )
         )
-        resp = jsonResp({"data": data}, 200)
+        resp = jsonResp({"data": data})
         return resp
 
     def _check_locked(self, b):
@@ -175,7 +175,7 @@ class Assets(Account):
         total_gbp = 0
         total_btc = 0
         rate = 0
-        for b in balances:
+        for b in balances["data"]:
             # Only tether coins for hedging
             if "USD" in b["asset"]:
 
@@ -239,9 +239,9 @@ class Assets(Account):
 
         balance = list(app.db.balances.find(filter).sort([("_id", -1)]))
         if balance:
-            resp = jsonResp({"data": balance}, 200)
+            resp = jsonResp({"data": balance})
         else:
-            resp = jsonResp({"data": [], "error": 1}, 200)
+            resp = jsonResp({"data": [], "error": 1})
         return resp
 
     def currency_conversion(self):
@@ -253,5 +253,5 @@ class Assets(Account):
         time = datetime.now()
         rate = CoinBaseApi().get_conversion(time, base, quote)
         total = float(rate) * float(qty)
-        return jsonResp({"data": total}, 200)
+        return jsonResp({"data": total})
 

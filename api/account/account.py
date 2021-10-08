@@ -61,7 +61,7 @@ class Account(BinbotApi):
         res = requests.get(url=url, params=params)
         handle_error(res)
         data = res.json()
-        resp = jsonResp({"data": data}, 200)
+        resp = jsonResp({"data": data})
         return resp
 
     def get_ticker_price(self, symbol):
@@ -79,7 +79,7 @@ class Account(BinbotApi):
         res = requests.get(url=url, params=params)
         handle_error(res)
         data = res.json()
-        resp = jsonResp({"data": data}, 200)
+        resp = jsonResp({"data": data})
         return resp
 
     def find_quoteAsset(self, symbol):
@@ -98,11 +98,11 @@ class Account(BinbotApi):
 
     def find_base_asset_json(self, symbol):
         data = self.find_baseAsset(symbol)
-        return jsonResp({"data": data}, 200)
+        return jsonResp({"data": data})
 
     def find_quote_asset_json(self, symbol):
         data = self.find_quoteAsset(symbol)
-        return jsonResp({"data": data}, 200)
+        return jsonResp({"data": data})
 
     def find_market(self, quote):
         symbols = self._exchange_info()["symbols"]
@@ -116,15 +116,15 @@ class Account(BinbotApi):
         pair = request.view_args["pair"]
         symbol = next((s for s in symbols if s["symbol"] == pair), None)
         if symbol:
-            return jsonResp({"data": symbol}, 200)
+            return jsonResp({"data": symbol})
         else:
-            return jsonResp_message("Pair not found", 200)
+            return jsonResp_message("Pair not found")
 
     def get_symbols_raw(self):
         symbols = self._ticker_price()
         symbols_list = [x["symbol"] for x in symbols]
         symbols_list.sort()
-        return jsonResp({"data": symbols_list}, 200)
+        return jsonResp({"data": symbols_list})
 
     def get_symbols(self):
         app = create_app()
@@ -133,7 +133,7 @@ class Account(BinbotApi):
         query = app.db.correlations.find(args, project)
         symbols_list = list(query.distinct("market"))
         symbols_list.sort()
-        return jsonResp({"data": symbols_list}, 200)
+        return jsonResp({"data": symbols_list})
 
     def get_quote_asset_precision(self, symbol, quote=True):
         """
