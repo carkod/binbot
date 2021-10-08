@@ -1,6 +1,5 @@
 import pandas as pd
 from api.tools.round_numbers import round_numbers
-from api.app import create_app
 from decimal import Decimal
 
 from flask import current_app as app, request
@@ -9,12 +8,13 @@ from api.account.account import Account
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from api.apis import CoinBaseApi
-
+from api.app import create_app
 
 class Assets(Account):
     def __init__(self):
         self.usd_balance = 0
         self.app = create_app()
+        self.coinbase_api = CoinBaseApi()
 
     def get_raw_balance(self):
         """
@@ -180,7 +180,7 @@ class Assets(Account):
             if "USD" in b["asset"]:
 
                 qty = self._check_locked(b)
-                rate = self.app.coinbase.get_conversion(current_time, "BTC", "GBP")
+                rate = self.coinbase_api.get_conversion(current_time, "BTC", "GBP")
                 total_gbp += float(qty) / float(rate)
             elif "GBP" in b["asset"]:
                 total_gbp += self._check_locked(b)
@@ -197,7 +197,7 @@ class Assets(Account):
                 if market == "BNB":
                     gbp_rate = self.get_ticker_price("BNBGBP")
                 else:
-                    gbp_rate = self.app.coinbase.get_conversion(
+                    gbp_rate = self.coinbase_api.get_conversion(
                         current_time, market, "GBP"
                     )
 
@@ -251,7 +251,7 @@ class Assets(Account):
 
         # Get conversion from coinbase
         time = datetime.now()
-        rate = CoinBaseApi().get_conversion(time, base, quote)
+        rate = self.coinbase_api.get_conversion(time, base, quote)
         total = float(rate) * float(qty)
         return jsonResp({"data": total})
 

@@ -1,5 +1,6 @@
 import React from "react";
 import { Card, CardBody, CardHeader, CardTitle, Table } from "reactstrap";
+import { checkValue } from "../validations";
 
 export function AssetsTable({ data, headers }) {
   return (
@@ -11,12 +12,12 @@ export function AssetsTable({ data, headers }) {
         <Table>
           <thead className="text-primary">
             <tr>
-              {headers !== undefined &&
+              {!checkValue(headers) &&
                 headers.map((x, i) => <th key={i}>{x}</th>)}
             </tr>
           </thead>
           <tbody>
-            {data &&
+            {!checkValue(data) &&
               data.map((x, i) => (
                 <tr
                   key={i}

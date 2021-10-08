@@ -1,9 +1,7 @@
 import os
-import pprint
 from flask import Flask
 from flask_cors import CORS
-from pymongo import TEXT, MongoClient, errors
-import pprint
+from pymongo import MongoClient, errors
 
 def create_app():
     app = Flask(__name__)

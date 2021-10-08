@@ -34,7 +34,8 @@ def bot_errors(error, bot):
         error = error
 
     bot["errors"].append(error)
-    bot = current_app.db.bots.find_one_and_update(
+    app = create_app()
+    bot = app.db.bots.find_one_and_update(
         {"_id": ObjectId(bot["_id"])},
         {
             "$set": {"status": "error", "errors": bot["errors"]}
@@ -86,8 +87,6 @@ def handle_binance_errors(response, bot=None, **kwargs):
     """
     if isinstance(json.loads(response.content), dict) and "code" in json.loads(response.content).keys():
         content = response.json()
-        if "code" not in content:
-            return content
         if content["code"] == -2010 or content["code"] == -1013:
             # Not enough funds. Ignore, send to bot errors
             # Need to be dealt with at higher levels
@@ -110,3 +109,5 @@ def handle_binance_errors(response, bot=None, **kwargs):
             # Back off for > 5 minutes, which is Binance's ban time
             sleep(35)
             return
+    else:
+        return response.json()
