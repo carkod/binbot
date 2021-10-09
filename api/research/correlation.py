@@ -3,11 +3,10 @@ import os
 import pandas as pd
 import requests
 from api.account.account import Account
-from api.app import create_app
 from api.tools.handle_error import jsonResp_message, jsonResp
 from api.tools.round_numbers import round_numbers
 from scipy import stats
-from flask import request
+from flask import request, current_app
 
 poll_percentage = 0
 
@@ -15,7 +14,8 @@ class Correlation(Account):
     candlestick_url = os.getenv("CANDLESTICK")
 
     def __init__(self):
-        self.app = create_app()
+        self.app = current_app
+        pass
 
     def candlestick_request(self, pair, interval="5m", limit="300"):
         params = {"symbol": pair, "interval": interval, "limit": limit}

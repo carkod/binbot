@@ -53,12 +53,7 @@ class Bot(Account):
         Args:
         - archive=false
         """
-        archive = request.args.get('archive')
-        if archive == "false":
-            bot = list(self.app.db.bots.find())
-        else:
-            bot = list(self.app.db.bots.find({"status": {"$ne": "archived"}}))
-
+        bot = list(self.app.db.bots.find().sort([("status", 1), ("pair", 1)]))
         if bot:
             resp = jsonResp({"data": bot})
         else:

@@ -24,3 +24,6 @@ GET http://localhost:5000/account/store-balance HTTP/1.1
 
 ### Convert 0.0003 BTC to GBP
 GET http://localhost:5000/account/conversion?base=BTC&quote=GBP&qty=0.0003 HTTP/1.1
+
+### Raw symbols no cannibalism
+GET http://localhost:5000/account/symbols/no-cannibal HTTP/1.1
