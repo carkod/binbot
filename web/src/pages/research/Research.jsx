@@ -5,6 +5,7 @@ import { Nav, NavItem, NavLink, TabContent, TabPane } from "reactstrap";
 import { checkValue } from "../../validations";
 import { loadCandlestick } from "../bots/actions";
 import { getHistoricalResearchData, getResearchData } from "./actions";
+import ControllerTab from "./ControllerTab";
 import SignalsTab from "./SignalsTab";
 
 class Research extends React.Component {
@@ -18,8 +19,9 @@ class Research extends React.Component {
       sideFilter: "ALL",
       signal_notification: null,
       poll_ms: 10000,
-      activeTab: "signalTab",
+      activeTab: "controllerTab",
       candlestickSignalFilter: "positive",
+      controller_candlestick_interval: "",
     };
   }
 
@@ -65,13 +67,7 @@ class Research extends React.Component {
   };
 
   componentDidMount = () => {
-    this.getData();
-    this.pollData = setInterval(this.getData, this.state.poll_ms);
-    if (!("Notification" in window)) {
-      alert("This browser does not support desktop notification");
-    } else {
-      Notification.requestPermission();
-    }
+    this.props.getSymbols();
   };
 
   componentDidUpdate = (p, s) => {
@@ -158,10 +154,22 @@ class Research extends React.Component {
   };
 
   toggleSignalTab = () => {
-    this.setState({ activeTab: "signalTab" }, () => {
-      this.pollData = setInterval(this.getData, this.state.poll_ms);
-    });
+    this.getData();
+    this.pollData = setInterval(this.getData, this.state.poll_ms);
+    if (!("Notification" in window)) {
+      alert("This browser does not support desktop notification");
+    } else {
+      Notification.requestPermission();
+    }
+    this.setState({ activeTab: "signalTab" });
   };
+
+  handleStardardInput = (e) => {
+    e.preventDefault();
+    this.setState({
+      [e.target.name]: e.target.value
+    })
+  }
 
   render() {
     return (
@@ -178,6 +186,14 @@ class Research extends React.Component {
             </NavItem>
           </Nav>
           <TabContent activeTab={this.state.activeTab}>
+            <TabPane tabId="controllerTab">
+              <ControllerTab
+                candlestick_interval={this.state.candlestick_interval}
+                blacklistData={this.props.blacklistData}
+                symbols={this.props.symbols}
+                handleInput={this.handleStardardInput}
+              />
+            </TabPane>
             <TabPane tabId="signalTab">
               <SignalsTab
                 candlestick={this.props.candlestick}
@@ -204,10 +220,13 @@ const mapStateToProps = (state) => {
   const { data: research } = state.researchReducer;
   const { data: candlestick } = state.candlestickReducer;
   const { data: historicalSignalReducer } = state.historicalResearchReducer;
+  const { data: symbols } = state.symbolReducer;
+
   return {
     research: research,
     candlestick: candlestick,
     historicalSignalReducer: historicalSignalReducer,
+    symbols: symbols
   };
 };
 

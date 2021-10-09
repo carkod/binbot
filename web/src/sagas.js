@@ -21,6 +21,7 @@ import {
   watchPollOrders
 } from "./pages/orders/saga";
 import {
+  watchGetBlacklistApi,
   watchHistoricalResearchApi,
   watchResearchApi
 } from "./pages/research/saga";
@@ -48,6 +49,7 @@ export default function* rootSaga() {
     watchGetBalanceApi(),
     watchRawBalance(),
     watchDeleteBotApi(),
-    watchArchiveBot()
+    watchArchiveBot(),
+    watchGetBlacklistApi()
   ]);
 }

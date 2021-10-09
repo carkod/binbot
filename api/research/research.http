@@ -22,6 +22,8 @@ content-Type: application/json
 
 { "symbol": "TRXBTC", "reason": "Controlled graph" }
 
+### Get all blacklist coins
+GET http://localhost:5000/research/blacklisted HTTP/1.1
 
 ### Get research settings
 GET http://localhost:5000/research/controller HTTP/1.1 

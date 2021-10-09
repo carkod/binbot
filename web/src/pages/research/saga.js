@@ -2,10 +2,13 @@ import { call, put, takeLatest } from "redux-saga/effects";
 import request, { defaultOptions } from "../../request";
 import { checkValue } from "../../validations";
 import {
+  getBlacklistFailed,
+  getBlacklistSucceeded,
   getHistoricalResearchDataFailed,
   getHistoricalResearchDataSucceeded,
   getResearchFailed,
   getResearchSucceeded,
+  GET_BLACKLIST,
   GET_HISTORICAL_RESEARCH,
   GET_RESEARCH,
 } from "./actions";
@@ -63,4 +66,23 @@ export function* watchResearchApi() {
 
 export function* watchHistoricalResearchApi() {
   yield takeLatest(GET_HISTORICAL_RESEARCH, getHistoricalResearchApi);
+}
+
+
+
+/**
+ * Blacklist
+ */
+ export function* getBlacklistApi() {
+  let url = new URL(process.env.REACT_APP_BLACKLISTED)
+  try {
+    const res = yield call(request, url, defaultOptions);
+    yield put(getBlacklistSucceeded(res));
+  } catch (err) {
+    yield put(getBlacklistFailed(err));
+  }
+}
+
+export function* watchGetBlacklistApi() {
+  yield takeLatest(GET_BLACKLIST, getBlacklistApi);
 }

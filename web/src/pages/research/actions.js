@@ -8,6 +8,9 @@ export const GET_HISTORICAL_RESEARCH = "GET_HISTORICAL_RESEARCH";
 export const GET_HISTORICAL_RESEARCH_SUCCESS = "GET_HISTORICAL_RESEARCH_SUCCESS";
 export const GET_HISTORICAL_RESEARCH_ERROR = "GET_HISTORICAL_RESEARCH_ERROR";
 
+export const GET_BLACKLIST = "GET_BLACKLIST";
+export const GET_BLACKLIST_SUCCESS = "GET_BLACKLIST_SUCCESS";
+export const GET_BLACKLIST_ERROR = "GET_BLACKLIST_ERROR";
 /**
  * Dispatched when the repositories are loaded by the request saga
  *
@@ -48,7 +51,6 @@ export function getResearchSucceeded(res) {
   }
   return {
     type: GET_RESEARCH_SUCCESS,
-    
     isError: false,
     data: res.data,
   };
@@ -89,15 +91,31 @@ export function getHistoricalResearchDataFailed(error) {
   };
 }
 
-
 export function getHistoricalResearchDataSucceeded(res) {
   if (res.message) {
     addNotification("SUCCESS!", res.message, "error");
   }
   return {
     type: GET_HISTORICAL_RESEARCH_SUCCESS,
-    
     isError: false,
     data: res.data,
   };
+}
+
+export function getBlacklist() {
+  return {
+    type: GET_BLACKLIST
+  }
+}
+
+export function getBlacklistSucceeded() {
+  return {
+    type: GET_BLACKLIST_SUCCESS
+  }
+}
+
+export function getBlacklistFailed() {
+  return {
+    type: GET_BLACKLIST_ERROR
+  }
 }

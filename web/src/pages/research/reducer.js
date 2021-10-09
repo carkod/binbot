@@ -1,4 +1,8 @@
+import produce from "immer";
 import {
+  GET_BLACKLIST,
+  GET_BLACKLIST_ERROR,
+  GET_BLACKLIST_SUCCESS,
   GET_HISTORICAL_RESEARCH,
   GET_HISTORICAL_RESEARCH_ERROR,
   GET_HISTORICAL_RESEARCH_SUCCESS,
@@ -81,4 +85,19 @@ function historicalResearchReducer(state = initialState, action) {
   }
 }
 
-export { researchReducer, historicalResearchReducer };
+const blacklistReducer = produce((draft, action) => {
+  switch (action.type) {
+      case GET_BLACKLIST:
+          return draft // same as just 'return'
+      case GET_BLACKLIST_SUCCESS:
+          // OK: we return an entirely new state
+          return action.payload
+      case GET_BLACKLIST_ERROR:
+          // OK: the immer way
+          return
+      default:
+        return
+  }
+})
+
+export { researchReducer, historicalResearchReducer, blacklistReducer };

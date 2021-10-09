@@ -24,13 +24,13 @@ def get_signals():
 def get_historical_signals():
     return Correlation().get_historical_signals()
 
-@research_blueprint.route("/blacklisted", methods=["POST"])
+@research_blueprint.route("/blacklist", methods=["PUT"])
 def post_blacklisted():
-    return Correlation().post_blacklisted()
+    return Controller().edit_blacklist()()
 
-@research_blueprint.route("/blacklisted", methods=["GET"])
+@research_blueprint.route("/blacklist", methods=["GET"])
 def get_blacklisted():
-    return Correlation().get_blacklisted()
+    return Controller().get_blacklist()
 
 @research_blueprint.route("/controller", methods=["PUT"])
 def put_controller():
