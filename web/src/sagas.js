@@ -4,6 +4,7 @@ import watchPostLogin from "./containers/login/saga";
 import watchPostRegistration from "./containers/registration/saga";
 import watchGetBotApi, {
   watchActivateBot,
+  watchArchiveBot,
   watchBot,
   watchcloseBotApi,
   watchCreateBot,
@@ -47,5 +48,6 @@ export default function* rootSaga() {
     watchGetBalanceApi(),
     watchRawBalance(),
     watchDeleteBotApi(),
+    watchArchiveBot()
   ]);
 }

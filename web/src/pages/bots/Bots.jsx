@@ -11,7 +11,7 @@ import {
   Row,
 } from "reactstrap";
 import { checkValue } from "../../validations";
-import { deleteBot, getBots, closeBot } from "./actions";
+import { deleteBot, getBots, closeBot, archiveBot } from "./actions";
 import ConfirmModal from "../../components/ConfirmModal";
 class Bots extends React.Component {
   constructor(props) {
@@ -153,6 +153,13 @@ class Bots extends React.Component {
                           <i className="fas fa-edit" />
                         </Button>
                         <Button
+                          color="secondary"
+                          title="Archive bot"
+                          onClick={() => this.props.archiveBot(x._id.$oid)}
+                        >
+                          <i className="fas fa-folder" />
+                        </Button>
+                        <Button
                           color="danger"
                           onClick={() => this.handleDelete(x._id.$oid)}
                         >
@@ -198,4 +205,5 @@ export default connect(mapStateToProps, {
   getBots,
   deleteBot,
   closeBot,
+  archiveBot
 })(Bots);

@@ -36,3 +36,10 @@ GET http://localhost:5000/bot/activate/6046b0e75b97144638063cf3 HTTP/1.1
 
 ### Close bot
 DELETE http://localhost/bot/close/6145098138e9b4fcf6e10634 HTTP/1.1
+
+
+### Archive
+PUT http://localhost:5000/bot/archive/615fb5eb8c335e99b505b533 HTTP/1.1
+
+### Get all including archives
+GET http://localhost:5000/bot?archive=false HTTP/1.1

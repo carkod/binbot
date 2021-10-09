@@ -331,7 +331,7 @@ const mapStateToProps = (s) => {
   const { loading } = s.loadingReducer;
   const { data: balances } = s.balanceReducer;
   let assetList = null;
-  if (!checkValue(balances)) {
+  if (!checkValue(balances) && balances.length > 0) {
     assetList = balances[0].balances.data
   }
   return {
