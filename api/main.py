@@ -46,7 +46,7 @@ app.register_blueprint(research_blueprint, url_prefix="/research")
 # Index Route
 @app.route("/")
 def index():
-    return jsonResp({"status": "Online"}, 200)
+    return jsonResp({"status": "Online"})
 
 
 if os.getenv("ENV") != "ci":

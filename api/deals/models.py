@@ -3,7 +3,7 @@ from decimal import Decimal
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import jsonResp, jsonResp_message
+from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from flask import current_app as app
@@ -145,22 +145,17 @@ class Deal(Account):
 
         return
 
-    def buy_gbp_balance(self, sell_deal_qty=False):
+    def buy_gbp_balance(self):
         """
         To buy GBP e.g.:
         - BNBGBP market sell BNB with GBP
 
-        Set sell_deal_qty=True if want to sell only the deal quantity.
-        By default sells all market balance (i.e. BTC, BNB etc...)
+        Sell whatever is in the balance e.g. Sell all BNB
         """
         pair = self.active_bot["pair"]
         market = self.find_quoteAsset(pair)
         new_pair = f"{market}GBP"
-
-        if sell_deal_qty:
-            bo_size = self.active_bot["base_order_size"]
-        else:
-            bo_size = self.get_one_balance(market)
+        bo_size = self.get_one_balance(market)
         book_order = Book_Order(new_pair)
         price = float(book_order.matching_engine(False, bo_size))
         # Precision for balance conversion, not for the deal
@@ -194,17 +189,12 @@ class Deal(Account):
             }
             res = requests.post(url=self.bb_sell_market_order_url, json=order)
 
-        if isinstance(handle_error(res), Response):
-            resp = jsonResp(
-                {
-                    "message": f"Failed to buy {pair} using GBP balance",
-                    "error": 1,
-                    "botId": str(self.active_bot["_id"]),
-                },
-                200,
-            )
-            return resp
-        return True
+        if qty == 0.00:
+            # Fix repeated action
+            error = f"No balance to buy. Bot probably closed, and already sold balance"
+            handle_binance_errors(res, self.active_bot, message=error)
+        
+        return
 
     def base_order(self):
         """
@@ -395,14 +385,12 @@ class Deal(Account):
         # Validations
         if price:
             if price <= float(self.MIN_PRICE):
-                return jsonResp_message("[Short stop loss order] Price too low", 200)
+                return jsonResp_message("[Short stop loss order] Price too low")
         # Avoid common rate limits
         if float(self.asset_qty) <= float(self.MIN_QTY):
-            return jsonResp_message("[Short stop loss order] Quantity too low", 200)
+            return jsonResp_message("[Short stop loss order] Quantity too low")
         if price * float(self.asset_qty) <= float(self.MIN_NOTIONAL):
-            return jsonResp_message(
-                "[Short stop loss order] Price x Quantity too low", 200
-            )
+            return jsonResp_message("[Short stop loss order] Price x Quantity too low")
 
         order = {
             "pair": pair,

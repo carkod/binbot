@@ -21,3 +21,15 @@ POST http://localhost:5000/research/blacklisted HTTP/1.1
 content-Type: application/json
 
 { "symbol": "TRXBTC", "reason": "Controlled graph" }
+
+
+### Get research settings
+GET http://localhost:5000/research/controller HTTP/1.1 
+content-Type: application/json
+
+### Add blacklist
+PUT http://localhost:5000/research/controller HTTP/1.1
+content-Type: application/json
+
+{ "candlestick_interval": "1hr", "autotrade": 0 }
+

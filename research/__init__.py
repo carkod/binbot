@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from websocket import WebSocketApp
 
-from apis import BinanceApi
+from apis import BinbotApi
 from telegram_bot import TelegramBot
 from utils import handle_error, supress_notation
 
@@ -22,18 +22,11 @@ mongo = MongoClient(
     password=os.environ["MONGO_AUTH_PASSWORD"],
     authSource=os.environ["MONGO_AUTH_DATABASE"],
 )
-
-bb_base_url = f'{os.getenv("RESEARCH_FLASK_DOMAIN")}'
-bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
-bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
-bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
-
-# streams
-base = os.getenv("WS_BASE")
-
+db = mongo["binbot"]
+interval = "1h"
 list_markets = []
 markets_streams = None
-interval = "1h"
+
 last_processed_kline = {}
 # This blacklist is necessary to keep prod and local DB synched
 black_list = [
@@ -81,23 +74,18 @@ black_list = [
 ]
 telegram_bot = TelegramBot()
 max_request = 950  # Avoid HTTP 411 error by separating streams
+binbot_api = BinbotApi()
 
 
-def _get_candlestick(market, interval):
-    url = f"{bb_candlestick_url}/{market}/{interval}"
-    res = requests.get(url=url)
-    res.raise_for_status()
-    data = res.json()
-    return data["trace"]
+# Dynamic data
+settings = db.research_controller.find_one({"_id": "settings"})
+blacklist_data = list(db.blacklist.find())
 
+if settings:
+    interval = settings["candlestick_interval"]
 
-def _get_24_ticker(market):
-    url = f"{bb_24_ticker_url}/{market}"
-    res = requests.get(url=url)
-    handle_error(res)
-    data = res.json()["data"]
-    return data
-
+if blacklist_data:
+    black_list = blacklist_data["blacklisst"]
 
 def _send_msg(msg):
     """
@@ -118,7 +106,7 @@ def close_stream(ws, close_status_code, close_msg):
 
 def _run_streams(stream, index):
     string_params = "/".join(stream)
-    url = f"{base}/stream?streams={string_params}"
+    url = f"{binbot_api.WS_BASE}{string_params}"
     ws = WebSocketApp(
         url,
         on_open=on_open,
@@ -133,7 +121,7 @@ def _run_streams(stream, index):
 
 
 def start_stream():
-    raw_symbols = BinanceApi()._ticker_price()
+    raw_symbols = binbot_api._ticker_price()
     markets = set([item["symbol"] for item in raw_symbols])
     subtract_list = set(black_list)
     list_markets = markets - subtract_list
@@ -153,7 +141,7 @@ def on_open(ws):
 
 
 def on_error(ws, error):
-    print(f"Websocket error: {error}")
+    print(f"Research Websocket error: {error}. Symbol: {ws.symbol}")
     if error.args[0] == "Connection to remote host was lost.":
         print("Restarting in 30 seconds...")
         sleep(30)
@@ -168,13 +156,13 @@ def on_message(ws, message):
         print(f'Subscriptions: {json_response["result"]}')
 
     elif "e" in response and response["e"] == "kline":
-        process_kline_stream(response)
+        process_kline_stream(response, ws)
 
     else:
         print(f"Error: {response}")
 
 
-def process_kline_stream(result):
+def process_kline_stream(result, ws):
     """
     Updates market data in DB for research
     """
@@ -183,11 +171,16 @@ def process_kline_stream(result):
         close_price = float(result["k"]["c"])
         open_price = float(result["k"]["o"])
         symbol = result["k"]["s"]
-        data = _get_candlestick(symbol, interval)
+        ws.symbol = symbol
+        data = binbot_api._get_candlestick(symbol, interval)
+        if len(data[0]["x"]) < 100:
+            print(f"Not enough data to do research on {symbol}")
         ma_100 = data[1]["y"]
+        ma_25 = data[2]["y"]
+        ma_7 = data[3]["y"]
 
         # raw df
-        klines = BinanceApi()._get_raw_klines(symbol, 1000)
+        klines = binbot_api._get_raw_klines(symbol, 1000)
         df = pandas.DataFrame(klines)
         df["candle_spread"] = abs(pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
         curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
@@ -202,6 +195,7 @@ def process_kline_stream(result):
         spread = (float(high_price) / float(low_price)) - 1
 
         all_time_low = pandas.to_numeric(df[3]).min()
+        msg = None
 
         if symbol not in last_processed_kline:
             if (
@@ -214,13 +208,29 @@ def process_kline_stream(result):
                 and spread > 0.1
             ):
                 # Send Telegram
-                msg = f"- Candlesick jump <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                msg = f"- Candlesick <strong>jump</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
                 if close_price < float(all_time_low):
                     msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
-                if msg:
-                    _send_msg(msg)
+            if (
+                float(close_price) > float(open_price)
+                and (close_price > ma_7[len(ma_7) - 1] and open_price > ma_7[len(ma_7) - 1])
+                and (close_price > ma_7[len(ma_7) - 2] and open_price > ma_7[len(ma_7) - 2])
+                and (close_price > ma_7[len(ma_7) - 3] and open_price > ma_7[len(ma_7) - 3])
+                and (close_price > ma_7[len(ma_7) - 4] and open_price > ma_7[len(ma_7) - 4])
+                and (close_price > ma_7[len(ma_7) - 5] and open_price > ma_7[len(ma_7) - 5])
+                and (close_price > ma_100[len(ma_100) - 1] and open_price > ma_100[len(ma_100) - 1])
+                and (close_price > ma_25[len(ma_25) - 1] and open_price > ma_25[len(ma_25) - 1])
+                and (close_price > ma_25[len(ma_25) - 2] and open_price > ma_25[len(ma_25) - 2])
+                and (close_price > ma_25[len(ma_25) - 3] and open_price > ma_25[len(ma_25) - 3])
+                and (close_price > ma_25[len(ma_25) - 4] and open_price > ma_25[len(ma_25) - 4])
+                and (close_price > ma_25[len(ma_25) - 5] and open_price > ma_25[len(ma_25) - 5])
+            ):
+                msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+
+            if msg:
+                _send_msg(msg)
 
             last_processed_kline[symbol] = time()
             # If more than half an hour (interval = 30m) has passed

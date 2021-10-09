@@ -1,10 +1,11 @@
 from decimal import Decimal
+from bson.objectid import ObjectId
 
 import requests
 from api.app import create_app
 from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import handle_binance_errors
+from api.tools.handle_error import bot_errors, handle_binance_errors
 from api.tools.handle_error import jsonResp, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
@@ -57,7 +58,10 @@ class DealUpdates(Deal):
         """
 
         asset = self.find_baseAsset(pair)
-        qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
+        balance = self.get_one_balance(asset)
+        if not balance:
+            return None
+        qty = round_numbers(balance, self.qty_precision)
         return qty
 
     def update_take_profit(self, order_id):
@@ -93,16 +97,14 @@ class DealUpdates(Deal):
                 if new_tp_price:
                     if new_tp_price <= float(self.MIN_PRICE):
                         return jsonResp_message(
-                            "[Take profit order error] Price too low", 200
+                            "[Take profit order error] Price too low"
                         )
                 if qty <= float(self.MIN_QTY):
                     return jsonResp_message(
-                        "[Take profit order error] Quantity too low", 200
+                        "[Take profit order error] Quantity too low"
                     )
                 if new_tp_price * qty <= float(self.MIN_NOTIONAL):
-                    return jsonResp_message(
-                        "[Take profit order error] Price x Quantity too low", 200
-                    )
+                    return jsonResp_message("[Take profit order error] Price x Quantity too low")
 
                 new_tp_order = {
                     "pair": bot["pair"],
@@ -310,65 +312,80 @@ class DealUpdates(Deal):
         """
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
-        book_order = Book_Order(bot["pair"])
-        price = float(book_order.matching_engine(False, qty))
+        if qty:
+            # If for some reason, the bot has been closed already
+            book_order = Book_Order(bot["pair"])
+            price = float(book_order.matching_engine(False, qty))
 
-        order_id = None
-        for order in bot["orders"]:
-            if order["deal_type"] == "take_profit":
-                order_id = order["order_id"]
-                bot["orders"].remove(order)
-                break
+            order_id = None
+            for order in bot["orders"]:
+                if order["deal_type"] == "take_profit":
+                    order_id = order["order_id"]
+                    bot["orders"].remove(order)
+                    break
 
-        if order_id:
-            # First cancel old order to unlock balance
-            cancel_response = requests.delete(
-                url=f"{self.bb_close_order_url}/{self.active_bot['pair']}/{order_id}"
-            )
-            if cancel_response.status_code != 200:
-                print("Take profit order not found, no need to cancel")
-            else:
-                print("Old take profit order cancelled")
+            if order_id:
+                # First cancel old order to unlock balance
+                cancel_response = requests.delete(
+                    url=f"{self.bb_close_order_url}/{self.active_bot['pair']}/{order_id}"
+                )
+                if cancel_response.status_code != 200:
+                    print("Take profit order not found, no need to cancel")
+                else:
+                    print("Old take profit order cancelled")
 
-        stop_limit_order = {
-            "pair": bot["pair"],
-            "qty": qty,
-            "price": supress_notation(price, self.price_precision),
-        }
-        res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
-        if isinstance(handle_error(res), Response):
-            error = res.json()["msg"]
+            stop_limit_order = {
+                "pair": bot["pair"],
+                "qty": qty,
+                "price": supress_notation(price, self.price_precision),
+            }
+            res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
+            if isinstance(handle_binance_errors(res), Response):
+                error = res.json()["msg"]
+                botId = self.app.db.bots.update_one(
+                    {"_id": bot["_id"]},
+                    {"$push": {"errors": error}, "$set": {"status": "error"}},
+                )
+                return "completed"
+
+            # Append now stop_limit deal
+            stop_limit_response = {
+                "deal_type": "stop_limit",
+                "order_id": res["orderId"],
+                "pair": res["symbol"],
+                "order_side": res["side"],
+                "order_type": res["type"],
+                "price": res["price"],
+                "qty": res["origQty"],
+                "fills": res["fills"],
+                "time_in_force": res["timeInForce"],
+                "status": res["status"],
+            }
+            new_orders = bot["orders"]
+            new_orders.append(stop_limit_response)
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
-                {"$push": {"errors": error}, "$set": {"status": "error"}},
+                {"$push": {"orders": new_orders}, "$set": {"status": "loss"}},
             )
-            return handle_error(res)
-
-        # Append now stop_limit deal
-        stop_limit_response = {
-            "deal_type": "stop_limit",
-            "order_id": res["orderId"],
-            "pair": res["symbol"],
-            "order_side": res["side"],
-            "order_type": res["type"],
-            "price": res["price"],
-            "qty": res["origQty"],
-            "fills": res["fills"],
-            "time_in_force": res["timeInForce"],
-            "status": res["status"],
-        }
-        new_orders = bot["orders"]
-        new_orders.append(stop_limit_response)
-        botId = self.app.db.bots.update_one(
-            {"_id": bot["_id"]},
-            {"$push": {"orders": new_orders}, "$set": {"status": "loss"}},
-        )
-        if not botId:
-            print(f"Failed to update stop_limit deal: {botId}")
+            if not botId:
+                # Not likely to happen to remove in the future.
+                print(f"Failed to update stop_limit deal: {botId}")
+            else:
+                buy_gbp_result = self.buy_gbp_balance()
+                msg = f"New stop_limit deal successfully updated"
+                bot_errors(msg, bot)
+            return "completed"
+            
         else:
+            asset = self.find_baseAsset(bot["pair"])
             buy_gbp_result = self.buy_gbp_balance()
-            print(f"New stop_limit deal successfully updated: {botId}")
-        return
+            error = f'No {asset} found in balance. Bot might have been closed already. GBP balance buy back {"successful" if buy_gbp_result else "failed"}'
+            botId = self.app.db.bots.update_one(
+                {"_id": bot["_id"]},
+                {"$push": {"errors": error, "errors": error}, "$set": {"status": "error"}},
+            )
+            return "completed"
+
 
     def trailling_stop_loss(self, price):
         """
@@ -388,30 +405,25 @@ class DealUpdates(Deal):
             "price": supress_notation(price, self.price_precision),
         }
         res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
-        result = handle_binance_errors(res)
-        if result["error"] == 1:
-            error_message = f'Trailling stop loss error: {result["message"]}'
-            self.app.db.bots.find_one_and_update(
-                {"pair": bot["pair"]},
-                {"$push": {"errors": error_message}, "$set": {"status": "error"}},
-            )
+        result = handle_binance_errors(res, bot, message="Trailling stop loss")
+        if result == "errored":
             return "completed"
         else:
-            # Append now stop_limit deal
+            # Append now stop_loss deal
             trailling_stop_loss_response = {
                 "deal_type": "stop_limit",
-                "order_id": res["orderId"],
-                "pair": res["symbol"],
-                "order_side": res["side"],
-                "order_type": res["type"],
-                "price": res["price"],
-                "qty": res["origQty"],
-                "fills": res["fills"],
-                "time_in_force": res["timeInForce"],
-                "status": res["status"],
+                "order_id": result["orderId"],
+                "pair": result["symbol"],
+                "order_side": result["side"],
+                "order_type": result["type"],
+                "price": result["price"],
+                "qty": result["origQty"],
+                "fills": result["fills"],
+                "time_in_force": result["timeInForce"],
+                "status": result["status"],
             }
             bot["orders"].append(trailling_stop_loss_response)
-            botId = self.app.db.bots.update_one(
+            self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {
                     "$set": {
@@ -421,8 +433,8 @@ class DealUpdates(Deal):
                     },
                 },
             )
-            if botId:
-                buy_gbp_result = self.buy_gbp_balance()
-                print("Successfully finished take profit trailling!")
-                return "completed"
-        return
+            self.buy_gbp_balance()
+            bot = self.app.db.bots.find_one({"_id": ObjectId(bot["_id"])})
+            msg = f'Finished take profit trailling! {"Errors encountered" if len(bot["errors"]) > 0 else ""}'
+            bot_errors(msg, bot)
+            return "completed"

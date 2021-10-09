@@ -153,7 +153,12 @@ export function createBot(body) {
  * @return {object} An action object with a type of BOT_SUCCESS passing the repos
  */
 export function createBotSucceeded(res) {
-  addNotification("SUCCESS!", res.message, "success");
+  if (res.error === 1) {
+    addNotification("Some errors encountered", res.message, "error");
+  } else {
+    addNotification("SUCCESS!", res.message, "success");
+  }
+  
   return {
     type: CREATE_BOT_SUCCESS,
     botId: res.botId,

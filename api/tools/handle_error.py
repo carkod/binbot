@@ -2,37 +2,46 @@ import json
 from time import sleep
 
 from bson.objectid import ObjectId
-from flask import Response, current_app
+from flask import Response as FlaskResponse
+from requests import exceptions, Response
 from requests.exceptions import HTTPError, RequestException, Timeout
 from bson import json_util
-from flask import Response
-
+from api.app import create_app
 
 def jsonResp(data, status=200):
-    return Response(
+    return FlaskResponse(
         json.dumps(data, default=json_util.default),
         mimetype="application/json",
         status=status,
     )
 
-def jsonResp_message(message, status):
+def jsonResp_message(message):
     message = {"message": message, "error": 0}
-    return jsonResp(message, status)
+    return jsonResp(message)
 
-def jsonResp_error_message(message, status):
+def jsonResp_error_message(message):
     body = {"message": message, "error": 1}
-    return jsonResp(body, status)
+    return jsonResp(body)
     
 
-def bot_errors(error: Response, bot):
+def bot_errors(error, bot):
     if isinstance(error, Response):
-        bot["errors"].append(error)
-        bot = current_app.db.bots.find_one_and_update(
-            {"_id": ObjectId(bot["_id"])},
-            {
-                "$set": {"status": "error", "errors": bot["errors"]}
-            }
-        )
+        try:
+            error = error.json()["msg"]
+        except KeyError:
+            error = error.json()["message"]
+    else:
+        error = error
+
+    bot["errors"].append(error)
+    app = create_app()
+    bot = app.db.bots.find_one_and_update(
+        {"_id": ObjectId(bot["_id"])},
+        {
+            "$set": {"status": "error", "errors": bot["errors"]}
+        }
+    )
+
     return bot
 
 def handle_error(req):
@@ -53,12 +62,12 @@ def handle_error(req):
                 if response["code"] == -2011:
                     return
 
-                return jsonResp_message(json.loads(req.content), 200)
+                return jsonResp_message(json.loads(req.content))
 
     except HTTPError as err:
         if err:
             print(req.json())
-            return jsonResp_message(req.json(), 200)
+            return jsonResp_message(req.json())
         else:
             return err
     except Timeout:
@@ -69,20 +78,37 @@ def handle_error(req):
         return jsonResp_message(f"Catastrophic error: {e}", 500)
 
 
-def handle_binance_errors(response):
+def handle_binance_errors(response: Response, bot=None, **kwargs):
     """
-    Better handling of errors Binance errors
+    Combine Binance errors
     e.g. {"code": -1013, "msg": "Invalid quantity"}
+    and bot errors
+    returns "errored" or ""
     """
     if isinstance(json.loads(response.content), dict) and "code" in json.loads(response.content).keys():
         content = response.json()
         if content["code"] == -2010 or content["code"] == -1013:
             # Not enough funds. Ignore, send to bot errors
             # Need to be dealt with at higher levels
-            return jsonResp_error_message(content["msg"])
+            if not bot:
+                return jsonResp_error_message(content["msg"])
+            else:
+                error = f'{kwargs.get("message") + content["msg"] if kwargs.get("message") else content["msg"]}'
+                bot["errors"].append(error)
+                app = create_app()
+                bot = app.db.bots.find_one_and_update(
+                    {"_id": ObjectId(bot["_id"])},
+                    {
+                        "$set": {"status": "error", "errors": bot["errors"]}
+                    }
+                )
+                return "errored"
 
         if content["code"] == -1003:
             # Too many requests, most likely exceeded API rate limits
             # Back off for > 5 minutes, which is Binance's ban time
+            print('Too many requests. Back off for 5 min...')
             sleep(35)
             return
+    else:
+        return response.json()

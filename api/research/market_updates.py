@@ -19,9 +19,6 @@ class MarketUpdates(Account):
     bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
     bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
 
-    # streams
-    base = os.getenv("WS_BASE")
-
     def __init__(self, interval="5m"):
         self.markets_streams = None
         self.app = create_app()
@@ -49,8 +46,7 @@ class MarketUpdates(Account):
 
     def start_stream(self):
         """
-        Get list of cryptos currently trading bots
-
+        Start/restart websocket streams
         """
         # Close websocekts before starting
         if self.markets_streams:
@@ -82,9 +78,11 @@ class MarketUpdates(Account):
         print("Market data updates socket opened")
 
     def on_error(self, ws, error):
-        print(f"Websocket error: {error}")
+        error_msg = f"Deal Websocket error: {error}. Symbol: {ws.symbol}"
+        print(error_msg)
         if error.args[0] == "Connection to remote host was lost.":
             self.start_stream()
+        self.app.db.research_controller.find_one_and_update({"_id": "settings"}, {"$push": { "error": error_msg }})
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -94,11 +92,11 @@ class MarketUpdates(Account):
 
         if "data" in json_response:
             if "e" in json_response["data"] and json_response["data"]["e"] == "kline":
-                self.process_deals(json_response["data"])
+                self.process_deals(json_response["data"], ws)
             else:
                 print(f'Error: {json_response["data"]}')
 
-    def process_deals(self, result):
+    def process_deals(self, result, ws):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
@@ -106,7 +104,7 @@ class MarketUpdates(Account):
         if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
-
+            ws.symbol = symbol
             # Update Current price
             bot = self.app.db.bots.find_one_and_update(
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
@@ -117,14 +115,14 @@ class MarketUpdates(Account):
                 if "stop_loss" in bot["deal"] and float(bot["deal"]["stop_loss"]) > float(close_price):
                     deal = DealUpdates(bot)
                     res = deal.update_stop_limit(close_price)
-                    if isinstance(res, Response):
+                    if res == "completed":
                         self.start_stream()
 
                 # Take profit trailling
                 if bot["trailling"] == "true":
 
                     # Update trailling profit reached the first time
-                    if ("take_profit_price" not in bot["deal"]) or float(bot["deal"]["take_profit_price"]) <= 0:
+                    if ("trailling_profit" not in bot["deal"]) or float(bot["deal"]["take_profit_price"]) <= 0:
                         current_take_profit_price = float(bot["deal"]["buy_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
                         )

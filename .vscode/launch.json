@@ -35,7 +35,7 @@
       }
     },
     {
-      "name": "Python: Gunicorn",
+      "name": "Python: Production",
       "type": "python",
       "request": "launch",
       "program": "/Users/carkod/.local/share/virtualenvs/binbot-dNwtV6z7/bin/gunicorn",
@@ -43,11 +43,13 @@
       "console": "integratedTerminal",
       "args": [
         "api.main:app",
-        "--bind=127.0.0.1:8006",
+        "--bind=0.0.0.0:8006",
+        "-e GEVENT_RESOLVER=ares",
+        "-t 90",
         "--preload",
         "--reload",
         "-w",
-        "3",
+        "4",
         "--capture-output"
       ],
       "postDebugTask": "killdebugger"

@@ -1,13 +1,16 @@
-from api.threads import market_update_thread
 import threading
-from flask import Response, request, current_app
 from datetime import date
 
 from api.account.account import Account
 from api.deals.models import Deal
+from api.orders.models.book_order import Book_Order
+from api.threads import market_update_thread
+from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp
+from api.tools.round_numbers import round_numbers, supress_notation
 from bson.objectid import ObjectId
-from api.tools.handle_error import jsonResp
-from api.tools.handle_error import bot_errors
+from flask import Response, current_app, request
+from requests import delete, post
+
 
 class Bot(Account):
     def __init__(self):
@@ -30,6 +33,7 @@ class Bot(Account):
             "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
             "short_stop_price": "0",  # Flip to short strategy threshold
+            "candlestick_interval": "15m",
             "take_profit": "3",
             "trailling": "false",
             "trailling_deviation": "0.63",
@@ -44,19 +48,19 @@ class Bot(Account):
         self.default_so = {"so_size": "0", "price": "0", "price_deviation_so": "0.63"}
 
     def get(self):
-        resp = jsonResp({"message": "Endpoint failed"}, 200)
+        resp = jsonResp({"message": "Endpoint failed"})
         bot = list(self.app.db.bots.find())
         if bot:
-            resp = jsonResp({"data": bot}, 200)
+            resp = jsonResp({"data": bot})
         else:
-            resp = jsonResp({"message": "Bots not found", "data": []}, 200)
+            resp = jsonResp({"message": "Bots not found", "data": []})
         return resp
 
     def get_one(self):
         findId = request.view_args["id"]
         bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
         if bot:
-            resp = jsonResp({"message": "Bot found", "data": bot}, 200)
+            resp = jsonResp({"message": "Bot found", "data": bot})
         else:
             resp = jsonResp({"message": "Bots not found"}, 404)
         return resp
@@ -149,8 +153,7 @@ class Bot(Account):
                             "message": f'Failed to activate bot, {order_errors[0]["base_order_error"]}',
                             "botId": str(findId),
                             "error": 1,
-                        },
-                        200,
+                        }
                     )
                 else:
                     resp = jsonResp(
@@ -158,8 +161,7 @@ class Bot(Account):
                             "message": f"Failed to activate bot, {','.join(order_errors)}",
                             "botId": str(findId),
                             "error": 1,
-                        },
-                        200,
+                        }
                     )
                 return resp
 
@@ -199,34 +201,72 @@ class Bot(Account):
         bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            close_response = Deal(bot).close_all()
-            bot_errors(close_response, bot)
+            orders = bot["orders"]
 
-            updated_bot = self.app.db.bots.update_one(
-                {"_id": ObjectId(findId)},
-                {"$set": {"deal": self.default_deal, "status": "closed"}},
+            # Close all active orders
+            if len(orders) > 0:
+                for d in orders:
+                    if "deal_type" in d and (
+                        d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
+                    ):
+                        order_id = d["order_id"]
+                        res = delete(
+                            url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
+                        )
+                        error_msg = f'Failed to delete opened order {order_id}.'
+                        # Handle error and continue
+                        handle_binance_errors(res, message=error_msg)
+
+            # Sell everything
+            pair = bot["pair"]
+            base_asset = self.find_baseAsset(pair)
+            deal_object = Deal(bot)
+            balance = deal_object.get_one_balance(base_asset)
+            if balance:
+                qty = round_numbers(balance, self.qty_precision)
+                book_order = Book_Order(pair)
+                price = float(book_order.matching_engine(True, qty))
+
+                if price:
+                    order = {
+                        "pair": pair,
+                        "qty": qty,
+                        "price": supress_notation(price, self.price_precision),
+                    }
+                    res = post(url=self.bb_sell_order_url, json=order)
+                else:
+                    order = {
+                        "pair": pair,
+                        "qty": qty,
+                    }
+                    res = post(url=self.bb_sell_market_order_url, json=order)
+
+                handle_binance_errors(res)
+
+        # Hedge with GBP and complete bot
+        deal_object.buy_gbp_balance()
+        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
+        if "errors" in bot and len(bot["errors"]) > 0:
+            self.app.db.bots.find_one_and_update(
+                {"pair": pair},
+                {"$set": {"status": "errors"}},
             )
-            if updated_bot:
-                # We don't want to automatically delete after closing
-                # As this closing function may be executed by algo
-                resp = jsonResp(
-                    {
-                        "message": "Active orders closed, sold base asset, bought back GBP, deactivated"
-                    },
-                    200,
-                )
-                return resp
-            else:
-                bot_errors(updated_bot, bot)
-                resp = jsonResp(
-                    {
-                        "message": "Active orders closed, sold base asset, bought back GBP, deactivation failed"
-                    },
-                    200,
-                )
-                return resp
-
+            resp = jsonResp(
+                {
+                    "message": "Errors encountered during deactivation, please check bot errors.",
+                    "error": 1
+                }
+            )
+            
         else:
-            response = jsonResp({"message": "Bot not found", "botId": findId}, 400)
+            self.app.db.bots.find_one_and_update(
+                {"pair": pair}, {"$set": {"status": "completed"}}
+            )
+            resp = jsonResp(
+                {
+                    "message": "Active orders closed, sold base asset, bought back GBP, deactivated",
+                    "error": 0
+                }
+            )
 
-        return response
+        return resp

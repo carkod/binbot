@@ -41,10 +41,13 @@ import {
 export function* getBotsApi() {
   const requestURL = process.env.REACT_APP_GET_BOTS;
   try {
+    yield put(loading(true))
     const res = yield call(request, requestURL, defaultOptions);
     yield put(getBotsSucceeded(res));
   } catch (err) {
     yield put(getBotsFailed(err));
+  } finally {
+    yield put(loading(false))
   }
 }
 

@@ -287,9 +287,9 @@ class Dashboard extends React.Component {
                 </Row>
                 <Row>
                   <Col md="4">
-                  {!checkValue(balances) && balances.length > 0 ? (
+                  {!checkValue(this.props.assetList) && this.props.assetList.length > 0 ? (
                     <AssetsTable
-                      data={this.props.balances[0]["balances"]}
+                      data={this.props.assetList}
                       headers={["Symbol", "Free", "Locked"]}
                     />
                   ) : ""}
@@ -330,9 +330,14 @@ class Dashboard extends React.Component {
 const mapStateToProps = (s) => {
   const { loading } = s.loadingReducer;
   const { data: balances } = s.balanceReducer;
+  let assetList = null;
+  if (!checkValue(balances)) {
+    assetList = balances[0].balances.data
+  }
   return {
     balances: balances,
-    loading: loading
+    loading: loading,
+    assetList: assetList
   };
 };
 

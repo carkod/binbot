@@ -8,7 +8,7 @@ class BinanceApi:
     Binance API URLs
     """
 
-    BASE = "https://api2.binance.com"
+    BASE = "https://api.binance.com"
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 

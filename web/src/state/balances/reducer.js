@@ -21,10 +21,9 @@ function balanceReducer(state = initialState, action) {
       return state;
     }
     case BALANCE_SUCCESS: {
-      const newState = {
+      return {
         data: action.data
       };
-      return newState;
     }
 
     case BALANCE_ERROR: {

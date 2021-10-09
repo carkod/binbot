@@ -1,4 +1,5 @@
 from flask import Blueprint
+from api.research.controller import Controller
 from api.research.correlation import Correlation
 from threading import Thread, enumerate
 
@@ -30,3 +31,11 @@ def post_blacklisted():
 @research_blueprint.route("/blacklisted", methods=["GET"])
 def get_blacklisted():
     return Correlation().get_blacklisted()
+
+@research_blueprint.route("/controller", methods=["PUT"])
+def put_controller():
+    return Controller().edit()
+
+@research_blueprint.route("/controller", methods=["GET"])
+def get_controller():
+    return Controller().get()
