@@ -10,6 +10,7 @@ def create_app():
     # db = MongoEngine(app)
     # Enable CORS for all routes
     with app.app_context():
+        # Reuse app context so that it close after Flask Request finishes
         CORS(app)
         mongo = MongoClient(
             host=os.getenv("MONGO_HOSTNAME"),

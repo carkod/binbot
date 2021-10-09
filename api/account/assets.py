@@ -41,7 +41,7 @@ class Assets(Account):
         """
         # Get a list of safety orders
         so_list = list(
-            self.app.db.bots.aggregate(
+            self.self.app.db.bots.aggregate(
                 [
                     {
                         "$addFields": {
@@ -144,7 +144,7 @@ class Assets(Account):
         start = current_time - timedelta(days=days)
         dummy_id = ObjectId.from_datetime(start)
         data = list(
-            self.app.db.balances.find(
+            self.self.app.db.balances.find(
                 {
                     "_id": {
                         "$gte": dummy_id,
@@ -212,7 +212,7 @@ class Assets(Account):
             "estimated_total_btc": total_btc,
             "estimated_total_gbp": total_gbp,
         }
-        self.balanceId = self.app.db.balances.insert_one(
+        balanceId = self.self.app.db.balances.insert_one(
             balance, {"$currentDate": {"createdAt": "true"}}
         )
         if balanceId:
@@ -236,7 +236,7 @@ class Assets(Account):
                 }
             }
 
-        self.balance = list(app.db.balances.find(filter).sort([("_id", -1)]))
+        balance = list(self.app.db.balances.find(filter).sort([("_id", -1)]))
         if balance:
             resp = jsonResp({"data": balance})
         else:

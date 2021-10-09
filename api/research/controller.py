@@ -2,7 +2,7 @@ from api.deals.models import Deal
 from api.tools.handle_error import bot_errors, jsonResp, jsonResp_message
 from bson.objectid import ObjectId
 from flask import request, current_app
-
+from pymongo.errors import DuplicateKeyError
 
 class Controller:
     """
@@ -18,7 +18,11 @@ class Controller:
             "candlestick_interval": "1h",
             "autotrade": 0,
         }
-
+        self.default_blacklist = {
+            "_id": "", # pair
+            "pair": "",
+            "reason": ""
+        }
 
     def get_settings(self):
         settings = current_app.db.reserch_controller.find_one({"_id": "settings"})
@@ -41,20 +45,38 @@ class Controller:
     
 
     def get_blacklist(self):
-        blacklist = current_app.db.reserch_controller.find_one({"_id": "blacklist"})
+        blacklist = list(current_app.db.blacklist.find())
+        return jsonResp({"message": "Successfully retrieved blacklist", "data": blacklist})
+    
+    def create_blacklist_item(self):
+        data = request.json
+        if "pair" not in data:
+            return jsonResp({"message": "Missing required field 'pair'.", "error": 1 })
+
+        self.default_blacklist.update(data)
+        self.default_blacklist["_id"] = data["pair"]
+        try:
+            blacklist = current_app.db.blacklist.insert(self.default_blacklist)
+        except DuplicateKeyError:
+            return jsonResp({"message": "Pair already exists in blacklist", "error": 1})
+
         if blacklist:
-            resp = jsonResp({"message": "Successfully retrieved blacklist", "data": blacklist})
+            resp = jsonResp({"message": "Successfully updated blacklist", "data": blacklist})
         else:
-            resp = jsonResp({"message": "Failed to retrieve blacklist"})
+            resp = jsonResp({"message": "Failed to update blacklist", "error": 1})
+
         return resp
 
     def edit_blacklist(self):
         data = request.json
-        self.defaults.update(data)
-        blacklist = current_app.db.reserch_controller.find_one_and_update({"_id": "blacklist"}, {"$set": self.defaults})
+        if "pair" not in data:
+            return jsonResp({"message": "Missing required field 'pair'.", "error": 1 })
+
+        self.default_blacklist.update(data)
+        blacklist = current_app.db.blacklist.find_one_and_update({"_id": data["pair"]}, {"$set": self.default_blacklist})
 
         if not blacklist:
-            current_app.db.reserch_controller.insert(self.defaults)
+            current_app.db.blacklist.insert(self.default_blacklist)
         
         resp = jsonResp({"message": "Successfully updated blacklist", "blacklist": blacklist})
         return resp

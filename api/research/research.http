@@ -17,13 +17,13 @@ GET http://localhost:5000/research/signals?order_by=price_change_24&order=true H
 GET http://localhost:5000/research/historical-signals HTTP/1.1
 
 ### Add blacklist
-POST http://localhost:5000/research/blacklisted HTTP/1.1
+POST http://localhost:5000/research/blacklist HTTP/1.1
 content-Type: application/json
 
-{ "symbol": "TRXBTC", "reason": "Controlled graph" }
+{ "pair": "BTCUSDT", "reason": "Controlled graph" }
 
 ### Get all blacklist coins
-GET http://localhost:5000/research/blacklisted HTTP/1.1
+GET http://localhost:5000/research/blacklist HTTP/1.1
 
 ### Get research settings
 GET http://localhost:5000/research/controller HTTP/1.1 
@@ -33,5 +33,8 @@ content-Type: application/json
 PUT http://localhost:5000/research/controller HTTP/1.1
 content-Type: application/json
 
-{ "candlestick_interval": "1hr", "autotrade": 0 }
-
+{
+    "candlestick_interval": "1hr",
+    "autotrade": 0,
+    "errors": []
+}

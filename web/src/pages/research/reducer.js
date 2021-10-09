@@ -76,7 +76,6 @@ function historicalResearchReducer(state = initialState, action) {
       return {
         ...state,
         error: action.error,
-        
         isError: true,
       };
     }
@@ -96,7 +95,9 @@ const blacklistReducer = produce((draft, action) => {
           // OK: the immer way
           return
       default:
-        return
+        return {
+          data: null,
+        }
   }
 })
 
