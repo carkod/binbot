@@ -5,6 +5,9 @@ import {
   activateBotFailed,
   activateBotSucceeded,
   ACTIVATE_BOT,
+  archiveBotFailed,
+  archiveBotSucceeded,
+  ARCHIVE_BOT,
   CLOSE_BOT,
   createBotFailed,
   createBotSucceeded,
@@ -167,7 +170,7 @@ export function* watchcloseBotApi() {
 }
 
 export function* getSymbols() {
-  const requestURL = `${process.env.REACT_APP_SYMBOLS}`;
+  const requestURL = `${process.env.REACT_APP_NO_CANNIBALISM_SYMBOLS}`;
   try {
     const res = yield call(request, requestURL, defaultOptions);
     yield put(getSymbolsSucceeded(res));
@@ -247,4 +250,29 @@ export function* getCandlestick({ pair, interval }) {
 
 export function* watchGetCandlestick() {
   yield takeLatest(LOAD_CANDLESTICK, getCandlestick);
+}
+
+
+
+/**
+ * Archive bot
+ */
+ export function* archiveBotApi({ id }) {
+  const requestURL = `${process.env.REACT_APP_ARCHIVE_BOT}/${id}`;
+  const options = {
+    method: "PUT",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    headers: { "content-type": "application/json", accept: "application/json" },
+  };
+  try {
+    const res = yield call(request, requestURL, options);
+    yield put(archiveBotSucceeded(res));
+  } catch (err) {
+    yield put(archiveBotFailed(err));
+  }
+}
+
+export function* watchArchiveBot() {
+  yield takeLatest(ARCHIVE_BOT, archiveBotApi);
 }

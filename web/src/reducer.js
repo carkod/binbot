@@ -8,7 +8,7 @@ import {
   symbolReducer
 } from "./pages/bots/reducer";
 import { openOrdersReducer, ordersReducer } from "./pages/orders/reducer";
-import { historicalResearchReducer, researchReducer } from "./pages/research/reducer";
+import { historicalResearchReducer, researchReducer, blacklistReducer, settingsReducer } from "./pages/research/reducer";
 import {
   balanceRawReducer, balanceReducer
 } from "./state/balances/reducer";
@@ -30,5 +30,7 @@ const rootReducer = combineReducers({
   loadingReducer,
   researchReducer,
   historicalResearchReducer,
+  blacklistReducer,
+  settingsReducer,
 });
 export default rootReducer;

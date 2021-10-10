@@ -435,6 +435,6 @@ class DealUpdates(Deal):
             )
             self.buy_gbp_balance()
             bot = self.app.db.bots.find_one({"_id": ObjectId(bot["_id"])})
-            msg = f'Finished take profit trailling! {"Errors encountered" if len(bot["errors"]) > 0 else ""}'
+            msg = f'Trailling stop loss complete! {"Errors encountered" if len(bot["errors"]) > 0 else ""}'
             bot_errors(msg, bot)
             return "completed"

@@ -18,12 +18,19 @@ function parseJSON(response) {
  * @return {object|undefined} Returns either the response, or throws an error
  */
 function checkStatus(response) {
+
+
   if (response.status >= 200 && response.status < 300) {
     return response;
   }
 
   if (response.status < 404) {
     return response;
+  }
+
+  // throw error if error = 1
+  if (response.json()["error"]) {
+    throw new Error(response.json()["message"])
   }
 
   const error = new Error(response.statusText);
@@ -39,7 +46,7 @@ function checkStatus(response) {
  *
  * @return {object}           The response data
  */
-export default function request(url, options = {}) {
+export default function request(url, options = defaultOptions) {
   return fetch(url, options).then(checkStatus).then(parseJSON);
 }
 

@@ -48,8 +48,12 @@ class Bot(Account):
         self.default_so = {"so_size": "0", "price": "0", "price_deviation_so": "0.63"}
 
     def get(self):
-        resp = jsonResp({"message": "Endpoint failed"})
-        bot = list(self.app.db.bots.find())
+        """
+        Get all bots in the db except archived
+        Args:
+        - archive=false
+        """
+        bot = list(self.app.db.bots.find().sort([("status", 1), ("pair", 1)]))
         if bot:
             resp = jsonResp({"data": bot})
         else:
@@ -213,7 +217,7 @@ class Bot(Account):
                         res = delete(
                             url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
                         )
-                        error_msg = f'Failed to delete opened order {order_id}.'
+                        error_msg = f"Failed to delete opened order {order_id}."
                         # Handle error and continue
                         handle_binance_errors(res, message=error_msg)
 
@@ -254,10 +258,10 @@ class Bot(Account):
             resp = jsonResp(
                 {
                     "message": "Errors encountered during deactivation, please check bot errors.",
-                    "error": 1
+                    "error": 1,
                 }
             )
-            
+
         else:
             self.app.db.bots.find_one_and_update(
                 {"pair": pair}, {"$set": {"status": "completed"}}
@@ -265,8 +269,23 @@ class Bot(Account):
             resp = jsonResp(
                 {
                     "message": "Active orders closed, sold base asset, bought back GBP, deactivated",
-                    "error": 0
+                    "error": 0,
                 }
             )
 
+        return resp
+
+    def put_archive(self):
+        """
+        Change status to archived
+        """
+        botId = request.view_args["id"]
+        archive = self.app.db.bots.find_one_and_update(
+            {"_id": ObjectId(botId)}, {"$set": {"status": "archived"}}
+        )
+        if archive:
+            resp = jsonResp(
+                {"message": "Successfully archived bot", "botId": botId})
+        else:
+            resp = jsonResp({"message": "Failed to archive bot"})
         return resp

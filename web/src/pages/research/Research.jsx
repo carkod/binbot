@@ -1,10 +1,20 @@
+import produce, { current } from "immer";
 import React from "react";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import { connect } from "react-redux";
 import { Nav, NavItem, NavLink, TabContent, TabPane } from "reactstrap";
 import { checkValue } from "../../validations";
-import { loadCandlestick } from "../bots/actions";
-import { getHistoricalResearchData, getResearchData } from "./actions";
+import { loadCandlestick, getSymbols } from "../bots/actions";
+import {
+  getHistoricalResearchData,
+  getResearchData,
+  getBlacklist,
+  getSettings,
+  editSettings,
+  addBlackList,
+  deleteBlackList,
+} from "./actions";
+import ControllerTab from "./ControllerTab";
 import SignalsTab from "./SignalsTab";
 
 class Research extends React.Component {
@@ -18,8 +28,10 @@ class Research extends React.Component {
       sideFilter: "ALL",
       signal_notification: null,
       poll_ms: 10000,
-      activeTab: "signalTab",
+      activeTab: "controllerTab",
       candlestickSignalFilter: "positive",
+      settings: {},
+      selectedBlacklist: "",
     };
   }
 
@@ -65,13 +77,9 @@ class Research extends React.Component {
   };
 
   componentDidMount = () => {
-    this.getData();
-    this.pollData = setInterval(this.getData, this.state.poll_ms);
-    if (!("Notification" in window)) {
-      alert("This browser does not support desktop notification");
-    } else {
-      Notification.requestPermission();
-    }
+    this.props.getSettings();
+    this.props.getBlacklist();
+    this.props.getSymbols();
   };
 
   componentDidUpdate = (p, s) => {
@@ -121,6 +129,13 @@ class Research extends React.Component {
         }
       }
     }
+
+    if (p.settings !== this.props.settings) {
+      this.setState({ settings: this.props.settings });
+    }
+    if (p.blacklistData !== this.props.blacklistData) {
+      this.setState({ blacklistData: this.props.blacklistData });
+    }
   };
 
   componentWillUnmount = () => {
@@ -158,9 +173,48 @@ class Research extends React.Component {
   };
 
   toggleSignalTab = () => {
-    this.setState({ activeTab: "signalTab" }, () => {
-      this.pollData = setInterval(this.getData, this.state.poll_ms);
-    });
+    this.getData();
+    this.pollData = setInterval(this.getData, this.state.poll_ms);
+    if (!("Notification" in window)) {
+      alert("This browser does not support desktop notification");
+    } else {
+      Notification.requestPermission();
+    }
+    this.setState({ activeTab: "signalTab" });
+  };
+
+  handleSettings = (e) => {
+    e.preventDefault();
+    this.setState(
+      produce((draft) => {
+        console.log(current(draft));
+        draft.settings[e.target.name] = e.target.value;
+      })
+    );
+  };
+
+  saveSettings = (e) => {
+    e.preventDefault();
+    this.props.editSettings(this.state.settings);
+  };
+
+  handleSettings = (e) => {
+    e.preventDefault();
+    this.setState(
+      produce((draft) => {
+        draft.settings[e.target.name] = e.target.value;
+      })
+    );
+  };
+
+  handleBlacklist = (action, data) => {
+    if (action === "add") {
+      this.props.addBlackList(data);
+    }
+    if (action === "delete") {
+      this.props.deleteBlackList(data);
+    }
+    this.props.getBlacklist();
   };
 
   render() {
@@ -168,6 +222,16 @@ class Research extends React.Component {
       <>
         <div className="content">
           <Nav tabs>
+            <NavItem>
+              <NavLink
+                className={
+                  this.state.activeTab === "controllerTab" ? "active" : ""
+                }
+                onClick={() => this.setState({ activeTab: "controllerTab" })}
+              >
+                Controller
+              </NavLink>
+            </NavItem>
             <NavItem>
               <NavLink
                 className={this.state.activeTab === "signalTab" ? "active" : ""}
@@ -178,6 +242,16 @@ class Research extends React.Component {
             </NavItem>
           </Nav>
           <TabContent activeTab={this.state.activeTab}>
+            <TabPane tabId="controllerTab">
+              <ControllerTab
+                blacklistData={this.state.blacklistData}
+                symbols={this.props.symbols}
+                settings={this.state.settings}
+                handleInput={this.handleSettings}
+                handleBlacklist={this.handleBlacklist}
+                saveSettings={this.saveSettings}
+              />
+            </TabPane>
             <TabPane tabId="signalTab">
               <SignalsTab
                 candlestick={this.props.candlestick}
@@ -204,10 +278,17 @@ const mapStateToProps = (state) => {
   const { data: research } = state.researchReducer;
   const { data: candlestick } = state.candlestickReducer;
   const { data: historicalSignalReducer } = state.historicalResearchReducer;
+  const { data: symbols } = state.symbolReducer;
+  const { data: blacklistData } = state.blacklistReducer;
+  const { data: settings } = state.settingsReducer;
+
   return {
     research: research,
     candlestick: candlestick,
     historicalSignalReducer: historicalSignalReducer,
+    symbols: symbols,
+    blacklistData: blacklistData,
+    settings: settings,
   };
 };
 
@@ -215,4 +296,10 @@ export default connect(mapStateToProps, {
   getResearchData,
   loadCandlestick,
   getHistoricalResearchData,
+  getSymbols,
+  getBlacklist,
+  addBlackList,
+  deleteBlackList,
+  getSettings,
+  editSettings,
 })(Research);

@@ -2,13 +2,6 @@
   "version": "0.0.2",
   "configurations": [
     {
-      "name": "Python: Research",
-      "type": "python",
-      "request": "launch",
-      "program": "research/__init__.py",
-      "console": "internalConsole"
-    },
-    {
       "name": "Python: Flask",
       "type": "python",
       "request": "launch",
@@ -21,6 +14,23 @@
       },
       "args": ["run", "--no-reload"],
       "jinja": true
+    },
+    {
+      "type": "pwa-chrome",
+      "request": "launch",
+      "name": "Web",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/web/src",
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/*"
+      }
+    },
+    {
+      "name": "Python: Research",
+      "type": "python",
+      "request": "launch",
+      "program": "research/__init__.py",
+      "console": "internalConsole"
     },
     {
       "type": "pwa-chrome",

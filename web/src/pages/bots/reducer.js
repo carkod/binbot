@@ -1,5 +1,5 @@
 import {
-  ACTIVATE_BOT, ACTIVATE_BOT_ERROR, ACTIVATE_BOT_SUCCESS, CLOSE_BOT, CREATE_BOT,
+  ACTIVATE_BOT, ACTIVATE_BOT_ERROR, ACTIVATE_BOT_SUCCESS, ARCHIVE_BOT, ARCHIVE_BOT_SUCCESS, CLOSE_BOT, CREATE_BOT,
   CREATE_BOT_ERROR,
   CREATE_BOT_SUCCESS, DEACTIVATE_BOT, DEACTIVATE_BOT_ERROR, DEACTIVATE_BOT_SUCCESS, DELETE_BOT,
   DELETE_BOT_ERROR,
@@ -168,6 +168,19 @@ function botReducer(state = initialState, action) {
         data: action.state,
         botActive: true,
       };
+    }
+
+    case ARCHIVE_BOT: {
+      return {
+        ...state,
+        id: action.id,
+      }
+    }
+    case ARCHIVE_BOT_SUCCESS: {
+      return {
+        ...state,
+        data: action.data,
+      }
     }
 
     default:

@@ -46,6 +46,9 @@ export const GET_BASE_ASSET = "GET_BASE_ASSET";
 export const GET_BASE_ASSET_SUCCESSFUL = "GET_BASE_ASSET_SUCCESSFUL";
 export const GET_BASE_ASSET_ERROR = "GET_BASE_ASSET_ERROR";
 
+export const ARCHIVE_BOT = "ARCHIVE_BOT";
+export const ARCHIVE_BOT_SUCCESS = "ARCHIVE_BOT_SUCCESS";
+
 /**
  * Create new user
  *
@@ -408,5 +411,28 @@ export function loadCandlestickFailed(payload) {
   return {
     type: LOAD_CANDLESTICK_ERROR,
     payload,
+  };
+}
+
+export function archiveBot(id) {
+  return {
+    type: ARCHIVE_BOT,
+    id: id,
+  };
+}
+
+export function archiveBotSucceeded(payload) {
+  return {
+    type: ARCHIVE_BOT_SUCCESS,
+    id: payload.botId,
+    data: payload.data
+  };
+}
+
+export function archiveBotFailed(payload) {
+  return {
+    type: ARCHIVE_BOT_SUCCESS,
+    id: payload.botId,
+    data: payload.data
   };
 }

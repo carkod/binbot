@@ -35,6 +35,9 @@ def get_symbols():
 def get_symbols_raw():
     return Account().get_symbols_raw()
 
+@account_blueprint.route("/symbols/no-cannibal", methods=["GET"])
+def get_no_cannibal_symbols():
+    return Account().get_no_cannibal_symbols()
 
 @account_blueprint.route("/symbol/<pair>", methods=["GET"])
 def get_symbol_info(pair):

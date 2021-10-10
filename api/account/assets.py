@@ -2,7 +2,7 @@ import pandas as pd
 from api.tools.round_numbers import round_numbers
 from decimal import Decimal
 
-from flask import current_app as app, request
+from flask import current_app, request
 from api.tools.handle_error import jsonResp
 from api.account.account import Account
 from datetime import datetime, timedelta
@@ -12,8 +12,8 @@ from api.app import create_app
 
 class Assets(Account):
     def __init__(self):
+        self.app = current_app
         self.usd_balance = 0
-        self.app = create_app()
         self.coinbase_api = CoinBaseApi()
 
     def get_raw_balance(self):
@@ -39,10 +39,9 @@ class Assets(Account):
         - No locked
         - Minus safety orders
         """
-        app = create_app()
         # Get a list of safety orders
         so_list = list(
-            app.db.bots.aggregate(
+            self.app.db.bots.aggregate(
                 [
                     {
                         "$addFields": {
@@ -145,7 +144,7 @@ class Assets(Account):
         start = current_time - timedelta(days=days)
         dummy_id = ObjectId.from_datetime(start)
         data = list(
-            app.db.balances.find(
+            self.app.db.balances.find(
                 {
                     "_id": {
                         "$gte": dummy_id,
@@ -237,7 +236,7 @@ class Assets(Account):
                 }
             }
 
-        balance = list(app.db.balances.find(filter).sort([("_id", -1)]))
+        balance = list(self.app.db.balances.find(filter).sort([("_id", -1)]))
         if balance:
             resp = jsonResp({"data": balance})
         else:

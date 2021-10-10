@@ -17,13 +17,12 @@ poll_percentage = 0
 class Orders(Account):
 
     def __init__(self):
-
+        Account.__init__(self)
         # Buy order
         self.side = EnumDefinitions.order_side[0]
         # Required by API for Limit orders
         self.timeInForce = EnumDefinitions.time_in_force[0]
         # Instance of app for cron jobs
-        self.app = current_app
 
     def get_all_orders(self):
         # here we want to get the value of user (i.e. ?user=some-value)

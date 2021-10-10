@@ -5,14 +5,15 @@ from urllib.parse import urlparse
 
 import requests
 from api.apis import BinbotApi
-from api.app import create_app
 from api.tools.handle_error import handle_error
 from api.tools.handle_error import jsonResp, jsonResp_message
 from flask import request
-
+from api.app import create_app
 
 class Account(BinbotApi):
+
     def __init__(self):
+        self.app = create_app()
         pass
 
     def _exchange_info(self):
@@ -125,12 +126,23 @@ class Account(BinbotApi):
         symbols_list = [x["symbol"] for x in symbols]
         symbols_list.sort()
         return jsonResp({"data": symbols_list})
+    
+    def get_no_cannibal_symbols(self):
+        """
+        Raw symbols without active bots
+        """
+        symbols = self._ticker_price()
+        symbols_list = [x["symbol"] for x in symbols]
+        active_symbols = list(self.app.db.bots.find({"status": "active"}))
+
+        no_cannibal_list = [x for x in symbols_list if x not in active_symbols]
+        return jsonResp({"data": no_cannibal_list, "count": len(no_cannibal_list) })
 
     def get_symbols(self):
-        app = create_app()
+        
         args = {"blacklisted": False}
         project = {"market": 1, "_id": 0}
-        query = app.db.correlations.find(args, project)
+        query = self.app.db.correlations.find(args, project)
         symbols_list = list(query.distinct("market"))
         symbols_list.sort()
         return jsonResp({"data": symbols_list})

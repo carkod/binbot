@@ -39,3 +39,7 @@ def close(id):
     Otherwise losses will be incurred
     """
     return Bot().deactivate()
+
+@bot_blueprint.route("/archive/<id>", methods=["PUT"])
+def archive(id):
+    return Bot().put_archive()

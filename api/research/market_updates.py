@@ -7,7 +7,7 @@ from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
-from flask import Response
+from flask import Response, g
 
 class MarketUpdates(Account):
     """
@@ -20,8 +20,8 @@ class MarketUpdates(Account):
     bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
 
     def __init__(self, interval="5m"):
-        self.markets_streams = None
         self.app = create_app()
+        self.markets_streams = None
         self.interval = interval
 
     def _get_raw_klines(self, pair, limit="200"):

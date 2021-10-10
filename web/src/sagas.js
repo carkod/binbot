@@ -4,6 +4,7 @@ import watchPostLogin from "./containers/login/saga";
 import watchPostRegistration from "./containers/registration/saga";
 import watchGetBotApi, {
   watchActivateBot,
+  watchArchiveBot,
   watchBot,
   watchcloseBotApi,
   watchCreateBot,
@@ -20,6 +21,11 @@ import {
   watchPollOrders
 } from "./pages/orders/saga";
 import {
+  watchAddBlacklistApi,
+  watchDeleteBlackListApi,
+  watchEditSettingsApi,
+  watchGetBlacklistApi,
+  watchGetSettingsApi,
   watchHistoricalResearchApi,
   watchResearchApi
 } from "./pages/research/saga";
@@ -47,5 +53,11 @@ export default function* rootSaga() {
     watchGetBalanceApi(),
     watchRawBalance(),
     watchDeleteBotApi(),
+    watchArchiveBot(),
+    watchGetBlacklistApi(),
+    watchGetSettingsApi(),
+    watchEditSettingsApi(),
+    watchDeleteBlackListApi(),
+    watchAddBlacklistApi(),
   ]);
 }
