@@ -16,6 +16,9 @@ GET http://localhost:5000/research/signals?order_by=price_change_24&order=true H
 ### Get historical signals with filters and orderby
 GET http://localhost:5000/research/historical-signals HTTP/1.1
 
+
+
+
 ### Add blacklist
 POST http://localhost:5000/research/blacklist HTTP/1.1
 content-Type: application/json
@@ -25,16 +28,19 @@ content-Type: application/json
 ### Get all blacklist coins
 GET http://localhost:5000/research/blacklist HTTP/1.1
 
+
+
+
 ### Get research settings
 GET http://localhost:5000/research/controller HTTP/1.1 
 content-Type: application/json
 
-### Add blacklist
+### Edit settings. Delete show not be allowed
 PUT http://localhost:5000/research/controller HTTP/1.1
 content-Type: application/json
 
 {
-    "candlestick_interval": "1hr",
+    "candlestick_interval": "1d",
     "autotrade": 0,
     "errors": []
 }

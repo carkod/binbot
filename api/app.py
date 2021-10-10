@@ -28,11 +28,5 @@ def create_app():
             
             if "research_controller" not in app.db.list_collection_names():
                 app.db.create_collection("research_controller")
-                app.db.insert({
-                    "_id": "settings",
-                    "candlestick_interval": "1h",
-                    "autotrade": 0,
-                    "errors": []
-                })
 
     return app

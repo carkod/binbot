@@ -170,7 +170,7 @@ export function* watchcloseBotApi() {
 }
 
 export function* getSymbols() {
-  const requestURL = `${process.env.REACT_APP_SYMBOLS}`;
+  const requestURL = `${process.env.REACT_APP_NO_CANNIBALISM_SYMBOLS}`;
   try {
     const res = yield call(request, requestURL, defaultOptions);
     yield put(getSymbolsSucceeded(res));

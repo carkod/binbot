@@ -7,7 +7,7 @@ import requests
 from api.apis import BinbotApi
 from api.tools.handle_error import handle_error
 from api.tools.handle_error import jsonResp, jsonResp_message
-from flask import request, g
+from flask import request
 from api.app import create_app
 
 class Account(BinbotApi):
@@ -133,10 +133,10 @@ class Account(BinbotApi):
         """
         symbols = self._ticker_price()
         symbols_list = [x["symbol"] for x in symbols]
-        active_symbols = set(self.app.db.bots.find({"status": "active"}))
+        active_symbols = list(self.app.db.bots.find({"status": "active"}))
 
-        no_cannibal_list = set(symbols_list) - active_symbols
-        return jsonResp({"data": list(no_cannibal_list)})
+        no_cannibal_list = [x for x in symbols_list if x not in active_symbols]
+        return jsonResp({"data": no_cannibal_list, "count": len(no_cannibal_list) })
 
     def get_symbols(self):
         

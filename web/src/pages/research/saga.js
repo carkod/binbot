@@ -2,15 +2,27 @@ import { call, put, takeLatest } from "redux-saga/effects";
 import request, { defaultOptions } from "../../request";
 import { checkValue } from "../../validations";
 import {
+  addBlackListFailed,
+  addBlackListSucceeded,
+  ADD_BLACKLIST,
+  deleteBlackListFailed,
+  deleteBlackListSucceeded,
+  DELETE_BLACKLIST,
+  editSettingsFailed,
+  editSettingsSucceeded,
+  EDIT_SETTINGS,
   getBlacklistFailed,
   getBlacklistSucceeded,
   getHistoricalResearchDataFailed,
   getHistoricalResearchDataSucceeded,
   getResearchFailed,
   getResearchSucceeded,
+  getSettingsFailed,
+  getSettingsSucceeded,
   GET_BLACKLIST,
   GET_HISTORICAL_RESEARCH,
   GET_RESEARCH,
+  GET_SETTINGS,
 } from "./actions";
 
 /**
@@ -74,7 +86,7 @@ export function* watchHistoricalResearchApi() {
  * Blacklist
  */
  export function* getBlacklistApi() {
-  let url = new URL(process.env.REACT_APP_BLACKLISTED)
+  let url = new URL(process.env.REACT_APP_RESEARCH_BLACKLIST)
   try {
     const res = yield call(request, url, defaultOptions);
     yield put(getBlacklistSucceeded(res));
@@ -85,4 +97,92 @@ export function* watchHistoricalResearchApi() {
 
 export function* watchGetBlacklistApi() {
   yield takeLatest(GET_BLACKLIST, getBlacklistApi);
+}
+
+
+/**
+ * Add element to blacklist
+ */
+ export function* addBlacklistApi({data}) {
+  const url = new URL(`${process.env.REACT_APP_RESEARCH_BLACKLIST}`)
+  const options = {
+    method: "POST",
+    mode: "cors", // no-cors, *cors, same-origin
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(data),
+  };
+  try {
+    const res = yield call(request, url, options);
+    yield put(addBlackListSucceeded(res));
+  } catch (err) {
+    yield put(addBlackListFailed(err));
+  }
+}
+
+export function* watchAddBlacklistApi() {
+  yield takeLatest(ADD_BLACKLIST, addBlacklistApi);
+}
+
+/**
+ * Blacklist
+ */
+ export function* deleteBlacklistApi({ pair }) {
+  const url = `${process.env.REACT_APP_RESEARCH_BLACKLIST}/${pair}`
+  const options = {
+    method: "DELETE",
+    mode: "cors", // no-cors, *cors, same-origin
+    headers: { "content-type": "application/json", accept: "application/json" },
+  };
+  try {
+    const res = yield call(request, url, options);
+    yield put(deleteBlackListSucceeded(res));
+  } catch (err) {
+    yield put(deleteBlackListFailed(err));
+  }
+}
+
+export function* watchDeleteBlackListApi() {
+  yield takeLatest(DELETE_BLACKLIST, deleteBlacklistApi);
+}
+
+/**
+ * Settings (controller)
+ */
+ export function* getSettingsApi() {
+  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER)
+  try {
+    const res = yield call(request, url, defaultOptions);
+    yield put(getSettingsSucceeded(res));
+  } catch (err) {
+    yield put(getSettingsFailed(err));
+  }
+}
+
+export function* watchGetSettingsApi() {
+  yield takeLatest(GET_SETTINGS, getSettingsApi);
+}
+
+
+/**
+ * Edit Settings (controller)
+ */
+ export function* editSettingsApi({ data }) {
+  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER)
+  const options = {
+    method: "PUT",
+    mode: "cors", // no-cors, *cors, same-origin
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(data),
+  };
+  try {
+    const res = yield call(request, url, options);
+    yield put(editSettingsSucceeded(res));
+  } catch (err) {
+    yield put(editSettingsFailed(err));
+  }
+}
+
+export function* watchEditSettingsApi() {
+  yield takeLatest(EDIT_SETTINGS, editSettingsApi);
 }

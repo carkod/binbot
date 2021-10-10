@@ -25,11 +25,19 @@ class Controller:
         }
 
     def get_settings(self):
-        settings = current_app.db.reserch_controller.find_one({"_id": "settings"})
-        if settings:
-            resp = jsonResp({"message": "Successfully retrieved settings", "data": settings})
-        else:
-            resp = jsonResp({"message": "Failed to retrieve settings"})
+        settings = current_app.db.research_controller.find_one({"_id": "settings"})
+
+        # Should never be empty,
+        # It will be used in the future for research control
+        if not settings:
+            current_app.db.research_controller.insert({"_id": "settings"}, {
+                "_id": "settings",
+                "candlestick_interval": "1h",
+                "autotrade": 0,
+                "errors": []
+            })
+
+        resp = jsonResp({"message": "Successfully retrieved settings", "data": settings})
         return resp
 
     def edit_settings(self):
@@ -64,6 +72,18 @@ class Controller:
             resp = jsonResp({"message": "Successfully updated blacklist", "data": blacklist})
         else:
             resp = jsonResp({"message": "Failed to update blacklist", "error": 1})
+
+        return resp
+
+    def delete_blacklist_item(self):
+        pair = request.view_args["pair"]
+        
+        blacklist = current_app.db.blacklist.delete_one({"_id": pair})
+
+        if blacklist.acknowledged:
+            resp = jsonResp({"message": "Successfully updated blacklist"})
+        else:
+            resp = jsonResp({"message": "Item does not exist", "error": 1})
 
         return resp
 

@@ -28,6 +28,10 @@ def get_historical_signals():
 def post_blacklist():
     return Controller().create_blacklist_item()
 
+@research_blueprint.route("/blacklist/<pair>", methods=["DELETE"])
+def delete_blacklist_item(pair):
+    return Controller().delete_blacklist_item()
+
 @research_blueprint.route("/blacklist", methods=["PUT"])
 def put_blacklist():
     return Controller().edit_blacklist()
@@ -38,8 +42,8 @@ def get_blacklisted():
 
 @research_blueprint.route("/controller", methods=["PUT"])
 def put_controller():
-    return Controller().edit()
+    return Controller().edit_settings()
 
 @research_blueprint.route("/controller", methods=["GET"])
 def get_controller():
-    return Controller().get()
+    return Controller().get_settings()
