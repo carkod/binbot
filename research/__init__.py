@@ -29,49 +29,6 @@ markets_streams = None
 
 last_processed_kline = {}
 # This blacklist is necessary to keep prod and local DB synched
-black_list = [
-    "TRXBTC",
-    "WPRBTC",
-    "NEOBTC",
-    "BTCUSDT",
-    "ETHBTC",
-    "BNBBTC",
-    "ETHBTC",
-    "LTCBTC",
-    "ETHUSDT",
-    "ETCBTC",
-    "BNBETH",
-    "EOSBTC",
-    "DASHETH",
-    "FUNBTC",
-    "EOSBTC",
-    "SNGLSBTC",
-    "YOYOBTC",
-    "LINKETH",
-    "XVGBTC",
-    "SNTBTC",
-    "DASHBTC",
-    "VIBBTC",
-    "XMRBTC",
-    "WAVESBNB",
-    "QSPBTC",
-    "WPRBTC",
-    "MKRBTC",
-    "MKRUSDT",
-    "MKRBUSD",
-    "MKRBNB",
-    "MTHBTC",
-    "GASBTC",  # test
-    "OMGBTC",
-    "LINKBTC",
-    "QTUMBTC",
-    "BCHBTC",
-    "BCHUSDT",
-    "BCHBUSD",
-    "BCHBNB",
-    "BCHTUSD",
-    "BCHUSDC",
-]
 telegram_bot = TelegramBot()
 max_request = 950  # Avoid HTTP 411 error by separating streams
 binbot_api = BinbotApi()
