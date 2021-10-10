@@ -27,6 +27,7 @@ class Bot(Account):
             "pair": "",
             "status": "inactive",  # New replacement for active (inactive, active, completed)
             "name": "Default Bot",
+            "mode": "manual",
             "max_so_count": "0",
             "balance_usage_size": "0.0001",
             "balance_to_use": "GBP",
@@ -227,7 +228,7 @@ class Bot(Account):
             deal_object = Deal(bot)
             balance = deal_object.get_one_balance(base_asset)
             if balance:
-                qty = round_numbers(balance, self.qty_precision)
+                qty = round_numbers(balance, deal_object.qty_precision)
                 book_order = Book_Order(pair)
                 price = float(book_order.matching_engine(True, qty))
 
@@ -235,7 +236,7 @@ class Bot(Account):
                     order = {
                         "pair": pair,
                         "qty": qty,
-                        "price": supress_notation(price, self.price_precision),
+                        "price": supress_notation(price, deal_object.price_precision),
                     }
                     res = post(url=self.bb_sell_order_url, json=order)
                 else:

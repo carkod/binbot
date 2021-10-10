@@ -210,7 +210,7 @@ export function getSettingsFailed() {
 export function editSettings(payload) {
   return {
     type: EDIT_SETTINGS,
-    data: payload.data
+    data: payload
   }
 }
 

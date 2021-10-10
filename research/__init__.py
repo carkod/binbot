@@ -12,6 +12,7 @@ from websocket import WebSocketApp
 from apis import BinbotApi
 from telegram_bot import TelegramBot
 from utils import handle_error, supress_notation
+from autotrade import Autotrade
 
 load_dotenv()
 
@@ -40,9 +41,10 @@ blacklist_data = list(db.blacklist.find())
 
 if settings:
     interval = settings["candlestick_interval"]
+    trigger_autotrade = True if settings["autotrade"] == 1 else False
 
 if blacklist_data:
-    black_list = blacklist_data["blacklisst"]
+    black_list = [x["pair"] for x in blacklist_data]
 
 def _send_msg(msg):
     """
@@ -132,6 +134,7 @@ def process_kline_stream(result, ws):
         data = binbot_api._get_candlestick(symbol, interval)
         if len(data[0]["x"]) < 100:
             print(f"Not enough data to do research on {symbol}")
+            return
         ma_100 = data[1]["y"]
         ma_25 = data[2]["y"]
         ma_7 = data[3]["y"]
@@ -172,6 +175,7 @@ def process_kline_stream(result, ws):
 
             if (
                 float(close_price) > float(open_price)
+                and spread > 0.1
                 and (close_price > ma_7[len(ma_7) - 1] and open_price > ma_7[len(ma_7) - 1])
                 and (close_price > ma_7[len(ma_7) - 2] and open_price > ma_7[len(ma_7) - 2])
                 and (close_price > ma_7[len(ma_7) - 3] and open_price > ma_7[len(ma_7) - 3])
@@ -185,6 +189,14 @@ def process_kline_stream(result, ws):
                 and (close_price > ma_25[len(ma_25) - 5] and open_price > ma_25[len(ma_25) - 5])
             ):
                 msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+
+
+                # Logic for autotrade
+                if trigger_autotrade:
+                    autotrade = Autotrade()
+                    worker_thread = threading.Thread(name="autotrade_thread", target=autotrade.run)
+                    worker_thread.start()
+
 
             if msg:
                 _send_msg(msg)

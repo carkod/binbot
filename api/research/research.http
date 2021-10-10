@@ -23,7 +23,7 @@ GET http://localhost:5000/research/historical-signals HTTP/1.1
 POST http://localhost:5000/research/blacklist HTTP/1.1
 content-Type: application/json
 
-{ "pair": "BTCUSDT", "reason": "Controlled graph" }
+{ "pair": "ETHBTC", "reason": "Controlled graph" }
 
 ### Get all blacklist coins
 GET http://localhost:5000/research/blacklist HTTP/1.1

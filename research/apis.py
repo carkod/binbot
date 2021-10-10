@@ -89,6 +89,10 @@ class BinbotApi(BinanceApi):
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
+    bb_create_bot_url = f"{bb_base_url}/bot"
+    bb_activate_bot_url = f"{bb_base_url}/bot/activate"
+
+
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"
         res = get(url=url)

@@ -29,11 +29,15 @@ class Controller:
 
         # Should never be empty,
         # It will be used in the future for research control
-        if not settings:
+        if not settings or "candlestick_interval" not in settings or "autotrade" not in settings:
             current_app.db.research_controller.insert({"_id": "settings"}, {
                 "_id": "settings",
                 "candlestick_interval": "1h",
                 "autotrade": 0,
+                "trailling_profit": 2.4,
+                "stop_loss": 3,
+                "trailling": "false",
+                "trailling_deviation": "3",
                 "errors": []
             })
 

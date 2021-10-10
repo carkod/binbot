@@ -168,6 +168,8 @@ class Assets(Account):
         Alternative PnL data that runs as a cronjob everyday once at 1200
         Store current balance in Db
         """
+        # Store balance works outside of context as cronjob
+        app = create_app()
         print("Store balance starting...")
         balances = self.get_raw_balance().json
         current_time = datetime.utcnow()
@@ -212,7 +214,7 @@ class Assets(Account):
             "estimated_total_btc": total_btc,
             "estimated_total_gbp": total_gbp,
         }
-        balanceId = self.app.db.balances.insert_one(
+        balanceId = app.db.balances.insert_one(
             balance, {"$currentDate": {"createdAt": "true"}}
         )
         if balanceId:
