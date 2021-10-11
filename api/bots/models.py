@@ -10,7 +10,7 @@ from api.tools.round_numbers import round_numbers, supress_notation
 from bson.objectid import ObjectId
 from flask import Response, current_app, request
 from requests import delete, post
-
+from pymongo.errors import DuplicateKeyError
 
 class Bot(Account):
     def __init__(self):
@@ -77,9 +77,15 @@ class Bot(Account):
         )
         self.defaults.update(data)
         self.defaults["safety_orders"] = data["safety_orders"]
-        botId = self.app.db.bots.save(
-            self.defaults, {"$currentDate": {"createdAt": "true"}}
-        )
+        try:
+            botId = self.app.db.bots.save(
+                self.defaults, {"$currentDate": {"createdAt": "true"}}
+            )
+        except DuplicateKeyError:
+            jsonResp(
+                {"message": "Profit canibalism, bot with this pair already exists!", "error": 1}, 200
+            )
+            return 
         if botId:
             resp = jsonResp(
                 {"message": "Successfully created new bot", "botId": str(botId)}, 200

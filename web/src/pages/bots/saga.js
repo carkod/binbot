@@ -179,7 +179,7 @@ export function* getSymbols() {
   }
 }
 
-export function* getSymbolInfo(payload) {
+export function* getSymbolInfoApi(payload) {
   const pair = payload.data;
   const requestURL = `${process.env.REACT_APP_SYMBOL_INFO}/${pair}`;
   try {
@@ -198,7 +198,7 @@ export function* getSymbolInfo(payload) {
  * It will be cancelled automatically on component unmount
  */
 export function* watchBot() {
-  yield takeLatest(GET_SYMBOL_INFO, getSymbolInfo);
+  yield takeLatest(GET_SYMBOL_INFO, getSymbolInfoApi);
   yield takeLatest(GET_SYMBOLS, getSymbols);
 }
 

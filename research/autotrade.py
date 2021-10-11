@@ -38,6 +38,7 @@ class Autotrade(BinbotApi):
         print("Autotrade running...")
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
+        res = requests.post(url=self.bb_symbols_raw, json=self.default_bot)
         self.default_bot["balance_usage_size"] = 0.0001
         res = requests.post(url=self.bb_create_bot_url, json=self.default_bot)
 

@@ -155,8 +155,10 @@ class Bots extends React.Component {
                         <Button
                           color="secondary"
                           title="Archive bot"
-                          onClick={() => this.props.archiveBot(x._id.$oid)}
-                        >
+                          onClick={() => {
+                            this.props.archiveBot(x._id.$oid);
+                          }
+                          }>
                           <i className="fas fa-folder" />
                         </Button>
                         <Button

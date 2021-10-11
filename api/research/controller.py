@@ -14,9 +14,13 @@ class Controller:
     def __init__(self):
         # Data model
         self.defaults = {
-            "_id": "settings",
             "candlestick_interval": "1h",
             "autotrade": 0,
+            "trailling_profit": 2.4,
+            "stop_loss": 3,
+            "trailling": "false",
+            "trailling_deviation": "3",
+            "errors": []
         }
         self.default_blacklist = {
             "_id": "", # pair
@@ -47,12 +51,13 @@ class Controller:
     def edit_settings(self):
         data = request.json
         self.defaults.update(data)
-        settings = current_app.db.reserch_controller.find_one_and_update({"_id": "settings"}, {"$set": self.defaults})
+        self.defaults.pop("_id")
+        settings = current_app.db.research_controller.update({"_id": "settings"}, {"$set": self.defaults})
 
         if not settings:
             current_app.db.reserch_controller.insert(self.defaults)
         
-        resp = jsonResp({"message": "Successfully updated settings", "settings": settings})
+        resp = jsonResp({"message": "Successfully updated settings"})
         return resp
     
 
