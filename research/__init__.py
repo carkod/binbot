@@ -208,7 +208,8 @@ def process_kline_stream(result, ws):
                     msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
             if (
-                float(close_price) > float(open_price)
+                not any([x in symbol for x in ["USD", "DOWN"]])
+                and float(close_price) > float(open_price)
                 and spread > 0.1
                 and (
                     close_price > ma_7[len(ma_7) - 1]
