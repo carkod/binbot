@@ -21,6 +21,7 @@ class Controller:
             "trailling": "false",
             "trailling_deviation": "3",
             "update_required": False, # Changed made, need to update websockets
+            "balance_to_use": "BNB",
             "errors": []
         }
         self.default_blacklist = {
@@ -35,17 +36,7 @@ class Controller:
         # Should never be empty,
         # It will be used in the future for research control
         if not settings or "candlestick_interval" not in settings or "autotrade" not in settings:
-            current_app.db.research_controller.insert({"_id": "settings"}, {
-                "_id": "settings",
-                "candlestick_interval": "1h",
-                "autotrade": 0,
-                "trailling_profit": 2.4,
-                "stop_loss": 3,
-                "trailling": "false",
-                "trailling_deviation": "3",
-                "update_required": False,
-                "errors": []
-            })
+            current_app.db.research_controller.insert({"_id": "settings"}, self.defaults)
 
         resp = jsonResp({"message": "Successfully retrieved settings", "data": settings})
         return resp

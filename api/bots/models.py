@@ -287,8 +287,19 @@ class Bot(Account):
         Change status to archived
         """
         botId = request.view_args["id"]
-        archive = self.app.db.bots.find_one_and_update(
-            {"_id": ObjectId(botId)}, {"$set": {"status": "archived"}}
+        bot = self.app.db.bots.find_one_and_update({"_id": ObjectId(botId)})
+        if bot["status"] == "active":
+            return jsonResp(
+                {"message": "Cannot archive an active bot!", "botId": botId}
+            )
+        
+        if bot["status"] == "archived":
+            status = "inactive"
+        else:
+            status = "archived"
+
+        archive = self.app.db.bots.update(
+            {"_id": ObjectId(botId)}, {"$set": {"status": status}}
         )
         if archive:
             resp = jsonResp(

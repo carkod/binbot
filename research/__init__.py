@@ -92,7 +92,7 @@ def start_stream():
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
 
-def post_error(error):
+def post_error(msg):
     res = requests.post(url=binbot_api.bb_controller_url, json={"errors": msg })
     result = handle_binance_errors(res)
     return
@@ -259,8 +259,9 @@ def process_kline_stream(result, ws):
                 msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
                 # Logic for autotrade
+                settings = db.research_controller.find_one({"_id": "settings"})
                 if int(settings["autotrade"]) == 1:
-                    autotrade = Autotrade(symbol)
+                    autotrade = Autotrade(symbol, settings)
                     worker_thread = threading.Thread(
                         name="autotrade_thread", target=autotrade.run
                     )

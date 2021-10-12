@@ -176,7 +176,11 @@ const botReducer = produce((draft, action) => {
     }
     case ARCHIVE_BOT_SUCCESS: {
       const findidx = draft.data.findIndex(x => x._id.$oid === action.id);
-      draft.data[findidx].status = "archived"
+      if (draft.data[findidx].status === "archived") {
+        draft.data[findidx].status = "inactive"  
+      } else {
+        draft.data[findidx].status = "archived"
+      }
       return draft;
     }
     default:
