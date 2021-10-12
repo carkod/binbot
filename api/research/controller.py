@@ -20,6 +20,7 @@ class Controller:
             "stop_loss": 3,
             "trailling": "false",
             "trailling_deviation": "3",
+            "update_required": False, # Changed made, need to update websockets
             "errors": []
         }
         self.default_blacklist = {
@@ -42,6 +43,7 @@ class Controller:
                 "stop_loss": 3,
                 "trailling": "false",
                 "trailling_deviation": "3",
+                "update_required": False,
                 "errors": []
             })
 
@@ -49,9 +51,21 @@ class Controller:
         return resp
 
     def edit_settings(self):
+        # Start with current settings
+        self.defaults = current_app.db.research_controller.find_one({"_id": "settings"})
         data = request.json
+
+        if "errors" in data:
+            errors = self.defaults["errors"]
+            errors.append(data["errors"])
+
         self.defaults.update(data)
         self.defaults.pop("_id")
+        self.defaults["update_required"] = True
+
+        if "errors" in data:
+            self.defaults["errors"] = errors
+
         settings = current_app.db.research_controller.update({"_id": "settings"}, {"$set": self.defaults})
 
         if not settings:

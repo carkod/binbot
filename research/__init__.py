@@ -10,9 +10,9 @@ from pymongo import MongoClient
 from websocket import WebSocketApp
 
 from apis import BinbotApi
-from telegram_bot import TelegramBot
-from utils import handle_error, supress_notation
 from autotrade import Autotrade
+from telegram_bot import TelegramBot
+from utils import handle_binance_errors, supress_notation
 
 load_dotenv()
 
@@ -41,10 +41,10 @@ blacklist_data = list(db.blacklist.find())
 
 if settings:
     interval = settings["candlestick_interval"]
-    trigger_autotrade = True if settings["autotrade"] == 1 else False
 
 if blacklist_data:
     black_list = [x["pair"] for x in blacklist_data]
+
 
 def _send_msg(msg):
     """
@@ -59,10 +59,6 @@ def _send_msg(msg):
     return
 
 
-def close_stream(ws, close_status_code, close_msg):
-    print("Active socket closed", close_status_code, close_msg)
-
-
 def _run_streams(stream, index):
     string_params = "/".join(stream)
     url = f"{binbot_api.WS_BASE}{string_params}"
@@ -74,7 +70,9 @@ def _run_streams(stream, index):
         on_message=on_message,
     )
     worker_thread = threading.Thread(
-        name=f"market_updates_{index}", target=ws.run_forever, kwargs={'ping_interval': 60}
+        name=f"market_updates_{index}",
+        target=ws.run_forever,
+        kwargs={"ping_interval": 60},
     )
     worker_thread.start()
 
@@ -89,10 +87,22 @@ def start_stream():
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
-    stream_2 = params[(max_request + 1):]
+    stream_2 = params[(max_request + 1) :]
 
     _run_streams(stream_1, 1)
     _run_streams(stream_2, 2)
+
+def post_error(error):
+    res = requests.post(url=binbot_api.bb_controller_url, json={"errors": msg })
+    result = handle_binance_errors(res)
+    return
+
+
+def close_stream(ws, close_status_code, close_msg):
+    print("Active socket closed", close_status_code, close_msg)
+    # Controlled close stream
+    # There is no reason to keep it closed unless there is an error
+    start_stream()
 
 
 def on_open(ws):
@@ -100,7 +110,10 @@ def on_open(ws):
 
 
 def on_error(ws, error):
-    print(f"Research Websocket error: {error}. Symbol: {ws.symbol}")
+    msg = f"Research Websocket error: {error}. Symbol: {ws.symbol}"
+    print(msg)
+    post_error(msg)
+    # Network error, restart
     if error.args[0] == "Connection to remote host was lost.":
         print("Restarting in 30 seconds...")
         sleep(30)
@@ -120,6 +133,22 @@ def on_message(ws, message):
     else:
         print(f"Error: {response}")
 
+def blacklist_coin(pair, msg):
+    res = requests.post(url=binbot_api.bb_blacklist_url, json={"pair": pair, "reason": msg })
+    result = handle_binance_errors(res)
+    return
+
+def settings_updated(ws):
+    res = requests.get(url=binbot_api.bb_controller_url)
+    result = handle_binance_errors(res)
+    if (
+        "update_required" in result["data"]
+        and result["data"]["update_required"]
+    ):
+        ws.close()
+    else:
+        pass
+
 
 def process_kline_stream(result, ws):
     """
@@ -127,14 +156,19 @@ def process_kline_stream(result, ws):
     """
     # Check if closed result["k"]["x"]
     if "k" in result and "s" in result["k"]:
+        # Check if streams need to be restarted
+        settings_updated(ws)
         close_price = float(result["k"]["c"])
         open_price = float(result["k"]["o"])
         symbol = result["k"]["s"]
         ws.symbol = symbol
         data = binbot_api._get_candlestick(symbol, interval)
-        if len(data[0]["x"]) < 100:
-            print(f"Not enough data to do research on {symbol}")
+        if len(data[1]["y"]) <= 100:
+            msg = f"Not enough data to do research on {symbol}"
+            print(msg)
+            blacklist_coin(symbol, msg)
             return
+
         ma_100 = data[1]["y"]
         ma_25 = data[2]["y"]
         ma_7 = data[3]["y"]
@@ -176,27 +210,60 @@ def process_kline_stream(result, ws):
             if (
                 float(close_price) > float(open_price)
                 and spread > 0.1
-                and (close_price > ma_7[len(ma_7) - 1] and open_price > ma_7[len(ma_7) - 1])
-                and (close_price > ma_7[len(ma_7) - 2] and open_price > ma_7[len(ma_7) - 2])
-                and (close_price > ma_7[len(ma_7) - 3] and open_price > ma_7[len(ma_7) - 3])
-                and (close_price > ma_7[len(ma_7) - 4] and open_price > ma_7[len(ma_7) - 4])
-                and (close_price > ma_7[len(ma_7) - 5] and open_price > ma_7[len(ma_7) - 5])
-                and (close_price > ma_100[len(ma_100) - 1] and open_price > ma_100[len(ma_100) - 1])
-                and (close_price > ma_25[len(ma_25) - 1] and open_price > ma_25[len(ma_25) - 1])
-                and (close_price > ma_25[len(ma_25) - 2] and open_price > ma_25[len(ma_25) - 2])
-                and (close_price > ma_25[len(ma_25) - 3] and open_price > ma_25[len(ma_25) - 3])
-                and (close_price > ma_25[len(ma_25) - 4] and open_price > ma_25[len(ma_25) - 4])
-                and (close_price > ma_25[len(ma_25) - 5] and open_price > ma_25[len(ma_25) - 5])
+                and (
+                    close_price > ma_7[len(ma_7) - 1]
+                    and open_price > ma_7[len(ma_7) - 1]
+                )
+                and (
+                    close_price > ma_7[len(ma_7) - 2]
+                    and open_price > ma_7[len(ma_7) - 2]
+                )
+                and (
+                    close_price > ma_7[len(ma_7) - 3]
+                    and open_price > ma_7[len(ma_7) - 3]
+                )
+                and (
+                    close_price > ma_7[len(ma_7) - 4]
+                    and open_price > ma_7[len(ma_7) - 4]
+                )
+                and (
+                    close_price > ma_7[len(ma_7) - 5]
+                    and open_price > ma_7[len(ma_7) - 5]
+                )
+                and (
+                    close_price > ma_100[len(ma_100) - 1]
+                    and open_price > ma_100[len(ma_100) - 1]
+                )
+                and (
+                    close_price > ma_25[len(ma_25) - 1]
+                    and open_price > ma_25[len(ma_25) - 1]
+                )
+                and (
+                    close_price > ma_25[len(ma_25) - 2]
+                    and open_price > ma_25[len(ma_25) - 2]
+                )
+                and (
+                    close_price > ma_25[len(ma_25) - 3]
+                    and open_price > ma_25[len(ma_25) - 3]
+                )
+                and (
+                    close_price > ma_25[len(ma_25) - 4]
+                    and open_price > ma_25[len(ma_25) - 4]
+                )
+                and (
+                    close_price > ma_25[len(ma_25) - 5]
+                    and open_price > ma_25[len(ma_25) - 5]
+                )
             ):
                 msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
-
                 # Logic for autotrade
-                if trigger_autotrade:
-                    autotrade = Autotrade()
-                    worker_thread = threading.Thread(name="autotrade_thread", target=autotrade.run)
+                if int(settings["autotrade"]) == 1:
+                    autotrade = Autotrade(symbol)
+                    worker_thread = threading.Thread(
+                        name="autotrade_thread", target=autotrade.run
+                    )
                     worker_thread.start()
-
 
             if msg:
                 _send_msg(msg)

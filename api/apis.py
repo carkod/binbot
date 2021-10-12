@@ -80,6 +80,8 @@ class BinbotApi(BinanceApi):
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
+    bb_controller_url = f'{bb_base_url}/research/controller'
+
 class CoinBaseApi:
     """
     Currency and Cryptocurrency conversion service

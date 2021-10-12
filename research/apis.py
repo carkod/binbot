@@ -1,5 +1,5 @@
 from requests import get
-from utils import handle_error
+from utils import handle_binance_errors
 import os
 class BinanceApi:
     """
@@ -40,7 +40,7 @@ class BinanceApi:
     def _get_raw_klines(self, pair, limit="200", interval="1h"):
         params = {"symbol": pair, "interval": interval, "limit": limit}
         res = get(url=self.candlestick_url, params=params)
-        handle_error(res)
+        handle_binance_errors(res)
         return res.json()
 
     def _ticker_price(self):
@@ -91,12 +91,14 @@ class BinbotApi(BinanceApi):
 
     bb_create_bot_url = f"{bb_base_url}/bot"
     bb_activate_bot_url = f"{bb_base_url}/bot/activate"
+    bb_controller_url = f'{bb_base_url}/research/controller'
+    bb_blacklist_url = f'{bb_base_url}/research/blacklist'
 
 
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"
         res = get(url=url)
-        handle_error(res)
+        handle_binance_errors(res)
         data = res.json()["data"]
         return data
     
