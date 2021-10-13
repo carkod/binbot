@@ -1,3 +1,4 @@
+from decimal import Decimal
 from requests import get
 from utils import handle_binance_errors
 import os
@@ -37,6 +38,15 @@ class BinanceApi:
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
 
 
+    def _exchange_info(self):
+        """
+        Copied from /api/account/account.py
+        To be refactored in the future
+        """
+        exchange_info = get(url=self.exchangeinfo_url).json()
+        return exchange_info
+
+
     def _get_raw_klines(self, pair, limit="200", interval="1h"):
         params = {"symbol": pair, "interval": interval, "limit": limit}
         res = get(url=self.candlestick_url, params=params)
@@ -46,6 +56,45 @@ class BinanceApi:
     def _ticker_price(self):
         r = get(url=self.ticker_price)
         return r.json()
+    
+    def price_precision(self, symbol):
+        """
+        Modified from price_filter_by_symbol
+        from /api/account/account.py
+        
+        This function always will use the tickSize decimals
+        """
+        symbols = self._exchange_info()["symbols"]
+        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        price_filter = next(
+            (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"), None
+        )
+
+        # Once got the filter data of Binance
+        # Transform into string and remove leading zeros
+        # This is how the exchange accepts the prices, it will not work with scientific exponential notation e.g. 2.1-10
+        price_precision = Decimal(str(price_filter["tickSize"].rstrip(".0")))
+        
+        # Finally return the correct number of decimals required
+        return -(price_precision).as_tuple().exponent
+    
+    def min_amount_check(self, symbol, qty):
+        """
+        Min amout check
+        Uses MIN notional restriction (price x quantity) from /exchangeinfo
+        @params:
+            - symbol: string - pair/market e.g. BNBBTC
+            - Use current ticker price for price
+        """
+        symbols = self._exchange_info()["symbols"]
+        ticker_price = self._ticker_price()
+        price = next((s["price"] for s in ticker_price if s["symbol"] == symbol), None)
+        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        min_notional_filter = next(
+            (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
+        )
+        min_qty = (float(qty) * float(price)) > float(min_notional_filter["minNotional"])
+        return min_qty
 
 
 class BinbotApi(BinanceApi):
@@ -89,7 +138,7 @@ class BinbotApi(BinanceApi):
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
-    bb_create_bot_url = f"{bb_base_url}/bot"
+    bb_create_bot_url = f"{bb_base_url}/bot/"
     bb_activate_bot_url = f"{bb_base_url}/bot/activate"
     bb_controller_url = f'{bb_base_url}/research/controller'
     bb_blacklist_url = f'{bb_base_url}/research/blacklist'

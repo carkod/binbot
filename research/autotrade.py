@@ -1,7 +1,7 @@
 from apis import BinbotApi
 import requests
 from time import sleep
-from utils import handle_binance_errors
+from utils import handle_binance_errors, supress_notation
 class Autotrade(BinbotApi):
 
     def __init__(self, pair, settings) -> None:
@@ -16,7 +16,7 @@ class Autotrade(BinbotApi):
             "balance_to_use": "BNB",
             "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
-            "candlestick_interval": "15m",
+            "candlestick_interval": "1h",
             "take_profit": "3",
             "trailling": "false",
             "trailling_deviation": "0.63",
@@ -44,9 +44,15 @@ class Autotrade(BinbotApi):
         res = requests.get(url=self.bb_balance_url)
         response = handle_binance_errors(res)
 
+        # Get balance that match the pair
+        # Check that we have minimum binance required qty to trade
         for b in response["data"]:
             if b["asset"] in self.pair:
-                self.default_bot["balance_usage_size"] = b["free"]
+                qty = supress_notation(b["free"], self.price_precision(self.pair))
+                if self.min_amount_check(self.pair, qty):
+                    self.default_bot["balance_usage_size"] = qty
+                else:
+                    return
         
 
         if not self.default_bot["balance_usage_size"]:
@@ -54,12 +60,12 @@ class Autotrade(BinbotApi):
             self.handle_error(msg)
             print(msg)
             return
-        
+
         self.settings.pop("_id")
         self.default_bot.update(self.settings)
         create_bot_res = requests.post(url=self.bb_create_bot_url, json=self.default_bot)
         botId = handle_binance_errors(create_bot_res)
-        if botId["error"] == 1:
+        if "error" in botId and botId["error"] == 1:
             msg = f'Not enough funds to carry out autotrade with {self.pair}'
             self.handle_error(msg)
             return
