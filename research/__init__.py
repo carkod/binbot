@@ -93,7 +93,7 @@ def start_stream():
     _run_streams(stream_2, 2)
 
 def post_error(msg):
-    res = requests.post(url=binbot_api.bb_controller_url, json={"errors": msg })
+    res = requests.put(url=binbot_api.bb_controller_url, json={"errors": msg })
     result = handle_binance_errors(res)
     return
 
@@ -138,17 +138,6 @@ def blacklist_coin(pair, msg):
     result = handle_binance_errors(res)
     return
 
-def settings_updated(ws):
-    res = requests.get(url=binbot_api.bb_controller_url)
-    result = handle_binance_errors(res)
-    if (
-        "update_required" in result["data"]
-        and result["data"]["update_required"]
-    ):
-        ws.close()
-    else:
-        pass
-
 
 def process_kline_stream(result, ws):
     """
@@ -157,7 +146,6 @@ def process_kline_stream(result, ws):
     # Check if closed result["k"]["x"]
     if "k" in result and "s" in result["k"]:
         # Check if streams need to be restarted
-        settings_updated(ws)
         close_price = float(result["k"]["c"])
         open_price = float(result["k"]["o"])
         symbol = result["k"]["s"]
@@ -260,7 +248,11 @@ def process_kline_stream(result, ws):
 
                 # Logic for autotrade
                 settings = db.research_controller.find_one({"_id": "settings"})
-                if int(settings["autotrade"]) == 1:
+                if "update_required" in settings and settings["update_required"]:
+                    ws.close()
+
+                active_bots = list(db.bots.find({"status": "active"}))
+                if int(settings["autotrade"]) == 1 and symbol not in active_bots:
                     autotrade = Autotrade(symbol, settings)
                     worker_thread = threading.Thread(
                         name="autotrade_thread", target=autotrade.run

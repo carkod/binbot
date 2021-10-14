@@ -138,7 +138,7 @@ class BinbotApi(BinanceApi):
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
-    bb_create_bot_url = f"{bb_base_url}/bot/"
+    bb_bot_url = f"{bb_base_url}/bot/"
     bb_activate_bot_url = f"{bb_base_url}/bot/activate"
     bb_controller_url = f'{bb_base_url}/research/controller'
     bb_blacklist_url = f'{bb_base_url}/research/blacklist'

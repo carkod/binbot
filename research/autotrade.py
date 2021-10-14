@@ -36,7 +36,15 @@ class Autotrade(BinbotApi):
     
     def run(self):
         """
-        autotrade
+        Run autotrade
+        1. Check balance
+        2. Create bot with given parameters from research_controller
+        3. Activate bot
+
+        To do:
+        - If no balance stop autotrade
+        - Stop creating bots when there is no balance.
+        - Stop creating bots with the same pair if there is already a bot active
         """
         print("Autotrade running...")
         # Check balance, if no balance set autotrade = 0
