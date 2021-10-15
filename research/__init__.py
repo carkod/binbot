@@ -66,7 +66,7 @@ def _run_streams(stream, index):
         url,
         on_open=on_open,
         on_error=on_error,
-        on_close=close_stream,
+        on_close=on_close,
         on_message=on_message,
     )
     worker_thread = threading.Thread(
@@ -77,7 +77,9 @@ def _run_streams(stream, index):
     worker_thread.start()
 
 
-def start_stream():
+def start_stream(previous_ws=None):
+    if previous_ws:
+        previous_ws.close()
     raw_symbols = binbot_api._ticker_price()
     markets = set([item["symbol"] for item in raw_symbols])
     subtract_list = set(black_list)
@@ -98,10 +100,16 @@ def post_error(msg):
     return
 
 
-def close_stream(ws, close_status_code, close_msg):
+def on_close(ws, close_status_code, close_msg):
+    """
+    Library bug not working
+    https://github.com/websocket-client/websocket-client/issues/612
+    """
+    
     print("Active socket closed", close_status_code, close_msg)
     # Controlled close stream
-    # There is no reason to keep it closed unless there is an error
+    # There is no reason to keep it permanently closed
+    # unless there is an error, which will be handled `on_error`
     start_stream()
 
 
@@ -136,7 +144,7 @@ def on_message(ws, message):
 def blacklist_coin(pair, msg):
     res = requests.post(url=binbot_api.bb_blacklist_url, json={"pair": pair, "reason": msg })
     result = handle_binance_errors(res)
-    return
+    return result
 
 
 def process_kline_stream(result, ws):
@@ -196,9 +204,9 @@ def process_kline_stream(result, ws):
                     msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
             if (
-                not any([x in symbol for x in ["USD", "DOWN"]])
+                not any([x in symbol for x in ["USD", "DOWN", "EUR", "AUS"]])
                 and float(close_price) > float(open_price)
-                and spread > 0.1
+                # and spread > 0.1
                 and (
                     close_price > ma_7[len(ma_7) - 1]
                     and open_price > ma_7[len(ma_7) - 1]
@@ -247,11 +255,18 @@ def process_kline_stream(result, ws):
                 msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
                 # Logic for autotrade
-                settings = db.research_controller.find_one({"_id": "settings"})
+                research_controller_res = requests.get(url=binbot_api.bb_controller_url)
+                settings = handle_binance_errors(research_controller_res)["data"]
                 if "update_required" in settings and settings["update_required"]:
-                    ws.close()
+                    settings["update_required"] = False
+                    settings["errors"] = []
+                    research_controller_res = requests.put(url=binbot_api.bb_controller_url, json=settings)
+                    print(handle_binance_errors(research_controller_res)["message"])
+                    start_stream(previous_ws=ws)
+                    return
 
-                active_bots = list(db.bots.find({"status": "active"}))
+                bots_res = requests.get(url=binbot_api.bb_controller_url)
+                active_bots = handle_binance_errors(bots_res)["data"]
                 if int(settings["autotrade"]) == 1 and symbol not in active_bots:
                     autotrade = Autotrade(symbol, settings)
                     worker_thread = threading.Thread(

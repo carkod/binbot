@@ -31,8 +31,15 @@ class Autotrade(BinbotApi):
         """
         Check balance to decide balance_to_use
         """
-        self.settings["errors"].append(msg)
+        try:
+            self.settings["errors"].append(msg)
+        except AttributeError:
+            self.settings["errors"] = []
+            self.settings["errors"].append(msg)
+
         res = requests.put(url=self.bb_controller_url, json=self.settings)
+        result = handle_binance_errors(res)
+        return result
     
     def run(self):
         """

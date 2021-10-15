@@ -203,6 +203,7 @@ class Research extends React.Component {
     this.setState(
       produce((draft) => {
         draft.settings[e.target.name] = e.target.value;
+        draft.update_required = "True";
       })
     );
   };

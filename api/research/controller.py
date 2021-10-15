@@ -47,16 +47,13 @@ class Controller:
         data = request.json
 
         if "errors" in data:
+            if isinstance(self.defaults["errors"], str):
+                self.defaults["errors"] = []
             errors = self.defaults["errors"]
             errors.append(data["errors"])
 
         self.defaults.update(data)
         self.defaults.pop("_id")
-        self.defaults["update_required"] = True
-
-        if "errors" in data:
-            self.defaults["errors"] = errors
-
         settings = current_app.db.research_controller.update({"_id": "settings"}, {"$set": self.defaults})
 
         if not settings:
