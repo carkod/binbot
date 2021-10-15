@@ -16,11 +16,14 @@ class Account(BinbotApi):
         self.app = create_app()
         pass
 
-    def _exchange_info(self):
+    def _exchange_info(self, symbol=None):
         """
         This must be a separate method because classes use it with inheritance
         """
-        exchange_info = requests.get(url=self.exchangeinfo_url).json()
+        params = {}
+        if symbol:
+            params["symbol"] = symbol
+        exchange_info = requests.get(url=f'{self.exchangeinfo_url}', params=params).json()
         return exchange_info
 
     def request_data(self):
@@ -84,15 +87,21 @@ class Account(BinbotApi):
         return resp
 
     def find_quoteAsset(self, symbol):
-        symbols = self._exchange_info()["symbols"]
-        quote_asset = next((s for s in symbols if s["symbol"] == symbol), None)
+        """
+        e.g. BNBBTC: base asset = BTC
+        """
+        symbols = self._exchange_info(symbol)
+        quote_asset = market = symbols["symbols"][0]
         if quote_asset:
             quote_asset = quote_asset["quoteAsset"]
         return quote_asset
 
     def find_baseAsset(self, symbol):
-        symbols = self._exchange_info()["symbols"]
-        base_asset = next((s for s in symbols if s["symbol"] == symbol), None)[
+        """
+        e.g. BNBBTC: base asset = BNB
+        """
+        symbols = self._exchange_info(symbol)
+        base_asset = symbols["symbols"][0][
             "baseAsset"
         ]
         return base_asset
@@ -106,16 +115,16 @@ class Account(BinbotApi):
         return jsonResp({"data": data})
 
     def find_market(self, quote):
-        symbols = self._exchange_info()["symbols"]
-        market = next((s for s in symbols if s["baseAsset"] == quote), None)
+        symbols = self._exchange_info(symbol)
+        market = symbols["symbols"][0]
         if market:
             market = market["symbol"]
         return market
 
     def get_symbol_info(self):
-        symbols = self._exchange_info()["symbols"]
+        symbols = self._exchange_info(symbol)
         pair = request.view_args["pair"]
-        symbol = next((s for s in symbols if s["symbol"] == pair), None)
+        symbol = symbols["symbols"][0]
         if symbol:
             return jsonResp({"data": symbol})
         else:
@@ -153,8 +162,8 @@ class Account(BinbotApi):
         @params quote: boolean - quote=True, base=False
         @params symbol: string - market e.g. BNBBTC
         """
-        symbols = self._exchange_info()["symbols"]
-        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        symbols = self._exchange_info(symbol)
+        market = symbols["symbols"][0]
         asset_precision = (
             market["quoteAssetPrecision"] if quote else market["baseAssetPrecision"]
         )
@@ -167,8 +176,8 @@ class Account(BinbotApi):
             - symbol: string - pair/market e.g. BNBBTC
             - filter_limit: string - minPrice or maxPrice
         """
-        symbols = self._exchange_info()["symbols"]
-        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        symbols = self._exchange_info(symbol)
+        market = symbols["symbols"][0]
         price_filter = next(
             (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"), None
         )
@@ -181,8 +190,8 @@ class Account(BinbotApi):
             - symbol: string - pair/market e.g. BNBBTC
             - lot_size_limit: string - minQty, maxQty, stepSize
         """
-        symbols = self._exchange_info()["symbols"]
-        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        symbols = self._exchange_info(symbol)
+        market = symbols["symbols"][0]
         quantity_filter = next(
             (m for m in market["filters"] if m["filterType"] == "LOT_SIZE"), None
         )
@@ -195,8 +204,8 @@ class Account(BinbotApi):
             - symbol: string - pair/market e.g. BNBBTC
             - min_notional_limit: string - minNotional
         """
-        symbols = self._exchange_info()["symbols"]
-        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        symbols = self._exchange_info(symbol)
+        market = symbols["symbols"][0]
         min_notional_filter = next(
             (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
         )

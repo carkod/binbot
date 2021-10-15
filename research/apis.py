@@ -2,6 +2,7 @@ from decimal import Decimal
 from requests import get
 from utils import handle_binance_errors
 import os
+from datetime import datetime
 class BinanceApi:
     """
     Binance Api URLs
@@ -15,10 +16,10 @@ class BinanceApi:
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
     account_url = f"{BASE}/api/v3/account"
-    exchangeinfo_url = f"{BASE}/api/v1/exchangeInfo"
+    exchangeinfo_url = f"{BASE}/api/v3/exchangeInfo"
     ticker_price = f"{BASE}/api/v3/ticker/price"
-    ticker24_url = f"{BASE}/api/v1/ticker/24hr"
-    candlestick_url = f"{BASE}/api/v1/klines"
+    ticker24_url = f"{BASE}/api/v3/ticker/24hr"
+    candlestick_url = f"{BASE}/api/v3/klines"
     order_url = f"{BASE}/api/v3/order"
     order_book_url = f"{BASE}/api/v3/depth"
     avg_price = f"{BASE}/api/v3/avgPrice"
@@ -38,12 +39,15 @@ class BinanceApi:
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
 
 
-    def _exchange_info(self):
+    def _exchange_info(self, symbol=None):
         """
         Copied from /api/account/account.py
         To be refactored in the future
         """
-        exchange_info = get(url=self.exchangeinfo_url).json()
+        params = {}
+        if symbol:
+            params["symbol"] = symbol
+        exchange_info = get(url=self.exchangeinfo_url, params=params).json()
         return exchange_info
 
 
@@ -64,8 +68,8 @@ class BinanceApi:
         
         This function always will use the tickSize decimals
         """
-        symbols = self._exchange_info()["symbols"]
-        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        symbols = self._exchange_info(symbol)
+        market = symbols["symbols"][0]
         price_filter = next(
             (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"), None
         )
@@ -86,15 +90,29 @@ class BinanceApi:
             - symbol: string - pair/market e.g. BNBBTC
             - Use current ticker price for price
         """
-        symbols = self._exchange_info()["symbols"]
+        symbols = self._exchange_info(symbol)
         ticker_price = self._ticker_price()
         price = next((s["price"] for s in ticker_price if s["symbol"] == symbol), None)
-        market = next((s for s in symbols if s["symbol"] == symbol), None)
+        market = symbols["symbols"][0]
         min_notional_filter = next(
             (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
         )
         min_qty = (float(qty) * float(price)) > float(min_notional_filter["minNotional"])
         return min_qty
+    
+    def find_baseAsset(self, symbol):
+        symbols = self._exchange_info(symbol)
+        base_asset = market = symbols["symbols"][0][
+            "baseAsset"
+        ]
+        return base_asset
+    
+    def find_quoteAsset(self, symbol):
+        symbols = self._exchange_info(symbol)
+        quote_asset = market = symbols["symbols"][0]
+        if quote_asset:
+            quote_asset = quote_asset["quoteAsset"]
+        return quote_asset
 
 
 class BinbotApi(BinanceApi):
@@ -157,3 +175,27 @@ class BinbotApi(BinanceApi):
         res.raise_for_status()
         data = res.json()
         return data["trace"]
+
+class CoinBaseApi:
+    """
+    Currency and Cryptocurrency conversion service
+    """
+
+    BASE = "https://api.coinbase.com/v2"
+    EXG_URL = f"{BASE}/prices"
+
+    def get_conversion(self, base="BTC", quote="GBP", time=datetime.now()):
+
+        params = {
+            "apikey": os.environ["COINAPI_KEY"],
+            "date": time.strftime("%Y-%m-%d"),
+        }
+        url = f"{self.EXG_URL}/{base}-{quote}/spot"
+        data = get(url, params).json()
+        try:
+            data["data"]["amount"]
+        except KeyError as e:
+            print(data)
+        
+        rate = float(data["data"]["amount"])
+        return rate

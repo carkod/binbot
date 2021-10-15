@@ -34,17 +34,12 @@ telegram_bot = TelegramBot()
 max_request = 950  # Avoid HTTP 411 error by separating streams
 binbot_api = BinbotApi()
 
-
 # Dynamic data
 settings = db.research_controller.find_one({"_id": "settings"})
-blacklist_data = list(db.blacklist.find())
+
 
 if settings:
     interval = settings["candlestick_interval"]
-
-if blacklist_data:
-    black_list = [x["pair"] for x in blacklist_data]
-
 
 def _send_msg(msg):
     """
@@ -81,6 +76,8 @@ def start_stream(previous_ws=None):
     if previous_ws:
         previous_ws.close()
     raw_symbols = binbot_api._ticker_price()
+    blacklist_data = list(db.blacklist.find())
+    black_list = [x["pair"] for x in blacklist_data]
     markets = set([item["symbol"] for item in raw_symbols])
     subtract_list = set(black_list)
     list_markets = markets - subtract_list
@@ -95,7 +92,7 @@ def start_stream(previous_ws=None):
     _run_streams(stream_2, 2)
 
 def post_error(msg):
-    res = requests.put(url=binbot_api.bb_controller_url, json={"errors": msg })
+    res = requests.put(url=binbot_api.bb_controller_url, json={"errors": [msg] })
     result = handle_binance_errors(res)
     return
 
@@ -204,7 +201,8 @@ def process_kline_stream(result, ws):
                     msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
             if (
-                not any([x in symbol for x in ["USD", "DOWN", "EUR", "AUS"]])
+                # BRL cannot be transformed by coinbase
+                not any([x in symbol for x in ["USD", "DOWN", "EUR", "AUD", "TRY", "BRL", "RUB"]])
                 and float(close_price) > float(open_price)
                 # and spread > 0.1
                 and (
@@ -257,6 +255,8 @@ def process_kline_stream(result, ws):
                 # Logic for autotrade
                 research_controller_res = requests.get(url=binbot_api.bb_controller_url)
                 settings = handle_binance_errors(research_controller_res)["data"]
+                # If dashboard has changed any settings
+                # Need to reload websocket
                 if "update_required" in settings and settings["update_required"]:
                     settings["update_required"] = False
                     settings["errors"] = []
@@ -265,6 +265,8 @@ def process_kline_stream(result, ws):
                     start_stream(previous_ws=ws)
                     return
 
+                # if autrotrade enabled and it's not an already active bot
+                # this avoids running too many useless bots
                 bots_res = requests.get(url=binbot_api.bb_controller_url)
                 active_bots = handle_binance_errors(bots_res)["data"]
                 if int(settings["autotrade"]) == 1 and symbol not in active_bots:

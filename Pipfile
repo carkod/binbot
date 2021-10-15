@@ -8,6 +8,8 @@ pylint = "2.10.2"
 autopep8 = "*"
 isort = "5.9.2"
 black = "*"
+mypy = "*"
+bandit = "*"
 
 [packages]
 flask = "*"
