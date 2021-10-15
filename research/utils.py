@@ -5,6 +5,12 @@ from decimal import Decimal
 import sys
 from requests import Response
 
+class BinanceErrors(Exception):
+    pass
+
+class InvalidSymbol(BinanceErrors):
+    pass
+
 def supress_notation(num: float, precision: int = 0):
     """
     Supress scientific notation
@@ -38,5 +44,8 @@ def handle_binance_errors(response: Response, **kwargs):
             print('Too many requests. Back off...')
             sys.exit()
             return
+        
+        if content["code"] == -1121:
+            raise InvalidSymbol()
     else:
         return response.json()

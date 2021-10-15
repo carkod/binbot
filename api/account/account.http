@@ -19,11 +19,12 @@ GET http://localhost:5000/account/ticker24/BTCUSDT HTTP/1.1
 GET http://localhost:5000/account/pnl?days=7 HTTP/1.1
 
 
+
+### get estimated assets amount
+GET http://localhost:5000/account/balance/estimate HTTP/1.1
+
 ### Find quote asset
 GET http://localhost:5000/account/find-quote/BNBBTC HTTP/1.1
-
-### Store balance
-GET http://localhost:5000/account/store-balance HTTP/1.1
 
 ### Convert 0.0003 BTC to GBP
 GET http://localhost:5000/account/conversion?base=BTC&quote=GBP&qty=0.0003 HTTP/1.1

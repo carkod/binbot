@@ -1,10 +1,11 @@
+import math
 from time import sleep
 
 import requests
 
 from apis import BinbotApi, CoinBaseApi
-from utils import handle_binance_errors, supress_notation
-import math
+from utils import InvalidSymbol, handle_binance_errors, supress_notation
+
 
 class Autotrade(BinbotApi):
     def __init__(self, pair, settings) -> None:
@@ -16,17 +17,17 @@ class Autotrade(BinbotApi):
             "status": "inactive",
             "name": "Autotrade Bot",
             "mode": "autotrade",
-            "balance_usage_size": None,
-            "balance_to_use": "GBP",
-            "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
+            "balance_usage_size": "1",
+            "balance_to_use": settings["balance_to_use"],
+            "base_order_size": None,  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
-            "candlestick_interval": "1h",
-            "take_profit": "3",
-            "trailling": "false",
-            "trailling_deviation": "0.63",
+            "candlestick_interval": settings["candlestick_interval"],
+            "take_profit": settings["take_profit"],
+            "trailling": settings["trailling"],
+            "trailling_deviation": settings["trailling_deviation"],
             "trailling_profit": 0,  # Trailling activation (first take profit hit)
             "orders": [],
-            "stop_loss": "0",
+            "stop_loss": settings["stop_loss"],
             "safety_orders": {},
             "errors": [],
         }
@@ -42,6 +43,12 @@ class Autotrade(BinbotApi):
             self.settings["errors"].append(msg)
 
         res = requests.put(url=self.bb_controller_url, json=self.settings)
+        result = handle_binance_errors(res)
+        return result
+
+    def add_to_blacklist(self, symbol, reason=None):
+        data = {"symbol": symbol, "reason": reason}
+        res = requests.post(url=self.bb_blacklist_url, json=data)
         result = handle_binance_errors(res)
         return result
 
@@ -64,7 +71,7 @@ class Autotrade(BinbotApi):
             if b["asset"] in self.pair:
                 qty = supress_notation(b["free"], self.decimals)
                 if self.min_amount_check(self.pair, qty):
-                    self.default_bot["balance_usage_size"] = qty
+                    self.default_bot["base_order_size"] = qty
                 else:
                     return
             # If we have GBP we can trade anything
@@ -74,16 +81,34 @@ class Autotrade(BinbotApi):
                 and b["asset"] == "GBP"
                 and float(b["free"]) > 40
             ):
-                coinbase_api = CoinBaseApi()
                 base_asset = self.find_quoteAsset(self.pair)
-                rate = coinbase_api.get_conversion(base_asset, "GBP")
+                # e.g. XRPBTC
+                if base_asset == "GBP":
+                    self.default_bot["base_order_size"] = b["free"]
+                    break
+                try:
+                    rate = self._ticker_price(f"{base_asset}GBP")
+                except InvalidSymbol:
+                    self.handle_error(
+                        f"Cannot trade {self.pair} with GBP. Adding to blacklist"
+                    )
+                    self.add_to_blacklist(
+                        self.pair, f"Cannot trade {self.pair} with GBP."
+                    )
+                    return
+
+                rate = rate["price"]
                 qty = supress_notation(b["free"], self.decimals)
                 # Round down to 6 numbers to avoid not enough funds
-                balance_usage_size = (math.floor((float(qty) / float(rate)) * 1000000) / 1000000) * 1.0002
-                self.default_bot["balance_usage_size"] = supress_notation(float(qty) / float(rate), self.decimals)
+                base_order_size = (
+                    math.floor((float(qty) / float(rate)) * 1000000) / 1000000
+                )
+                self.default_bot["base_order_size"] = supress_notation(
+                    base_order_size, self.decimals
+                )
                 break
 
-        if not self.default_bot["balance_usage_size"]:
+        if not self.default_bot["base_order_size"]:
             msg = f"No balance matched for {self.pair}"
             self.handle_error(msg)
             print(msg)
@@ -100,7 +125,7 @@ class Autotrade(BinbotApi):
 
         res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
         response = handle_binance_errors(res)
-        if response["error"] == 1:
+        if "error" in response and response["error"] == 1:
             msg = f"Not enough funds to carry out autotrade with {self.pair}"
             self.handle_error(msg)
         else:

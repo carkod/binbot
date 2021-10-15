@@ -44,9 +44,12 @@ class BinanceApi:
         Copied from /api/account/account.py
         To be refactored in the future
         """
-        params = {}
+        params = None
         if symbol:
-            params["symbol"] = symbol
+            params = {
+                "symbol": symbol
+            }
+
         exchange_info = get(url=self.exchangeinfo_url, params=params).json()
         return exchange_info
 
@@ -57,9 +60,15 @@ class BinanceApi:
         handle_binance_errors(res)
         return res.json()
 
-    def _ticker_price(self):
-        r = get(url=self.ticker_price)
-        return r.json()
+    def _ticker_price(self, symbol=None):
+        params = None
+        if symbol:
+            params = {
+                "symbol": symbol
+            }
+        r = get(url=self.ticker_price, params=params)
+        response = handle_binance_errors(r)
+        return response
     
     def price_precision(self, symbol):
         """
@@ -122,19 +131,13 @@ class BinbotApi(BinanceApi):
     """
 
     bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
-    bb_buy_order_url = f"{bb_base_url}/order/buy"
-    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
-    bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
-    bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
-    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
-    bb_opened_orders_url = f"{bb_base_url}/order/open"
-    bb_close_order_url = f"{bb_base_url}/order/close"
-    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
-    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
     bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
     bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
     bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
+    bb_bot_url = f"{bb_base_url}/bot/"
+    bb_activate_bot_url = f"{bb_base_url}/bot/activate"
+
+    # Trade operations
     bb_buy_order_url = f"{bb_base_url}/order/buy"
     bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
     bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
@@ -145,35 +148,26 @@ class BinbotApi(BinanceApi):
     bb_close_order_url = f"{bb_base_url}/order/close"
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
-    bb_balance_url = f"{bb_base_url}/account/balance/raw"
-    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
-    bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
-    bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
-    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
-    bb_opened_orders_url = f"{bb_base_url}/order/open"
-    bb_close_order_url = f"{bb_base_url}/order/close"
-    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
-    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
-    bb_bot_url = f"{bb_base_url}/bot/"
-    bb_activate_bot_url = f"{bb_base_url}/bot/activate"
+    # balances
+    bb_balance_url = f"{bb_base_url}/account/balance/raw"
+    bb_balance_estimate_url = f"{bb_base_url}/account/balance/estimate"
+
+    
+    # research
     bb_controller_url = f'{bb_base_url}/research/controller'
     bb_blacklist_url = f'{bb_base_url}/research/blacklist'
-
 
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"
         res = get(url=url)
-        handle_binance_errors(res)
-        data = res.json()["data"]
+        data = handle_binance_errors(res)
         return data
     
     def _get_candlestick(self, market, interval):
         url = f"{self.bb_candlestick_url}/{market}/{interval}"
         res = get(url=url)
-        res.raise_for_status()
-        data = res.json()
+        data = handle_binance_errors(res)
         return data["trace"]
 
 class CoinBaseApi:

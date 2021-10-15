@@ -27,8 +27,8 @@ db = mongo["binbot"]
 interval = "1h"
 list_markets = []
 markets_streams = None
-
 last_processed_kline = {}
+skipped_fiat_currencies = ["USD", "DOWN", "EUR", "AUD", "TRY", "BRL", "RUB"] # on top of blacklist
 # This blacklist is necessary to keep prod and local DB synched
 telegram_bot = TelegramBot()
 max_request = 950  # Avoid HTTP 411 error by separating streams
@@ -269,7 +269,13 @@ def process_kline_stream(result, ws):
                 # this avoids running too many useless bots
                 bots_res = requests.get(url=binbot_api.bb_controller_url)
                 active_bots = handle_binance_errors(bots_res)["data"]
-                if int(settings["autotrade"]) == 1 and symbol not in active_bots:
+
+                # Check balance to avoid failed autotrades
+                check_balance_res = requests.get(url=binbot_api.bb_balance_estimate_url)
+                balances = handle_binance_errors(check_balance_res)
+                balance_check = int(balances["data"]["estimated_total_gbp"])
+
+                if int(settings["autotrade"]) == 1 and symbol not in active_bots and balance_check > 0:
                     autotrade = Autotrade(symbol, settings)
                     worker_thread = threading.Thread(
                         name="autotrade_thread", target=autotrade.run

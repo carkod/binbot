@@ -9,6 +9,13 @@ from bson import json_util
 from api.app import create_app
 
 
+class BinanceErrors(Exception):
+    pass
+
+class InvalidSymbol(BinanceErrors):
+    pass
+
+
 def jsonResp(data, status=200):
     return FlaskResponse(
         json.dumps(data, default=json_util.default),
@@ -111,5 +118,8 @@ def handle_binance_errors(response: Response, bot=None, **kwargs):
             print("Too many requests. Back off for 5 min...")
             sleep(35)
             return
+        
+        if content["code"] == -1121:
+            raise InvalidSymbol("Binance error, invalid symbol")
     else:
         return response.json()

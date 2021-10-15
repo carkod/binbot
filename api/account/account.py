@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 import requests
 from api.apis import BinbotApi
-from api.tools.handle_error import handle_error
+from api.tools.handle_error import handle_error, handle_binance_errors
 from api.tools.handle_error import jsonResp, jsonResp_message
 from flask import request
 from api.app import create_app
@@ -23,7 +23,8 @@ class Account(BinbotApi):
         params = {}
         if symbol:
             params["symbol"] = symbol
-        exchange_info = requests.get(url=f'{self.exchangeinfo_url}', params=params).json()
+        exchange_info_res = requests.get(url=f'{self.exchangeinfo_url}', params=params)
+        exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info
 
     def request_data(self):
@@ -115,15 +116,15 @@ class Account(BinbotApi):
         return jsonResp({"data": data})
 
     def find_market(self, quote):
-        symbols = self._exchange_info(symbol)
+        symbols = self._exchange_info(quote)
         market = symbols["symbols"][0]
         if market:
             market = market["symbol"]
         return market
 
     def get_symbol_info(self):
-        symbols = self._exchange_info(symbol)
         pair = request.view_args["pair"]
+        symbols = self._exchange_info(pair)
         symbol = symbols["symbols"][0]
         if symbol:
             return jsonResp({"data": symbol})

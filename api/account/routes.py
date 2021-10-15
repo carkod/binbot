@@ -65,10 +65,9 @@ def ticker_24(symbol):
     return Account().ticker_24()
 
 
-@account_blueprint.route("/assets", defaults={"interval": None})
-@account_blueprint.route("/assets/<interval>", methods=["GET"])
-def get_value(interval):
-    return Assets().get_value()
+@account_blueprint.route("/balance/estimate", methods=["GET"])
+def balance_estimated():
+    return Assets().balance_estimate()
 
 
 @account_blueprint.route("/pnl", methods=["GET"])
