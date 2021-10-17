@@ -154,8 +154,12 @@ class Deal(Account):
         Always triggered after order completion
         """
 
-        last_order = self.active_bot["orders"][len(self.active_bot["orders"]) - 1]["order_id"]
-
+        last_order_id = self.active_bot["orders"][len(self.active_bot["orders"]) - 1]["order_id"]
+        params = {
+            "symbol": self.active_bot["pair"],
+            "orderId": last_order_id
+        }
+        check_last_order_res = self._user_data_request(url=self.all_orders_url, params=params)
 
         pair = self.active_bot["pair"]
         market = self.find_quoteAsset(pair)
