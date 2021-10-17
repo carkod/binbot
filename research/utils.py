@@ -1,7 +1,15 @@
+from bson import json_util
 import requests
 import json
 from decimal import Decimal
+import sys
+from requests import Response
 
+class BinanceErrors(Exception):
+    pass
+
+class InvalidSymbol(BinanceErrors):
+    pass
 
 def supress_notation(num: float, precision: int = 0):
     """
@@ -16,36 +24,28 @@ def supress_notation(num: float, precision: int = 0):
     return f"{num:.{decimal_points}f}"
 
 
-def handle_error(req):
-    try:
-        req.raise_for_status()
+def handle_binance_errors(response: Response, **kwargs):
+    """
+    Combine Binance errors
+    e.g. {"code": -1013, "msg": "Invalid quantity"}
+    and bot errors
+    returns "errored" or ""
+    """
+    if isinstance(json.loads(response.content), dict) and "code" in json.loads(response.content).keys():
+        content = response.json()
+        if content["code"] == -2010 or content["code"] == -1013:
+            # Not enough funds. Ignore, send to bot errors
+            # Need to be dealt with at higher levels
+            return "errored"
 
-        if isinstance(json.loads(req.content), dict):
-            # Binance code errors
-            if "code" in json.loads(req.content).keys():
-
-                response = req.json()
-                if response["code"] == -2010:
-                    return jsonResp({"message": "Not enough funds", "error": 1})
-
-                # Uknown orders ignored, they are used as a trial an error endpoint to close orders (close deals)
-                if response["code"] == -2011:
-                    return
-
-                return print(json.loads(req.content))
-
-    except requests.exceptions.HTTPError as err:
-        if err:
-            print(req.json())
-            return print(req.json())
-        else:
-            return err
-    except requests.exceptions.Timeout:
-        # Maybe set up for a retry, or continue in a retry loop
-        return print("handle_error: Timeout")
-    except requests.exceptions.TooManyRedirects:
-        # Tell the user their URL was bad and try a different one
-        return print("handle_error: Too many Redirects")
-    except requests.exceptions.RequestException as e:
-        # catastrophic error. bail.
-        raise e
+        if content["code"] == -1003:
+            # Too many requests, most likely exceeded API rate limits
+            # Back off for > 5 minutes, which is Binance's ban time
+            print('Too many requests. Back off...')
+            sys.exit()
+            return
+        
+        if content["code"] == -1121:
+            raise InvalidSymbol()
+    else:
+        return response.json()

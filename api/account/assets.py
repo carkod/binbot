@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from api.apis import CoinBaseApi
 from api.app import create_app
+from api.tools.handle_error import InvalidSymbol
 
 class Assets(Account):
     def __init__(self):
@@ -168,6 +169,8 @@ class Assets(Account):
         Alternative PnL data that runs as a cronjob everyday once at 1200
         Store current balance in Db
         """
+        # Store balance works outside of context as cronjob
+        app = create_app()
         print("Store balance starting...")
         balances = self.get_raw_balance().json
         current_time = datetime.utcnow()
@@ -212,7 +215,7 @@ class Assets(Account):
             "estimated_total_btc": total_btc,
             "estimated_total_gbp": total_gbp,
         }
-        balanceId = self.app.db.balances.insert_one(
+        balanceId = app.db.balances.insert_one(
             balance, {"$currentDate": {"createdAt": "true"}}
         )
         if balanceId:
@@ -220,23 +223,49 @@ class Assets(Account):
         else:
             print(f"{current_time} Unable to store balance! Error: {balanceId}")
 
-    def get_value(self):
-        try:
-            interval = request.view_args["interval"]
-        except KeyError:
-            interval = None
-            filter = None
+    def balance_estimate(self, fiat="GBP"):
+        """
+        Estimated balance in given fiat coin
+        """
+        
+        balances = self.get_raw_balance().json
+        current_time = datetime.utcnow()
+        total_gbp = 0
+        rate = 0
+        for b in balances["data"]:
+            # Only tether coins for hedging
+            if "USD" in b["asset"]:
 
-        # last 24 hours
-        if interval == "1d":
-            filter = {
-                "updatedTime": {
-                    "$lt": datetime.now().timestamp(),
-                    "$gte": (datetime.now() - timedelta(days=1)).timestamp(),
-                }
-            }
+                qty = self._check_locked(b)
+                rate = self.coinbase_api.get_conversion(current_time, "BTC", fiat)
+                total_gbp += float(qty) / float(rate)
+            elif "GBP" in b["asset"]:
+                total_gbp += self._check_locked(b)
+            elif "BTC" in b["asset"]:
+                qty = self._check_locked(b)
+                rate = self.get_ticker_price("BTCGBP")
+                total_gbp += float(qty) / float(rate)
+            else:
+                # BTC and ALT markets
+                try:
+                    symbol = self.find_market(b["asset"])
+                    market = self.find_quoteAsset(symbol)
+                    rate = self.get_ticker_price(symbol)
+                    qty = self._check_locked(b)
+                    total = float(qty) * float(rate)
+                except InvalidSymbol:
+                    if b["asset"] == "NFT":
+                        break
+                    qty = self._check_locked(b)
+                    total = float(qty) / float(rate)
+                    pass
 
-        balance = list(self.app.db.balances.find(filter).sort([("_id", -1)]))
+                total_gbp += float(total) * float(rate)
+
+        balance = {
+            "balances": balances,
+            "estimated_total_gbp": total_gbp,
+        }
         if balance:
             resp = jsonResp({"data": balance})
         else:

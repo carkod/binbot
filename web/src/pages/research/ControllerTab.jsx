@@ -10,7 +10,7 @@ import {
   FormGroup,
   Input,
   Label,
-  Row,
+  Row
 } from "reactstrap";
 import { useImmer } from "use-immer";
 import SymbolSearch from "../../components/SymbolSearch";
@@ -86,14 +86,54 @@ export const ControllerTab = ({
                       />
                     </Col>
                   </Row>
+                  {parseInt(settings.autotrade) === 1 &&
+                  <>
+                    <h4>Autotrade settings</h4>
+                    <Row>
+                      <Col md="3">
+                        <SettingsInput
+                          value={settings.balance_to_use}
+                          name={"balance_to_use"}
+                          label={"Balanace to use"}
+                          handleChange={handleInput}
+                        />
+                      </Col>
+                      <Col md="3">
+                        <SettingsInput
+                          value={settings.take_profit}
+                          name={"take_profit"}
+                          label={"Take profit"}
+                          handleChange={handleInput}
+                        />
+                      </Col>
+                      <Col md="3">
+                        <SettingsInput
+                          value={settings.trailling_deviation}
+                          name={"trailling_deviation"}
+                          label={"Trailling deviation"}
+                          handleChange={handleInput}
+                        />
+                      </Col>
+                      <Col md="3">
+                        <SettingsInput
+                          value={settings.stop_loss}
+                          name={"stop_loss"}
+                          label={"Stop loss"}
+                          handleChange={handleInput}
+                        />
+                      </Col>
+                    </Row>
+                  </>
+                  }
                   <Row>
                     <Col>
                       <Button color="primary" onClick={saveSettings}>
-                        Save settings
+                        Save global settings
                       </Button>{" "}
                     </Col>
                   </Row>
                   <br />
+                  <hr />
                 </>
               )}
               <>

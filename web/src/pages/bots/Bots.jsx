@@ -101,7 +101,7 @@ class Bots extends React.Component {
                       <Row>
                         <Col md="6" xs="12">
                           <div className="stats">
-                            <p className="card-category">Balance Use</p>
+                            <p className="card-category">Mode</p>
                             <p className="card-category"># Safety Orders</p>
                             <p className="card-category">Bought @</p>
                             <p className="card-category">Take Profit</p>
@@ -114,8 +114,7 @@ class Bots extends React.Component {
                         <Col md="6" xs="12">
                           <div className="stats">
                             <p className="card-category">
-                              {parseFloat(x.balance_usage) * 100 + "%"}
-                            </p>
+                              {!checkValue(x.mode) ? x.mode : "Unknown"}</p>
                             <p className="card-category">{x.max_so_count}</p>
                             <p className="card-category">
                             {!checkValue(x.deal) &&
@@ -155,8 +154,10 @@ class Bots extends React.Component {
                         <Button
                           color="secondary"
                           title="Archive bot"
-                          onClick={() => this.props.archiveBot(x._id.$oid)}
-                        >
+                          onClick={() => {
+                            this.props.archiveBot(x._id.$oid);
+                          }
+                          }>
                           <i className="fas fa-folder" />
                         </Button>
                         <Button

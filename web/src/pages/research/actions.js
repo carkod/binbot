@@ -210,7 +210,7 @@ export function getSettingsFailed() {
 export function editSettings(payload) {
   return {
     type: EDIT_SETTINGS,
-    data: payload.data
+    data: payload
   }
 }
 
@@ -223,7 +223,7 @@ export function editSettingsSucceeded(payload) {
   
   return {
     type: EDIT_SETTINGS_SUCCESS,
-    data: payload
+    data: payload.settings
   }
 }
 

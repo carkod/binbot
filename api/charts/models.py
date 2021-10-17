@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 from api.apis import BinanceApi
-from api.tools.handle_error import handle_error
+from api.tools.handle_error import handle_binance_errors
 from api.tools.handle_error import jsonResp
 from flask import request
 
@@ -17,7 +17,7 @@ class Candlestick(BinanceApi):
         pair = request.view_args["pair"]
         params = {"symbol": pair, "interval": interval, "limit": limit}
         res = requests.get(url=self.candlestick_url, params=params)
-        self.data = res.json()
+        self.data = handle_binance_errors(res)
         df = pd.DataFrame(self.data)
         self.dates = df[0].tolist()
         self.interval = interval

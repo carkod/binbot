@@ -1,7 +1,7 @@
 import os
 
 from requests import get
-
+from datetime import datetime
 
 class BinanceApi:
     """
@@ -16,10 +16,10 @@ class BinanceApi:
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
     account_url = f"{BASE}/api/v3/account"
-    exchangeinfo_url = f"{BASE}/api/v1/exchangeInfo"
+    exchangeinfo_url = f"{BASE}/api/v3/exchangeInfo"
     ticker_price = f"{BASE}/api/v3/ticker/price"
-    ticker24_url = f"{BASE}/api/v1/ticker/24hr"
-    candlestick_url = f"{BASE}/api/v1/klines"
+    ticker24_url = f"{BASE}/api/v3/ticker/24hr"
+    candlestick_url = f"{BASE}/api/v3/klines"
     order_url = f"{BASE}/api/v3/order"
     order_book_url = f"{BASE}/api/v3/depth"
     avg_price = f"{BASE}/api/v3/avgPrice"
@@ -80,6 +80,7 @@ class BinbotApi(BinanceApi):
     bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
     bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
+    bb_controller_url = f'{bb_base_url}/research/controller'
 
 class CoinBaseApi:
     """

@@ -8,6 +8,14 @@ from requests.exceptions import HTTPError, RequestException, Timeout
 from bson import json_util
 from api.app import create_app
 
+
+class BinanceErrors(Exception):
+    pass
+
+class InvalidSymbol(BinanceErrors):
+    pass
+
+
 def jsonResp(data, status=200):
     return FlaskResponse(
         json.dumps(data, default=json_util.default),
@@ -15,14 +23,16 @@ def jsonResp(data, status=200):
         status=status,
     )
 
+
 def jsonResp_message(message):
     message = {"message": message, "error": 0}
     return jsonResp(message)
 
+
 def jsonResp_error_message(message):
     body = {"message": message, "error": 1}
     return jsonResp(body)
-    
+
 
 def bot_errors(error, bot):
     if isinstance(error, Response):
@@ -37,12 +47,11 @@ def bot_errors(error, bot):
     app = create_app()
     bot = app.db.bots.find_one_and_update(
         {"_id": ObjectId(bot["_id"])},
-        {
-            "$set": {"status": "error", "errors": bot["errors"]}
-        }
+        {"$set": {"status": "error", "errors": bot["errors"]}},
     )
 
     return bot
+
 
 def handle_error(req):
     try:
@@ -54,9 +63,7 @@ def handle_error(req):
 
                 response = req.json()
                 if response["code"] == -2010:
-                    return jsonResp(
-                        {"message": "Not enough funds", "error": 1}, 200
-                    )
+                    return jsonResp({"message": "Not enough funds", "error": 1}, 200)
 
                 # Uknown orders ignored, they are used as a trial an error endpoint to close orders (close deals)
                 if response["code"] == -2011:
@@ -85,7 +92,10 @@ def handle_binance_errors(response: Response, bot=None, **kwargs):
     and bot errors
     returns "errored" or ""
     """
-    if isinstance(json.loads(response.content), dict) and "code" in json.loads(response.content).keys():
+    if (
+        isinstance(json.loads(response.content), dict)
+        and "code" in json.loads(response.content).keys()
+    ):
         content = response.json()
         if content["code"] == -2010 or content["code"] == -1013:
             # Not enough funds. Ignore, send to bot errors
@@ -98,17 +108,18 @@ def handle_binance_errors(response: Response, bot=None, **kwargs):
                 app = create_app()
                 bot = app.db.bots.find_one_and_update(
                     {"_id": ObjectId(bot["_id"])},
-                    {
-                        "$set": {"status": "error", "errors": bot["errors"]}
-                    }
+                    {"$set": {"status": "error", "errors": bot["errors"]}},
                 )
                 return "errored"
 
         if content["code"] == -1003:
             # Too many requests, most likely exceeded API rate limits
             # Back off for > 5 minutes, which is Binance's ban time
-            print('Too many requests. Back off for 5 min...')
+            print("Too many requests. Back off for 5 min...")
             sleep(35)
             return
+        
+        if content["code"] == -1121:
+            raise InvalidSymbol("Binance error, invalid symbol")
     else:
         return response.json()

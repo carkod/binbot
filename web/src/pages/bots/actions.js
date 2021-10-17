@@ -36,7 +36,6 @@ export const GET_SYMBOL_INFO_ERROR = "GET_SYMBOL_INFO_ERROR";
 export const LOAD_CANDLESTICK = "LOAD_CANDLESTICK";
 export const LOAD_CANDLESTICK_SUCCESS = "LOAD_CANDLESTICK_SUCCESS";
 export const LOAD_CANDLESTICK_ERROR = "LOAD_CANDLESTICK_ERROR";
-export const DEFAULT_LOCALE = "en";
 
 export const GET_QUOTE_ASSET = "GET_QUOTE_ASSET";
 export const GET_QUOTE_ASSET_SUCCESSFUL = "GET_QUOTE_ASSET_SUCCESSFUL";
@@ -425,7 +424,6 @@ export function archiveBotSucceeded(payload) {
   return {
     type: ARCHIVE_BOT_SUCCESS,
     id: payload.botId,
-    data: payload.data
   };
 }
 
@@ -433,6 +431,5 @@ export function archiveBotFailed(payload) {
   return {
     type: ARCHIVE_BOT_SUCCESS,
     id: payload.botId,
-    data: payload.data
   };
 }

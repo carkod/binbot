@@ -10,7 +10,7 @@ from api.tools.round_numbers import round_numbers, supress_notation
 from bson.objectid import ObjectId
 from flask import Response, current_app, request
 from requests import delete, post
-
+from pymongo.errors import DuplicateKeyError
 
 class Bot(Account):
     def __init__(self):
@@ -27,6 +27,7 @@ class Bot(Account):
             "pair": "",
             "status": "inactive",  # New replacement for active (inactive, active, completed)
             "name": "Default Bot",
+            "mode": "manual",
             "max_so_count": "0",
             "balance_usage_size": "0.0001",
             "balance_to_use": "GBP",
@@ -76,9 +77,15 @@ class Bot(Account):
         )
         self.defaults.update(data)
         self.defaults["safety_orders"] = data["safety_orders"]
-        botId = self.app.db.bots.save(
-            self.defaults, {"$currentDate": {"createdAt": "true"}}
-        )
+        try:
+            botId = self.app.db.bots.save(
+                self.defaults, {"$currentDate": {"createdAt": "true"}}
+            )
+        except DuplicateKeyError:
+            jsonResp(
+                {"message": "Profit canibalism, bot with this pair already exists!", "error": 1}, 200
+            )
+            return 
         if botId:
             resp = jsonResp(
                 {"message": "Successfully created new bot", "botId": str(botId)}, 200
@@ -227,7 +234,7 @@ class Bot(Account):
             deal_object = Deal(bot)
             balance = deal_object.get_one_balance(base_asset)
             if balance:
-                qty = round_numbers(balance, self.qty_precision)
+                qty = round_numbers(balance, deal_object.qty_precision)
                 book_order = Book_Order(pair)
                 price = float(book_order.matching_engine(True, qty))
 
@@ -235,7 +242,7 @@ class Bot(Account):
                     order = {
                         "pair": pair,
                         "qty": qty,
-                        "price": supress_notation(price, self.price_precision),
+                        "price": supress_notation(price, deal_object.price_precision),
                     }
                     res = post(url=self.bb_sell_order_url, json=order)
                 else:
@@ -280,8 +287,19 @@ class Bot(Account):
         Change status to archived
         """
         botId = request.view_args["id"]
-        archive = self.app.db.bots.find_one_and_update(
-            {"_id": ObjectId(botId)}, {"$set": {"status": "archived"}}
+        bot = self.app.db.bots.find_one_and_update({"_id": ObjectId(botId)})
+        if bot["status"] == "active":
+            return jsonResp(
+                {"message": "Cannot archive an active bot!", "botId": botId}
+            )
+        
+        if bot["status"] == "archived":
+            status = "inactive"
+        else:
+            status = "archived"
+
+        archive = self.app.db.bots.update(
+            {"_id": ObjectId(botId)}, {"$set": {"status": status}}
         )
         if archive:
             resp = jsonResp(
