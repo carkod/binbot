@@ -5,8 +5,7 @@ from urllib.parse import urlparse
 
 import requests
 from api.apis import BinbotApi
-from api.tools.handle_error import handle_error, handle_binance_errors
-from api.tools.handle_error import jsonResp, jsonResp_message
+from api.tools.handle_error import handle_error, handle_binance_errors, jsonResp, jsonResp_message, jsonResp_error_message
 from flask import request
 from api.app import create_app
 
@@ -100,6 +99,8 @@ class Account(BinbotApi):
     def get_symbol_info(self):
         pair = request.view_args["pair"]
         symbols = self._exchange_info(pair)
+        if not symbols:
+            return jsonResp_error_message("Symbol not found!")
         symbol = symbols["symbols"][0]
         if symbol:
             return jsonResp({"data": symbol})

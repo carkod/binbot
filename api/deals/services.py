@@ -8,7 +8,8 @@ import pandas as pd
 import requests
 from api.account import Account
 from api.apis import BinanceApi
-from api.tools import EnumDefinitions, handle_error
+from api.tools import EnumDefinitions
+from api.tools.handle_error import handle_binance_errors
 
 
 class BuyOrder(BinanceApi):
@@ -45,15 +46,13 @@ class BuyOrder(BinanceApi):
         Buy order = bids
         Sell order = ask
         """
-        url = self.order_book_url
         limit = EnumDefinitions.order_book_limits[limit_index]
-        params = [
-            ("symbol", self.symbol),
-            ("limit", limit),
-        ]
-        res = requests.get(url=url, params=params)
-        handle_error(res)
-        data = res.json()
+        payload = {
+            "symbol": self.symbol,
+            "limit": limit,
+        }
+        res = self.request(url=self.order_book_url, payload=payload)
+        data = handle_binance_errors(res)
         if order_side == "bids":
             df = pd.DataFrame(data["bids"], columns=["price", "qty"])
         elif order_side == "ask":
@@ -81,16 +80,13 @@ class BuyOrder(BinanceApi):
         """
         # Limit order
         order_type = EnumDefinitions.order_types[0]
-        timestamp = int(round(tm.time() * 1000))
         if limit_price:
             price = self.last_order_book_price(0) * (1 + limit_price)
         else:
             price = self.last_order_book_price(0)
         qty = round(float(price) / float(self.quantity), 0)
         # Get data for a single crypto e.g. BTT in BNB market
-        params = [
-            ("recvWindow", self.recvWindow),
-            ("timestamp", timestamp),
+        payload = [
             ("symbol", self.symbol),
             ("side", self.side),
             ("type", order_type),
@@ -98,5 +94,5 @@ class BuyOrder(BinanceApi):
             ("price", price),
             ("quantity", qty),
         ]
-        data = self._user_data_request(url=self.order_url, method="POST", params=params)
+        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data

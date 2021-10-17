@@ -30,13 +30,9 @@ class BuyOrder(BinanceApi):
 
         # Limit order
         order_type = EnumDefinitions.order_types[0]
-        timestamp = int(round(tm.time() * 1000))
-        url = self.order_url
 
         # Get data for a single crypto e.g. BTT in BNB market
-        params = [
-            ("recvWindow", self.recvWindow),
-            ("timestamp", timestamp),
+        payload = [
             ("symbol", symbol),
             ("side", self.side),
             ("type", order_type),
@@ -44,48 +40,38 @@ class BuyOrder(BinanceApi):
             ("price", price),
             ("quantity", qty),
         ]
-        data = self._user_data_request(url=self.order_url, method="POST", params=params)
+        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data
 
     def post_order_market(self):
-        data = request.json
-        symbol = data["pair"]
-        qty = data["qty"]
+        symbol = request.json.get("pair")
+        qty = request.json.get("qty")
 
         # Limit order
         order_type = EnumDefinitions.order_types[1]
-        timestamp = int(round(tm.time() * 1000))
-        url = self.order_url
 
         # Get data for a single crypto e.g. BTT in BNB market
-        params = [
-            ("recvWindow", self.recvWindow),
-            ("timestamp", timestamp),
+        payload = [
             ("symbol", symbol),
             ("side", self.side),
             ("type", order_type),
             ("timeInForce", self.timeInForce),
             ("quantity", qty),
         ]
-        data = self._user_data_request(url=self.order_url, method="POST", params=params)
+        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data
 
     def post_take_profit_limit(self):
-        data = request.json
-        symbol = data["pair"]
-        qty = data["qty"]
-        price = data["price"]
-        stop_price = data["stop_price"] if "stop_price" in data else price
+        symbol = request.json.get("pair")
+        qty = request.json.get("qty")
+        price = request.json.get("price")
+        stop_price = request.json.get("stop_price") if request.json.get("stop_price") else price
 
         # Limit order
         order_type = EnumDefinitions.order_types[5]
-        timestamp = int(round(tm.time() * 1000))
-        url = self.order_url
 
         # Get data for a single crypto e.g. BTT in BNB market
-        params = [
-            ("recvWindow", self.recvWindow),
-            ("timestamp", timestamp),
+        payload = [
             ("symbol", symbol),
             ("side", self.side),
             ("type", order_type),
@@ -94,25 +80,20 @@ class BuyOrder(BinanceApi):
             ("stopPrice", stop_price),
             ("quantity", qty),
         ]
-        data = self._user_data_request(url=self.order_url, method="POST", params=params)
+        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data
 
     def post_stop_loss_limit(self):
-        data = request.json
-        symbol = data["pair"]
-        qty = data["qty"]
-        price = data["price"]
-        stop_price = data["stop_price"] if "stop_price" in data else price
+        symbol = request.json.get("pair")
+        qty = request.json.get("qty")
+        price = request.json.get("price")
+        stop_price = request.json.get("stop_price") if request.json.get("stop_price") else price
 
         # Limit order
         order_type = EnumDefinitions.order_types[3]
-        timestamp = int(round(tm.time() * 1000))
-        url = self.order_url
 
         # Get data for a single crypto e.g. BTT in BNB market
-        params = [
-            ("recvWindow", self.recvWindow),
-            ("timestamp", timestamp),
+        payload = [
             ("symbol", symbol),
             ("side", self.side),
             ("type", order_type),
@@ -122,5 +103,5 @@ class BuyOrder(BinanceApi):
             ("quantity", qty),
             ("newOrderRespType", "FULL"),
         ]
-        data = self._user_data_request(url=self.order_url, method="POST", params=params)
+        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data

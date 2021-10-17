@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 from api.apis import BinanceApi
 from api.tools.enum_definitions import EnumDefinitions
-from api.tools.handle_error import handle_error
+from api.tools.handle_error import handle_binance_errors, handle_error
 
 
 class Book_Order(BinanceApi):
@@ -47,8 +47,7 @@ class Book_Order(BinanceApi):
         limit = EnumDefinitions.order_book_limits[limit_index]
         params = [("symbol", self.symbol), ("limit", limit)]
         res = requests.get(url=url, params=params)
-        handle_error(res)
-        data = res.json()
+        data = handle_binance_errors(res)
         if order_side:
             df = pd.DataFrame(data["bids"], columns=["price", "qty"])
         else:

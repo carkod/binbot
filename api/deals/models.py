@@ -1,9 +1,10 @@
 from decimal import Decimal
+from time import sleep
 
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp, jsonResp_message
+from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp, jsonResp_error_message, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from flask import current_app as app
@@ -58,27 +59,9 @@ class Deal(Account):
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
-        res = requests.get(url=self.bb_balance_url)
-        handle_error(res)
-        data = res.json()["data"]
-        symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), None)
+        data = self.bb_request(url=self.bb_balance_url)
+        symbol_balance = next((x["free"] for x in data["data"] if x["asset"] == symbol), None)
         return symbol_balance
-
-    def get_commission(self, order):
-        """
-        @params order: response.json
-        @returns accumulated commission (if multiple orders required to fulfill)
-        """
-        commission = 0
-        for chunk in order["fills"]:
-            try:
-                float(chunk["commission"])
-            except ValueError:
-                print(f"Commission format error {chunk['commission']}")
-
-            commission += float(chunk["commission"])
-
-        return commission
 
     def sell_gbp_balance(self):
         """
@@ -114,34 +97,18 @@ class Deal(Account):
                 "qty": qty,
                 "price": supress_notation(price, price_precision),
             }
-            res = requests.post(url=self.bb_buy_order_url, json=order)
+            res = self.bb_request(method="POST", url=self.bb_buy_order_url, payload=order)
         else:
             # Matching engine failed - market order
             order = {
                 "pair": new_pair,
                 "qty": qty,
             }
-            res = requests.post(url=self.bb_buy_market_order_url, json=order)
+            res = self.bb_request(method="POST", url=self.bb_buy_market_order_url, payload=order)
 
-        if isinstance(handle_error(res), Response):
-            if res.json()["code"] == -2010:
-                msg = "Not enough GBP balance"
-            else:
-                msg = f"Failed to buy {pair} using GBP balance"
-
-            resp = jsonResp(
-                {
-                    "message": msg,
-                    "botId": str(self.active_bot["_id"]),
-                },
-                200,
-            )
-            return resp
-
-        # Store commission for posterior DB storage
-        order = res.json()
-        self.initial_comission = 0
-        self.initial_comission = self.get_commission(order)
+        # If error pass it up to parent function, can't continue
+        if "error" in res:
+            return res
 
         return
 
@@ -153,13 +120,25 @@ class Deal(Account):
         Sell whatever is in the balance e.g. Sell all BNB
         Always triggered after order completion
         """
+        tries = 0
+        if "GBP" in self.active_bot["pair"]:
+            error = f'The pair {self.active_bot["pair"]} is in the GBP market, skipping GBP hedging'
+            # No Response object, therefore using bare bot_error
+            bot_errors(error, self.active_bot, status="completed")
+            return
 
         last_order_id = self.active_bot["orders"][len(self.active_bot["orders"]) - 1]["order_id"]
         params = {
             "symbol": self.active_bot["pair"],
             "orderId": last_order_id
         }
-        check_last_order_res = self._user_data_request(url=self.all_orders_url, params=params)
+        check_last_order_res = self.signed_request(url=self.all_orders_url, payload=params)
+        # If order not completed, retry
+        if tries < 5 and "status" in check_last_order_res[0] and (check_last_order_res["status"] not in ["FILLED", "CANCELED", "REJECTED", "EXPIRED"]):
+            sleep(5)
+            tries += 1
+            self.buy_gbp_balance()
+
 
         pair = self.active_bot["pair"]
         market = self.find_quoteAsset(pair)
@@ -189,14 +168,18 @@ class Deal(Account):
                 "qty": qty,
                 "price": supress_notation(price, price_precision),
             }
-            res = requests.post(url=self.bb_sell_order_url, json=order)
+            res = self.bb_request(method="POST", url=self.bb_buy_order_url, payload=order)
         else:
             # Matching engine failed - market order
             order = {
                 "pair": new_pair,
                 "qty": qty,
             }
-            res = requests.post(url=self.bb_sell_market_order_url, json=order)
+            res = self.bb_request(method="POST", url=self.bb_sell_market_order_url, payload=order)
+        
+        # If error pass it up to parent function, can't continue
+        if "error" in res:
+            return res
 
         if qty == 0.00:
             # Fix repeated action
@@ -238,31 +221,31 @@ class Deal(Account):
                 "qty": qty,
                 "price": supress_notation(price, self.price_precision),
             }
-            res = requests.post(url=self.bb_buy_order_url, json=order)
+            res = self.bb_request(method="POST", url=self.bb_buy_order_url, payload=order)
         else:
             # Matching engine failed - market order
             order = {
                 "pair": pair,
                 "qty": qty,
             }
-            res = requests.post(url=self.bb_buy_market_order_url, json=order)
+            res = self.bb_request(method="POST", url=self.bb_buy_market_order_url, payload=order)
 
-        if isinstance(handle_error(res), Response):
-            return handle_error(res)
-        order = res.json()
+        # If error pass it up to parent function, can't continue
+        if "error" in res:
+            return res
 
         base_deal = {
-            "timestamp": order["transactTime"],
-            "order_id": order["orderId"],
+            "timestamp": res["transactTime"],
+            "order_id": res["orderId"],
             "deal_type": "base_order",
-            "pair": order["symbol"],
-            "order_side": order["side"],
-            "order_type": order["type"],
-            "price": order["price"],
-            "qty": order["origQty"],
-            "fills": order["fills"],
-            "time_in_force": order["timeInForce"],
-            "status": order["status"],
+            "pair": res["symbol"],
+            "order_side": res["side"],
+            "order_type": res["type"],
+            "price": res["price"],
+            "qty": res["origQty"],
+            "fills": res["fills"],
+            "time_in_force": res["timeInForce"],
+            "status": res["status"],
         }
 
         tp_price = float(order["price"]) * 1 + (
@@ -280,19 +263,14 @@ class Deal(Account):
             so_num += 1
 
         deal = {
-            "last_order_id": order["orderId"],
-            "buy_price": order["price"],
-            "buy_total_qty": order["origQty"],
-            "current_price": self.get_ticker_price(order["symbol"]),
+            "last_order_id": res["orderId"],
+            "buy_price": res["price"],
+            "buy_total_qty": res["origQty"],
+            "current_price": self.get_ticker_price(res["symbol"]),
             "take_profit_price": tp_price,
             "safety_order_prices": so_prices,
             "commission": 0,
         }
-
-        for chunk in order["fills"]:
-            deal["commission"] += float(chunk["commission"])
-
-        deal["commission"] += self.initial_comission
 
         botId = app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
@@ -310,7 +288,7 @@ class Deal(Account):
 
         return base_deal
 
-    def long_take_profit_order(self):
+    def take_profit_order(self):
         """
         take profit order (Binance take_profit)
         - We only have stop_price, because there are no book bids/asks in t0
@@ -324,30 +302,30 @@ class Deal(Account):
         price = (1 + (float(self.active_bot["take_profit"]) / 100)) * float(
             deal_buy_price
         )
-        qty = round_numbers(buy_total_qty, self.qty_precision)
-        price = round_numbers(price, self.price_precision)
+        qty = supress_notation(buy_total_qty, self.qty_precision)
+        price = supress_notation(price, self.price_precision)
 
         order = {
             "pair": pair,
             "qty": qty,
-            "price": supress_notation(price, self.price_precision),
+            "price": price,
         }
-        res = requests.post(url=self.bb_sell_order_url, json=order)
-        if isinstance(handle_error(res), Response):
-            return handle_error(res)
-        order = res.json()
+        res = self.bb_request(method="POST", url=self.bb_sell_order_url, payload=order)
+        # If error pass it up to parent function, can't continue
+        if "error" in res:
+            return res
 
         take_profit_order = {
             "deal_type": "take_profit",
-            "order_id": order["orderId"],
-            "pair": order["symbol"],
-            "order_side": order["side"],
-            "order_type": order["type"],
-            "price": order["price"],
-            "qty": order["origQty"],
-            "fills": order["fills"],
-            "time_in_force": order["timeInForce"],
-            "status": order["status"],
+            "order_id": res["orderId"],
+            "pair": res["symbol"],
+            "order_side": res["side"],
+            "order_type": res["type"],
+            "price": res["price"],
+            "qty": res["origQty"],
+            "fills": res["fills"],
+            "time_in_force": res["timeInForce"],
+            "status": res["status"],
         }
         self.active_bot["orders"].append(take_profit_order)
         botId = app.db.bots.update_one(
@@ -367,80 +345,6 @@ class Deal(Account):
             )
             return resp
         return
-
-    def short_stop_limit_order(self):
-        """
-        Part I of Short bot order: Stop loss (sell all)
-        After safety orders are executed, if price keeps going down, execute Stop Loss order
-        """
-        pair = self.active_bot["pair"]
-        base_asset = self.find_baseAsset(pair)
-        base_order_deal = next(
-            (
-                bo_deal
-                for bo_deal in self.active_bot["deals"]
-                if bo_deal["deal_type"] == "base_order"
-            ),
-            None,
-        )
-        price = float(base_order_deal["price"])
-        stop_loss = price * int(self.active_bot["stop_loss"]) / 100
-        stop_loss_price = price - stop_loss
-        self.asset_qty = next(
-            (b["free"] for b in self.get_balances().json if b["asset"] == base_asset),
-            None,
-        )
-
-        # Validations
-        if price:
-            if price <= float(self.MIN_PRICE):
-                return jsonResp_message("[Short stop loss order] Price too low")
-        # Avoid common rate limits
-        if float(self.asset_qty) <= float(self.MIN_QTY):
-            return jsonResp_message("[Short stop loss order] Quantity too low")
-        if price * float(self.asset_qty) <= float(self.MIN_NOTIONAL):
-            return jsonResp_message("[Short stop loss order] Price x Quantity too low")
-
-        order = {
-            "pair": pair,
-            "qty": self.asset_qty,
-            "price": supress_notation(
-                stop_loss_price, self.price_precision
-            ),  # Theoretically stop_price, as we don't have book orders
-            "stop_price": supress_notation(stop_loss_price, self.price_precision),
-        }
-        res = requests.post(url=self.bb_stop_sell_order_url, json=order)
-        if isinstance(handle_error(res), Response):
-            return handle_error(res)
-
-        stop_limit_order = res.json()
-
-        stop_limit_order = {
-            "deal_type": "stop_limit",
-            "order_id": stop_limit_order["orderId"],
-            "pair": stop_limit_order["symbol"],
-            "order_side": stop_limit_order["side"],
-            "order_type": stop_limit_order["type"],
-            "price": stop_limit_order["price"],
-            "qty": stop_limit_order["origQty"],
-            "fills": stop_limit_order["fills"],
-            "time_in_force": stop_limit_order["timeInForce"],
-            "status": stop_limit_order["status"],
-        }
-
-        self.active_bot["deals"].append(stop_limit_order)
-        botId = app.db.bots.update_one(
-            {"_id": self.active_bot["_id"]}, {"$push": {"deals": stop_limit_order}}
-        )
-        if not botId:
-            resp = jsonResp(
-                {
-                    "message": "Failed to save short order stop_limit deal in the bot",
-                    "botId": str(self.active_bot["_id"]),
-                },
-                200,
-            )
-            return resp
 
     def trailling_profit(self):
         updated_bot = app.db.bots.find_one({"_id": self.active_bot["_id"]})
@@ -496,12 +400,12 @@ class Deal(Account):
 
         if check_bo and check_tp:
             if bot["trailling"] == "true":
-                long_take_profit_order = self.trailling_profit()
+                take_profit_order = self.trailling_profit()
             else:
-                long_take_profit_order = self.long_take_profit_order()
+                take_profit_order = self.take_profit_order()
 
-            if isinstance(long_take_profit_order, Response):
-                msg = long_take_profit_order.json["message"]
+            if isinstance(take_profit_order, Response):
+                msg = take_profit_order.json["message"]
                 order_errors.append(msg)
 
         # Update stop loss regarless of base order
@@ -559,21 +463,16 @@ class Deal(Account):
                     "qty": qty,
                     "price": supress_notation(price, self.price_precision),
                 }
-                res = requests.post(url=self.bb_sell_order_url, json=order)
+                res = self.bb_request(method="POST", url=self.bb_sell_order_url, payload=order)
             else:
                 order = {
                     "pair": pair,
                     "qty": qty,
                 }
-                res = requests.post(url=self.bb_sell_market_order_url, json=order)
-
-            if isinstance(handle_error(res), Response):
-                if handle_error(res).json["message"]["code"] == -1013:
-                    # Continue to sell to GBP when quantity is invalid
-                    # It may be an already closed or errored bot
-                    pass
-                else:
-                    return handle_error(res)
+                res = self.bb_request(method="POST", url=self.bb_sell_market_order_url, payload=order)
+            
+            # Continue even if there are errors
+            handle_binance_errors(res)
 
         # Hedge with GBP and complete bot
         buy_gbp_result = self.buy_gbp_balance()

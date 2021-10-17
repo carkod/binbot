@@ -282,7 +282,7 @@ def process_kline_stream(result, ws):
                     )
                     worker_thread.start()
 
-            if msg:
+            if msg and int(settings["telegram_signals"]) == 1:
                 _send_msg(msg)
 
             last_processed_kline[symbol] = time()

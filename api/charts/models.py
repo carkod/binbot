@@ -3,8 +3,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 from api.apis import BinanceApi
-from api.tools.handle_error import handle_binance_errors
-from api.tools.handle_error import jsonResp
+from api.tools.handle_error import handle_binance_errors, jsonResp_error_message, jsonResp
 from flask import request
 
 class Candlestick(BinanceApi):
@@ -12,59 +11,31 @@ class Candlestick(BinanceApi):
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
     """
+    
+    def _candlestick_request(self, params=None):
+        pair = request.view_args.get("pair")
+        interval = request.view_args.get("interval")
 
-    def __init__(self, interval="1d", limit="200"):
-        pair = request.view_args["pair"]
-        params = {"symbol": pair, "interval": interval, "limit": limit}
-        res = requests.get(url=self.candlestick_url, params=params)
-        self.data = handle_binance_errors(res)
-        df = pd.DataFrame(self.data)
-        self.dates = df[0].tolist()
-        self.interval = interval
-
-    def _close_prices(self):
-        data = self.data
+        # 200 limit + 100 Moving Average = 300
+        limit = request.view_args.get("limit") or 300
+        if not params:
+            params = {"symbol": pair, "interval": interval, "limit": limit}
+        data = self.request(url=self.candlestick_url, params=params)
         df = pd.DataFrame(data)
+        dates = df[0].tolist()
+        return df, dates
+
+    def candlestick_trace(self, df, dates):
         close = df[4].tolist()
-        return close
-
-    def _high_prices(self):
-        data = self.data
-        df = pd.DataFrame(data)
         high = df[2].tolist()
-        return high
-
-    def _low_prices(self):
-        data = self.data
-        df = pd.DataFrame(data)
         low = df[3].tolist()
-        return low
-
-    def _open_prices(self):
-        data = self.data
-        df = pd.DataFrame(data)
         open = df[1].tolist()
-        return open
-
-    def _ma_data(self, limit):
-        pair = request.view_args["pair"]
-        interval = (
-            request.view_args["interval"] if "interval" in request.view_args else "5m"
-        )
-        params = {"symbol": pair, "interval": interval, "limit": limit}
-        res = requests.get(url=self.candlestick_url, params=params)
-        df = pd.DataFrame(res.json())
-        close = df[4].tolist()
-        return close
-
-    def candlestick_trace(self):
-        dates = self.dates
         defaults = {
             "x": dates,
-            "close": self._close_prices(),
-            "high": self._high_prices(),
-            "low": self._low_prices(),
-            "open": self._open_prices(),
+            "close": close,
+            "high": high,
+            "low": low,
+            "open": open,
             "decreasing": {"line": {"color": "red"}},
             "increasing": {"line": {"color": "green"}},
             "line": {"color": "#17BECF"},
@@ -74,50 +45,29 @@ class Candlestick(BinanceApi):
         }
         return defaults
 
-    def bollinguer_bands(self):
+    def bollinguer_bands(self, df, dates):
         # 200 limit + 100 ma
-        data = self._ma_data(300)
-        dates = self.dates
+        data = df[4]
 
-        data_100 = data
-        kline_df_100 = pd.DataFrame(data_100)
-
-        data_25 = data
-        kline_df_25 = pd.DataFrame(data_25)
-
-        data_7 = data
-        kline_df_7 = pd.DataFrame(data_7)
+        kline_df_100 = data.rolling(window=100).mean().dropna().reset_index(drop=True).values.tolist()
+        kline_df_25 = data.rolling(window=25).mean().dropna().reset_index(drop=True).values.tolist()
+        kline_df_7 = data.rolling(window=7).mean().dropna().reset_index(drop=True).values.tolist()[94:]
 
         ma_100 = {
             "x": dates,
-            "y": kline_df_100[0]
-            .rolling(window=100)
-            .mean()
-            .dropna()
-            .reset_index(drop=True)
-            .values.tolist(),
+            "y": kline_df_100,
             "line": {"color": "#9368e9"},
             "type": "scatter",
         }
         ma_25 = {
             "x": dates,
-            "y": kline_df_25[0]
-            .rolling(window=25)
-            .mean()
-            .dropna()
-            .reset_index(drop=True)
-            .values.tolist()[76:],
+            "y": kline_df_25,
             "line": {"color": "#fb404b"},
             "type": "scatter",
         }
         ma_7 = {
             "x": dates,
-            "y": kline_df_7[0]
-            .rolling(window=7)
-            .mean()
-            .dropna()
-            .reset_index(drop=True)
-            .values.tolist()[94:],
+            "y": kline_df_7,
             "line": {"color": "#ffa534"},
             "type": "scatter",
         }
@@ -132,14 +82,27 @@ class Candlestick(BinanceApi):
         Index 2: ma_25
         Index 3: ma_7
         """
-        trace = self.candlestick_trace()
-        ma_100, ma_25, ma_7 = self.bollinguer_bands()
+        pair = request.view_args.get("pair")
+        interval = request.view_args.get("interval")
+
+        if not pair:
+            return jsonResp_error_message("Symbol/Pair is required")
+        if not interval:
+            return jsonResp_error_message("Provide a candlestick interval")
+
+        # 200 limit + 100 Moving Average = 300
+        limit = request.view_args.get("limit") or 300
+
+        df, dates = self._candlestick_request()
+        trace = self.candlestick_trace(df, dates)
+        ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
         resp = jsonResp(
-            {"trace": [trace, ma_100, ma_25, ma_7], "interval": self.interval}, 200
+            {"trace": [trace, ma_100, ma_25, ma_7], "interval": interval}, 200
         )
         return resp
 
     def get_diff(self):
+        """To be removed after dashboard refactor"""
         today = datetime.today()
         first = today.replace(day=1)
         lastMonth = first - timedelta(days=1)
@@ -147,19 +110,13 @@ class Candlestick(BinanceApi):
         first_lastMonth = today - timedelta(days=lastMonth.day)
         startTime = int(round(first_lastMonth.timestamp() * 1000))
 
-        pair = request.view_args["pair"]
-        interval = request.view_args["interval"]
         params = {
             "symbol": pair,
             "interval": interval,
             "limit": lastMonth.day,
             "startTime": startTime,
         }
-        url = self.candlestick_url
-        res = requests.get(url=url, params=params)
-        handle_error(res)
-        data = res.json()
-        df = pd.DataFrame(data)
+        df, dates = self._candlestick_request(params)
 
         # New df with dates and close
         df_new = df[[0, 3]]

@@ -34,7 +34,10 @@ def jsonResp_error_message(message):
     return jsonResp(body)
 
 
-def bot_errors(error, bot):
+def bot_errors(error, bot, status="error"):
+    """
+    params status refer to bot-status.md
+    """
     if isinstance(error, Response):
         try:
             error = error.json()["msg"]
@@ -47,7 +50,7 @@ def bot_errors(error, bot):
     app = create_app()
     bot = app.db.bots.find_one_and_update(
         {"_id": ObjectId(bot["_id"])},
-        {"$set": {"status": "error", "errors": bot["errors"]}},
+        {"$set": {"status": status, "errors": bot["errors"]}},
     )
 
     return bot
@@ -85,13 +88,17 @@ def handle_error(req):
         return jsonResp_message(f"Catastrophic error: {e}", 500)
 
 
-def handle_binance_errors(response: Response, bot=None, **kwargs):
+def handle_binance_errors(response: Response, bot=None, message=None):
     """
-    Combine Binance errors
-    e.g. {"code": -1013, "msg": "Invalid quantity"}
-    and bot errors
-    returns "errored" or ""
+    Handles:
+    - HTTP codes, not authorized, rate limits...
+    - Bad request errors, binance internal e.g. {"code": -1013, "msg": "Invalid quantity"}
+    - Binbot internal errors - bot errors, returns "errored"
+
     """
+    if isinstance(response, Response) and "X-MBX-USED-WEIGHT-" in response.headers:
+        print(f'Current rate limit: {response.headers}')
+
     if (
         isinstance(json.loads(response.content), dict)
         and "code" in json.loads(response.content).keys()
@@ -103,7 +110,7 @@ def handle_binance_errors(response: Response, bot=None, **kwargs):
             if not bot:
                 return jsonResp_error_message(content["msg"])
             else:
-                error = f'{kwargs.get("message") + content["msg"] if kwargs.get("message") else content["msg"]}'
+                error = f'{message + content["msg"] if message else content["msg"]}'
                 bot["errors"].append(error)
                 app = create_app()
                 bot = app.db.bots.find_one_and_update(
