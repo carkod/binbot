@@ -1,7 +1,8 @@
 import os
 
-from requests import get
+from requests import get, Session
 from datetime import datetime
+from api.tools.handle_error import handle_binance_errors
 
 class BinanceApi:
     """
@@ -37,6 +38,35 @@ class BinanceApi:
     deposit_address_url = f"{BASE}/wapi/v3/depositAddress.html"
 
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
+
+    def __init__(self):
+        self.s = Session()
+
+    def _user_data_request(self, url, method="GET", params=None):
+        """
+        USER_DATA signed requests
+        """
+        timestamp = int(round(tm.time() * 1000))
+        headers = {"X-MBX-APIKEY": self.key}
+
+        # Prepare request for signing
+        req = requests.Request(method, url=url, params=params, headers=headers)
+        prepped = s.prepare_request(req)
+        query_string = urlparse(prepped.url).query
+        total_params = query_string
+
+        # Generate and append signature
+        signature = hmac.new(
+            self.secret.encode("utf-8"),
+            total_params.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        params.append(("signature", signature))
+
+        settings = self.s.merge_environment_settings(prepped.url, {}, None, None, None)
+        resp = self.s.send(prepped, **settings)
+        response = handle_binance_errors(res)
+        return response
 
 
 class BinbotApi(BinanceApi):

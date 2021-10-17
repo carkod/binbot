@@ -44,24 +44,7 @@ class BuyOrder(BinanceApi):
             ("price", price),
             ("quantity", qty),
         ]
-        headers = {"X-MBX-APIKEY": self.key}
-
-        # Prepare request for signing
-        r = requests.Request(url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params.append(("signature", signature))
-
-        # Response after request
-        res = requests.post(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
+        data = self._user_data_request(url=self.order_url, method="POST", params=params)
         return data
 
     def post_order_market(self):
@@ -84,24 +67,7 @@ class BuyOrder(BinanceApi):
             ("timeInForce", self.timeInForce),
             ("quantity", qty),
         ]
-        headers = {"X-MBX-APIKEY": self.key}
-
-        # Prepare request for signing
-        r = requests.Request(url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params.append(("signature", signature))
-
-        # Response after request
-        res = requests.post(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
+        data = self._user_data_request(url=self.order_url, method="POST", params=params)
         return data
 
     def post_take_profit_limit(self):
@@ -128,24 +94,7 @@ class BuyOrder(BinanceApi):
             ("stopPrice", stop_price),
             ("quantity", qty),
         ]
-        headers = {"X-MBX-APIKEY": self.key}
-
-        # Prepare request for signing
-        r = requests.Request(url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params.append(("signature", signature))
-
-        # Response after request
-        res = requests.post(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
+        data = self._user_data_request(url=self.order_url, method="POST", params=params)
         return data
 
     def post_stop_loss_limit(self):
@@ -173,22 +122,5 @@ class BuyOrder(BinanceApi):
             ("quantity", qty),
             ("newOrderRespType", "FULL"),
         ]
-        headers = {"X-MBX-APIKEY": self.key}
-
-        # Prepare request for signing
-        r = requests.Request(url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params.append(("signature", signature))
-
-        # Response after request
-        res = requests.post(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
+        data = self._user_data_request(url=self.order_url, method="POST", params=params)
         return data

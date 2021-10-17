@@ -82,7 +82,6 @@ class BuyOrder(BinanceApi):
         # Limit order
         order_type = EnumDefinitions.order_types[0]
         timestamp = int(round(tm.time() * 1000))
-        url = self.order_url
         if limit_price:
             price = self.last_order_book_price(0) * (1 + limit_price)
         else:
@@ -99,22 +98,5 @@ class BuyOrder(BinanceApi):
             ("price", price),
             ("quantity", qty),
         ]
-        headers = {"X-MBX-APIKEY": self.key}
-
-        # Prepare request for signing
-        r = requests.Request("POST", url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params.append(("signature", signature))
-
-        # Response after request
-        res = requests.post(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
+        data = self._user_data_request(url=self.order_url, method="POST", params=params)
         return data

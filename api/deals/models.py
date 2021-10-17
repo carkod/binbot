@@ -151,7 +151,12 @@ class Deal(Account):
         - BNBGBP market sell BNB with GBP
 
         Sell whatever is in the balance e.g. Sell all BNB
+        Always triggered after order completion
         """
+
+        last_order = self.active_bot["orders"][len(self.active_bot["orders"]) - 1]["order_id"]
+
+
         pair = self.active_bot["pair"]
         market = self.find_quoteAsset(pair)
         new_pair = f"{market}GBP"

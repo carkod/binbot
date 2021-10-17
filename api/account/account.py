@@ -27,31 +27,6 @@ class Account(BinbotApi):
         exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info
 
-    def request_data(self):
-        timestamp = int(round(tm.time() * 1000))
-        # Get data for a single crypto e.g. BTT in BNB market
-        params = {"recvWindow": self.recvWindow, "timestamp": timestamp}
-        headers = {"X-MBX-APIKEY": self.key}
-        url = self.account_url
-
-        # Prepare request for signing
-        r = requests.Request("GET", url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params["signature"] = signature
-
-        # Response after request
-        res = requests.get(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
-        return data
-
     def _ticker_price(self):
         url = self.ticker_price
         r = requests.get(url=url)

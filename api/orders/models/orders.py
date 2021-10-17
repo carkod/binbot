@@ -75,25 +75,7 @@ class Orders(Account):
                     ("timestamp", timestamp),
                     ("recvWindow", self.recvWindow),
                 ]
-                headers = {"X-MBX-APIKEY": self.key}
-
-                # Prepare request for signing
-                r = requests.Request(url=url, params=params, headers=headers)
-                prepped = r.prepare()
-                query_string = urlparse(prepped.url).query
-                total_params = query_string
-
-                # Generate and append signature
-                signature = hmac.new(
-                    self.secret.encode("utf-8"),
-                    total_params.encode("utf-8"),
-                    hashlib.sha256,
-                ).hexdigest()
-                params.append(("signature", signature))
-
-                res = requests.get(url=url, params=params, headers=headers)
-                handle_error(res)
-                data = res.json()
+                data = self._user_data_request(url=self.order_url, params=params)
 
                 # Check that we have no empty orders
                 if (len(data) > 0) and self.app:
@@ -114,23 +96,7 @@ class Orders(Account):
         timestamp = int(round(tm.time() * 1000))
         url = self.open_orders
         params = [("timestamp", timestamp), ("recvWindow", self.recvWindow)]
-        headers = {"X-MBX-APIKEY": self.key}
-
-        # Prepare request for signing
-        r = requests.Request(url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params.append(("signature", signature))
-
-        res = requests.get(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
+        data = self._user_data_request(url=self.order_url, params=params)
 
         if len(data) > 0:
             resp = jsonResp({"message": "Open orders found!", "data": data})
@@ -153,25 +119,7 @@ class Orders(Account):
             ("recvWindow", self.recvWindow),
             ("orderId", orderId),
         ]
-
-        headers = {"X-MBX-APIKEY": self.key}
-
-        # Prepare request for signing
-        r = requests.Request(url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params.append(("signature", signature))
-
-        # Response after request
-        res = requests.delete(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
+        data = self._user_data_request(url=self.order_url, method="DELETE", params=params)
 
         if len(data) > 0:
             resp = jsonResp({"message": "Order deleted!", "data": data})
@@ -195,25 +143,7 @@ class Orders(Account):
             ("timestamp", timestamp),
             ("recvWindow", self.recvWindow),
         ]
-
-        headers = {"X-MBX-APIKEY": self.key}
-
-        # Prepare request for signing
-        r = requests.Request(url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params.append(("signature", signature))
-
-        # Response after request
-        res = requests.delete(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
+        data = self._user_data_request(url=self.order_url, method="DELETE", params=params)
 
         if len(data) > 0:
             resp = jsonResp({"message": "Orders deleted", "data": data})
