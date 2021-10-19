@@ -37,10 +37,10 @@ class Autotrade(BinbotApi):
         Check balance to decide balance_to_use
         """
         try:
-            self.settings["errors"].append(msg)
+            self.settings["system_logs"].append(msg)
         except AttributeError:
-            self.settings["errors"] = []
-            self.settings["errors"].append(msg)
+            self.settings["system_logs"] = []
+            self.settings["system_logs"].append(msg)
 
         res = requests.put(url=self.bb_controller_url, json=self.settings)
         result = handle_binance_errors(res)
@@ -60,6 +60,7 @@ class Autotrade(BinbotApi):
         3. Activate bot
         """
         print("Autotrade running...")
+        self.handle_error("Autotrade running...")
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)

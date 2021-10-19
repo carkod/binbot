@@ -92,7 +92,7 @@ def start_stream(previous_ws=None):
     _run_streams(stream_2, 2)
 
 def post_error(msg):
-    res = requests.put(url=binbot_api.bb_controller_url, json={"errors": [msg] })
+    res = requests.put(url=binbot_api.bb_controller_url, json={"system_logs": msg })
     result = handle_binance_errors(res)
     return
 
@@ -121,6 +121,7 @@ def on_error(ws, error):
     # Network error, restart
     if error.args[0] == "Connection to remote host was lost.":
         print("Restarting in 30 seconds...")
+        post_error("Connection to remote host was lost. Restarting in 30 seconds...")
         sleep(30)
         start_stream()
 
@@ -259,9 +260,8 @@ def process_kline_stream(result, ws):
                 # Need to reload websocket
                 if "update_required" in settings and settings["update_required"]:
                     settings["update_required"] = False
-                    settings["errors"] = []
                     research_controller_res = requests.put(url=binbot_api.bb_controller_url, json=settings)
-                    print(handle_binance_errors(research_controller_res)["message"])
+                    post_error(handle_binance_errors(research_controller_res)["message"])
                     start_stream(previous_ws=ws)
                     return
 
@@ -282,7 +282,7 @@ def process_kline_stream(result, ws):
                     )
                     worker_thread.start()
 
-            if msg and int(settings["telegram_signals"]) == 1:
+            if msg:
                 _send_msg(msg)
 
             last_processed_kline[symbol] = time()
