@@ -16,30 +16,39 @@ from utils import handle_binance_errors, supress_notation
 
 load_dotenv()
 
-class ResearchSignals(BinbotApi):
 
+class ResearchSignals(BinbotApi):
     def __init__(self):
         self.interval = "1h"
         self.markets_streams = None
         self.last_processed_kline = {}
-        self.skipped_fiat_currencies = ["USD", "DOWN", "EUR", "AUD", "TRY", "BRL", "RUB"] # on top of blacklist
+        self.skipped_fiat_currencies = [
+            "USD",
+            "DOWN",
+            "EUR",
+            "AUD",
+            "TRY",
+            "BRL",
+            "RUB",
+        ]  # on top of blacklist
         # This blacklist is necessary to keep prod and local DB synched
         self.telegram_bot = TelegramBot()
         self.max_request = 950  # Avoid HTTP 411 error by separating streams
 
         # Dynamic data
-        response = requests.get(url=f'{self.bb_controller_url}')
+        response = requests.get(url=f"{self.bb_controller_url}")
         self.settings = response.json()["data"]
 
-        blacklist_res = requests.get(url=f'{self.bb_blacklist_url}')
+        blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
         self.blacklist_data = handle_binance_errors(blacklist_res)["data"]
 
         if self.settings:
             self.interval = self.settings["candlestick_interval"]
 
-
     def blacklist_coin(self, pair, msg):
-        res = requests.post(url=self.bb_blacklist_url, json={"pair": pair, "reason": msg })
+        res = requests.post(
+            url=self.bb_blacklist_url, json={"pair": pair, "reason": msg}
+        )
         result = handle_binance_errors(res)
         return result
 
@@ -54,7 +63,6 @@ class ResearchSignals(BinbotApi):
 
         self.telegram_bot.send_msg(msg)
         return
-
 
     def _run_streams(self, stream, index):
         string_params = "/".join(stream)
@@ -73,7 +81,6 @@ class ResearchSignals(BinbotApi):
         )
         worker_thread.start()
 
-
     def start_stream(self, previous_ws=None):
         if previous_ws:
             previous_ws.close()
@@ -89,35 +96,31 @@ class ResearchSignals(BinbotApi):
         subtract_list = set(black_list)
         list_markets = markets - subtract_list
 
-
         params = []
         for market in list_markets:
             params.append(f"{market.lower()}@kline_{self.interval}")
 
-        stream_1 = params[:self.max_request]
+        stream_1 = params[: self.max_request]
         stream_2 = params[(self.max_request + 1) :]
 
         self._run_streams(stream_1, 1)
         self._run_streams(stream_2, 2)
 
     def post_error(self, msg):
-        res = requests.put(url=self.bb_controller_url, json={"system_logs": msg })
+        res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
         result = handle_binance_errors(res)
         return
-
 
     def on_close(self, ws, close_status_code, close_msg):
         """
         Library bug not working
         https://github.com/websocket-client/websocket-client/issues/612
         """
-        
-        print("Active socket closed", close_status_code, close_msg)
 
+        print("Active socket closed", close_status_code, close_msg)
 
     def on_open(self, ws):
         print("Market data updates socket opened")
-
 
     def on_error(self, ws, error):
         msg = f'Research Websocket error: {error}. {"Symbol: " + self.symbol if self.symbol else ""  }'
@@ -126,10 +129,11 @@ class ResearchSignals(BinbotApi):
         # Network error, restart
         if error.args[0] == "Connection to remote host was lost.":
             print("Restarting in 30 seconds...")
-            self.post_error("Connection to remote host was lost. Restarting in 30 seconds...")
+            self.post_error(
+                "Connection to remote host was lost. Restarting in 30 seconds..."
+            )
             sleep(30)
             self.start_stream()
-
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -143,7 +147,6 @@ class ResearchSignals(BinbotApi):
 
         else:
             print(f"Error: {response}")
-
 
     def process_kline_stream(self, result, ws):
         """
@@ -243,19 +246,30 @@ class ResearchSignals(BinbotApi):
 
                     # Logic for autotrade
                     research_controller_res = requests.get(url=self.bb_controller_url)
-                    self.settings = handle_binance_errors(research_controller_res)["data"]
+                    self.settings = handle_binance_errors(research_controller_res)[
+                        "data"
+                    ]
                     # If dashboard has changed any self.settings
                     # Need to reload websocket
-                    if "update_required" in self.settings and self.settings["update_required"]:
+                    if (
+                        "update_required" in self.settings
+                        and self.settings["update_required"]
+                    ):
                         self.settings["update_required"] = False
-                        research_controller_res = requests.put(url=self.bb_controller_url, json=self.settings)
-                        self.post_error(handle_binance_errors(research_controller_res)["message"])
+                        research_controller_res = requests.put(
+                            url=self.bb_controller_url, json=self.settings
+                        )
+                        self.post_error(
+                            handle_binance_errors(research_controller_res)["message"]
+                        )
                         start_stream(previous_ws=ws)
                         return
 
                     # if autrotrade enabled and it's not an already active bot
                     # this avoids running too many useless bots
-                    bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
+                    bots_res = requests.get(
+                        url=self.bb_bot_url, params={"status": "active"}
+                    )
                     active_bots = handle_binance_errors(bots_res)["data"]
                     active_symbols = [bot["pair"] for bot in active_bots]
 
@@ -264,7 +278,11 @@ class ResearchSignals(BinbotApi):
                     balances = handle_binance_errors(check_balance_res)
                     balance_check = int(balances["data"]["estimated_total_gbp"])
 
-                    if int(self.settings["autotrade"]) == 1 and symbol not in active_bots and balance_check > 0:
+                    if (
+                        int(self.settings["autotrade"]) == 1
+                        and symbol not in active_bots
+                        and balance_check > 0
+                    ):
                         autotrade = Autotrade(symbol, self.settings)
                         worker_thread = threading.Thread(
                             name="autotrade_thread", target=autotrade.run
