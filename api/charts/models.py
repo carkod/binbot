@@ -3,15 +3,20 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 from api.apis import BinanceApi
-from api.tools.handle_error import handle_binance_errors, jsonResp_error_message, jsonResp
+from api.tools.handle_error import (
+    handle_binance_errors,
+    jsonResp,
+    jsonResp_error_message,
+)
 from flask import request
+
 
 class Candlestick(BinanceApi):
     """
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
     """
-    
+
     def _candlestick_request(self, params=None):
         pair = request.view_args.get("pair")
         interval = request.view_args.get("interval")
@@ -49,9 +54,27 @@ class Candlestick(BinanceApi):
         # 200 limit + 100 ma
         data = df[4]
 
-        kline_df_100 = data.rolling(window=100).mean().dropna().reset_index(drop=True).values.tolist()
-        kline_df_25 = data.rolling(window=25).mean().dropna().reset_index(drop=True).values.tolist()
-        kline_df_7 = data.rolling(window=7).mean().dropna().reset_index(drop=True).values.tolist()[94:]
+        kline_df_100 = (
+            data.rolling(window=100)
+            .mean()
+            .dropna()
+            .reset_index(drop=True)
+            .values.tolist()
+        )
+        kline_df_25 = (
+            data.rolling(window=25)
+            .mean()
+            .dropna()
+            .reset_index(drop=True)
+            .values.tolist()
+        )
+        kline_df_7 = (
+            data.rolling(window=7)
+            .mean()
+            .dropna()
+            .reset_index(drop=True)
+            .values.tolist()[94:]
+        )
 
         ma_100 = {
             "x": dates,
@@ -84,6 +107,7 @@ class Candlestick(BinanceApi):
         """
         pair = request.view_args.get("pair")
         interval = request.view_args.get("interval")
+        stats = request.view_args.get("stats")
 
         if not pair:
             return jsonResp_error_message("Symbol/Pair is required")
@@ -96,10 +120,42 @@ class Candlestick(BinanceApi):
         df, dates = self._candlestick_request()
         trace = self.candlestick_trace(df, dates)
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
-        resp = jsonResp(
-            {"trace": [trace, ma_100, ma_25, ma_7], "interval": interval}, 200
-        )
-        return resp
+        if stats:
+            df["candle_spread"] = abs(
+                pd.to_numeric(df[1]) - pd.to_numeric(df[4])
+            )
+            curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
+            avg_candle_spread = df["candle_spread"].median()
+
+            df["volume_spread"] = abs(
+                pd.to_numeric(df[1]) - pd.to_numeric(df[4])
+            )
+            curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
+            avg_volume_spread = df["volume_spread"].median()
+
+            high_price = max(df[2])
+            low_price = max(df[3])
+            amplitude = (float(high_price) / float(low_price)) - 1
+
+            all_time_low = pd.to_numeric(df[3]).min()
+            resp = jsonResp(
+                {
+                    "trace": [trace, ma_100, ma_25, ma_7],
+                    "interval": interval,
+                    "curr_candle_spread": curr_candle_spread,
+                    "avg_candle_spread": avg_candle_spread,
+                    "curr_volume_spread": curr_volume_spread,
+                    "avg_volume_spread": avg_volume_spread,
+                    "amplitude": amplitude,
+                    "all_time_low": all_time_low,
+                }
+            )
+            return resp
+        else:
+            resp = jsonResp(
+                {"trace": [trace, ma_100, ma_25, ma_7], "interval": interval}, 200
+            )
+            return resp
 
     def get_diff(self):
         """To be removed after dashboard refactor"""

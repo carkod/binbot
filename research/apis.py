@@ -164,11 +164,13 @@ class BinbotApi(BinanceApi):
         data = handle_binance_errors(res)
         return data
     
-    def _get_candlestick(self, market, interval):
+    def _get_candlestick(self, market, interval, stats=None):
         url = f"{self.bb_candlestick_url}/{market}/{interval}"
+        if stats:
+            url = f"{self.bb_candlestick_url}/{market}/{interval}/{stats}"
         res = get(url=url)
         data = handle_binance_errors(res)
-        return data["trace"]
+        return data
 
 class CoinBaseApi:
     """
