@@ -7,7 +7,7 @@ export default function BotInfo({ bot }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle tag="h5">Bot Information</CardTitle>
+        <CardTitle tag="h5">Orders information</CardTitle>
       </CardHeader>
       <CardBody>
         <Table responsive>
@@ -43,21 +43,20 @@ export default function BotInfo({ bot }) {
         <hr />
         {!checkValue(bot.deal) && !checkValue(bot.deal.buy_price) && (
           <>
-          <h5>Deal information</h5>
-          <Table responsive>
-            <thead>
-              <tr>
-                {Object.keys(bot.deal).map((x,i) => <th key={i}>{x}</th> )}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {Object.values(bot.deal).map((x,i) =>
-                  <td key={i}>{String(x)}</td>
-                )}
-              </tr>
-            </tbody>
-          </Table>
+          <h5>Deal information (representated in the graph)</h5>
+          <ul>
+            {Object.keys(bot.deal).map((k, i) => {
+              if (typeof(bot.deal[k]) !== "object") {
+                return <li key={i}><strong>{k}</strong>: {bot.deal[k]}</li>
+              } else {
+                return (
+                  <ul>
+                    {Object.keys(bot.deal[k]).map((l,j) => <li key={j}>{l}:{bot.deal[k][l]}</li>)}
+                  </ul>
+                )
+              }
+            } )}
+          </ul>
           </>
         )}
       </CardBody>

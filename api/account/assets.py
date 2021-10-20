@@ -21,8 +21,8 @@ class Assets(Account):
         """
         Unrestricted balance
         """
-        data = self.request_data()["balances"]
-        df = pd.DataFrame(data)
+        data = self.signed_request(url=self.account_url)
+        df = pd.DataFrame(data["balances"])
         df["free"] = pd.to_numeric(df["free"])
         df["locked"] = pd.to_numeric(df["locked"])
         df["asset"] = df["asset"].astype(str)
@@ -178,11 +178,11 @@ class Assets(Account):
         total_btc = 0
         rate = 0
         for b in balances["data"]:
+            print(f"Balance: {b['asset']}")
             # Only tether coins for hedging
-            if "USD" in b["asset"]:
-
+            if b["asset"] in ["USD", "BTC", "BNB", "ETH", "XRP"]:
                 qty = self._check_locked(b)
-                rate = self.coinbase_api.get_conversion(current_time, "BTC", "GBP")
+                rate = self.get_ticker_price(f'{b["asset"]}GBP')
                 total_gbp += float(qty) / float(rate)
             elif "GBP" in b["asset"]:
                 total_gbp += self._check_locked(b)
@@ -222,6 +222,29 @@ class Assets(Account):
             print(f"{current_time} Balance stored!")
         else:
             print(f"{current_time} Unable to store balance! Error: {balanceId}")
+    
+    def get_value(self):
+        try:
+            interval = request.view_args["interval"]
+        except KeyError:
+            interval = None
+            filter = None
+
+        # last 24 hours
+        if interval == "1d":
+            filter = {
+                "updatedTime": {
+                    "$lt": datetime.now().timestamp(),
+                    "$gte": (datetime.now() - timedelta(days=1)).timestamp(),
+                }
+            }
+
+        balance = list(self.app.db.balances.find(filter).sort([("_id", -1)]))
+        if balance:
+            resp = jsonResp({"data": balance})
+        else:
+            resp = jsonResp({"data": [], "error": 1})
+        return resp
 
     def balance_estimate(self, fiat="GBP"):
         """

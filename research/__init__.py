@@ -92,7 +92,7 @@ def start_stream(previous_ws=None):
     _run_streams(stream_2, 2)
 
 def post_error(msg):
-    res = requests.put(url=binbot_api.bb_controller_url, json={"errors": [msg] })
+    res = requests.put(url=binbot_api.bb_controller_url, json={"system_logs": msg })
     result = handle_binance_errors(res)
     return
 
@@ -121,6 +121,7 @@ def on_error(ws, error):
     # Network error, restart
     if error.args[0] == "Connection to remote host was lost.":
         print("Restarting in 30 seconds...")
+        post_error("Connection to remote host was lost. Restarting in 30 seconds...")
         sleep(30)
         start_stream()
 
@@ -155,33 +156,23 @@ def process_kline_stream(result, ws):
         open_price = float(result["k"]["o"])
         symbol = result["k"]["s"]
         ws.symbol = symbol
-        data = binbot_api._get_candlestick(symbol, interval)
-        if len(data[1]["y"]) <= 100:
+        data = binbot_api._get_candlestick(symbol, interval, stats=True)
+        if len(data["trace"][1]["y"]) <= 100:
             msg = f"Not enough data to do research on {symbol}"
             print(msg)
             blacklist_coin(symbol, msg)
             return
 
-        ma_100 = data[1]["y"]
-        ma_25 = data[2]["y"]
-        ma_7 = data[3]["y"]
+        ma_100 = data["trace"][1]["y"]
+        ma_25 = data["trace"][2]["y"]
+        ma_7 = data["trace"][3]["y"]
+        curr_candle_spread = float(data["curr_candle_spread"])
+        curr_volume_spread = float(data["curr_volume_spread"])
+        avg_candle_spread = float(data["avg_candle_spread"])
+        avg_volume_spread = float(data["avg_volume_spread"])
+        amplitude = float(data["amplitude"])
+        all_time_low = float(data["all_time_low"])
 
-        # raw df
-        klines = binbot_api._get_raw_klines(symbol, 1000)
-        df = pandas.DataFrame(klines)
-        df["candle_spread"] = abs(pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
-        curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
-        avg_candle_spread = df["candle_spread"].median()
-
-        df["volume_spread"] = abs(pandas.to_numeric(df[1]) - pandas.to_numeric(df[4]))
-        curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
-        avg_volume_spread = df["volume_spread"].median()
-
-        high_price = max(data[0]["high"])
-        low_price = max(data[0]["low"])
-        spread = (float(high_price) / float(low_price)) - 1
-
-        all_time_low = pandas.to_numeric(df[3]).min()
         msg = None
 
         if symbol not in last_processed_kline:
@@ -192,13 +183,13 @@ def process_kline_stream(result, ws):
                     and curr_volume_spread > avg_volume_spread
                 )
                 and (close_price > ma_100[len(ma_100) - 1])
-                and spread > 0.1
+                and amplitude > 0.1
             ):
                 # Send Telegram
-                msg = f"- Candlesick <strong>jump</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                msg = f"- Candlesick <strong>jump</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
                 if close_price < float(all_time_low):
-                    msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Spread {supress_notation(spread, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                    msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Amplitude {supress_notation(amplitude, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
             if (
                 # BRL cannot be transformed by coinbase
@@ -250,7 +241,7 @@ def process_kline_stream(result, ws):
                     and open_price > ma_25[len(ma_25) - 5]
                 )
             ):
-                msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Spread {supress_notation(spread, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
                 # Logic for autotrade
                 research_controller_res = requests.get(url=binbot_api.bb_controller_url)
@@ -259,9 +250,8 @@ def process_kline_stream(result, ws):
                 # Need to reload websocket
                 if "update_required" in settings and settings["update_required"]:
                     settings["update_required"] = False
-                    settings["errors"] = []
                     research_controller_res = requests.put(url=binbot_api.bb_controller_url, json=settings)
-                    print(handle_binance_errors(research_controller_res)["message"])
+                    post_error(handle_binance_errors(research_controller_res)["message"])
                     start_stream(previous_ws=ws)
                     return
 

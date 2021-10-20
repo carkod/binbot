@@ -74,7 +74,7 @@ class OrderUpdates(BinanceApi):
 
         if result["X"] == "FILLED":
             # Close successful orders
-            bot = self.app.db.bots.find_one_and_update(
+            update_tp = self.app.db.bots.find_one_and_update(
                 {
                     "orders": {
                         "$elemMatch": {"deal_type": "take_profit", "order_id": order_id}
@@ -83,9 +83,23 @@ class OrderUpdates(BinanceApi):
                 {
                     "$set": {"status": "inactive", "deal.current_price": result["p"]},
                     "$inc": {"deal.commission": float(result["n"])},
+                    "$push": {"orders": result}
                 },
             )
-            if bot:
+            # Else, update whatever id matches
+            bot = self.app.db.bots.find_one_and_update(
+                {
+                    "orders": {
+                        "$elemMatch": {"order_id": order_id}
+                    }
+                },
+                {
+                    "$set": {"deal.current_price": result["p"]},
+                    "$inc": {"deal.commission": float(result["n"])},
+                    "$push": {"orders": result}
+                },
+            )
+            if update_tp:
                 print(f"Bot take_profit completed! Bot {bot['_id']} deactivated")
                 # Logic to convert market coin into GBP here
                 Deal(bot).buy_gbp_balance()
@@ -109,7 +123,7 @@ class OrderUpdates(BinanceApi):
                 deal.update_take_profit(order_id)
 
         else:
-            print(f"No bot found with order client order id: {order_id}")
+            print(f"No bot found with order client order id: {order_id}. Order status: {result['X']}")
 
     def process_account_update(self, result):
         balance = result["B"]

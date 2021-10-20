@@ -111,14 +111,14 @@ class BinanceApi:
     
     def find_baseAsset(self, symbol):
         symbols = self._exchange_info(symbol)
-        base_asset = market = symbols["symbols"][0][
+        base_asset = symbols["symbols"][0][
             "baseAsset"
         ]
         return base_asset
     
     def find_quoteAsset(self, symbol):
         symbols = self._exchange_info(symbol)
-        quote_asset = market = symbols["symbols"][0]
+        quote_asset = symbols["symbols"][0]
         if quote_asset:
             quote_asset = quote_asset["quoteAsset"]
         return quote_asset
@@ -164,11 +164,13 @@ class BinbotApi(BinanceApi):
         data = handle_binance_errors(res)
         return data
     
-    def _get_candlestick(self, market, interval):
+    def _get_candlestick(self, market, interval, stats=None):
         url = f"{self.bb_candlestick_url}/{market}/{interval}"
+        if stats:
+            url = f"{self.bb_candlestick_url}/{market}/{interval}/{stats}"
         res = get(url=url)
         data = handle_binance_errors(res)
-        return data["trace"]
+        return data
 
 class CoinBaseApi:
     """

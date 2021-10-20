@@ -58,13 +58,13 @@ export const ControllerTab = ({
 
   return (
     <>
-      <Row>
-        <Col md="12" sm="3">
-          <Card>
-            <CardHeader>
-              <CardTitle>General settings for research signals</CardTitle>
-            </CardHeader>
-            <CardBody>
+      <Card>
+        <CardHeader>
+          <CardTitle>General settings for research signals</CardTitle>
+        </CardHeader>
+        <CardBody>
+          <Row>
+            <Col md={settings.system_info ? "8" : "12"} sm="12">
               <h2>Global settings</h2>
               {settings && (
                 <>
@@ -85,46 +85,54 @@ export const ControllerTab = ({
                         handleChange={handleInput}
                       />
                     </Col>
+                    <Col md="4">
+                      <SettingsInput
+                        value={settings.telegram_signals && 1}
+                        name={"telegram_signals"}
+                        label={"Send signals to telegram? 0 or 1"}
+                        handleChange={handleInput}
+                      />
+                    </Col>
                   </Row>
-                  {parseInt(settings.autotrade) === 1 &&
-                  <>
-                    <h4>Autotrade settings</h4>
-                    <Row>
-                      <Col md="3">
-                        <SettingsInput
-                          value={settings.balance_to_use}
-                          name={"balance_to_use"}
-                          label={"Balanace to use"}
-                          handleChange={handleInput}
-                        />
-                      </Col>
-                      <Col md="3">
-                        <SettingsInput
-                          value={settings.take_profit}
-                          name={"take_profit"}
-                          label={"Take profit"}
-                          handleChange={handleInput}
-                        />
-                      </Col>
-                      <Col md="3">
-                        <SettingsInput
-                          value={settings.trailling_deviation}
-                          name={"trailling_deviation"}
-                          label={"Trailling deviation"}
-                          handleChange={handleInput}
-                        />
-                      </Col>
-                      <Col md="3">
-                        <SettingsInput
-                          value={settings.stop_loss}
-                          name={"stop_loss"}
-                          label={"Stop loss"}
-                          handleChange={handleInput}
-                        />
-                      </Col>
-                    </Row>
-                  </>
-                  }
+                  {parseInt(settings.autotrade) === 1 && (
+                    <>
+                      <h4>Autotrade settings</h4>
+                      <Row>
+                        <Col md="3">
+                          <SettingsInput
+                            value={settings.balance_to_use}
+                            name={"balance_to_use"}
+                            label={"Balanace to use"}
+                            handleChange={handleInput}
+                          />
+                        </Col>
+                        <Col md="3">
+                          <SettingsInput
+                            value={settings.take_profit}
+                            name={"take_profit"}
+                            label={"Take profit"}
+                            handleChange={handleInput}
+                          />
+                        </Col>
+                        <Col md="3">
+                          <SettingsInput
+                            value={settings.trailling_deviation}
+                            name={"trailling_deviation"}
+                            label={"Trailling deviation"}
+                            handleChange={handleInput}
+                          />
+                        </Col>
+                        <Col md="3">
+                          <SettingsInput
+                            value={settings.stop_loss}
+                            name={"stop_loss"}
+                            label={"Stop loss"}
+                            handleChange={handleInput}
+                          />
+                        </Col>
+                      </Row>
+                    </>
+                  )}
                   <Row>
                     <Col>
                       <Button color="primary" onClick={saveSettings}>
@@ -137,7 +145,7 @@ export const ControllerTab = ({
                 </>
               )}
               <>
-              <h2>Blacklist</h2>
+                <h2>Blacklist</h2>
                 <Row>
                   {blacklistData && blacklistData.length > 0 && (
                     <Col md="6">
@@ -210,10 +218,18 @@ export const ControllerTab = ({
                 </Row>
                 {error && <Alert color="danger">Missing required field</Alert>}
               </>
-            </CardBody>
-          </Card>
-        </Col>
-      </Row>
+            </Col>
+            {settings.system_info && (
+              <Col md={4}>
+                <h5>Controller logs</h5>
+                {settings.system_info.map((e, i) => (
+                  <p key={i}>{e}</p>
+                ))}
+              </Col>
+            )}
+          </Row>
+        </CardBody>
+      </Card>
     </>
   );
 };

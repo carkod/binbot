@@ -5,8 +5,7 @@ from urllib.parse import urlparse
 
 import requests
 from api.apis import BinbotApi
-from api.tools.handle_error import handle_error, handle_binance_errors
-from api.tools.handle_error import jsonResp, jsonResp_message
+from api.tools.handle_error import handle_error, handle_binance_errors, jsonResp, jsonResp_message, jsonResp_error_message
 from flask import request
 from api.app import create_app
 
@@ -26,31 +25,6 @@ class Account(BinbotApi):
         exchange_info_res = requests.get(url=f'{self.exchangeinfo_url}', params=params)
         exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info
-
-    def request_data(self):
-        timestamp = int(round(tm.time() * 1000))
-        # Get data for a single crypto e.g. BTT in BNB market
-        params = {"recvWindow": self.recvWindow, "timestamp": timestamp}
-        headers = {"X-MBX-APIKEY": self.key}
-        url = self.account_url
-
-        # Prepare request for signing
-        r = requests.Request("GET", url=url, params=params, headers=headers)
-        prepped = r.prepare()
-        query_string = urlparse(prepped.url).query
-        total_params = query_string
-
-        # Generate and append signature
-        signature = hmac.new(
-            self.secret.encode("utf-8"), total_params.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        params["signature"] = signature
-
-        # Response after request
-        res = requests.get(url=url, params=params, headers=headers)
-        handle_error(res)
-        data = res.json()
-        return data
 
     def _ticker_price(self):
         url = self.ticker_price
@@ -125,6 +99,8 @@ class Account(BinbotApi):
     def get_symbol_info(self):
         pair = request.view_args["pair"]
         symbols = self._exchange_info(pair)
+        if not symbols:
+            return jsonResp_error_message("Symbol not found!")
         symbol = symbols["symbols"][0]
         if symbol:
             return jsonResp({"data": symbol})

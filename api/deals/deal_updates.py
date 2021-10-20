@@ -313,7 +313,7 @@ class DealUpdates(Deal):
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
         if qty:
-            # If for some reason, the bot has been closed already
+        # If for some reason, the bot has been closed already
             book_order = Book_Order(bot["pair"])
             price = float(book_order.matching_engine(False, qty))
 
@@ -339,14 +339,9 @@ class DealUpdates(Deal):
                 "qty": qty,
                 "price": supress_notation(price, self.price_precision),
             }
-            res = requests.post(url=self.bb_sell_order_url, json=stop_limit_order)
-            if isinstance(handle_binance_errors(res), Response):
-                error = res.json()["msg"]
-                botId = self.app.db.bots.update_one(
-                    {"_id": bot["_id"]},
-                    {"$push": {"errors": error}, "$set": {"status": "error"}},
-                )
-                return "completed"
+            res = self.bb_request(method="POST", url=self.bb_sell_order_url, payload=stop_limit_order)
+            if "error" in res:
+                return res
 
             # Append now stop_limit deal
             stop_limit_response = {
@@ -365,7 +360,7 @@ class DealUpdates(Deal):
             new_orders.append(stop_limit_response)
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
-                {"$push": {"orders": new_orders}, "$set": {"status": "loss"}},
+                {"$push": {"orders": new_orders}, "$set": {"status": "completed"}},
             )
             if not botId:
                 # Not likely to happen to remove in the future.
@@ -404,37 +399,36 @@ class DealUpdates(Deal):
             "qty": qty,
             "price": supress_notation(price, self.price_precision),
         }
-        res = requests.post(url=self.bb_sell_order_url, json=trailling_stop_loss)
-        result = handle_binance_errors(res, bot, message="Trailling stop loss")
-        if result == "errored":
-            return "completed"
-        else:
-            # Append now stop_loss deal
-            trailling_stop_loss_response = {
-                "deal_type": "stop_limit",
-                "order_id": result["orderId"],
-                "pair": result["symbol"],
-                "order_side": result["side"],
-                "order_type": result["type"],
-                "price": result["price"],
-                "qty": result["origQty"],
-                "fills": result["fills"],
-                "time_in_force": result["timeInForce"],
-                "status": result["status"],
-            }
-            bot["orders"].append(trailling_stop_loss_response)
-            self.app.db.bots.update_one(
-                {"_id": bot["_id"]},
-                {
-                    "$set": {
-                        "status": "completed",
-                        "deal.take_profit_price": res["price"],
-                        "orders": bot["orders"]
-                    },
+        res = self.bb_request(method="POST", url=self.bb_sell_order_url, payload=trailling_stop_loss)
+        if "error" in res:
+            return res
+
+        # Append now stop_loss deal
+        trailling_stop_loss_response = {
+            "deal_type": "stop_limit",
+            "order_id": res["orderId"],
+            "pair": res["symbol"],
+            "order_side": res["side"],
+            "order_type": res["type"],
+            "price": res["price"],
+            "qty": res["origQty"],
+            "fills": res["fills"],
+            "time_in_force": res["timeInForce"],
+            "status": res["status"],
+        }
+        bot["orders"].append(trailling_stop_loss_response)
+        self.app.db.bots.update_one(
+            {"_id": bot["_id"]},
+            {
+                "$set": {
+                    "status": "completed",
+                    "deal.take_profit_price": res["price"],
+                    "orders": bot["orders"]
                 },
-            )
-            self.buy_gbp_balance()
-            bot = self.app.db.bots.find_one({"_id": ObjectId(bot["_id"])})
-            msg = f'Trailling stop loss complete! {"Errors encountered" if len(bot["errors"]) > 0 else ""}'
-            bot_errors(msg, bot)
-            return "completed"
+            },
+        )
+        self.buy_gbp_balance()
+        bot = self.app.db.bots.find_one({"_id": ObjectId(bot["_id"])})
+        msg = f'Trailling stop loss complete! {"Errors encountered" if len(bot["errors"]) > 0 else ""}'
+        bot_errors(msg, bot)
+        return "completed"
