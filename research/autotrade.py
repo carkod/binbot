@@ -55,7 +55,6 @@ class Autotrade(BinbotApi):
     def run(self):
         """
         Run autotrade
-        1. Check balance, if no balance stop autotrade
         2. Create bot with given parameters from research_controller
         3. Activate bot
         """
@@ -124,7 +123,7 @@ class Autotrade(BinbotApi):
             self.handle_error(msg)
             return
 
-        res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
+        res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}", timeout=10)
         response = handle_binance_errors(res)
         if "error" in response and response["error"] == 1:
             msg = f"Not enough funds to carry out autotrade with {self.pair}"

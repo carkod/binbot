@@ -82,7 +82,7 @@ class MarketUpdates(Account):
         print(error_msg)
         if error.args[0] == "Connection to remote host was lost.":
             self.start_stream()
-        self.app.db.research_controller.update_one({"_id": "settings"}, {"$push": { "error": error_msg }})
+        self.app.db.research_controller.update_one({"_id": "settings"}, {"$push": { "system_logs": error_msg }})
 
     def on_message(self, ws, message):
         json_response = json.loads(message)

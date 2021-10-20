@@ -356,11 +356,10 @@ class DealUpdates(Deal):
                 "time_in_force": res["timeInForce"],
                 "status": res["status"],
             }
-            new_orders = bot["orders"]
-            new_orders.append(stop_limit_response)
+            self.active_bot["orders"].append(stop_limit_response)
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
-                {"$push": {"orders": new_orders}, "$set": {"status": "completed"}},
+                {"$push": {"orders": stop_limit_response}, "$set": {"status": "completed"}},
             )
             if not botId:
                 # Not likely to happen to remove in the future.

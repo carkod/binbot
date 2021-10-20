@@ -41,6 +41,12 @@ settings = db.research_controller.find_one({"_id": "settings"})
 if settings:
     interval = settings["candlestick_interval"]
 
+
+def blacklist_coin(pair, msg):
+    res = requests.post(url=binbot_api.bb_blacklist_url, json={"pair": pair, "reason": msg })
+    result = handle_binance_errors(res)
+    return result
+
 def _send_msg(msg):
     """
     Send message with telegram bot
@@ -76,13 +82,20 @@ def start_stream(previous_ws=None):
     if previous_ws:
         previous_ws.close()
     raw_symbols = binbot_api._ticker_price()
+
+    # for item in raw_symbols:
+    #     if any(s in item["symbol"] for s in skipped_fiat_currencies):
+    #         blacklist_coin(item["symbol"], "Fiat coin or Margin trading")
+
     blacklist_data = list(db.blacklist.find())
     black_list = [x["pair"] for x in blacklist_data]
     markets = set([item["symbol"] for item in raw_symbols])
     subtract_list = set(black_list)
     list_markets = markets - subtract_list
+
+
     params = []
-    for market in list(list_markets):
+    for market in list_markets:
         params.append(f"{market.lower()}@kline_{interval}")
 
     stream_1 = params[:max_request]
@@ -139,11 +152,6 @@ def on_message(ws, message):
     else:
         print(f"Error: {response}")
 
-def blacklist_coin(pair, msg):
-    res = requests.post(url=binbot_api.bb_blacklist_url, json={"pair": pair, "reason": msg })
-    result = handle_binance_errors(res)
-    return result
-
 
 def process_kline_stream(result, ws):
     """
@@ -192,9 +200,7 @@ def process_kline_stream(result, ws):
                     msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Amplitude {supress_notation(amplitude, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
             if (
-                # BRL cannot be transformed by coinbase
-                not any([x in symbol for x in ["USD", "DOWN", "EUR", "AUD", "TRY", "BRL", "RUB"]])
-                and float(close_price) > float(open_price)
+                float(close_price) > float(open_price)
                 # and spread > 0.1
                 and (
                     close_price > ma_7[len(ma_7) - 1]
@@ -257,8 +263,9 @@ def process_kline_stream(result, ws):
 
                 # if autrotrade enabled and it's not an already active bot
                 # this avoids running too many useless bots
-                bots_res = requests.get(url=binbot_api.bb_controller_url)
+                bots_res = requests.get(url=binbot_api.bb_bot_url, params={"status": "active"})
                 active_bots = handle_binance_errors(bots_res)["data"]
+                active_symbols = [bot["pair"] for bot in active_bots]
 
                 # Check balance to avoid failed autotrades
                 check_balance_res = requests.get(url=binbot_api.bb_balance_estimate_url)

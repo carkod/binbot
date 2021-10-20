@@ -47,22 +47,7 @@ class BinanceApi:
     deposit_address_url = f"{BASE}/wapi/v3/depositAddress.html"
 
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
-
-    def _dispatch_request(self, http_method):
-        """
-        Prepare for signed request
-        """
-        session = Session()
-        session.headers.update({
-            'Content-Type': 'application/json;charset=utf-8',
-            'X-MBX-APIKEY': self.key
-        })
-        return {
-            'GET': session.get,
-            'DELETE': session.delete,
-            'PUT': session.put,
-            'POST': session.post,
-        }.get(http_method, 'GET')
+    account_snapshot_url = f"{BASE}/sapi/v1/accountSnapshot"
     
     def get_server_time(self):
         data = self.request(url=self.server_time_url)
@@ -72,13 +57,18 @@ class BinanceApi:
         """
         USER_DATA, TRADE signed requests
         """
+        session = Session()
         query_string = urlencode(payload, True)
         timestamp = self.get_server_time()
+        session.headers.update({
+            'Content-Type': 'application/json',
+            'X-MBX-APIKEY': self.key
+        })
 
         if query_string:
-            query_string = f'{query_string}&timestamp={timestamp}&recvWindow={self.recvWindow}'
+            query_string = f'{query_string}&recvWindow={self.recvWindow}&timestamp={timestamp}'
         else:
-            query_string = f'timestamp={timestamp}&recvWindow={self.recvWindow}'
+            query_string = f'recvWindow={self.recvWindow}&timestamp={timestamp}'
 
         signature = hmac.new(
             self.secret.encode("utf-8"),
@@ -86,13 +76,9 @@ class BinanceApi:
             hashlib.sha256,
         ).hexdigest()
         url = f'{url}?{query_string}&signature={signature}'
-        params = {
-            "url": url,
-            "params": {}
-        }
-        res = self._dispatch_request(method)(**params)
-        response = handle_binance_errors(res)
-        return response
+        res = session.request(method, url=url)
+        data = handle_binance_errors(res)
+        return data
 
     def request(self, url, method="GET", params=None):
         """

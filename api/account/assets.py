@@ -183,13 +183,15 @@ class Assets(Account):
             if b["asset"] in ["USD", "BTC", "BNB", "ETH", "XRP"]:
                 qty = self._check_locked(b)
                 rate = self.get_ticker_price(f'{b["asset"]}GBP')
-                total_gbp += float(qty) / float(rate)
+                total_gbp += float(qty) * float(rate)
             elif "GBP" in b["asset"]:
                 total_gbp += self._check_locked(b)
             else:
-                # BTC and ALT markets
-                symbol = self.find_market(b["asset"])
-                if not symbol:
+                try:
+                    # BTC and ALT markets
+                    symbol = self.find_market(b["asset"])
+                except InvalidSymbol:
+                    print(InvalidSymbol(b["asset"]))
                     # Some coins like NFT are air dropped and cannot be traded
                     break
                 market = self.find_quoteAsset(symbol)
@@ -257,40 +259,66 @@ class Assets(Account):
         rate = 0
         for b in balances["data"]:
             # Only tether coins for hedging
-            if "USD" in b["asset"]:
-
+            if b["asset"] in ["USD", "BTC", "BNB", "ETH", "XRP"]:
                 qty = self._check_locked(b)
-                rate = self.coinbase_api.get_conversion(current_time, "BTC", fiat)
-                total_gbp += float(qty) / float(rate)
+                rate = self.get_ticker_price(f'{b["asset"]}GBP')
+                total_gbp += float(qty) * float(rate)
             elif "GBP" in b["asset"]:
                 total_gbp += self._check_locked(b)
-            elif "BTC" in b["asset"]:
-                qty = self._check_locked(b)
-                rate = self.get_ticker_price("BTCGBP")
-                total_gbp += float(qty) / float(rate)
             else:
                 # BTC and ALT markets
                 try:
                     symbol = self.find_market(b["asset"])
-                    market = self.find_quoteAsset(symbol)
-                    rate = self.get_ticker_price(symbol)
-                    qty = self._check_locked(b)
-                    total = float(qty) * float(rate)
                 except InvalidSymbol:
-                    if b["asset"] == "NFT":
-                        break
-                    qty = self._check_locked(b)
-                    total = float(qty) / float(rate)
-                    pass
+                    # Some coins like NFT are air dropped and cannot be traded
+                    break
+                market = self.find_quoteAsset(symbol)
+                rate = self.get_ticker_price(symbol)
+                qty = self._check_locked(b)
+                total = float(qty) * float(rate)
+                if market == "BNB":
+                    gbp_rate = self.get_ticker_price("BNBGBP")
+                else:
+                    gbp_rate = self.get_ticker_price(f"{symbol}GBP")
 
-                total_gbp += float(total) * float(rate)
+                total_gbp += float(total) * float(gbp_rate)
 
         balance = {
-            "balances": balances,
+            "balances": balances["data"],
             "estimated_total_gbp": total_gbp,
         }
         if balance:
             resp = jsonResp({"data": balance})
+        else:
+            resp = jsonResp({"data": [], "error": 1})
+        return resp
+    
+    def balance_series(self, fiat="GBP", start_time=None, end_time=None, limit=5):
+        """
+        Get series for graph.
+
+        This endpoint uses high weight: 2400
+        it will be easily flagged by binance
+        """
+        
+        snapshot_account_data = self.signed_request(url=self.account_snapshot_url, payload={"type": "SPOT"})
+        balances = []
+        for datapoint in snapshot_account_data["snapshotVos"]:
+            
+
+            fiat_rate = self.get_ticker_price(f'BTC{fiat}')
+            total_fiat = float(datapoint["data"]["totalAssetOfBtc"]) * float(fiat_rate)
+
+            balance = {
+                "update_time": datapoint["updateTime"],
+                "balances": datapoint["data"]["balances"],
+                "total_btc": datapoint["data"]["totalAssetOfBtc"],
+                "total_fiat": total_fiat,
+            }
+            balances.append(balance)
+
+        if balance:
+            resp = jsonResp({"data": balances})
         else:
             resp = jsonResp({"data": [], "error": 1})
         return resp

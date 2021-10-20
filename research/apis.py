@@ -1,8 +1,12 @@
 from decimal import Decimal
-from requests import get
+from requests import get, Session
 from utils import handle_binance_errors
 import os
 from datetime import datetime
+from urllib.parse import urlencode, urlparse
+import hmac
+import hashlib
+
 class BinanceApi:
     """
     Binance Api URLs
@@ -15,6 +19,7 @@ class BinanceApi:
     recvWindow = 5000
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
+    server_time_url = f'{BASE}/api/v3/time'
     account_url = f"{BASE}/api/v3/account"
     exchangeinfo_url = f"{BASE}/api/v3/exchangeInfo"
     ticker_price = f"{BASE}/api/v3/ticker/price"
@@ -37,7 +42,39 @@ class BinanceApi:
     deposit_address_url = f"{BASE}/wapi/v3/depositAddress.html"
 
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
+    account_snapshot_url = f"{BASE}/sapi/v1/accountSnapshot"
 
+    def get_server_time(self):
+        response = get(url=self.server_time_url)
+        data = handle_binance_errors(response)
+        return data["serverTime"]
+
+    def signed_request(self, url, method="GET", payload={}):
+        """
+        USER_DATA, TRADE signed requests
+        """
+        session = Session()
+        query_string = urlencode(payload, True)
+        timestamp = self.get_server_time()
+        session.headers.update({
+            'Content-Type': 'application/json',
+            'X-MBX-APIKEY': self.key
+        })
+
+        if query_string:
+            query_string = f'{query_string}&recvWindow={self.recvWindow}&timestamp={timestamp}'
+        else:
+            query_string = f'recvWindow={self.recvWindow}&timestamp={timestamp}'
+
+        signature = hmac.new(
+            self.secret.encode("utf-8"),
+            query_string.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        url = f'{url}?{query_string}&signature={signature}'
+        res = session.request(method, url=url)
+        data = handle_binance_errors(res)
+        return data
 
     def _exchange_info(self, symbol=None):
         """
@@ -106,7 +143,7 @@ class BinanceApi:
         min_notional_filter = next(
             (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
         )
-        min_qty = (float(qty) * float(price)) > float(min_notional_filter["minNotional"])
+        min_qty = float(qty) > float(min_notional_filter["minNotional"])
         return min_qty
     
     def find_baseAsset(self, symbol):
@@ -152,6 +189,7 @@ class BinbotApi(BinanceApi):
     # balances
     bb_balance_url = f"{bb_base_url}/account/balance/raw"
     bb_balance_estimate_url = f"{bb_base_url}/account/balance/estimate"
+    bb_balance_series_url = f"{bb_base_url}/account/balance/series"
 
     
     # research

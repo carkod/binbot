@@ -134,7 +134,7 @@ class Deal(Account):
         }
         check_last_order_res = self.signed_request(url=self.all_orders_url, payload=params)
         # If order not completed, retry
-        if tries < 5 and "status" in check_last_order_res[0] and (check_last_order_res["status"] not in ["FILLED", "CANCELED", "REJECTED", "EXPIRED"]):
+        if tries < 5 and "status" in check_last_order_res[0] and (check_last_order_res[0]["status"] not in ["FILLED", "CANCELED", "REJECTED", "EXPIRED"]):
             sleep(5)
             tries += 1
             self.buy_gbp_balance()
