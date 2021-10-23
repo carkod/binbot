@@ -64,6 +64,10 @@ class ResearchSignals(BinbotApi):
         self.telegram_bot.send_msg(msg)
         return
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> Refactor research  into class obj
     def _run_streams(self, stream, index):
         string_params = "/".join(stream)
         url = f"{self.WS_BASE}{string_params}"
