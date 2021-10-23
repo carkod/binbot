@@ -8,6 +8,7 @@ from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
 from flask import Response, g
+from pymongo.errors import WriteError
 
 class MarketUpdates(Account):
     """
@@ -82,7 +83,6 @@ class MarketUpdates(Account):
         print(error_msg)
         if error.args[0] == "Connection to remote host was lost.":
             self.start_stream()
-        self.app.db.research_controller.update_one({"_id": "settings"}, {"$push": { "system_logs": error_msg }})
 
     def on_message(self, ws, message):
         json_response = json.loads(message)

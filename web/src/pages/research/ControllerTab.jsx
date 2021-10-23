@@ -64,7 +64,7 @@ export const ControllerTab = ({
         </CardHeader>
         <CardBody>
           <Row>
-            <Col md={settings.system_logs ? "8" : "12"} sm="12">
+            <Col md={"12"} sm="12">
               <h2>Global settings</h2>
               {settings && (
                 <>
@@ -219,14 +219,14 @@ export const ControllerTab = ({
                 {error && <Alert color="danger">Missing required field</Alert>}
               </>
             </Col>
-            {settings.system_logs && (
+            {/* {settings.system_logs !== undefined && (
               <Col md={4}>
                 <h5>Controller logs</h5>
                 {settings.system_logs.map((e, i) => (
                   <p key={i}>{e}</p>
                 ))}
               </Col>
-            )}
+            )} */}
           </Row>
         </CardBody>
       </Card>
