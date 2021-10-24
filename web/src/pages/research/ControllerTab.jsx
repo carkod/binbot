@@ -38,6 +38,7 @@ export const ControllerTab = ({
   handleInput,
   saveSettings,
   handleBlacklist,
+  toggleTrailling
 }) => {
   const [addBlacklist, setAddBlacklist] = useImmer({ reason: "", pair: "" });
   const [removeBlacklist, setRemoveBlacklist] = useState("");
@@ -102,35 +103,54 @@ export const ControllerTab = ({
                           <SettingsInput
                             value={settings.balance_to_use}
                             name={"balance_to_use"}
-                            label={"Balanace to use"}
+                            label={"Balance to use"}
                             handleChange={handleInput}
                           />
                         </Col>
-                        <Col md="3">
-                          <SettingsInput
-                            value={settings.take_profit}
-                            name={"take_profit"}
-                            label={"Take profit"}
-                            handleChange={handleInput}
-                          />
-                        </Col>
-                        <Col md="3">
-                          <SettingsInput
-                            value={settings.trailling_deviation}
-                            name={"trailling_deviation"}
-                            label={"Trailling deviation"}
-                            handleChange={handleInput}
-                          />
-                        </Col>
-                        <Col md="3">
-                          <SettingsInput
-                            value={settings.stop_loss}
-                            name={"stop_loss"}
-                            label={"Stop loss"}
-                            handleChange={handleInput}
-                          />
+                        <Col md="6" sm="12">
+                          <label>Trailling</label>
+                          <br />
+                          <Button
+                            color={
+                              settings.trailling === "true"
+                                ? "success"
+                                : "secondary"
+                            }
+                            name="trailling"
+                            onClick={toggleTrailling}
+                          >
+                            {settings.trailling === "true" ? "On" : "Off"}
+                          </Button>
                         </Col>
                       </Row>
+                      {settings.trailling === "true" && (
+                        <Row>
+                          <Col md="3">
+                            <SettingsInput
+                              value={settings.take_profit}
+                              name={"take_profit"}
+                              label={"Take profit"}
+                              handleChange={handleInput}
+                            />
+                          </Col>
+                          <Col md="3">
+                            <SettingsInput
+                              value={settings.trailling_deviation}
+                              name={"trailling_deviation"}
+                              label={"Trailling deviation"}
+                              handleChange={handleInput}
+                            />
+                          </Col>
+                          <Col md="3">
+                            <SettingsInput
+                              value={settings.stop_loss}
+                              name={"stop_loss"}
+                              label={"Stop loss"}
+                              handleChange={handleInput}
+                            />
+                          </Col>
+                        </Row>
+                      )}
                     </>
                   )}
                   <Row>
