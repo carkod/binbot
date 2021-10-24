@@ -1,13 +1,17 @@
 from decimal import Decimal
-from bson.objectid import ObjectId
 
 import requests
 from api.app import create_app
 from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import bot_errors, handle_binance_errors
-from api.tools.handle_error import jsonResp, jsonResp_message
+from api.tools.handle_error import (
+    bot_errors,
+    handle_binance_errors,
+    jsonResp,
+    jsonResp_message,
+)
 from api.tools.round_numbers import round_numbers, supress_notation
+from bson.objectid import ObjectId
 from flask import Response
 
 
@@ -50,7 +54,7 @@ class DealUpdates(Deal):
             .as_tuple()
             .exponent
         )
-    
+
     def _compute_qty(self, pair):
         """
         Helper function to compute buy_price.
@@ -104,7 +108,9 @@ class DealUpdates(Deal):
                         "[Take profit order error] Quantity too low"
                     )
                 if new_tp_price * qty <= float(self.MIN_NOTIONAL):
-                    return jsonResp_message("[Take profit order error] Price x Quantity too low")
+                    return jsonResp_message(
+                        "[Take profit order error] Price x Quantity too low"
+                    )
 
                 new_tp_order = {
                     "pair": bot["pair"],
@@ -140,14 +146,14 @@ class DealUpdates(Deal):
                 # Append now new take_profit deal
                 new_deals.append(take_profit_order)
                 self.active_bot["orders"] = new_deals
-                botId = self.app.db.bots.update_one(
+                bot_id = self.app.db.bots.update_one(
                     {"_id": self.active_bot["_id"]},
                     {"$push": {"orders": take_profit_order}},
                 )
-                if not botId:
-                    print(f"Failed to update take_profit deal: {botId}")
+                if not bot_id:
+                    print(f"Failed to update take_profit deal: {bot_id}")
                 else:
-                    print(f"New take_profit deal successfully updated: {botId}")
+                    print(f"New take_profit deal successfully updated: {bot_id}")
                 return
 
     def so_update_deal(self, so_index):
@@ -289,7 +295,7 @@ class DealUpdates(Deal):
                     "safety_orders": self.active_bot["safety_orders"],
                     "orders": self.active_bot["orders"],
                 },
-                "$inc": {"deal.comission": commission},
+                "$inc": {"total_commission": commission},
             },
         )
         if not botId:
@@ -313,7 +319,7 @@ class DealUpdates(Deal):
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
         if qty:
-        # If for some reason, the bot has been closed already
+            # If for some reason, the bot has been closed already
             book_order = Book_Order(bot["pair"])
             price = float(book_order.matching_engine(False, qty))
 
@@ -339,7 +345,9 @@ class DealUpdates(Deal):
                 "qty": qty,
                 "price": supress_notation(price, self.price_precision),
             }
-            res = self.bb_request(method="POST", url=self.bb_sell_order_url, payload=stop_limit_order)
+            res = self.bb_request(
+                method="POST", url=self.bb_sell_order_url, payload=stop_limit_order
+            )
             if "error" in res:
                 return res
 
@@ -356,10 +364,18 @@ class DealUpdates(Deal):
                 "time_in_force": res["timeInForce"],
                 "status": res["status"],
             }
+            commission = 0
+            for chunk in res["fills"]:
+                commission += float(chunk["commission"])
+
             self.active_bot["orders"].append(stop_limit_response)
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
-                {"$push": {"orders": stop_limit_response}, "$set": {"status": "completed"}},
+                {
+                    "$push": {"orders": stop_limit_response},
+                    "$inc": {"total_commission": commission},
+                    "$set": {"status": "completed"},
+                },
             )
             if not botId:
                 # Not likely to happen to remove in the future.
@@ -369,17 +385,19 @@ class DealUpdates(Deal):
                 msg = f"New stop_limit deal successfully updated"
                 bot_errors(msg, bot)
             return "completed"
-            
+
         else:
             asset = self.find_baseAsset(bot["pair"])
             buy_gbp_result = self.buy_gbp_balance()
             error = f'No {asset} found in balance. Bot might have been closed already. GBP balance buy back {"successful" if buy_gbp_result else "failed"}'
             botId = self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
-                {"$push": {"errors": error, "errors": error}, "$set": {"status": "error"}},
+                {
+                    "$push": {"errors": error, "errors": error},
+                    "$set": {"status": "error"},
+                },
             )
             return "completed"
-
 
     def trailling_stop_loss(self, price):
         """
@@ -398,7 +416,9 @@ class DealUpdates(Deal):
             "qty": qty,
             "price": supress_notation(price, self.price_precision),
         }
-        res = self.bb_request(method="POST", url=self.bb_sell_order_url, payload=trailling_stop_loss)
+        res = self.bb_request(
+            method="POST", url=self.bb_sell_order_url, payload=trailling_stop_loss
+        )
         if "error" in res:
             return res
 
@@ -415,6 +435,11 @@ class DealUpdates(Deal):
             "time_in_force": res["timeInForce"],
             "status": res["status"],
         }
+
+        commission = 0
+        for chunk in res["fills"]:
+            commission += float(chunk["commission"])
+
         bot["orders"].append(trailling_stop_loss_response)
         self.app.db.bots.update_one(
             {"_id": bot["_id"]},
@@ -422,8 +447,9 @@ class DealUpdates(Deal):
                 "$set": {
                     "status": "completed",
                     "deal.take_profit_price": res["price"],
-                    "orders": bot["orders"]
+                    "orders": bot["orders"],
                 },
+                "$inc": {"total_commission": commission},
             },
         )
         self.buy_gbp_balance()

@@ -4,7 +4,13 @@ from time import sleep
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp, jsonResp_error_message, jsonResp_message
+from api.tools.handle_error import (
+    bot_errors,
+    handle_binance_errors,
+    jsonResp,
+    jsonResp_error_message,
+    jsonResp_message,
+)
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from flask import current_app as app
@@ -53,14 +59,14 @@ class Deal(Account):
             "current_price": "",
             "take_profit_price": "",
             "so_prices": [],
-            "commission": 0,
         }
-        self.initial_comission = 0
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
         data = self.bb_request(url=self.bb_balance_url)
-        symbol_balance = next((x["free"] for x in data["data"] if x["asset"] == symbol), None)
+        symbol_balance = next(
+            (x["free"] for x in data["data"] if x["asset"] == symbol), None
+        )
         return symbol_balance
 
     def sell_gbp_balance(self):
@@ -97,18 +103,30 @@ class Deal(Account):
                 "qty": qty,
                 "price": supress_notation(price, price_precision),
             }
-            res = self.bb_request(method="POST", url=self.bb_buy_order_url, payload=order)
+            res = self.bb_request(
+                method="POST", url=self.bb_buy_order_url, payload=order
+            )
         else:
             # Matching engine failed - market order
             order = {
                 "pair": new_pair,
                 "qty": qty,
             }
-            res = self.bb_request(method="POST", url=self.bb_buy_market_order_url, payload=order)
+            res = self.bb_request(
+                method="POST", url=self.bb_buy_market_order_url, payload=order
+            )
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
             return res
+
+        commission = 0
+        for chunk in res["fills"]:
+            commission += float(chunk["commission"])
+
+        app.db.bots.update_one(
+            {"_id": self.active_bot["_id"]}, {"$inc": {"total_commission": commission}}
+        )
 
         return
 
@@ -142,30 +160,41 @@ class Deal(Account):
             qty_precision,
         )
 
+        if qty == 0.00:
+            error = f"No balance to buy. Bot probably closed, and already sold balance"
+            bot_errors(error, self.active_bot)
+
         if price:
             order = {
                 "pair": new_pair,
                 "qty": qty,
                 "price": supress_notation(price, price_precision),
             }
-            res = self.bb_request(method="POST", url=self.bb_buy_order_url, payload=order)
+            res = self.bb_request(
+                method="POST", url=self.bb_buy_order_url, payload=order
+            )
         else:
             # Matching engine failed - market order
             order = {
                 "pair": new_pair,
                 "qty": qty,
             }
-            res = self.bb_request(method="POST", url=self.bb_sell_market_order_url, payload=order)
-        
+            res = self.bb_request(
+                method="POST", url=self.bb_sell_market_order_url, payload=order
+            )
+
         # If error pass it up to parent function, can't continue
         if "error" in res:
             return res
 
-        if qty == 0.00:
-            # Fix repeated action
-            error = f"No balance to buy. Bot probably closed, and already sold balance"
-            handle_binance_errors(res, self.active_bot, message=error)
-        
+        commission = 0
+        for chunk in res["fills"]:
+            commission += float(chunk["commission"])
+
+        app.db.bots.update_one(
+            {"_id": self.active_bot["_id"]}, {"$inc": {"total_commission": commission}}
+        )
+
         return
 
     def base_order(self):
@@ -192,23 +221,24 @@ class Deal(Account):
             self.qty_precision,
         )
         price = float(book_order.matching_engine(False, qty))
-        self.price = price
 
         if price:
-            # Cheaper commissions - limit order
             order = {
                 "pair": pair,
                 "qty": qty,
                 "price": supress_notation(price, self.price_precision),
             }
-            res = self.bb_request(method="POST", url=self.bb_buy_order_url, payload=order)
+            res = self.bb_request(
+                method="POST", url=self.bb_buy_order_url, payload=order
+            )
         else:
-            # Matching engine failed - market order
             order = {
                 "pair": pair,
                 "qty": qty,
             }
-            res = self.bb_request(method="POST", url=self.bb_buy_market_order_url, payload=order)
+            res = self.bb_request(
+                method="POST", url=self.bb_buy_market_order_url, payload=order
+            )
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
@@ -227,6 +257,10 @@ class Deal(Account):
             "time_in_force": res["timeInForce"],
             "status": res["status"],
         }
+
+        commission = 0
+        for chunk in res["fills"]:
+            commission += float(chunk["commission"])
 
         tp_price = float(order["price"]) * 1 + (
             float(self.active_bot["take_profit"]) / 100
@@ -249,12 +283,14 @@ class Deal(Account):
             "current_price": self.get_ticker_price(res["symbol"]),
             "take_profit_price": tp_price,
             "safety_order_prices": so_prices,
-            "commission": 0,
         }
 
         botId = app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
-            {"$set": {"deal": deal}, "$push": {"orders": base_deal}},
+            {
+                "$set": {"deal": deal, "total_commission": commission},
+                "$push": {"orders": base_deal},
+            },
         )
         if not botId:
             resp = jsonResp(
@@ -307,11 +343,16 @@ class Deal(Account):
             "time_in_force": res["timeInForce"],
             "status": res["status"],
         }
+        commission = 0
+        for chunk in res["fills"]:
+            commission += float(chunk["commission"])
+
         self.active_bot["orders"].append(take_profit_order)
         botId = app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
             {
                 "$set": {"deal.take_profit_price": order["price"]},
+                "$inc": {"total_commission": commission},
                 "$push": {"orders": take_profit_order},
             },
         )
@@ -443,26 +484,30 @@ class Deal(Account):
                     "qty": qty,
                     "price": supress_notation(price, self.price_precision),
                 }
-                res = self.bb_request(method="POST", url=self.bb_sell_order_url, payload=order)
+                res = self.bb_request(
+                    method="POST", url=self.bb_sell_order_url, payload=order
+                )
             else:
                 order = {
                     "pair": pair,
                     "qty": qty,
                 }
-                res = self.bb_request(method="POST", url=self.bb_sell_market_order_url, payload=order)
-            
+                res = self.bb_request(
+                    method="POST", url=self.bb_sell_market_order_url, payload=order
+                )
+
             # Continue even if there are errors
             handle_binance_errors(res)
 
         # Hedge with GBP and complete bot
         buy_gbp_result = self.buy_gbp_balance()
         if not isinstance(buy_gbp_result, Response):
-            botId = app.db.bots.find_one_and_update(
+            bot_id = app.db.bots.find_one_and_update(
                 {"pair": pair}, {"$set": {"status": "completed"}}
             )
-            if not botId:
+            if not bot_id:
                 app.db.bots.find_one_and_update(
                     {"pair": pair},
-                    {"$set": {"status": "errors"}, "push": {"errors": botId}},
+                    {"$set": {"status": "errors"}, "push": {"errors": bot_id}},
                 )
         return
