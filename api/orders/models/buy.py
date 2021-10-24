@@ -23,23 +23,22 @@ class BuyOrder(BinanceApi):
         self.timeInForce = EnumDefinitions.time_in_force[0]
 
     def post_order_limit(self):
-        data = request.json
-        symbol = data["pair"]
-        qty = data["qty"]
-        price = data["price"]
+        symbol = request.json.get("pair")
+        qty = request.json.get("qty")
+        price = request.json.get("price")
 
         # Limit order
         order_type = EnumDefinitions.order_types[0]
 
         # Get data for a single crypto e.g. BTT in BNB market
-        payload = [
-            ("symbol", symbol),
-            ("side", self.side),
-            ("type", order_type),
-            ("timeInForce", self.timeInForce),
-            ("price", price),
-            ("quantity", qty),
-        ]
+        payload = {
+            "symbol": symbol,
+            "side": self.side,
+            "type": order_type,
+            "timeInForce": self.timeInForce,
+            "price": price,
+            "quantity": qty,
+        }
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data
 
@@ -51,13 +50,13 @@ class BuyOrder(BinanceApi):
         order_type = EnumDefinitions.order_types[1]
 
         # Get data for a single crypto e.g. BTT in BNB market
-        payload = [
-            ("symbol", symbol),
-            ("side", self.side),
-            ("type", order_type),
-            ("timeInForce", self.timeInForce),
-            ("quantity", qty),
-        ]
+        payload = {
+            "symbol": symbol,
+            "side": self.side,
+            "type": order_type,
+            "timeInForce": self.timeInForce,
+            "quantity": qty,
+        }
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data
 
@@ -71,15 +70,15 @@ class BuyOrder(BinanceApi):
         order_type = EnumDefinitions.order_types[5]
 
         # Get data for a single crypto e.g. BTT in BNB market
-        payload = [
-            ("symbol", symbol),
-            ("side", self.side),
-            ("type", order_type),
-            ("timeInForce", self.timeInForce),
-            ("price", price),
-            ("stopPrice", stop_price),
-            ("quantity", qty),
-        ]
+        payload = {
+            "symbol": symbol,
+            "side": self.side,
+            "type": order_type,
+            "timeInForce": self.timeInForce,
+            "price": price,
+            "stopPrice": stop_price,
+            "quantity": qty,
+        }
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data
 
@@ -93,15 +92,15 @@ class BuyOrder(BinanceApi):
         order_type = EnumDefinitions.order_types[3]
 
         # Get data for a single crypto e.g. BTT in BNB market
-        payload = [
-            ("symbol", symbol),
-            ("side", self.side),
-            ("type", order_type),
-            ("timeInForce", self.timeInForce),
-            ("price", price),
-            ("stopPrice", stop_price),
-            ("quantity", qty),
-            ("newOrderRespType", "FULL"),
-        ]
+        payload = {
+            "symbol": symbol,
+            "side": self.side,
+            "type": order_type,
+            "timeInForce": self.timeInForce,
+            "price": price,
+            "stopPrice": stop_price,
+            "quantity": qty,
+            "newOrderRespType": "FULL",
+        }
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data

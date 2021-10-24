@@ -38,6 +38,7 @@ export const ControllerTab = ({
   handleInput,
   saveSettings,
   handleBlacklist,
+  toggleTrailling
 }) => {
   const [addBlacklist, setAddBlacklist] = useImmer({ reason: "", pair: "" });
   const [removeBlacklist, setRemoveBlacklist] = useState("");
@@ -64,7 +65,7 @@ export const ControllerTab = ({
         </CardHeader>
         <CardBody>
           <Row>
-            <Col md={settings.system_info ? "8" : "12"} sm="12">
+            <Col md={"12"} sm="12">
               <h2>Global settings</h2>
               {settings && (
                 <>
@@ -102,35 +103,54 @@ export const ControllerTab = ({
                           <SettingsInput
                             value={settings.balance_to_use}
                             name={"balance_to_use"}
-                            label={"Balanace to use"}
+                            label={"Balance to use"}
                             handleChange={handleInput}
                           />
                         </Col>
-                        <Col md="3">
-                          <SettingsInput
-                            value={settings.take_profit}
-                            name={"take_profit"}
-                            label={"Take profit"}
-                            handleChange={handleInput}
-                          />
-                        </Col>
-                        <Col md="3">
-                          <SettingsInput
-                            value={settings.trailling_deviation}
-                            name={"trailling_deviation"}
-                            label={"Trailling deviation"}
-                            handleChange={handleInput}
-                          />
-                        </Col>
-                        <Col md="3">
-                          <SettingsInput
-                            value={settings.stop_loss}
-                            name={"stop_loss"}
-                            label={"Stop loss"}
-                            handleChange={handleInput}
-                          />
+                        <Col md="6" sm="12">
+                          <label>Trailling</label>
+                          <br />
+                          <Button
+                            color={
+                              settings.trailling === "true"
+                                ? "success"
+                                : "secondary"
+                            }
+                            name="trailling"
+                            onClick={toggleTrailling}
+                          >
+                            {settings.trailling === "true" ? "On" : "Off"}
+                          </Button>
                         </Col>
                       </Row>
+                      {settings.trailling === "true" && (
+                        <Row>
+                          <Col md="3">
+                            <SettingsInput
+                              value={settings.take_profit}
+                              name={"take_profit"}
+                              label={"Take profit"}
+                              handleChange={handleInput}
+                            />
+                          </Col>
+                          <Col md="3">
+                            <SettingsInput
+                              value={settings.trailling_deviation}
+                              name={"trailling_deviation"}
+                              label={"Trailling deviation"}
+                              handleChange={handleInput}
+                            />
+                          </Col>
+                          <Col md="3">
+                            <SettingsInput
+                              value={settings.stop_loss}
+                              name={"stop_loss"}
+                              label={"Stop loss"}
+                              handleChange={handleInput}
+                            />
+                          </Col>
+                        </Row>
+                      )}
                     </>
                   )}
                   <Row>
@@ -219,14 +239,14 @@ export const ControllerTab = ({
                 {error && <Alert color="danger">Missing required field</Alert>}
               </>
             </Col>
-            {settings.system_info && (
+            {/* {settings.system_logs !== undefined && (
               <Col md={4}>
                 <h5>Controller logs</h5>
-                {settings.system_info.map((e, i) => (
+                {settings.system_logs.map((e, i) => (
                   <p key={i}>{e}</p>
                 ))}
               </Col>
-            )}
+            )} */}
           </Row>
         </CardBody>
       </Card>

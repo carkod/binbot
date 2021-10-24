@@ -37,14 +37,14 @@ class SellOrder(BinanceApi):
         order_type = EnumDefinitions.order_types[0]
 
         # Get data for a single crypto e.g. BTT in BNB market
-        payload = [
-            ("symbol", symbol),
-            ("side", self.side),
-            ("type", order_type),
-            ("timeInForce", self.timeInForce),
-            ("price", price),
-            ("quantity", qty),
-        ]
+        payload = {
+            "symbol": symbol,
+            "side": self.side,
+            "type": order_type,
+            "timeInForce": self.timeInForce,
+            "price": price,
+            "quantity": qty,
+        }
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data
 
@@ -63,16 +63,16 @@ class SellOrder(BinanceApi):
         order_type = EnumDefinitions.order_types[5]
 
         # Get data for a single crypto e.g. BTT in BNB market
-        payload = [
-            ("symbol", symbol),
-            ("side", self.side),
-            ("type", order_type),
-            ("price", price),
-            ("stopPrice", stop_price),
-            ("quantity", qty),
-            ("timeInForce", self.timeInForce),
-            ("newOrderRespType", "FULL"),
-        ]
+        payload = {
+            "symbol": symbol,
+            "side": self.side,
+            "type": order_type,
+            "timeInForce": self.timeInForce,
+            "price": price,
+            "stopPrice": stop_price,
+            "quantity": qty,
+            "newOrderRespType": "FULL",
+        }
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data
 
@@ -91,15 +91,15 @@ class SellOrder(BinanceApi):
         order_type = EnumDefinitions.order_types[3]
 
         # Get data for a single crypto e.g. BTT in BNB market
-        payload = [
-            ("symbol", symbol),
-            ("side", self.side),
-            ("type", order_type),
-            ("price", price),
-            ("stopPrice", stop_price),
-            ("quantity", qty),
-            ("timeInForce", self.timeInForce),
-            ("newOrderRespType", "FULL"),
-        ]
+        payload = {
+            "symbol": symbol,
+            "side": self.side,
+            "type": order_type,
+            "timeInForce": self.timeInForce,
+            "price": price,
+            "stopPrice": stop_price,
+            "quantity": qty,
+            "newOrderRespType": "FULL",
+        }
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data

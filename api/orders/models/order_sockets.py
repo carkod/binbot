@@ -2,12 +2,13 @@ import json
 
 import requests
 from api.account.assets import Assets
+from api.apis import BinanceApi
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from api.deals.models import Deal
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
-from api.apis import BinanceApi
+
 
 class OrderUpdates(BinanceApi):
     def __init__(self):
@@ -20,11 +21,10 @@ class OrderUpdates(BinanceApi):
 
     def get_listenkey(self):
         # Get data for a single crypto e.g. BTT in BNB market
-        params = []
         headers = {"X-MBX-APIKEY": self.key}
 
         # Response after request
-        res = requests.post(url=self.user_data_stream, params=params, headers=headers)
+        res = requests.post(url=self.user_data_stream, headers=headers)
         handle_error(res)
         data = res.json()
         return data
@@ -34,7 +34,7 @@ class OrderUpdates(BinanceApi):
             self.listen_key = self.get_listenkey()["listenKey"]
 
         ws = WebSocketApp(
-            f'{self.streams_url}{self.listen_key}',
+            f"{self.streams_url}{self.listen_key}",
             on_open=self.on_open,
             on_error=self.on_error,
             on_close=self.close_stream,
@@ -73,6 +73,26 @@ class OrderUpdates(BinanceApi):
         order_id = result["i"]
 
         if result["X"] == "FILLED":
+            order = {
+                "symbol": result["s"],
+                "orderId": result["c"],
+                "orderListId": result["g"],
+                "clientOrderId": result["c"],
+                "price": result["p"],
+                "origQty": result["q"],
+                "executedQty": result["l"],
+                "cummulativeQuoteQty": result["z"],
+                "status": result["X"],
+                "timeInForce": result["f"],
+                "type": result["o"],
+                "side": result["S"],
+                "stopPrice": result["P"],
+                "icebergQty": result["F"],
+                "time": result["O"],
+                "updateTime": result["T"],
+                "isWorking": "true",
+                "origQuoteOrderQty": result["Q"],
+            }
             # Close successful orders
             update_tp = self.app.db.bots.find_one_and_update(
                 {
@@ -83,20 +103,16 @@ class OrderUpdates(BinanceApi):
                 {
                     "$set": {"status": "inactive", "deal.current_price": result["p"]},
                     "$inc": {"deal.commission": float(result["n"])},
-                    "$push": {"orders": result}
+                    "$push": {"orders": order},
                 },
             )
             # Else, update whatever id matches
             bot = self.app.db.bots.find_one_and_update(
-                {
-                    "orders": {
-                        "$elemMatch": {"order_id": order_id}
-                    }
-                },
+                {"orders": {"$elemMatch": {"order_id": order_id}}},
                 {
                     "$set": {"deal.current_price": result["p"]},
                     "$inc": {"deal.commission": float(result["n"])},
-                    "$push": {"orders": result}
+                    "$push": {"orders": order},
                 },
             )
             if update_tp:
@@ -123,7 +139,9 @@ class OrderUpdates(BinanceApi):
                 deal.update_take_profit(order_id)
 
         else:
-            print(f"No bot found with order client order id: {order_id}. Order status: {result['X']}")
+            print(
+                f"No bot found with order client order id: {order_id}. Order status: {result['X']}"
+            )
 
     def process_account_update(self, result):
         balance = result["B"]

@@ -54,7 +54,11 @@ class Bot(Account):
         Args:
         - archive=false
         """
-        bot = list(self.app.db.bots.find().sort([("status", 1), ("pair", 1)]))
+        params = {}
+        if request.args.get("status") == "active":
+            params["active"] = "active"
+
+        bot = list(self.app.db.bots.find(params).sort([("status", 1), ("pair", 1)]))
         if bot:
             resp = jsonResp({"data": bot})
         else:

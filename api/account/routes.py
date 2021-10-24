@@ -69,6 +69,9 @@ def ticker_24(symbol):
 def balance_estimated():
     return Assets().balance_estimate()
 
+@account_blueprint.route("/balance/series", methods=["GET"])
+def balance_series():
+    return Assets().balance_series()
 
 @account_blueprint.route("/pnl", methods=["GET"])
 def get_pnl():

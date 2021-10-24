@@ -64,10 +64,12 @@ class Book_Order(BinanceApi):
                 return None
             self.matching_engine(order_side, qty, limit_index)
         try:
-            final_qty = match_qty["price"].iloc[0]
+            match_qty["price"].iloc[0]
         except IndexError as e:
             print(e)
             print(f'Matching engine error {match_qty["price"]}')
+
+        final_qty = match_qty["price"].iloc[0]
         return final_qty
 
     def ticker_price(self):

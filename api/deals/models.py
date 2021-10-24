@@ -120,26 +120,6 @@ class Deal(Account):
         Sell whatever is in the balance e.g. Sell all BNB
         Always triggered after order completion
         """
-        tries = 0
-        if "GBP" in self.active_bot["pair"]:
-            error = f'The pair {self.active_bot["pair"]} is in the GBP market, skipping GBP hedging'
-            # No Response object, therefore using bare bot_error
-            bot_errors(error, self.active_bot, status="completed")
-            return
-
-        last_order_id = self.active_bot["orders"][len(self.active_bot["orders"]) - 1]["order_id"]
-        params = {
-            "symbol": self.active_bot["pair"],
-            "orderId": last_order_id
-        }
-        check_last_order_res = self.signed_request(url=self.all_orders_url, payload=params)
-        # If order not completed, retry
-        if tries < 5 and "status" in check_last_order_res[0] and (check_last_order_res["status"] not in ["FILLED", "CANCELED", "REJECTED", "EXPIRED"]):
-            sleep(5)
-            tries += 1
-            self.buy_gbp_balance()
-
-
         pair = self.active_bot["pair"]
         market = self.find_quoteAsset(pair)
         new_pair = f"{market}GBP"

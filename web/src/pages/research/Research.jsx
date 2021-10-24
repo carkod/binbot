@@ -218,6 +218,22 @@ class Research extends React.Component {
     this.props.getBlacklist();
   };
 
+  toggleTrailling = () => {
+    if (this.state.settings.trailling === "true") {
+      this.setState(
+        produce((draft) => {
+          draft.settings.trailling = "false"
+        })
+      );
+    } else {
+      this.setState(
+        produce((draft) => {
+          draft.settings.trailling = "true"
+        })
+      );
+    }
+  }
+
   render() {
     return (
       <>
@@ -251,6 +267,7 @@ class Research extends React.Component {
                 handleInput={this.handleSettings}
                 handleBlacklist={this.handleBlacklist}
                 saveSettings={this.saveSettings}
+                toggleTrailling={this.toggleTrailling}
               />
             </TabPane>
             <TabPane tabId="signalTab">
