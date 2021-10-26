@@ -1,16 +1,9 @@
 from decimal import Decimal
-from time import sleep
 
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import (
-    bot_errors,
-    handle_binance_errors,
-    jsonResp,
-    jsonResp_error_message,
-    jsonResp_message,
-)
+from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from flask import current_app as app
@@ -161,7 +154,7 @@ class Deal(Account):
         )
 
         if qty == 0.00:
-            error = f"No balance to buy. Bot probably closed, and already sold balance"
+            error = "No balance to buy. Bot probably closed, and already sold balance"
             bot_errors(error, self.active_bot)
 
         if price:

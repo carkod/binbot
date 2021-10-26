@@ -1,17 +1,11 @@
-import hashlib
-import hmac
 from api.account.account import Account
 from api.tools.enum_definitions import EnumDefinitions
-from api.tools.handle_error import (
-    jsonResp,
-    jsonResp_error_message,
-    jsonResp_message,
-)
+from api.tools.handle_error import (jsonResp, jsonResp_error_message,
+                                    jsonResp_message)
 from api.tools.round_numbers import round_numbers
-from flask import request, current_app
+from flask import current_app, request
 
 poll_percentage = 0
-
 
 class Orders(Account):
     def __init__(self):

@@ -1,12 +1,9 @@
 import json
-import os
 import threading
 from time import sleep, time
 
-import pandas
 import requests
 from dotenv import load_dotenv
-from pymongo import MongoClient
 from websocket import WebSocketApp
 
 from apis import BinbotApi
@@ -85,12 +82,6 @@ class ResearchSignals(BinbotApi):
         if previous_ws:
             previous_ws.close()
         raw_symbols = self._ticker_price()
-
-        if os.getenv("ENV") == "production":
-            for item in raw_symbols:
-                if any(s in item["symbol"] for s in self.skipped_fiat_currencies):
-                    self.blacklist_coin(item["symbol"], "Fiat coin or Margin trading")
-
         black_list = [x["pair"] for x in self.blacklist_data]
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
@@ -101,14 +92,14 @@ class ResearchSignals(BinbotApi):
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         stream_1 = params[: self.max_request]
-        stream_2 = params[(self.max_request + 1) :]
+        stream_2 = params[(self.max_request + 1):]
 
         self._run_streams(stream_1, 1)
         self._run_streams(stream_2, 2)
 
     def post_error(self, msg):
         res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
-        result = handle_binance_errors(res)
+        handle_binance_errors(res)
         return
 
     def on_close(self, ws, close_status_code, close_msg):
@@ -262,7 +253,7 @@ class ResearchSignals(BinbotApi):
                         self.post_error(
                             handle_binance_errors(research_controller_res)["message"]
                         )
-                        start_stream(previous_ws=ws)
+                        self.start_stream(previous_ws=ws)
                         return
 
                     # if autrotrade enabled and it's not an already active bot
@@ -280,7 +271,7 @@ class ResearchSignals(BinbotApi):
 
                     if (
                         int(self.settings["autotrade"]) == 1
-                        and symbol not in active_bots
+                        and symbol not in active_symbols
                         and balance_check > 0
                     ):
                         autotrade = Autotrade(symbol, self.settings)

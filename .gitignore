@@ -1,3 +1,11 @@
+.DS_Store
+.env.local
+.env.prod
+.env.development.local
+.env.test.local
+/.env
+.vscode/settings.json
+
 ##
 #
 # PYTHON APPS
@@ -9,6 +17,14 @@
 api/main/config/*.cfg
 .mypy_cache
 env
+mongo_data
+mongo_data.old
+mongo_db
+db.dump
+
+# Fix vscode linting bug
+.envFile
+
 ##
 #
 # REACT APPS
@@ -19,18 +35,6 @@ node_modules/
 .dockerenv
 coverage/
 build/
-mongo_data
-mongo_data.old
-mongo_db
-db.dump
-
-.DS_Store
-.env.local
-.env.prod
-.env.development.local
-.env.test.local
-/.env
-.vscode/settings.json
 
 npm-debug.log*
 yarn-debug.log*

@@ -1,9 +1,8 @@
 import math
-from time import sleep
 
 import requests
 
-from apis import BinbotApi, CoinBaseApi
+from apis import BinbotApi
 from utils import InvalidSymbol, handle_binance_errors, supress_notation
 
 

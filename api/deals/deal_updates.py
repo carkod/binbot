@@ -6,7 +6,6 @@ from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.handle_error import (
     bot_errors,
-    handle_binance_errors,
     jsonResp,
     jsonResp_message,
 )
@@ -382,7 +381,7 @@ class DealUpdates(Deal):
                 print(f"Failed to update stop_limit deal: {botId}")
             else:
                 buy_gbp_result = self.buy_gbp_balance()
-                msg = f"New stop_limit deal successfully updated"
+                msg = "New stop_limit deal successfully updated"
                 bot_errors(msg, bot)
             return "completed"
 

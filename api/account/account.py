@@ -1,8 +1,3 @@
-import hashlib
-import hmac
-import time as tm
-from urllib.parse import urlparse
-
 import requests
 from api.apis import BinbotApi
 from api.tools.handle_error import handle_error, handle_binance_errors, jsonResp, jsonResp_message, jsonResp_error_message
@@ -66,7 +61,7 @@ class Account(BinbotApi):
         e.g. BNBBTC: base asset = BTC
         """
         symbols = self._exchange_info(symbol)
-        quote_asset = market = symbols["symbols"][0]
+        quote_asset = symbols["symbols"][0]
         if quote_asset:
             quote_asset = quote_asset["quoteAsset"]
         return quote_asset
@@ -112,7 +107,7 @@ class Account(BinbotApi):
         symbols_list = [x["symbol"] for x in symbols]
         symbols_list.sort()
         return jsonResp({"data": symbols_list})
-    
+
     def get_no_cannibal_symbols(self):
         """
         Raw symbols without active bots
@@ -122,10 +117,10 @@ class Account(BinbotApi):
         active_symbols = list(self.app.db.bots.find({"status": "active"}))
 
         no_cannibal_list = [x for x in symbols_list if x not in active_symbols]
-        return jsonResp({"data": no_cannibal_list, "count": len(no_cannibal_list) })
+        return jsonResp({"data": no_cannibal_list, "count": len(no_cannibal_list)})
 
     def get_symbols(self):
-        
+
         args = {"blacklisted": False}
         project = {"market": 1, "_id": 0}
         query = self.app.db.correlations.find(args, project)
