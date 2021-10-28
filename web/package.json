@@ -2,7 +2,7 @@
   "name": "binbot",
   "version": "2",
   "private": true,
-  "homepage": ".",
+  "homepage": "http://binbot.in/",
   "dependencies": {
     "bootstrap": "^4.3.1",
     "history": "^5.0.0",
