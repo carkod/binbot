@@ -6,7 +6,7 @@ from api.apis import BinanceApi
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from api.deals.models import Deal
-from api.tools.handle_error import handle_error
+from api.tools.handle_error import handle_error, post_error
 from websocket import WebSocketApp
 
 
@@ -116,7 +116,10 @@ class OrderUpdates(BinanceApi):
                 },
             )
             if update_tp:
-                print(f"Bot take_profit completed! Bot {bot['_id']} deactivated")
+                msg = f"Bot take_profit completed! Bot {bot['_id']} deactivated"
+                print(msg)
+                post_error(msg)
+                print("Trying to buy GBP balance...")
                 # Logic to convert market coin into GBP here
                 Deal(bot).buy_gbp_balance()
 

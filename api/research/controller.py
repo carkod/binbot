@@ -21,6 +21,9 @@ class Controller:
             "trailling_deviation": "3",
             "update_required": False,  # Changed made, need to update websockets
             "balance_to_use": "BNB",
+            "balance_size_to_use": 100,  # %
+            "max_request": 950,
+            "system_logs": [],
             "errors": [],
         }
         self.default_blacklist = {"_id": "", "pair": "", "reason": ""}  # pair
@@ -47,16 +50,16 @@ class Controller:
     def edit_settings(self):
         # Start with current settings
         self.defaults = current_app.db.research_controller.find_one({"_id": "settings"})
-        errors = []
+        system_logs = []
         data = request.json
 
         if "errors" in data:
-            if isinstance(self.defaults["errors"], str):
-                errors.append(self.defaults["errors"])
-            errors.extend(data["errors"])
+            if isinstance(self.defaults["system_logs"], str):
+                system_logs.append(self.defaults["system_logs"])
+            system_logs.extend(data["system_logs"])
 
         self.defaults.update(data)
-        self.defaults["errors"] = errors
+        self.defaults["system_logs"] = system_logs
         self.defaults.pop("_id")
         settings = current_app.db.research_controller.update_one(
             {"_id": "settings"}, {"$set": self.defaults}

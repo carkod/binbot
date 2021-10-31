@@ -1,10 +1,10 @@
 import json
 import sys
-from time import sleep, time
-
+from time import time
+import os
 from bson.objectid import ObjectId
 from flask import Response as FlaskResponse
-from requests import exceptions, Response
+from requests import Response, put
 from requests.exceptions import HTTPError, RequestException, Timeout
 from bson import json_util
 from api.app import create_app
@@ -18,6 +18,11 @@ class BinanceErrors(Exception):
 class InvalidSymbol(BinanceErrors):
     pass
 
+def post_error(msg):
+    url = f'{os.getenv("FLASK_DOMAIN")}/research/controller'
+    res = put(url=url, json={"system_logs": msg})
+    handle_binance_errors(res)
+    return
 
 def jsonResp(data, status=200):
     return FlaskResponse(
@@ -99,7 +104,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-    
+
     try:
         if isinstance(response, Response) and "X-MBX-USED-WEIGHT-" in response.headers:
             print(f'Current rate limit: {response.headers}')

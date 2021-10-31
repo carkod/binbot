@@ -7,8 +7,7 @@ from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
-from flask import Response, g
-from pymongo.errors import WriteError
+
 
 class MarketUpdates(Account):
     """
@@ -112,7 +111,9 @@ class MarketUpdates(Account):
             print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
             if bot and "deal" in bot:
                 # Stop loss
-                if "stop_loss" in bot["deal"] and float(bot["deal"]["stop_loss"]) > float(close_price):
+                if "stop_loss" in bot["deal"] and float(
+                    bot["deal"]["stop_loss"]
+                ) > float(close_price):
                     deal = DealUpdates(bot)
                     res = deal.update_stop_limit(close_price)
                     if res == "completed":
@@ -122,15 +123,17 @@ class MarketUpdates(Account):
                 if bot["trailling"] == "true":
 
                     # Update trailling profit reached the first time
-                    if ("trailling_profit" not in bot["deal"]) or float(bot["deal"]["take_profit_price"]) <= 0:
+                    if ("trailling_profit" not in bot["deal"]) or float(
+                        bot["deal"]["take_profit_price"]
+                    ) <= 0:
                         current_take_profit_price = float(bot["deal"]["buy_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
                         )
                     else:
                         # Update trailling profit after first time
-                        current_take_profit_price = float(bot["deal"]["trailling_profit"]) * (
-                            1 + (float(bot["take_profit"]) / 100)
-                        )
+                        current_take_profit_price = float(
+                            bot["deal"]["trailling_profit"]
+                        ) * (1 + (float(bot["take_profit"]) / 100))
 
                     if float(close_price) >= current_take_profit_price:
                         new_take_profit = current_take_profit_price * (
@@ -143,7 +146,8 @@ class MarketUpdates(Account):
                         bot["deal"]["trailling_stop_loss_price"] = float(
                             new_take_profit
                         ) - (
-                            float(new_take_profit) * (float(bot["trailling_deviation"]) / 100)
+                            float(new_take_profit)
+                            * (float(bot["trailling_deviation"]) / 100)
                         )
 
                         updated_bot = self.app.db.bots.find_one_and_update(

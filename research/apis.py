@@ -1,12 +1,16 @@
-from decimal import Decimal
-from requests import get, Session
-from utils import handle_binance_errors
+import hashlib
+import hmac
 import os
 from datetime import datetime
-from urllib.parse import urlencode, urlparse
-import hmac
-import hashlib
+from decimal import Decimal
+from urllib.parse import urlencode
 
+from requests import Session, get
+
+from utils import handle_binance_errors
+from dotenv import load_dotenv
+
+load_dotenv()
 class BinanceApi:
     """
     Binance Api URLs
@@ -19,7 +23,7 @@ class BinanceApi:
     recvWindow = 5000
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
-    server_time_url = f'{BASE}/api/v3/time'
+    server_time_url = f"{BASE}/api/v3/time"
     account_url = f"{BASE}/api/v3/account"
     exchangeinfo_url = f"{BASE}/api/v3/exchangeInfo"
     ticker_price = f"{BASE}/api/v3/ticker/price"
@@ -56,22 +60,23 @@ class BinanceApi:
         session = Session()
         query_string = urlencode(payload, True)
         timestamp = self.get_server_time()
-        session.headers.update({
-            'Content-Type': 'application/json',
-            'X-MBX-APIKEY': self.key
-        })
+        session.headers.update(
+            {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
+        )
 
         if query_string:
-            query_string = f'{query_string}&recvWindow={self.recvWindow}&timestamp={timestamp}'
+            query_string = (
+                f"{query_string}&recvWindow={self.recvWindow}&timestamp={timestamp}"
+            )
         else:
-            query_string = f'recvWindow={self.recvWindow}&timestamp={timestamp}'
+            query_string = f"recvWindow={self.recvWindow}&timestamp={timestamp}"
 
         signature = hmac.new(
             self.secret.encode("utf-8"),
             query_string.encode("utf-8"),
             hashlib.sha256,
         ).hexdigest()
-        url = f'{url}?{query_string}&signature={signature}'
+        url = f"{url}?{query_string}&signature={signature}"
         res = session.request(method, url=url)
         data = handle_binance_errors(res)
         return data
@@ -83,13 +88,10 @@ class BinanceApi:
         """
         params = None
         if symbol:
-            params = {
-                "symbol": symbol
-            }
+            params = {"symbol": symbol}
 
         exchange_info = get(url=self.exchangeinfo_url, params=params).json()
         return exchange_info
-
 
     def _get_raw_klines(self, pair, limit="200", interval="1h"):
         params = {"symbol": pair, "interval": interval, "limit": limit}
@@ -100,18 +102,16 @@ class BinanceApi:
     def _ticker_price(self, symbol=None):
         params = None
         if symbol:
-            params = {
-                "symbol": symbol
-            }
+            params = {"symbol": symbol}
         r = get(url=self.ticker_price, params=params)
         response = handle_binance_errors(r)
         return response
-    
+
     def price_precision(self, symbol):
         """
         Modified from price_filter_by_symbol
         from /api/account/account.py
-        
+
         This function always will use the tickSize decimals
         """
         symbols = self._exchange_info(symbol)
@@ -124,10 +124,10 @@ class BinanceApi:
         # Transform into string and remove leading zeros
         # This is how the exchange accepts the prices, it will not work with scientific exponential notation e.g. 2.1-10
         price_precision = Decimal(str(price_filter["tickSize"].rstrip(".0")))
-        
+
         # Finally return the correct number of decimals required
         return -(price_precision).as_tuple().exponent
-    
+
     def min_amount_check(self, symbol, qty):
         """
         Min amout check
@@ -137,22 +137,18 @@ class BinanceApi:
             - Use current ticker price for price
         """
         symbols = self._exchange_info(symbol)
-        ticker_price = self._ticker_price()
-        price = next((s["price"] for s in ticker_price if s["symbol"] == symbol), None)
         market = symbols["symbols"][0]
         min_notional_filter = next(
             (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
         )
         min_qty = float(qty) > float(min_notional_filter["minNotional"])
         return min_qty
-    
+
     def find_baseAsset(self, symbol):
         symbols = self._exchange_info(symbol)
-        base_asset = symbols["symbols"][0][
-            "baseAsset"
-        ]
+        base_asset = symbols["symbols"][0]["baseAsset"]
         return base_asset
-    
+
     def find_quoteAsset(self, symbol):
         symbols = self._exchange_info(symbol)
         quote_asset = symbols["symbols"][0]
@@ -167,7 +163,7 @@ class BinbotApi(BinanceApi):
     includes Binance Api
     """
 
-    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
+    bb_base_url = os.getenv("FLASK_DOMAIN")
     bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
     bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
     bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
@@ -191,17 +187,16 @@ class BinbotApi(BinanceApi):
     bb_balance_estimate_url = f"{bb_base_url}/account/balance/estimate"
     bb_balance_series_url = f"{bb_base_url}/account/balance/series"
 
-    
     # research
-    bb_controller_url = f'{bb_base_url}/research/controller'
-    bb_blacklist_url = f'{bb_base_url}/research/blacklist'
+    bb_controller_url = f"{bb_base_url}/research/controller"
+    bb_blacklist_url = f"{bb_base_url}/research/blacklist"
 
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"
         res = get(url=url)
         data = handle_binance_errors(res)
         return data
-    
+
     def _get_candlestick(self, market, interval, stats=None):
         url = f"{self.bb_candlestick_url}/{market}/{interval}"
         if stats:
@@ -209,6 +204,7 @@ class BinbotApi(BinanceApi):
         res = get(url=url)
         data = handle_binance_errors(res)
         return data
+
 
 class CoinBaseApi:
     """
@@ -228,8 +224,8 @@ class CoinBaseApi:
         data = get(url, params).json()
         try:
             data["data"]["amount"]
-        except KeyError as e:
+        except KeyError:
             print(data)
-        
+
         rate = float(data["data"]["amount"])
         return rate

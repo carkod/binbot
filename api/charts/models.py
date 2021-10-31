@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
 
 import pandas as pd
-import requests
 from api.apis import BinanceApi
 from api.tools.handle_error import (
-    handle_binance_errors,
     jsonResp,
     jsonResp_error_message,
 )
@@ -121,15 +119,11 @@ class Candlestick(BinanceApi):
         trace = self.candlestick_trace(df, dates)
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
         if stats:
-            df["candle_spread"] = abs(
-                pd.to_numeric(df[1]) - pd.to_numeric(df[4])
-            )
+            df["candle_spread"] = abs(pd.to_numeric(df[1]) - pd.to_numeric(df[4]))
             curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
             avg_candle_spread = df["candle_spread"].median()
 
-            df["volume_spread"] = abs(
-                pd.to_numeric(df[1]) - pd.to_numeric(df[4])
-            )
+            df["volume_spread"] = abs(pd.to_numeric(df[1]) - pd.to_numeric(df[4]))
             curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
             avg_volume_spread = df["volume_spread"].median()
 

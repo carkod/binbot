@@ -1,9 +1,8 @@
 import math
-from time import sleep
 
 import requests
 
-from apis import BinbotApi, CoinBaseApi
+from apis import BinbotApi
 from utils import InvalidSymbol, handle_binance_errors, supress_notation
 
 
@@ -79,6 +78,7 @@ class Autotrade(BinbotApi):
             if (
                 self.settings["balance_to_use"] == "GBP"
                 and b["asset"] == "GBP"
+                # Trading with less than 40 GBP will not be profitable
                 and float(b["free"]) > 40
             ):
                 base_asset = self.find_quoteAsset(self.pair)
@@ -101,7 +101,7 @@ class Autotrade(BinbotApi):
                 qty = supress_notation(b["free"], self.decimals)
                 # Round down to 6 numbers to avoid not enough funds
                 base_order_size = (
-                    math.floor((float(qty) / float(rate)) * 1000000) / 1000000
+                    math.floor((float(qty) / float(rate)) * 10000000) / 10000000
                 )
                 self.default_bot["base_order_size"] = supress_notation(
                     base_order_size, self.decimals
@@ -115,7 +115,6 @@ class Autotrade(BinbotApi):
             return
 
         self.settings.pop("_id")
-        self.default_bot.update(self.settings)
         create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
         botId = handle_binance_errors(create_bot_res)["botId"]
         if "error" in botId and botId["error"] == 1:
@@ -123,7 +122,7 @@ class Autotrade(BinbotApi):
             self.handle_error(msg)
             return
 
-        res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}", timeout=10)
+        res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
         response = handle_binance_errors(res)
         if "error" in response and response["error"] == 1:
             msg = f"Not enough funds to carry out autotrade with {self.pair}"

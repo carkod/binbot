@@ -70,7 +70,7 @@ export const ControllerTab = ({
               {settings && (
                 <>
                   <Row>
-                    <Col md="4">
+                    <Col md="3">
                       <SettingsInput
                         value={settings.candlestick_interval}
                         name={"candlestick_interval"}
@@ -78,7 +78,7 @@ export const ControllerTab = ({
                         handleChange={handleInput}
                       />
                     </Col>
-                    <Col md="4">
+                    <Col md="3">
                       <SettingsInput
                         value={settings.autotrade}
                         name={"autotrade"}
@@ -86,7 +86,15 @@ export const ControllerTab = ({
                         handleChange={handleInput}
                       />
                     </Col>
-                    <Col md="4">
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.max_request}
+                        name={"max_request"}
+                        label={"Max no. symbols streaming"}
+                        handleChange={handleInput}
+                      />
+                    </Col>
+                    <Col md="3">
                       <SettingsInput
                         value={settings.telegram_signals && 1}
                         name={"telegram_signals"}
@@ -107,7 +115,15 @@ export const ControllerTab = ({
                             handleChange={handleInput}
                           />
                         </Col>
-                        <Col md="6" sm="12">
+                        <Col md="3">
+                          <SettingsInput
+                            value={settings.balance_size_to_use}
+                            name={"balance_size_to_use"}
+                            label={"Amount of balance to use (%)"}
+                            handleChange={handleInput}
+                          />
+                        </Col>
+                        <Col md="3" sm="6">
                           <label>Trailling</label>
                           <br />
                           <Button

@@ -11,6 +11,7 @@ from api.apis import CoinBaseApi
 from api.app import create_app
 from api.tools.handle_error import InvalidSymbol
 
+
 class Assets(Account):
     def __init__(self):
         self.app = current_app
@@ -224,7 +225,7 @@ class Assets(Account):
             print(f"{current_time} Balance stored!")
         else:
             print(f"{current_time} Unable to store balance! Error: {balanceId}")
-    
+
     def get_value(self):
         try:
             interval = request.view_args["interval"]
@@ -252,9 +253,7 @@ class Assets(Account):
         """
         Estimated balance in given fiat coin
         """
-        
         balances = self.get_raw_balance().json
-        current_time = datetime.utcnow()
         total_gbp = 0
         rate = 0
         for b in balances["data"]:
@@ -292,7 +291,7 @@ class Assets(Account):
         else:
             resp = jsonResp({"data": [], "error": 1})
         return resp
-    
+
     def balance_series(self, fiat="GBP", start_time=None, end_time=None, limit=5):
         """
         Get series for graph.
@@ -300,15 +299,15 @@ class Assets(Account):
         This endpoint uses high weight: 2400
         it will be easily flagged by binance
         """
-        
-        snapshot_account_data = self.signed_request(url=self.account_snapshot_url, payload={"type": "SPOT"})
+
+        snapshot_account_data = self.signed_request(
+            url=self.account_snapshot_url, payload={"type": "SPOT"}
+        )
         balances = []
         for datapoint in snapshot_account_data["snapshotVos"]:
-            
 
-            fiat_rate = self.get_ticker_price(f'BTC{fiat}')
+            fiat_rate = self.get_ticker_price(f"BTC{fiat}")
             total_fiat = float(datapoint["data"]["totalAssetOfBtc"]) * float(fiat_rate)
-
             balance = {
                 "update_time": datapoint["updateTime"],
                 "balances": datapoint["data"]["balances"],
@@ -333,4 +332,3 @@ class Assets(Account):
         rate = self.coinbase_api.get_conversion(time, base, quote)
         total = float(rate) * float(qty)
         return jsonResp({"data": total})
-

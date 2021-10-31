@@ -33,7 +33,6 @@ class Bot(Account):
             "balance_to_use": "GBP",
             "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
-            "short_stop_price": "0",  # Flip to short strategy threshold
             "candlestick_interval": "15m",
             "take_profit": "3",
             "trailling": "false",
@@ -45,6 +44,7 @@ class Bot(Account):
             "deal": self.default_deal,
             "safety_orders": {},
             "errors": [],
+            "total_commission": 0
         }
         self.default_so = {"so_size": "0", "price": "0", "price_deviation_so": "0.63"}
 

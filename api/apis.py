@@ -1,13 +1,12 @@
+import hashlib
+import hmac
 import os
-from datetime import datetime
+from urllib.parse import urlencode
 
-from requests import Session, get, Request, request
+from requests import Session, get, request
 
 from api.tools.handle_error import handle_binance_errors
-from time import time
-from urllib.parse import urlencode, urlparse
-import hmac
-import hashlib
+
 
 class BinanceApi:
     """
@@ -24,7 +23,7 @@ class BinanceApi:
     recvWindow = 9000
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
-    server_time_url = f'{BASE}/api/v3/time'
+    server_time_url = f"{BASE}/api/v3/time"
     account_url = f"{BASE}/api/v3/account"
     exchangeinfo_url = f"{BASE}/api/v3/exchangeInfo"
     ticker_price = f"{BASE}/api/v3/ticker/price"
@@ -48,7 +47,7 @@ class BinanceApi:
 
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
     account_snapshot_url = f"{BASE}/sapi/v1/accountSnapshot"
-    
+
     def get_server_time(self):
         data = self.request(url=self.server_time_url)
         return data["serverTime"]
@@ -60,22 +59,23 @@ class BinanceApi:
         session = Session()
         query_string = urlencode(payload, True)
         timestamp = self.get_server_time()
-        session.headers.update({
-            'Content-Type': 'application/json',
-            'X-MBX-APIKEY': self.key
-        })
+        session.headers.update(
+            {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
+        )
 
         if query_string:
-            query_string = f'{query_string}&recvWindow={self.recvWindow}&timestamp={timestamp}'
+            query_string = (
+                f"{query_string}&recvWindow={self.recvWindow}&timestamp={timestamp}"
+            )
         else:
-            query_string = f'recvWindow={self.recvWindow}&timestamp={timestamp}'
+            query_string = f"recvWindow={self.recvWindow}&timestamp={timestamp}"
 
         signature = hmac.new(
             self.secret.encode("utf-8"),
             query_string.encode("utf-8"),
             hashlib.sha256,
         ).hexdigest()
-        url = f'{url}?{query_string}&signature={signature}'
+        url = f"{url}?{query_string}&signature={signature}"
         res = session.request(method, url=url)
         data = handle_binance_errors(res)
         return data
@@ -120,10 +120,9 @@ class BinbotApi(BinanceApi):
     bb_balance_url = f"{bb_base_url}/account/balance/raw"
     bb_balance_estimate_url = f"{bb_base_url}/account/balance/estimate"
 
-    
     # research
-    bb_controller_url = f'{bb_base_url}/research/controller'
-    bb_blacklist_url = f'{bb_base_url}/research/blacklist'
+    bb_controller_url = f"{bb_base_url}/research/controller"
+    bb_blacklist_url = f"{bb_base_url}/research/blacklist"
 
     def bb_request(self, url, method="GET", params=None, payload=None):
         """
