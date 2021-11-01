@@ -8,7 +8,7 @@ from api.app import create_app
 from api.orders.models.order_sockets import OrderUpdates
 from api.research.market_updates import MarketUpdates
 from api.tools.handle_error import jsonResp
-from api.auth import auth
+
 # Routes
 from api.account.routes import account_blueprint
 from api.bots.routes import bot_blueprint
@@ -23,11 +23,6 @@ app = create_app()
 @app.route("/")
 def index():
     return jsonResp({"status": "Online"})
-
-@app.route('/auth')
-@auth.login_required
-def auth():
-    return jsonResp({"user": auth.current_user()})
 
 
 # Register Blueprints

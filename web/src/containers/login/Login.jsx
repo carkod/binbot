@@ -3,10 +3,22 @@ import { connect } from "react-redux";
 import ReduxToastr from "react-redux-toastr";
 import { Redirect } from "react-router";
 import LoginForm from "../../components/LoginForm";
-import { getToken } from "../../request";
 import { login } from "./actions";
 
 class Login extends Component {
+
+  constructor() {
+    super();
+    this.state = {
+      redirect: false,
+    }
+  }
+
+  componentDidUpdate = (p, s) => {
+    if (this.props.accessToken !== p.accessToken) {
+      this.setState({ redirect: true })
+    }
+  }
 
   handleSubmit = (data) => {
     const credentials = {
@@ -19,9 +31,8 @@ class Login extends Component {
   };
 
   render() {
-    const token = getToken();
     // Redirect to dashboard when hitting /login and already authenticated
-    if (token) {
+    if (this.state.redirect) {
       return <Redirect to="/admin/dashboard" />
     } else {
       return (
@@ -45,11 +56,12 @@ class Login extends Component {
 }
 
 const mapStateToProps = (state) => {
-  const { email, password } = state.loginReducer;
+  const { email, accessToken, password } = state.loginReducer;
 
   return {
     email: email,
-    password: password
+    password: password,
+    accessToken: accessToken
   };
 };
 
