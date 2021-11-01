@@ -254,37 +254,31 @@ class Assets(Account):
         Estimated balance in given fiat coin
         """
         balances = self.get_raw_balance().json
-        total_gbp = 0
+        total_fiat = 0
         rate = 0
         for b in balances["data"]:
             # Only tether coins for hedging
             if b["asset"] in ["USD", "BTC", "BNB", "ETH", "XRP"]:
                 qty = self._check_locked(b)
-                rate = self.get_ticker_price(f'{b["asset"]}GBP')
-                total_gbp += float(qty) * float(rate)
-            elif "GBP" in b["asset"]:
-                total_gbp += self._check_locked(b)
+                rate = self.get_ticker_price(f'{b["asset"]}{fiat}')
+                total_fiat += float(qty) * float(rate)
+            elif fiat == b["asset"]:
+                total_fiat += self._check_locked(b)
             else:
                 # BTC and ALT markets
-                try:
-                    symbol = self.find_market(b["asset"])
-                except InvalidSymbol:
-                    # Some coins like NFT are air dropped and cannot be traded
-                    break
+                symbol = self.find_market(b["asset"])
+                if not symbol:
+                    continue
                 market = self.find_quoteAsset(symbol)
                 rate = self.get_ticker_price(symbol)
                 qty = self._check_locked(b)
                 total = float(qty) * float(rate)
-                if market == "BNB":
-                    gbp_rate = self.get_ticker_price("BNBGBP")
-                else:
-                    gbp_rate = self.get_ticker_price(f"{symbol}GBP")
-
-                total_gbp += float(total) * float(gbp_rate)
+                fiat_rate = self.get_ticker_price(f"{market}{fiat}")
+                total_fiat += float(total) * float(fiat_rate)
 
         balance = {
             "balances": balances["data"],
-            "estimated_total_gbp": total_gbp,
+            "total_fiat": total_fiat,
         }
         if balance:
             resp = jsonResp({"data": balance})

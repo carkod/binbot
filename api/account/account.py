@@ -38,7 +38,7 @@ class Account(BinbotApi):
         resp = jsonResp({"data": data})
         return resp
 
-    def get_ticker_price(self, symbol):
+    def get_ticker_price(self, symbol: str):
         url = self.ticker_price
         params = {"symbol": symbol}
         res = requests.get(url=url, params=params)
@@ -85,11 +85,19 @@ class Account(BinbotApi):
         return jsonResp({"data": data})
 
     def find_market(self, quote):
-        symbols = self._exchange_info(quote)
-        market = symbols["symbols"][0]
-        if market:
-            market = market["symbol"]
-        return market
+        """ API Weight 10 """
+        symbols = self._exchange_info()
+        market = [symbol["symbol"] for symbol in symbols["symbols"] if symbol["baseAsset"] == quote]
+        if len(market) > 1:
+            # Match BTC first
+            # DUSKBNB does not exist in the market but provided (Binance bug?)
+            match_btc = next((s for s in market if "BTC" in s), None)
+            if match_btc:
+                return match_btc
+            match_bnb = next((s for s in market if "BNB" in s), None)
+            if match_bnb:
+                return match_bnb
+            return market[0]
 
     def get_symbol_info(self):
         pair = request.view_args["pair"]

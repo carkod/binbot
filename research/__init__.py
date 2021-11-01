@@ -267,7 +267,7 @@ class ResearchSignals(BinbotApi):
                     # Check balance to avoid failed autotrades
                     check_balance_res = requests.get(url=self.bb_balance_estimate_url)
                     balances = handle_binance_errors(check_balance_res)
-                    balance_check = int(balances["data"]["estimated_total_gbp"])
+                    balance_check = int(balances["data"]["total_fiat"])
 
                     if (
                         int(self.settings["autotrade"]) == 1

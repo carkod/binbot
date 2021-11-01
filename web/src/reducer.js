@@ -10,7 +10,7 @@ import {
 import { openOrdersReducer, ordersReducer } from "./pages/orders/reducer";
 import { historicalResearchReducer, researchReducer, blacklistReducer, settingsReducer } from "./pages/research/reducer";
 import {
-  balanceRawReducer, balanceReducer
+  balanceRawReducer, balanceReducer, estimateReducer
 } from "./state/balances/reducer";
 
 const rootReducer = combineReducers({
@@ -32,5 +32,6 @@ const rootReducer = combineReducers({
   historicalResearchReducer,
   blacklistReducer,
   settingsReducer,
+  estimateReducer
 });
 export default rootReducer;

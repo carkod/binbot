@@ -8,7 +8,7 @@ import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
 import request from "../../request";
 import { loading } from "../../containers/spinner/actions";
-import { getBalance } from "../../state/balances/actions";
+import { getBalance, getEstimate } from "../../state/balances/actions";
 class Dashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -29,6 +29,7 @@ class Dashboard extends React.Component {
 
   componentDidMount = () => {
     this.props.getBalance();
+    this.props.getEstimate();
   };
 
   componentDidUpdate = (p, s) => {
@@ -208,7 +209,7 @@ class Dashboard extends React.Component {
   };
 
   render() {
-    const { balances, load } = this.props;
+    const { balanceEstimate, load } = this.props;
 
     return (
       <>
@@ -223,19 +224,14 @@ class Dashboard extends React.Component {
                           <Col md="12">
                             <div className="stats">
                               <p className="card-category">Total Balance</p>
-                              {!checkValue(balances) && balances.length > 0 ? (
+                              {!checkValue(balanceEstimate) && (
                                 <CardTitle tag="h3" className={`card-title`}>
                                   {`${roundDecimals(
-                                    balances[0].estimated_total_gbp,
+                                    balanceEstimate,
                                     2
                                   )} £`}
-                                  <hr />
-                                  {`${roundDecimals(
-                                    balances[0].estimated_total_btc,
-                                    8
-                                  )} BTC`}
                                 </CardTitle>
-                              ) : ""}
+                              )}
                             </div>
                           </Col>
                         </Row>
@@ -330,6 +326,7 @@ class Dashboard extends React.Component {
 const mapStateToProps = (s) => {
   const { loading } = s.loadingReducer;
   const { data: balances } = s.balanceReducer;
+  const { data: balanceEstimate } = s.estimateReducer;
   let assetList = null;
   if (!checkValue(balances) && balances.length > 0) {
     assetList = balances[0].balances.data
@@ -337,11 +334,13 @@ const mapStateToProps = (s) => {
   return {
     balances: balances,
     loading: loading,
-    assetList: assetList
+    assetList: assetList,
+    balanceEstimate: balanceEstimate?.total_fiat
   };
 };
 
 export default connect(mapStateToProps, {
   getBalance,
-  loading
+  loading,
+  getEstimate
 })(Dashboard);
