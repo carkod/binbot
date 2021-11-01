@@ -3,35 +3,32 @@ import os
 import threading
 
 from apscheduler.schedulers.background import BackgroundScheduler
-
 from api.account.assets import Assets
+from api.app import create_app
+from api.orders.models.order_sockets import OrderUpdates
+from api.research.market_updates import MarketUpdates
+from api.tools.handle_error import jsonResp
+from api.auth import auth
 # Routes
 from api.account.routes import account_blueprint
-from api.app import create_app
 from api.bots.routes import bot_blueprint
 from api.charts.routes import charts_blueprint
-from api.orders.models.order_sockets import OrderUpdates
-from api.orders.models.orders import Orders
 from api.orders.routes import order_blueprint
-from api.research.correlation import Correlation
-from api.research.market_updates import MarketUpdates
 from api.research.routes import research_blueprint
-from api.tools.handle_error import jsonResp
 from api.user.routes import user_blueprint
 
 app = create_app()
 
-# Cronjob
-scheduler = BackgroundScheduler()
-assets = Assets()
 
-# if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
-scheduler.add_job(
-    func=assets.store_balance_snapshot, trigger="cron", timezone="Europe/London", hour=13, minute=29
+@app.route("/")
+def index():
+    return jsonResp({"status": "Online"})
 
-)
-scheduler.start()
-atexit.register(lambda: scheduler.shutdown(wait=False))
+@app.route('/auth')
+@auth.login_required
+def auth():
+    return jsonResp({"user": auth.current_user()})
+
 
 # Register Blueprints
 app.register_blueprint(user_blueprint, url_prefix="/user")
@@ -42,11 +39,15 @@ app.register_blueprint(charts_blueprint, url_prefix="/charts")
 app.register_blueprint(research_blueprint, url_prefix="/research")
 
 
-# Index Route
-@app.route("/")
-def index():
-    return jsonResp({"status": "Online"})
+if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
+    scheduler = BackgroundScheduler()
+    assets = Assets()
+    scheduler.add_job(
+        func=assets.store_balance_snapshot, trigger="cron", timezone="Europe/London", hour=00, minute=1
 
+    )
+    scheduler.start()
+    atexit.register(lambda: scheduler.shutdown(wait=False))
 
 if os.getenv("ENV") != "ci":
     order_updates = OrderUpdates()

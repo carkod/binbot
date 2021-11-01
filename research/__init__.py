@@ -114,7 +114,7 @@ class ResearchSignals(BinbotApi):
         print("Market data updates socket opened")
 
     def on_error(self, ws, error):
-        msg = f'Research Websocket error: {error}. {"Symbol: " + self.symbol if self.symbol else ""  }'
+        msg = f'Research Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
         print(msg)
         # Network error, restart
         if error.args[0] == "Connection to remote host was lost." or error == "Connection reset by peer":
@@ -145,7 +145,7 @@ class ResearchSignals(BinbotApi):
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
-            self.symbol = symbol
+            ws.symbol = symbol
             data = self._get_candlestick(symbol, self.interval, stats=True)
             if len(data["trace"][1]["y"]) <= 100:
                 msg = f"Not enough data to do research on {symbol}"

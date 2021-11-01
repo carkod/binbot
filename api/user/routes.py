@@ -1,6 +1,4 @@
 from flask import Blueprint
-
-# from api.auth import token_required
 from api.user.models.user import User
 
 user_blueprint = Blueprint("user", __name__)

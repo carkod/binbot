@@ -31,3 +31,7 @@ GET http://localhost:5000/account/conversion?base=BTC&quote=GBP&qty=0.0003 HTTP/
 
 ### Raw symbols no cannibalism
 GET http://localhost:5000/account/symbols/no-cannibal HTTP/1.1
+
+
+## Test authenticaiton
+GET http://localhost:5000/auth HTTP/1.1

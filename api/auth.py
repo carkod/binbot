@@ -1,30 +1,29 @@
 import datetime
 import os
-from functools import wraps
-
-from api.tools.handle_error import jsonResp
-from flask import request
+from flask import request, current_app
 from jose import jwt
 
+from api.tools.handle_error import jsonResp
+from flask_httpauth import HTTPTokenAuth
+from pymongo.errors import CursorNotFound
 
-# Auth Decorator
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        access_token = request.headers.get("AccessToken")
+auth = HTTPTokenAuth(scheme="Bearer")
 
-        try:
-            data = jwt.decode(access_token, os.environ["SECRET_KEY"])
-        except Exception as e:
-            return jsonResp({"message": "Token is invalid", "exception": str(e)}, 401)
-
-        return f(*args, **kwargs)
-
-    return decorated
+@auth.verify_token
+def verify_token(token):
+    # Local request don't need authentication
+    if request.host_url.strip("/") == os.getenv("FLASK_DOMAIN"):
+        return True
+    try:
+        current_app.db.users.find_one(
+            {"access_token": token}
+        )
+        return True
+    except CursorNotFound:
+        return jsonResp({"message": "Invalid token", "error": 1}, 401)
 
 
 def encodeAccessToken(user_id, email):
-
     accessToken = jwt.encode(
         {
             "user_id": user_id,

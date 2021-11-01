@@ -1,12 +1,11 @@
 from flask import request, current_app as app
 from passlib.hash import pbkdf2_sha256
 from jose import jwt
-from api.auth import encodeAccessToken, encodeRefreshToken
 import os
 from api.tools.dates import nowDatetimeUTC
 from api.tools.handle_error import jsonResp_message, jsonResp
 from bson.objectid import ObjectId
-
+from api.auth import encodeAccessToken, encodeRefreshToken
 
 class User:
     def __init__(self):
@@ -21,7 +20,6 @@ class User:
         }
 
     def get(self):
-        # token_data = jwt.decode(request.headers.get('AccessToken'), os.environ['SECRET_KEY'])
         users = list(app.db.users.find())
         if users:
             resp = jsonResp_message(users)
@@ -37,7 +35,7 @@ class User:
         if user:
             resp = jsonResp({"message": "User found", "data": user})
         else:
-            resp = jsonResp({"message": "User not found", "error": 1}, 404)
+            resp = jsonResp({"message": "User not found", "error": 1}, 401)
         return resp
 
     def login(self):
@@ -64,7 +62,7 @@ class User:
                         "_id": user["_id"],
                         "email": user["email"],
                         "access_token": access_token,
-                        "error": 0
+                        "error": 0,
                     },
                     200,
                 )
@@ -81,11 +79,11 @@ class User:
                 request.headers.get("AccessToken"), os.environ["SECRET_KEY"]
             )
             app.db.users.update(
-                {"id": tokenData["userid"]}, {"$unset": {"access_token": ""}}
+                {"id": tokenData["userid"]}, {"$unset": {"access_token": None}}
             )
             # Note: At some point I need to implement Token Revoking/Blacklisting
             # General info here: https://flask-jwt-extended.readthedocs.io/en/latest/blacklist_and_token_revoking.html
-        except:
+        except Exception:
             pass
 
         resp = jsonResp_message("User logged out")

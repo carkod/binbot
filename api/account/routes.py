@@ -8,8 +8,6 @@ from flask import Blueprint
 os.environ["CORS_HEADERS"] = "Content-Type"
 
 account_blueprint = Blueprint("account", __name__)
-# @token_required
-
 
 @account_blueprint.route("/btc-balance", methods=["GET"])
 def get_balances_btc():
