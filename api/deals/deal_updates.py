@@ -339,14 +339,24 @@ class DealUpdates(Deal):
                 else:
                     print("Old take profit order cancelled")
 
-            stop_limit_order = {
-                "pair": bot["pair"],
-                "qty": qty,
-                "price": supress_notation(price, self.price_precision),
-            }
-            res = self.bb_request(
-                method="POST", url=self.bb_sell_order_url, payload=stop_limit_order
-            )
+            if price:
+                stop_limit_order = {
+                    "pair": bot["pair"],
+                    "qty": qty,
+                    "price": supress_notation(price, self.price_precision),
+                }
+                res = self.bb_request(
+                    method="POST", url=self.bb_sell_order_url, payload=stop_limit_order
+                )
+            else:
+                stop_limit_order = {
+                    "pair": bot["pair"],
+                    "qty": qty
+                }
+                res = self.bb_request(
+                    method="POST", url=self.bb_sell_market_order_url, payload=stop_limit_order
+                )
+
             if "error" in res:
                 return res
 
@@ -410,14 +420,24 @@ class DealUpdates(Deal):
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(False, qty))
 
-        trailling_stop_loss = {
-            "pair": bot["pair"],
-            "qty": qty,
-            "price": supress_notation(price, self.price_precision),
-        }
-        res = self.bb_request(
-            method="POST", url=self.bb_sell_order_url, payload=trailling_stop_loss
-        )
+        if price:
+            trailling_stop_loss = {
+                "pair": bot["pair"],
+                "qty": qty,
+                "price": supress_notation(price, self.price_precision),
+            }
+            res = self.bb_request(
+                method="POST", url=self.bb_sell_order_url, payload=trailling_stop_loss
+            )
+        else:
+            trailling_stop_loss = {
+                "pair": bot["pair"],
+                "qty": qty,
+            }
+            res = self.bb_request(
+                method="POST", url=self.bb_sell_market_order_url, payload=trailling_stop_loss
+            )
+
         if "error" in res:
             return res
 

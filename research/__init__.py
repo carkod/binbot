@@ -143,7 +143,6 @@ class ResearchSignals(BinbotApi):
         """
         Updates market data in DB for research
         """
-        # Check if closed result["k"]["x"]
         if "k" in result and "s" in result["k"]:
             # Check if streams need to be restarted
             close_price = float(result["k"]["c"])
@@ -187,7 +186,7 @@ class ResearchSignals(BinbotApi):
 
                 if (
                     float(close_price) > float(open_price)
-                    # and spread > 0.1
+                    and amplitude > 0.05
                     and (
                         close_price > ma_7[len(ma_7) - 1]
                         and open_price > ma_7[len(ma_7) - 1]
@@ -286,7 +285,7 @@ class ResearchSignals(BinbotApi):
                 self.last_processed_kline[symbol] = time()
                 # If more than half an hour (interval = 30m) has passed
                 # Then we should resume sending signals for given symbol
-                if (float(time()) - float(self.last_processed_kline[symbol])) > 120:
+                if (float(time()) - float(self.last_processed_kline[symbol])) > 60:
                     del self.last_processed_kline[symbol]
 
 
