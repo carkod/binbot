@@ -116,13 +116,9 @@ class ResearchSignals(BinbotApi):
     def on_error(self, ws, error):
         msg = f'Research Websocket error: {error}. {"Symbol: " + self.symbol if self.symbol else ""  }'
         print(msg)
-        self.post_error(msg)
         # Network error, restart
-        if error.args[0] == "Connection to remote host was lost.":
+        if error.args[0] == "Connection to remote host was lost." or error == "Connection reset by peer":
             print("Restarting in 30 seconds...")
-            self.post_error(
-                "Connection to remote host was lost. Restarting in 30 seconds..."
-            )
             sleep(30)
             self.start_stream()
 
@@ -285,7 +281,7 @@ class ResearchSignals(BinbotApi):
                 self.last_processed_kline[symbol] = time()
                 # If more than half an hour (interval = 30m) has passed
                 # Then we should resume sending signals for given symbol
-                if (float(time()) - float(self.last_processed_kline[symbol])) > 60:
+                if (float(time()) - float(self.last_processed_kline[symbol])) > 120:
                     del self.last_processed_kline[symbol]
 
 

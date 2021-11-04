@@ -443,7 +443,7 @@ class DealUpdates(Deal):
 
         # Append now stop_loss deal
         trailling_stop_loss_response = {
-            "deal_type": "stop_limit",
+            "deal_type": "trailling_stop_loss",
             "order_id": res["orderId"],
             "pair": res["symbol"],
             "order_side": res["side"],
@@ -474,5 +474,5 @@ class DealUpdates(Deal):
         self.buy_gbp_balance()
         bot = self.app.db.bots.find_one({"_id": ObjectId(bot["_id"])})
         msg = f'Trailling stop loss complete! {"Errors encountered" if len(bot["errors"]) > 0 else ""}'
-        bot_errors(msg, bot)
+        bot_errors(msg, bot, status="complete")
         return "completed"

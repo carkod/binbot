@@ -11,7 +11,6 @@ def create_app():
     # Enable CORS for all routes
     CORS(app)
     mongo = MongoClient(
-        connect=False,
         host=os.getenv("MONGO_HOSTNAME"),
         port=int(os.getenv("MONGO_PORT")),
         authSource="admin",
