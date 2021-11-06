@@ -12,9 +12,9 @@ auth = HTTPTokenAuth(scheme="Bearer")
 
 @auth.verify_token
 def verify_token(token):
-    # Local request don't need authentication
-    # if request.host_url.strip("/") == os.getenv("FLASK_DOMAIN"):
-    #     return True
+    # Research app exception
+    if request.host_url.strip("/") == os.getenv("RESEARCH_FLASK_DOMAIN"):
+        return True
     user = current_app.db.users.find_one(
             {"access_token": token}
         )

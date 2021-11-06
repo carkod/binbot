@@ -33,7 +33,7 @@ def auth():
 # Register Blueprints
 app.register_blueprint(user_blueprint, url_prefix="/user")
 app.register_blueprint(account_blueprint, url_prefix="/account")
-app.register_blueprint(bot_blueprint, url_prefix="/bot")
+app.register_blueprint(bot_blueprint)
 app.register_blueprint(order_blueprint, url_prefix="/order")
 app.register_blueprint(charts_blueprint, url_prefix="/charts")
 app.register_blueprint(research_blueprint, url_prefix="/research")

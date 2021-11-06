@@ -8,10 +8,6 @@ import { login } from "./actions";
 
 class Login extends Component {
 
-  constructor(props) {
-    super(props);
-  }
-
   handleSubmit = (data) => {
     const credentials = {
       email: data.email,

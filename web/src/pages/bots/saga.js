@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
-import request, { defaultOptions } from "../../request";
+import request, { getToken } from "../../request";
 import {
   activateBotFailed,
   activateBotSucceeded,
@@ -38,19 +38,26 @@ import {
   LOAD_CANDLESTICK,
 } from "./actions";
 
+const defaultOptions = {
+  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+  headers: {
+    Authorization: `Bearer ${getToken()}`
+  },
+};
+
 /**
  * Bots request/response handler
  */
 export function* getBotsApi() {
   const requestURL = process.env.REACT_APP_GET_BOTS;
   try {
-    yield put(loading(true))
+    yield put(loading(true));
     const res = yield call(request, requestURL, defaultOptions);
     yield put(getBotsSucceeded(res));
   } catch (err) {
     yield put(getBotsFailed(err));
   } finally {
-    yield put(loading(false))
+    yield put(loading(false));
   }
 }
 
@@ -64,6 +71,7 @@ export default function* watchGetBotApi() {
 export function* getBot(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
+
   try {
     const res = yield call(request, requestURL, defaultOptions);
     yield put(getBotSucceeded(res));
@@ -86,7 +94,7 @@ export function* createBotApi(body) {
     method: "POST",
     mode: "cors", // no-cors, *cors, same-origin
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: { "content-type": "application/json", accept: "application/json" },
+    headers: defaultOptions.headers,
     body: JSON.stringify(data),
   };
   try {
@@ -111,7 +119,11 @@ export function* editBot(payload) {
     method: "PUT",
     mode: "cors", // no-cors, *cors, same-origin
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: { "content-type": "application/json", accept: "application/json" },
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
     body: JSON.stringify(data),
   };
   try {
@@ -136,6 +148,7 @@ export function* deleteBotApi(payload) {
     method: "DELETE",
     mode: "cors", // no-cors, *cors, same-origin
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    headers: defaultOptions.headers
   };
   try {
     const res = yield call(request, requestURL, options);
@@ -155,7 +168,8 @@ export function* closeBotApi(payload) {
   const options = {
     method: "DELETE",
     mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached,
+    headers: defaultOptions.headers
   };
   try {
     const res = yield call(request, requestURL, options);
@@ -206,13 +220,13 @@ export function* activateBot(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_ACTIVATE_BOT}/${id}`;
   try {
-    yield put(loading(true))
+    yield put(loading(true));
     const res = yield call(request, requestURL, defaultOptions);
     yield put(activateBotSucceeded(res));
   } catch (err) {
     yield put(activateBotFailed(err));
   } finally {
-    yield put(loading(false))
+    yield put(loading(false));
   }
 }
 
@@ -252,18 +266,15 @@ export function* watchGetCandlestick() {
   yield takeLatest(LOAD_CANDLESTICK, getCandlestick);
 }
 
-
-
 /**
  * Archive bot
  */
- export function* archiveBotApi({ id }) {
+export function* archiveBotApi({ id }) {
   const requestURL = `${process.env.REACT_APP_ARCHIVE_BOT}/${id}`;
   const options = {
     method: "PUT",
-    mode: "cors", // no-cors, *cors, same-origin
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: { "content-type": "application/json", accept: "application/json" },
+    headers: defaultOptions.headers,
   };
   try {
     const res = yield call(request, requestURL, options);

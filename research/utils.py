@@ -2,7 +2,7 @@ import json
 from decimal import Decimal
 import sys
 from requests import Response, HTTPError
-
+import flask
 class BinanceErrors(Exception):
     pass
 
@@ -31,7 +31,8 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-
+    print(f"Request: {flask.request.host_url}")
+    response.raise_for_status()
     try:
         if (
             isinstance(json.loads(response.content), dict)
