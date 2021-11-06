@@ -118,8 +118,9 @@ class ResearchSignals(BinbotApi):
         print(msg)
         # Network error, restart
         if error.args[0] == "Connection to remote host was lost." or error == "Connection reset by peer":
-            print("Restarting in 30 seconds...")
-            sleep(30)
+            print("Restarting in 45 seconds...")
+            # API restart 30 secs + 15
+            sleep(45)
             self.start_stream()
 
     def on_message(self, ws, message):

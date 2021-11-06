@@ -24,15 +24,14 @@ app = create_app()
 # Cronjob
 scheduler = BackgroundScheduler()
 assets = Assets()
-orders = Orders()
-research_data = Correlation()
 
-if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
-    scheduler.add_job(
-        func=assets.store_balance, trigger="cron", timezone="Europe/London", hour=00, minute=1
-    )
-    scheduler.start()
-    atexit.register(lambda: scheduler.shutdown(wait=False))
+# if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
+scheduler.add_job(
+    func=assets.store_balance_snapshot, trigger="cron", timezone="Europe/London", hour=13, minute=29
+
+)
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown(wait=False))
 
 # Register Blueprints
 app.register_blueprint(user_blueprint, url_prefix="/user")

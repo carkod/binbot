@@ -326,3 +326,28 @@ class Assets(Account):
         rate = self.coinbase_api.get_conversion(time, base, quote)
         total = float(rate) * float(qty)
         return jsonResp({"data": total})
+    
+    def store_balance_snapshot(self):
+        """
+        Alternative to storing balance, use Binance new snapshot endpoint to store
+        """
+        # Because this is a cronjob, it doesn't have application context
+        app = create_app()
+        current_time = datetime.utcnow()
+        data = self.signed_request(self.account_snapshot_url, payload={"type": "SPOT"})
+        spot_data = next((item for item in data["snapshotVos"] if item["type"] == "spot"), None)
+        balances = [balance for balance in spot_data["data"]["balances"] if (balance["free"] != "0" or balance["locked"] != "0")]
+        total_btc = spot_data["data"]["totalAssetOfBtc"]
+        fiat_rate = self.get_ticker_price(f"BTCGBP")
+        total_gbp = float(total_btc) * float(fiat_rate)
+        balanceId = app.db.balances.insert_one({
+            "_id": spot_data["updateTime"],
+            "time": datetime.fromtimestamp(spot_data["updateTime"] / 1000.0).strftime("%Y-%m-%d"),
+            "balances": balances,
+            "estimated_total_btc": total_btc,
+            "estimated_total_gbp": total_gbp,
+        })
+        if balanceId:
+            print(f"{current_time} Balance stored!")
+        else:
+            print(f"{current_time} Unable to store balance! Error: {balanceId}")

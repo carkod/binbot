@@ -104,7 +104,8 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-
+    # Before doing anything, raise error if response is not 200
+    response.raise_for_status()
     try:
         if isinstance(response, Response) and "X-MBX-USED-WEIGHT-" in response.headers:
             print(f'Current rate limit: {response.headers}')
@@ -147,4 +148,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         else:
             return response.json()
     except HTTPError:
-        raise HTTPError(response.json()["msg"])
+        if "msg" in response:
+            raise HTTPError(response.json()["msg"])
+        else:
+            raise HTTPError(response.json())
