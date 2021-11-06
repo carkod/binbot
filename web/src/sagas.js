@@ -29,7 +29,7 @@ import {
   watchHistoricalResearchApi,
   watchResearchApi
 } from "./pages/research/saga";
-import { watchGetBalanceApi, watchRawBalance } from "./state/balances/saga";
+import { watchGetBalanceApi, watchGetEstimate, watchRawBalance } from "./state/balances/saga";
 
 export default function* rootSaga() {
   yield all([
@@ -59,5 +59,6 @@ export default function* rootSaga() {
     watchEditSettingsApi(),
     watchDeleteBlackListApi(),
     watchAddBlacklistApi(),
+    watchGetEstimate()
   ]);
 }

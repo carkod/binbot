@@ -5,7 +5,7 @@ from api.account.account import Account
 from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
-from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp
+from api.tools.handle_error import handle_binance_errors, jsonResp
 from api.tools.round_numbers import round_numbers, supress_notation
 from bson.objectid import ObjectId
 from flask import Response, current_app, request
@@ -58,7 +58,7 @@ class Bot(Account):
         if request.args.get("status") == "active":
             params["active"] = "active"
 
-        bot = list(self.app.db.bots.find(params).sort([("status", 1), ("pair", 1)]))
+        bot = list(self.app.db.bots.find(params).sort([("_id", -1), ("status", 1), ("pair", 1)]))
         if bot:
             resp = jsonResp({"data": bot})
         else:
@@ -86,10 +86,10 @@ class Bot(Account):
                 self.defaults, {"$currentDate": {"createdAt": "true"}}
             )
         except DuplicateKeyError:
-            jsonResp(
+            resp = jsonResp(
                 {"message": "Profit canibalism, bot with this pair already exists!", "error": 1}, 200
             )
-            return 
+            return resp
         if botId:
             resp = jsonResp(
                 {"message": "Successfully created new bot", "botId": str(botId)}, 200

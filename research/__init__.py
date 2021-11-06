@@ -116,14 +116,11 @@ class ResearchSignals(BinbotApi):
     def on_error(self, ws, error):
         msg = f'Research Websocket error: {error}. {"Symbol: " + self.symbol if self.symbol else ""  }'
         print(msg)
-        self.post_error(msg)
         # Network error, restart
-        if error.args[0] == "Connection to remote host was lost.":
-            print("Restarting in 30 seconds...")
-            self.post_error(
-                "Connection to remote host was lost. Restarting in 30 seconds..."
-            )
-            sleep(30)
+        if error.args[0] == "Connection to remote host was lost." or error == "Connection reset by peer":
+            print("Restarting in 45 seconds...")
+            # API restart 30 secs + 15
+            sleep(45)
             self.start_stream()
 
     def on_message(self, ws, message):
@@ -143,7 +140,6 @@ class ResearchSignals(BinbotApi):
         """
         Updates market data in DB for research
         """
-        # Check if closed result["k"]["x"]
         if "k" in result and "s" in result["k"]:
             # Check if streams need to be restarted
             close_price = float(result["k"]["c"])
@@ -187,7 +183,7 @@ class ResearchSignals(BinbotApi):
 
                 if (
                     float(close_price) > float(open_price)
-                    # and spread > 0.1
+                    and amplitude > 0.05
                     and (
                         close_price > ma_7[len(ma_7) - 1]
                         and open_price > ma_7[len(ma_7) - 1]
@@ -267,7 +263,7 @@ class ResearchSignals(BinbotApi):
                     # Check balance to avoid failed autotrades
                     check_balance_res = requests.get(url=self.bb_balance_estimate_url)
                     balances = handle_binance_errors(check_balance_res)
-                    balance_check = int(balances["data"]["estimated_total_gbp"])
+                    balance_check = int(balances["data"]["total_fiat"])
 
                     if (
                         int(self.settings["autotrade"]) == 1

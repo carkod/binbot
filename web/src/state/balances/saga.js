@@ -5,7 +5,7 @@ import {
   balanceFailed,
   balanceRawFailed,
   balanceRawSucceeded,
-  balanceSucceeded, GET_BALANCE, GET_BALANCE_RAW
+  balanceSucceeded, getEstimateFailed, getEstimateSucceeded, GET_BALANCE, GET_BALANCE_RAW, GET_ESTIMATE
 } from "./actions";
 
 const defaultOptions = {
@@ -35,8 +35,6 @@ export function* watchGetBalanceApi() {
 }
 
 
-
-
 /**
  * Account request/response handler
  */
@@ -54,4 +52,23 @@ export function* watchGetBalanceApi() {
 
 export function* watchRawBalance() {
   yield takeLatest(GET_BALANCE_RAW, getRawBalanceApi);
+}
+
+/**
+ * Account request/response handler
+ */
+ export function* getEstimateApi() {
+  const requestURL = `${process.env.REACT_APP_BALANCE_ESTIMATE}`;
+  try {
+    const res = yield call(request, requestURL, defaultOptions);
+    yield put(getEstimateSucceeded(res));
+  } catch (err) {
+    yield put(getEstimateFailed(err));
+  } finally {
+    yield put(loading(false))
+  }
+}
+
+export function* watchGetEstimate() {
+  yield takeLatest(GET_ESTIMATE, getEstimateApi);
 }

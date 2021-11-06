@@ -5,7 +5,11 @@ import {
   GET_BALANCE_RAW,
   BALANCE_RAW_SUCCESS,
   BALANCE_RAW_ERROR,
+  GET_ESTIMATE,
+  GET_ESTIMATE_SUCCESS,
+  GET_ESTIMATE_ERROR
 } from "./actions";
+import produce from "immer";
 
 // The initial state of the App
 export const initialState = {
@@ -61,7 +65,31 @@ function balanceRawReducer(state = initialState, action) {
   }
 }
 
+const estimateReducer = produce((draft, action) => {
+  switch (action.type) {
+    case GET_ESTIMATE: {
+      return {
+        data: action.data,
+      };
+    }
+    case GET_ESTIMATE_SUCCESS: {
+      draft.data = action.data
+      return draft;
+    }
+
+    case GET_ESTIMATE_ERROR: {
+      return {
+        error: action.error,
+      };
+    }
+
+    default:
+      break;
+  }
+}, initialState);
+
 export {
   balanceReducer,
-  balanceRawReducer
+  balanceRawReducer,
+  estimateReducer
 };
