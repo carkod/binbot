@@ -1,3 +1,10 @@
+export const defaultOptions = {
+  method: "GET",
+  mode: "cors", // no-cors, *cors, same-origin
+  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+};
+const tokenName = "binbot-token";
+
 /**
  * Parses the JSON returned by a network request
  *
@@ -19,6 +26,12 @@ function parseJSON(response) {
  */
 function checkStatus(response) {
 
+  if (response.status === 401) {
+    // Remove token as server is rejecting it
+    removeToken();
+    alert("User not authenticated")
+    window.location = "/login"
+  }
 
   if (response.status >= 200 && response.status < 300) {
     return response;
@@ -38,19 +51,6 @@ function checkStatus(response) {
   throw error;
 }
 
-/**
- * Requests a URL, returning a promise
- *
- * @param  {string} url       The URL we want to request
- * @param  {object} [options] The options we want to pass to "fetch"
- *
- * @return {object}           The response data
- */
-export default function request(url, options = defaultOptions) {
-  return fetch(url, options).then(checkStatus).then(parseJSON);
-}
-
-const tokenName = "binbot-token";
 
 export function getToken() {
   const token = localStorage.getItem(tokenName);
@@ -69,8 +69,16 @@ export function removeToken() {
   localStorage.removeItem(tokenName);
 }
 
-export const defaultOptions = {
-  method: "GET",
-  mode: "cors", // no-cors, *cors, same-origin
-  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-};
+
+/**
+ * Requests a URL, returning a promise
+ *
+ * @param  {string} url       The URL we want to request
+ * @param  {object} [options] The options we want to pass to "fetch"
+ *
+ * @return {object}           The response data
+ */
+export default function request(url, options = defaultOptions) {
+  return fetch(url, options).then(checkStatus).then(parseJSON);
+}
+

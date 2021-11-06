@@ -14,11 +14,6 @@ def get_one(id):
     return User().get_one()
 
 
-@user_blueprint.route("/auth/", methods=["GET"])
-def getAuth():
-    return User().getAuth()
-
-
 @user_blueprint.route("/login", methods=["POST"])
 def login():
     return User().login()

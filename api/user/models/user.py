@@ -39,7 +39,7 @@ class User:
         return resp
 
     def login(self):
-        data = request.json
+        data = request.get_json()
         email = data["email"].lower()
         user = app.db.users.find_one({"email": email})
         if user:

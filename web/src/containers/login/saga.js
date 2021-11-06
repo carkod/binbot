@@ -16,7 +16,6 @@ export function* postLogin(body) {
     body: JSON.stringify(data),
   };
   try {
-    // Call our request helper (see 'utils/request')
     const res = yield call(request, requestURL, options);
     yield put(loginSucceeded(res));
   } catch (err) {
