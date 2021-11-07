@@ -56,12 +56,12 @@ class Login extends Component {
 }
 
 const mapStateToProps = (state) => {
-  const { email, accessToken, password } = state.loginReducer;
+  const { email, access_token, password } = state.loginReducer;
 
   return {
     email: email,
     password: password,
-    accessToken: accessToken
+    accessToken: access_token
   };
 };
 

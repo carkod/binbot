@@ -116,12 +116,10 @@ class ResearchSignals(BinbotApi):
     def on_error(self, ws, error):
         msg = f'Research Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
         print(msg)
-        # Network error, restart
-        if error.args[0] == "Connection to remote host was lost." or error == "Connection reset by peer":
-            print("Restarting in 45 seconds...")
-            # API restart 30 secs + 15
-            sleep(45)
-            self.start_stream()
+        print("Restarting in 45 seconds...")
+        # API restart 30 secs + 15
+        sleep(45)
+        self.start_stream(ws)
 
     def on_message(self, ws, message):
         json_response = json.loads(message)

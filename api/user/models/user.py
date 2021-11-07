@@ -77,8 +77,8 @@ class User:
             )
             # Note: At some point I need to implement Token Revoking/Blacklisting
             # General info here: https://flask-jwt-extended.readthedocs.io/en/latest/blacklist_and_token_revoking.html
-        except Exception:
-            pass
+        except Exception as error:
+            raise Exception(error)
 
         resp = jsonResp_message("User logged out")
 
