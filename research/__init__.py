@@ -149,6 +149,7 @@ class ResearchSignals(BinbotApi):
                 msg = f"Not enough data to do research on {symbol}"
                 print(msg)
                 self.blacklist_coin(symbol, msg)
+                self.start_stream(ws)
                 return
 
             ma_100 = data["trace"][1]["y"]
