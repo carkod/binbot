@@ -47,6 +47,7 @@ class Deal(Account):
         )
         self.deal = {
             "last_order_id": 0,
+            "buy_timestamp": 0,
             "buy_price": "",
             "buy_total_qty": "",
             "current_price": "",
@@ -271,6 +272,7 @@ class Deal(Account):
 
         deal = {
             "last_order_id": res["orderId"],
+            "buy_timestamp": res["transactTime"],
             "buy_price": res["price"],
             "buy_total_qty": res["origQty"],
             "current_price": self.get_ticker_price(res["symbol"]),

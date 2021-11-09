@@ -192,6 +192,11 @@ class Bot(Account):
                     },
                     200,
                 )
+                # Notify market updates websockets to update
+                for thread in threading.enumerate():
+                    if thread.name == "market_updates_thread":
+                        thread._target.__self__.markets_streams.close()
+                        market_update_thread()
             else:
                 resp = jsonResp(
                     {
