@@ -1,6 +1,6 @@
 import json
 import sys
-from time import time
+from time import time, sleep
 import os
 from bson.objectid import ObjectId
 from flask import Response as FlaskResponse
@@ -8,9 +8,6 @@ from requests import Response, put
 from requests.exceptions import HTTPError, RequestException, Timeout
 from bson import json_util
 from api.app import create_app
-
-request_weight = 0
-accumulated_time = time()
 
 class BinanceErrors(Exception):
     pass
@@ -112,15 +109,12 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     response.raise_for_status()
 
     # Calculate request weights until blocked by Binance
-    if isinstance(response, Response) and "x-mbx-used-weight" in response.headers:
-        global request_weight
-        request_weight = request_weight + int(response.headers["x-mbx-used-weight"])
+    if isinstance(response, Response) and "x-mbx-used-weight-1m" in response.headers:
+        if int(response.headers["x-mbx-used-weight-1m"]) > 1200:
+            sleep(30)
+            print("Request weight exceeded, waiting 30 secs")
 
-        print(f'{1200 - request_weight} request weight left to be blocked')
-        global accumulated_time
-        if (time() - accumulated_time) > 60:
-            accumulated_time = 0
-            request_weight = 0
+        print(f'{1200 - int(response.headers["x-mbx-used-weight-1m"])} request weight left to be blocked')
 
     if (
         isinstance(json.loads(response.content), dict)
