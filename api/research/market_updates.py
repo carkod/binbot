@@ -14,35 +14,10 @@ class MarketUpdates(Account):
     Further explanation in docs/market_updates.md
     """
 
-    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
-    bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
-    bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
-    bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
-
     def __init__(self, interval="5m"):
         self.app = create_app()
         self.markets_streams = None
         self.interval = interval
-
-    def _get_raw_klines(self, pair, limit="200"):
-        params = {"symbol": pair, "interval": self.interval, "limit": limit}
-        res = requests.get(url=self.candlestick_url, params=params)
-        handle_error(res)
-        return res.json()
-
-    def _get_candlestick(self, market, interval):
-        url = f"{self.bb_candlestick_url}/{market}/{interval}"
-        res = requests.get(url=url)
-        handle_error(res)
-        data = res.json()
-        return data["trace"]
-
-    def _get_24_ticker(self, market):
-        url = f"{self.bb_24_ticker_url}/{market}"
-        res = requests.get(url=url)
-        handle_error(res)
-        data = res.json()["data"]
-        return data
 
     def start_stream(self):
         """
