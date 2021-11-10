@@ -390,7 +390,7 @@ class DealUpdates(Deal):
                 # Not likely to happen to remove in the future.
                 print(f"Failed to update stop_limit deal: {botId}")
             else:
-                buy_gbp_result = self.buy_gbp_balance()
+                self.buy_gbp_balance()
                 msg = "New stop_limit deal successfully updated"
                 bot_errors(msg, bot)
             return "completed"

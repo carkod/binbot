@@ -1,7 +1,8 @@
 import json
 import sys
-from time import time, sleep
+from time import time
 import os
+import threading
 from bson.objectid import ObjectId
 from flask import Response as FlaskResponse
 from requests import Response, put
@@ -104,6 +105,10 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
+    # Show error message for bad requests
+    if response.status_code == 400:
+        print(f"400 Bad request error: {response.json()}")
+
     # Before doing anything, raise error if response is not 200
     response.raise_for_status()
 

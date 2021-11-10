@@ -50,7 +50,7 @@ export default function BotInfo({ bot }) {
                 return <li key={i}><strong>{k}</strong>: {bot.deal[k]}</li>
               } else {
                 return (
-                  <ul>
+                  <ul key={i}>
                     {Object.keys(bot.deal[k]).map((l,j) => <li key={j}>{l}:{bot.deal[k][l]}</li>)}
                   </ul>
                 )

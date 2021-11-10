@@ -17,7 +17,7 @@ def get_one(id):
     return Bot().get_one()
 
 
-@bot_blueprint.route("/bot/", methods=["POST"])
+@bot_blueprint.route("/bot", methods=["POST"])
 @auth.login_required
 def create():
     return Bot().create()

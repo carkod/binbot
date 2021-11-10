@@ -154,9 +154,10 @@ class Deal(Account):
             qty_precision,
         )
 
-        if qty == 0.00:
+        if not qty or float(qty) == 0.00:
             error = "No balance to buy. Bot probably closed, and already sold balance"
             bot_errors(error, self.active_bot)
+            return False
 
         if price:
             order = {
@@ -189,7 +190,7 @@ class Deal(Account):
             {"_id": self.active_bot["_id"]}, {"$inc": {"total_commission": commission}}
         )
 
-        return
+        return True
 
     def base_order(self):
         """
