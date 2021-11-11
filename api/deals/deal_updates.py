@@ -383,7 +383,7 @@ class DealUpdates(Deal):
                 {
                     "$push": {"orders": stop_limit_response},
                     "$inc": {"total_commission": commission},
-                    "$set": {"status": "completed"},
+                    "$set": {"status": "completed", "deal.sell_timestamp": res["transactTime"]},
                 },
             )
             if not botId:
@@ -467,6 +467,7 @@ class DealUpdates(Deal):
                     "status": "completed",
                     "deal.take_profit_price": res["price"],
                     "orders": bot["orders"],
+                    "deal.sell_timestamp": res["transactTime"]
                 },
                 "$inc": {"total_commission": commission},
             },

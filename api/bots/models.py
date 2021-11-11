@@ -1,5 +1,6 @@
 import threading
 from datetime import date
+from time import time
 
 from api.account.account import Account
 from api.deals.models import Deal
@@ -286,7 +287,7 @@ class Bot(Account):
 
         else:
             self.app.db.bots.find_one_and_update(
-                {"pair": pair}, {"$set": {"status": "completed"}}
+                {"pair": pair}, {"$set": {"status": "completed", "deal.sell_timestamp": time()}}
             )
             resp = jsonResp(
                 {

@@ -2,7 +2,6 @@ import json
 import sys
 from time import time
 import os
-import threading
 from bson.objectid import ObjectId
 from flask import Response as FlaskResponse
 from requests import Response, put
@@ -116,9 +115,6 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     if isinstance(response, Response) and "x-mbx-used-weight" in response.headers:
         global request_weight
         request_weight = request_weight + int(response.headers["x-mbx-used-weight"])
-        # if (1200 - request_weight) < 0:
-        #     sleep(30)
-        #     print("Request weight exceeded, waiting 30 secs")
 
         print(f'{1200 - request_weight} request weight left to be blocked')
         global accumulated_time

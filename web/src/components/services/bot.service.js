@@ -43,7 +43,7 @@ export const botCandlestick = (data, bot, deal = null) => {
     type: "line",
     xref: "x",
     yref: "y",
-    x0: data.trace[0].x[0],
+    x0: data.trace[0].x[data.trace[0].x.length - 7],
     y0: currentPrice,
     x1: currentTime,
     y1: currentPrice,
@@ -52,7 +52,23 @@ export const botCandlestick = (data, bot, deal = null) => {
       width: 2,
     },
   };
+  // Base time Shape
+  const boughtTime = !checkValue(deal) && "buy_timestamp" in deal ? deal.buy_timestamp : currentTime;
+  const baseOrderTS = {
+    type: "line",
+    xref: "x",
+    yref: "y",
+    x0: boughtTime,
+    y0: parseFloat(currentPrice) * 1.03,
+    x1: boughtTime,
+    y1: parseFloat(currentPrice) - (parseFloat(currentPrice) * 0.03),
+    line: {
+      color: "DarkOrange",
+      width: 2,
+    },
+  };
   shapes.push(baseOrderS);
+  shapes.push(baseOrderTS);
   annotations.push(baseOrderA);
 
   if (

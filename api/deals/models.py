@@ -1,5 +1,5 @@
 from decimal import Decimal
-
+from time import time
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
@@ -53,6 +53,7 @@ class Deal(Account):
             "current_price": "",
             "take_profit_price": "",
             "so_prices": [],
+            "sell_timestamp": 0,
         }
 
     def get_one_balance(self, symbol="BTC"):
@@ -499,7 +500,7 @@ class Deal(Account):
         buy_gbp_result = self.buy_gbp_balance()
         if not isinstance(buy_gbp_result, Response):
             bot_id = app.db.bots.find_one_and_update(
-                {"pair": pair}, {"$set": {"status": "completed"}}
+                {"pair": pair}, {"$set": {"status": "completed", "deal.sell_timestamp": time()}}
             )
             if not bot_id:
                 app.db.bots.find_one_and_update(

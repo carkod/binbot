@@ -1,11 +1,7 @@
 import json
-import os
-
-import requests
 from api.account.account import Account
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
-from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
 
 
