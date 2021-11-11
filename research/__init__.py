@@ -10,6 +10,7 @@ from apis import BinbotApi
 from autotrade import Autotrade
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors, supress_notation
+from datetime import datetime
 
 load_dotenv()
 
@@ -41,6 +42,7 @@ class ResearchSignals(BinbotApi):
 
         if self.settings:
             self.interval = self.settings["candlestick_interval"]
+            self.max_request = int(self.settings["max_request"])
 
     def blacklist_coin(self, pair, msg):
         res = requests.post(
@@ -83,6 +85,12 @@ class ResearchSignals(BinbotApi):
             previous_ws.close()
         raw_symbols = self._ticker_price()
         black_list = [x["pair"] for x in self.blacklist_data]
+
+        # Optinal setting below setting greatly reduces the websocket load
+        # To make it faster to scan and reduce chances of being blocked by B
+        if self.settings and self.settings["balance_to_use"] != "GBP":
+            black_list = [item for item in black_list if self.settings["balance_to_use"] in item]
+
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
         list_markets = markets - subtract_list
@@ -92,10 +100,11 @@ class ResearchSignals(BinbotApi):
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         stream_1 = params[: self.max_request]
-        stream_2 = params[(self.max_request + 1):]
-
         self._run_streams(stream_1, 1)
-        self._run_streams(stream_2, 2)
+
+        if len(params) > self.max_request:
+            stream_2 = params[(self.max_request + 1):]
+            self._run_streams(stream_2, 2)
 
     def post_error(self, msg):
         res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
@@ -138,6 +147,8 @@ class ResearchSignals(BinbotApi):
         """
         Updates market data in DB for research
         """
+        if datetime.now().time().hour == 0 and datetime.now().time().minute == 0:
+            sleep(3600)
         if "k" in result and "s" in result["k"]:
             # Check if streams need to be restarted
             close_price = float(result["k"]["c"])

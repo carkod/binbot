@@ -1,5 +1,3 @@
-import os
-
 from api.account.account import Account
 from api.account.assets import Assets
 from api.auth import auth
