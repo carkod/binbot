@@ -1,7 +1,8 @@
 import json
 from decimal import Decimal
-import sys
+from time import sleep
 from requests import Response, HTTPError
+
 class BinanceErrors(Exception):
     pass
 
@@ -30,6 +31,8 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
+    # Reduce speed of requests to avoid rate limits
+    sleep(5)
     try:
         if (
             isinstance(json.loads(response.content), dict)
@@ -38,13 +41,6 @@ def handle_binance_errors(response: Response, bot=None, message=None):
             content = response.json()
             if content["code"] == 200:
                 return content
-
-            if content["code"] == -1003:
-                # Too many requests, most likely exceeded API rate limits
-                # Back off for > 5 minutes, which is Binance's ban time
-                print("Too many requests. Back off for 5 min...")
-                sys.exit()
-                return
 
             if content["code"] == -1121:
                 raise InvalidSymbol("Binance error, invalid symbol")

@@ -101,28 +101,20 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
+    content = response.json()
     # Show error message for bad requests
     if response.status_code == 400:
-        print(f"400 Bad request error: {response.json()}")
+        raise HTTPError(content)
 
-    # Before doing anything, raise error if response is not 200
-    response.raise_for_status()
+    # Calculate request weights and pause half of the way (1200/2=600)
+    if "x-mbx-used-weight-1m" in response.headers and int(response.headers["x-mbx-used-weight-1m"]) > 600:
+        print("Request weight limit prevention pause, waiting 1 min")
+        sleep(60)
 
-    # Calculate request weights until blocked by Binance
-    if isinstance(response, Response) and "x-mbx-used-weight-1m" in response.headers:
-        if int(response.headers["x-mbx-used-weight-1m"]) > 1200:
-            sleep(30)
-            print("Request weight exceeded, waiting 30 secs")
-
-        print(f'{1200 - int(response.headers["x-mbx-used-weight-1m"])} request weight left to be blocked')
-
-    if (
-        isinstance(json.loads(response.content), dict)
-        and "code" in json.loads(response.content).keys()
-    ):
-        content = response.json()
+    if (content and "code" in content):
+        
         if content["code"] == 200:
-            return response.json()
+            return content
         if content["code"] == -2010 or content["code"] == -1013:
             # Not enough funds. Ignore, send to bot errors
             # Need to be dealt with at higher levels
@@ -141,11 +133,10 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         if content["code"] == -1003:
             # Too many requests, most likely exceeded API rate limits
             # Back off for > 5 minutes, which is Binance's ban time
-            print("Too many requests. Back off for 5 min...")
-            sys.exit()
-            return
+            print("Too many requests. Back off for 1 min...")
+            sleep(60)
 
         if content["code"] == -1121:
             raise InvalidSymbol("Binance error, invalid symbol")
     else:
-        return response.json()
+        return content

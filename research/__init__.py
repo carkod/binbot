@@ -85,15 +85,13 @@ class ResearchSignals(BinbotApi):
             previous_ws.close()
         raw_symbols = self._ticker_price()
         black_list = [x["pair"] for x in self.blacklist_data]
-
-        # Optinal setting below setting greatly reduces the websocket load
-        # To make it faster to scan and reduce chances of being blocked by B
-        if self.settings and self.settings["balance_to_use"] != "GBP":
-            black_list = [item for item in black_list if self.settings["balance_to_use"] in item]
-
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
         list_markets = markets - subtract_list
+        # Optinal setting below setting greatly reduces the websocket load
+        # To make it faster to scan and reduce chances of being blocked by B
+        if self.settings and self.settings["balance_to_use"] != "GBP":
+            list_markets = [item for item in list_markets if self.settings["balance_to_use"] in item]
 
         params = []
         for market in list_markets:
@@ -147,8 +145,10 @@ class ResearchSignals(BinbotApi):
         """
         Updates market data in DB for research
         """
+        # Sleep 1 hour because of snapshot account request weight
         if datetime.now().time().hour == 0 and datetime.now().time().minute == 0:
             sleep(3600)
+            
         if "k" in result and "s" in result["k"]:
             # Check if streams need to be restarted
             close_price = float(result["k"]["c"])
@@ -156,7 +156,7 @@ class ResearchSignals(BinbotApi):
             symbol = result["k"]["s"]
             ws.symbol = symbol
             data = self._get_candlestick(symbol, self.interval, stats=True)
-            if len(data["trace"][1]["y"]) <= 100:
+            if not data or len(data["trace"][1]["y"]) <= 100:
                 msg = f"Not enough data to do research on {symbol}"
                 print(msg)
                 self.blacklist_coin(symbol, msg)
