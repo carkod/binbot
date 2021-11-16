@@ -1,6 +1,7 @@
 import React from "react";
+import { withRouter } from "react-router-dom";
 import {
-  Collapse,
+  Button, Collapse,
   Container,
   Dropdown,
   DropdownItem,
@@ -8,18 +9,15 @@ import {
   DropdownToggle,
   Input,
   InputGroup,
-  InputGroupAddon,
   InputGroupText,
   Nav,
   Navbar,
   NavbarBrand,
   NavbarToggler,
-  NavItem,
-  Button,
+  NavItem
 } from "reactstrap";
-import routes from "../../router/routes";
 import { removeToken } from "../../request";
-import { withRouter } from "react-router-dom";
+import routes from "../../router/routes";
 
 class Header extends React.Component {
   constructor(props) {
@@ -143,11 +141,9 @@ class Header extends React.Component {
             <form>
               <InputGroup className="no-border">
                 <Input placeholder="Search..." />
-                <InputGroupAddon addonType="append">
                   <InputGroupText>
                     <i className="nc-icon nc-zoom-split" />
                   </InputGroupText>
-                </InputGroupAddon>
               </InputGroup>
             </form>
             <Nav navbar>

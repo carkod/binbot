@@ -5,7 +5,6 @@ import {
   FormGroup,
   Input,
   InputGroup,
-  InputGroupAddon,
   InputGroupText,
   Label,
   Row,
@@ -63,9 +62,7 @@ export default function MainTab({
               autoComplete="off"
               disabled={state.status === "active"}
             />
-            <InputGroupAddon addonType="append">
-              <InputGroupText>{state.quoteAsset}</InputGroupText>
-            </InputGroupAddon>
+            <InputGroupText>{state.quoteAsset}</InputGroupText>
           </InputGroup>
           <FormFeedback valid={!state.baseOrderSizeError}>
             Not enough balance

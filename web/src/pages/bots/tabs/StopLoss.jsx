@@ -3,7 +3,6 @@ import {
   FormFeedback,
   Input,
   InputGroup,
-  InputGroupAddon,
   InputGroupText,
   Label,
   Row,
@@ -23,7 +22,7 @@ export default function StopLoss({
           <Label htmlFor="stop_loss">
             Stop loss <span className="u-required">*</span>
           </Label>
-          <InputGroup>
+          <InputGroup size="sm">
             <Input
               type="text"
               name="stop_loss"
@@ -31,9 +30,7 @@ export default function StopLoss({
               onBlur={handleBlur}
               value={stop_loss}
             />
-            <InputGroupAddon addonType="append">
-              <InputGroupText>%</InputGroupText>
-            </InputGroupAddon>
+            <InputGroupText>%</InputGroupText>
           </InputGroup>
           <FormFeedback valid={!stopLossError}>Not a percentage</FormFeedback>
         </Col>
