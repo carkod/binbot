@@ -1,5 +1,6 @@
 import threading
 from datetime import date
+from time import time
 
 from api.account.account import Account
 from api.deals.models import Deal
@@ -47,6 +48,19 @@ class Bot(Account):
             "total_commission": 0
         }
         self.default_so = {"so_size": "0", "price": "0", "price_deviation_so": "0.63"}
+
+    def _restart_websockets(self):
+        """
+        Restart websockets threads after list of active bots altered
+        """
+        print("Restarting market_updates")
+        # Notify market updates websockets to update
+        for thread in threading.enumerate():
+            if thread.name == "market_updates_thread":
+                thread._target.__self__.markets_streams.close()
+                market_update_thread()
+        print("Finished restarting market_updates")
+        return
 
     def get(self):
         """
@@ -115,11 +129,7 @@ class Bot(Account):
             resp = jsonResp(
                 {"message": "Successfully updated bot", "botId": findId}, 200
             )
-            # Notify market updates websockets to update
-            for thread in threading.enumerate():
-                if thread.name == "market_updates_thread":
-                    thread._target.__self__.markets_streams.close()
-                    market_update_thread()
+            self._restart_websockets()
         else:
             resp = jsonResp({"message": "Failed to update bot"}, 400)
 
@@ -192,6 +202,7 @@ class Bot(Account):
                     },
                     200,
                 )
+                self._restart_websockets()
             else:
                 resp = jsonResp(
                     {
@@ -272,10 +283,11 @@ class Bot(Account):
                     "error": 1,
                 }
             )
+            self._restart_websockets()
 
         else:
             self.app.db.bots.find_one_and_update(
-                {"pair": pair}, {"$set": {"status": "completed"}}
+                {"pair": pair}, {"$set": {"status": "completed", "deal.sell_timestamp": time()}}
             )
             resp = jsonResp(
                 {
@@ -283,7 +295,7 @@ class Bot(Account):
                     "error": 0,
                 }
             )
-
+            self._restart_websockets()
         return resp
 
     def put_archive(self):
@@ -296,7 +308,7 @@ class Bot(Account):
             return jsonResp(
                 {"message": "Cannot archive an active bot!", "botId": botId}
             )
-        
+
         if bot["status"] == "archived":
             status = "inactive"
         else:

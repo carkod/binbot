@@ -6,7 +6,6 @@ import { Spinner } from "reactstrap";
 import Footer from "../containers/footer/Footer.jsx";
 import Header from "../containers/header/Header.jsx";
 import Sidebar from "../containers/sidebar/Sidebar";
-import NotFound from "../pages/NotFound.jsx";
 import routes from "../router/routes";
 
 class Admin extends React.Component {
@@ -64,7 +63,6 @@ class Admin extends React.Component {
                   />
                 );
               })}
-              <Route component={NotFound} />
             </Switch>
             <Footer fluid />
           </div>

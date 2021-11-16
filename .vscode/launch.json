@@ -13,7 +13,8 @@
         "FLASK_DEBUG": "1"
       },
       "args": ["run", "--no-reload"],
-      "jinja": true
+      "jinja": true,
+      "preLaunchTask": "startDb"
     },
     {
       "type": "pwa-chrome",

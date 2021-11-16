@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
   Col,
+  FormFeedback,
   FormGroup,
   Input,
   Label,
@@ -16,7 +17,7 @@ import { useImmer } from "use-immer";
 import SymbolSearch from "../../components/SymbolSearch";
 import { checkValue } from "../../validations";
 
-const SettingsInput = ({ value, name, label, handleChange }) => {
+const SettingsInput = ({ value, name, label, handleChange, handleBlur, errorMsg }) => {
   return (
     <FormGroup>
       <Label for={name}>{label}</Label>
@@ -25,8 +26,15 @@ const SettingsInput = ({ value, name, label, handleChange }) => {
         name={name}
         id={name}
         onChange={handleChange}
+        onBlur={handleBlur}
         defaultValue={value}
+        invalid={!checkValue(errorMsg)}
       />
+      {errorMsg &&
+        <FormFeedback>
+          {errorMsg}
+        </FormFeedback>
+      }
     </FormGroup>
   );
 };
@@ -38,7 +46,9 @@ export const ControllerTab = ({
   handleInput,
   saveSettings,
   handleBlacklist,
-  toggleTrailling
+  toggleTrailling,
+  handleBalanceToUseBlur,
+  balanceToUseUnmatchError
 }) => {
   const [addBlacklist, setAddBlacklist] = useImmer({ reason: "", pair: "" });
   const [removeBlacklist, setRemoveBlacklist] = useState("");
@@ -113,6 +123,8 @@ export const ControllerTab = ({
                             name={"balance_to_use"}
                             label={"Balance to use"}
                             handleChange={handleInput}
+                            handleBlur={handleBalanceToUseBlur}
+                            errorMsg={balanceToUseUnmatchError}
                           />
                         </Col>
                         <Col md="3">

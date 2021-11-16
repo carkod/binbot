@@ -1,15 +1,9 @@
-import os
-
 from api.account.account import Account
 from api.account.assets import Assets
+from api.auth import auth
 from flask import Blueprint
 
-# initialization
-os.environ["CORS_HEADERS"] = "Content-Type"
-
 account_blueprint = Blueprint("account", __name__)
-# @token_required
-
 
 @account_blueprint.route("/btc-balance", methods=["GET"])
 def get_balances_btc():
@@ -66,14 +60,17 @@ def ticker_24(symbol):
 
 
 @account_blueprint.route("/balance/estimate", methods=["GET"])
+@auth.login_required
 def balance_estimated():
     return Assets().balance_estimate()
 
 @account_blueprint.route("/balance/series", methods=["GET"])
+@auth.login_required
 def balance_series():
     return Assets().balance_series()
 
 @account_blueprint.route("/pnl", methods=["GET"])
+@auth.login_required
 def get_pnl():
     return Assets().get_pnl()
 

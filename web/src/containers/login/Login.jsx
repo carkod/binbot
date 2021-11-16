@@ -7,8 +7,8 @@ import { login } from "./actions";
 
 class Login extends Component {
 
-  constructor(props) {
-    super(props);
+  constructor() {
+    super();
     this.state = {
       redirect: false,
     }
@@ -16,7 +16,7 @@ class Login extends Component {
 
   componentDidUpdate = (p, s) => {
     if (this.props.accessToken !== p.accessToken) {
-      this.setState({ redirect: false });
+      this.setState({ redirect: true })
     }
   }
 
@@ -60,8 +60,8 @@ const mapStateToProps = (state) => {
 
   return {
     email: email,
-    accessToken: access_token,
-    password: password
+    password: password,
+    accessToken: access_token
   };
 };
 

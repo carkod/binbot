@@ -383,14 +383,14 @@ class DealUpdates(Deal):
                 {
                     "$push": {"orders": stop_limit_response},
                     "$inc": {"total_commission": commission},
-                    "$set": {"status": "completed"},
+                    "$set": {"status": "completed", "deal.sell_timestamp": res["transactTime"]},
                 },
             )
             if not botId:
                 # Not likely to happen to remove in the future.
                 print(f"Failed to update stop_limit deal: {botId}")
             else:
-                buy_gbp_result = self.buy_gbp_balance()
+                self.buy_gbp_balance()
                 msg = "New stop_limit deal successfully updated"
                 bot_errors(msg, bot)
             return "completed"
@@ -467,6 +467,7 @@ class DealUpdates(Deal):
                     "status": "completed",
                     "deal.take_profit_price": res["price"],
                     "orders": bot["orders"],
+                    "deal.sell_timestamp": res["transactTime"]
                 },
                 "$inc": {"total_commission": commission},
             },

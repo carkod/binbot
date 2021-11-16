@@ -5,8 +5,18 @@ import BotForm from "../pages/bots/BotForm";
 import Bots from "../pages/bots/Bots";
 import Orders from "../pages/orders/Orders";
 import Research from "../pages/research/Research";
+import Login from "../containers/login/Login";
 
 const routes = [
+  {
+    path: "/login",
+    name: "Login",
+    icon: null,
+    component: Login,
+    layout: null,
+    nav: false,
+    private: false,
+  },
   {
     path: "/dashboard",
     name: "Dashboard",

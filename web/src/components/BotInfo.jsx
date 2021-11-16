@@ -21,8 +21,9 @@ export default function BotInfo({ bot }) {
               <th>Order Side</th>
             </tr>
           </thead>
+          {bot.orders.length > 0 &&
           <tbody>
-            {bot.orders.map((deal) => {
+            {bot.orders.map((deal, i) => {
               if (typeof deal === "object" && "deal_type" in deal) {
                 return (
                   <tr key={deal.order_id}>
@@ -35,10 +36,15 @@ export default function BotInfo({ bot }) {
                   </tr>
                 );
               } else {
-                return ("")
+                return (
+                  <tr key={i}>
+                    <td></td>
+                  </tr>
+                )
               }
             })}
           </tbody>
+          }
         </Table>
         <hr />
         {!checkValue(bot.deal) && !checkValue(bot.deal.buy_price) && (
@@ -50,7 +56,7 @@ export default function BotInfo({ bot }) {
                 return <li key={i}><strong>{k}</strong>: {bot.deal[k]}</li>
               } else {
                 return (
-                  <ul>
+                  <ul key={i}>
                     {Object.keys(bot.deal[k]).map((l,j) => <li key={j}>{l}:{bot.deal[k][l]}</li>)}
                   </ul>
                 )

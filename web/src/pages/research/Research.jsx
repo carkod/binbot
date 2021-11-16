@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import { Nav, NavItem, NavLink, TabContent, TabPane } from "reactstrap";
 import { checkValue } from "../../validations";
 import { loadCandlestick, getSymbols } from "../bots/actions";
+import { getBalanceRaw } from "../../state/balances/actions";
 import {
   getHistoricalResearchData,
   getResearchData,
@@ -32,6 +33,7 @@ class Research extends React.Component {
       candlestickSignalFilter: "positive",
       settings: {},
       selectedBlacklist: "",
+      balanceToUseUnmatchError: "",
     };
   }
 
@@ -80,6 +82,7 @@ class Research extends React.Component {
     this.props.getSettings();
     this.props.getBlacklist();
     this.props.getSymbols();
+    this.props.getBalanceRaw();
   };
 
   componentDidUpdate = (p, s) => {
@@ -135,6 +138,10 @@ class Research extends React.Component {
     }
     if (p.blacklistData !== this.props.blacklistData) {
       this.setState({ blacklistData: this.props.blacklistData });
+    }
+
+    if (p.balance_raw !== this.props.balance_raw) {
+      this.handleBalanceToUseBlur();
     }
   };
 
@@ -234,6 +241,19 @@ class Research extends React.Component {
     }
   }
 
+  handleBalanceToUseBlur = () => {
+    const searchBalance = this.props.balance_raw.findIndex(b => b["asset"] === this.state.settings.balance_to_use);
+    if (searchBalance === -1) {
+      this.setState({
+        balanceToUseUnmatchError: "Balance to use does not match available balance. Autotrade will fail."
+      });
+    } else {
+      this.setState({
+        balanceToUseUnmatchError: ""
+      });
+    }
+  }
+
   render() {
     return (
       <>
@@ -268,6 +288,8 @@ class Research extends React.Component {
                 handleBlacklist={this.handleBlacklist}
                 saveSettings={this.saveSettings}
                 toggleTrailling={this.toggleTrailling}
+                balanceToUseUnmatchError={this.state.balanceToUseUnmatchError}
+                handleBalanceToUseBlur={this.handleBalanceToUseBlur}
               />
             </TabPane>
             <TabPane tabId="signalTab">
@@ -299,6 +321,7 @@ const mapStateToProps = (state) => {
   const { data: symbols } = state.symbolReducer;
   const { data: blacklistData } = state.blacklistReducer;
   const { data: settings } = state.settingsReducer;
+  const { data: balance_raw } = state.balanceRawReducer;
 
   return {
     research: research,
@@ -307,6 +330,7 @@ const mapStateToProps = (state) => {
     symbols: symbols,
     blacklistData: blacklistData,
     settings: settings,
+    balance_raw: balance_raw,
   };
 };
 
@@ -320,4 +344,5 @@ export default connect(mapStateToProps, {
   deleteBlackList,
   getSettings,
   editSettings,
+  getBalanceRaw,
 })(Research);

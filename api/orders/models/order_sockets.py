@@ -1,11 +1,12 @@
 import json
-
+import threading
 import requests
 from api.account.assets import Assets
 from api.apis import BinanceApi
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from api.deals.models import Deal
+from api.threads import market_update_thread
 from api.tools.handle_error import handle_error, post_error
 from websocket import WebSocketApp
 
@@ -28,6 +29,19 @@ class OrderUpdates(BinanceApi):
         handle_error(res)
         data = res.json()
         return data
+    
+    def restart_market_updates(self):
+        """
+        Restart market_updates threads after list of active bots altered
+        """
+        print("Restarting market_updates")
+        # Notify market updates websockets to update
+        for thread in threading.enumerate():
+            if thread.name == "market_updates_thread":
+                thread._target.__self__.markets_streams.close()
+                market_update_thread()
+        print("Finished restarting market_updates")
+        return
 
     def run_stream(self):
         if not self.active_ws or not self.listen_key:
@@ -50,23 +64,17 @@ class OrderUpdates(BinanceApi):
 
     def on_error(self, ws, error):
         print(f"Order Websocket error: {error}")
-        if error.args[0] == "Connection to remote host was lost.":
-            self.run_stream()
+        self.run_stream()
 
     def on_message(self, wsapp, message):
         response = json.loads(message)
         try:
             result = response["data"]
-        except KeyError:
-            print(f"Error: {result}")
+        except KeyError as error:
+            print(f"Error: {error}")
 
         if "e" in result and result["e"] == "executionReport":
             self.process_report_execution(result)
-
-        # account balance has changed and contains the assets that were possibly changed by the event that generated the balance change
-        # https://binance-docs.github.io/apidocs/spot/en/#payload-account-update
-        if "e" in result and result["e"] == "outboundAccountPosition":
-            self.process_account_update(result)
 
     def process_report_execution(self, result):
         # Parse result. Print result for raw result from Binance
@@ -140,14 +148,11 @@ class OrderUpdates(BinanceApi):
                 deal = DealUpdates(bot)
                 deal.default_deal.update(bot)
                 deal.update_take_profit(order_id)
+            
+            # Restart market_update websockets to pick up new active bots
+            self.restart_market_updates()
 
         else:
             print(
                 f"No bot found with order client order id: {order_id}. Order status: {result['X']}"
             )
-
-    def process_account_update(self, result):
-        balance = result["B"]
-        if len(balance) > 0:
-            assets = Assets()
-            assets.store_balance()

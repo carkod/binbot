@@ -1,30 +1,25 @@
 import datetime
 import os
-from functools import wraps
 
-from api.tools.handle_error import jsonResp
-from flask import request
+from flask import current_app, request
+from flask_httpauth import HTTPTokenAuth
 from jose import jwt
 
+auth = HTTPTokenAuth(scheme="Bearer")
 
-# Auth Decorator
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        access_token = request.headers.get("AccessToken")
-
-        try:
-            data = jwt.decode(access_token, os.environ["SECRET_KEY"])
-        except Exception as e:
-            return jsonResp({"message": "Token is invalid", "exception": str(e)}, 401)
-
-        return f(*args, **kwargs)
-
-    return decorated
-
+@auth.verify_token
+def verify_token(token):
+    # Research app exception
+    # Authorize local requests
+    if request.environ["SERVER_NAME"] == "0.0.0.0" or request.environ["SERVER_NAME"] == "127.0.0.1":
+        return True
+    user = current_app.db.users.find_one({"access_token": token})
+    if user:
+        return True
+    else:
+        return False
 
 def encodeAccessToken(user_id, email):
-
     accessToken = jwt.encode(
         {
             "user_id": user_id,

@@ -4,12 +4,9 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pylint = "2.10.2"
 autopep8 = "*"
 isort = "5.9.2"
 black = "*"
-mypy = "*"
-bandit = "*"
 
 [packages]
 flask = "*"
@@ -28,6 +25,7 @@ scipy = "1.7.0"
 python-telegram-bot = "13.7"
 python-dotenv = "*"
 gevent = "*"
+flask-httpauth = "*"
 
 [requires]
 python_version = "3.8"

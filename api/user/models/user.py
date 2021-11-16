@@ -1,12 +1,11 @@
 from flask import request, current_app as app
 from passlib.hash import pbkdf2_sha256
 from jose import jwt
-from api.auth import encodeAccessToken, encodeRefreshToken
 import os
 from api.tools.dates import nowDatetimeUTC
 from api.tools.handle_error import jsonResp_message, jsonResp
 from bson.objectid import ObjectId
-
+from api.auth import encodeAccessToken, encodeRefreshToken
 
 class User:
     def __init__(self):
@@ -21,7 +20,6 @@ class User:
         }
 
     def get(self):
-        # token_data = jwt.decode(request.headers.get('AccessToken'), os.environ['SECRET_KEY'])
         users = list(app.db.users.find())
         if users:
             resp = jsonResp_message(users)
@@ -37,40 +35,34 @@ class User:
         if user:
             resp = jsonResp({"message": "User found", "data": user})
         else:
-            resp = jsonResp({"message": "User not found", "error": 1}, 404)
+            resp = jsonResp({"message": "User not found", "error": 1}, 401)
         return resp
 
     def login(self):
-        data = request.json
+        data = request.get_json()
         email = data["email"].lower()
         user = app.db.users.find_one({"email": email})
         if user:
-            verify = pbkdf2_sha256.verify(data["password"], user["password"])
-            if verify:
-                access_token = encodeAccessToken(user["password"], user["email"])
-
-                app.db.users.update_one(
-                    {"_id": user["_id"]},
-                    {
-                        "$set": {
-                            "access_token": access_token,
-                            "last_login": nowDatetimeUTC(),
-                        }
-                    },
-                )
-
-                resp = jsonResp(
-                    {
-                        "_id": user["_id"],
-                        "email": user["email"],
+            access_token = encodeAccessToken(user["password"], user["email"])
+            app.db.users.update_one(
+                {"_id": user["_id"]},
+                {
+                    "$set": {
                         "access_token": access_token,
-                        "error": 0
-                    },
-                    200,
-                )
+                        "last_login": nowDatetimeUTC(),
+                    }
+                },
+            )
 
-            else:
-                resp = jsonResp({"message": "Incorrect password", "error": 1})
+            resp = jsonResp(
+                {
+                    "_id": user["_id"],
+                    "email": user["email"],
+                    "access_token": access_token,
+                    "error": 0,
+                },
+                200,
+            )
         else:
             resp = jsonResp({"message": "Credentials are incorrect", "error": 1})
         return resp
@@ -81,12 +73,12 @@ class User:
                 request.headers.get("AccessToken"), os.environ["SECRET_KEY"]
             )
             app.db.users.update(
-                {"id": tokenData["userid"]}, {"$unset": {"access_token": ""}}
+                {"id": tokenData["userid"]}, {"$unset": {"access_token": None}}
             )
             # Note: At some point I need to implement Token Revoking/Blacklisting
             # General info here: https://flask-jwt-extended.readthedocs.io/en/latest/blacklist_and_token_revoking.html
-        except:
-            pass
+        except Exception as error:
+            raise Exception(error)
 
         resp = jsonResp_message("User logged out")
 

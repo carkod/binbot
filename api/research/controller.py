@@ -49,14 +49,15 @@ class Controller:
 
     def edit_settings(self):
         # Start with current settings
-        self.defaults = current_app.db.research_controller.find_one({"_id": "settings"})
+        self.defaults.update(current_app.db.research_controller.find_one({"_id": "settings"}))
         system_logs = []
         data = request.json
 
         if "errors" in data:
             if isinstance(self.defaults["system_logs"], str):
                 system_logs.append(self.defaults["system_logs"])
-            system_logs.extend(data["system_logs"])
+            if "system_logs" in data:
+                system_logs.extend(data["system_logs"])
 
         self.defaults.update(data)
         self.defaults["system_logs"] = system_logs

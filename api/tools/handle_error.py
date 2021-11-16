@@ -1,6 +1,6 @@
 import json
 import sys
-from time import time
+from time import time, sleep
 import os
 from bson.objectid import ObjectId
 from flask import Response as FlaskResponse
@@ -8,9 +8,6 @@ from requests import Response, put
 from requests.exceptions import HTTPError, RequestException, Timeout
 from bson import json_util
 from api.app import create_app
-
-count_requests = 0
-accumulated_time = time()
 
 class BinanceErrors(Exception):
     pass
@@ -104,51 +101,42 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-    # Before doing anything, raise error if response is not 200
-    response.raise_for_status()
-    try:
-        if isinstance(response, Response) and "X-MBX-USED-WEIGHT-" in response.headers:
-            print(f'Current rate limit: {response.headers}')
+    content = response.json()
+    # Show error message for bad requests
+    if response.status_code == 400:
+        raise HTTPError(content)
 
-        if (
-            isinstance(json.loads(response.content), dict)
-            and "code" in json.loads(response.content).keys()
-        ):
-            global count_requests
-            count_requests += 1
-            global accumulated_time
-            print(f"number of requests:{count_requests}. Accumulated time: {time() - accumulated_time}")
-            content = response.json()
-            if content["code"] == 200:
-                return response.json()
-            if content["code"] == -2010 or content["code"] == -1013:
-                # Not enough funds. Ignore, send to bot errors
-                # Need to be dealt with at higher levels
-                if not bot:
-                    return jsonResp_error_message(content["msg"])
-                else:
-                    error = f'{message + content["msg"] if message else content["msg"]}'
-                    bot["errors"].append(error)
-                    app = create_app()
-                    bot = app.db.bots.find_one_and_update(
-                        {"_id": ObjectId(bot["_id"])},
-                        {"$set": {"status": "error", "errors": bot["errors"]}},
-                    )
-                    return "errored"
+    # Calculate request weights and pause half of the way (1200/2=600)
+    if "x-mbx-used-weight-1m" in response.headers and int(response.headers["x-mbx-used-weight-1m"]) > 600:
+        print("Request weight limit prevention pause, waiting 1 min")
+        sleep(60)
 
-            if content["code"] == -1003:
-                # Too many requests, most likely exceeded API rate limits
-                # Back off for > 5 minutes, which is Binance's ban time
-                print("Too many requests. Back off for 5 min...")
-                sys.exit()
-                return
-            
-            if content["code"] == -1121:
-                raise InvalidSymbol("Binance error, invalid symbol")
-        else:
-            return response.json()
-    except HTTPError:
-        if "msg" in response:
-            raise HTTPError(response.json()["msg"])
-        else:
-            raise HTTPError(response.json())
+    if (content and "code" in content):
+        
+        if content["code"] == 200:
+            return content
+        if content["code"] == -2010 or content["code"] == -1013:
+            # Not enough funds. Ignore, send to bot errors
+            # Need to be dealt with at higher levels
+            if not bot:
+                return jsonResp_error_message(content["msg"])
+            else:
+                error = f'{message + content["msg"] if message else content["msg"]}'
+                bot["errors"].append(error)
+                app = create_app()
+                bot = app.db.bots.find_one_and_update(
+                    {"_id": ObjectId(bot["_id"])},
+                    {"$set": {"status": "error", "errors": bot["errors"]}},
+                )
+                return "errored"
+
+        if content["code"] == -1003:
+            # Too many requests, most likely exceeded API rate limits
+            # Back off for > 5 minutes, which is Binance's ban time
+            print("Too many requests. Back off for 1 min...")
+            sleep(60)
+
+        if content["code"] == -1121:
+            raise InvalidSymbol("Binance error, invalid symbol")
+    else:
+        return content

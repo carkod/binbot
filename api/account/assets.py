@@ -179,7 +179,6 @@ class Assets(Account):
         total_btc = 0
         rate = 0
         for b in balances["data"]:
-            print(f"Balance: {b['asset']}")
             # Only tether coins for hedging
             if b["asset"] in ["USD", "BTC", "BNB", "ETH", "XRP"]:
                 qty = self._check_locked(b)
@@ -293,7 +292,6 @@ class Assets(Account):
         This endpoint uses high weight: 2400
         it will be easily flagged by binance
         """
-
         snapshot_account_data = self.signed_request(
             url=self.account_snapshot_url, payload={"type": "SPOT"}
         )
@@ -326,19 +324,21 @@ class Assets(Account):
         rate = self.coinbase_api.get_conversion(time, base, quote)
         total = float(rate) * float(qty)
         return jsonResp({"data": total})
-    
+
     def store_balance_snapshot(self):
         """
-        Alternative to storing balance, use Binance new snapshot endpoint to store
+        Alternative to storing balance,
+        use Binance new snapshot endpoint to store
+        Because this is a cronjob, it doesn't have application context
         """
-        # Because this is a cronjob, it doesn't have application context
         app = create_app()
+        print("Store account snapshot starting...")
         current_time = datetime.utcnow()
         data = self.signed_request(self.account_snapshot_url, payload={"type": "SPOT"})
         spot_data = next((item for item in data["snapshotVos"] if item["type"] == "spot"), None)
         balances = [balance for balance in spot_data["data"]["balances"] if (balance["free"] != "0" or balance["locked"] != "0")]
         total_btc = spot_data["data"]["totalAssetOfBtc"]
-        fiat_rate = self.get_ticker_price(f"BTCGBP")
+        fiat_rate = self.get_ticker_price("BTCGBP")
         total_gbp = float(total_btc) * float(fiat_rate)
         balanceId = app.db.balances.insert_one({
             "_id": spot_data["updateTime"],

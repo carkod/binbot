@@ -1,5 +1,5 @@
 from decimal import Decimal
-
+from time import time
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
@@ -47,11 +47,13 @@ class Deal(Account):
         )
         self.deal = {
             "last_order_id": 0,
+            "buy_timestamp": 0,
             "buy_price": "",
             "buy_total_qty": "",
             "current_price": "",
             "take_profit_price": "",
             "so_prices": [],
+            "sell_timestamp": 0,
         }
 
     def get_one_balance(self, symbol="BTC"):
@@ -153,9 +155,10 @@ class Deal(Account):
             qty_precision,
         )
 
-        if qty == 0.00:
+        if not qty or float(qty) == 0.00:
             error = "No balance to buy. Bot probably closed, and already sold balance"
             bot_errors(error, self.active_bot)
+            return False
 
         if price:
             order = {
@@ -188,7 +191,7 @@ class Deal(Account):
             {"_id": self.active_bot["_id"]}, {"$inc": {"total_commission": commission}}
         )
 
-        return
+        return True
 
     def base_order(self):
         """
@@ -271,6 +274,7 @@ class Deal(Account):
 
         deal = {
             "last_order_id": res["orderId"],
+            "buy_timestamp": res["transactTime"],
             "buy_price": res["price"],
             "buy_total_qty": res["origQty"],
             "current_price": self.get_ticker_price(res["symbol"]),
@@ -496,7 +500,7 @@ class Deal(Account):
         buy_gbp_result = self.buy_gbp_balance()
         if not isinstance(buy_gbp_result, Response):
             bot_id = app.db.bots.find_one_and_update(
-                {"pair": pair}, {"$set": {"status": "completed"}}
+                {"pair": pair}, {"$set": {"status": "completed", "deal.sell_timestamp": time()}}
             )
             if not bot_id:
                 app.db.bots.find_one_and_update(

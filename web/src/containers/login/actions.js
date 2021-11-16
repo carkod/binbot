@@ -31,14 +31,12 @@ export function loginSucceeded(res) {
     addNotification("ERROR!", res.message, "error");
     return {
       type: LOGIN_ERROR,
-      isError: true,
       message: res.message,
     };  
   } else {
     setToken(res.access_token);
     return {
       type: LOGIN_SUCCESS,
-      isError: false,
       data: res
     };
   }

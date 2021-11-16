@@ -24,8 +24,13 @@ class Candlestick(BinanceApi):
         if not params:
             params = {"symbol": pair, "interval": interval, "limit": limit}
         data = self.request(url=self.candlestick_url, params=params)
-        df = pd.DataFrame(data)
-        dates = df[0].tolist()
+        if data:
+            df = pd.DataFrame(data)
+            dates = df[0].tolist()
+        else:
+            df = []
+            dates = []
+
         return df, dates
 
     def candlestick_trace(self, df, dates):
@@ -116,6 +121,8 @@ class Candlestick(BinanceApi):
         limit = request.view_args.get("limit") or 300
 
         df, dates = self._candlestick_request()
+        if len(dates) == 0:
+            return jsonResp_error_message("There is not enough data for this symbol")
         trace = self.candlestick_trace(df, dates)
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
         if stats:

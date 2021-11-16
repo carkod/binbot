@@ -1,6 +1,11 @@
 {
   "tasks" : [
     {
+      "label": "startDb",
+      "type": "shell",
+      "command": "docker-compose pull && docker-compose up -d"
+    },
+    {
       "label": "killdebugger",
       "type": "shell",
       "command": "lsof -t -i tcp:8080 | xargs kill -9"
