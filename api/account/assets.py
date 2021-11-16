@@ -179,7 +179,6 @@ class Assets(Account):
         total_btc = 0
         rate = 0
         for b in balances["data"]:
-            print(f"Balance: {b['asset']}")
             # Only tether coins for hedging
             if b["asset"] in ["USD", "BTC", "BNB", "ETH", "XRP"]:
                 qty = self._check_locked(b)
@@ -333,6 +332,7 @@ class Assets(Account):
         """
         # Because this is a cronjob, it doesn't have application context
         app = create_app()
+        print("Store account snapshot starting...")
         current_time = datetime.utcnow()
         data = self.signed_request(self.account_snapshot_url, payload={"type": "SPOT"})
         spot_data = next((item for item in data["snapshotVos"] if item["type"] == "spot"), None)

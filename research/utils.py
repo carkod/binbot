@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal
+from json.decoder import JSONDecodeError
 from time import sleep
 from requests import Response, HTTPError
 
@@ -48,3 +49,5 @@ def handle_binance_errors(response: Response, bot=None, message=None):
             return response.json()
     except HTTPError:
         raise HTTPError(response.json()["msg"])
+    except JSONDecodeError as e:
+        print(f"Json error: {response.json()}. Error: {e}")

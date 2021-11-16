@@ -51,8 +51,7 @@ class MarketUpdates(Account):
     def on_error(self, ws, error):
         error_msg = f'Deal Websocket error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
         print(error_msg)
-        if error.args[0] == "Connection to remote host was lost.":
-            self.start_stream()
+        self.start_stream()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
