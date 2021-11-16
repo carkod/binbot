@@ -9,7 +9,7 @@
     "immer": "^9.0.6",
     "moment": "^2.29.1",
     "nanoid": "^3.1.28",
-    "plotly.js": "^2.4.2",
+    "plotly.js": "^2.6.3",
     "react": "^17.0.1",
     "react-bootstrap": "^1.6.4",
     "react-bootstrap-typeahead": "^5.2.0",
