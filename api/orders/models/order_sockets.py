@@ -118,7 +118,7 @@ class OrderUpdates(BinanceApi):
             bot = self.app.db.bots.find_one_and_update(
                 {"orders": {"$elemMatch": {"order_id": order_id}}},
                 {
-                    "$set": {"deal.current_price": result["p"]},
+                    "$set": {"deal.current_price": result["p"], "status": "completed"},
                     "$inc": {"deal.commission": float(result["n"])},
                     "$push": {"orders": order},
                 },

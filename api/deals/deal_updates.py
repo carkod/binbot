@@ -464,7 +464,6 @@ class DealUpdates(Deal):
             {"_id": bot["_id"]},
             {
                 "$set": {
-                    "status": "completed",
                     "deal.take_profit_price": res["price"],
                     "orders": bot["orders"],
                     "deal.sell_timestamp": res["transactTime"]
@@ -472,8 +471,6 @@ class DealUpdates(Deal):
                 "$inc": {"total_commission": commission},
             },
         )
-        self.buy_gbp_balance()
-        bot = self.app.db.bots.find_one({"_id": ObjectId(bot["_id"])})
-        msg = f'Trailling stop loss complete! {"Errors encountered" if len(bot["errors"]) > 0 else ""}'
-        bot_errors(msg, bot, status="completed")
+        msg = 'Trailling stop loss set!'
+        bot_errors(msg, bot, status="active")
         return "completed"
