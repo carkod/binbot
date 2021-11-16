@@ -6,9 +6,8 @@ import { AssetsTable } from "../../components/AssetsTable";
 import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
-import request from "../../request";
 import { loading } from "../../containers/spinner/actions";
-import { getBalance, getEstimate } from "../../state/balances/actions";
+import { getBalance, getEstimate, getBalanceRaw } from "../../state/balances/actions";
 class Dashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -29,6 +28,7 @@ class Dashboard extends React.Component {
 
   componentDidMount = () => {
     this.props.getBalance();
+    this.props.getBalanceRaw()
     this.props.getEstimate();
   };
 
@@ -189,25 +189,6 @@ class Dashboard extends React.Component {
     this.setState({ dailyPnL: [trace] });
   };
 
-  computeUsdBalance = async (balances) => {
-    /**
-     * As opposed to totalBtcBalance, this balance does not rely on cronjob
-     */
-    const value = balances.reduce(
-      (accumulator, current) =>
-        parseFloat(accumulator) + parseFloat(current.btc_value),
-      0
-    );
-    const url = `https://api.alternative.me/v2/ticker/bitcoin/?convert=USD`;
-    const response = await request(url);
-    const conversionRate = parseFloat(
-      response["data"]["1"]["quotes"]["USD"]["price"]
-    );
-    this.setState({
-      usdBalance: roundDecimals(conversionRate * value, 4),
-    });
-  };
-
   render() {
     const { balanceEstimate, load } = this.props;
 
@@ -283,12 +264,12 @@ class Dashboard extends React.Component {
                 </Row>
                 <Row>
                   <Col md="4">
-                  {!checkValue(this.props.assetList) && this.props.assetList.length > 0 ? (
+                  {!checkValue(this.props.assetList) && this.props.assetList.length > 0 && (
                     <AssetsTable
                       data={this.props.assetList}
                       headers={["Symbol", "Free", "Locked"]}
                     />
-                  ) : ""}
+                  )}
                   </Col>
                   <Col md="8">
                     {this.state.lineChartData && (
@@ -327,14 +308,11 @@ const mapStateToProps = (s) => {
   const { loading } = s.loadingReducer;
   const { data: balances } = s.balanceReducer;
   const { data: balanceEstimate } = s.estimateReducer;
-  let assetList = null;
-  if (!checkValue(balances) && balances.length > 0) {
-    assetList = balances[0].balances.data
-  }
+  const { data: balance_raw } = s.balanceRawReducer;
   return {
     balances: balances,
     loading: loading,
-    assetList: assetList,
+    assetList: balance_raw,
     balanceEstimate: balanceEstimate?.total_fiat
   };
 };
@@ -342,5 +320,6 @@ const mapStateToProps = (s) => {
 export default connect(mapStateToProps, {
   getBalance,
   loading,
-  getEstimate
+  getEstimate,
+  getBalanceRaw
 })(Dashboard);

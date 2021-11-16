@@ -288,6 +288,7 @@ class ResearchSignals(BinbotApi):
 
                 if msg:
                     self._send_msg(msg)
+                    print(msg)
 
                 self.last_processed_kline[symbol] = time()
                 # If more than half an hour (interval = 30m) has passed

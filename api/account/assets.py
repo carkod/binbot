@@ -292,7 +292,6 @@ class Assets(Account):
         This endpoint uses high weight: 2400
         it will be easily flagged by binance
         """
-
         snapshot_account_data = self.signed_request(
             url=self.account_snapshot_url, payload={"type": "SPOT"}
         )
@@ -328,9 +327,10 @@ class Assets(Account):
 
     def store_balance_snapshot(self):
         """
-        Alternative to storing balance, use Binance new snapshot endpoint to store
+        Alternative to storing balance,
+        use Binance new snapshot endpoint to store
+        Because this is a cronjob, it doesn't have application context
         """
-        # Because this is a cronjob, it doesn't have application context
         app = create_app()
         print("Store account snapshot starting...")
         current_time = datetime.utcnow()
