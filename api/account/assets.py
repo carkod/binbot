@@ -268,6 +268,14 @@ class Assets(Account):
                 symbol = self.find_market(b["asset"])
                 if not symbol:
                     continue
+                
+                # Fix binance incorrect market data for MBLBTC
+                # Binance does not list MBLBTC, but the API does provide ticker_price
+                # But this ticker price does not make sense, it's even lower than BNB value
+                # Therefore replace with BNB market price data
+                if symbol == "MBLBTC":
+                    symbol = "MBLBNB"
+
                 market = self.find_quoteAsset(symbol)
                 rate = self.get_ticker_price(symbol)
                 qty = self._check_locked(b)
