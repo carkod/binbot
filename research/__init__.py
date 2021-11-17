@@ -150,6 +150,7 @@ class ResearchSignals(BinbotApi):
             sleep(3600)
             
         if "k" in result and "s" in result["k"]:
+            print(f'Research symbol: {result["k"]["s"]}')
             # Check if streams need to be restarted
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
@@ -291,10 +292,11 @@ class ResearchSignals(BinbotApi):
                     print(msg)
 
                 self.last_processed_kline[symbol] = time()
-                # If more than half an hour (interval = 30m) has passed
-                # Then we should resume sending signals for given symbol
-                if (float(time()) - float(self.last_processed_kline[symbol])) > 60:
-                    del self.last_processed_kline[symbol]
+
+            # If more than half an hour (interval = 30m) has passed
+            # Then we should resume sending signals for given symbol
+            if (float(time()) - float(self.last_processed_kline[symbol])) > 60:
+                del self.last_processed_kline[symbol]
 
 
 if __name__ == "__main__":

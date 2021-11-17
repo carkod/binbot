@@ -78,8 +78,8 @@ class MarketUpdates(Account):
             bot = self.app.db.bots.find_one_and_update(
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
             )
-            print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
-            if bot and "deal" in bot:
+            if bot and "deal" in bot and bot["status"] == "active":
+                print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
                 # Stop loss
                 if "stop_loss" in bot["deal"] and float(
                     bot["deal"]["stop_loss"]

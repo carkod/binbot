@@ -311,16 +311,16 @@ class DealUpdates(Deal):
     def update_stop_limit(self, price):
         """
         Update stop limit after websocket
-        - Sell initial amount crypto in deal
+        - Hard sell (order status="FILLED" immediately) initial amount crypto in deal
         - Close current opened take profit order
         - Deactivate bot
         """
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
         if qty:
-            # If for some reason, the bot has been closed already
+            # If for some reason, the bot has been closed already (transacted on Binance)
             book_order = Book_Order(bot["pair"])
-            price = float(book_order.matching_engine(False, qty))
+            price = float(book_order.matching_engine(True, qty))
 
             order_id = None
             for order in bot["orders"]:
@@ -393,29 +393,19 @@ class DealUpdates(Deal):
             return "completed"
 
         else:
-            asset = self.find_baseAsset(bot["pair"])
-            buy_gbp_result = self.buy_gbp_balance()
-            error = f'No {asset} found in balance. Bot might have been closed already. GBP balance buy back {"successful" if buy_gbp_result else "failed"}'
-            self.app.db.bots.update_one(
-                {"_id": bot["_id"]},
-                {
-                    "$push": {"errors": error, "errors": error},
-                    "$set": {"status": "error"},
-                },
-            )
             return "completed"
 
     def trailling_stop_loss(self, price):
         """
         Update stop limit after websocket
-        - Sell initial amount crypto in deal
+        - Hard Sell initial amount crypto in deal
         - Close current opened take profit order
         - Deactivate bot
         """
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
         book_order = Book_Order(bot["pair"])
-        price = float(book_order.matching_engine(False, qty))
+        price = float(book_order.matching_engine(True, qty))
 
         if price:
             trailling_stop_loss = {
@@ -469,5 +459,5 @@ class DealUpdates(Deal):
             },
         )
         msg = 'Trailling stop loss set!'
-        bot_errors(msg, bot, status="active")
+        bot_errors(msg, bot, status="completed")
         return "completed"

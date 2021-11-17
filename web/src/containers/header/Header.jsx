@@ -1,8 +1,8 @@
 import React from "react";
 import { withRouter } from "react-router-dom";
 import {
-  Button, Collapse,
-  Container,
+  Button,
+  Collapse,
   Dropdown,
   DropdownItem,
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
   Navbar,
   NavbarBrand,
   NavbarToggler,
-  NavItem
+  NavItem,
 } from "reactstrap";
 import { removeToken } from "../../request";
 import routes from "../../router/routes";
@@ -105,87 +105,88 @@ class Header extends React.Component {
           this.state.color === "transparent" ? "navbar-transparent " : ""
         }
       >
-        <Container fluid>
-          <div className="navbar-wrapper">
-            <div className="navbar-toggle">
-              <button
-                type="button"
-                ref={this.sidebarToggle}
-                className="navbar-toggler"
-                onClick={() => this.openSidebar()}
-              >
-                <span className="navbar-toggler-bar bar1" />
-                <span className="navbar-toggler-bar bar2" />
-                <span className="navbar-toggler-bar bar3" />
-              </button>
-            </div>
-            <NavbarBrand href="/">{this.getBrand()}</NavbarBrand>
-            <div className="navbar-content">
-              {window.location.href.indexOf("/admin/bots") !== -1 &&
-                <Button color="link" onClick={() => this.props.history.replace("/admin/bots-create")}>
-                  New bot
-                </Button>
-              }
-            </div>
+        <div className="navbar-wrapper">
+          <div className="navbar-toggle">
+            <button
+              type="button"
+              ref={this.sidebarToggle}
+              className="navbar-toggler"
+              onClick={() => this.openSidebar()}
+            >
+              <span className="navbar-toggler-bar bar1" />
+              <span className="navbar-toggler-bar bar2" />
+              <span className="navbar-toggler-bar bar3" />
+            </button>
           </div>
-          <NavbarToggler onClick={this.toggle}>
-            <span className="navbar-toggler-bar navbar-kebab" />
-            <span className="navbar-toggler-bar navbar-kebab" />
-            <span className="navbar-toggler-bar navbar-kebab" />
-          </NavbarToggler>
-          <Collapse
-            isOpen={this.state.isOpen}
-            navbar
-            className="justify-content-end"
-          >
-            <form>
-              <InputGroup className="no-border">
-                <Input placeholder="Search..." />
-                  <InputGroupText>
-                    <i className="nc-icon nc-zoom-split" />
-                  </InputGroupText>
-              </InputGroup>
-            </form>
-            <Nav navbar>
-              <NavItem>
-                <button className="btn-reset nav-link btn-magnify">
-                  <i className="nc-icon nc-layout-11" />
-                  <p>
-                    <span className="d-lg-none d-md-block">Stats</span>
-                  </p>
-                </button>
-              </NavItem>
-              <Dropdown
-                nav
-                isOpen={this.state.dropdownOpen}
-                toggle={(e) => this.dropdownToggle(e)}
+          <NavbarBrand href="/">{this.getBrand()}</NavbarBrand>
+          <div className="navbar-content">
+            {window.location.href.indexOf("/admin/bots") !== -1 && (
+              <Button
+                color="link"
+                onClick={() => this.props.history.replace("/admin/bots-create")}
               >
-                <DropdownToggle caret nav>
-                  <i className="nc-icon nc-bell-55" />
-                  <p>
-                    <span className="d-lg-none d-md-block">Some Actions</span>
-                  </p>
-                </DropdownToggle>
-                <DropdownMenu end>
-                  <DropdownItem tag="a">Action</DropdownItem>
-                  <DropdownItem tag="a">Another Action</DropdownItem>
-                  <DropdownItem tag="a">Something else here</DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-              <NavItem>
-                <button
-                  onClick={this.handleLogout}
-                  className="btn-reset nav-link btn-rotate"
-                >
-                  <i className="nc-icon nc-user-run" />
-                  <p>
-                    <span className="d-lg-none d-md-block">Account</span>
-                  </p>
-                </button>
-              </NavItem>
-            </Nav>
-          </Collapse>
-        </Container>
+                New bot
+              </Button>
+            )}
+          </div>
+        </div>
+        <NavbarToggler onClick={this.toggle}>
+          <span className="navbar-toggler-bar navbar-kebab" />
+          <span className="navbar-toggler-bar navbar-kebab" />
+          <span className="navbar-toggler-bar navbar-kebab" />
+        </NavbarToggler>
+        <Collapse
+          isOpen={this.state.isOpen}
+          navbar
+          className="justify-content-end"
+        >
+          <form>
+            <InputGroup className="no-border">
+              <Input placeholder="Search..." />
+              <InputGroupText>
+                <i className="nc-icon nc-zoom-split" />
+              </InputGroupText>
+            </InputGroup>
+          </form>
+          <Nav navbar>
+            <NavItem>
+              <button className="btn-reset nav-link btn-magnify">
+                <i className="nc-icon nc-layout-11" />
+                <p>
+                  <span className="d-lg-none d-md-block">Stats</span>
+                </p>
+              </button>
+            </NavItem>
+            <Dropdown
+              nav
+              isOpen={this.state.dropdownOpen}
+              toggle={(e) => this.dropdownToggle(e)}
+            >
+              <DropdownToggle caret nav>
+                <i className="nc-icon nc-bell-55" />
+                <p>
+                  <span className="d-lg-none d-md-block">Some Actions</span>
+                </p>
+              </DropdownToggle>
+              <DropdownMenu end>
+                <DropdownItem tag="a">Action</DropdownItem>
+                <DropdownItem tag="a">Another Action</DropdownItem>
+                <DropdownItem tag="a">Something else here</DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+            <NavItem>
+              <button
+                onClick={this.handleLogout}
+                className="btn-reset nav-link btn-rotate"
+              >
+                <i className="nc-icon nc-user-run" />
+                <p>
+                  <span className="d-lg-none d-md-block">Account</span>
+                </p>
+              </button>
+            </NavItem>
+          </Nav>
+        </Collapse>
       </Navbar>
     );
   }
