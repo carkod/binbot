@@ -1,8 +1,3 @@
-export const defaultOptions = {
-  method: "GET",
-  mode: "cors", // no-cors, *cors, same-origin
-  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-};
 const tokenName = "binbot-token";
 
 /**
@@ -46,7 +41,7 @@ function checkStatus(response) {
     throw new Error(response.json()["message"])
   }
 
-  const error = new Error(response.statusText);
+  let error = new Error(response.statusText);
   error.response = response;
   throw error;
 }
@@ -69,6 +64,15 @@ export function removeToken() {
   localStorage.removeItem(tokenName);
 }
 
+export const defaultOptions = {
+  method: "GET",
+  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+  headers: {
+    "content-type": "application/json",
+    accept: "application/json",
+    Authorization: `Bearer ${getToken()}`,
+  },
+};
 
 /**
  * Requests a URL, returning a promise

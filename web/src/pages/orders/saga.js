@@ -1,5 +1,5 @@
 import { call, put, takeLatest } from "redux-saga/effects";
-import request from "../../request";
+import request, { defaultOptions } from "../../request";
 import {
   deleteOpenOrdersFailed,
   deleteOpenOrdersSucceeded,
@@ -19,13 +19,8 @@ import {
 export function* getAllOrders(payload) {
   const { limit, offset, status } = payload.data;
   const requestURL = `${process.env.REACT_APP_ALL_ORDERS}?limit=${limit}&offset=${offset}&status=${status}`;
-  const options = {
-    method: "GET",
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-  };
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(getOrdersSucceeded(res));
   } catch (err) {
     yield put(getOrdersFailed(err));
@@ -41,13 +36,8 @@ export function* watchGetOrders() {
  */
 export function* getAllOpenOrders() {
   const requestURL = `${process.env.REACT_APP_OPEN_ORDERS}`;
-  const options = {
-    method: "GET",
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-  };
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(getOpenOrdersSucceeded(res));
   } catch (err) {
     yield put(getOpenOrdersFailed(err));
@@ -61,13 +51,9 @@ export function* watchOpenOrders() {
 export function* deleteOpenOrders(payload) {
   const { symbol, orderId } = payload.data;
   const requestURL = `${process.env.REACT_APP_OPEN_ORDERS}/${symbol}/${orderId}`;
-  const options = {
-    method: "DELETE",
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-  };
+  defaultOptions.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(deleteOpenOrdersSucceeded(res));
   } catch (err) {
     yield put(deleteOpenOrdersFailed(err));
@@ -83,14 +69,8 @@ export function* watchDeleteOpenOrders() {
  */
 export function* pollOrders() {
   const requestURL = `${process.env.REACT_APP_POLL}`;
-  const options = {
-    method: "GET",
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: { "content-type": "application/json", accept: "application/json" },
-  };
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(pollOrders(res));
   } catch (err) {
     // yield put(createBotFailed(err));

@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
-import request, { getToken } from "../../request";
+import request, { defaultOptions } from "../../request";
 import {
   balanceFailed,
   balanceRawFailed,
@@ -8,16 +8,6 @@ import {
   balanceSucceeded, getEstimateFailed, getEstimateSucceeded, GET_BALANCE, GET_BALANCE_RAW, GET_ESTIMATE
 } from "./actions";
 
-const defaultOptions = {
-  method: "GET",
-  mode: "cors", // no-cors, *cors, same-origin
-  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-  headers: {
-    "content-type": "application/json",
-    accept: "application/json",
-    "Authorization": `Bearer ${getToken()}`
-  }
-}
 
 /**
  * Account request/response handler

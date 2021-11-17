@@ -105,15 +105,10 @@ export function* watchGetBlacklistApi() {
  */
  export function* addBlacklistApi({data}) {
   const url = new URL(`${process.env.REACT_APP_RESEARCH_BLACKLIST}`)
-  const options = {
-    method: "POST",
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify(data),
-  };
+  defaultOptions.method = "POST";
+  defaultOptions.body = JSON.stringify(data);
   try {
-    const res = yield call(request, url, options);
+    const res = yield call(request, url, defaultOptions);
     yield put(addBlackListSucceeded(res));
   } catch (err) {
     yield put(addBlackListFailed(err));
@@ -129,13 +124,9 @@ export function* watchAddBlacklistApi() {
  */
  export function* deleteBlacklistApi({ pair }) {
   const url = `${process.env.REACT_APP_RESEARCH_BLACKLIST}/${pair}`
-  const options = {
-    method: "DELETE",
-    mode: "cors", // no-cors, *cors, same-origin
-    headers: { "content-type": "application/json", accept: "application/json" },
-  };
+  defaultOptions.method = "DELETE";
   try {
-    const res = yield call(request, url, options);
+    const res = yield call(request, url, defaultOptions);
     yield put(deleteBlackListSucceeded(res));
   } catch (err) {
     yield put(deleteBlackListFailed(err));
@@ -169,14 +160,10 @@ export function* watchGetSettingsApi() {
  */
  export function* editSettingsApi({ data }) {
   const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER)
-  const options = {
-    method: "PUT",
-    mode: "cors", // no-cors, *cors, same-origin
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify(data),
-  };
+  defaultOptions.method = "PUT";
+  defaultOptions.body = JSON.stringify(data);
   try {
-    const res = yield call(request, url, options);
+    const res = yield call(request, url, defaultOptions);
     yield put(editSettingsSucceeded(res));
   } catch (err) {
     yield put(editSettingsFailed(err));

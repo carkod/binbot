@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
-import request, { getToken } from "../../request";
+import request, { defaultOptions } from "../../request";
 import {
   activateBotFailed,
   activateBotSucceeded,
@@ -38,12 +38,6 @@ import {
   LOAD_CANDLESTICK,
 } from "./actions";
 
-const defaultOptions = {
-  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-  headers: {
-    Authorization: `Bearer ${getToken()}`
-  },
-};
 
 /**
  * Bots request/response handler
@@ -90,14 +84,10 @@ export function* watchGetBot() {
 export function* createBotApi(body) {
   const { data } = body;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/`;
-  const options = {
-    method: "POST",
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: defaultOptions.headers,
-    body: JSON.stringify(data),
-  };
+  defaultOptions.method = "POST";
+  defaultOptions.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(createBotSucceeded(res));
   } catch (err) {
     yield put(createBotFailed(err));
@@ -114,19 +104,10 @@ export function* watchCreateBot() {
 export function* editBot(payload) {
   const { data, id } = payload;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
-  const options = {
-    method: "PUT",
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
-    body: JSON.stringify(data),
-  };
+  defaultOptions.method = "PUT";
+  defaultOptions.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(editBotSucceeded(res));
   } catch (err) {
     yield put(editBotFailed(err));
@@ -143,14 +124,9 @@ export function* watchEditBot() {
 export function* deleteBotApi(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
-  const options = {
-    method: "DELETE",
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: defaultOptions.headers
-  };
+  defaultOptions.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(deleteBotSucceeded(res));
   } catch (err) {
     yield put(deleteBotFailed(err));
@@ -164,14 +140,9 @@ export function* watchDeleteBotApi() {
 export function* closeBotApi(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_CLOSE_BOT}/${id}`;
-  const options = {
-    method: "DELETE",
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached,
-    headers: defaultOptions.headers
-  };
+  defaultOptions.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(deleteBotSucceeded(res));
   } catch (err) {
     yield put(deleteBotFailed(err));
@@ -270,13 +241,9 @@ export function* watchGetCandlestick() {
  */
 export function* archiveBotApi({ id }) {
   const requestURL = `${process.env.REACT_APP_ARCHIVE_BOT}/${id}`;
-  const options = {
-    method: "PUT",
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: defaultOptions.headers,
-  };
+  defaultOptions.method = "PUT";
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, defaultOptions);
     yield put(archiveBotSucceeded(res));
   } catch (err) {
     yield put(archiveBotFailed(err));
