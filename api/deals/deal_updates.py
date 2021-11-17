@@ -358,6 +358,8 @@ class DealUpdates(Deal):
                 )
 
             if "error" in res:
+                msg = f"Error trying to open new stop_limit order {res}"
+                bot_errors(msg, bot)
                 return res
 
             # Append now stop_limit deal
@@ -378,28 +380,23 @@ class DealUpdates(Deal):
                 commission += float(chunk["commission"])
 
             self.active_bot["orders"].append(stop_limit_response)
-            botId = self.app.db.bots.update_one(
+            self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {
                     "$push": {"orders": stop_limit_response},
                     "$inc": {"total_commission": commission},
-                    "$set": {"status": "completed", "deal.sell_timestamp": res["transactTime"]},
+                    "$set": {"deal.sell_timestamp": res["transactTime"]},
                 },
             )
-            if not botId:
-                # Not likely to happen to remove in the future.
-                print(f"Failed to update stop_limit deal: {botId}")
-            else:
-                self.buy_gbp_balance()
-                msg = "New stop_limit deal successfully updated"
-                bot_errors(msg, bot)
+            msg = "New stop_limit deal successfully updated"
+            bot_errors(msg, bot, status="active")
             return "completed"
 
         else:
             asset = self.find_baseAsset(bot["pair"])
             buy_gbp_result = self.buy_gbp_balance()
             error = f'No {asset} found in balance. Bot might have been closed already. GBP balance buy back {"successful" if buy_gbp_result else "failed"}'
-            botId = self.app.db.bots.update_one(
+            self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {
                     "$push": {"errors": error, "errors": error},

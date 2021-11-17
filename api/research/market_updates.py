@@ -70,7 +70,6 @@ class MarketUpdates(Account):
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        print(f"processing deal: {result[k]}")
         if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
