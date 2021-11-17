@@ -92,7 +92,6 @@ export function* createBotApi(body) {
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/`;
   const options = {
     method: "POST",
-    mode: "cors", // no-cors, *cors, same-origin
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
     headers: defaultOptions.headers,
     body: JSON.stringify(data),
