@@ -1,6 +1,7 @@
+import React from "react";
 import produce from "immer";
 import { nanoid } from "nanoid";
-import React from "react";
+import moment from "moment";
 import { connect } from "react-redux";
 import {
   Alert,
@@ -167,7 +168,10 @@ class BotForm extends React.Component {
       getQuoteAsset(this.state.pair).then(({ data }) =>
         this.setState({ quoteAsset: data })
       );
-      this.setState({ name: `${this.state.pair}_${new Date().getTime()}` });
+      const currentDate = moment().toISOString();
+      this.setState({
+        name: `${this.state.pair}_${currentDate}`,
+      });
     }
 
     if (
@@ -772,8 +776,8 @@ class BotForm extends React.Component {
                       toggleTrailling={this.toggleTrailling}
                     />
                   </TabContent>
-                  <Row>
-                    <div className="update ml-auto mr-auto">
+                  <Row xs="2">
+                    <Col>
                       <ButtonToggle
                         className="btn-round"
                         color="primary"
@@ -786,8 +790,8 @@ class BotForm extends React.Component {
                           ? "Update deal"
                           : "Deal"}
                       </ButtonToggle>
-                    </div>
-                    <div className="update ml-auto mr-auto">
+                    </Col>
+                    <Col>
                       <Button
                         className="btn-round"
                         color="primary"
@@ -795,7 +799,7 @@ class BotForm extends React.Component {
                       >
                         Save
                       </Button>
-                    </div>
+                    </Col>
                   </Row>
                   {!this.state.formIsValid && (
                     <Row>

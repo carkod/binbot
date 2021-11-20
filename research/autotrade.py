@@ -4,17 +4,18 @@ import requests
 
 from apis import BinbotApi
 from utils import InvalidSymbol, handle_binance_errors, supress_notation
-
+from datetime import datetime
 
 class Autotrade(BinbotApi):
     def __init__(self, pair, settings) -> None:
         self.pair = pair
         self.settings = settings
         self.decimals = self.price_precision(pair)
+        current_date = datetime.now().strftime("%Y-%m-%dT%H:%M")
         self.default_bot = {
             "pair": pair,
             "status": "inactive",
-            "name": "Autotrade Bot",
+            "name": f"{pair}_{current_date}",
             "mode": "autotrade",
             "balance_usage_size": "1",
             "balance_to_use": settings["balance_to_use"],
@@ -116,7 +117,10 @@ class Autotrade(BinbotApi):
 
         self.settings.pop("_id")
         create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
-        botId = handle_binance_errors(create_bot_res)["botId"]
+        try:
+            botId = handle_binance_errors(create_bot_res)["botId"]
+        except KeyError:
+            print(create_bot_res)
         if "error" in botId and botId["error"] == 1:
             msg = f"Not enough funds to carry out autotrade with {self.pair}"
             self.handle_error(msg)
