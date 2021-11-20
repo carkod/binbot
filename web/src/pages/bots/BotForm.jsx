@@ -560,8 +560,7 @@ class BotForm extends React.Component {
                 <CardTitle tag="h3">
                   {this.state.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
-                  !isNaN(this.state.bot_profit) &&
-                  this.state.status === "active" ? (
+                  !isNaN(this.state.bot_profit) && (
                     <Badge
                       color={
                         parseFloat(this.state.bot_profit) > 0
@@ -571,8 +570,10 @@ class BotForm extends React.Component {
                     >
                       {this.state.bot_profit + "%"}
                     </Badge>
-                  ) : (
-                    <Badge
+                  )}
+                  {' '}
+                  {!checkValue(this.state.status) &&
+                  <Badge
                       color={
                         this.state.status === "active"
                           ? "success"
@@ -585,7 +586,13 @@ class BotForm extends React.Component {
                     >
                       {this.state.status}
                     </Badge>
-                  )}
+                  }
+                  <br />
+                  {!checkValue(this.state.bot_profit) &&
+                  !isNaN(this.state.bot_profit) &&
+                    <small>Earnings after commissions (est.): {parseFloat(this.state.bot_profit) - 0.3 + "%"}</small>
+                  }
+                  
                 </CardTitle>
                 <div className="">
                   {intervalOptions.map((item) => (

@@ -124,38 +124,93 @@ class Bots extends React.Component {
                         </Row>
                         <hr />
                         <Row>
-                          <Col md="6" xs="12">
+                          <Col md="12" xs="12">
                             <div className="stats">
-                              <p className="card-category">Mode</p>
-                              <p className="card-category"># Safety Orders</p>
-                              <p className="card-category">Bought @</p>
-                              <p className="card-category">Take Profit</p>
+                              <Row>
+                                <Col md="8">
+                                  <p className="card-category">Mode</p>
+                                </Col>
+                                <Col md="4">
+                                  <p className="card-category">
+                                    {!checkValue(x.mode) ? x.mode : "Unknown"}
+                                  </p>
+                                </Col>
+                              </Row>
+                              <Row>
+                                <Col md="8">
+                                  <p className="card-category">
+                                    # Safety Orders
+                                  </p>
+                                </Col>
+                                <Col md="4">
+                                  <p className="card-category">
+                                    {x.max_so_count}
+                                  </p>
+                                </Col>
+                              </Row>
+
+                              <Row>
+                                <Col md="8">
+                                  <p className="card-category">Bought @</p>
+                                </Col>
+                                <Col md="4">
+                                  <p className="card-category">
+                                    {!checkValue(x.deal) && x.deal.buy_price}
+                                  </p>
+                                </Col>
+                              </Row>
+
+                              <Row>
+                                <Col md="8">
+                                  <p className="card-category">Take profit</p>
+                                </Col>
+                                <Col md="4">
+                                  <p className="card-category">
+                                    {x.take_profit + "%"}
+                                  </p>
+                                </Col>
+                              </Row>
+
                               {x.trailling === "true" && (
-                                <p className="card-category">Trailling TP</p>
+                                <Row>
+                                  <Col md="8">
+                                    <p className="card-category">
+                                      Trailling loss
+                                    </p>
+                                  </Col>
+                                  <Col md="4">
+                                    <p className="card-category">
+                                      {x.trailling_deviation + "%"}
+                                    </p>
+                                  </Col>
+                                </Row>
                               )}
-                              <p className="card-category">Commissions</p>
-                            </div>
-                          </Col>
-                          <Col md="6" xs="12">
-                            <div className="stats">
-                              <p className="card-category">
-                                {!checkValue(x.mode) ? x.mode : "Unknown"}
-                              </p>
-                              <p className="card-category">{x.max_so_count}</p>
-                              <p className="card-category">
-                                {!checkValue(x.deal) && x.deal.buy_price}
-                              </p>
-                              <p className="card-category">
-                                {x.take_profit + "%"}
-                              </p>
-                              {x.trailling === "true" && (
-                                <p className="card-category">
-                                  {x.trailling_deviation + "%"}
-                                </p>
+
+                              {parseInt(x.stop_loss) > 0 && (
+                                <Row>
+                                  <Col md="8">
+                                    <p className="card-category">Stop loss</p>
+                                  </Col>
+                                  <Col md="4">
+                                    <p className="card-category">
+                                      {x.stop_loss + "%"}
+                                    </p>
+                                  </Col>
+                                </Row>
                               )}
-                              <p className="card-category">
-                                {!checkValue(x.deal) && x.deal.commission}
-                              </p>
+
+                              {parseFloat(x.commissions) > 0 && (
+                                <Row>
+                                  <Col md="8">
+                                    <p className="card-category">Comissions</p>
+                                  </Col>
+                                  <Col md="4">
+                                    <p className="card-category">
+                                      {`${x.commissions} BNB`}
+                                    </p>
+                                  </Col>
+                                </Row>
+                              )}
                             </div>
                           </Col>
                         </Row>
@@ -173,7 +228,7 @@ class Bots extends React.Component {
                           >
                             <i className="fas fa-edit" />
                           </Button>
-                          {x.status !== "active" &&
+                          {x.status !== "active" && (
                             <Button
                               color="secondary"
                               title="Archive bot"
@@ -183,7 +238,7 @@ class Bots extends React.Component {
                             >
                               <i className="fas fa-folder" />
                             </Button>
-                          }
+                          )}
                           <Button
                             color="danger"
                             onClick={() => this.handleDelete(x._id.$oid)}
