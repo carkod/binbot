@@ -1,11 +1,11 @@
 import Dashboard from "../pages/dashboard/Dashboard";
-import UserPage from "../components/User.jsx";
 import Registration from "../containers/registration/Registration";
 import BotForm from "../pages/bots/BotForm";
 import Bots from "../pages/bots/Bots";
 import Orders from "../pages/orders/Orders";
 import Research from "../pages/research/Research";
 import Login from "../containers/login/Login";
+import Users from "../pages/users/Users";
 
 const routes = [
   {
@@ -74,10 +74,10 @@ const routes = [
     private: true,
   },
   {
-    path: "/user-page",
-    name: "User Profile",
+    path: "/users",
+    name: "Users",
     icon: "nc-icon nc-single-02",
-    component: UserPage,
+    component: Users,
     layout: "/admin",
     nav: true,
     private: true,
