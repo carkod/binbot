@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
-import request, { defaultOptions } from "../../request";
+import request from "../../request";
 import {
   balanceFailed,
   balanceRawFailed,
@@ -16,7 +16,7 @@ export function* getBalanceApi() {
   const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE;
   try {
     yield put(loading(true))
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(balanceSucceeded(res));
   } catch (err) {
     yield put(balanceFailed(err));
@@ -36,7 +36,7 @@ export function* watchGetBalanceApi() {
  export function* getRawBalanceApi() {
   const requestURL = `${process.env.REACT_APP_ACCOUNT_BALANCE_RAW}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(balanceRawSucceeded(res));
   } catch (err) {
     yield put(balanceRawFailed(err));
@@ -55,7 +55,7 @@ export function* watchRawBalance() {
  export function* getEstimateApi() {
   const requestURL = `${process.env.REACT_APP_BALANCE_ESTIMATE}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(getEstimateSucceeded(res));
   } catch (err) {
     yield put(getEstimateFailed(err));

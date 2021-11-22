@@ -64,16 +64,6 @@ export function removeToken() {
   localStorage.removeItem(tokenName);
 }
 
-export const defaultOptions = {
-  method: "GET",
-  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-  headers: {
-    "content-type": "application/json",
-    accept: "application/json",
-    Authorization: `Bearer ${getToken()}`,
-  },
-};
-
 /**
  * Requests a URL, returning a promise
  *
@@ -82,7 +72,24 @@ export const defaultOptions = {
  *
  * @return {object}           The response data
  */
-export default function request(url, options = defaultOptions) {
-  return fetch(url, options).then(checkStatus).then(parseJSON);
+export default async function request(url, verb = "GET", json = undefined) {
+
+  const headers = new Headers({
+    "content-type": "application/json",
+    accept: "application/json",
+    Authorization: `Bearer ${getToken()}`,
+  });
+
+  let options = {
+    method: verb,
+    mode: 'cors',
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    headers: headers,
+    body: json ? JSON.stringify(json) : undefined
+  };
+
+  const response = await fetch(url, options);
+  const content = checkStatus(response);
+  return parseJSON(content);
 }
 

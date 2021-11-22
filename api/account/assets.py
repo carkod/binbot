@@ -232,6 +232,9 @@ class Assets(Account):
             interval = None
             filter = None
 
+        limit = request.args.get("limit", 100)
+        offset = request.args.get("offset", 0)
+
         # last 24 hours
         if interval == "1d":
             filter = {
@@ -241,7 +244,7 @@ class Assets(Account):
                 }
             }
 
-        balance = list(self.app.db.balances.find(filter).sort([("_id", -1)]))
+        balance = list(self.app.db.balances.find(filter).sort([("_id", -1)]).limit(limit).skip(offset))
         if balance:
             resp = jsonResp({"data": balance})
         else:

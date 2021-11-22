@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
-import request, { defaultOptions } from "../../request";
+import request from "../../request";
 import {
   activateBotFailed,
   activateBotSucceeded,
@@ -46,7 +46,7 @@ export function* getBotsApi() {
   const requestURL = process.env.REACT_APP_GET_BOTS;
   try {
     yield put(loading(true));
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(getBotsSucceeded(res));
   } catch (err) {
     yield put(getBotsFailed(err));
@@ -67,7 +67,7 @@ export function* getBot(payload) {
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
 
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(getBotSucceeded(res));
   } catch (err) {
     yield put(getBotFailed(err));
@@ -84,11 +84,8 @@ export function* watchGetBot() {
 export function* createBotApi(body) {
   const { data } = body;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}`;
-  let options = defaultOptions;
-  options.method = "POST";
-  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "POST", data);
     yield put(createBotSucceeded(res));
   } catch (err) {
     yield put(createBotFailed(err));
@@ -105,11 +102,8 @@ export function* watchCreateBot() {
 export function* editBot(payload) {
   const { data, id } = payload;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
-  let options = defaultOptions;
-  options.method = "PUT";
-  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "PUT", data);
     yield put(editBotSucceeded(res));
   } catch (err) {
     yield put(editBotFailed(err));
@@ -126,10 +120,8 @@ export function* watchEditBot() {
 export function* deleteBotApi(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
-  let options = defaultOptions;
-  options.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "DELETE");
     yield put(deleteBotSucceeded(res));
   } catch (err) {
     yield put(deleteBotFailed(err));
@@ -143,10 +135,8 @@ export function* watchDeleteBotApi() {
 export function* closeBotApi(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_CLOSE_BOT}/${id}`;
-  let options = defaultOptions;
-  options.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "DELETE");
     yield put(deleteBotSucceeded(res));
   } catch (err) {
     yield put(deleteBotFailed(err));
@@ -160,7 +150,7 @@ export function* watchcloseBotApi() {
 export function* getSymbols() {
   const requestURL = `${process.env.REACT_APP_NO_CANNIBALISM_SYMBOLS}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(getSymbolsSucceeded(res));
   } catch (err) {
     yield put(getSymbolsFailed(err));
@@ -171,7 +161,7 @@ export function* getSymbolInfoApi(payload) {
   const pair = payload.data;
   const requestURL = `${process.env.REACT_APP_SYMBOL_INFO}/${pair}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(getSymbolInfoSucceeded(res));
   } catch (err) {
     yield put(getSymbolInfoFailed(err));
@@ -195,7 +185,7 @@ export function* activateBot(payload) {
   const requestURL = `${process.env.REACT_APP_ACTIVATE_BOT}/${id}`;
   try {
     yield put(loading(true));
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(activateBotSucceeded(res));
   } catch (err) {
     yield put(activateBotFailed(err));
@@ -212,7 +202,7 @@ export function* deactivateBot(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_DEACTIVATE_BOT}/${id}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(deactivateBotSucceeded(res));
   } catch (err) {
     yield put(deactivateBotFailed(err));
@@ -229,7 +219,7 @@ export function* watchDeactivateBot() {
 export function* getCandlestick({ pair, interval }) {
   const requestURL = `${process.env.REACT_APP_CANDLESTICK}/${pair}/${interval}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(loadCandlestickSucceeded(res));
   } catch (err) {
     yield put(loadCandlestickFailed(err));
@@ -245,10 +235,8 @@ export function* watchGetCandlestick() {
  */
 export function* archiveBotApi({ id }) {
   const requestURL = `${process.env.REACT_APP_ARCHIVE_BOT}/${id}`;
-  let options = defaultOptions;
-  options.method = "PUT";
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "PUT");
     yield put(archiveBotSucceeded(res));
   } catch (err) {
     yield put(archiveBotFailed(err));

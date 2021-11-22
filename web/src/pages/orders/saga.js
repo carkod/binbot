@@ -1,5 +1,5 @@
 import { call, put, takeLatest } from "redux-saga/effects";
-import request, { defaultOptions } from "../../request";
+import request from "../../request";
 import {
   deleteOpenOrdersFailed,
   deleteOpenOrdersSucceeded,
@@ -20,7 +20,7 @@ export function* getAllOrders(payload) {
   const { limit, offset, status } = payload.data;
   const requestURL = `${process.env.REACT_APP_ALL_ORDERS}?limit=${limit}&offset=${offset}&status=${status}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(getOrdersSucceeded(res));
   } catch (err) {
     yield put(getOrdersFailed(err));
@@ -37,7 +37,7 @@ export function* watchGetOrders() {
 export function* getAllOpenOrders() {
   const requestURL = `${process.env.REACT_APP_OPEN_ORDERS}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(getOpenOrdersSucceeded(res));
   } catch (err) {
     yield put(getOpenOrdersFailed(err));
@@ -51,10 +51,8 @@ export function* watchOpenOrders() {
 export function* deleteOpenOrders(payload) {
   const { symbol, orderId } = payload.data;
   const requestURL = `${process.env.REACT_APP_OPEN_ORDERS}/${symbol}/${orderId}`;
-  let options = defaultOptions;
-  options.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "DELETE");
     yield put(deleteOpenOrdersSucceeded(res));
   } catch (err) {
     yield put(deleteOpenOrdersFailed(err));
@@ -71,7 +69,7 @@ export function* watchDeleteOpenOrders() {
 export function* pollOrders() {
   const requestURL = `${process.env.REACT_APP_POLL}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(pollOrders(res));
   } catch (err) {
     // yield put(createBotFailed(err));

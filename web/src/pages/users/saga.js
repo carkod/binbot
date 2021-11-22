@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
-import request, { defaultOptions } from "../../request";
+import request from "../../request";
 import {
   deleteUserFailed,
   deleteUserSucceeded,
@@ -23,7 +23,7 @@ export function* getUsersApi() {
   const requestURL = process.env.REACT_APP_USERS;
   try {
     yield put(loading(true));
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(getUsersSucceded(res));
   } catch (err) {
     yield put(getUsersFailed(err));
@@ -41,11 +41,8 @@ export default function* watchUsersApi() {
  */
 export function* editUserApi({ data, id }) {
   const requestURL = `${process.env.REACT_APP_USERS}/${id}`;
-  let options = defaultOptions;
-  options.method = "PUT";
-  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "PUT", data);
     yield put(editUserSucceded(res));
   } catch (err) {
     yield put(editUserFailed(err));
@@ -61,10 +58,8 @@ export function* watchEditUserApi() {
  */
 export function* deleteUserApi({ id }) {
   const requestURL = `${process.env.REACT_APP_USERS}/${id}`;
-  let options = defaultOptions;
-  options.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "DELETE");
     yield put(deleteUserSucceeded(res));
   } catch (err) {
     yield put(deleteUserFailed(err));
@@ -77,11 +72,8 @@ export function* watchDeleteUserApi() {
 
 export function* createUserApi({ data }) {
   const requestURL = `${process.env.REACT_APP_REGISTER_USER}`;
-  let options = defaultOptions;
-  options.method = "POST";
-  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "POST", data);
     yield put(registerUserSucceeded(res));
   } catch (err) {
     yield put(registerUserFailed(err));

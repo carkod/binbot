@@ -424,7 +424,7 @@ class BotForm extends React.Component {
   addAll = async () => {
     const { pair, quoteAsset } = this.state;
     const { balance_raw: balances } = this.props;
-    if (!checkValue(pair) && balances.length > 0) {
+    if (!checkValue(pair) && balances?.length > 0) {
       this.props.getSymbolInfo(pair);
       let totalBalance = 0;
       for (let x of balances) {
