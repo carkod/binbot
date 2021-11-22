@@ -83,11 +83,12 @@ export function* watchGetBot() {
  */
 export function* createBotApi(body) {
   const { data } = body;
-  const requestURL = `${process.env.REACT_APP_GET_BOTS}/`;
-  defaultOptions.method = "POST";
-  defaultOptions.body = JSON.stringify(data);
+  const requestURL = `${process.env.REACT_APP_GET_BOTS}`;
+  let options = defaultOptions;
+  options.method = "POST";
+  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL, options);
     yield put(createBotSucceeded(res));
   } catch (err) {
     yield put(createBotFailed(err));
@@ -104,10 +105,11 @@ export function* watchCreateBot() {
 export function* editBot(payload) {
   const { data, id } = payload;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
-  defaultOptions.method = "PUT";
-  defaultOptions.body = JSON.stringify(data);
+  let options = defaultOptions;
+  options.method = "PUT";
+  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL, options);
     yield put(editBotSucceeded(res));
   } catch (err) {
     yield put(editBotFailed(err));
@@ -124,9 +126,10 @@ export function* watchEditBot() {
 export function* deleteBotApi(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
-  defaultOptions.method = "DELETE";
+  let options = defaultOptions;
+  options.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL, options);
     yield put(deleteBotSucceeded(res));
   } catch (err) {
     yield put(deleteBotFailed(err));
@@ -140,9 +143,10 @@ export function* watchDeleteBotApi() {
 export function* closeBotApi(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_CLOSE_BOT}/${id}`;
-  defaultOptions.method = "DELETE";
+  let options = defaultOptions;
+  options.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL, options);
     yield put(deleteBotSucceeded(res));
   } catch (err) {
     yield put(deleteBotFailed(err));
@@ -241,9 +245,10 @@ export function* watchGetCandlestick() {
  */
 export function* archiveBotApi({ id }) {
   const requestURL = `${process.env.REACT_APP_ARCHIVE_BOT}/${id}`;
-  defaultOptions.method = "PUT";
+  let options = defaultOptions;
+  options.method = "PUT";
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL, options);
     yield put(archiveBotSucceeded(res));
   } catch (err) {
     yield put(archiveBotFailed(err));

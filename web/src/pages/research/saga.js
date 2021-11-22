@@ -104,11 +104,12 @@ export function* watchGetBlacklistApi() {
  * Add element to blacklist
  */
  export function* addBlacklistApi({data}) {
-  const url = new URL(`${process.env.REACT_APP_RESEARCH_BLACKLIST}`)
-  defaultOptions.method = "POST";
-  defaultOptions.body = JSON.stringify(data);
+  const url = new URL(`${process.env.REACT_APP_RESEARCH_BLACKLIST}`);
+  let options = defaultOptions;
+  options.method = "POST";
+  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, url, defaultOptions);
+    const res = yield call(request, url, options);
     yield put(addBlackListSucceeded(res));
   } catch (err) {
     yield put(addBlackListFailed(err));
@@ -123,10 +124,11 @@ export function* watchAddBlacklistApi() {
  * Blacklist
  */
  export function* deleteBlacklistApi({ pair }) {
-  const url = `${process.env.REACT_APP_RESEARCH_BLACKLIST}/${pair}`
-  defaultOptions.method = "DELETE";
+  const url = `${process.env.REACT_APP_RESEARCH_BLACKLIST}/${pair}`;
+  let options = defaultOptions;
+  options.method = "DELETE";
   try {
-    const res = yield call(request, url, defaultOptions);
+    const res = yield call(request, url, options);
     yield put(deleteBlackListSucceeded(res));
   } catch (err) {
     yield put(deleteBlackListFailed(err));
@@ -159,11 +161,12 @@ export function* watchGetSettingsApi() {
  * Edit Settings (controller)
  */
  export function* editSettingsApi({ data }) {
-  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER)
-  defaultOptions.method = "PUT";
-  defaultOptions.body = JSON.stringify(data);
+  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER);
+  let options = defaultOptions;
+  options.method = "PUT";
+  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, url, defaultOptions);
+    const res = yield call(request, url, options);
     yield put(editSettingsSucceeded(res));
   } catch (err) {
     yield put(editSettingsFailed(err));

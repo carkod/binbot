@@ -41,10 +41,11 @@ export default function* watchUsersApi() {
  */
 export function* editUserApi({ data, id }) {
   const requestURL = `${process.env.REACT_APP_USERS}/${id}`;
-  defaultOptions.method = "PUT";
-  defaultOptions.body = JSON.stringify(data);
+  let options = defaultOptions;
+  options.method = "PUT";
+  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL, options);
     yield put(editUserSucceded(res));
   } catch (err) {
     yield put(editUserFailed(err));
@@ -60,9 +61,10 @@ export function* watchEditUserApi() {
  */
 export function* deleteUserApi({ id }) {
   const requestURL = `${process.env.REACT_APP_USERS}/${id}`;
-  defaultOptions.method = "DELETE";
+  let options = defaultOptions;
+  options.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL, options);
     yield put(deleteUserSucceeded(res));
   } catch (err) {
     yield put(deleteUserFailed(err));
@@ -75,10 +77,11 @@ export function* watchDeleteUserApi() {
 
 export function* createUserApi({ data }) {
   const requestURL = `${process.env.REACT_APP_REGISTER_USER}`;
-  defaultOptions.method = "POST";
-  defaultOptions.body = JSON.stringify(data);
+  let options = defaultOptions;
+  options.method = "POST";
+  options.body = JSON.stringify(data);
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL, options);
     yield put(registerUserSucceeded(res));
   } catch (err) {
     yield put(registerUserFailed(err));

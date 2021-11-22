@@ -51,9 +51,10 @@ export function* watchOpenOrders() {
 export function* deleteOpenOrders(payload) {
   const { symbol, orderId } = payload.data;
   const requestURL = `${process.env.REACT_APP_OPEN_ORDERS}/${symbol}/${orderId}`;
-  defaultOptions.method = "DELETE";
+  let options = defaultOptions;
+  options.method = "DELETE";
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL, options);
     yield put(deleteOpenOrdersSucceeded(res));
   } catch (err) {
     yield put(deleteOpenOrdersFailed(err));
