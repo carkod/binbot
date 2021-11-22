@@ -2,10 +2,6 @@ import React, { Component } from "react";
 import { Col, Row } from "reactstrap";
 
 class NotFound extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {}
-  }
 
   render() {
     return (

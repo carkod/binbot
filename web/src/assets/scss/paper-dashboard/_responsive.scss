@@ -122,7 +122,6 @@
 
   .nav-open {
     .main-panel {
-      right: 0;
       @include transform-translate-x($navbar-width);
     }
 
@@ -130,10 +129,6 @@
       @include transform-translate-x(0px);
     }
 
-    body {
-      position: relative;
-      overflow-x: hidden;
-    }
 
     .menu-on-right {
       .main-panel {

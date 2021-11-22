@@ -6,6 +6,7 @@ import Orders from "../pages/orders/Orders";
 import Research from "../pages/research/Research";
 import Login from "../containers/login/Login";
 import Users from "../pages/users/Users";
+import NotFound from "../pages/NotFound";
 
 const routes = [
   {
@@ -89,6 +90,14 @@ const routes = [
     component: Registration,
     layout: "/admin",
     nav: true,
+    private: true,
+  },
+  {
+    path: "*",
+    name: "Not found",
+    component: NotFound,
+    layout: "/admin",
+    nav: false,
     private: true,
   },
 ];

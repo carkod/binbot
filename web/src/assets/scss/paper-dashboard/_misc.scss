@@ -166,3 +166,7 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
   z-index: $zindex-loader-bg;
   position: absolute;
 }
+
+.redux-toastr {
+  position: absolute;
+}
