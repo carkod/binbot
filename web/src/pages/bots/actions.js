@@ -47,6 +47,7 @@ export const GET_BASE_ASSET_ERROR = "GET_BASE_ASSET_ERROR";
 
 export const ARCHIVE_BOT = "ARCHIVE_BOT";
 export const ARCHIVE_BOT_SUCCESS = "ARCHIVE_BOT_SUCCESS";
+export const ARCHIVE_BOT_ERROR = "ARCHIVE_BOT_ERROR";
 
 /**
  * Create new user
@@ -205,7 +206,11 @@ export function editBot(id, body) {
  * @return {object} An action object with a type of BOT_SUCCESS passing the repos
  */
 export function editBotSucceeded(res) {
-  addNotification("SUCCESS!", res.message, "success");
+  if (res.error === 1) {
+    addNotification("Some errors encountered", res.message, "error");
+  } else {
+    addNotification("SUCCESS!", res.message, "success");
+  }
   return {
     type: EDIT_BOT_SUCCESS,
     bots: res,
@@ -258,7 +263,11 @@ export function closeBot(id) {
  * @return {object} An action object with a type of BOT_SUCCESS passing the repos
  */
 export function deleteBotSucceeded(res) {
-  addNotification("SUCCESS!", res.message, "success");
+  if (res.error === 1) {
+    addNotification("Some errors encountered", res.message, "error");
+  } else {
+    addNotification("SUCCESS!", res.message, "success");
+  }
   return {
     type: DELETE_BOT_SUCCESS,
     removeId: res.botId,
@@ -294,10 +303,10 @@ export function activateBot(id) {
 }
 
 export function activateBotSucceeded(res) {
-  const type = parseInt(res.error) === 1 ? "error" : "success";
-  const title = parseInt(res.error) === 1 ? "Bot activation failed" : "Bot activation succeeded";
-  if (res.message) {
-    addNotification(title, res.message, type);
+  if (res.error === 1) {
+    addNotification("Some errors encountered", res.message, "error");
+  } else {
+    addNotification("SUCCESS!", res.message, "success");
   }
   return {
     type: ACTIVATE_BOT_SUCCESS,
@@ -308,7 +317,7 @@ export function activateBotSucceeded(res) {
 export function activateBotFailed(error) {
   addNotification("Failed to fetch", error.message, "error");
   return {
-    type: ACTIVATE_BOT_SUCCESS,
+    type: ACTIVATE_BOT_ERROR,
   };
 }
 
@@ -325,8 +334,10 @@ export function deactivateBot(id) {
 }
 
 export function deactivateBotSucceeded(res) {
-  if (res.message) {
-    addNotification(DEACTIVATE_BOT_SUCCESS, res.message, "error");
+  if (res.error === 1) {
+    addNotification("Some errors encountered", res.message, "error");
+  } else {
+    addNotification("SUCCESS!", res.message, "success");
   }
   return {
     type: DEACTIVATE_BOT_SUCCESS,
@@ -337,7 +348,7 @@ export function deactivateBotSucceeded(res) {
 
 export function deactivateBotFailed(error) {
   return {
-    type: DEACTIVATE_BOT_SUCCESS,
+    type: DEACTIVATE_BOT_ERROR,
     error: error.message,
   };
 }
@@ -429,7 +440,7 @@ export function archiveBotSucceeded(payload) {
 
 export function archiveBotFailed(payload) {
   return {
-    type: ARCHIVE_BOT_SUCCESS,
+    type: ARCHIVE_BOT_ERROR,
     id: payload.botId,
   };
 }

@@ -80,13 +80,13 @@ class BinanceApi:
         data = handle_binance_errors(res)
         return data
 
-    def request(self, url, method="GET", params=None):
+    def request(self, url, method="GET", params=None, json=None):
         """
         Standard request
         - No signed
         - No authorization
         """
-        res = request(method, url=url, params=params)
+        res = request(method, url=url, params=params, json=json)
         data = handle_binance_errors(res)
         return data
 

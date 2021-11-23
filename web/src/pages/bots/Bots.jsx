@@ -65,14 +65,14 @@ class Bots extends React.Component {
                     <Card className="card-stats">
                       <CardBody>
                         <Row>
-                          <Col md="8" xs="12">
+                          <Col md="7" xs="12">
                             <div className="stats">
                               <CardTitle tag="h5" className="card-title">
                                 {x.pair}
                               </CardTitle>
                             </div>
                           </Col>
-                          <Col md="4" xs="12">
+                          <Col md="5" xs="12">
                             <CardTitle
                               tag="h5"
                               className="card-title u-uppercase"
@@ -98,12 +98,12 @@ class Bots extends React.Component {
                           </Col>
                         </Row>
                         <Row className="u-align-baseline">
-                          <Col md="8" xs="12">
+                          <Col md="7" xs="12">
                             <div className="stats">
                               <p className="card-category">{x.name}</p>
                             </div>
                           </Col>
-                          <Col md="4" xs="12">
+                          <Col md="5" xs="12">
                             <div className="stats">
                               <Badge
                                 color={
@@ -127,22 +127,22 @@ class Bots extends React.Component {
                           <Col md="12" xs="12">
                             <div className="stats">
                               <Row>
-                                <Col md="8">
+                                <Col md="7">
                                   <p className="card-category">Mode</p>
                                 </Col>
-                                <Col md="4">
+                                <Col md="5">
                                   <p className="card-category">
                                     {!checkValue(x.mode) ? x.mode : "Unknown"}
                                   </p>
                                 </Col>
                               </Row>
                               <Row>
-                                <Col md="8">
+                                <Col md="7">
                                   <p className="card-category">
                                     # Safety Orders
                                   </p>
                                 </Col>
-                                <Col md="4">
+                                <Col md="5">
                                   <p className="card-category">
                                     {x.max_so_count}
                                   </p>
@@ -150,10 +150,10 @@ class Bots extends React.Component {
                               </Row>
 
                               <Row>
-                                <Col md="8">
+                                <Col md="7">
                                   <p className="card-category">Bought @</p>
                                 </Col>
-                                <Col md="4">
+                                <Col md="5">
                                   <p className="card-category">
                                     {!checkValue(x.deal) && x.deal.buy_price}
                                   </p>
@@ -161,10 +161,10 @@ class Bots extends React.Component {
                               </Row>
 
                               <Row>
-                                <Col md="8">
+                                <Col md="7">
                                   <p className="card-category">Take profit</p>
                                 </Col>
-                                <Col md="4">
+                                <Col md="5">
                                   <p className="card-category">
                                     {x.take_profit + "%"}
                                   </p>
@@ -173,12 +173,12 @@ class Bots extends React.Component {
 
                               {x.trailling === "true" && (
                                 <Row>
-                                  <Col md="8">
+                                  <Col md="7">
                                     <p className="card-category">
                                       Trailling loss
                                     </p>
                                   </Col>
-                                  <Col md="4">
+                                  <Col md="5">
                                     <p className="card-category">
                                       {x.trailling_deviation + "%"}
                                     </p>
@@ -188,10 +188,10 @@ class Bots extends React.Component {
 
                               {parseInt(x.stop_loss) > 0 && (
                                 <Row>
-                                  <Col md="8">
+                                  <Col md="7">
                                     <p className="card-category">Stop loss</p>
                                   </Col>
-                                  <Col md="4">
+                                  <Col md="5">
                                     <p className="card-category">
                                       {x.stop_loss + "%"}
                                     </p>
@@ -201,10 +201,10 @@ class Bots extends React.Component {
 
                               {parseFloat(x.commissions) > 0 && (
                                 <Row>
-                                  <Col md="8">
+                                  <Col md="7">
                                     <p className="card-category">Comissions</p>
                                   </Col>
-                                  <Col md="4">
+                                  <Col md="5">
                                     <p className="card-category">
                                       {`${x.commissions} BNB`}
                                     </p>

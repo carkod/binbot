@@ -496,15 +496,4 @@ class Deal(Account):
             # Continue even if there are errors
             handle_binance_errors(res)
 
-        # Hedge with GBP and complete bot
-        buy_gbp_result = self.buy_gbp_balance()
-        if not isinstance(buy_gbp_result, Response):
-            bot_id = app.db.bots.find_one_and_update(
-                {"pair": pair}, {"$set": {"status": "completed", "deal.sell_timestamp": time()}}
-            )
-            if not bot_id:
-                app.db.bots.find_one_and_update(
-                    {"pair": pair},
-                    {"$set": {"status": "errors"}, "push": {"errors": bot_id}},
-                )
         return
