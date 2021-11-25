@@ -61,6 +61,7 @@ class Controller:
 
         self.defaults.update(data)
         self.defaults["system_logs"] = system_logs
+        self.defaults["update_required"] = True
         self.defaults.pop("_id")
         settings = current_app.db.research_controller.update_one(
             {"_id": "settings"}, {"$set": self.defaults}

@@ -49,7 +49,7 @@ class MarketUpdates(Account):
         print("Market data updates socket opened")
 
     def on_error(self, ws, error):
-        error_msg = f'Deal Websocket error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
+        error_msg = f'market_updates error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
         print(error_msg)
         self.start_stream()
 

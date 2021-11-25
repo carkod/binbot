@@ -15,14 +15,13 @@ from flask import Response
 
 
 class DealUpdates(Deal):
+    """
+    An almost duplicate of Deal class, created to avoid circular and maximum depth issues
+    It has some more additional methods and data for the purpose of websocket updating bots
+    """
     def __init__(self, bot):
 
         self.active_bot = bot
-        self.MIN_PRICE = float(
-            self.price_filter_by_symbol(self.active_bot["pair"], "minPrice")
-        )
-        self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
-        self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
         self.app = create_app()
         self.order = {
             "order_id": "",
@@ -36,9 +35,6 @@ class DealUpdates(Deal):
             "fills": "0",
             "time_in_force": "GTC",
         }
-        self.total_amount = 0
-        self.max_so_count = int(bot["max_so_count"])
-        self.balances = 0
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot["pair"])
         # PRICE_FILTER decimals
         self.price_precision = -(
@@ -95,22 +91,6 @@ class DealUpdates(Deal):
                     print("Old take profit order cancelled")
 
                 qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
-
-                # Validations
-                if new_tp_price:
-                    if new_tp_price <= float(self.MIN_PRICE):
-                        return jsonResp_message(
-                            "[Take profit order error] Price too low"
-                        )
-                if qty <= float(self.MIN_QTY):
-                    return jsonResp_message(
-                        "[Take profit order error] Quantity too low"
-                    )
-                if new_tp_price * qty <= float(self.MIN_NOTIONAL):
-                    return jsonResp_message(
-                        "[Take profit order error] Price x Quantity too low"
-                    )
-
                 new_tp_order = {
                     "pair": bot["pair"],
                     "qty": qty,

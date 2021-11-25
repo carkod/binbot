@@ -1,13 +1,11 @@
 import json
 import threading
 import requests
-from api.account.assets import Assets
 from api.apis import BinanceApi
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
-from api.deals.models import Deal
 from api.threads import market_update_thread
-from api.tools.handle_error import handle_error, post_error
+from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
 
 
@@ -81,55 +79,32 @@ class OrderUpdates(BinanceApi):
         order_id = result["i"]
 
         if result["X"] == "FILLED":
-            order = {
-                "symbol": result["s"],
-                "orderId": result["c"],
-                "orderListId": result["g"],
-                "clientOrderId": result["c"],
-                "price": result["p"],
-                "origQty": result["q"],
-                "executedQty": result["l"],
-                "cummulativeQuoteQty": result["z"],
-                "status": result["X"],
-                "timeInForce": result["f"],
-                "type": result["o"],
-                "side": result["S"],
-                "stopPrice": result["P"],
-                "icebergQty": result["F"],
-                "time": result["O"],
-                "updateTime": result["T"],
-                "isWorking": "true",
-                "origQuoteOrderQty": result["Q"],
-            }
-            # Close successful orders
-            update_tp = self.app.db.bots.find_one_and_update(
+            # Close successful take_profit
+            self.app.db.bots.find_one_and_update(
                 {
                     "orders": {
                         "$elemMatch": {"deal_type": "take_profit", "order_id": order_id}
                     }
                 },
                 {
-                    "$set": {"status": "inactive", "deal.current_price": result["p"]},
+                    "$set": {"status": "completed", "deal.current_price": result["p"]},
                     "$inc": {"deal.commission": float(result["n"])},
-                    "$push": {"orders": order},
+                    "$push": {"errors": "Bot take_profit completed!"},
                 },
             )
-            # Else, update whatever id matches
-            bot = self.app.db.bots.find_one_and_update(
-                {"orders": {"$elemMatch": {"order_id": order_id}}},
+            # Close successful orders
+            self.app.db.bots.find_one_and_update(
                 {
-                    "$set": {"deal.current_price": result["p"], "status": "completed"},
+                    "orders": {
+                        "$elemMatch": {"deal_type": "trailling_stop_loss", "order_id": order_id}
+                    }
+                },
+                {
+                    "$set": {"status": "completed", "deal.current_price": result["p"]},
                     "$inc": {"deal.commission": float(result["n"])},
-                    "$push": {"orders": order},
+                    "$push": {"errors": "Bot trailling_stop_loss completed!"},
                 },
             )
-            if update_tp:
-                msg = f"Bot take_profit completed! Bot {bot['_id']} deactivated"
-                print(msg)
-                post_error(msg)
-                print("Trying to buy GBP balance...")
-                # Logic to convert market coin into GBP here
-                Deal(bot).buy_gbp_balance()
 
             # Update Safety orders
             bot = self.app.db.bots.find_one(

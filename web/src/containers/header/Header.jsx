@@ -2,19 +2,14 @@ import React from "react";
 import { withRouter } from "react-router-dom";
 import {
   Button,
-  Collapse,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownToggle,
-  Input,
+  Collapse, Input,
   InputGroup,
   InputGroupText,
   Nav,
   Navbar,
   NavbarBrand,
   NavbarToggler,
-  NavItem,
+  NavItem
 } from "reactstrap";
 import { removeToken } from "../../request";
 import routes from "../../router/routes";
@@ -157,23 +152,6 @@ class Header extends React.Component {
                 </p>
               </button>
             </NavItem>
-            <Dropdown
-              nav
-              isOpen={this.state.dropdownOpen}
-              toggle={(e) => this.dropdownToggle(e)}
-            >
-              <DropdownToggle caret nav>
-                <i className="nc-icon nc-bell-55" />
-                <p>
-                  <span className="d-lg-none d-md-block">Some Actions</span>
-                </p>
-              </DropdownToggle>
-              <DropdownMenu end>
-                <DropdownItem tag="a">Action</DropdownItem>
-                <DropdownItem tag="a">Another Action</DropdownItem>
-                <DropdownItem tag="a">Something else here</DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
             <NavItem>
               <button
                 onClick={this.handleLogout}

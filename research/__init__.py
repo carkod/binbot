@@ -148,7 +148,7 @@ class ResearchSignals(BinbotApi):
         # Sleep 1 hour because of snapshot account request weight
         if datetime.now().time().hour == 0 and datetime.now().time().minute == 0:
             sleep(3600)
-            
+
         if "k" in result and "s" in result["k"]:
             print(f'Research symbol: {result["k"]["s"]}')
             # Check if streams need to be restarted
