@@ -125,14 +125,10 @@ class DealUpdates(Deal):
                 # Append now new take_profit deal
                 new_deals.append(take_profit_order)
                 self.active_bot["orders"] = new_deals
-                bot_id = self.app.db.bots.update_one(
+                self.app.db.bots.update_one(
                     {"_id": self.active_bot["_id"]},
-                    {"$push": {"orders": take_profit_order}},
+                    {"$push": {"orders": take_profit_order, "errors": "take_profit deal successfully updated"}},
                 )
-                if not bot_id:
-                    print(f"Failed to update take_profit deal: {bot_id}")
-                else:
-                    print(f"New take_profit deal successfully updated: {bot_id}")
                 return
 
     def so_update_deal(self, so_index):

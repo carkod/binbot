@@ -35,7 +35,11 @@ class ResearchSignals(BinbotApi):
 
         # Dynamic data
         response = requests.get(url=f"{self.bb_controller_url}")
-        self.settings = response.json()["data"]
+        settings_data = handle_binance_errors(response)
+        try:
+            self.settings = settings_data["data"]
+        except KeyError as e:
+            print(e)
 
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
         self.blacklist_data = handle_binance_errors(blacklist_res)["data"]
@@ -138,9 +142,6 @@ class ResearchSignals(BinbotApi):
         elif "e" in response and response["e"] == "kline":
             self.process_kline_stream(response, ws)
 
-        else:
-            print(f"Error: {response}")
-
     def process_kline_stream(self, result, ws):
         """
         Updates market data in DB for research
@@ -159,7 +160,6 @@ class ResearchSignals(BinbotApi):
             data = self._get_candlestick(symbol, self.interval, stats=True)
             if not data or len(data["trace"][1]["y"]) <= 100:
                 msg = f"Not enough data to do research on {symbol}"
-                print(msg)
                 self.blacklist_coin(symbol, msg)
                 self.start_stream(ws)
                 return
@@ -247,6 +247,7 @@ class ResearchSignals(BinbotApi):
                     self.settings = handle_binance_errors(research_controller_res)[
                         "data"
                     ]
+                    print("Upward trend signal message")
                     # If dashboard has changed any self.settings
                     # Need to reload websocket
                     if (
@@ -257,9 +258,9 @@ class ResearchSignals(BinbotApi):
                         research_controller_res = requests.put(
                             url=self.bb_controller_url, json=self.settings
                         )
-                        self.post_error(
-                            handle_binance_errors(research_controller_res)["message"]
-                        )
+                        data = handle_binance_errors(research_controller_res)
+                        print("update_required response", data)
+                        
                         self.start_stream(previous_ws=ws)
                         return
 
@@ -275,7 +276,7 @@ class ResearchSignals(BinbotApi):
                     check_balance_res = requests.get(url=self.bb_balance_estimate_url)
                     balances = handle_binance_errors(check_balance_res)
                     balance_check = int(balances["data"]["total_fiat"])
-
+                    print("Before autotrade condition")
                     if (
                         int(self.settings["autotrade"]) == 1
                         and symbol not in active_symbols
