@@ -52,7 +52,7 @@ class Autotrade(BinbotApi):
         result = handle_binance_errors(res)
         return result
 
-    def run(self):
+    def run(self, amplitude=0):
         """
         Run autotrade
         2. Create bot with given parameters from research_controller
@@ -116,6 +116,9 @@ class Autotrade(BinbotApi):
             return
 
         self.settings.pop("_id")
+        # Dynamic trailling
+        # the bigger the candlestick swings the larger should the trailling be to avoid selling too soon
+        self.default_bot["trailling_deviation"] = float(self.settings["trailling_deviation"]) * (1 + amplitude)
         create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
         try:
             botId = handle_binance_errors(create_bot_res)["botId"]
@@ -129,7 +132,7 @@ class Autotrade(BinbotApi):
         res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
         response = handle_binance_errors(res)
         if "error" in response and response["error"] == 1:
-            msg = f"Not enough funds to carry out autotrade with {self.pair}"
+            msg = f"Error activating bot {self.pair} with id {botId}"
             self.handle_error(msg)
         else:
             msg = f"Succesful autotrade, opened bot with {self.pair}!"
