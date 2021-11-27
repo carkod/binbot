@@ -97,9 +97,6 @@ def handle_error(req):
     except Timeout:
         # Maybe set up for a retry, or continue in a retry loop
         return jsonResp_message("handle_error: Timeout", 408)
-    except RequestException as e:
-        # catastrophic error. bail.
-        return jsonResp_message(f"Catastrophic error: {e}", 500)
 
 
 def handle_binance_errors(response: Response, bot=None, message=None):

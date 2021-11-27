@@ -41,6 +41,7 @@ def handle_binance_errors(response: Response):
     except JSONDecodeError as e:
         print(f"response: {response}")
 
+    content = response.json()
     try:
         if (content and "code" in content):
             if content["code"] == 200:

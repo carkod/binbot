@@ -33,27 +33,49 @@ class ResearchSignals(BinbotApi):
         self.telegram_bot = TelegramBot()
         self.max_request = 950  # Avoid HTTP 411 error by separating streams
 
-        # Dynamic data
-        response = requests.get(url=f"{self.bb_controller_url}")
-        settings_data = handle_binance_errors(response)
-        try:
-            self.settings = settings_data["data"]
-        except KeyError as e:
-            print(e)
-
-        blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
-        self.blacklist_data = handle_binance_errors(blacklist_res)["data"]
-
-        if self.settings:
-            self.interval = self.settings["candlestick_interval"]
-            self.max_request = int(self.settings["max_request"])
-
     def blacklist_coin(self, pair, msg):
         res = requests.post(
             url=self.bb_blacklist_url, json={"pair": pair, "reason": msg}
         )
         result = handle_binance_errors(res)
         return result
+    
+    def load_data(self):
+        """
+        Load controller data
+
+        - Global settings for autotrade
+        - Updated blacklist
+        """
+        print("Loading controller and blacklist data...")
+        response = requests.get(url=f"{self.bb_controller_url}")
+        settings_data = handle_binance_errors(response)
+        blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
+        blacklist_data = handle_binance_errors(blacklist_res)
+        try:
+            if settings_data["data"]["update_required"]:
+                settings_data["update_required"] = False
+                research_controller_res = requests.put(
+                    url=self.bb_controller_url, json=settings_data
+                )
+                payload = handle_binance_errors(research_controller_res)
+
+                # Logic for autotrade
+                research_controller_res = requests.get(url=self.bb_controller_url)
+                research_controller = handle_binance_errors(research_controller_res)
+                self.settings = research_controller[
+                    "data"
+                ]
+
+            self.settings = settings_data["data"]
+            self.blacklist_data = blacklist_data["data"]
+        except KeyError as e:
+            print(e)
+        
+        self.interval = self.settings["candlestick_interval"]
+        self.max_request = int(self.settings["max_request"])
+
+        pass
 
     def _send_msg(self, msg):
         """
@@ -87,6 +109,8 @@ class ResearchSignals(BinbotApi):
     def start_stream(self, previous_ws=None):
         if previous_ws:
             previous_ws.close()
+
+        self.load_data()
         raw_symbols = self._ticker_price()
         black_list = [x["pair"] for x in self.blacklist_data]
         markets = set([item["symbol"] for item in raw_symbols])
@@ -122,7 +146,7 @@ class ResearchSignals(BinbotApi):
         print("Active socket closed", close_status_code, close_msg)
 
     def on_open(self, ws):
-        print("Market data updates socket opened")
+        print("Research signals websocket opened")
 
     def on_error(self, ws, error):
         msg = f'Research Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
@@ -192,9 +216,11 @@ class ResearchSignals(BinbotApi):
                     if close_price < float(all_time_low):
                         msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Amplitude {supress_notation(amplitude, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
 
+                    self._send_msg(msg)
+                    print(msg)
+
                 if (
                     float(close_price) > float(open_price)
-                    and amplitude > 0.05
                     and (
                         close_price > ma_7[len(ma_7) - 1]
                         and open_price > ma_7[len(ma_7) - 1]
@@ -235,34 +261,10 @@ class ResearchSignals(BinbotApi):
                         close_price > ma_25[len(ma_25) - 4]
                         and open_price > ma_25[len(ma_25) - 4]
                     )
-                    and (
-                        close_price > ma_25[len(ma_25) - 5]
-                        and open_price > ma_25[len(ma_25) - 5]
-                    )
                 ):
                     msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-
-                    # Logic for autotrade
-                    research_controller_res = requests.get(url=self.bb_controller_url)
-                    self.settings = handle_binance_errors(research_controller_res)[
-                        "data"
-                    ]
-                    print("Upward trend signal message")
-                    # If dashboard has changed any self.settings
-                    # Need to reload websocket
-                    if (
-                        "update_required" in self.settings
-                        and self.settings["update_required"]
-                    ):
-                        self.settings["update_required"] = False
-                        research_controller_res = requests.put(
-                            url=self.bb_controller_url, json=self.settings
-                        )
-                        data = handle_binance_errors(research_controller_res)
-                        print("update_required response", data)
-                        
-                        self.start_stream(previous_ws=ws)
-                        return
+                    self._send_msg(msg)
+                    print(msg)
 
                     # if autrotrade enabled and it's not an already active bot
                     # this avoids running too many useless bots
@@ -276,7 +278,17 @@ class ResearchSignals(BinbotApi):
                     check_balance_res = requests.get(url=self.bb_balance_estimate_url)
                     balances = handle_binance_errors(check_balance_res)
                     balance_check = int(balances["data"]["total_fiat"])
-                    print("Before autotrade condition")
+
+                    # If dashboard has changed any self.settings
+                    # Need to reload websocket
+                    if (
+                        "update_required" in self.settings
+                        and self.settings["update_required"]
+                    ):
+                        print("Update required, restart stream")
+                        self.start_stream(previous_ws=ws)
+                        pass
+
                     if (
                         int(self.settings["autotrade"]) == 1
                         and symbol not in active_symbols
@@ -284,13 +296,9 @@ class ResearchSignals(BinbotApi):
                     ):
                         autotrade = Autotrade(symbol, self.settings)
                         worker_thread = threading.Thread(
-                            name="autotrade_thread", target=autotrade.run
+                            name=f"autotrade_thread_{symbol}_{time()}", target=autotrade.run
                         )
                         worker_thread.start()
-
-                if msg:
-                    self._send_msg(msg)
-                    print(msg)
 
                 self.last_processed_kline[symbol] = time()
 
