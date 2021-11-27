@@ -7,8 +7,9 @@ from utils import InvalidSymbol, handle_binance_errors, supress_notation
 from datetime import datetime
 
 class Autotrade(BinbotApi):
-    def __init__(self, pair, settings) -> None:
+    def __init__(self, pair, settings, amplitude=0) -> None:
         self.pair = pair
+        self.amplitude = amplitude
         self.settings = settings
         self.decimals = self.price_precision(pair)
         current_date = datetime.now().strftime("%Y-%m-%dT%H:%M")
@@ -52,7 +53,7 @@ class Autotrade(BinbotApi):
         result = handle_binance_errors(res)
         return result
 
-    def run(self, amplitude=0):
+    def run(self):
         """
         Run autotrade
         2. Create bot with given parameters from research_controller
@@ -118,23 +119,26 @@ class Autotrade(BinbotApi):
         self.settings.pop("_id")
         # Dynamic trailling
         # the bigger the candlestick swings the larger should the trailling be to avoid selling too soon
-        self.default_bot["trailling_deviation"] = float(self.settings["trailling_deviation"]) * (1 + amplitude)
+        self.default_bot["trailling_deviation"] = float(self.settings["trailling_deviation"]) * (1 + float(self.amplitude))
         create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
+        create_bot = handle_binance_errors(create_bot_res)
         try:
-            botId = handle_binance_errors(create_bot_res)["botId"]
-        except KeyError:
-            print(create_bot_res)
-        if "error" in botId and botId["error"] == 1:
-            msg = f"Not enough funds to carry out autotrade with {self.pair}"
-            self.handle_error(msg)
-            return
+            botId = create_bot["botId"]
+            if botId["error"] == 1:
+                msg = f"Not enough funds to carry out autotrade with {self.pair}"
+                self.handle_error(msg)
+                pass
+        
+            res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
+            response = handle_binance_errors(res)
+            if "error" in response and response["error"] == 1:
+                msg = f"Error activating bot {self.pair} with id {botId}"
+                self.handle_error(msg)
+            else:
+                msg = f"Succesful autotrade, opened bot with {self.pair}!"
+                self.handle_error(msg)
+            pass
 
-        res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
-        response = handle_binance_errors(res)
-        if "error" in response and response["error"] == 1:
-            msg = f"Error activating bot {self.pair} with id {botId}"
-            self.handle_error(msg)
-        else:
-            msg = f"Succesful autotrade, opened bot with {self.pair}!"
-            self.handle_error(msg)
-        return
+        except KeyError as e:
+            print("response", create_bot_res)
+            raise KeyError(e)

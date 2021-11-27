@@ -1,4 +1,4 @@
-import produce, { current } from "immer";
+import produce from "immer";
 import React from "react";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import { connect } from "react-redux";
@@ -195,7 +195,6 @@ class Research extends React.Component {
     e.preventDefault();
     this.setState(
       produce((draft) => {
-        console.log(current(draft));
         draft.settings[e.target.name] = e.target.value;
       })
     );
@@ -203,18 +202,11 @@ class Research extends React.Component {
 
   saveSettings = (e) => {
     e.preventDefault();
+    let settings = this.state.settings;
+    settings.update_required = "true";
     this.props.editSettings(this.state.settings);
   };
 
-  handleSettings = (e) => {
-    e.preventDefault();
-    this.setState(
-      produce((draft) => {
-        draft.settings[e.target.name] = e.target.value;
-        draft.update_required = "True";
-      })
-    );
-  };
 
   handleBlacklist = (action, data) => {
     if (action === "add") {

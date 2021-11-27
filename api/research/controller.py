@@ -50,26 +50,24 @@ class Controller:
     def edit_settings(self):
         # Start with current settings
         self.defaults.update(current_app.db.research_controller.find_one({"_id": "settings"}))
-        system_logs = []
-        data = request.json
+        data = request.get_json()
 
-        if "errors" in data:
+        if "system_logs" in data:
             if isinstance(self.defaults["system_logs"], str):
                 system_logs.append(self.defaults["system_logs"])
             if "system_logs" in data:
                 system_logs.extend(data["system_logs"])
 
+        if self.defaults["update_required"].lower() == "true":
+            self.defaults["update_required"] = True
+
         self.defaults.update(data)
         self.defaults["system_logs"] = []
         self.defaults["errors"] = []
-        self.defaults["update_required"] = True
         self.defaults.pop("_id")
-        settings = current_app.db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": self.defaults}
+        current_app.db.research_controller.update_one(
+            {"_id": "settings"}, {"$set": self.defaults}, {"upsert": True}
         )
-
-        if not settings:
-            current_app.db.reserch_controller.insert(self.defaults)
 
         resp = jsonResp({"message": "Successfully updated settings"})
         return resp
