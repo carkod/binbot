@@ -58,7 +58,7 @@ class ResearchSignals(BinbotApi):
         research_controller_res = requests.put(
             url=self.bb_controller_url, json=settings_data
         )
-        payload = handle_binance_errors(research_controller_res)
+        handle_binance_errors(research_controller_res)
 
         # Logic for autotrade
         research_controller_res = requests.get(url=self.bb_controller_url)
