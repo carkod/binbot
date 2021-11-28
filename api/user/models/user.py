@@ -3,7 +3,7 @@ from passlib.hash import pbkdf2_sha256
 from jose import jwt
 import os
 from api.tools.dates import nowDatetimeUTC
-from api.tools.handle_error import jsonResp_message, jsonResp
+from api.tools.handle_error import jsonResp_error_message, jsonResp_message, jsonResp
 from bson.objectid import ObjectId
 from api.auth import encodeAccessToken, encodeRefreshToken
 
@@ -22,7 +22,7 @@ class User:
     def get(self):
         users = list(app.db.users.find())
         if users:
-            resp = jsonResp_message(users)
+            resp = jsonResp({"message": "Users found", "data": users})
         else:
             resp = jsonResp_message("No users found")
 
@@ -85,54 +85,71 @@ class User:
         return resp
 
     def add(self):
-        data = request.json
-        expected_data = {
+        try:
+            data = request.json
+        except TypeError as e:
+            print(e)
+            return jsonResp_error_message("Json data is malformed")
+        if ("email" not in data) or ("password" not in data):
+            return jsonResp_message("Email and password are required")
+
+        user_data = {
             "email": data["email"].lower(),
             "password": data["password"],
+            "username": data["username"],
+            "description": data["description"]
         }
         # Merge the posted data with the default user attributes
-        self.defaults.update(expected_data)
+        self.defaults.update(user_data)
+        # Encrypt the password
+        self.defaults["password"] = pbkdf2_sha256.encrypt(
+            user_data["password"], rounds=20000, salt_size=16
+        )
+        # Make sure there isn"t already a user with this email address
+        existing_email = app.db.users.find_one({"email": self.defaults["email"]})
+
+        if existing_email:
+            resp = jsonResp_error_message("There's already an account with this email address")
+
+        else:
+            inserted_doc = app.db.users.insert_one(self.defaults)
+            item = app.db.users.find_one({"_id": inserted_doc.inserted_id })
+            resp = jsonResp(
+                {"data": item, "message": "Successfully created a new user!"}
+            )
+
+        return resp
+
+    def edit(self):
+        try:
+            data = request.get_json()
+        except TypeError:
+            return jsonResp_error_message("Json data is malformed")
+        if "email" not in data or "password" not in data:
+            return jsonResp_message("Email and password are required")
+
+        user_data = {
+            "email": data["email"].lower(),
+            "password": data["password"],
+            "username": data["username"],
+            "description": data["description"]
+        }
+        # Merge the posted data with the default user attributes
+        self.defaults.update(user_data)
         user = self.defaults
         # Encrypt the password
         user["password"] = pbkdf2_sha256.encrypt(
             user["password"], rounds=20000, salt_size=16
         )
-        # Make sure there isn"t already a user with this email address
-        existing_email = app.db.users.find_one({"email": user["email"]})
 
-        if existing_email:
-            resp = jsonResp_message(
-                {
-                    "message": "There's already an account with this email address",
-                },
-                200,
-            )
+        edit_result = app.db.users.update_one({"email": user["email"]}, {
+            "$set": user
+        })
 
+        if edit_result:
+            return jsonResp_message("User successfully updated!")
         else:
-            insertion = app.db.users.insert(user)
-            if insertion:
-
-                # Log the user in (create and return tokens)
-                access_token = encodeAccessToken(user["password"], user["email"])
-                refresh_token = encodeRefreshToken(user["password"], user["email"])
-
-                app.db.users.update_one(
-                    {"_id": user["_id"]}, {"$set": {"refresh_token": refresh_token}}
-                )
-
-                resp = jsonResp_message(
-                    {
-                        "_id": user["_id"],
-                        "email": user["email"],
-                        "access_token": access_token,
-                        "refresh_token": refresh_token,
-                    },
-                    200,
-                )
-
-            else:
-                resp = jsonResp_message("User could not be added")
-        return resp
+            return jsonResp_error_message("User update failed")
 
     def delete(self):
         findId = request.view_args["id"]

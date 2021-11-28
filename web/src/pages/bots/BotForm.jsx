@@ -1,6 +1,7 @@
+import React from "react";
 import produce from "immer";
 import { nanoid } from "nanoid";
-import React from "react";
+import moment from "moment";
 import { connect } from "react-redux";
 import {
   Alert,
@@ -167,7 +168,10 @@ class BotForm extends React.Component {
       getQuoteAsset(this.state.pair).then(({ data }) =>
         this.setState({ quoteAsset: data })
       );
-      this.setState({ name: `${this.state.pair}_${new Date().getTime()}` });
+      const currentDate = moment().toISOString();
+      this.setState({
+        name: `${this.state.pair}_${currentDate}`,
+      });
     }
 
     if (
@@ -420,7 +424,7 @@ class BotForm extends React.Component {
   addAll = async () => {
     const { pair, quoteAsset } = this.state;
     const { balance_raw: balances } = this.props;
-    if (!checkValue(pair) && balances.length > 0) {
+    if (!checkValue(pair) && balances?.length > 0) {
       this.props.getSymbolInfo(pair);
       let totalBalance = 0;
       for (let x of balances) {
@@ -556,8 +560,7 @@ class BotForm extends React.Component {
                 <CardTitle tag="h3">
                   {this.state.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
-                  !isNaN(this.state.bot_profit) &&
-                  this.state.status === "active" ? (
+                  !isNaN(this.state.bot_profit) && (
                     <Badge
                       color={
                         parseFloat(this.state.bot_profit) > 0
@@ -567,8 +570,10 @@ class BotForm extends React.Component {
                     >
                       {this.state.bot_profit + "%"}
                     </Badge>
-                  ) : (
-                    <Badge
+                  )}
+                  {' '}
+                  {!checkValue(this.state.status) &&
+                  <Badge
                       color={
                         this.state.status === "active"
                           ? "success"
@@ -581,7 +586,13 @@ class BotForm extends React.Component {
                     >
                       {this.state.status}
                     </Badge>
-                  )}
+                  }
+                  <br />
+                  {!checkValue(this.state.bot_profit) &&
+                  !isNaN(this.state.bot_profit) &&
+                    <small>Earnings after commissions (est.): {parseFloat(this.state.bot_profit) - 0.3 + "%"}</small>
+                  }
+                  
                 </CardTitle>
                 <div className="">
                   {intervalOptions.map((item) => (
@@ -772,8 +783,8 @@ class BotForm extends React.Component {
                       toggleTrailling={this.toggleTrailling}
                     />
                   </TabContent>
-                  <Row>
-                    <div className="update ml-auto mr-auto">
+                  <Row xs="2">
+                    <Col>
                       <ButtonToggle
                         className="btn-round"
                         color="primary"
@@ -786,8 +797,8 @@ class BotForm extends React.Component {
                           ? "Update deal"
                           : "Deal"}
                       </ButtonToggle>
-                    </div>
-                    <div className="update ml-auto mr-auto">
+                    </Col>
+                    <Col>
                       <Button
                         className="btn-round"
                         color="primary"
@@ -795,7 +806,7 @@ class BotForm extends React.Component {
                       >
                         Save
                       </Button>
-                    </div>
+                    </Col>
                   </Row>
                   {!this.state.formIsValid && (
                     <Row>

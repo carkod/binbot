@@ -4,17 +4,19 @@ import requests
 
 from apis import BinbotApi
 from utils import InvalidSymbol, handle_binance_errors, supress_notation
-
+from datetime import datetime
 
 class Autotrade(BinbotApi):
-    def __init__(self, pair, settings) -> None:
+    def __init__(self, pair, settings, amplitude=0) -> None:
         self.pair = pair
+        self.amplitude = amplitude
         self.settings = settings
         self.decimals = self.price_precision(pair)
+        current_date = datetime.now().strftime("%Y-%m-%dT%H:%M")
         self.default_bot = {
             "pair": pair,
             "status": "inactive",
-            "name": "Autotrade Bot",
+            "name": f"{pair}_{current_date}",
             "mode": "autotrade",
             "balance_usage_size": "1",
             "balance_to_use": settings["balance_to_use"],
@@ -58,7 +60,6 @@ class Autotrade(BinbotApi):
         3. Activate bot
         """
         print("Autotrade running...")
-        self.handle_error("Autotrade running...")
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)
@@ -114,20 +115,28 @@ class Autotrade(BinbotApi):
             print(msg)
             return
 
-        self.settings.pop("_id")
+        # Dynamic trailling
+        # the bigger the candlestick swings the larger should the trailling be to avoid selling too soon
+        self.default_bot["trailling_deviation"] = float(self.settings["trailling_deviation"]) * (1 + float(self.amplitude))
+
+        # Create bot
         create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
-        botId = handle_binance_errors(create_bot_res)["botId"]
-        if "error" in botId and botId["error"] == 1:
+        create_bot = handle_binance_errors(create_bot_res)
+
+        if "error" in create_bot and create_bot["error"] == 1:
             msg = f"Not enough funds to carry out autotrade with {self.pair}"
-            self.handle_error(msg)
+            print(msg)
             return
 
+        # Activate bot
+        botId = create_bot["botId"]
         res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
         response = handle_binance_errors(res)
+
         if "error" in response and response["error"] == 1:
-            msg = f"Not enough funds to carry out autotrade with {self.pair}"
-            self.handle_error(msg)
-        else:
-            msg = f"Succesful autotrade, opened bot with {self.pair}!"
-            self.handle_error(msg)
-        return
+            msg = f"Error activating bot {self.pair} with id {botId}"
+            print(msg)
+            return
+
+        msg = f"Succesful autotrade, opened bot with {self.pair}!"
+        print(msg)

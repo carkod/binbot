@@ -1,28 +1,26 @@
 from decimal import Decimal
 
 import requests
+from api.account.account import Account
 from api.app import create_app
 from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.handle_error import (
     bot_errors,
     jsonResp,
-    jsonResp_message,
 )
 from api.tools.round_numbers import round_numbers, supress_notation
-from bson.objectid import ObjectId
 from flask import Response
 
 
-class DealUpdates(Deal):
+class DealUpdates(Account):
+    """
+    An almost duplicate of Deal class, created to avoid circular and maximum depth issues
+    It has some more additional methods and data for the purpose of websocket updating bots
+    """
     def __init__(self, bot):
 
         self.active_bot = bot
-        self.MIN_PRICE = float(
-            self.price_filter_by_symbol(self.active_bot["pair"], "minPrice")
-        )
-        self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
-        self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
         self.app = create_app()
         self.order = {
             "order_id": "",
@@ -36,9 +34,6 @@ class DealUpdates(Deal):
             "fills": "0",
             "time_in_force": "GTC",
         }
-        self.total_amount = 0
-        self.max_so_count = int(bot["max_so_count"])
-        self.balances = 0
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot["pair"])
         # PRICE_FILTER decimals
         self.price_precision = -(
@@ -66,6 +61,14 @@ class DealUpdates(Deal):
             return None
         qty = round_numbers(balance, self.qty_precision)
         return qty
+    
+    def get_one_balance(self, symbol="BTC"):
+        # Response after request
+        data = self.bb_request(url=self.bb_balance_url)
+        symbol_balance = next(
+            (x["free"] for x in data["data"] if x["asset"] == symbol), None
+        )
+        return symbol_balance
 
     def update_take_profit(self, order_id):
         """
@@ -95,22 +98,6 @@ class DealUpdates(Deal):
                     print("Old take profit order cancelled")
 
                 qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
-
-                # Validations
-                if new_tp_price:
-                    if new_tp_price <= float(self.MIN_PRICE):
-                        return jsonResp_message(
-                            "[Take profit order error] Price too low"
-                        )
-                if qty <= float(self.MIN_QTY):
-                    return jsonResp_message(
-                        "[Take profit order error] Quantity too low"
-                    )
-                if new_tp_price * qty <= float(self.MIN_NOTIONAL):
-                    return jsonResp_message(
-                        "[Take profit order error] Price x Quantity too low"
-                    )
-
                 new_tp_order = {
                     "pair": bot["pair"],
                     "qty": qty,
@@ -145,14 +132,10 @@ class DealUpdates(Deal):
                 # Append now new take_profit deal
                 new_deals.append(take_profit_order)
                 self.active_bot["orders"] = new_deals
-                bot_id = self.app.db.bots.update_one(
+                self.app.db.bots.update_one(
                     {"_id": self.active_bot["_id"]},
-                    {"$push": {"orders": take_profit_order}},
+                    {"$push": {"orders": take_profit_order, "errors": "take_profit deal successfully updated"}},
                 )
-                if not bot_id:
-                    print(f"Failed to update take_profit deal: {bot_id}")
-                else:
-                    print(f"New take_profit deal successfully updated: {bot_id}")
                 return
 
     def so_update_deal(self, so_index):
@@ -277,7 +260,7 @@ class DealUpdates(Deal):
 
             self.active_bot["orders"].append(take_profit_order)
 
-        botId = self.self.app.db.bots.update_one(
+        botId = self.app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
             {
                 "$set": {
@@ -311,16 +294,16 @@ class DealUpdates(Deal):
     def update_stop_limit(self, price):
         """
         Update stop limit after websocket
-        - Sell initial amount crypto in deal
+        - Hard sell (order status="FILLED" immediately) initial amount crypto in deal
         - Close current opened take profit order
         - Deactivate bot
         """
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
         if qty:
-            # If for some reason, the bot has been closed already
+            # If for some reason, the bot has been closed already (transacted on Binance)
             book_order = Book_Order(bot["pair"])
-            price = float(book_order.matching_engine(False, qty))
+            price = float(book_order.matching_engine(True, qty))
 
             order_id = None
             for order in bot["orders"]:
@@ -358,6 +341,8 @@ class DealUpdates(Deal):
                 )
 
             if "error" in res:
+                msg = f"Error trying to open new stop_limit order {res}"
+                bot_errors(msg, bot)
                 return res
 
             # Append now stop_limit deal
@@ -378,47 +363,32 @@ class DealUpdates(Deal):
                 commission += float(chunk["commission"])
 
             self.active_bot["orders"].append(stop_limit_response)
-            botId = self.app.db.bots.update_one(
+            self.app.db.bots.update_one(
                 {"_id": bot["_id"]},
                 {
                     "$push": {"orders": stop_limit_response},
                     "$inc": {"total_commission": commission},
-                    "$set": {"status": "completed", "deal.sell_timestamp": res["transactTime"]},
+                    "$set": {"deal.sell_timestamp": res["transactTime"]},
                 },
             )
-            if not botId:
-                # Not likely to happen to remove in the future.
-                print(f"Failed to update stop_limit deal: {botId}")
-            else:
-                self.buy_gbp_balance()
-                msg = "New stop_limit deal successfully updated"
-                bot_errors(msg, bot)
+            msg = "New stop_limit deal successfully updated"
+            bot_errors(msg, bot, status="active")
             return "completed"
 
         else:
-            asset = self.find_baseAsset(bot["pair"])
-            buy_gbp_result = self.buy_gbp_balance()
-            error = f'No {asset} found in balance. Bot might have been closed already. GBP balance buy back {"successful" if buy_gbp_result else "failed"}'
-            botId = self.app.db.bots.update_one(
-                {"_id": bot["_id"]},
-                {
-                    "$push": {"errors": error, "errors": error},
-                    "$set": {"status": "error"},
-                },
-            )
             return "completed"
 
     def trailling_stop_loss(self, price):
         """
         Update stop limit after websocket
-        - Sell initial amount crypto in deal
+        - Hard Sell initial amount crypto in deal
         - Close current opened take profit order
         - Deactivate bot
         """
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
         book_order = Book_Order(bot["pair"])
-        price = float(book_order.matching_engine(False, qty))
+        price = float(book_order.matching_engine(True, qty))
 
         if price:
             trailling_stop_loss = {
@@ -464,7 +434,6 @@ class DealUpdates(Deal):
             {"_id": bot["_id"]},
             {
                 "$set": {
-                    "status": "completed",
                     "deal.take_profit_price": res["price"],
                     "orders": bot["orders"],
                     "deal.sell_timestamp": res["transactTime"]
@@ -472,8 +441,6 @@ class DealUpdates(Deal):
                 "$inc": {"total_commission": commission},
             },
         )
-        self.buy_gbp_balance()
-        bot = self.app.db.bots.find_one({"_id": ObjectId(bot["_id"])})
-        msg = f'Trailling stop loss complete! {"Errors encountered" if len(bot["errors"]) > 0 else ""}'
-        bot_errors(msg, bot, status="complete")
+        msg = 'Trailling stop loss set!'
+        bot_errors(msg, bot, status="completed")
         return "completed"

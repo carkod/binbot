@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
-import request, { getToken } from "../../request";
+import request from "../../request";
 import {
   balanceFailed,
   balanceRawFailed,
@@ -8,16 +8,6 @@ import {
   balanceSucceeded, getEstimateFailed, getEstimateSucceeded, GET_BALANCE, GET_BALANCE_RAW, GET_ESTIMATE
 } from "./actions";
 
-const defaultOptions = {
-  method: "GET",
-  mode: "cors", // no-cors, *cors, same-origin
-  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-  headers: {
-    "content-type": "application/json",
-    accept: "application/json",
-    "Authorization": `Bearer ${getToken()}`
-  }
-}
 
 /**
  * Account request/response handler
@@ -26,7 +16,7 @@ export function* getBalanceApi() {
   const requestURL = process.env.REACT_APP_ACCOUNT_BALANCE;
   try {
     yield put(loading(true))
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(balanceSucceeded(res));
   } catch (err) {
     yield put(balanceFailed(err));
@@ -46,7 +36,7 @@ export function* watchGetBalanceApi() {
  export function* getRawBalanceApi() {
   const requestURL = `${process.env.REACT_APP_ACCOUNT_BALANCE_RAW}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(balanceRawSucceeded(res));
   } catch (err) {
     yield put(balanceRawFailed(err));
@@ -65,7 +55,7 @@ export function* watchRawBalance() {
  export function* getEstimateApi() {
   const requestURL = `${process.env.REACT_APP_BALANCE_ESTIMATE}`;
   try {
-    const res = yield call(request, requestURL, defaultOptions);
+    const res = yield call(request, requestURL);
     yield put(getEstimateSucceeded(res));
   } catch (err) {
     yield put(getEstimateFailed(err));

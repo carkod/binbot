@@ -48,7 +48,7 @@ def close(id):
     """
     return Bot().deactivate()
 
-@bot_blueprint.route("/archive/<id>", methods=["PUT"])
+@bot_blueprint.route("/bot/archive/<id>", methods=["PUT"])
 @auth.login_required
 def archive(id):
     return Bot().put_archive()

@@ -1,4 +1,5 @@
 import json
+from json.decoder import JSONDecodeError
 import sys
 from time import time, sleep
 import os
@@ -13,6 +14,14 @@ class BinanceErrors(Exception):
     pass
 
 class InvalidSymbol(BinanceErrors):
+    pass
+class QuantityTooLow(BinanceErrors):
+    """
+    Raised when LOT_SIZE filter error triggers
+    This error should happen in the least cases,
+    unless purposedly triggered to check quantity
+    e.g. BTC = 0.0001 amounts are usually so small that it's hard to see if it's nothing or a considerable amount compared to others
+    """
     pass
 
 def post_error(msg):
@@ -88,9 +97,6 @@ def handle_error(req):
     except Timeout:
         # Maybe set up for a retry, or continue in a retry loop
         return jsonResp_message("handle_error: Timeout", 408)
-    except RequestException as e:
-        # catastrophic error. bail.
-        return jsonResp_message(f"Catastrophic error: {e}", 500)
 
 
 def handle_binance_errors(response: Response, bot=None, message=None):
@@ -101,7 +107,10 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-    content = response.json()
+    try:
+        content = response.json()
+    except JSONDecodeError as e:
+        print(e)
     # Show error message for bad requests
     if response.status_code == 400:
         raise HTTPError(content)
@@ -112,7 +121,6 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         sleep(60)
 
     if (content and "code" in content):
-        
         if content["code"] == 200:
             return content
         if content["code"] == -2010 or content["code"] == -1013:

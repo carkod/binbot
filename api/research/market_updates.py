@@ -49,7 +49,7 @@ class MarketUpdates(Account):
         print("Market data updates socket opened")
 
     def on_error(self, ws, error):
-        error_msg = f'Deal Websocket error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
+        error_msg = f'market_updates error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
         print(error_msg)
         self.start_stream()
 
@@ -78,8 +78,8 @@ class MarketUpdates(Account):
             bot = self.app.db.bots.find_one_and_update(
                 {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
             )
-            print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
-            if bot and "deal" in bot:
+            if bot and "deal" in bot and bot["status"] == "active":
+                print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
                 # Stop loss
                 if "stop_loss" in bot["deal"] and float(
                     bot["deal"]["stop_loss"]

@@ -1,8 +1,3 @@
-export const defaultOptions = {
-  method: "GET",
-  mode: "cors", // no-cors, *cors, same-origin
-  cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-};
 const tokenName = "binbot-token";
 
 /**
@@ -46,7 +41,7 @@ function checkStatus(response) {
     throw new Error(response.json()["message"])
   }
 
-  const error = new Error(response.statusText);
+  let error = new Error(response.statusText);
   error.response = response;
   throw error;
 }
@@ -69,7 +64,6 @@ export function removeToken() {
   localStorage.removeItem(tokenName);
 }
 
-
 /**
  * Requests a URL, returning a promise
  *
@@ -78,7 +72,24 @@ export function removeToken() {
  *
  * @return {object}           The response data
  */
-export default function request(url, options = defaultOptions) {
-  return fetch(url, options).then(checkStatus).then(parseJSON);
+export default async function request(url, verb = "GET", json = undefined) {
+
+  const headers = new Headers({
+    "content-type": "application/json",
+    accept: "application/json",
+    Authorization: `Bearer ${getToken()}`,
+  });
+
+  let options = {
+    method: verb,
+    mode: 'cors',
+    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    headers: headers,
+    body: json ? JSON.stringify(json) : undefined
+  };
+
+  const response = await fetch(url, options);
+  const content = checkStatus(response);
+  return parseJSON(content);
 }
 

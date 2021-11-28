@@ -1,6 +1,40 @@
+from typing import List
 from api.tools.handle_error import jsonResp
 from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
+
+# class ControllerModel:
+#     def __init__(self) -> object:
+#         self.defaults = {
+#             "candlestick_interval": "1h",
+#             "autotrade": 0,
+#             "trailling_profit": 2.4,
+#             "stop_loss": 3,
+#             "trailling": "true",
+#             "trailling_deviation": "3",
+#             "update_required": False,  # Changed made, need to update websockets
+#             "balance_to_use": "BNB",
+#             "balance_size_to_use": 100,  # %
+#             "max_request": 950,
+#             "system_logs": [],
+#             "errors": [],
+#         }
+
+#     def update(self, *args):
+#         self.defaults = {
+#             "candlestick_interval": args.__getitem__("candlestick_interval"),
+#             "autotrade": 0,
+#             "trailling_profit": 2.4,
+#             "stop_loss": 3,
+#             "trailling": "true",
+#             "trailling_deviation": "3",
+#             "update_required": False,  # Changed made, need to update websockets
+#             "balance_to_use": "BNB",
+#             "balance_size_to_use": 100,  # %
+#             "max_request": 950,
+#             "system_logs": [],
+#             "errors": [],
+#         }
 
 
 class Controller:
@@ -50,27 +84,21 @@ class Controller:
     def edit_settings(self):
         # Start with current settings
         self.defaults.update(current_app.db.research_controller.find_one({"_id": "settings"}))
-        system_logs = []
-        data = request.json
+        data = request.get_json()
 
-        if "errors" in data:
-            if isinstance(self.defaults["system_logs"], str):
-                system_logs.append(self.defaults["system_logs"])
-            if "system_logs" in data:
-                system_logs.extend(data["system_logs"])
+        if "system_logs" in data and isinstance(self.defaults["system_logs"], str):
+            self.defaults["system_logs"].extend(data["system_logs"])
+
+        if isinstance(self.defaults["update_required"], str) and self.defaults["update_required"].lower() == "true":
+            self.defaults["update_required"] = True
 
         self.defaults.update(data)
-        self.defaults["system_logs"] = system_logs
+        self.defaults["errors"] = []
         self.defaults.pop("_id")
-        settings = current_app.db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": self.defaults}
+        current_app.db.research_controller.update_one(
+            {"_id": "settings"}, {"$set": self.defaults}, True
         )
-
-        if not settings:
-            current_app.db.reserch_controller.insert(self.defaults)
-
-        resp = jsonResp({"message": "Successfully updated settings"})
-        return resp
+        return jsonResp({"message": "Successfully updated settings"})
 
     def get_blacklist(self) -> jsonResp:
         """

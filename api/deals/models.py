@@ -1,5 +1,4 @@
 from decimal import Decimal
-from time import time
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
@@ -13,11 +12,6 @@ class Deal(Account):
     def __init__(self, bot):
         # Inherit from parent class
         self.active_bot = bot
-        self.MIN_PRICE = float(
-            self.price_filter_by_symbol(self.active_bot["pair"], "minPrice")
-        )
-        self.MIN_QTY = float(self.lot_size_by_symbol(self.active_bot["pair"], "minQty"))
-        self.MIN_NOTIONAL = float(self.min_notional_by_symbol(self.active_bot["pair"]))
         self.order = {
             "order_id": "",
             "deal_type": "base_order",
@@ -29,8 +23,6 @@ class Deal(Account):
             "fills": "0",
             "time_in_force": "GTC",
         }
-        self.max_so_count = int(bot["max_so_count"])
-        self.balances = 0
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot["pair"])
         # PRICE_FILTER decimals
         self.price_precision = -(
@@ -496,15 +488,4 @@ class Deal(Account):
             # Continue even if there are errors
             handle_binance_errors(res)
 
-        # Hedge with GBP and complete bot
-        buy_gbp_result = self.buy_gbp_balance()
-        if not isinstance(buy_gbp_result, Response):
-            bot_id = app.db.bots.find_one_and_update(
-                {"pair": pair}, {"$set": {"status": "completed", "deal.sell_timestamp": time()}}
-            )
-            if not bot_id:
-                app.db.bots.find_one_and_update(
-                    {"pair": pair},
-                    {"$set": {"status": "errors"}, "push": {"errors": bot_id}},
-                )
         return

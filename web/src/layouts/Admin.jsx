@@ -27,8 +27,8 @@ class Admin extends React.Component {
   };
   render() {
     return (
-      <div className="wrapper">
-        <div className={this.props.loading ? "u-loading-layer" : ""}>
+      <div className={this.props.loading ? "u-loading-layer" : ""}>
+        <div className="wrapper">
           {this.props.loading ? (
             <Spinner color="primary" type="grow" className="c-loader" />
           ) : (

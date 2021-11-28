@@ -14,7 +14,6 @@
       },
       "args": ["run", "--no-reload"],
       "jinja": true,
-      "preLaunchTask": "startDb"
     },
     {
       "type": "pwa-chrome",

@@ -12,6 +12,7 @@ import { historicalResearchReducer, researchReducer, blacklistReducer, settingsR
 import {
   balanceRawReducer, balanceReducer, estimateReducer
 } from "./state/balances/reducer";
+import { usersReducer } from "./pages/users/reducer";
 
 const rootReducer = combineReducers({
   registrationReducer,
@@ -32,6 +33,7 @@ const rootReducer = combineReducers({
   historicalResearchReducer,
   blacklistReducer,
   settingsReducer,
-  estimateReducer
+  estimateReducer,
+  usersReducer
 });
 export default rootReducer;

@@ -26,7 +26,7 @@ def index():
 
 
 # Register Blueprints
-app.register_blueprint(user_blueprint, url_prefix="/user")
+app.register_blueprint(user_blueprint)
 app.register_blueprint(account_blueprint, url_prefix="/account")
 app.register_blueprint(bot_blueprint)
 app.register_blueprint(order_blueprint, url_prefix="/order")

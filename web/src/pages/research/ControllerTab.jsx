@@ -7,17 +7,25 @@ import {
   CardHeader,
   CardTitle,
   Col,
+  Form,
   FormFeedback,
   FormGroup,
   Input,
   Label,
-  Row
+  Row,
 } from "reactstrap";
 import { useImmer } from "use-immer";
 import SymbolSearch from "../../components/SymbolSearch";
 import { checkValue } from "../../validations";
 
-const SettingsInput = ({ value, name, label, handleChange, handleBlur, errorMsg }) => {
+const SettingsInput = ({
+  value,
+  name,
+  label,
+  handleChange,
+  handleBlur,
+  errorMsg,
+}) => {
   return (
     <FormGroup>
       <Label for={name}>{label}</Label>
@@ -30,11 +38,7 @@ const SettingsInput = ({ value, name, label, handleChange, handleBlur, errorMsg 
         defaultValue={value}
         invalid={!checkValue(errorMsg)}
       />
-      {errorMsg &&
-        <FormFeedback>
-          {errorMsg}
-        </FormFeedback>
-      }
+      {errorMsg && <FormFeedback>{errorMsg}</FormFeedback>}
     </FormGroup>
   );
 };
@@ -48,11 +52,13 @@ export const ControllerTab = ({
   handleBlacklist,
   toggleTrailling,
   handleBalanceToUseBlur,
-  balanceToUseUnmatchError
+  balanceToUseUnmatchError,
+  triggerGbpHedge,
 }) => {
   const [addBlacklist, setAddBlacklist] = useImmer({ reason: "", pair: "" });
   const [removeBlacklist, setRemoveBlacklist] = useState("");
   const [error, setError] = useImmer(false);
+  const [gbpHedge, setGbpHedge] = useState("");
 
   const onAction = (action, state) => {
     // Validation
@@ -192,6 +198,25 @@ export const ControllerTab = ({
                   <hr />
                 </>
               )}
+              <Form inline>
+                <h2>GBP hedging (panic sell)</h2>
+                <FormGroup>
+                  <Label for="gbpHedge">Asset e.g. BNB, BTC</Label>
+                  <Input
+                    value={gbpHedge}
+                    name={"gbpHedge"}
+                    onChange={(e) => setGbpHedge(e.target.value)}
+                  />
+                  <br />
+                  <Button
+                    color="primary"
+                    onClick={() => triggerGbpHedge(gbpHedge)}
+                  >
+                    Buy BTC
+                  </Button>
+                </FormGroup>
+              </Form>
+              <hr />
               <>
                 <h2>Blacklist</h2>
                 <Row>

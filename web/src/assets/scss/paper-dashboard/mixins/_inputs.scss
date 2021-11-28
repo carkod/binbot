@@ -44,7 +44,7 @@
   .form-group.no-border.form-control-lg,
   .input-group.no-border.form-control-lg {
     .input-group-append .input-group-text {
-      padding: $padding-vertical 0 $padding-vertical $padding-horizontal;
+      padding: $padding-vertical $padding-horizontal;
     }
 
     .form-control {
@@ -52,7 +52,7 @@
 
       & + .input-group-prepend .input-group-text,
       & + .input-group-append .input-group-text {
-        padding: $padding-vertical $padding-horizontal $padding-vertical 0;
+        padding: $padding-vertical $padding-horizontal;
       }
     }
   }
@@ -89,13 +89,13 @@
 
       & + .input-group-prepend .input-group-text,
       & + .input-group-append .input-group-text {
-        padding: $padding-vertical $padding-horizontal $padding-vertical 0;
+        padding: $padding-vertical $padding-horizontal;
       }
     }
 
     .input-group-prepend .input-group-text,
     .input-group-append .input-group-text {
-      padding: $padding-vertical 0 $padding-vertical $padding-horizontal;
+      padding: $padding-vertical $padding-horizontal;
     }
   }
 

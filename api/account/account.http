@@ -33,3 +33,7 @@ GET http://localhost:5000/account/conversion?base=BTC&quote=GBP&qty=0.0003 HTTP/
 
 ### Raw symbols no cannibalism
 GET http://localhost:5000/account/symbols/no-cannibal HTTP/1.1
+
+
+### Manual Hedge GBP
+GET http://localhost:5000/account/hedge-gbp/bnb HTTP/1.1

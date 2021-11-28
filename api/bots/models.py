@@ -6,7 +6,7 @@ from api.account.account import Account
 from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
-from api.tools.handle_error import handle_binance_errors, jsonResp
+from api.tools.handle_error import QuantityTooLow, handle_binance_errors, jsonResp, jsonResp_error_message, jsonResp_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from bson.objectid import ObjectId
 from flask import Response, current_app, request
@@ -108,6 +108,7 @@ class Bot(Account):
             resp = jsonResp(
                 {"message": "Successfully created new bot", "botId": str(botId)}, 200
             )
+            self._restart_websockets()
         else:
             resp = jsonResp({"message": "Failed to create new bot"}, 400)
 
@@ -142,6 +143,7 @@ class Bot(Account):
             resp = jsonResp(
                 {"message": "Successfully delete bot", "botId": findId}, 200
             )
+            self._restart_websockets()
         else:
             resp = jsonResp({"message": "Bot deletion is not available"}, 400)
         return resp
@@ -225,7 +227,7 @@ class Bot(Account):
         """
         findId = request.view_args["id"]
         bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
-
+        resp = jsonResp_error_message("Not enough balance to close and sell. Please directly delete the bot.")
         if bot:
             orders = bot["orders"]
 
@@ -247,63 +249,63 @@ class Bot(Account):
             pair = bot["pair"]
             base_asset = self.find_baseAsset(pair)
             deal_object = Deal(bot)
+            precision = deal_object.price_precision
             balance = deal_object.get_one_balance(base_asset)
             if balance:
-                qty = round_numbers(balance, deal_object.qty_precision)
+                qty = float(supress_notation(balance, precision))
+
+                # Quantity check to avoid LOT_SIZE error
+                if float(qty) < float(self.lot_size_by_symbol(pair, "minQty")):
+                    return resp
+
                 book_order = Book_Order(pair)
                 price = float(book_order.matching_engine(True, qty))
-
+                
                 if price:
                     order = {
                         "pair": pair,
                         "qty": qty,
-                        "price": supress_notation(price, deal_object.price_precision),
+                        "price": supress_notation(price, precision),
                     }
-                    res = post(url=self.bb_sell_order_url, json=order)
+                    try:
+                        order_res = self.request(method="POST", url=self.bb_sell_order_url, json=order)
+                    except QuantityTooLow:
+                        return resp
                 else:
                     order = {
                         "pair": pair,
                         "qty": qty,
                     }
-                    res = post(url=self.bb_sell_market_order_url, json=order)
+                    try:
+                        order_res = self.request(method="POST", url=self.bb_sell_market_order_url, json=order)
+                    except QuantityTooLow:
+                        return resp
 
-                handle_binance_errors(res)
-
-        # Hedge with GBP and complete bot
-        deal_object.buy_gbp_balance()
-        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
-        if "errors" in bot and len(bot["errors"]) > 0:
-            self.app.db.bots.find_one_and_update(
-                {"pair": pair},
-                {"$set": {"status": "errors"}},
-            )
-            resp = jsonResp(
-                {
-                    "message": "Errors encountered during deactivation, please check bot errors.",
-                    "error": 1,
+                deactivation_order = {
+                    "order_id": order_res["orderId"],
+                    "deal_type": "deactivate_order",
+                    "pair": order_res["symbol"],
+                    "order_side": order_res["side"],
+                    "order_type": order_res["type"],
+                    "price": order_res["price"],
+                    "qty": order_res["origQty"],
+                    "fills": order_res["fills"],
+                    "time_in_force": order_res["timeInForce"],
+                    "status": order_res["status"],
                 }
-            )
-            self._restart_websockets()
-
-        else:
-            self.app.db.bots.find_one_and_update(
-                {"pair": pair}, {"$set": {"status": "completed", "deal.sell_timestamp": time()}}
-            )
-            resp = jsonResp(
-                {
-                    "message": "Active orders closed, sold base asset, bought back GBP, deactivated",
-                    "error": 0,
-                }
-            )
-            self._restart_websockets()
-        return resp
+                self.app.db.bots.update_one({"_id": ObjectId(findId)}, {"$set": {"status": "completed", "deal.sell_timestamp": time()}, "$push": {"orders": deactivation_order}})
+                self._restart_websockets()
+                return jsonResp_message("Active orders closed, sold base asset, deactivated")
+            else:
+                self.app.db.bots.update_one({"_id": ObjectId(findId)}, {"$set": {"status": "error"}})
+                return jsonResp_error_message("Not enough balance to close and sell")
 
     def put_archive(self):
         """
         Change status to archived
         """
         botId = request.view_args["id"]
-        bot = self.app.db.bots.find_one_and_update({"_id": ObjectId(botId)})
+        bot = self.app.db.bots.find_one({"_id": ObjectId(botId)})
         if bot["status"] == "active":
             return jsonResp(
                 {"message": "Cannot archive an active bot!", "botId": botId}

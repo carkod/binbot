@@ -1,15 +1,17 @@
 import pandas as pd
-from api.tools.round_numbers import round_numbers
+from requests.models import HTTPError
+from api.tools.round_numbers import round_numbers, supress_notation
 from decimal import Decimal
 
 from flask import current_app, request
-from api.tools.handle_error import jsonResp
+from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
 from api.account.account import Account
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from api.apis import CoinBaseApi
 from api.app import create_app
 from api.tools.handle_error import InvalidSymbol
+from api.orders.models.book_order import Book_Order
 
 
 class Assets(Account):
@@ -18,10 +20,11 @@ class Assets(Account):
         self.usd_balance = 0
         self.coinbase_api = CoinBaseApi()
 
-    def get_raw_balance(self):
+    def get_raw_balance(self, asset=None):
         """
         Unrestricted balance
         """
+        asset = request.args.get("asset") or asset
         data = self.signed_request(url=self.account_url)
         df = pd.DataFrame(data["balances"])
         df["free"] = pd.to_numeric(df["free"])
@@ -30,6 +33,8 @@ class Assets(Account):
         # Get table with > 0
         balances = df[(df["free"] > 0) | (df["locked"] > 0)].to_dict("records")
 
+        if asset:
+            balances = df[((df["free"] > 0) | (df["locked"] > 0)) & (df["asset"] == asset)].to_dict("records")
         # filter out empty
         # Return response
         resp = jsonResp({"data": balances})
@@ -232,6 +237,9 @@ class Assets(Account):
             interval = None
             filter = None
 
+        limit = request.args.get("limit", 100)
+        offset = request.args.get("offset", 0)
+
         # last 24 hours
         if interval == "1d":
             filter = {
@@ -241,7 +249,7 @@ class Assets(Account):
                 }
             }
 
-        balance = list(self.app.db.balances.find(filter).sort([("_id", -1)]))
+        balance = list(self.app.db.balances.find(filter).sort([("_id", -1)]).limit(limit).skip(offset))
         if balance:
             resp = jsonResp({"data": balance})
         else:
@@ -268,6 +276,14 @@ class Assets(Account):
                 symbol = self.find_market(b["asset"])
                 if not symbol:
                     continue
+                
+                # Fix binance incorrect market data for MBLBTC
+                # Binance does not list MBLBTC, but the API does provide ticker_price
+                # But this ticker price does not make sense, it's even lower than BNB value
+                # Therefore replace with BNB market price data
+                if symbol == "MBLBTC":
+                    symbol = "MBLBNB"
+
                 market = self.find_quoteAsset(symbol)
                 rate = self.get_ticker_price(symbol)
                 qty = self._check_locked(b)
@@ -351,3 +367,76 @@ class Assets(Account):
             print(f"{current_time} Balance stored!")
         else:
             print(f"{current_time} Unable to store balance! Error: {balanceId}")
+
+    def buy_gbp_balance(self):
+        """
+        To buy GBP e.g.:
+        - BNBGBP market sell BNB with GBP
+
+        Sell whatever is in the balance e.g. Sell all BNB
+        Always triggered after order completion
+        @returns json object
+        """
+        try:
+            asset = request.view_args["asset"].upper()
+        except KeyError:
+            return jsonResp_error_message("Parameter asset is required. E.g. BNB, BTC")
+
+        new_pair = f"{asset}GBP"
+
+        try:
+            self.find_quoteAsset(f"{asset}GBP")
+        except HTTPError as e:
+            if e["code"] == -1121:
+                return jsonResp_error_message(f"{asset} cannot be traded with GBP")
+
+        balances = self.get_raw_balance(asset).json
+        try:     
+            qty = float(balances["data"][0]["free"])
+            if not qty or float(qty) == 0.00:
+                return jsonResp_error_message(f"Not enough {asset} balance to buy GBP")
+        except KeyError:
+            return jsonResp_error_message(f"Not enough {asset} balance to buy GBP")
+
+        book_order = Book_Order(new_pair)
+        price = float(book_order.matching_engine(False, qty))
+        # Precision for balance conversion, not for the deal
+        qty_precision = -(
+            Decimal(str(self.lot_size_by_symbol(new_pair, "stepSize")))
+            .as_tuple()
+            .exponent
+        )
+        price_precision = -(
+            Decimal(str(self.price_filter_by_symbol(new_pair, "tickSize")))
+            .as_tuple()
+            .exponent
+        )
+        qty = round_numbers(
+            float(qty),
+            qty_precision,
+        )
+
+        if price:
+            order = {
+                "pair": new_pair,
+                "qty": qty,
+                "price": supress_notation(price, price_precision),
+            }
+            res = self.bb_request(
+                method="POST", url=self.bb_buy_order_url, payload=order
+            )
+        else:
+            # Matching engine failed - market order
+            order = {
+                "pair": new_pair,
+                "qty": qty,
+            }
+            res = self.bb_request(
+                method="POST", url=self.bb_sell_market_order_url, payload=order
+            )
+
+        # If error pass it up to parent function, can't continue
+        if "error" in res:
+            return jsonResp_error_message(res["error"])
+
+        return jsonResp_message("Successfully bought GBP!")

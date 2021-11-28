@@ -1,5 +1,5 @@
 import { call, put, takeLatest } from "redux-saga/effects";
-import request, { defaultOptions } from "../../request";
+import request from "../../request";
 import { checkValue } from "../../validations";
 import {
   addBlackListFailed,
@@ -48,7 +48,7 @@ export function* getResearchApi({ params }) {
     });
   }
   try {
-    const res = yield call(request, url.toString(), defaultOptions);
+    const res = yield call(request, url.toString());
     yield put(getResearchSucceeded(res));
   } catch (err) {
     yield put(getResearchFailed(err));
@@ -69,7 +69,7 @@ export function* watchResearchApi() {
     url.search = new URLSearchParams(params).toString()
   }
   try {
-    const res = yield call(request, url, defaultOptions);
+    const res = yield call(request, url);
     yield put(getHistoricalResearchDataSucceeded(res));
   } catch (err) {
     yield put(getHistoricalResearchDataFailed(err));
@@ -88,7 +88,7 @@ export function* watchHistoricalResearchApi() {
  export function* getBlacklistApi() {
   let url = new URL(process.env.REACT_APP_RESEARCH_BLACKLIST)
   try {
-    const res = yield call(request, url, defaultOptions);
+    const res = yield call(request, url);
     yield put(getBlacklistSucceeded(res));
   } catch (err) {
     yield put(getBlacklistFailed(err));
@@ -104,16 +104,9 @@ export function* watchGetBlacklistApi() {
  * Add element to blacklist
  */
  export function* addBlacklistApi({data}) {
-  const url = new URL(`${process.env.REACT_APP_RESEARCH_BLACKLIST}`)
-  const options = {
-    method: "POST",
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify(data),
-  };
+  const url = new URL(`${process.env.REACT_APP_RESEARCH_BLACKLIST}`);
   try {
-    const res = yield call(request, url, options);
+    const res = yield call(request, url, "POST", data);
     yield put(addBlackListSucceeded(res));
   } catch (err) {
     yield put(addBlackListFailed(err));
@@ -128,14 +121,9 @@ export function* watchAddBlacklistApi() {
  * Blacklist
  */
  export function* deleteBlacklistApi({ pair }) {
-  const url = `${process.env.REACT_APP_RESEARCH_BLACKLIST}/${pair}`
-  const options = {
-    method: "DELETE",
-    mode: "cors", // no-cors, *cors, same-origin
-    headers: { "content-type": "application/json", accept: "application/json" },
-  };
+  const url = `${process.env.REACT_APP_RESEARCH_BLACKLIST}/${pair}`;
   try {
-    const res = yield call(request, url, options);
+    const res = yield call(request, url, "DELETE");
     yield put(deleteBlackListSucceeded(res));
   } catch (err) {
     yield put(deleteBlackListFailed(err));
@@ -152,7 +140,7 @@ export function* watchDeleteBlackListApi() {
  export function* getSettingsApi() {
   const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER)
   try {
-    const res = yield call(request, url, defaultOptions);
+    const res = yield call(request, url);
     yield put(getSettingsSucceeded(res));
   } catch (err) {
     yield put(getSettingsFailed(err));
@@ -168,15 +156,9 @@ export function* watchGetSettingsApi() {
  * Edit Settings (controller)
  */
  export function* editSettingsApi({ data }) {
-  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER)
-  const options = {
-    method: "PUT",
-    mode: "cors", // no-cors, *cors, same-origin
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify(data),
-  };
+  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER);
   try {
-    const res = yield call(request, url, options);
+    const res = yield call(request, url, "PUT", data);
     yield put(editSettingsSucceeded(res));
   } catch (err) {
     yield put(editSettingsFailed(err));

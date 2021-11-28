@@ -2,7 +2,9 @@ import json
 from decimal import Decimal
 from json.decoder import JSONDecodeError
 from time import sleep
-from requests import Response, HTTPError
+
+from requests import HTTPError, Response
+
 
 class BinanceErrors(Exception):
     pass
@@ -24,7 +26,7 @@ def supress_notation(num: float, precision: int = 0):
     return f"{num:.{decimal_points}f}"
 
 
-def handle_binance_errors(response: Response, bot=None, message=None):
+def handle_binance_errors(response: Response):
     """
     Handles:
     - HTTP codes, not authorized, rate limits...
@@ -35,19 +37,20 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     # Reduce speed of requests to avoid rate limits
     sleep(5)
     try:
-        if (
-            isinstance(json.loads(response.content), dict)
-            and "code" in json.loads(response.content).keys()
-        ):
-            content = response.json()
+        content = response.json()
+    except JSONDecodeError as e:
+        print(f"response: {response}")
+
+    content = response.json()
+    try:
+        if (content and "code" in content):
             if content["code"] == 200:
                 return content
 
             if content["code"] == -1121:
                 raise InvalidSymbol("Binance error, invalid symbol")
         else:
-            return response.json()
+            return content
     except HTTPError:
-        raise HTTPError(response.json()["msg"])
-    except JSONDecodeError as e:
-        print(f"Json error: {response.json()}. Error: {e}")
+        raise HTTPError(content["msg"])
+

@@ -247,7 +247,8 @@ class Dashboard extends React.Component {
                                 </p>
                                 <p>
                                   {this.state.revenue &&
-                                    `$${this.state.revenue}`}
+                                    `$${this.state.revenue}`
+                                  }
                                 </p>
                               </CardTitle>
                               <p />

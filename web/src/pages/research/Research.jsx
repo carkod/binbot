@@ -1,9 +1,9 @@
-import produce, { current } from "immer";
+import produce from "immer";
 import React from "react";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import { connect } from "react-redux";
 import { Nav, NavItem, NavLink, TabContent, TabPane } from "reactstrap";
-import { checkValue } from "../../validations";
+import { addNotification, checkValue } from "../../validations";
 import { loadCandlestick, getSymbols } from "../bots/actions";
 import { getBalanceRaw } from "../../state/balances/actions";
 import {
@@ -17,6 +17,7 @@ import {
 } from "./actions";
 import ControllerTab from "./ControllerTab";
 import SignalsTab from "./SignalsTab";
+import { gbpHedge } from "./requests";
 
 class Research extends React.Component {
   constructor(props) {
@@ -194,7 +195,6 @@ class Research extends React.Component {
     e.preventDefault();
     this.setState(
       produce((draft) => {
-        console.log(current(draft));
         draft.settings[e.target.name] = e.target.value;
       })
     );
@@ -202,18 +202,11 @@ class Research extends React.Component {
 
   saveSettings = (e) => {
     e.preventDefault();
+    let settings = this.state.settings;
+    settings.update_required = "true";
     this.props.editSettings(this.state.settings);
   };
 
-  handleSettings = (e) => {
-    e.preventDefault();
-    this.setState(
-      produce((draft) => {
-        draft.settings[e.target.name] = e.target.value;
-        draft.update_required = "True";
-      })
-    );
-  };
 
   handleBlacklist = (action, data) => {
     if (action === "add") {
@@ -254,6 +247,16 @@ class Research extends React.Component {
     }
   }
 
+  triggerGbpHedge = async (asset) => {
+    console.log(asset);
+    const res = gbpHedge(asset);
+    if (res.error === 1) {
+      addNotification("Some errors encountered", res.message, "error");
+    } else {
+      addNotification("SUCCESS!", res.message, "success");
+    }
+  }
+
   render() {
     return (
       <>
@@ -290,6 +293,7 @@ class Research extends React.Component {
                 toggleTrailling={this.toggleTrailling}
                 balanceToUseUnmatchError={this.state.balanceToUseUnmatchError}
                 handleBalanceToUseBlur={this.handleBalanceToUseBlur}
+                triggerGbpHedge={this.triggerGbpHedge}
               />
             </TabPane>
             <TabPane tabId="signalTab">
