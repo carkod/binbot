@@ -202,9 +202,11 @@ class Research extends React.Component {
 
   saveSettings = (e) => {
     e.preventDefault();
-    let settings = this.state.settings;
-    settings.update_required = "true";
-    this.props.editSettings(this.state.settings);
+    this.setState(
+      produce((draft) => {
+        draft.settings.update_required = "true";
+      }), () => this.props.editSettings(this.state.settings)
+    );
   };
 
 
