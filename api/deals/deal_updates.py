@@ -1,20 +1,19 @@
 from decimal import Decimal
 
 import requests
+from api.account.account import Account
 from api.app import create_app
 from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.handle_error import (
     bot_errors,
     jsonResp,
-    jsonResp_message,
 )
 from api.tools.round_numbers import round_numbers, supress_notation
-from bson.objectid import ObjectId
 from flask import Response
 
 
-class DealUpdates(Deal):
+class DealUpdates(Account):
     """
     An almost duplicate of Deal class, created to avoid circular and maximum depth issues
     It has some more additional methods and data for the purpose of websocket updating bots
@@ -62,6 +61,14 @@ class DealUpdates(Deal):
             return None
         qty = round_numbers(balance, self.qty_precision)
         return qty
+    
+    def get_one_balance(self, symbol="BTC"):
+        # Response after request
+        data = self.bb_request(url=self.bb_balance_url)
+        symbol_balance = next(
+            (x["free"] for x in data["data"] if x["asset"] == symbol), None
+        )
+        return symbol_balance
 
     def update_take_profit(self, order_id):
         """
@@ -253,7 +260,7 @@ class DealUpdates(Deal):
 
             self.active_bot["orders"].append(take_profit_order)
 
-        botId = self.self.app.db.bots.update_one(
+        botId = self.app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
             {
                 "$set": {
