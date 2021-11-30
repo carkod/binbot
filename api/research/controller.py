@@ -16,15 +16,6 @@ class Controller:
     def get_settings(self):
         settings = ControllerSchema().get()
 
-        # Should never be empty,
-        # It will be used in the future for research control
-        if (
-            not settings
-            or "candlestick_interval" not in settings
-            or "autotrade" not in settings
-        ):
-            ControllerSchema.create()
-
         if settings:
             resp = jsonResp(
                 {"message": "Successfully retrieved settings", "data": settings}

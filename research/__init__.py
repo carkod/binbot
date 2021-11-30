@@ -48,7 +48,8 @@ class ResearchSignals(BinbotApi):
         - Updated blacklist
         """
         print("Loading controller and blacklist data...")
-        settings_data = requests.get(url=f"{self.bb_controller_url}")
+        settings_res = requests.get(url=f"{self.bb_controller_url}")
+        settings_data = handle_binance_errors(settings_res)
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
         blacklist_data = handle_binance_errors(blacklist_res)
         settings_data["data"]["update_required"] = False

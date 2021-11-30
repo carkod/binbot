@@ -6,7 +6,7 @@ from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from flask import current_app as app
-
+from api.deals.schema import DealSchema
 
 class Deal(Account):
     def __init__(self, bot):
@@ -37,16 +37,7 @@ class Deal(Account):
             .as_tuple()
             .exponent
         )
-        self.deal = {
-            "last_order_id": 0,
-            "buy_timestamp": 0,
-            "buy_price": "",
-            "buy_total_qty": "",
-            "current_price": "",
-            "take_profit_price": "",
-            "so_prices": [],
-            "sell_timestamp": 0,
-        }
+        self.deal = DealSchema()
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
@@ -281,6 +272,7 @@ class Deal(Account):
                 "$push": {"orders": base_deal},
             },
         )
+
         if not botId:
             resp = jsonResp(
                 {

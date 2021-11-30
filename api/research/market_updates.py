@@ -14,6 +14,7 @@ class MarketUpdates(Account):
         self.app = create_app()
         self.markets_streams = None
         self.interval = interval
+        self.markets = []
 
     def start_stream(self):
         """
@@ -23,9 +24,9 @@ class MarketUpdates(Account):
         if self.markets_streams:
             self.markets_streams.close()
 
-        markets = list(self.app.db.bots.distinct("pair", {"status": "active"}))
+        self.markets = list(self.app.db.bots.distinct("pair", {"status": "active"}))
         params = []
-        for market in markets:
+        for market in self.markets:
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         string_params = "/".join(params)
@@ -74,11 +75,14 @@ class MarketUpdates(Account):
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
             ws.symbol = symbol
-            # Update Current price
-            bot = self.app.db.bots.find_one_and_update(
-                {"pair": symbol}, {"$set": {"deal.current_price": close_price}}
-            )
+            bot = self.markets
+
             if bot and "deal" in bot and bot["status"] == "active":
+                # Update Current price only for active bots
+                # This is to keep historical profit intact
+                bot = self.app.db.bots.find_one_and_update(
+                    {"_id": bot["_id"]}, {"$set": {"deal.current_price": close_price}}
+                )
                 print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
                 # Stop loss
                 if "stop_loss" in bot["deal"] and float(

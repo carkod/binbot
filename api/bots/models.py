@@ -1,52 +1,56 @@
 import threading
 from datetime import date
 from time import time
-
 from api.account.account import Account
 from api.deals.models import Deal
+from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
-from api.tools.handle_error import QuantityTooLow, handle_binance_errors, jsonResp, jsonResp_error_message, jsonResp_message
-from api.tools.round_numbers import round_numbers, supress_notation
+from api.tools.handle_error import (
+    QuantityTooLow,
+    handle_binance_errors,
+    jsonResp,
+    jsonResp_error_message,
+    jsonResp_message,
+)
+from api.tools.round_numbers import supress_notation
 from bson.objectid import ObjectId
 from flask import Response, current_app, request
-from requests import delete, post
+from requests import delete
 from pymongo.errors import DuplicateKeyError
+
+
+def BotSchema():
+    return {
+        "pair": "",
+        "status": "inactive",  # New replacement for active (inactive, active, completed)
+        "name": "Default Bot",
+        "mode": "manual",
+        "max_so_count": "0",
+        "balance_usage_size": "0.0001",
+        "balance_to_use": "GBP",
+        "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
+        "base_order_type": "limit",
+        "candlestick_interval": "15m",
+        "take_profit": "3",
+        "trailling": "false",
+        "trailling_deviation": "0.63",
+        "trailling_profit": 0,  # Trailling activation (first take profit hit)
+        "deal_min_value": "0",
+        "orders": [],
+        "stop_loss": "0",
+        "deal": DealSchema(),
+        "safety_orders": {},
+        "errors": [],
+        "total_commission": 0,
+    }
+
 
 class Bot(Account):
     def __init__(self):
         self.app = current_app
-        self.default_deal = (
-            {
-                "buy_price": "0",
-                "current_price": "0",
-                "buy_total_qty": "0",
-                "take_profit": "0",
-            },
-        )
-        self.defaults = {
-            "pair": "",
-            "status": "inactive",  # New replacement for active (inactive, active, completed)
-            "name": "Default Bot",
-            "mode": "manual",
-            "max_so_count": "0",
-            "balance_usage_size": "0.0001",
-            "balance_to_use": "GBP",
-            "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
-            "base_order_type": "limit",
-            "candlestick_interval": "15m",
-            "take_profit": "3",
-            "trailling": "false",
-            "trailling_deviation": "0.63",
-            "trailling_profit": 0,  # Trailling activation (first take profit hit)
-            "deal_min_value": "0",
-            "orders": [],
-            "stop_loss": "0",
-            "deal": self.default_deal,
-            "safety_orders": {},
-            "errors": [],
-            "total_commission": 0
-        }
+        self.default_deal = DealSchema()
+        self.defaults = BotSchema()
         self.default_so = {"so_size": "0", "price": "0", "price_deviation_so": "0.63"}
 
     def _restart_websockets(self):
@@ -72,7 +76,11 @@ class Bot(Account):
         if request.args.get("status") == "active":
             params["active"] = "active"
 
-        bot = list(self.app.db.bots.find(params).sort([("_id", -1), ("status", 1), ("pair", 1)]))
+        bot = list(
+            self.app.db.bots.find(params).sort(
+                [("_id", -1), ("status", 1), ("pair", 1)]
+            )
+        )
         if bot:
             resp = jsonResp({"data": bot})
         else:
@@ -101,7 +109,11 @@ class Bot(Account):
             )
         except DuplicateKeyError:
             resp = jsonResp(
-                {"message": "Profit canibalism, bot with this pair already exists!", "error": 1}, 200
+                {
+                    "message": "Profit canibalism, bot with this pair already exists!",
+                    "error": 1,
+                },
+                200,
             )
             return resp
         if botId:
@@ -227,7 +239,9 @@ class Bot(Account):
         """
         findId = request.view_args["id"]
         bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
-        resp = jsonResp_error_message("Not enough balance to close and sell. Please directly delete the bot.")
+        resp = jsonResp_error_message(
+            "Not enough balance to close and sell. Please directly delete the bot."
+        )
         if bot:
             orders = bot["orders"]
 
@@ -260,7 +274,7 @@ class Bot(Account):
 
                 book_order = Book_Order(pair)
                 price = float(book_order.matching_engine(True, qty))
-                
+
                 if price:
                     order = {
                         "pair": pair,
@@ -268,7 +282,9 @@ class Bot(Account):
                         "price": supress_notation(price, precision),
                     }
                     try:
-                        order_res = self.request(method="POST", url=self.bb_sell_order_url, json=order)
+                        order_res = self.request(
+                            method="POST", url=self.bb_sell_order_url, json=order
+                        )
                     except QuantityTooLow:
                         return resp
                 else:
@@ -277,7 +293,9 @@ class Bot(Account):
                         "qty": qty,
                     }
                     try:
-                        order_res = self.request(method="POST", url=self.bb_sell_market_order_url, json=order)
+                        order_res = self.request(
+                            method="POST", url=self.bb_sell_market_order_url, json=order
+                        )
                     except QuantityTooLow:
                         return resp
 
@@ -293,11 +311,21 @@ class Bot(Account):
                     "time_in_force": order_res["timeInForce"],
                     "status": order_res["status"],
                 }
-                self.app.db.bots.update_one({"_id": ObjectId(findId)}, {"$set": {"status": "completed", "deal.sell_timestamp": time()}, "$push": {"orders": deactivation_order}})
+                self.app.db.bots.update_one(
+                    {"_id": ObjectId(findId)},
+                    {
+                        "$set": {"status": "completed", "deal.sell_timestamp": time()},
+                        "$push": {"orders": deactivation_order},
+                    },
+                )
                 self._restart_websockets()
-                return jsonResp_message("Active orders closed, sold base asset, deactivated")
+                return jsonResp_message(
+                    "Active orders closed, sold base asset, deactivated"
+                )
             else:
-                self.app.db.bots.update_one({"_id": ObjectId(findId)}, {"$set": {"status": "error"}})
+                self.app.db.bots.update_one(
+                    {"_id": ObjectId(findId)}, {"$set": {"status": "error"}}
+                )
                 return jsonResp_error_message("Not enough balance to close and sell")
 
     def put_archive(self):
@@ -320,8 +348,7 @@ class Bot(Account):
             {"_id": ObjectId(botId)}, {"$set": {"status": status}}
         )
         if archive:
-            resp = jsonResp(
-                {"message": "Successfully archived bot", "botId": botId})
+            resp = jsonResp({"message": "Successfully archived bot", "botId": botId})
         else:
             resp = jsonResp({"message": "Failed to archive bot"})
         return resp
