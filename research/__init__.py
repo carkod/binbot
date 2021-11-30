@@ -52,29 +52,23 @@ class ResearchSignals(BinbotApi):
         settings_data = handle_binance_errors(response)
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
         blacklist_data = handle_binance_errors(blacklist_res)
-        try:
-            if settings_data["data"]["update_required"]:
-                settings_data["update_required"] = False
-                research_controller_res = requests.put(
-                    url=self.bb_controller_url, json=settings_data
-                )
-                payload = handle_binance_errors(research_controller_res)
+        settings_data["data"]["update_required"] = False
+        research_controller_res = requests.put(
+            url=self.bb_controller_url, json=settings_data
+        )
+        payload = handle_binance_errors(research_controller_res)
 
-                # Logic for autotrade
-                research_controller_res = requests.get(url=self.bb_controller_url)
-                research_controller = handle_binance_errors(research_controller_res)
-                self.settings = research_controller[
-                    "data"
-                ]
+        # Logic for autotrade
+        research_controller_res = requests.get(url=self.bb_controller_url)
+        research_controller = handle_binance_errors(research_controller_res)
+        self.settings = research_controller[
+            "data"
+        ]
 
-            self.settings = settings_data["data"]
-            self.blacklist_data = blacklist_data["data"]
-        except KeyError as e:
-            print(e)
-        
+        self.settings = settings_data["data"]
+        self.blacklist_data = blacklist_data["data"]
         self.interval = self.settings["candlestick_interval"]
         self.max_request = int(self.settings["max_request"])
-
         pass
 
     def _send_msg(self, msg):

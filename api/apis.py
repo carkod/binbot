@@ -2,9 +2,8 @@ import hashlib
 import hmac
 import os
 from urllib.parse import urlencode
-
+from time import time
 from requests import Session, get, request
-
 from api.tools.handle_error import handle_binance_errors
 
 
@@ -58,7 +57,7 @@ class BinanceApi:
         """
         session = Session()
         query_string = urlencode(payload, True)
-        timestamp = self.get_server_time()
+        timestamp = round(time() * 1000)
         session.headers.update(
             {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
         )
