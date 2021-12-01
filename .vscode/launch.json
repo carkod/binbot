@@ -52,7 +52,7 @@
       "name": "Python: Production",
       "type": "python",
       "request": "launch",
-      "program": "/Users/carkod/.local/share/virtualenvs/binbot-dNwtV6z7/bin/gunicorn",
+      "program": "~/.local/share/virtualenvs/binbot-oJjq0rqg/bin/gunicorn",
       "gevent": true,
       "console": "integratedTerminal",
       "args": [
@@ -60,11 +60,8 @@
         "--bind=0.0.0.0:8006",
         "-e GEVENT_RESOLVER=ares",
         "-t 90",
-        "--preload",
-        "--reload",
-        "-w",
-        "4",
-        "--capture-output"
+        "--log-level",
+        "debug"
       ],
       "postDebugTask": "killdebugger"
     }

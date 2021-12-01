@@ -7,6 +7,7 @@ from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.handle_error import (
     bot_errors,
+    handle_binance_errors,
     jsonResp,
 )
 from api.tools.round_numbers import round_numbers, supress_notation
@@ -300,83 +301,87 @@ class DealUpdates(Account):
         """
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
-        if qty:
-            # If for some reason, the bot has been closed already (transacted on Binance)
-            book_order = Book_Order(bot["pair"])
-            price = float(book_order.matching_engine(True, qty))
+        print(f"Updating stop limit. Quantity: {qty}")
+        
+        # If for some reason, the bot has been closed already (e.g. transacted on Binance)
+        # Inactivate bot
+        if not qty:
+            print(f"Cannot execute update stop limit, quantity is {qty}")
+            inactivate_bot = requests.delete(url=f"{self.bb_bot_url}/{self.active_bot['_id']}")
+            handle_binance_errors(inactivate_bot)
+        
+        book_order = Book_Order(bot["pair"])
+        price = float(book_order.matching_engine(True, qty))
 
-            order_id = None
-            for order in bot["orders"]:
-                if order["deal_type"] == "take_profit":
-                    order_id = order["order_id"]
-                    bot["orders"].remove(order)
-                    break
+        order_id = None
+        for order in bot["orders"]:
+            if order["deal_type"] == "take_profit":
+                order_id = order["order_id"]
+                bot["orders"].remove(order)
+                break
 
-            if order_id:
-                # First cancel old order to unlock balance
-                cancel_response = requests.delete(
-                    url=f"{self.bb_close_order_url}/{self.active_bot['pair']}/{order_id}"
-                )
-                if cancel_response.status_code != 200:
-                    print("Take profit order not found, no need to cancel")
-                else:
-                    print("Old take profit order cancelled")
-
-            if price:
-                stop_limit_order = {
-                    "pair": bot["pair"],
-                    "qty": qty,
-                    "price": supress_notation(price, self.price_precision),
-                }
-                res = self.bb_request(
-                    method="POST", url=self.bb_sell_order_url, payload=stop_limit_order
-                )
-            else:
-                stop_limit_order = {
-                    "pair": bot["pair"],
-                    "qty": qty
-                }
-                res = self.bb_request(
-                    method="POST", url=self.bb_sell_market_order_url, payload=stop_limit_order
-                )
-
-            if "error" in res:
-                msg = f"Error trying to open new stop_limit order {res}"
-                bot_errors(msg, bot)
-                return res
-
-            # Append now stop_limit deal
-            stop_limit_response = {
-                "deal_type": "stop_limit",
-                "order_id": res["orderId"],
-                "pair": res["symbol"],
-                "order_side": res["side"],
-                "order_type": res["type"],
-                "price": res["price"],
-                "qty": res["origQty"],
-                "fills": res["fills"],
-                "time_in_force": res["timeInForce"],
-                "status": res["status"],
-            }
-            commission = 0
-            for chunk in res["fills"]:
-                commission += float(chunk["commission"])
-
-            self.active_bot["orders"].append(stop_limit_response)
-            self.app.db.bots.update_one(
-                {"_id": bot["_id"]},
-                {
-                    "$push": {"orders": stop_limit_response},
-                    "$inc": {"total_commission": commission},
-                    "$set": {"deal.sell_timestamp": res["transactTime"]},
-                },
+        if order_id:
+            # First cancel old order to unlock balance
+            cancel_response = requests.delete(
+                url=f"{self.bb_close_order_url}/{self.active_bot['pair']}/{order_id}"
             )
-            msg = "New stop_limit deal successfully updated"
-            bot_errors(msg, bot, status="active")
-            return "completed"
+            if cancel_response.status_code != 200:
+                print("Take profit order not found, no need to cancel")
+            else:
+                print("Old take profit order cancelled")
 
+        if price:
+            stop_limit_order = {
+                "pair": bot["pair"],
+                "qty": qty,
+                "price": supress_notation(price, self.price_precision),
+            }
+            res = self.bb_request(
+                method="POST", url=self.bb_sell_order_url, payload=stop_limit_order
+            )
         else:
-            return "completed"
+            stop_limit_order = {
+                "pair": bot["pair"],
+                "qty": qty
+            }
+            res = self.bb_request(
+                method="POST", url=self.bb_sell_market_order_url, payload=stop_limit_order
+            )
+
+        if "error" in res:
+            msg = f"Error trying to open new stop_limit order {res}"
+            bot_errors(msg, bot)
+            return res
+
+        # Append now stop_limit deal
+        stop_limit_response = {
+            "deal_type": "stop_limit",
+            "order_id": res["orderId"],
+            "pair": res["symbol"],
+            "order_side": res["side"],
+            "order_type": res["type"],
+            "price": res["price"],
+            "qty": res["origQty"],
+            "fills": res["fills"],
+            "time_in_force": res["timeInForce"],
+            "status": res["status"],
+        }
+        commission = 0
+        for chunk in res["fills"]:
+            commission += float(chunk["commission"])
+
+        self.active_bot["orders"].append(stop_limit_response)
+        self.app.db.bots.update_one(
+            {"_id": bot["_id"]},
+            {
+                "$push": {"orders": stop_limit_response},
+                "$inc": {"total_commission": commission},
+                "$set": {"deal.sell_timestamp": res["transactTime"]},
+            },
+        )
+        msg = "New stop_limit deal successfully updated"
+        bot_errors(msg, bot, status="active")
+        return "completed"
 
     def trailling_stop_loss(self, price):
         """

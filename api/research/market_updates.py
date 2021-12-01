@@ -3,7 +3,7 @@ from api.account.account import Account
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from websocket import WebSocketApp
-
+import inspect
 
 class MarketUpdates(Account):
     """
@@ -16,13 +16,15 @@ class MarketUpdates(Account):
         self.interval = interval
         self.markets = []
 
-    def start_stream(self):
+    def start_stream(self, ws=None):
         """
         Start/restart websocket streams
         """
         # Close websocekts before starting
         if self.markets_streams:
             self.markets_streams.close()
+        if ws:
+            ws.close()
 
         self.markets = list(self.app.db.bots.distinct("pair", {"status": "active"}))
         params = []
@@ -52,7 +54,7 @@ class MarketUpdates(Account):
     def on_error(self, ws, error):
         error_msg = f'market_updates error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
         print(error_msg)
-        self.start_stream()
+        self.start_stream(ws)
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -71,27 +73,32 @@ class MarketUpdates(Account):
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
+        print("Below stack size: ", len(inspect.stack(0)))
         if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
             ws.symbol = symbol
-            bot = self.markets
+            current_bot = self.app.db.bots.find_one({
+                "pair": symbol, "status": "active"
+            })
 
-            if bot and "deal" in bot and bot["status"] == "active":
+            if current_bot and "deal" in current_bot:
                 # Update Current price only for active bots
                 # This is to keep historical profit intact
                 bot = self.app.db.bots.find_one_and_update(
-                    {"_id": bot["_id"]}, {"$set": {"deal.current_price": close_price}}
+                    {"_id": current_bot["_id"]}, {"$set": {"deal.current_price": close_price}}
                 )
                 print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
+                print("Stop_loss: ", bot['deal']["stop_loss"])
                 # Stop loss
                 if "stop_loss" in bot["deal"] and float(
                     bot["deal"]["stop_loss"]
                 ) > float(close_price):
                     deal = DealUpdates(bot)
                     res = deal.update_stop_limit(close_price)
+                    print("Finished updating stop loss")
                     if res == "completed":
-                        self.start_stream()
+                        self.start_stream(ws)
 
                 # Take profit trailling
                 if bot["trailling"] == "true":
@@ -137,7 +144,7 @@ class MarketUpdates(Account):
                                 },
                             )
                             # restart scanner
-                            self.start_stream()
+                            self.start_stream(ws)
                         else:
                             print(
                                 f"{symbol} Trailling updated! {current_take_profit_price}"
@@ -149,7 +156,7 @@ class MarketUpdates(Account):
                             deal = DealUpdates(bot)
                             completion = deal.trailling_stop_loss(price)
                             if completion == "completed":
-                                self.start_stream()
+                                self.start_stream(ws)
 
                 # Open safety orders
                 # When bot = None, when bot doesn't exist (unclosed websocket)

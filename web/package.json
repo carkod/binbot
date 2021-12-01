@@ -11,7 +11,7 @@
     "nanoid": "^3.1.28",
     "plotly.js": "^2.6.3",
     "react": "^17.0.1",
-    "react-bootstrap": "^2.0.2",
+    "react-bootstrap": "^2.0.3",
     "react-bootstrap-typeahead": "^5.2.1",
     "react-dom": "^17.0.1",
     "react-plotly.js": "^2.5.0",
@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@babel/plugin-syntax-dynamic-import": "^7.8.3",
-    "@testing-library/jest-dom": "^5.14.1",
+    "@testing-library/jest-dom": "^5.15.1",
     "@testing-library/react": "^12.1.1",
     "@testing-library/user-event": "^13.2.1",
     "node-sass": "^6.0.1",
