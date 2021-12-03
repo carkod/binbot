@@ -58,6 +58,8 @@
       "args": [
         "api.main:app",
         "--bind=0.0.0.0:8006",
+        "--threads",
+        "12",
         "-e GEVENT_RESOLVER=ares",
         "-t 90",
         "--log-level",

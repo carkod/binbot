@@ -120,7 +120,6 @@ class Bot(Account):
             resp = jsonResp(
                 {"message": "Successfully created new bot", "botId": str(botId)}, 200
             )
-            self._restart_websockets()
         else:
             resp = jsonResp({"message": "Failed to create new bot"}, 400)
 
@@ -142,7 +141,6 @@ class Bot(Account):
             resp = jsonResp(
                 {"message": "Successfully updated bot", "botId": findId}, 200
             )
-            self._restart_websockets()
         else:
             resp = jsonResp({"message": "Failed to update bot"}, 400)
 
