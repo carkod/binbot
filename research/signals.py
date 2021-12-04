@@ -1,6 +1,5 @@
 import json
 import threading
-from datetime import datetime
 from time import sleep, time
 
 import requests
@@ -11,6 +10,7 @@ from apis import BinbotApi
 from autotrade import Autotrade
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors, supress_notation
+from datetime import datetime
 
 load_dotenv()
 
@@ -39,7 +39,7 @@ class ResearchSignals(BinbotApi):
         )
         result = handle_binance_errors(res)
         return result
-
+    
     def load_data(self):
         """
         Load controller data
@@ -63,13 +63,22 @@ class ResearchSignals(BinbotApi):
         # Logic for autotrade
         research_controller_res = requests.get(url=self.bb_controller_url)
         research_controller = handle_binance_errors(research_controller_res)
-        self.settings = research_controller["data"]
+        self.settings = research_controller[
+            "data"
+        ]
 
         self.settings = settings_data["data"]
         self.blacklist_data = blacklist_data["data"]
         self.interval = self.settings["candlestick_interval"]
         self.max_request = int(self.settings["max_request"])
         pass
+
+    def new_tokens(self, projects) -> list:
+        check_new_coin = lambda coin_trade_time: (datetime.now() - datetime.fromtimestamp(coin_trade_time)).days < 1
+
+        new_pairs = set([item["rebaseCoin"] + item["asset"] for item in projects["data"]["completed"]["list"] if check_new_coin(item["coinTradeTime"])])
+        return new_pairs
+        
 
     def _send_msg(self, msg):
         """
@@ -105,17 +114,15 @@ class ResearchSignals(BinbotApi):
             previous_ws.close()
 
         self.load_data()
-        raw_symbols = self._ticker_price()
+        raw_symbols = self.ticker_price()
         black_list = [x["pair"] for x in self.blacklist_data]
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
         list_markets = markets - subtract_list
-        # Optinal setting below setting greatly reduces the websocket load
-        # To make it faster to scan and reduce chances of being blocked by B
+        # Optimal setting below setting greatly reduces the websocket load
+        # To make it faster to scan and reduce chances of being blocked by Binance
         if self.settings and self.settings["balance_to_use"] != "GBP":
-            list_markets = [
-                item for item in list_markets if self.settings["balance_to_use"] in item
-            ]
+            list_markets = [item for item in list_markets if self.settings["balance_to_use"] in item]
 
         params = []
         for market in list_markets:
@@ -125,7 +132,7 @@ class ResearchSignals(BinbotApi):
         self._run_streams(stream_1, 1)
 
         if len(params) > self.max_request:
-            stream_2 = params[(self.max_request + 1) :]
+            stream_2 = params[(self.max_request + 1):]
             self._run_streams(stream_2, 2)
 
     def post_error(self, msg):
@@ -172,16 +179,28 @@ class ResearchSignals(BinbotApi):
 
         if "k" in result and "s" in result["k"]:
             print(f'Research symbol: {result["k"]["s"]}')
-            # Check if streams need to be restarted
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
             data = self._get_candlestick(symbol, self.interval, stats=True)
             if not data or len(data["trace"][1]["y"]) <= 100:
-                msg = f"Not enough data to do research on {symbol}"
-                self.blacklist_coin(symbol, msg)
-                self.start_stream(ws)
+                projects = self.launchpool_projects()
+                new_coins = self.new_tokens(projects)
+                if symbol in new_coins:
+                    project = next((project for project in projects["data"]["completed"]["list"] if (project["rebaseCoin"] + project["asset"]) == symbol), None)
+                    
+                    msg = (
+                        f"<strong>New token</strong> listed {symbol} \n"
+                        f"- Current price {close_price} \n"
+                        f"- Annual Yield {project['annualRate'] * 100}% \n"
+                        f"- Total amount {project['rebateTotalAmount'] * 100}% \n"
+                        f"- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                    )
+                else:
+                    msg = f"Not enough data to do research on {symbol}"
+                    self.blacklist_coin(symbol, msg)
+                    self.start_stream(ws)
                 return
 
             ma_100 = data["trace"][1]["y"]
@@ -292,8 +311,7 @@ class ResearchSignals(BinbotApi):
                     ):
                         autotrade = Autotrade(symbol, self.settings, amplitude)
                         worker_thread = threading.Thread(
-                            name=f"autotrade_thread_{symbol}_{time()}",
-                            target=autotrade.run,
+                            name=f"autotrade_thread_{symbol}_{time()}", target=autotrade.run
                         )
                         worker_thread.start()
 
@@ -303,8 +321,3 @@ class ResearchSignals(BinbotApi):
             # Then we should resume sending signals for given symbol
             if (float(time()) - float(self.last_processed_kline[symbol])) > 120:
                 del self.last_processed_kline[symbol]
-
-
-if __name__ == "__main__":
-    rs = ResearchSignals()
-    rs.start_stream()

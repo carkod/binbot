@@ -26,7 +26,7 @@ class BinanceApi:
     server_time_url = f"{BASE}/api/v3/time"
     account_url = f"{BASE}/api/v3/account"
     exchangeinfo_url = f"{BASE}/api/v3/exchangeInfo"
-    ticker_price = f"{BASE}/api/v3/ticker/price"
+    ticker_price_url = f"{BASE}/api/v3/ticker/price"
     ticker24_url = f"{BASE}/api/v3/ticker/24hr"
     candlestick_url = f"{BASE}/api/v3/klines"
     order_url = f"{BASE}/api/v3/order"
@@ -47,6 +47,7 @@ class BinanceApi:
 
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
     account_snapshot_url = f"{BASE}/sapi/v1/accountSnapshot"
+    launchpool_url = "https://launchpad.binance.com/gateway-api/v1/public/launchpool/project/list"
 
     def get_server_time(self):
         response = get(url=self.server_time_url)
@@ -99,13 +100,21 @@ class BinanceApi:
         handle_binance_errors(res)
         return res.json()
 
-    def _ticker_price(self, symbol=None):
+    def ticker_price(self, symbol=None):
+        """
+        Weight 2 (v3). Ideal for list of symbols
+        """
         params = None
         if symbol:
             params = {"symbol": symbol}
-        r = get(url=self.ticker_price, params=params)
+        r = get(url=self.ticker_price_url, params=params)
         response = handle_binance_errors(r)
         return response
+    
+    def launchpool_projects(self):
+        res = get(url=self.launchpool_url)
+        data = handle_binance_errors(res)
+        return data
 
     def price_precision(self, symbol):
         """

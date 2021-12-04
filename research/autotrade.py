@@ -88,7 +88,7 @@ class Autotrade(BinbotApi):
                     self.default_bot["base_order_size"] = b["free"]
                     break
                 try:
-                    rate = self._ticker_price(f"{base_asset}GBP")
+                    rate = self.ticker_price(f"{base_asset}GBP")
                 except InvalidSymbol:
                     self.handle_error(
                         f"Cannot trade {self.pair} with GBP. Adding to blacklist"
