@@ -19,6 +19,7 @@ class DealUpdates(Account):
     An almost duplicate of Deal class, created to avoid circular and maximum depth issues
     It has some more additional methods and data for the purpose of websocket updating bots
     """
+
     def __init__(self, bot):
 
         self.active_bot = bot
@@ -62,7 +63,7 @@ class DealUpdates(Account):
             return None
         qty = round_numbers(balance, self.qty_precision)
         return qty
-    
+
     def get_one_balance(self, symbol="BTC"):
         # Response after request
         data = self.bb_request(url=self.bb_balance_url)
@@ -135,7 +136,12 @@ class DealUpdates(Account):
                 self.active_bot["orders"] = new_deals
                 self.app.db.bots.update_one(
                     {"_id": self.active_bot["_id"]},
-                    {"$push": {"orders": take_profit_order, "errors": "take_profit deal successfully updated"}},
+                    {
+                        "$push": {
+                            "orders": take_profit_order,
+                            "errors": "take_profit deal successfully updated",
+                        }
+                    },
                 )
                 return
 
@@ -302,14 +308,16 @@ class DealUpdates(Account):
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
         print(f"Updating stop limit. Quantity: {qty}")
-        
+
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
         if not qty:
             print(f"Cannot execute update stop limit, quantity is {qty}")
-            inactivate_bot = requests.delete(url=f"{self.bb_bot_url}/{self.active_bot['_id']}")
+            inactivate_bot = requests.delete(
+                url=f"{self.bb_bot_url}/{self.active_bot['_id']}"
+            )
             handle_binance_errors(inactivate_bot)
-        
+
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(True, qty))
 
@@ -340,12 +348,11 @@ class DealUpdates(Account):
                 method="POST", url=self.bb_sell_order_url, payload=stop_limit_order
             )
         else:
-            stop_limit_order = {
-                "pair": bot["pair"],
-                "qty": qty
-            }
+            stop_limit_order = {"pair": bot["pair"], "qty": qty}
             res = self.bb_request(
-                method="POST", url=self.bb_sell_market_order_url, payload=stop_limit_order
+                method="POST",
+                url=self.bb_sell_market_order_url,
+                payload=stop_limit_order,
             )
 
         if "error" in res:
@@ -410,7 +417,9 @@ class DealUpdates(Account):
                 "qty": qty,
             }
             res = self.bb_request(
-                method="POST", url=self.bb_sell_market_order_url, payload=trailling_stop_loss
+                method="POST",
+                url=self.bb_sell_market_order_url,
+                payload=trailling_stop_loss,
             )
 
         if "error" in res:
@@ -441,11 +450,11 @@ class DealUpdates(Account):
                 "$set": {
                     "deal.take_profit_price": res["price"],
                     "orders": bot["orders"],
-                    "deal.sell_timestamp": res["transactTime"]
+                    "deal.sell_timestamp": res["transactTime"],
                 },
                 "$inc": {"total_commission": commission},
             },
         )
-        msg = 'Trailling stop loss set!'
+        msg = "Trailling stop loss set!"
         bot_errors(msg, bot, status="completed")
         return "completed"

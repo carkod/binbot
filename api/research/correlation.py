@@ -10,6 +10,7 @@ from flask import request, current_app
 
 poll_percentage = 0
 
+
 class Correlation(Account):
     candlestick_url = os.getenv("CANDLESTICK")
 
@@ -67,7 +68,7 @@ class Correlation(Account):
                     "price_change_24": 0,  # MongoDB can't sort string decimals
                     "candlestick_signal": "",
                     "blacklisted": False,
-                    "blacklisted_reason": ""
+                    "blacklisted_reason": "",
                 }
                 app.db.correlations.insert_one(data)
                 if i <= ((symbols_count) - 1):
@@ -90,27 +91,23 @@ class Correlation(Account):
         Scanning already in progress
         """
         global poll_percentage
-        resp = jsonResp_message(f"Pearson correlation scanning is in progress {poll_percentage}%")
+        resp = jsonResp_message(
+            f"Pearson correlation scanning is in progress {poll_percentage}%"
+        )
         return resp
 
     def get_signals(self):
         args = {"candlestick_signal": {"$exists": True, "$ne": None}}
         sort = []
         if request.args.get("filter_by") == "signal_side":
-            signal_side = {
-                "signal_side": request.args.get("filter")
-            }
+            signal_side = {"signal_side": request.args.get("filter")}
             args.update(signal_side)
         if request.args.get("filter_by") == "signal_strength":
-            signal_side = {
-                "signal_strength": request.args.get("filter")
-            }
+            signal_side = {"signal_strength": request.args.get("filter")}
             args.update(signal_side)
 
         if request.args.get("filter_by") == "candlestick_signal":
-            signal_side = {
-                "candlestick_signal": request.args.get("filter")
-            }
+            signal_side = {"candlestick_signal": request.args.get("filter")}
             args.update(signal_side)
 
         query = self.app.db.correlations.find(args)

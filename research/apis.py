@@ -11,6 +11,8 @@ from utils import handle_binance_errors
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
 class BinanceApi:
     """
     Binance Api URLs
@@ -47,7 +49,9 @@ class BinanceApi:
 
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
     account_snapshot_url = f"{BASE}/sapi/v1/accountSnapshot"
-    launchpool_url = "https://launchpad.binance.com/gateway-api/v1/public/launchpool/project/list"
+    launchpool_url = (
+        "https://launchpad.binance.com/gateway-api/v1/public/launchpool/project/list"
+    )
 
     def get_server_time(self):
         response = get(url=self.server_time_url)
@@ -110,7 +114,7 @@ class BinanceApi:
         r = get(url=self.ticker_price_url, params=params)
         response = handle_binance_errors(r)
         return response
-    
+
     def launchpool_projects(self):
         res = get(url=self.launchpool_url)
         data = handle_binance_errors(res)

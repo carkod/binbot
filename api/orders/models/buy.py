@@ -57,7 +57,9 @@ class BuyOrder(BinanceApi):
         symbol = request.json.get("pair")
         qty = request.json.get("qty")
         price = request.json.get("price")
-        stop_price = request.json.get("stop_price") if request.json.get("stop_price") else price
+        stop_price = (
+            request.json.get("stop_price") if request.json.get("stop_price") else price
+        )
 
         # Limit order
         order_type = EnumDefinitions.order_types[5]
@@ -79,7 +81,9 @@ class BuyOrder(BinanceApi):
         symbol = request.json.get("pair")
         qty = request.json.get("qty")
         price = request.json.get("price")
-        stop_price = request.json.get("stop_price") if request.json.get("stop_price") else price
+        stop_price = (
+            request.json.get("stop_price") if request.json.get("stop_price") else price
+        )
 
         # Limit order
         order_type = EnumDefinitions.order_types[3]

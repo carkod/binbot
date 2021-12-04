@@ -34,7 +34,9 @@ class Assets(Account):
         balances = df[(df["free"] > 0) | (df["locked"] > 0)].to_dict("records")
 
         if asset:
-            balances = df[((df["free"] > 0) | (df["locked"] > 0)) & (df["asset"] == asset)].to_dict("records")
+            balances = df[
+                ((df["free"] > 0) | (df["locked"] > 0)) & (df["asset"] == asset)
+            ].to_dict("records")
         # filter out empty
         # Return response
         resp = jsonResp({"data": balances})
@@ -249,7 +251,12 @@ class Assets(Account):
                 }
             }
 
-        balance = list(self.app.db.balances.find(filter).sort([("_id", -1)]).limit(limit).skip(offset))
+        balance = list(
+            self.app.db.balances.find(filter)
+            .sort([("_id", -1)])
+            .limit(limit)
+            .skip(offset)
+        )
         if balance:
             resp = jsonResp({"data": balance})
         else:
@@ -276,7 +283,7 @@ class Assets(Account):
                 symbol = self.find_market(b["asset"])
                 if not symbol:
                     continue
-                
+
                 # Fix binance incorrect market data for MBLBTC
                 # Binance does not list MBLBTC, but the API does provide ticker_price
                 # But this ticker price does not make sense, it's even lower than BNB value
@@ -351,18 +358,28 @@ class Assets(Account):
         print("Store account snapshot starting...")
         current_time = datetime.utcnow()
         data = self.signed_request(self.account_snapshot_url, payload={"type": "SPOT"})
-        spot_data = next((item for item in data["snapshotVos"] if item["type"] == "spot"), None)
-        balances = [balance for balance in spot_data["data"]["balances"] if (balance["free"] != "0" or balance["locked"] != "0")]
+        spot_data = next(
+            (item for item in data["snapshotVos"] if item["type"] == "spot"), None
+        )
+        balances = [
+            balance
+            for balance in spot_data["data"]["balances"]
+            if (balance["free"] != "0" or balance["locked"] != "0")
+        ]
         total_btc = spot_data["data"]["totalAssetOfBtc"]
         fiat_rate = self.get_ticker_price("BTCGBP")
         total_gbp = float(total_btc) * float(fiat_rate)
-        balanceId = app.db.balances.insert_one({
-            "_id": spot_data["updateTime"],
-            "time": datetime.fromtimestamp(spot_data["updateTime"] / 1000.0).strftime("%Y-%m-%d"),
-            "balances": balances,
-            "estimated_total_btc": total_btc,
-            "estimated_total_gbp": total_gbp,
-        })
+        balanceId = app.db.balances.insert_one(
+            {
+                "_id": spot_data["updateTime"],
+                "time": datetime.fromtimestamp(
+                    spot_data["updateTime"] / 1000.0
+                ).strftime("%Y-%m-%d"),
+                "balances": balances,
+                "estimated_total_btc": total_btc,
+                "estimated_total_gbp": total_gbp,
+            }
+        )
         if balanceId:
             print(f"{current_time} Balance stored!")
         else:
@@ -391,7 +408,7 @@ class Assets(Account):
                 return jsonResp_error_message(f"{asset} cannot be traded with GBP")
 
         balances = self.get_raw_balance(asset).json
-        try:     
+        try:
             qty = float(balances["data"][0]["free"])
             if not qty or float(qty) == 0.00:
                 return jsonResp_error_message(f"Not enough {asset} balance to buy GBP")

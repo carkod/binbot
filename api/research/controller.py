@@ -3,6 +3,7 @@ from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
 from api.research.controller_schema import ControllerSchema
 
+
 class Controller:
     """
     Research app settings
@@ -21,13 +22,16 @@ class Controller:
                 {"message": "Successfully retrieved settings", "data": settings}
             )
         else:
-            resp = jsonResp_error_message("Database error ocurred. Could not retrieve settings.")
+            resp = jsonResp_error_message(
+                "Database error ocurred. Could not retrieve settings."
+            )
         return resp
 
     def edit_settings(self):
         data = request.get_json()
+        controller_schema = ControllerSchema()
         try:
-            ControllerSchema().update(data)
+            controller_schema.update(data)
             resp = jsonResp_message("Successfully updated settings")
         except TypeError as e:
             resp = jsonResp_error_message(f"Data validation error: {e}")

@@ -29,7 +29,6 @@ class ResearchSignals(BinbotApi):
             "BRL",
             "RUB",
         ]  # on top of blacklist
-        # This blacklist is necessary to keep prod and local DB synched
         self.telegram_bot = TelegramBot()
         self.max_request = 950  # Avoid HTTP 411 error by separating streams
 
@@ -39,7 +38,7 @@ class ResearchSignals(BinbotApi):
         )
         result = handle_binance_errors(res)
         return result
-    
+
     def load_data(self):
         """
         Load controller data
@@ -54,18 +53,17 @@ class ResearchSignals(BinbotApi):
         blacklist_data = handle_binance_errors(blacklist_res)
 
         # Remove restart flag, as we are already restarting
-        settings_data["data"]["update_required"] = False
-        research_controller_res = requests.put(
-            url=self.bb_controller_url, json=settings_data
-        )
-        handle_binance_errors(research_controller_res)
+        if "update_required" not in settings_data or settings_data["data"]["update_required"]:
+            settings_data["data"]["update_required"] = False
+            research_controller_res = requests.put(
+                url=self.bb_controller_url, json=settings_data
+            )
+            handle_binance_errors(research_controller_res)
 
         # Logic for autotrade
         research_controller_res = requests.get(url=self.bb_controller_url)
         research_controller = handle_binance_errors(research_controller_res)
-        self.settings = research_controller[
-            "data"
-        ]
+        self.settings = research_controller["data"]
 
         self.settings = settings_data["data"]
         self.blacklist_data = blacklist_data["data"]
@@ -74,11 +72,21 @@ class ResearchSignals(BinbotApi):
         pass
 
     def new_tokens(self, projects) -> list:
-        check_new_coin = lambda coin_trade_time: (datetime.now() - datetime.fromtimestamp(coin_trade_time)).days < 1
+        check_new_coin = (
+            lambda coin_trade_time: (
+                datetime.now() - datetime.fromtimestamp(coin_trade_time)
+            ).days
+            < 1
+        )
 
-        new_pairs = set([item["rebaseCoin"] + item["asset"] for item in projects["data"]["completed"]["list"] if check_new_coin(item["coinTradeTime"])])
+        new_pairs = set(
+            [
+                item["rebaseCoin"] + item["asset"]
+                for item in projects["data"]["completed"]["list"]
+                if check_new_coin(item["coinTradeTime"])
+            ]
+        )
         return new_pairs
-        
 
     def _send_msg(self, msg):
         """
@@ -122,7 +130,9 @@ class ResearchSignals(BinbotApi):
         # Optimal setting below setting greatly reduces the websocket load
         # To make it faster to scan and reduce chances of being blocked by Binance
         if self.settings and self.settings["balance_to_use"] != "GBP":
-            list_markets = [item for item in list_markets if self.settings["balance_to_use"] in item]
+            list_markets = [
+                item for item in list_markets if self.settings["balance_to_use"] in item
+            ]
 
         params = []
         for market in list_markets:
@@ -132,7 +142,7 @@ class ResearchSignals(BinbotApi):
         self._run_streams(stream_1, 1)
 
         if len(params) > self.max_request:
-            stream_2 = params[(self.max_request + 1):]
+            stream_2 = params[(self.max_request + 1) :]
             self._run_streams(stream_2, 2)
 
     def post_error(self, msg):
@@ -140,13 +150,12 @@ class ResearchSignals(BinbotApi):
         handle_binance_errors(res)
         return
 
-    def on_close(self, ws, close_status_code, close_msg):
+    def on_close(self, ws):
         """
         Library bug not working
         https://github.com/websocket-client/websocket-client/issues/612
         """
-
-        print("Active socket closed", close_status_code, close_msg)
+        print("Active socket closed")
 
     def on_open(self, ws):
         print("Research signals websocket opened")
@@ -188,8 +197,15 @@ class ResearchSignals(BinbotApi):
                 projects = self.launchpool_projects()
                 new_coins = self.new_tokens(projects)
                 if symbol in new_coins:
-                    project = next((project for project in projects["data"]["completed"]["list"] if (project["rebaseCoin"] + project["asset"]) == symbol), None)
-                    
+                    project = next(
+                        (
+                            project
+                            for project in projects["data"]["completed"]["list"]
+                            if (project["rebaseCoin"] + project["asset"]) == symbol
+                        ),
+                        None,
+                    )
+
                     msg = (
                         f"<strong>New token</strong> listed {symbol} \n"
                         f"- Current price {close_price} \n"
@@ -236,6 +252,7 @@ class ResearchSignals(BinbotApi):
 
                 if (
                     float(close_price) > float(open_price)
+                    and amplitude > 0.05
                     and (
                         close_price > ma_7[len(ma_7) - 1]
                         and open_price > ma_7[len(ma_7) - 1]
@@ -311,7 +328,8 @@ class ResearchSignals(BinbotApi):
                     ):
                         autotrade = Autotrade(symbol, self.settings, amplitude)
                         worker_thread = threading.Thread(
-                            name=f"autotrade_thread_{symbol}_{time()}", target=autotrade.run
+                            name=f"autotrade_thread_{symbol}",
+                            target=autotrade.run,
                         )
                         worker_thread.start()
 

@@ -5,6 +5,7 @@ from flask import Blueprint
 
 account_blueprint = Blueprint("account", __name__)
 
+
 @account_blueprint.route("/btc-balance", methods=["GET"])
 def get_balances_btc():
     return Assets().get_balances_btc()
@@ -29,9 +30,11 @@ def get_symbols():
 def get_symbols_raw():
     return Account().get_symbols_raw()
 
+
 @account_blueprint.route("/symbols/no-cannibal", methods=["GET"])
 def get_no_cannibal_symbols():
     return Account().get_no_cannibal_symbols()
+
 
 @account_blueprint.route("/symbol/<pair>", methods=["GET"])
 def get_symbol_info(pair):
@@ -64,10 +67,12 @@ def ticker_24(symbol):
 def balance_estimated():
     return Assets().balance_estimate()
 
+
 @account_blueprint.route("/balance/series", methods=["GET"])
 @auth.login_required
 def balance_series():
     return Assets().balance_series()
+
 
 @account_blueprint.route("/pnl", methods=["GET"])
 @auth.login_required

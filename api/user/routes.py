@@ -32,10 +32,12 @@ def logout():
 def add():
     return User().add()
 
+
 @user_blueprint.route("/user/<id>", methods=["PUT"])
 @auth.login_required
 def edit(id):
     return User().edit()
+
 
 @user_blueprint.route("/user/<id>", methods=["DELETE"])
 @auth.login_required

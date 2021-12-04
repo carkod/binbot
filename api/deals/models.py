@@ -8,6 +8,7 @@ from flask import Response
 from flask import current_app as app
 from api.deals.schema import DealSchema
 
+
 class Deal(Account):
     def __init__(self, bot):
         # Inherit from parent class

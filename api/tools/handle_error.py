@@ -10,11 +10,15 @@ from requests.exceptions import HTTPError, RequestException, Timeout
 from bson import json_util
 from api.app import create_app
 
+
 class BinanceErrors(Exception):
     pass
 
+
 class InvalidSymbol(BinanceErrors):
     pass
+
+
 class QuantityTooLow(BinanceErrors):
     """
     Raised when LOT_SIZE filter error triggers
@@ -22,13 +26,16 @@ class QuantityTooLow(BinanceErrors):
     unless purposedly triggered to check quantity
     e.g. BTC = 0.0001 amounts are usually so small that it's hard to see if it's nothing or a considerable amount compared to others
     """
+
     pass
+
 
 def post_error(msg):
     url = f'{os.getenv("FLASK_DOMAIN")}/research/controller'
     res = put(url=url, json={"system_logs": msg})
     handle_binance_errors(res)
     return
+
 
 def jsonResp(data, status=200):
     return FlaskResponse(
@@ -116,11 +123,14 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         raise HTTPError(content)
 
     # Calculate request weights and pause half of the way (1200/2=600)
-    if "x-mbx-used-weight-1m" in response.headers and int(response.headers["x-mbx-used-weight-1m"]) > 600:
+    if (
+        "x-mbx-used-weight-1m" in response.headers
+        and int(response.headers["x-mbx-used-weight-1m"]) > 600
+    ):
         print("Request weight limit prevention pause, waiting 1 min")
         sleep(60)
 
-    if (content and "code" in content):
+    if content and "code" in content:
         if content["code"] == 200:
             return content
         if content["code"] == -2010 or content["code"] == -1013:

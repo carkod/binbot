@@ -6,6 +6,7 @@ from apis import BinbotApi
 from utils import InvalidSymbol, handle_binance_errors, supress_notation
 from datetime import datetime
 
+
 class Autotrade(BinbotApi):
     def __init__(self, pair, settings, amplitude=0) -> None:
         self.pair = pair
@@ -68,7 +69,7 @@ class Autotrade(BinbotApi):
         # Get balance that match the pair
         # Check that we have minimum binance required qty to trade
         for b in response["data"]:
-            if b["asset"] in self.pair:
+            if self.pair.endswith(b["asset"]):
                 qty = supress_notation(b["free"], self.decimals)
                 if self.min_amount_check(self.pair, qty):
                     self.default_bot["base_order_size"] = qty
@@ -107,8 +108,9 @@ class Autotrade(BinbotApi):
                 self.default_bot["base_order_size"] = supress_notation(
                     base_order_size, self.decimals
                 )
-                break
+                pass
 
+        print("Quantity: ", qty)
         if not self.default_bot["base_order_size"]:
             msg = f"No balance matched for {self.pair}"
             self.handle_error(msg)
@@ -117,14 +119,17 @@ class Autotrade(BinbotApi):
 
         # Dynamic trailling
         # the bigger the candlestick swings the larger should the trailling be to avoid selling too soon
-        self.default_bot["trailling_deviation"] = float(self.settings["trailling_deviation"]) * (1 + float(self.amplitude))
+        self.default_bot["trailling_deviation"] = float(
+            self.settings["trailling_deviation"]
+        ) * (1 + float(self.amplitude))
 
         # Create bot
         create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
         create_bot = handle_binance_errors(create_bot_res)
 
         if "error" in create_bot and create_bot["error"] == 1:
-            msg = f"Not enough funds to carry out autotrade with {self.pair}"
+            print(create_bot)
+            msg = f"Autotrade: Not enough funds to buy {self.pair}. Balance: {b['free']}"
             print(msg)
             return
 

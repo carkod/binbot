@@ -9,6 +9,7 @@ from requests import HTTPError, Response
 class BinanceErrors(Exception):
     pass
 
+
 class InvalidSymbol(BinanceErrors):
     pass
 
@@ -43,7 +44,7 @@ def handle_binance_errors(response: Response):
 
     content = response.json()
     try:
-        if (content and "code" in content):
+        if content and "code" in content:
             if content["code"] == 200:
                 return content
 
@@ -53,4 +54,3 @@ def handle_binance_errors(response: Response):
             return content
     except HTTPError:
         raise HTTPError(content["msg"])
-

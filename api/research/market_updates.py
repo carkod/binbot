@@ -5,6 +5,7 @@ from api.deals.deal_updates import DealUpdates
 from websocket import WebSocketApp
 import inspect
 
+
 class MarketUpdates(Account):
     """
     Further explanation in docs/market_updates.md
@@ -78,18 +79,19 @@ class MarketUpdates(Account):
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
             ws.symbol = symbol
-            current_bot = self.app.db.bots.find_one({
-                "pair": symbol, "status": "active"
-            })
+            current_bot = self.app.db.bots.find_one(
+                {"pair": symbol, "status": "active"}
+            )
 
             if current_bot and "deal" in current_bot:
                 # Update Current price only for active bots
                 # This is to keep historical profit intact
                 bot = self.app.db.bots.find_one_and_update(
-                    {"_id": current_bot["_id"]}, {"$set": {"deal.current_price": close_price}}
+                    {"_id": current_bot["_id"]},
+                    {"$set": {"deal.current_price": close_price}},
                 )
                 print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
-                print("Stop_loss: ", bot['deal']["stop_loss"])
+                print("Stop_loss: ", bot["deal"]["stop_loss"])
                 # Stop loss
                 if "stop_loss" in bot["deal"] and float(
                     bot["deal"]["stop_loss"]
