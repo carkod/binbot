@@ -25,6 +25,7 @@ const SettingsInput = ({
   handleChange,
   handleBlur,
   errorMsg,
+  ...props
 }) => {
   return (
     <FormGroup>
@@ -37,6 +38,7 @@ const SettingsInput = ({
         onBlur={handleBlur}
         defaultValue={value}
         invalid={!checkValue(errorMsg)}
+        {...props}
       />
       {errorMsg && <FormFeedback>{errorMsg}</FormFeedback>}
     </FormGroup>
@@ -108,6 +110,8 @@ export const ControllerTab = ({
                         name={"max_request"}
                         label={"Max no. symbols streaming"}
                         handleChange={handleInput}
+                        type="number"
+                        min="1"
                       />
                     </Col>
                     <Col md="3">
@@ -116,6 +120,8 @@ export const ControllerTab = ({
                         name={"telegram_signals"}
                         label={"Send signals to telegram? 0 or 1"}
                         handleChange={handleInput}
+                        type="number"
+                        min="0"
                       />
                     </Col>
                   </Row>
@@ -131,6 +137,7 @@ export const ControllerTab = ({
                             handleChange={handleInput}
                             handleBlur={handleBalanceToUseBlur}
                             errorMsg={balanceToUseUnmatchError}
+                            type="text"
                           />
                         </Col>
                         <Col md="3">
@@ -139,6 +146,8 @@ export const ControllerTab = ({
                             name={"balance_size_to_use"}
                             label={"Amount of balance to use (%)"}
                             handleChange={handleInput}
+                            type="number"
+                            min="0"
                           />
                         </Col>
                         <Col md="3" sm="6">
@@ -165,6 +174,7 @@ export const ControllerTab = ({
                               name={"take_profit"}
                               label={"Take profit"}
                               handleChange={handleInput}
+                              type="number"
                             />
                           </Col>
                           <Col md="3">
@@ -173,6 +183,7 @@ export const ControllerTab = ({
                               name={"trailling_deviation"}
                               label={"Trailling deviation"}
                               handleChange={handleInput}
+                              type="number"
                             />
                           </Col>
                           <Col md="3">
@@ -181,6 +192,7 @@ export const ControllerTab = ({
                               name={"stop_loss"}
                               label={"Stop loss"}
                               handleChange={handleInput}
+                              type="number"
                             />
                           </Col>
                         </Row>
@@ -292,14 +304,6 @@ export const ControllerTab = ({
                 {error && <Alert color="danger">Missing required field</Alert>}
               </>
             </Col>
-            {/* {settings.system_logs !== undefined && (
-              <Col md={4}>
-                <h5>Controller logs</h5>
-                {settings.system_logs.map((e, i) => (
-                  <p key={i}>{e}</p>
-                ))}
-              </Col>
-            )} */}
           </Row>
         </CardBody>
       </Card>

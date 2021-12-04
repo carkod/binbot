@@ -1,41 +1,7 @@
-from typing import List
-from api.tools.handle_error import jsonResp
+from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
 from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
-
-# class ControllerModel:
-#     def __init__(self) -> object:
-#         self.defaults = {
-#             "candlestick_interval": "1h",
-#             "autotrade": 0,
-#             "trailling_profit": 2.4,
-#             "stop_loss": 3,
-#             "trailling": "true",
-#             "trailling_deviation": "3",
-#             "update_required": False,  # Changed made, need to update websockets
-#             "balance_to_use": "BNB",
-#             "balance_size_to_use": 100,  # %
-#             "max_request": 950,
-#             "system_logs": [],
-#             "errors": [],
-#         }
-
-#     def update(self, *args):
-#         self.defaults = {
-#             "candlestick_interval": args.__getitem__("candlestick_interval"),
-#             "autotrade": 0,
-#             "trailling_profit": 2.4,
-#             "stop_loss": 3,
-#             "trailling": "true",
-#             "trailling_deviation": "3",
-#             "update_required": False,  # Changed made, need to update websockets
-#             "balance_to_use": "BNB",
-#             "balance_size_to_use": 100,  # %
-#             "max_request": 950,
-#             "system_logs": [],
-#             "errors": [],
-#         }
-
+from api.research.controller_schema import ControllerSchema
 
 class Controller:
     """
@@ -45,60 +11,27 @@ class Controller:
     """
 
     def __init__(self):
-        # Data model
-        self.defaults = {
-            "candlestick_interval": "1h",
-            "autotrade": 0,
-            "trailling_profit": 2.4,
-            "stop_loss": 3,
-            "trailling": "true",
-            "trailling_deviation": "3",
-            "update_required": False,  # Changed made, need to update websockets
-            "balance_to_use": "BNB",
-            "balance_size_to_use": 100,  # %
-            "max_request": 950,
-            "system_logs": [],
-            "errors": [],
-        }
         self.default_blacklist = {"_id": "", "pair": "", "reason": ""}  # pair
 
     def get_settings(self):
-        settings = current_app.db.research_controller.find_one({"_id": "settings"})
+        settings = ControllerSchema().get()
 
-        # Should never be empty,
-        # It will be used in the future for research control
-        if (
-            not settings
-            or "candlestick_interval" not in settings
-            or "autotrade" not in settings
-        ):
-            current_app.db.research_controller.insert(
-                {"_id": "settings"}, self.defaults
+        if settings:
+            resp = jsonResp(
+                {"message": "Successfully retrieved settings", "data": settings}
             )
-
-        resp = jsonResp(
-            {"message": "Successfully retrieved settings", "data": settings}
-        )
+        else:
+            resp = jsonResp_error_message("Database error ocurred. Could not retrieve settings.")
         return resp
 
     def edit_settings(self):
-        # Start with current settings
-        self.defaults.update(current_app.db.research_controller.find_one({"_id": "settings"}))
         data = request.get_json()
-
-        if "system_logs" in data and isinstance(self.defaults["system_logs"], str):
-            self.defaults["system_logs"].extend(data["system_logs"])
-
-        if isinstance(self.defaults["update_required"], str) and self.defaults["update_required"].lower() == "true":
-            self.defaults["update_required"] = True
-
-        self.defaults.update(data)
-        self.defaults["errors"] = []
-        self.defaults.pop("_id")
-        current_app.db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": self.defaults}, True
-        )
-        return jsonResp({"message": "Successfully updated settings"})
+        try:
+            ControllerSchema().update(data)
+            resp = jsonResp_message("Successfully updated settings")
+        except TypeError as e:
+            resp = jsonResp_error_message(f"Data validation error: {e}")
+        return resp
 
     def get_blacklist(self) -> jsonResp:
         """

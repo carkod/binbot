@@ -48,10 +48,12 @@ class ResearchSignals(BinbotApi):
         - Updated blacklist
         """
         print("Loading controller and blacklist data...")
-        response = requests.get(url=f"{self.bb_controller_url}")
-        settings_data = handle_binance_errors(response)
+        settings_res = requests.get(url=f"{self.bb_controller_url}")
+        settings_data = handle_binance_errors(settings_res)
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
         blacklist_data = handle_binance_errors(blacklist_res)
+
+        # Remove restart flag, as we are already restarting
         settings_data["data"]["update_required"] = False
         research_controller_res = requests.put(
             url=self.bb_controller_url, json=settings_data
@@ -288,7 +290,7 @@ class ResearchSignals(BinbotApi):
                         and symbol not in active_symbols
                         and balance_check > 0
                     ):
-                        autotrade = Autotrade(symbol, self.settings)
+                        autotrade = Autotrade(symbol, self.settings, amplitude)
                         worker_thread = threading.Thread(
                             name=f"autotrade_thread_{symbol}_{time()}", target=autotrade.run
                         )
