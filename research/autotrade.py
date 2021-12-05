@@ -65,6 +65,7 @@ class Autotrade(BinbotApi):
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)
         response = handle_binance_errors(res)
+        qty = 0
 
         # Get balance that match the pair
         # Check that we have minimum binance required qty to trade
@@ -111,9 +112,8 @@ class Autotrade(BinbotApi):
                 pass
 
         print("Quantity: ", qty)
-        if not self.default_bot["base_order_size"]:
+        if not self.default_bot["base_order_size"] or qty == 0:
             msg = f"No balance matched for {self.pair}"
-            self.handle_error(msg)
             print(msg)
             return
 

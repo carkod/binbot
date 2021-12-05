@@ -234,24 +234,6 @@ class ResearchSignals(BinbotApi):
             if symbol not in self.last_processed_kline:
                 if (
                     float(close_price) > float(open_price)
-                    and (
-                        curr_candle_spread > (avg_candle_spread * 2)
-                        and curr_volume_spread > avg_volume_spread
-                    )
-                    and (close_price > ma_100[len(ma_100) - 1])
-                    and amplitude > 0.1
-                ):
-                    # Send Telegram
-                    msg = f"- Candlesick <strong>jump</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-
-                    if close_price < float(all_time_low):
-                        msg = f"- Candlesick jump and all time high <strong>{symbol}</strong> \n- Amplitude {supress_notation(amplitude, 2)} \n- Upward trend - https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-
-                    self._send_msg(msg)
-                    print(msg)
-
-                if (
-                    float(close_price) > float(open_price)
                     and amplitude > 0.05
                     and (
                         close_price > ma_7[len(ma_7) - 1]
