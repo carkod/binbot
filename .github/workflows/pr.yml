@@ -71,7 +71,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           name: carloswufei/binbot
-          tags: "latest"
+          tags: "new_tokens"
 
   push_research_to_registry:
     name: binbot_research docker image
