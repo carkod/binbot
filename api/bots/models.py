@@ -17,33 +17,7 @@ from api.tools.round_numbers import supress_notation
 from bson.objectid import ObjectId
 from flask import Response, current_app, request
 from requests import delete
-from pymongo.errors import DuplicateKeyError
-
-
-def BotSchema():
-    return {
-        "pair": "",
-        "status": "inactive",  # New replacement for active (inactive, active, completed)
-        "name": "Default Bot",
-        "mode": "manual",
-        "max_so_count": "0",
-        "balance_usage_size": "0.0001",
-        "balance_to_use": "GBP",
-        "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
-        "base_order_type": "limit",
-        "candlestick_interval": "15m",
-        "take_profit": "3",
-        "trailling": "false",
-        "trailling_deviation": "0.63",
-        "trailling_profit": 0,  # Trailling activation (first take profit hit)
-        "deal_min_value": "0",
-        "orders": [],
-        "stop_loss": "0",
-        "deal": DealSchema(),
-        "safety_orders": {},
-        "errors": [],
-        "total_commission": 0,
-    }
+from api.bots.schemas import BotSchema
 
 
 class Bot(Account):
@@ -60,7 +34,7 @@ class Bot(Account):
         print("Restarting market_updates")
         # Notify market updates websockets to update
         for thread in threading.enumerate():
-            if thread.name == "market_updates_thread":
+            if thread.name == "market_updates_thread" and hasattr(thread, "_target"):
                 thread._target.__self__.markets_streams.close()
                 market_update_thread()
         print("Finished restarting market_updates")
@@ -97,32 +71,12 @@ class Bot(Account):
         return resp
 
     def create(self):
-        data = request.json
-        data["name"] = (
-            data["name"] if data["name"] != "" else f"{data['pair']}-{date.today()}"
-        )
-        self.defaults.update(data)
-        self.defaults["safety_orders"] = data["safety_orders"]
+        data = request.get_json()
         try:
-            botId = self.app.db.bots.save(
-                self.defaults, {"$currentDate": {"createdAt": "true"}}
-            )
-        except DuplicateKeyError:
-            resp = jsonResp(
-                {
-                    "message": "Profit canibalism, bot with this pair already exists!",
-                    "error": 1,
-                },
-                200,
-            )
-            return resp
-        if botId:
-            resp = jsonResp(
-                {"message": "Successfully created new bot", "botId": str(botId)}, 200
-            )
-        else:
-            resp = jsonResp({"message": "Failed to create new bot"}, 400)
-
+            BotSchema().update(data)
+            resp = jsonResp_message("Successfully created new bot")
+        except Exception as e:
+            resp = jsonResp_error_message(f"Failed to create new bot: {e}")
         return resp
 
     def edit(self):

@@ -128,9 +128,7 @@ class Autotrade(BinbotApi):
         create_bot = handle_binance_errors(create_bot_res)
 
         if "error" in create_bot and create_bot["error"] == 1:
-            print(create_bot)
-            msg = f"Autotrade: Not enough funds to buy {self.pair}. Balance: {b['free']}"
-            print(msg)
+            print(f"Autotrade: {create_bot['message']}", f'Pair: {self.pair}.', f"Balance: {b['free']}")
             return
 
         # Activate bot

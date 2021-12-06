@@ -60,14 +60,12 @@ class BotForm extends React.Component {
       balance_available: "0",
       balance_available_asset: "",
       balanceAvailableError: false,
-      balance_usage: "1",
       balanceUsageError: false,
-      balance_usage_size: "0", // Computed
+      balance_usage_size: "100", // Centralized
       base_order_size: "",
       baseOrderSizeError: false,
       balance_to_use: "GBP",
       bot_profit: 0,
-      short_stop_price: 0,
       max_so_count: "0",
       maxSOCountError: false,
       name: "Default bot",
@@ -115,7 +113,6 @@ class BotForm extends React.Component {
     if (p.bot !== this.props.bot) {
       this.setState({
         status: this.props.bot.status,
-        balance_usage: this.props.bot.balance_usage,
         balance_usage_size: this.props.bot.balance_usage_size,
         balance_to_use: this.props.bot.balance_to_use,
         base_order_size: this.props.bot.base_order_size,
@@ -128,7 +125,6 @@ class BotForm extends React.Component {
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
         orders: this.props.bot.orders,
-        short_stop_price: this.props.bot.short_stop_price,
         stop_loss: this.props.bot.stop_loss,
         safety_orders: this.props.bot.safety_orders,
         candlestick_interval: !checkValue(this.props.bot.candlestick_interval)
@@ -279,18 +275,14 @@ class BotForm extends React.Component {
     if (validation) {
       const form = {
         status: this.state.status,
-        balance_available: this.state.balance_available,
-        balance_usage: this.state.balance_usage,
         balance_to_use: this.state.balance_to_use,
         base_order_size: String(this.state.base_order_size),
-        deal_min_value: this.state.deal_min_value,
         max_so_count: this.state.max_so_count,
         name: this.state.name,
         pair: this.state.pair,
         take_profit: this.state.take_profit,
         trailling: this.state.trailling,
         trailling_deviation: this.state.trailling_deviation,
-        short_stop_price: this.state.short_stop_price,
         stop_loss: this.state.stop_loss,
         safety_orders: this.state.safety_orders,
         candlestick_interval: this.state.candlestick_interval,

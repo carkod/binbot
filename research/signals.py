@@ -187,7 +187,6 @@ class ResearchSignals(BinbotApi):
             sleep(3600)
 
         if "k" in result and "s" in result["k"]:
-            print(f'Research symbol: {result["k"]["s"]}')
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
@@ -196,6 +195,7 @@ class ResearchSignals(BinbotApi):
             if not data or len(data["trace"][1]["y"]) <= 100:
                 projects = self.launchpool_projects()
                 new_coins = self.new_tokens(projects)
+                print(f'Research new coin symbol: {symbol}')
                 if symbol in new_coins:
                     project = next(
                         (
@@ -222,18 +222,13 @@ class ResearchSignals(BinbotApi):
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
             ma_7 = data["trace"][3]["y"]
-            curr_candle_spread = float(data["curr_candle_spread"])
-            curr_volume_spread = float(data["curr_volume_spread"])
-            avg_candle_spread = float(data["avg_candle_spread"])
-            avg_volume_spread = float(data["avg_volume_spread"])
             amplitude = float(data["amplitude"])
-            all_time_low = float(data["all_time_low"])
-
             msg = None
 
             if symbol not in self.last_processed_kline:
                 if (
                     float(close_price) > float(open_price)
+                    # Amplitude should help determine degree of reversal of candlesticks
                     and amplitude > 0.05
                     and (
                         close_price > ma_7[len(ma_7) - 1]

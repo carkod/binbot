@@ -14,7 +14,7 @@ class ControllerSchema:
 
     """
 
-    def __init__(self) -> object:
+    def __init__(self) -> None:
         settings = current_app.db.research_controller.find_one({"_id": "settings"})
         try:
             self.candlestick_interval = settings["candlestick_interval"]
@@ -199,7 +199,7 @@ class ControllerSchema:
                     f"{item} was not found. If this is a new field, please add it to the ControllerSchema"
                 )
 
-        return content
+        return self.__dict__
 
     def update(self, data):
         """Insert logic"""
