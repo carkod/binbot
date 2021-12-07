@@ -250,7 +250,6 @@ class Research extends React.Component {
   }
 
   triggerGbpHedge = async (asset) => {
-    console.log(asset);
     const res = gbpHedge(asset);
     if (res.error === 1) {
       addNotification("Some errors encountered", res.message, "error");

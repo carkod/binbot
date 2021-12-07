@@ -34,6 +34,7 @@ class BotSchema:
         self.trailling_profit: float = 0 # Trailling activation (first take profit hit)
         self.orders: list = [] # Internal
         self.stop_loss: float = 0
+        # Deal and orders are internal, should never be updated by outside data
         self.deal: object = DealSchema()
         self.max_so_count: int = 0
         self.safety_orders: object = {}
@@ -201,12 +202,12 @@ class BotSchema:
         """Insert logic"""
         validated_data = self.validate_model(data)
         if "_id" in validated_data:
-            current_app.db.bots.update_one(
+            result = current_app.db.bots.update_one(
                 {"_id": data["_id"]}, {"$set": validated_data}, True
             )
         else:
-            current_app.db.bots.insert_one(validated_data)
-        pass
+            result = current_app.db.bots.insert_one(validated_data)
+        return result
 
     def get(self):
         bots = current_app.db.bots.find()

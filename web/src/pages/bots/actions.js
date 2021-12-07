@@ -240,6 +240,7 @@ export function deleteBot(id) {
   return {
     type: DELETE_BOT,
     data: id,
+    removeId: id
   };
 }
 /**
@@ -250,6 +251,7 @@ export function closeBot(id) {
   return {
     type: CLOSE_BOT,
     data: id,
+    removeId: id
   };
 }
 
@@ -270,7 +272,6 @@ export function deleteBotSucceeded(res) {
   }
   return {
     type: DELETE_BOT_SUCCESS,
-    removeId: res.botId,
     message: res.message,
   };
 }

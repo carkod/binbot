@@ -73,40 +73,43 @@ class Bot(Account):
     def create(self):
         data = request.get_json()
         try:
-            BotSchema().update(data)
-            resp = jsonResp_message("Successfully created new bot")
+            result = BotSchema().update(data)
+            botId = str(result.inserted_id)
+            resp = jsonResp(
+                {"message": "Successfully created new bot", "botId": str(botId)}
+            )
         except Exception as e:
             resp = jsonResp_error_message(f"Failed to create new bot: {e}")
         return resp
 
     def edit(self):
-        data = request.json
-        findId = request.view_args["id"]
-        find_bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
-        self.defaults.update(data)
-        self.defaults["safety_orders"] = data["safety_orders"]
-        # Deal and orders are internal, should never be updated by outside data
-        self.defaults["deal"] = find_bot["deal"]
-        self.defaults["orders"] = find_bot["orders"]
-        botId = self.app.db.bots.update_one(
-            {"_id": ObjectId(findId)}, {"$set": self.defaults}
-        )
-        if botId.acknowledged:
+        data = request.get_json()
+        botId = request.view_args["id"]
+        try:
+            BotSchema().update(data)
             resp = jsonResp(
-                {"message": "Successfully updated bot", "botId": findId}, 200
+                {"message": "Successfully updated bot", "botId": botId}, 200
             )
-        else:
-            resp = jsonResp({"message": "Failed to update bot"}, 400)
+        except Exception as e:
+            resp = jsonResp_error_message(f"Failed to update bot: {e}")
 
         return resp
 
     def delete(self):
-        findId = request.view_args["id"]
-        delete_action = self.app.db.bots.delete_one({"_id": ObjectId(findId)})
+        id = request.args.get("id")
+        pair = request.args.get("pair")
+        status = request.args.get("status")
+        query = {}
+        if id:
+            query["_id"] = ObjectId(id)
+        if pair:
+            query["pair"] = pair
+        if status:
+            query["status"] = status
+            
+        delete_action = self.app.db.bots.delete_one(query)
         if delete_action:
-            resp = jsonResp(
-                {"message": "Successfully delete bot", "botId": findId}, 200
-            )
+            resp = jsonResp_message("Successfully deleted bot")
             self._restart_websockets()
         else:
             resp = jsonResp({"message": "Bot deletion is not available"}, 400)

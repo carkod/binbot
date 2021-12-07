@@ -29,9 +29,9 @@ def edit(id):
     return Bot().edit()
 
 
-@bot_blueprint.route("/bot/<id>", methods=["DELETE"])
+@bot_blueprint.route("/bot", methods=["DELETE"])
 @auth.login_required
-def delete(id):
+def delete():
     return Bot().delete()
 
 

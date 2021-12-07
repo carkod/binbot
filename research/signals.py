@@ -150,7 +150,7 @@ class ResearchSignals(BinbotApi):
         handle_binance_errors(res)
         return
 
-    def on_close(self, ws):
+    def on_close(self, ws, **args):
         """
         Library bug not working
         https://github.com/websocket-client/websocket-client/issues/612

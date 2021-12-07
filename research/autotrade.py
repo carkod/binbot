@@ -111,7 +111,6 @@ class Autotrade(BinbotApi):
                 )
                 pass
 
-        print("Quantity: ", qty)
         if not self.default_bot["base_order_size"] or qty == 0:
             msg = f"No balance matched for {self.pair}"
             print(msg)
@@ -133,12 +132,20 @@ class Autotrade(BinbotApi):
 
         # Activate bot
         botId = create_bot["botId"]
+        print("Trying to activate bot...")
         res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
         response = handle_binance_errors(res)
 
         if "error" in response and response["error"] == 1:
             msg = f"Error activating bot {self.pair} with id {botId}"
             print(msg)
+            # Delete inactivatable bot
+            payload = {
+                "_id": botId,
+            }
+            delete_res = requests.delete(url=f"{self.bb_bot_url}", params=payload)
+            data = handle_binance_errors(delete_res)
+            print(data)
             return
 
         msg = f"Succesful autotrade, opened bot with {self.pair}!"
