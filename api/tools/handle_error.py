@@ -26,7 +26,6 @@ class QuantityTooLow(BinanceErrors):
     unless purposedly triggered to check quantity
     e.g. BTC = 0.0001 amounts are usually so small that it's hard to see if it's nothing or a considerable amount compared to others
     """
-
     pass
 
 
@@ -115,12 +114,13 @@ def handle_binance_errors(response: Response, bot=None, message=None):
 
     """
     try:
-        content = response.json()
+        response.json()
     except JSONDecodeError as e:
         print(e)
     # Show error message for bad requests
     if response.status_code == 400:
-        raise HTTPError(content)
+        print(response.json())
+        raise HTTPError(response.json())
 
     # Calculate request weights and pause half of the way (1200/2=600)
     if (
@@ -130,6 +130,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         print("Request weight limit prevention pause, waiting 1 min")
         sleep(60)
 
+    content = response.json()
     if content and "code" in content:
         if content["code"] == 200:
             return content

@@ -298,7 +298,7 @@ class DealUpdates(Account):
             return resp
         return
 
-    def update_stop_limit(self, price):
+    def update_stop_loss(self, price):
         """
         Update stop limit after websocket
         - Hard sell (order status="FILLED" immediately) initial amount crypto in deal
@@ -307,7 +307,6 @@ class DealUpdates(Account):
         """
         bot = self.active_bot
         qty = self._compute_qty(bot["pair"])
-        print(f"Updating stop limit. Quantity: {qty}")
 
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
@@ -362,7 +361,7 @@ class DealUpdates(Account):
 
         # Append now stop_limit deal
         stop_limit_response = {
-            "deal_type": "stop_limit",
+            "deal_type": "stop_loss",
             "order_id": res["orderId"],
             "pair": res["symbol"],
             "order_side": res["side"],

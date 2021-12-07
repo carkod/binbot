@@ -6,6 +6,7 @@ from api.deals.models import Deal
 from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
+from api.tools.enum_definitions import EnumDefinitions
 from api.tools.handle_error import (
     QuantityTooLow,
     handle_binance_errors,
@@ -47,8 +48,9 @@ class Bot(Account):
         - archive=false
         """
         params = {}
-        if request.args.get("status") == "active":
-            params["active"] = "active"
+        bot_schema = BotSchema()
+        if request.args.get("status") in bot_schema.statuses:
+            params["active"] = request.args.get("status")
 
         bot = list(
             self.app.db.bots.find(params).sort(
@@ -114,19 +116,6 @@ class Bot(Account):
         else:
             resp = jsonResp({"message": "Bot deletion is not available"}, 400)
         return resp
-
-    def required_field_validation(self, data, key):
-        if key in data:
-            return data[key]
-        else:
-            resp = jsonResp(
-                {
-                    "message": "Validation failed {} is required".format(key),
-                    "botId": data["_id"],
-                },
-                400,
-            )
-            return resp
 
     def activate(self):
         findId = request.view_args["botId"]
@@ -219,21 +208,17 @@ class Bot(Account):
             base_asset = self.find_baseAsset(pair)
             deal_object = Deal(bot)
             precision = deal_object.price_precision
+            qty_precision = deal_object.qty_precision
             balance = deal_object.get_one_balance(base_asset)
             if balance:
-                qty = float(supress_notation(balance, precision))
-
-                # Quantity check to avoid LOT_SIZE error
-                if float(qty) < float(self.lot_size_by_symbol(pair, "minQty")):
-                    return resp
-
+                qty = float(balance)
                 book_order = Book_Order(pair)
-                price = float(book_order.matching_engine(True, qty))
+                price = float(book_order.matching_engine(False, qty))
 
                 if price:
                     order = {
                         "pair": pair,
-                        "qty": qty,
+                        "qty": supress_notation(qty, qty_precision),
                         "price": supress_notation(price, precision),
                     }
                     try:
@@ -245,7 +230,7 @@ class Bot(Account):
                 else:
                     order = {
                         "pair": pair,
-                        "qty": qty,
+                        "qty": supress_notation(price, qty_precision),
                     }
                     try:
                         order_res = self.request(

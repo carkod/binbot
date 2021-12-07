@@ -43,7 +43,8 @@ def supress_notation(num: float, precision: int = 0):
     Supress scientific notation
     e.g. 8e-5 = "0.00008"
     """
-    num = float(num)
+    dec_num = float(num)
+    num = round_numbers(dec_num, precision)
     if precision >= 0:
         decimal_points = precision
     else:

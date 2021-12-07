@@ -19,9 +19,9 @@ class Autotrade(BinbotApi):
             "status": "inactive",
             "name": f"{pair}_{current_date}",
             "mode": "autotrade",
-            "balance_usage_size": "1",
+            "balance_usage_size": 100,
             "balance_to_use": settings["balance_to_use"],
-            "base_order_size": None,  # MIN by Binance = 0.0001 BTC
+            "base_order_size": "",  # MIN by Binance = 0.0001 BTC
             "base_order_type": "limit",
             "candlestick_interval": settings["candlestick_interval"],
             "take_profit": settings["take_profit"],
@@ -60,7 +60,7 @@ class Autotrade(BinbotApi):
         2. Create bot with given parameters from research_controller
         3. Activate bot
         """
-        print("Autotrade running...")
+        print("Autotrade running..., settings used", self.settings)
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)
@@ -74,8 +74,7 @@ class Autotrade(BinbotApi):
                 qty = supress_notation(b["free"], self.decimals)
                 if self.min_amount_check(self.pair, qty):
                     self.default_bot["base_order_size"] = qty
-                else:
-                    return
+                    break
             # If we have GBP we can trade anything
             # And we have roughly the min BTC equivalent amount
             if (

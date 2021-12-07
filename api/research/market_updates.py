@@ -91,13 +91,13 @@ class MarketUpdates(Account):
                     {"$set": {"deal.current_price": close_price}},
                 )
                 print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
-                print("Stop_loss: ", bot["deal"]["stop_loss"])
+                print("Stop_loss: ", bot["stop_loss"])
                 # Stop loss
-                if "stop_loss" in bot["deal"] and float(
-                    bot["deal"]["stop_loss"]
+                if "stop_loss" in bot and float(
+                    bot["stop_loss"]
                 ) > float(close_price):
                     deal = DealUpdates(bot)
-                    res = deal.update_stop_limit(close_price)
+                    res = deal.update_stop_loss(close_price)
                     print("Finished updating stop loss")
                     if res == "completed":
                         self.start_stream(ws)

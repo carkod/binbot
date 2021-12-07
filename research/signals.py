@@ -150,7 +150,7 @@ class ResearchSignals(BinbotApi):
         handle_binance_errors(res)
         return
 
-    def on_close(self, ws, **args):
+    def on_close(self, ws, close_status_code, close_msg):
         """
         Library bug not working
         https://github.com/websocket-client/websocket-client/issues/612
@@ -288,6 +288,8 @@ class ResearchSignals(BinbotApi):
                     balances = handle_binance_errors(check_balance_res)
                     balance_check = int(balances["data"]["total_fiat"])
 
+
+                    self.load_data()
                     # If dashboard has changed any self.settings
                     # Need to reload websocket
                     if (
@@ -304,11 +306,7 @@ class ResearchSignals(BinbotApi):
                         and balance_check > 0
                     ):
                         autotrade = Autotrade(symbol, self.settings, amplitude)
-                        worker_thread = threading.Thread(
-                            name=f"autotrade_thread_{symbol}",
-                            target=autotrade.run,
-                        )
-                        worker_thread.start()
+                        autotrade.run()
 
                 self.last_processed_kline[symbol] = time()
 
