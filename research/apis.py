@@ -116,7 +116,7 @@ class BinanceApi:
         return response
 
     def launchpool_projects(self):
-        res = get(url=self.launchpool_url)
+        res = get(url=self.launchpool_url, headers={"User-Agent": "Mozilla"})
         data = handle_binance_errors(res)
         return data
 

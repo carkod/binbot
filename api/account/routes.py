@@ -91,6 +91,6 @@ def currency_conversion():
 
 
 @account_blueprint.route("/hedge-gbp/<asset>", methods=["GET"])
-@auth.login_required()
+@auth.login_required
 def buy_gbp_balance(asset):
     return Assets().buy_gbp_balance()

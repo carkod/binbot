@@ -40,12 +40,15 @@ def handle_binance_errors(response: Response):
     try:
         content = response.json()
     except JSONDecodeError as e:
-        print(f"response: {response}")
+        print(f"response: {response.url}")
+
+    if 400 <= response.status_code < 500:
+        print(response.status_code, response.url)
 
     content = response.json()
     try:
         if content and "code" in content:
-            if content["code"] == 200:
+            if content["code"] == 200 or content["code"] == "000000":
                 return content
 
             if content["code"] == -1121:

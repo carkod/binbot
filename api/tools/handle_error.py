@@ -121,6 +121,10 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     if response.status_code == 400:
         print(response.json())
         raise HTTPError(response.json())
+    
+    if response.status_code == 429:
+        print("Request weight limit hit, ban will come soon, waiting 1 hour")
+        sleep(3600)
 
     # Calculate request weights and pause half of the way (1200/2=600)
     if (
@@ -128,7 +132,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         and int(response.headers["x-mbx-used-weight-1m"]) > 600
     ):
         print("Request weight limit prevention pause, waiting 1 min")
-        sleep(60)
+        sleep(120)
 
     content = response.json()
     if content and "code" in content:

@@ -47,8 +47,6 @@ class ControllerSchema:
         if "_id" in data:
             del data["_id"]
 
-        content = deepcopy(data)
-
         if "candlestick_interval" in data:
             if (
                 not isinstance(data.get("candlestick_interval"), str)
@@ -191,6 +189,7 @@ class ControllerSchema:
             del data["system_logs"]
 
         if "balance_to_use" in data:
+            self.balance_to_use = data.get("balance_to_use")
             del data["balance_to_use"]
 
         if len(data) > 0:
@@ -211,12 +210,4 @@ class ControllerSchema:
 
     def get(self):
         settings = current_app.db.research_controller.find_one({"_id": "settings"})
-        # If mismatch no. fields
-        # Make it consistent
-        if not settings or len(settings) != len(self.__dict__):
-            current_app.db.research_controller.remove({})
-            new_research_controller = self.__dict__
-            new_research_controller["_id"] = "settings"
-            current_app.db.research_controller.insert_one(new_research_controller)
-            settings = current_app.db.research_controller.find_one({"_id": "settings"})
         return settings

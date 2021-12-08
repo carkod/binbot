@@ -21,7 +21,7 @@ class Autotrade(BinbotApi):
             "mode": "autotrade",
             "balance_usage_size": 100,
             "balance_to_use": settings["balance_to_use"],
-            "base_order_size": "",  # MIN by Binance = 0.0001 BTC
+            "base_order_size": 0,
             "base_order_type": "limit",
             "candlestick_interval": settings["candlestick_interval"],
             "take_profit": settings["take_profit"],
@@ -54,22 +54,23 @@ class Autotrade(BinbotApi):
         result = handle_binance_errors(res)
         return result
 
+
     def run(self):
         """
         Run autotrade
         2. Create bot with given parameters from research_controller
         3. Activate bot
         """
-        print("Autotrade running..., settings used", self.settings)
+        print("Autotrade running...")
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)
-        response = handle_binance_errors(res)
+        balances = handle_binance_errors(res)
         qty = 0
 
         # Get balance that match the pair
         # Check that we have minimum binance required qty to trade
-        for b in response["data"]:
+        for b in balances["data"]:
             if self.pair.endswith(b["asset"]):
                 qty = supress_notation(b["free"], self.decimals)
                 if self.min_amount_check(self.pair, qty):
@@ -110,7 +111,7 @@ class Autotrade(BinbotApi):
                 )
                 pass
 
-        if not self.default_bot["base_order_size"] or qty == 0:
+        if float(self.default_bot["base_order_size"]) == 0:
             msg = f"No balance matched for {self.pair}"
             print(msg)
             return
@@ -133,14 +134,14 @@ class Autotrade(BinbotApi):
         botId = create_bot["botId"]
         print("Trying to activate bot...")
         res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
-        response = handle_binance_errors(res)
+        bot = handle_binance_errors(res)
 
-        if "error" in response and response["error"] == 1:
+        if "error" in bot and bot["error"] == 1:
             msg = f"Error activating bot {self.pair} with id {botId}"
             print(msg)
             # Delete inactivatable bot
             payload = {
-                "_id": botId,
+                "id": botId,
             }
             delete_res = requests.delete(url=f"{self.bb_bot_url}", params=payload)
             data = handle_binance_errors(delete_res)

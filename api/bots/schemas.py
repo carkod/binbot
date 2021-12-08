@@ -48,12 +48,12 @@ class BotSchema:
             if not isinstance(data.get(property), (int, float)):
                 try:
                     if 0 <= float(data.get(property)) <= 100:
-                        self.take_profit = float(data.get(property))
+                        setattr(self, property, float(data.get(property)))
                     else:
-                        raise BotSchemaValidation(f"take_profit must be an integer or float percentage")
+                        raise BotSchemaValidation(f"{property} must be an integer or float percentage")
                 except Exception:
-                    raise BotSchemaValidation(f"take_profit must be an integer or float percentage")
-            self.take_profit = data.get(property)
+                    raise BotSchemaValidation(f"{property} must be an integer or float percentage")
+            setattr(self, property, float(data.get(property)))
             del data[property]
         return data
 

@@ -52,8 +52,17 @@ class ResearchSignals(BinbotApi):
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
         blacklist_data = handle_binance_errors(blacklist_res)
 
+        # Show webscket errors
+        if "error" in (settings_data, blacklist_res) and (
+            settings_data["error"] == 1 or blacklist_res["error"] == 1
+        ):
+            print(settings_data)
+
         # Remove restart flag, as we are already restarting
-        if "update_required" not in settings_data or settings_data["data"]["update_required"]:
+        if (
+            "update_required" not in settings_data
+            or settings_data["data"]["update_required"]
+        ):
             settings_data["data"]["update_required"] = False
             research_controller_res = requests.put(
                 url=self.bb_controller_url, json=settings_data
@@ -79,13 +88,12 @@ class ResearchSignals(BinbotApi):
             < 1
         )
 
-        new_pairs = set(
-            [
-                item["rebaseCoin"] + item["asset"]
-                for item in projects["data"]["completed"]["list"]
-                if check_new_coin(item["coinTradeTime"])
-            ]
-        )
+        new_pairs = [
+            item["rebaseCoin"] + item["asset"]
+            for item in projects["data"]["completed"]["list"]
+            if check_new_coin(int(item["coinTradeTime"]) / 1000)
+        ]
+
         return new_pairs
 
     def _send_msg(self, msg):
@@ -195,7 +203,6 @@ class ResearchSignals(BinbotApi):
             if not data or len(data["trace"][1]["y"]) <= 100:
                 projects = self.launchpool_projects()
                 new_coins = self.new_tokens(projects)
-                print(f'Research new coin symbol: {symbol}')
                 if symbol in new_coins:
                     project = next(
                         (
@@ -215,9 +222,7 @@ class ResearchSignals(BinbotApi):
                     )
                 else:
                     msg = f"Not enough data to do research on {symbol}"
-                    self.blacklist_coin(symbol, msg)
-                    self.start_stream(ws)
-                return
+                    print(msg)
 
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
@@ -287,7 +292,6 @@ class ResearchSignals(BinbotApi):
                     check_balance_res = requests.get(url=self.bb_balance_estimate_url)
                     balances = handle_binance_errors(check_balance_res)
                     balance_check = int(balances["data"]["total_fiat"])
-
 
                     self.load_data()
                     # If dashboard has changed any self.settings

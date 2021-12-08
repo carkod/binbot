@@ -298,7 +298,7 @@ class DealUpdates(Account):
             return resp
         return
 
-    def update_stop_loss(self, price):
+    def execute_stop_loss(self, price):
         """
         Update stop limit after websocket
         - Hard sell (order status="FILLED" immediately) initial amount crypto in deal
@@ -312,10 +312,14 @@ class DealUpdates(Account):
         # Inactivate bot
         if not qty:
             print(f"Cannot execute update stop limit, quantity is {qty}")
+            params = {
+                "id": self.active_bot['_id']
+            }
             inactivate_bot = requests.delete(
-                url=f"{self.bb_bot_url}/{self.active_bot['_id']}"
+                url=f"{self.bb_bot_url}", params=params
             )
             handle_binance_errors(inactivate_bot)
+            return
 
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(True, qty))
@@ -359,6 +363,10 @@ class DealUpdates(Account):
             bot_errors(msg, bot)
             return res
 
+        if res["status"] == "NEW":
+            bot_errors("Failed to execute order (status NEW), retrying...", bot, status="completed")
+            self.execute_stop_loss(price)
+
         # Append now stop_limit deal
         stop_limit_response = {
             "deal_type": "stop_loss",
@@ -386,7 +394,7 @@ class DealUpdates(Account):
             },
         )
         msg = "New stop_limit deal successfully updated"
-        bot_errors(msg, bot, status="active")
+        bot_errors(msg, bot, status="completed")
         return "completed"
 
     def trailling_stop_loss(self, price):
@@ -447,6 +455,7 @@ class DealUpdates(Account):
             {"_id": bot["_id"]},
             {
                 "$set": {
+                    "status": "completed",
                     "deal.take_profit_price": res["price"],
                     "orders": bot["orders"],
                     "deal.sell_timestamp": res["transactTime"],
@@ -455,5 +464,6 @@ class DealUpdates(Account):
             },
         )
         msg = "Trailling stop loss set!"
-        bot_errors(msg, bot, status="completed")
+        bot_errors(msg)
+        print("Bot completed", bot["pair"])
         return "completed"

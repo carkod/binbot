@@ -98,12 +98,12 @@ class Bot(Account):
         return resp
 
     def delete(self):
-        id = request.args.get("id")
+        botId = request.args.get("id")
         pair = request.args.get("pair")
         status = request.args.get("status")
         query = {}
-        if id:
-            query["_id"] = ObjectId(id)
+        if botId:
+            query["_id"] = ObjectId(botId)
         if pair:
             query["pair"] = pair
         if status:
@@ -194,7 +194,7 @@ class Bot(Account):
                 for d in orders:
                     if "deal_type" in d and (
                         d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
-                    ):
+                    ):  
                         order_id = d["order_id"]
                         res = delete(
                             url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
@@ -238,6 +238,30 @@ class Bot(Account):
                         )
                     except QuantityTooLow:
                         return resp
+                
+                # Enforce that deactivation occurs
+                # If it doesn't, redo
+                if order_res["status"] == "NEW":
+                    deactivation_order = {
+                        "order_id": order_res["orderId"],
+                        "deal_type": "deactivate_order",
+                        "pair": order_res["symbol"],
+                        "order_side": order_res["side"],
+                        "order_type": order_res["type"],
+                        "price": order_res["price"],
+                        "qty": order_res["origQty"],
+                        "fills": order_res["fills"],
+                        "time_in_force": order_res["timeInForce"],
+                        "status": order_res["status"],
+                    }
+                    self.app.db.bots.update_one(
+                        {"_id": ObjectId(findId)},
+                        {
+                            "$push": {"orders": deactivation_order, "errors": "Order failed to close. Re-deactivating..."},
+                        },
+                    )
+                    self.deactivate()
+                    
 
                 deactivation_order = {
                     "order_id": order_res["orderId"],
@@ -255,9 +279,10 @@ class Bot(Account):
                     {"_id": ObjectId(findId)},
                     {
                         "$set": {"status": "completed", "deal.sell_timestamp": time()},
-                        "$push": {"orders": deactivation_order},
+                        "$push": {"orders": deactivation_order, "errors": "Orders updated. Trying to close bot..."},
                     },
                 )
+
                 self._restart_websockets()
                 return jsonResp_message(
                     "Active orders closed, sold base asset, deactivated"
