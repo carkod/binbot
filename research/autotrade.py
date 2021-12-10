@@ -54,7 +54,6 @@ class Autotrade(BinbotApi):
         result = handle_binance_errors(res)
         return result
 
-
     def run(self):
         """
         Run autotrade
@@ -92,12 +91,10 @@ class Autotrade(BinbotApi):
                 try:
                     rate = self.ticker_price(f"{base_asset}GBP")
                 except InvalidSymbol:
-                    self.handle_error(
-                        f"Cannot trade {self.pair} with GBP. Adding to blacklist"
-                    )
-                    self.add_to_blacklist(
-                        self.pair, f"Cannot trade {self.pair} with GBP."
-                    )
+                    msg = f"Cannot trade {self.pair} with GBP. Adding to blacklist"
+                    self.handle_error(msg)
+                    self.add_to_blacklist(self.pair, msg)
+                    print(msg)
                     return
 
                 rate = rate["price"]
@@ -121,13 +118,20 @@ class Autotrade(BinbotApi):
         self.default_bot["trailling_deviation"] = float(
             self.settings["trailling_deviation"]
         ) * (1 + float(self.amplitude))
+        self.default_bot["stop_loss"] = float(
+            self.settings["stop_loss"]
+        ) * (1 + float(self.amplitude))
 
         # Create bot
         create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
         create_bot = handle_binance_errors(create_bot_res)
 
         if "error" in create_bot and create_bot["error"] == 1:
-            print(f"Autotrade: {create_bot['message']}", f'Pair: {self.pair}.', f"Balance: {b['free']}")
+            print(
+                f"Autotrade: {create_bot['message']}",
+                f"Pair: {self.pair}.",
+                f"Balance: {b['free']}",
+            )
             return
 
         # Activate bot

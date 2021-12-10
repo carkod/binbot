@@ -1,12 +1,11 @@
 import json
 from json.decoder import JSONDecodeError
-import sys
-from time import time, sleep
+from time import sleep
 import os
 from bson.objectid import ObjectId
 from flask import Response as FlaskResponse
 from requests import Response, put
-from requests.exceptions import HTTPError, RequestException, Timeout
+from requests.exceptions import HTTPError, Timeout
 from bson import json_util
 from api.app import create_app
 

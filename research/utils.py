@@ -44,6 +44,14 @@ def handle_binance_errors(response: Response):
 
     if 400 <= response.status_code < 500:
         print(response.status_code, response.url)
+    
+    # Calculate request weights and pause half of the way (1200/2=600)
+    if (
+        "x-mbx-used-weight-1m" in response.headers
+        and int(response.headers["x-mbx-used-weight-1m"]) > 600
+    ):
+        print("Request weight limit prevention pause, waiting 1 min")
+        sleep(120)
 
     content = response.json()
     try:
