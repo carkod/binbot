@@ -36,7 +36,8 @@ def handle_binance_errors(response: Response):
 
     """
     # Reduce speed of requests to avoid rate limits
-    sleep(5)
+    sleep(3)
+    print("Response URL:", response.url)
     try:
         content = response.json()
     except JSONDecodeError as e:

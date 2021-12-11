@@ -224,6 +224,8 @@ class ResearchSignals(BinbotApi):
                     msg = f"Not enough data to do research on {symbol}"
                     print(msg)
 
+            klines_c = data["trace"][0]["close"]
+            klines_o = data["trace"][0]["open"]
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
             ma_7 = data["trace"][3]["y"]
@@ -235,25 +237,10 @@ class ResearchSignals(BinbotApi):
                     float(close_price) > float(open_price)
                     # Amplitude should help determine degree of reversal of candlesticks
                     and amplitude > 0.05
+                    # Candlestick current price need to be over MAs
                     and (
                         close_price > ma_7[len(ma_7) - 1]
                         and open_price > ma_7[len(ma_7) - 1]
-                    )
-                    and (
-                        close_price > ma_7[len(ma_7) - 2]
-                        and open_price > ma_7[len(ma_7) - 2]
-                    )
-                    and (
-                        close_price > ma_7[len(ma_7) - 3]
-                        and open_price > ma_7[len(ma_7) - 3]
-                    )
-                    and (
-                        close_price > ma_7[len(ma_7) - 4]
-                        and open_price > ma_7[len(ma_7) - 4]
-                    )
-                    and (
-                        close_price > ma_7[len(ma_7) - 5]
-                        and open_price > ma_7[len(ma_7) - 5]
                     )
                     and (
                         close_price > ma_100[len(ma_100) - 1]
@@ -263,17 +250,34 @@ class ResearchSignals(BinbotApi):
                         close_price > ma_25[len(ma_25) - 1]
                         and open_price > ma_25[len(ma_25) - 1]
                     )
+                    # Last few prices also need to surpass candlesticks
                     and (
-                        close_price > ma_25[len(ma_25) - 2]
-                        and open_price > ma_25[len(ma_25) - 2]
+                        float(klines_c[len(klines_c) - 2]) > ma_7[len(ma_7) - 2]
+                        and float(klines_o[len(klines_o) - 2]) > ma_7[len(ma_7) - 2]
                     )
                     and (
-                        close_price > ma_25[len(ma_25) - 3]
-                        and open_price > ma_25[len(ma_25) - 3]
+                        float(klines_c[len(klines_c) - 3]) > ma_7[len(ma_7) - 3]
+                        and float(klines_o[len(klines_o) - 3]) > ma_7[len(ma_7) - 3]
                     )
                     and (
-                        close_price > ma_25[len(ma_25) - 4]
-                        and open_price > ma_25[len(ma_25) - 4]
+                        float(klines_c[len(klines_c) - 4]) > ma_7[len(ma_7) - 4]
+                        and float(klines_o[len(klines_o) - 4]) > ma_7[len(ma_7) - 4]
+                    )
+                    and (
+                        float(klines_c[len(klines_c) - 5]) > ma_7[len(ma_7) - 5]
+                        and float(klines_o[len(klines_o) - 5]) > ma_7[len(ma_7) - 5]
+                    )
+                    and (
+                        float(klines_c[len(klines_c) - 2]) > ma_25[len(ma_25) - 2]
+                        and float(klines_o[len(klines_o) - 2]) > ma_25[len(ma_25) - 2]
+                    )
+                    and (
+                        float(klines_c[len(klines_c) - 3]) > ma_25[len(ma_25) - 3]
+                        and float(klines_o[len(klines_o) - 3]) > ma_25[len(ma_25) - 3]
+                    )
+                    and (
+                        float(klines_c[len(klines_c) - 4]) > ma_25[len(ma_25) - 4]
+                        and float(klines_o[len(klines_o) - 4]) > ma_25[len(ma_25) - 4]
                     )
                 ):
                     msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
@@ -316,5 +320,5 @@ class ResearchSignals(BinbotApi):
 
             # If more than half an hour (interval = 30m) has passed
             # Then we should resume sending signals for given symbol
-            if (float(time()) - float(self.last_processed_kline[symbol])) > 120:
+            if (float(time()) - float(self.last_processed_kline[symbol])) > 1200:
                 del self.last_processed_kline[symbol]

@@ -115,12 +115,12 @@ class Autotrade(BinbotApi):
 
         # Dynamic trailling
         # the bigger the candlestick swings the larger should the trailling be to avoid selling too soon
-        self.default_bot["trailling_deviation"] = float(
-            self.settings["trailling_deviation"]
-        ) * (1 + float(self.amplitude))
-        self.default_bot["stop_loss"] = float(
-            self.settings["stop_loss"]
-        ) * (1 + float(self.amplitude))
+        dynamic_td = float(self.settings["trailling_deviation"]) * (
+            1 + float(self.amplitude)
+        )
+        dynamic_sl = float(self.settings["stop_loss"]) * (1 + float(self.amplitude))
+        self.default_bot["trailling_deviation"] = round(dynamic_td * 100) / 100
+        self.default_bot["stop_loss"] = round(dynamic_sl * 100) / 100
 
         # Create bot
         create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
