@@ -234,51 +234,22 @@ class ResearchSignals(BinbotApi):
 
             if symbol not in self.last_processed_kline:
                 if (
-                    float(close_price) > float(open_price)
+                    # It doesn't have to be a red candle for upward trending
+                    # float(close_price) > float(open_price)
                     # Amplitude should help determine degree of reversal of candlesticks
-                    and amplitude > 0.05
+                    1 > amplitude > 0.05
                     # Candlestick current price need to be over MAs
-                    and (
-                        close_price > ma_7[len(ma_7) - 1]
-                        and open_price > ma_7[len(ma_7) - 1]
-                    )
-                    and (
-                        close_price > ma_100[len(ma_100) - 1]
-                        and open_price > ma_100[len(ma_100) - 1]
-                    )
-                    and (
-                        close_price > ma_25[len(ma_25) - 1]
-                        and open_price > ma_25[len(ma_25) - 1]
-                    )
+                    and close_price > ma_7[len(ma_7) - 1]
+                    and close_price > ma_100[len(ma_100) - 1]
+                    and close_price > ma_25[len(ma_25) - 1]
                     # Last few prices also need to surpass candlesticks
-                    and (
-                        float(klines_c[len(klines_c) - 2]) > ma_7[len(ma_7) - 2]
-                        and float(klines_o[len(klines_o) - 2]) > ma_7[len(ma_7) - 2]
-                    )
-                    and (
-                        float(klines_c[len(klines_c) - 3]) > ma_7[len(ma_7) - 3]
-                        and float(klines_o[len(klines_o) - 3]) > ma_7[len(ma_7) - 3]
-                    )
-                    and (
-                        float(klines_c[len(klines_c) - 4]) > ma_7[len(ma_7) - 4]
-                        and float(klines_o[len(klines_o) - 4]) > ma_7[len(ma_7) - 4]
-                    )
-                    and (
-                        float(klines_c[len(klines_c) - 5]) > ma_7[len(ma_7) - 5]
-                        and float(klines_o[len(klines_o) - 5]) > ma_7[len(ma_7) - 5]
-                    )
-                    and (
-                        float(klines_c[len(klines_c) - 2]) > ma_25[len(ma_25) - 2]
-                        and float(klines_o[len(klines_o) - 2]) > ma_25[len(ma_25) - 2]
-                    )
-                    and (
-                        float(klines_c[len(klines_c) - 3]) > ma_25[len(ma_25) - 3]
-                        and float(klines_o[len(klines_o) - 3]) > ma_25[len(ma_25) - 3]
-                    )
-                    and (
-                        float(klines_c[len(klines_c) - 4]) > ma_25[len(ma_25) - 4]
-                        and float(klines_o[len(klines_o) - 4]) > ma_25[len(ma_25) - 4]
-                    )
+                    and float(klines_c[len(klines_c) - 2]) > ma_25[len(ma_25) - 2]
+                    and float(klines_c[len(klines_c) - 3]) > ma_25[len(ma_25) - 3]
+                    and float(klines_c[len(klines_c) - 4]) > ma_25[len(ma_25) - 4]
+                    and float(klines_c[len(klines_c) - 2]) > ma_7[len(ma_7) - 2]
+                    and float(klines_c[len(klines_c) - 3]) > ma_7[len(ma_7) - 3]
+                    and float(klines_c[len(klines_c) - 4]) > ma_7[len(ma_7) - 4]
+                    and float(klines_c[len(klines_c) - 5]) > ma_7[len(ma_7) - 5]
                 ):
                     msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)

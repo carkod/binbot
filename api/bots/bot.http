@@ -6,16 +6,21 @@ GET http://localhost:5000/bot/5f830e226b57f6eba97d93f6 HTTP/1.1
 
 ###
 
-POST http://localhost:5000/bot/ HTTP/1.1
-content-Type: application/json
+POST http://localhost:5000/bot HTTP/1.1
+content-type: "application/json"
 
 {
-    "pair": "BNBBUSD",
-    "status": "inactive",
-    "name": "Test short take profit",
-    "so_size": "0",
-    "take_profit": "0.003",
-    "price_deviation_so": "0"
+  "status": "inactive",
+  "balance_to_use": "GBP",
+  "base_order_size": "0.05155875",
+  "max_so_count": "0",
+  "name": "Default-bot",
+  "pair": "JASMYBNB",
+  "take_profit": "2.4",
+  "trailling": "true",
+  "trailling_deviation": "3",
+  "stop_loss": "3",
+  "candlestick_interval": "1d",
 }
 
 ###

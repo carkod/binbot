@@ -85,8 +85,10 @@ export default async function request(url, verb = "GET", json = undefined) {
     mode: 'cors',
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
     headers: headers,
-    body: json ? JSON.stringify(json) : undefined
   };
+  if (json) {
+    options.body = JSON.stringify(json)
+  }
 
   const response = await fetch(url, options);
   const content = checkStatus(response);

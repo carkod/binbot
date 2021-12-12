@@ -9,6 +9,7 @@ from api.tools.handle_error import (
 )
 from flask import request
 from api.app import create_app
+from decimal import Decimal
 
 
 class Account(BinbotApi):
@@ -198,3 +199,12 @@ class Account(BinbotApi):
             (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
         )
         return min_notional_filter[min_notional_limit]
+
+    def get_qty_precision(self, pair):
+        lot_size_by_symbol = self.lot_size_by_symbol(pair, "stepSize")
+        qty_precision = -(
+            Decimal(str(lot_size_by_symbol))
+            .as_tuple()
+            .exponent
+        )
+        return qty_precision

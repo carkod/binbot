@@ -1,12 +1,16 @@
 from api.apis import BinanceApi
 from api.tools.enum_definitions import EnumDefinitions
 from flask import request
+from api.tools.round_numbers import supress_notation
+from api.account.account import Account
+from api.tools.handle_error import jsonResp_error_message
+from requests.exceptions import HTTPError
 
-
-class BuyOrder(BinanceApi):
+class BuyOrder(Account):
     """
     Binance Post order
     """
+
 
     def __init__(self):
 
@@ -22,6 +26,7 @@ class BuyOrder(BinanceApi):
 
         # Limit order
         order_type = EnumDefinitions.order_types[0]
+        qty_precision = self.get_qty_precision(symbol)
 
         # Get data for a single crypto e.g. BTT in BNB market
         payload = {
@@ -30,9 +35,12 @@ class BuyOrder(BinanceApi):
             "type": order_type,
             "timeInForce": self.timeInForce,
             "price": price,
-            "quantity": qty,
+            "quantity": supress_notation(qty, qty_precision),
         }
-        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        try:
+            data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        except HTTPError as e:
+            return jsonResp_error_message(e)
         return data
 
     def post_order_market(self):

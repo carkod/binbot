@@ -137,7 +137,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     if content and "code" in content:
         if content["code"] == 200:
             return content
-        if content["code"] == -2010 or content["code"] == -1013:
+        if content["code"] == -2010 or content["code"] == -1013 or content["code"] == -2015:
             # Not enough funds. Ignore, send to bot errors
             # Need to be dealt with at higher levels
             if not bot:
