@@ -238,6 +238,8 @@ class ResearchSignals(BinbotApi):
                     # float(close_price) > float(open_price)
                     # Amplitude should help determine degree of reversal of candlesticks
                     1 > amplitude > 0.05
+                    # Temporarily restrict price due to low funds
+                    and float(close_price) < 0.001
                     # Candlestick current price need to be over MAs
                     and close_price > ma_7[len(ma_7) - 1]
                     and close_price > ma_100[len(ma_100) - 1]
