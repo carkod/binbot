@@ -1,34 +1,23 @@
 from apis import BinbotApi
 from datetime import datetime
-
+from requests_html import HTMLSession
 
 class NewTokens(BinbotApi):
     def __init__(self) -> None:
+        self.session = HTMLSession()
         pass
 
-    def check_new_coin(self, coin_trade_time: int):
+    def parse_html(self):
         """
         Calculate when a coin is new
 
         - coinTradeTime - less than a day
         """
-        trade_time_diff = datetime.now() - datetime.fromtimestamp(coin_trade_time)
-        return trade_time_diff.days < 1
+        r = self.session.get("https://www.binance.com/en/support/announcement/c-48")
+        content = r.html.find("#__APP")[0].find("main")[0]
+        find_header = r.html.search('New Cryptocurrency Listing')[0]
+        return r
 
     def run(self):
-        projects = self.launchpool_projects()
-        new_pairs = set(
-            [
-                item["rebaseCoin"] + item["asset"]
-                for item in projects["data"]["completed"]["list"]
-                if self.check_new_coin(item["coinTradeTime"])
-            ]
-        )
-
-        # Use this endpoint as it has less weight
-        ticker_price_data = self.ticker_price()
-        list_current_pairs = set([item["symbol"] for item in ticker_price_data])
-
-        list_pairs = list(new_pairs - list_current_pairs)
-
-        return data
+        self.parse_html()
+        pass
