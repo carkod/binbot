@@ -49,9 +49,12 @@ class Account(BinbotApi):
         url = self.ticker_price
         params = {"symbol": symbol}
         res = requests.get(url=url, params=params)
-        handle_error(res)
-        data = res.json()
-        return data["price"]
+        data = handle_binance_errors(res)
+        try:
+            price = data["price"]
+        except KeyError:
+            print(symbol)
+        return price
 
     def ticker_24(self):
         url = self.ticker24_url

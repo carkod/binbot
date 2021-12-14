@@ -199,36 +199,17 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
+            print(f"Signal {symbol}")
             data = self._get_candlestick(symbol, self.interval, stats=True)
             if not data or len(data["trace"][1]["y"]) <= 100:
-                projects = self.launchpool_projects()
-                new_coins = self.new_tokens(projects)
-                if symbol in new_coins:
-                    project = next(
-                        (
-                            project
-                            for project in projects["data"]["completed"]["list"]
-                            if (project["rebaseCoin"] + project["asset"]) == symbol
-                        ),
-                        None,
-                    )
+                msg = f"Not enough data to do research on {symbol}"
+                print(msg)
+                self.blacklist_coin(symbol, msg)
 
-                    msg = (
-                        f"<strong>New token</strong> listed {symbol} \n"
-                        f"- Current price {close_price} \n"
-                        f"- Annual Yield {project['annualRate'] * 100}% \n"
-                        f"- Total amount {project['rebateTotalAmount'] * 100}% \n"
-                        f"- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-                    )
-                else:
-                    msg = f"Not enough data to do research on {symbol}"
-                    print(msg)
-
-            klines_c = data["trace"][0]["close"]
-            klines_o = data["trace"][0]["open"]
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
             ma_7 = data["trace"][3]["y"]
+            # Average amplitude
             amplitude = float(data["amplitude"])
             msg = None
 
@@ -238,13 +219,6 @@ class ResearchSignals(BinbotApi):
                     float(close_price) > float(open_price)
                     # Amplitude should help determine degree of reversal of candlesticks
                     and amplitude > 0.05
-                    # Temporarily restrict price due to low funds
-                    and float(close_price) < 0.001
-                    # Candlestick current price need to be over MAs
-                    and close_price > ma_7[len(ma_7) - 1]
-                    and close_price > ma_100[len(ma_100) - 1]
-                    and close_price > ma_25[len(ma_25) - 1]
-                    # Current candlestick must be upward trending
                     and (
                         close_price > ma_7[len(ma_7) - 1]
                         and open_price > ma_7[len(ma_7) - 1]
@@ -301,6 +275,10 @@ class ResearchSignals(BinbotApi):
                     # Check balance to avoid failed autotrades
                     check_balance_res = requests.get(url=self.bb_balance_estimate_url)
                     balances = handle_binance_errors(check_balance_res)
+                    if "error" in balances and balances["error"] == 1:
+                        print(balances["message"])
+                        return
+
                     balance_check = int(balances["data"]["total_fiat"])
 
                     self.load_data()
@@ -322,7 +300,7 @@ class ResearchSignals(BinbotApi):
                         autotrade = Autotrade(symbol, self.settings, amplitude)
                         autotrade.run()
 
-                self.last_processed_kline[symbol] = time()
+            self.last_processed_kline[symbol] = time()
 
             # If more than half an hour (interval = 30m) has passed
             # Then we should resume sending signals for given symbol

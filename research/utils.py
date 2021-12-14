@@ -36,11 +36,8 @@ def handle_binance_errors(response: Response):
 
     """
     # Reduce speed of requests to avoid rate limits
-    sleep(3)
-    try:
-        content = response.json()
-    except JSONDecodeError as e:
-        print(f"response: {response.url}")
+    sleep(3) 
+    content = response.json()
 
     if 400 <= response.status_code < 500:
         if response.status_code == 418:
@@ -55,7 +52,6 @@ def handle_binance_errors(response: Response):
         print("Request weight limit prevention pause, waiting 1 min")
         sleep(120)
 
-    content = response.json()
     try:
         if content and "code" in content:
             if content["code"] == 200 or content["code"] == "000000":

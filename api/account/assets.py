@@ -271,8 +271,13 @@ class Assets(Account):
         total_fiat = 0
         rate = 0
         for b in balances["data"]:
-            # Only tether coins for hedging
-            if b["asset"] in ["USD", "BTC", "BNB", "ETH", "XRP"]:
+            # Transform tethers/stablecoins
+            if "USD" in b["asset"]:
+                qty = self._check_locked(b)
+                rate = self.get_ticker_price(f'{fiat}{b["asset"]}')
+                total_fiat += float(qty) * float(rate)
+            # Transform market assets/alt coins
+            elif b["asset"] in ["BTC", "BNB", "ETH", "XRP"]:
                 qty = self._check_locked(b)
                 rate = self.get_ticker_price(f'{b["asset"]}{fiat}')
                 total_fiat += float(qty) * float(rate)
