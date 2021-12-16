@@ -103,7 +103,7 @@ class BotSchema:
             del data["balance_usage_size"]
         
         if "base_order_size" in data:
-            if not isinstance(data.get("base_order_size"), str):
+            if not isinstance(data.get("base_order_size"), (int, float)):
                 try:
                     if float(data.get("base_order_size")) >= 0.0001:
                         self.base_order_size = data.get("base_order_size")

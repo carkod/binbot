@@ -212,6 +212,7 @@ class BotForm extends React.Component {
   requiredinValidation = () => {
     const {
       pair,
+      base_order_size,
       take_profit,
       max_so_count,
       so_size,
@@ -228,6 +229,13 @@ class BotForm extends React.Component {
       return false;
     } else {
       this.setState({ pairError: false });
+    }
+
+    if (checkValue(base_order_size)) {
+      this.setState({ baseOrderSizeError: true, formIsValid: false });
+      return false;
+    } else {
+      this.setState({ baseOrderSizeError: false });
     }
 
     if (checkValue(take_profit) && checkBalance(take_profit)) {
@@ -809,6 +817,11 @@ class BotForm extends React.Component {
                             {this.state.pairError && <li>Pair</li>}
                             {this.state.baseOrderSizeError && (
                               <li>Base order size</li>
+                            )}
+                            {this.state.baseOrderSizeError && (
+                              <>
+                                <li>Base order size (How much to trade?) must be filled</li>
+                              </>
                             )}
                             {this.state.soSizeError && (
                               <>
