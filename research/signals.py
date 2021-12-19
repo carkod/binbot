@@ -218,7 +218,6 @@ class ResearchSignals(BinbotApi):
                     # It doesn't have to be a red candle for upward trending
                     float(close_price) > float(open_price)
                     # Amplitude should help determine degree of reversal of candlesticks
-                    and amplitude > 0.05
                     and (
                         close_price > ma_7[len(ma_7) - 1]
                         and open_price > ma_7[len(ma_7) - 1]
@@ -281,7 +280,6 @@ class ResearchSignals(BinbotApi):
 
                     balance_check = int(balances["data"]["total_fiat"])
 
-                    self.load_data()
                     # If dashboard has changed any self.settings
                     # Need to reload websocket
                     if (
