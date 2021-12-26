@@ -194,7 +194,16 @@ class ResearchSignals(BinbotApi):
         if datetime.now().time().hour == 0 and datetime.now().time().minute == 0:
             sleep(3600)
 
-        if "k" in result and "s" in result["k"]:
+        # if autrotrade enabled and it's not an already active bot
+        # this avoids running too many useless bots
+        # Temporarily restricting to 1 bot for low funds
+        bots_res = requests.get(
+            url=self.bb_bot_url, params={"status": "active"}
+        )
+        active_bots = handle_binance_errors(bots_res)["data"]
+        active_symbols = [bot["pair"] for bot in active_bots]
+
+        if "k" in result and "s" in result["k"] and len(active_symbols) == 0:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
@@ -217,59 +226,31 @@ class ResearchSignals(BinbotApi):
                 if (
                     # It doesn't have to be a red candle for upward trending
                     float(close_price) > float(open_price)
-                    # Amplitude should help determine degree of reversal of candlesticks
-                    and (
-                        close_price > ma_7[len(ma_7) - 1]
-                        and open_price > ma_7[len(ma_7) - 1]
-                    )
-                    and (
-                        close_price > ma_7[len(ma_7) - 2]
-                        and open_price > ma_7[len(ma_7) - 2]
-                    )
-                    and (
-                        close_price > ma_7[len(ma_7) - 3]
-                        and open_price > ma_7[len(ma_7) - 3]
-                    )
-                    and (
-                        close_price > ma_7[len(ma_7) - 4]
-                        and open_price > ma_7[len(ma_7) - 4]
-                    )
-                    and (
-                        close_price > ma_7[len(ma_7) - 5]
-                        and open_price > ma_7[len(ma_7) - 5]
-                    )
-                    and (
-                        close_price > ma_100[len(ma_100) - 1]
-                        and open_price > ma_100[len(ma_100) - 1]
-                    )
-                    and (
-                        close_price > ma_25[len(ma_25) - 1]
-                        and open_price > ma_25[len(ma_25) - 1]
-                    )
-                    and (
-                        close_price > ma_25[len(ma_25) - 2]
-                        and open_price > ma_25[len(ma_25) - 2]
-                    )
-                    and (
-                        close_price > ma_25[len(ma_25) - 3]
-                        and open_price > ma_25[len(ma_25) - 3]
-                    )
-                    and (
-                        close_price > ma_25[len(ma_25) - 4]
-                        and open_price > ma_25[len(ma_25) - 4]
-                    )
+                    and amplitude > 0.02
+                    and close_price > ma_7[len(ma_7) - 1]
+                    and open_price > ma_7[len(ma_7) - 1]
+                    and close_price > ma_7[len(ma_7) - 2]
+                    and open_price > ma_7[len(ma_7) - 2]
+                    and close_price > ma_7[len(ma_7) - 3]
+                    and open_price > ma_7[len(ma_7) - 3]
+                    and close_price > ma_7[len(ma_7) - 4]
+                    and open_price > ma_7[len(ma_7) - 4]
+                    and close_price > ma_7[len(ma_7) - 5]
+                    and open_price > ma_7[len(ma_7) - 5]
+                    and close_price > ma_100[len(ma_100) - 1]
+                    and open_price > ma_100[len(ma_100) - 1]
+                    and close_price > ma_25[len(ma_25) - 1]
+                    and open_price > ma_25[len(ma_25) - 1]
+                    and close_price > ma_25[len(ma_25) - 2]
+                    and open_price > ma_25[len(ma_25) - 2]
+                    and close_price > ma_25[len(ma_25) - 3]
+                    and open_price > ma_25[len(ma_25) - 3]
+                    and close_price > ma_25[len(ma_25) - 4]
+                    and open_price > ma_25[len(ma_25) - 4]
                 ):
                     msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)
                     print(msg)
-
-                    # if autrotrade enabled and it's not an already active bot
-                    # this avoids running too many useless bots
-                    bots_res = requests.get(
-                        url=self.bb_bot_url, params={"status": "active"}
-                    )
-                    active_bots = handle_binance_errors(bots_res)["data"]
-                    active_symbols = [bot["pair"] for bot in active_bots]
 
                     # Check balance to avoid failed autotrades
                     check_balance_res = requests.get(url=self.bb_balance_estimate_url)
@@ -292,13 +273,13 @@ class ResearchSignals(BinbotApi):
 
                     if (
                         int(self.settings["autotrade"]) == 1
-                        and symbol not in active_symbols
+                        # Temporary restriction for few funds
                         and balance_check > 0
                     ):
                         autotrade = Autotrade(symbol, self.settings, amplitude)
                         autotrade.run()
 
-            self.last_processed_kline[symbol] = time()
+                self.last_processed_kline[symbol] = time()
 
             # If more than half an hour (interval = 30m) has passed
             # Then we should resume sending signals for given symbol

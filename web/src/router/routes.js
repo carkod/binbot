@@ -2,7 +2,6 @@ import Dashboard from "../pages/dashboard/Dashboard";
 import Registration from "../containers/registration/Registration";
 import BotForm from "../pages/bots/BotForm";
 import Bots from "../pages/bots/Bots";
-import Orders from "../pages/orders/Orders";
 import Research from "../pages/research/Research";
 import Login from "../containers/login/Login";
 import Users from "../pages/users/Users";
@@ -54,15 +53,6 @@ const routes = [
     component: BotForm,
     layout: "/admin",
     nav: false,
-    private: true,
-  },
-  {
-    path: "/orders",
-    name: "Orders",
-    icon: "nc-icon nc-briefcase-24",
-    component: Orders,
-    layout: "/admin",
-    nav: true,
     private: true,
   },
   {

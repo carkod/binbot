@@ -15,12 +15,6 @@ import watchGetBotApi, {
   watchGetCandlestick
 } from "./pages/bots/saga";
 import {
-  watchDeleteOpenOrders,
-  watchGetOrders,
-  watchOpenOrders,
-  watchPollOrders
-} from "./pages/orders/saga";
-import {
   watchAddBlacklistApi,
   watchDeleteBlackListApi,
   watchEditSettingsApi,
@@ -43,10 +37,6 @@ export default function* rootSaga() {
     watchGetBot(),
     watchcloseBotApi(),
     watchGetCandlestick(),
-    watchGetOrders(),
-    watchOpenOrders(),
-    watchPollOrders(),
-    watchDeleteOpenOrders(),
     watchActivateBot(),
     watchDeactivateBot(),
     watchResearchApi(),

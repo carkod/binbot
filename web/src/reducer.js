@@ -7,7 +7,6 @@ import {
   botReducer, candlestickReducer, editBotReducer, getSingleBotReducer, symbolInfoReducer,
   symbolReducer
 } from "./pages/bots/reducer";
-import { openOrdersReducer, ordersReducer } from "./pages/orders/reducer";
 import { historicalResearchReducer, researchReducer, blacklistReducer, settingsReducer } from "./pages/research/reducer";
 import {
   balanceRawReducer, balanceReducer, estimateReducer
@@ -25,8 +24,6 @@ const rootReducer = combineReducers({
   getSingleBotReducer,
   editBotReducer,
   candlestickReducer,
-  ordersReducer,
-  openOrdersReducer,
   toastr: toastrReducer,
   loadingReducer,
   researchReducer,
