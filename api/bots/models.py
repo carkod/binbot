@@ -226,7 +226,12 @@ class Bot(Account):
                             method="POST", url=self.bb_sell_order_url, json=order
                         )
                     except QuantityTooLow:
-                        return resp
+                        bot["status"] = "closed"
+                        try:
+                            BotSchema().update(bot)
+                        except Exception as e:
+                            resp = jsonResp_error_message(e)
+                    return resp
                 else:
                     order = {
                         "pair": pair,
@@ -237,6 +242,11 @@ class Bot(Account):
                             method="POST", url=self.bb_sell_market_order_url, json=order
                         )
                     except QuantityTooLow:
+                        bot["status"] = "closed"
+                        try:
+                            BotSchema().update(bot)
+                        except Exception as e:
+                            resp = jsonResp_error_message(e)
                         return resp
 
                 # Enforce that deactivation occurs
@@ -261,7 +271,6 @@ class Bot(Account):
                         },
                     )
                     self.deactivate()
-                    
 
                 deactivation_order = {
                     "order_id": order_res["orderId"],

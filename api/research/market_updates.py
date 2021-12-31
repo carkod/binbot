@@ -74,7 +74,6 @@ class MarketUpdates(Account):
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        print("Below stack size: ", len(inspect.stack(0)))
         if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
@@ -92,13 +91,10 @@ class MarketUpdates(Account):
                 )
                 print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
                 # Stop loss
-                if "stop_loss" in bot and float(
-                    bot["stop_loss"]
-                ) > float(close_price):
+                if float(current_bot["stop_loss"]) > 0 and "stop_loss" in current_bot["deal"] and float(current_bot["deal"]["stop_loss"]) > float(close_price):
                     deal = DealUpdates(bot)
-                    res = deal.execute_stop_loss(close_price)
-                    if res == "completed":
-                        self.start_stream(ws)
+                    deal.execute_stop_loss(close_price)
+                    pass
 
                 # Take profit trailling
                 if bot["trailling"] == "true":

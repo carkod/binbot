@@ -63,11 +63,11 @@ class BotSchema:
         try:
             self.pair = data.get("pair")
             check_cannibalism = current_app.db.bots.find_one({"pair": self.pair, "status": "active"})
-            if check_cannibalism:
+            if check_cannibalism and not data.get("_id"):
                 raise BotSchemaValidation(f"Bot canibalism: there is an active bot trading with this pair")
             else:
                 del data["pair"]
-        except Exception:
+        except Exception as e:
             raise BotSchemaValidation(f"pair is required")
         
         if "status" in data:
@@ -192,16 +192,25 @@ class BotSchema:
 
             del data["safety_orders"]
         
+        if "deal" in data:
+            self.deal = data.get("deal")
+            del data["deal"]
+        
+        if "orders" in data:
+            self.orders = data.get("orders")
+            del data["orders"]
+        
         if len(data) > 0:
             for item in data:
-                print(f"{item} was not found. If this is a new field, please add it to the BotSchema. This field will not be inserted.")
+                if item != "_id":
+                    print(f"Warning: {item} is not in the schema. If this is a new field, please add it to the BotSchema. This field will not be inserted.")
 
         return self.__dict__
 
     def update(self, data):
         """Insert logic"""
         validated_data = self.validate_model(data)
-        if "_id" in validated_data:
+        if "_id" in data:
             result = current_app.db.bots.update_one(
                 {"_id": data["_id"]}, {"$set": validated_data}, True
             )
