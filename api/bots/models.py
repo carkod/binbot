@@ -238,10 +238,10 @@ class Bot(Account):
                         )
                     except QuantityTooLow:
                         return resp
-                
+
                 # Enforce that deactivation occurs
                 # If it doesn't, redo
-                if order_res["status"] == "NEW":
+                if "status" not in order_res and order_res["status"] == "NEW":
                     deactivation_order = {
                         "order_id": order_res["orderId"],
                         "deal_type": "deactivate_order",

@@ -115,12 +115,14 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     try:
         response.json()
     except JSONDecodeError as e:
-        print(e)
-    # Show error message for bad requests
-    if response.status_code == 400:
         print(response.json())
-        raise HTTPError(response.json())
     
+    if response.status_code == 404:
+        raise HTTPError()
+    # Show error message for bad requests
+    if response.status_code >= 400:
+        return response.json()
+
     if response.status_code == 429:
         print("Request weight limit hit, ban will come soon, waiting 1 hour")
         sleep(3600)
@@ -134,7 +136,10 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         sleep(120)
 
     content = response.json()
+
     if content and "code" in content:
+        if content["code"] == -1013:
+            raise QuantityTooLow()
         if content["code"] == 200:
             return content
         if content["code"] == -2010 or content["code"] == -1013 or content["code"] == -2015:

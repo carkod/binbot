@@ -99,12 +99,17 @@ class Orders(Account):
             resp = jsonResp_error_message("Missing symbol parameter")
         if not orderId:
             resp = jsonResp_error_message("Missing orderid parameter")
-        data = self.signed_request(url=f'{self.order_url}/{symbol}/{orderId}', method="DELETE")
 
-        if data and len(data) > 0:
+        payload = {
+            "symbol": symbol,
+            "orderId": orderId,
+        }
+        try:
+            data = self.signed_request(url=f'{self.order_url}', method="DELETE", payload=payload)
             resp = jsonResp({"message": "Order deleted!", "data": data})
-        else:
-            resp = jsonResp_message("Failed to delete order")
+        except Exception as e:
+            resp = jsonResp_error_message(e)
+
         return resp
 
     def delete_all_orders(self):

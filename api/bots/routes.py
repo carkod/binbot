@@ -41,9 +41,9 @@ def activate(botId):
     return Bot().activate()
 
 
-@bot_blueprint.route("/bot/close/<id>", methods=["DELETE"])
+@bot_blueprint.route("/bot/deactivate/<id>", methods=["DELETE"])
 @auth.login_required
-def close(id):
+def deactivate(id):
     """
     Deactivation means closing all deals and selling to GBP
     Otherwise losses will be incurred
