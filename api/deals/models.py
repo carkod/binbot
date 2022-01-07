@@ -261,7 +261,7 @@ class Deal(Account):
             "buy_timestamp": res["transactTime"],
             "buy_price": res["price"],
             "buy_total_qty": res["origQty"],
-            "current_price": self.get_ticker_price(res["symbol"]),
+            "current_price": res["price"],
             "take_profit_price": tp_price,
             "safety_order_prices": so_prices,
         }

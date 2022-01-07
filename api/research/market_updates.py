@@ -1,9 +1,10 @@
+import inspect
 import json
+
 from api.account.account import Account
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
 from websocket import WebSocketApp
-import inspect
 
 
 class MarketUpdates(Account):
@@ -91,7 +92,11 @@ class MarketUpdates(Account):
                 )
                 print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
                 # Stop loss
-                if float(current_bot["stop_loss"]) > 0 and "stop_loss" in current_bot["deal"] and float(current_bot["deal"]["stop_loss"]) > float(close_price):
+                if (
+                    float(current_bot["stop_loss"]) > 0
+                    and "stop_loss" in current_bot["deal"]
+                    and float(current_bot["deal"]["stop_loss"]) > float(close_price)
+                ):
                     deal = DealUpdates(bot)
                     deal.execute_stop_loss(close_price)
                     pass
@@ -106,11 +111,19 @@ class MarketUpdates(Account):
                         current_take_profit_price = float(bot["deal"]["buy_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
                         )
+                        print(
+                            f"{symbol} NEW current_take_profit_price: {current_take_profit_price}",
+                            f'buy_price: {bot["deal"]["buy_price"]}',
+                        )
                     else:
                         # Update trailling profit after first time
                         current_take_profit_price = float(
                             bot["deal"]["trailling_profit"]
                         ) * (1 + (float(bot["take_profit"]) / 100))
+                        print(
+                            f"{symbol} UPDATED current_take_profit_price: {current_take_profit_price}",
+                            f'trailling_profit: {bot["deal"]["trailling_profit"]}',
+                        )
 
                     if float(close_price) >= current_take_profit_price:
                         new_take_profit = current_take_profit_price * (
@@ -130,6 +143,9 @@ class MarketUpdates(Account):
                         updated_bot = self.app.db.bots.find_one_and_update(
                             {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
                         )
+                        print(
+                            f'{symbol} Updated trailling_stop_loss_price: {bot["deal"]["trailling_stop_loss_price"]}'
+                        )
                         if not updated_bot:
                             self.app.db.bots.find_one_and_update(
                                 {"pair": symbol},
@@ -141,10 +157,7 @@ class MarketUpdates(Account):
                             )
                             # restart scanner
                             self.start_stream(ws)
-                        else:
-                            print(
-                                f"{symbol} Trailling updated! {current_take_profit_price}"
-                            )
+
                     # Sell after hitting trailling stop_loss
                     if "trailling_stop_loss_price" in bot["deal"]:
                         price = bot["deal"]["trailling_stop_loss_price"]
