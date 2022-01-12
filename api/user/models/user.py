@@ -2,10 +2,10 @@ from flask import request, current_app as app
 from passlib.hash import pbkdf2_sha256
 from jose import jwt
 import os
-from api.tools.dates import nowDatetimeUTC
 from api.tools.handle_error import jsonResp_error_message, jsonResp_message, jsonResp
 from bson.objectid import ObjectId
-from api.auth import encodeAccessToken, encodeRefreshToken
+from api.auth import encodeAccessToken
+from datetime import datetime
 
 
 class User:
@@ -50,7 +50,7 @@ class User:
                 {
                     "$set": {
                         "access_token": access_token,
-                        "last_login": nowDatetimeUTC(),
+                        "last_login": datetime.now(),
                     }
                 },
             )

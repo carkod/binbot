@@ -1,4 +1,3 @@
-import inspect
 import json
 
 from api.account.account import Account
@@ -99,7 +98,7 @@ class MarketUpdates(Account):
                 ):
                     deal = DealUpdates(bot)
                     deal.execute_stop_loss(close_price)
-                    pass
+                    return
 
                 # Take profit trailling
                 if bot["trailling"] == "true":
@@ -125,7 +124,11 @@ class MarketUpdates(Account):
                             f'trailling_profit: {bot["deal"]["trailling_profit"]}',
                         )
 
-                    if float(close_price) >= current_take_profit_price:
+                    print(f"Is {float(close_price)} >= {float(current_take_profit_price)}? {float(close_price) >= float(current_take_profit_price)}")
+                    if float(close_price) >= float(current_take_profit_price):
+                        print(
+                            f"{symbol} close_price bigger than current_take_profit_price",
+                        )
                         new_take_profit = current_take_profit_price * (
                             1 + (float(bot["take_profit"]) / 100)
                         )

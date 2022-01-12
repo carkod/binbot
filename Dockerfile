@@ -5,7 +5,7 @@ COPY ./nginx.conf /etc/nginx/sites-enabled/default
 COPY Pipfile Pipfile.lock start ./
 RUN rm -rf .env.local
 RUN chmod +x start
-RUN pip install --upgrade pip && pip install pipenv gunicorn
+RUN pip install --upgrade pip && pip install pipenv gunicorn backports.zoneinfo pytz_deprecation_shim
 RUN pipenv install --system --deploy --ignore-pipfile
 COPY api api
 CMD ["./start"]
