@@ -181,6 +181,7 @@ class BotForm extends React.Component {
     if (
       !checkValue(this.props.candlestick) &&
       this.props.candlestick !== p.candlestick &&
+      this.props.candlestick.error !== 1 &&
       !checkValue(this.props.bot)
     ) {
       const { trace } = this.props.candlestick;
@@ -614,7 +615,7 @@ class BotForm extends React.Component {
                 </div>
               </CardHeader>
               <CardBody>
-                {this.props.candlestick && !checkValue(this.state.pair) ? (
+                {this.props.candlestick && this.props.candlestick.error !== 1 && !checkValue(this.state.pair) ? (
                   <Candlestick
                     data={this.props.candlestick}
                     bot={this.state}

@@ -7,14 +7,14 @@ from new_tokens import NewTokens
 from signals import ResearchSignals
 import time
 
-if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
+if os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()
     nt = NewTokens()
     scheduler.add_job(
         func=nt.run,
         timezone="Europe/London",
         trigger="interval",
-        hours=3,
+        hours=6,
     )
     scheduler.start()
 

@@ -411,9 +411,13 @@ export function loadCandlestick(pair, interval) {
 }
 
 export function loadCandlestickSucceeded(payload) {
+  if (payload.error === 1) {
+    addNotification("Some errors encountered", payload.message, "error");
+  } else {
+    addNotification("SUCCESS!", payload.message, "success");
+  }
   return {
     type: LOAD_CANDLESTICK_SUCCESS,
-    isError: false,
     payload,
   };
 }
