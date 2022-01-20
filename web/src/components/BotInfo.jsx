@@ -1,7 +1,7 @@
 import React from "react";
-import { Card, CardBody, CardHeader, CardTitle, Table } from "reactstrap";
+import { Card, CardBody, CardHeader, CardTitle, ListGroup, ListGroupItem, Table } from "reactstrap";
 import { checkValue } from "../validations";
-  
+import moment from "moment";  
 
 export default function BotInfo({ bot }) {
   return (
@@ -48,22 +48,26 @@ export default function BotInfo({ bot }) {
         </Table>
         <hr />
         {!checkValue(bot.deal) && !checkValue(bot.deal.buy_price) && (
-          <>
+          <div className="col-6">
           <h5>Deal information (representated in the graph)</h5>
-          <ul>
+          <ListGroup>
             {Object.keys(bot.deal).map((k, i) => {
               if (typeof(bot.deal[k]) !== "object") {
-                return <li key={i}><strong>{k}</strong>: {bot.deal[k]}</li>
+                let dealData = bot.deal[k];
+                if (k === "buy_timestamp" || k === "sell_timestamp") {
+                  dealData = moment(bot.deal[k]).format("D, MMM, hh:mm")
+                }
+                return <ListGroupItem key={i} className="d-flex justify-content-between align-items-start"><strong>{k}</strong> {dealData}</ListGroupItem>
               } else {
                 return (
-                  <ul key={i}>
-                    {Object.keys(bot.deal[k]).map((l,j) => <li key={j}>{l}:{bot.deal[k][l]}</li>)}
-                  </ul>
+                  <ListGroup key={i}>
+                    {Object.keys(bot.deal[k]).map((l,j) => <ListGroupItem key={j}>{l}:{bot.deal[k][l]}</ListGroupItem>)}
+                  </ListGroup>
                 )
               }
             } )}
-          </ul>
-          </>
+          </ListGroup>
+          </div>
         )}
       </CardBody>
     </Card>

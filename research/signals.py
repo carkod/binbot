@@ -226,11 +226,13 @@ class ResearchSignals(BinbotApi):
                 if (
                     # It doesn't have to be a red candle for upward trending
                     float(close_price) > float(open_price)
-                    and amplitude > 0.05
+                    and amplitude > 0.08
                     and close_price > ma_7[len(ma_7) - 1]
                     and open_price > ma_7[len(ma_7) - 1]
+                    and ma_7[len(ma_7) - 1] > ma_7[len(ma_7) - 2]
                     and close_price > ma_7[len(ma_7) - 2]
                     and open_price > ma_7[len(ma_7) - 2]
+                    and ma_7[len(ma_7) - 2] > ma_7[len(ma_7) - 3]
                     and close_price > ma_7[len(ma_7) - 3]
                     and open_price > ma_7[len(ma_7) - 3]
                     and close_price > ma_7[len(ma_7) - 4]
