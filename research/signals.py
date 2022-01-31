@@ -235,20 +235,12 @@ class ResearchSignals(BinbotApi):
                     and ma_7[len(ma_7) - 2] > ma_7[len(ma_7) - 3]
                     and close_price > ma_7[len(ma_7) - 3]
                     and open_price > ma_7[len(ma_7) - 3]
-                    and close_price > ma_7[len(ma_7) - 4]
-                    and open_price > ma_7[len(ma_7) - 4]
-                    and close_price > ma_7[len(ma_7) - 5]
-                    and open_price > ma_7[len(ma_7) - 5]
                     and close_price > ma_100[len(ma_100) - 1]
                     and open_price > ma_100[len(ma_100) - 1]
                     and close_price > ma_25[len(ma_25) - 1]
                     and open_price > ma_25[len(ma_25) - 1]
                     and close_price > ma_25[len(ma_25) - 2]
                     and open_price > ma_25[len(ma_25) - 2]
-                    and close_price > ma_25[len(ma_25) - 3]
-                    and open_price > ma_25[len(ma_25) - 3]
-                    and close_price > ma_25[len(ma_25) - 4]
-                    and open_price > ma_25[len(ma_25) - 4]
                 ):
                     msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)
@@ -283,7 +275,7 @@ class ResearchSignals(BinbotApi):
 
                 self.last_processed_kline[symbol] = time()
 
-            # If more than half an hour (interval = 30m) has passed
+            # If more than 6 hours passed has passed
             # Then we should resume sending signals for given symbol
-            if (float(time()) - float(self.last_processed_kline[symbol])) > 1200:
+            if (float(time()) - float(self.last_processed_kline[symbol])) > 21600:
                 del self.last_processed_kline[symbol]
