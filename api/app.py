@@ -19,5 +19,4 @@ def create_app():
         password=os.getenv("MONGO_AUTH_PASSWORD"),
     )
     app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
-
     return app

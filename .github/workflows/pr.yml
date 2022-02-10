@@ -72,13 +72,18 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           name: carloswufei/binbot
           tags: "latest"
+      - name: Invoke deployment hook
+        uses: distributhor/workflow-webhook@v2
+        env:
+          webhook_url: ${{ secrets.WEBHOOK_URL }}
+          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
 
   push_research_to_registry:
     name: binbot_research docker image
     runs-on: ubuntu-latest
     services:
       mongodb:
-        image: mongo
+        image: mongo:latest
         ports:
           - 27018:27017
       api:
