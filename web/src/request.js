@@ -94,15 +94,16 @@ export default async function request(url, verb = "GET", json = undefined) {
   let options = {
     method: verb,
     mode: 'cors',
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+    cache: "no-cache",
     headers: headers,
   };
   if (json) {
     options.body = JSON.stringify(json)
   }
-  const baseUrl = buildBackUrl();
 
-  const response = await fetch(baseUrl + url, options);
+  const baseUrl = buildBackUrl();
+  url = url instanceof URL ? url : baseUrl + url;
+  const response = await fetch(url, options);
   const content = checkStatus(response);
   return parseJSON(content);
 }

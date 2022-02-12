@@ -39,7 +39,6 @@ export const EDIT_SETTINGS_ERROR = "EDIT_SETTINGS_ERROR";
 export function getResearchData(params) {
   return {
     type: GET_RESEARCH,
-    
     isError: false,
     params
   };
@@ -69,52 +68,6 @@ export function getResearchSucceeded(res) {
   }
   return {
     type: GET_RESEARCH_SUCCESS,
-    isError: false,
-    data: res.data,
-  };
-}
-
-
-
-/**
- * Dispatched when the repositories are loaded by the request saga
- *
- * @param  {array} repos The repository data
- * @param  {string} username The current username
- * @return {object} An action object with a type of BOT_SUCCESS passing the repos
- */
- export function getHistoricalResearchData(params) {
-  return {
-    type: GET_HISTORICAL_RESEARCH,
-    
-    isError: false,
-    params
-  };
-}
-
-/**
- * Dispatched when loading the repositories fails
- *
- * @param  {object} error The error
- * @return {object} An action object with a type of BOT_ERROR passing the error
- */
-export function getHistoricalResearchDataFailed(error) {
-  addNotification("FAILED!", error.message, "error");
-  return {
-    type: GET_HISTORICAL_RESEARCH_ERROR,
-    
-    isError: true,
-    data: error,
-    message: error.message,
-  };
-}
-
-export function getHistoricalResearchDataSucceeded(res) {
-  if (res.message) {
-    addNotification("SUCCESS!", res.message, "error");
-  }
-  return {
-    type: GET_HISTORICAL_RESEARCH_SUCCESS,
     isError: false,
     data: res.data,
   };

@@ -7,7 +7,6 @@ import { addNotification, checkValue } from "../../validations";
 import { loadCandlestick, getSymbols } from "../bots/actions";
 import { getBalanceRaw } from "../../state/balances/actions";
 import {
-  getHistoricalResearchData,
   getResearchData,
   getBlacklist,
   getSettings,
@@ -342,7 +341,6 @@ const mapStateToProps = (state) => {
 export default connect(mapStateToProps, {
   getResearchData,
   loadCandlestick,
-  getHistoricalResearchData,
   getSymbols,
   getBlacklist,
   addBlackList,
