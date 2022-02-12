@@ -64,6 +64,17 @@ export function removeToken() {
   localStorage.removeItem(tokenName);
 }
 
+export function buildBackUrl() {
+  let base = window.location.hostname.split(".")
+  if (base.includes("localhost")) {
+    base = ["localhost:5000"]
+  } else {
+    base.unshift("api")
+  }
+  base = `${window.location.protocol}//${base.join(".")}`;
+  return base
+}
+
 /**
  * Requests a URL, returning a promise
  *
@@ -89,8 +100,9 @@ export default async function request(url, verb = "GET", json = undefined) {
   if (json) {
     options.body = JSON.stringify(json)
   }
+  const baseUrl = buildBackUrl();
 
-  const response = await fetch(url, options);
+  const response = await fetch(baseUrl + url, options);
   const content = checkStatus(response);
   return parseJSON(content);
 }
