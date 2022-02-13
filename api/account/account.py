@@ -1,11 +1,18 @@
 import requests
 from api.apis import BinbotApi
-from api.tools.handle_error import handle_error, handle_binance_errors, jsonResp, jsonResp_message, jsonResp_error_message
+from api.tools.handle_error import (
+    handle_error,
+    handle_binance_errors,
+    jsonResp,
+    jsonResp_message,
+    jsonResp_error_message,
+)
 from flask import request
 from api.app import create_app
+from decimal import Decimal
+
 
 class Account(BinbotApi):
-
     def __init__(self):
         self.app = create_app()
         pass
@@ -17,7 +24,7 @@ class Account(BinbotApi):
         params = {}
         if symbol:
             params["symbol"] = symbol
-        exchange_info_res = requests.get(url=f'{self.exchangeinfo_url}', params=params)
+        exchange_info_res = requests.get(url=f"{self.exchangeinfo_url}", params=params)
         exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info
 
@@ -42,9 +49,12 @@ class Account(BinbotApi):
         url = self.ticker_price
         params = {"symbol": symbol}
         res = requests.get(url=url, params=params)
-        handle_error(res)
-        data = res.json()
-        return data["price"]
+        data = handle_binance_errors(res)
+        try:
+            price = data["price"]
+        except KeyError:
+            print(symbol)
+        return price
 
     def ticker_24(self):
         url = self.ticker24_url
@@ -71,9 +81,7 @@ class Account(BinbotApi):
         e.g. BNBBTC: base asset = BNB
         """
         symbols = self._exchange_info(symbol)
-        base_asset = symbols["symbols"][0][
-            "baseAsset"
-        ]
+        base_asset = symbols["symbols"][0]["baseAsset"]
         return base_asset
 
     def find_base_asset_json(self, symbol):
@@ -85,9 +93,13 @@ class Account(BinbotApi):
         return jsonResp({"data": data})
 
     def find_market(self, quote):
-        """ API Weight 10 """
+        """API Weight 10"""
         symbols = self._exchange_info()
-        market = [symbol["symbol"] for symbol in symbols["symbols"] if symbol["baseAsset"] == quote]
+        market = [
+            symbol["symbol"]
+            for symbol in symbols["symbols"]
+            if symbol["baseAsset"] == quote
+        ]
         if len(market) > 1:
             # Match BTC first
             # DUSKBNB does not exist in the market but provided (Binance bug?)
@@ -190,3 +202,12 @@ class Account(BinbotApi):
             (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
         )
         return min_notional_filter[min_notional_limit]
+
+    def get_qty_precision(self, pair):
+        lot_size_by_symbol = self.lot_size_by_symbol(pair, "stepSize")
+        qty_precision = -(
+            Decimal(str(lot_size_by_symbol))
+            .as_tuple()
+            .exponent
+        )
+        return qty_precision

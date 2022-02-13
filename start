@@ -1,3 +1,3 @@
 #!/bin/bash
-gunicorn -b 0.0.0.0:8006 --threads 12 --access-logfile "/var/log/nginx/web-access.log" --error-logfile "/var/log/nginx/web-error.log" --timeout 120 --log-level debug -e GEVENT_RESOLVER=ares -D api.main:app
+gunicorn -b 0.0.0.0:8006 --threads 12 --access-logfile "/var/log/nginx/web-access.log" --error-logfile "/var/log/nginx/web-error.log" --timeout 120 --log-level debug -e GEVENT_RESOLVER=ares --capture-output -D api.main:app
 nginx -g 'daemon off;'

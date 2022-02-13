@@ -8,14 +8,8 @@ import { LOGIN, loginFailed, loginSucceeded } from "./actions";
 export function* postLogin(body) {
   const { data } = body;
   const requestURL = process.env.REACT_APP_LOGIN;
-  const options = {
-    method: "POST",
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify(data),
-  };
   try {
-    const res = yield call(request, requestURL, options);
+    const res = yield call(request, requestURL, "POST", data);
     yield put(loginSucceeded(res));
   } catch (err) {
     yield put(loginFailed(err));

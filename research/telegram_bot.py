@@ -1,11 +1,18 @@
 import os
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackContext, CallbackQueryHandler, CommandHandler, Updater, MessageHandler, Filters
+from telegram.ext import (
+    CallbackContext,
+    CallbackQueryHandler,
+    CommandHandler,
+    Updater,
+    MessageHandler,
+    Filters,
+)
 from dotenv import load_dotenv
 
-class TelegramBot:
 
+class TelegramBot:
     def __init__(self):
         load_dotenv()
         self.token = os.getenv("TELEGRAM_BOT_KEY")
@@ -56,6 +63,11 @@ class TelegramBot:
         """Run the bot."""
         self.updater = Updater(self.token)
         self.updater.dispatcher.add_handler(CommandHandler("t", self.buy))
-        self.updater.dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, lambda u, c: u.message.reply_text(u.message.text)))
+        self.updater.dispatcher.add_handler(
+            MessageHandler(
+                Filters.text & ~Filters.command,
+                lambda u, c: u.message.reply_text(u.message.text),
+            )
+        )
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.button))
         return

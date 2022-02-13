@@ -26,7 +26,7 @@ class Candlestick(BinanceApi):
         data = self.request(url=self.candlestick_url, params=params)
         if data:
             df = pd.DataFrame(data)
-            dates = df[0].tolist()
+            dates = df[100:].reset_index()[0].tolist()
         else:
             df = []
             dates = []
@@ -34,6 +34,14 @@ class Candlestick(BinanceApi):
         return df, dates
 
     def candlestick_trace(self, df, dates):
+        """
+        Create candlestick trace for plotly library
+        - Cut off first 100 for MA_100
+        - Return data as lists with the correct format (defaults)
+        """
+        # adjust to MAs
+        df = df[100:].reset_index()
+        # create lists for plotly
         close = df[4].tolist()
         high = df[2].tolist()
         low = df[3].tolist()
@@ -54,6 +62,9 @@ class Candlestick(BinanceApi):
         return defaults
 
     def bollinguer_bands(self, df, dates):
+        """
+        Create Moving Averages (MAs) in plotly format
+        """
         # 200 limit + 100 ma
         data = df[4]
 
@@ -69,7 +80,7 @@ class Candlestick(BinanceApi):
             .mean()
             .dropna()
             .reset_index(drop=True)
-            .values.tolist()
+            .values.tolist()[75:]
         )
         kline_df_7 = (
             data.rolling(window=7)
@@ -125,6 +136,7 @@ class Candlestick(BinanceApi):
             return jsonResp_error_message("There is not enough data for this symbol")
         trace = self.candlestick_trace(df, dates)
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
+
         if stats:
             df["candle_spread"] = abs(pd.to_numeric(df[1]) - pd.to_numeric(df[4]))
             curr_candle_spread = df["candle_spread"][df.shape[0] - 1]

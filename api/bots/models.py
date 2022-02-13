@@ -6,6 +6,7 @@ from api.deals.models import Deal
 from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
+from api.tools.enum_definitions import EnumDefinitions
 from api.tools.handle_error import (
     QuantityTooLow,
     handle_binance_errors,
@@ -17,33 +18,7 @@ from api.tools.round_numbers import supress_notation
 from bson.objectid import ObjectId
 from flask import Response, current_app, request
 from requests import delete
-from pymongo.errors import DuplicateKeyError
-
-
-def BotSchema():
-    return {
-        "pair": "",
-        "status": "inactive",  # New replacement for active (inactive, active, completed)
-        "name": "Default Bot",
-        "mode": "manual",
-        "max_so_count": "0",
-        "balance_usage_size": "0.0001",
-        "balance_to_use": "GBP",
-        "base_order_size": "0.0001",  # MIN by Binance = 0.0001 BTC
-        "base_order_type": "limit",
-        "candlestick_interval": "15m",
-        "take_profit": "3",
-        "trailling": "false",
-        "trailling_deviation": "0.63",
-        "trailling_profit": 0,  # Trailling activation (first take profit hit)
-        "deal_min_value": "0",
-        "orders": [],
-        "stop_loss": "0",
-        "deal": DealSchema(),
-        "safety_orders": {},
-        "errors": [],
-        "total_commission": 0,
-    }
+from api.bots.schemas import BotSchema
 
 
 class Bot(Account):
@@ -60,7 +35,7 @@ class Bot(Account):
         print("Restarting market_updates")
         # Notify market updates websockets to update
         for thread in threading.enumerate():
-            if thread.name == "market_updates_thread":
+            if thread.name == "market_updates_thread" and hasattr(thread, "_target"):
                 thread._target.__self__.markets_streams.close()
                 market_update_thread()
         print("Finished restarting market_updates")
@@ -73,8 +48,9 @@ class Bot(Account):
         - archive=false
         """
         params = {}
-        if request.args.get("status") == "active":
-            params["active"] = "active"
+        bot_schema = BotSchema()
+        if request.args.get("status") in bot_schema.statuses:
+            params["active"] = request.args.get("status")
 
         bot = list(
             self.app.db.bots.find(params).sort(
@@ -97,79 +73,49 @@ class Bot(Account):
         return resp
 
     def create(self):
-        data = request.json
-        data["name"] = (
-            data["name"] if data["name"] != "" else f"{data['pair']}-{date.today()}"
-        )
-        self.defaults.update(data)
-        self.defaults["safety_orders"] = data["safety_orders"]
+        data = request.get_json()
         try:
-            botId = self.app.db.bots.save(
-                self.defaults, {"$currentDate": {"createdAt": "true"}}
-            )
-        except DuplicateKeyError:
+            result = BotSchema().update(data)
+            botId = str(result.inserted_id)
             resp = jsonResp(
-                {
-                    "message": "Profit canibalism, bot with this pair already exists!",
-                    "error": 1,
-                },
-                200,
+                {"message": "Successfully created new bot", "botId": str(botId)}
             )
-            return resp
-        if botId:
-            resp = jsonResp(
-                {"message": "Successfully created new bot", "botId": str(botId)}, 200
-            )
-        else:
-            resp = jsonResp({"message": "Failed to create new bot"}, 400)
-
+        except Exception as e:
+            resp = jsonResp_error_message(f"Failed to create new bot: {e}")
         return resp
 
     def edit(self):
-        data = request.json
-        findId = request.view_args["id"]
-        find_bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
-        self.defaults.update(data)
-        self.defaults["safety_orders"] = data["safety_orders"]
-        # Deal and orders are internal, should never be updated by outside data
-        self.defaults["deal"] = find_bot["deal"]
-        self.defaults["orders"] = find_bot["orders"]
-        botId = self.app.db.bots.update_one(
-            {"_id": ObjectId(findId)}, {"$set": self.defaults}
-        )
-        if botId.acknowledged:
+        data = request.get_json()
+        botId = request.view_args["id"]
+        try:
+            BotSchema().update(data)
             resp = jsonResp(
-                {"message": "Successfully updated bot", "botId": findId}, 200
+                {"message": "Successfully updated bot", "botId": botId}, 200
             )
-        else:
-            resp = jsonResp({"message": "Failed to update bot"}, 400)
+        except Exception as e:
+            resp = jsonResp_error_message(f"Failed to update bot: {e}")
 
         return resp
 
     def delete(self):
-        findId = request.view_args["id"]
-        delete_action = self.app.db.bots.delete_one({"_id": ObjectId(findId)})
+        botId = request.args.get("id")
+        pair = request.args.get("pair")
+        status = request.args.get("status")
+        query = {}
+        if botId:
+            query["_id"] = ObjectId(botId)
+        if pair:
+            query["pair"] = pair
+        if status:
+            query["status"] = status
+            
+        delete_action = self.app.db.bots.delete_one(query)
         if delete_action:
-            resp = jsonResp(
-                {"message": "Successfully delete bot", "botId": findId}, 200
-            )
+            resp = jsonResp_message("Successfully deleted bot")
             self._restart_websockets()
         else:
             resp = jsonResp({"message": "Bot deletion is not available"}, 400)
         return resp
-
-    def required_field_validation(self, data, key):
-        if key in data:
-            return data[key]
-        else:
-            resp = jsonResp(
-                {
-                    "message": "Validation failed {} is required".format(key),
-                    "botId": data["_id"],
-                },
-                400,
-            )
-            return resp
 
     def activate(self):
         findId = request.view_args["botId"]
@@ -248,7 +194,7 @@ class Bot(Account):
                 for d in orders:
                     if "deal_type" in d and (
                         d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
-                    ):
+                    ):  
                         order_id = d["order_id"]
                         res = delete(
                             url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
@@ -262,21 +208,17 @@ class Bot(Account):
             base_asset = self.find_baseAsset(pair)
             deal_object = Deal(bot)
             precision = deal_object.price_precision
+            qty_precision = deal_object.qty_precision
             balance = deal_object.get_one_balance(base_asset)
             if balance:
-                qty = float(supress_notation(balance, precision))
-
-                # Quantity check to avoid LOT_SIZE error
-                if float(qty) < float(self.lot_size_by_symbol(pair, "minQty")):
-                    return resp
-
+                qty = float(balance)
                 book_order = Book_Order(pair)
-                price = float(book_order.matching_engine(True, qty))
+                price = float(book_order.matching_engine(False, qty))
 
                 if price:
                     order = {
                         "pair": pair,
-                        "qty": qty,
+                        "qty": supress_notation(qty, qty_precision),
                         "price": supress_notation(price, precision),
                     }
                     try:
@@ -284,18 +226,51 @@ class Bot(Account):
                             method="POST", url=self.bb_sell_order_url, json=order
                         )
                     except QuantityTooLow:
-                        return resp
+                        bot["status"] = "closed"
+                        try:
+                            BotSchema().update(bot)
+                        except Exception as e:
+                            resp = jsonResp_error_message(e)
+                    return resp
                 else:
                     order = {
                         "pair": pair,
-                        "qty": qty,
+                        "qty": supress_notation(price, qty_precision),
                     }
                     try:
                         order_res = self.request(
                             method="POST", url=self.bb_sell_market_order_url, json=order
                         )
                     except QuantityTooLow:
+                        bot["status"] = "closed"
+                        try:
+                            BotSchema().update(bot)
+                        except Exception as e:
+                            resp = jsonResp_error_message(e)
                         return resp
+
+                # Enforce that deactivation occurs
+                # If it doesn't, redo
+                if "status" not in order_res and order_res["status"] == "NEW":
+                    deactivation_order = {
+                        "order_id": order_res["orderId"],
+                        "deal_type": "deactivate_order",
+                        "pair": order_res["symbol"],
+                        "order_side": order_res["side"],
+                        "order_type": order_res["type"],
+                        "price": order_res["price"],
+                        "qty": order_res["origQty"],
+                        "fills": order_res["fills"],
+                        "time_in_force": order_res["timeInForce"],
+                        "status": order_res["status"],
+                    }
+                    self.app.db.bots.update_one(
+                        {"_id": ObjectId(findId)},
+                        {
+                            "$push": {"orders": deactivation_order, "errors": "Order failed to close. Re-deactivating..."},
+                        },
+                    )
+                    self.deactivate()
 
                 deactivation_order = {
                     "order_id": order_res["orderId"],
@@ -313,9 +288,10 @@ class Bot(Account):
                     {"_id": ObjectId(findId)},
                     {
                         "$set": {"status": "completed", "deal.sell_timestamp": time()},
-                        "$push": {"orders": deactivation_order},
+                        "$push": {"orders": deactivation_order, "errors": "Orders updated. Trying to close bot..."},
                     },
                 )
+
                 self._restart_websockets()
                 return jsonResp_message(
                     "Active orders closed, sold base asset, deactivated"

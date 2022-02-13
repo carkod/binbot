@@ -1,34 +1,33 @@
 [[source]]
 name = "pypi"
 url = "https://pypi.org/simple"
-verify_ssl = true
+verify_ssl = false
+
+[packages]
+flask = "*"
+flask_cors = "*"
+pymongo = "3.12.3"
+python-jose = "*"
+passlib = "*"
+pandas = "1.3.5"
+requests = "*"
+apscheduler = "*"
+gunicorn = "*"
+websocket-client = "1.2.3"
+flask-mongoengine = "*"
+scipy = "1.7.3"
+python-telegram-bot = "13.9"
+python-dotenv = "*"
+gevent = "*"
+flask-httpauth = "*"
 
 [dev-packages]
 autopep8 = "*"
 isort = "5.9.2"
 black = "*"
 
-[packages]
-flask = "*"
-flask_cors = "*"
-pymongo = "*"
-python-jose = "*"
-passlib = "*"
-pytz = "*"
-pandas = "1.3.2"
-requests = "*"
-apscheduler = "*"
-gunicorn = "*"
-websocket-client = "1.2.1"
-flask-mongoengine = "*"
-scipy = "1.7.3"
-python-telegram-bot = "13.8.1"
-python-dotenv = "*"
-gevent = "*"
-flask-httpauth = "*"
-
 [requires]
-python_version = "3.8"
+python_version = "3.9.5"
 
 [pipenv]
 allow_prereleases = false

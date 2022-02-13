@@ -1,20 +1,23 @@
 import json
 from json.decoder import JSONDecodeError
-import sys
-from time import time, sleep
+from time import sleep
 import os
 from bson.objectid import ObjectId
 from flask import Response as FlaskResponse
 from requests import Response, put
-from requests.exceptions import HTTPError, RequestException, Timeout
+from requests.exceptions import HTTPError, Timeout
 from bson import json_util
 from api.app import create_app
+
 
 class BinanceErrors(Exception):
     pass
 
+
 class InvalidSymbol(BinanceErrors):
     pass
+
+
 class QuantityTooLow(BinanceErrors):
     """
     Raised when LOT_SIZE filter error triggers
@@ -24,11 +27,13 @@ class QuantityTooLow(BinanceErrors):
     """
     pass
 
+
 def post_error(msg):
     url = f'{os.getenv("FLASK_DOMAIN")}/research/controller'
     res = put(url=url, json={"system_logs": msg})
     handle_binance_errors(res)
     return
+
 
 def jsonResp(data, status=200):
     return FlaskResponse(
@@ -108,22 +113,36 @@ def handle_binance_errors(response: Response, bot=None, message=None):
 
     """
     try:
-        content = response.json()
+        response.json()
     except JSONDecodeError as e:
-        print(e)
+        print(response.json())
+    
+    if response.status_code == 404:
+        raise HTTPError()
     # Show error message for bad requests
-    if response.status_code == 400:
-        raise HTTPError(content)
+    if response.status_code >= 400:
+        return response.json()
+
+    if response.status_code == 429:
+        print("Request weight limit hit, ban will come soon, waiting 1 hour")
+        sleep(3600)
 
     # Calculate request weights and pause half of the way (1200/2=600)
-    if "x-mbx-used-weight-1m" in response.headers and int(response.headers["x-mbx-used-weight-1m"]) > 600:
+    if (
+        "x-mbx-used-weight-1m" in response.headers
+        and int(response.headers["x-mbx-used-weight-1m"]) > 600
+    ):
         print("Request weight limit prevention pause, waiting 1 min")
-        sleep(60)
+        sleep(120)
 
-    if (content and "code" in content):
+    content = response.json()
+
+    if content and "code" in content:
+        if content["code"] == -1013:
+            raise QuantityTooLow()
         if content["code"] == 200:
             return content
-        if content["code"] == -2010 or content["code"] == -1013:
+        if content["code"] == -2010 or content["code"] == -1013 or content["code"] == -2015:
             # Not enough funds. Ignore, send to bot errors
             # Need to be dealt with at higher levels
             if not bot:

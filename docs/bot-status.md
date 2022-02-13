@@ -23,7 +23,7 @@ If at any stage it fails to perform one the operations, errors will be appended 
 ## Error bot
 During active, closing, completion, if the bot failed to do any operation, there will be errors listed under the `errors` property, and this status will be added.
 
-## Complete bot
+## Completed bot
 The bot successfully performed all of the actions without errors and closed.
 
 ## Archived bot

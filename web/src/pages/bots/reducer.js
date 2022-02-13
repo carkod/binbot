@@ -86,12 +86,8 @@ const botReducer = produce((draft, action) => {
     }
 
     case DELETE_BOT: {
-      const newState = {
-        data: draft.data,
-        id: action.data,
-      };
-
-      return newState;
+      draft.removeId = action.removeId
+      return draft;
     }
 
     case CLOSE_BOT: {
@@ -104,10 +100,8 @@ const botReducer = produce((draft, action) => {
     }
 
     case DELETE_BOT_SUCCESS: {
-      const newState = {
-        data: draft.data.filter((x) => x._id.$oid !== action.removeId),
-      };
-      return newState;
+      draft.data = draft.data.filter((x) => x._id.$oid !== draft.removeId);
+      return draft;
     }
 
     case DELETE_BOT_ERROR: {

@@ -119,7 +119,7 @@ export function* watchEditBot() {
  */
 export function* deleteBotApi(payload) {
   const id = payload.data;
-  const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
+  const requestURL = `${process.env.REACT_APP_GET_BOTS}?id=${id}`;
   try {
     const res = yield call(request, requestURL, "DELETE");
     yield put(deleteBotSucceeded(res));
@@ -134,7 +134,7 @@ export function* watchDeleteBotApi() {
 
 export function* closeBotApi(payload) {
   const id = payload.data;
-  const requestURL = `${process.env.REACT_APP_CLOSE_BOT}/${id}`;
+  const requestURL = `${process.env.REACT_APP_DEACTIVATE_BOT}/${id}`;
   try {
     const res = yield call(request, requestURL, "DELETE");
     yield put(deleteBotSucceeded(res));

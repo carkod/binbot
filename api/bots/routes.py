@@ -29,24 +29,27 @@ def edit(id):
     return Bot().edit()
 
 
-@bot_blueprint.route("/bot/<id>", methods=["DELETE"])
+@bot_blueprint.route("/bot", methods=["DELETE"])
 @auth.login_required
-def delete(id):
+def delete():
     return Bot().delete()
+
 
 @bot_blueprint.route("/bot/activate/<botId>", methods=["GET"])
 @auth.login_required
 def activate(botId):
     return Bot().activate()
 
-@bot_blueprint.route("/bot/close/<id>", methods=["DELETE"])
+
+@bot_blueprint.route("/bot/deactivate/<id>", methods=["DELETE"])
 @auth.login_required
-def close(id):
+def deactivate(id):
     """
     Deactivation means closing all deals and selling to GBP
     Otherwise losses will be incurred
     """
     return Bot().deactivate()
+
 
 @bot_blueprint.route("/bot/archive/<id>", methods=["PUT"])
 @auth.login_required

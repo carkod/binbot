@@ -2,10 +2,11 @@ from flask import request, current_app as app
 from passlib.hash import pbkdf2_sha256
 from jose import jwt
 import os
-from api.tools.dates import nowDatetimeUTC
 from api.tools.handle_error import jsonResp_error_message, jsonResp_message, jsonResp
 from bson.objectid import ObjectId
-from api.auth import encodeAccessToken, encodeRefreshToken
+from api.auth import encodeAccessToken
+from datetime import datetime
+
 
 class User:
     def __init__(self):
@@ -49,7 +50,7 @@ class User:
                 {
                     "$set": {
                         "access_token": access_token,
-                        "last_login": nowDatetimeUTC(),
+                        "last_login": datetime.now(),
                     }
                 },
             )
@@ -97,7 +98,7 @@ class User:
             "email": data["email"].lower(),
             "password": data["password"],
             "username": data["username"],
-            "description": data["description"]
+            "description": data["description"],
         }
         # Merge the posted data with the default user attributes
         self.defaults.update(user_data)
@@ -109,11 +110,13 @@ class User:
         existing_email = app.db.users.find_one({"email": self.defaults["email"]})
 
         if existing_email:
-            resp = jsonResp_error_message("There's already an account with this email address")
+            resp = jsonResp_error_message(
+                "There's already an account with this email address"
+            )
 
         else:
             inserted_doc = app.db.users.insert_one(self.defaults)
-            item = app.db.users.find_one({"_id": inserted_doc.inserted_id })
+            item = app.db.users.find_one({"_id": inserted_doc.inserted_id})
             resp = jsonResp(
                 {"data": item, "message": "Successfully created a new user!"}
             )
@@ -132,7 +135,7 @@ class User:
             "email": data["email"].lower(),
             "password": data["password"],
             "username": data["username"],
-            "description": data["description"]
+            "description": data["description"],
         }
         # Merge the posted data with the default user attributes
         self.defaults.update(user_data)
@@ -142,9 +145,7 @@ class User:
             user["password"], rounds=20000, salt_size=16
         )
 
-        edit_result = app.db.users.update_one({"email": user["email"]}, {
-            "$set": user
-        })
+        edit_result = app.db.users.update_one({"email": user["email"]}, {"$set": user})
 
         if edit_result:
             return jsonResp_message("User successfully updated!")

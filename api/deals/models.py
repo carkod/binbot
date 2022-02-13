@@ -8,6 +8,7 @@ from flask import Response
 from flask import current_app as app
 from api.deals.schema import DealSchema
 
+
 class Deal(Account):
     def __init__(self, bot):
         # Inherit from parent class
@@ -260,7 +261,7 @@ class Deal(Account):
             "buy_timestamp": res["transactTime"],
             "buy_price": res["price"],
             "buy_total_qty": res["origQty"],
-            "current_price": self.get_ticker_price(res["symbol"]),
+            "current_price": res["price"],
             "take_profit_price": tp_price,
             "safety_order_prices": so_prices,
         }

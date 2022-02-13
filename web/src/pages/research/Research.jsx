@@ -7,7 +7,6 @@ import { addNotification, checkValue } from "../../validations";
 import { loadCandlestick, getSymbols } from "../bots/actions";
 import { getBalanceRaw } from "../../state/balances/actions";
 import {
-  getHistoricalResearchData,
   getResearchData,
   getBlacklist,
   getSettings,
@@ -250,7 +249,6 @@ class Research extends React.Component {
   }
 
   triggerGbpHedge = async (asset) => {
-    console.log(asset);
     const res = gbpHedge(asset);
     if (res.error === 1) {
       addNotification("Some errors encountered", res.message, "error");
@@ -343,7 +341,6 @@ const mapStateToProps = (state) => {
 export default connect(mapStateToProps, {
   getResearchData,
   loadCandlestick,
-  getHistoricalResearchData,
   getSymbols,
   getBlacklist,
   addBlackList,

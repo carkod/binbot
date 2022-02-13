@@ -6,16 +6,21 @@ GET http://localhost:5000/bot/5f830e226b57f6eba97d93f6 HTTP/1.1
 
 ###
 
-POST http://localhost:5000/bot/ HTTP/1.1
-content-Type: application/json
+POST http://localhost:5000/bot HTTP/1.1
+content-type: "application/json"
 
 {
-    "pair": "BNBBUSD",
-    "status": "inactive",
-    "name": "Test short take profit",
-    "so_size": "0",
-    "take_profit": "0.003",
-    "price_deviation_so": "0"
+  "status": "inactive",
+  "balance_to_use": "GBP",
+  "base_order_size": "0.05155875",
+  "max_so_count": "0",
+  "name": "Default-bot",
+  "pair": "JASMYBNB",
+  "take_profit": "2.4",
+  "trailling": "true",
+  "trailling_deviation": "3",
+  "stop_loss": "3",
+  "candlestick_interval": "1d",
 }
 
 ###
@@ -34,12 +39,11 @@ DELETE http://localhost:5000/bot/5f830c917cb67ea5d0bd5972 HTTP/1.1
 
 GET http://localhost:5000/bot/activate/6046b0e75b97144638063cf3 HTTP/1.1
 
-### Close bot
-DELETE http://localhost/bot/close/6145098138e9b4fcf6e10634 HTTP/1.1
-
-
 ### Archive
 PUT http://localhost:5000/bot/archive/615fb5eb8c335e99b505b533 HTTP/1.1
 
 ### Get all including archives
 GET http://localhost:5000/bot?archive=false HTTP/1.1
+
+### Deactivate a.k.a close bots
+DELETE http://localhost:5000/bot/deactivate/6046b0e75b97144638063cf3 HTTP/1.1

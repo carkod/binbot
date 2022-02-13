@@ -240,6 +240,7 @@ export function deleteBot(id) {
   return {
     type: DELETE_BOT,
     data: id,
+    removeId: id
   };
 }
 /**
@@ -250,6 +251,7 @@ export function closeBot(id) {
   return {
     type: CLOSE_BOT,
     data: id,
+    removeId: id
   };
 }
 
@@ -270,7 +272,6 @@ export function deleteBotSucceeded(res) {
   }
   return {
     type: DELETE_BOT_SUCCESS,
-    removeId: res.botId,
     message: res.message,
   };
 }
@@ -410,9 +411,13 @@ export function loadCandlestick(pair, interval) {
 }
 
 export function loadCandlestickSucceeded(payload) {
+  if (payload.error === 1) {
+    addNotification("Some errors encountered", payload.message, "error");
+  } else {
+    addNotification("SUCCESS!", payload.message, "success");
+  }
   return {
     type: LOAD_CANDLESTICK_SUCCESS,
-    isError: false,
     payload,
   };
 }

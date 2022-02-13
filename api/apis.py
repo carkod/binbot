@@ -55,12 +55,9 @@ class BinanceApi:
         """
         USER_DATA, TRADE signed requests
         """
-        session = Session()
         query_string = urlencode(payload, True)
         timestamp = round(time() * 1000)
-        session.headers.update(
-            {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
-        )
+        headers = {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
 
         if query_string:
             query_string = (
@@ -75,17 +72,16 @@ class BinanceApi:
             hashlib.sha256,
         ).hexdigest()
         url = f"{url}?{query_string}&signature={signature}"
-        res = session.request(method, url=url)
-        data = handle_binance_errors(res)
+        data = self.request(method, url=url, headers=headers)
         return data
 
-    def request(self, url, method="GET", params=None, json=None):
+    def request(self, method="GET", **args):
         """
         Standard request
         - No signed
         - No authorization
         """
-        res = request(method, url=url, params=params, json=json)
+        res = request(method, **args)
         data = handle_binance_errors(res)
         return data
 

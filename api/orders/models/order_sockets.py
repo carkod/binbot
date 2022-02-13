@@ -27,7 +27,7 @@ class OrderUpdates(BinanceApi):
         handle_error(res)
         data = res.json()
         return data
-    
+
     def restart_market_updates(self):
         """
         Restart market_updates threads after list of active bots altered
@@ -96,7 +96,10 @@ class OrderUpdates(BinanceApi):
             self.app.db.bots.find_one_and_update(
                 {
                     "orders": {
-                        "$elemMatch": {"deal_type": "trailling_stop_loss", "order_id": order_id}
+                        "$elemMatch": {
+                            "deal_type": "trailling_stop_loss",
+                            "order_id": order_id,
+                        }
                     }
                 },
                 {
@@ -123,7 +126,7 @@ class OrderUpdates(BinanceApi):
                 deal = DealUpdates(bot)
                 deal.default_deal.update(bot)
                 deal.update_take_profit(order_id)
-            
+
             # Restart market_update websockets to pick up new active bots
             self.restart_market_updates()
 

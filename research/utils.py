@@ -9,6 +9,7 @@ from requests import HTTPError, Response
 class BinanceErrors(Exception):
     pass
 
+
 class InvalidSymbol(BinanceErrors):
     pass
 
@@ -35,16 +36,25 @@ def handle_binance_errors(response: Response):
 
     """
     # Reduce speed of requests to avoid rate limits
-    sleep(5)
-    try:
-        content = response.json()
-    except JSONDecodeError as e:
-        print(f"response: {response}")
-
+    sleep(3) 
     content = response.json()
+
+    if 400 <= response.status_code < 500:
+        if response.status_code == 418:
+            sleep(120)
+        print(response.status_code, response.url)
+    
+    # Calculate request weights and pause half of the way (1200/2=600)
+    if (
+        "x-mbx-used-weight-1m" in response.headers
+        and int(response.headers["x-mbx-used-weight-1m"]) > 600
+    ):
+        print("Request weight limit prevention pause, waiting 1 min")
+        sleep(120)
+
     try:
-        if (content and "code" in content):
-            if content["code"] == 200:
+        if content and "code" in content:
+            if content["code"] == 200 or content["code"] == "000000":
                 return content
 
             if content["code"] == -1121:
@@ -53,4 +63,3 @@ def handle_binance_errors(response: Response):
             return content
     except HTTPError:
         raise HTTPError(content["msg"])
-

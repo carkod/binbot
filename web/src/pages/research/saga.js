@@ -1,5 +1,5 @@
 import { call, put, takeLatest } from "redux-saga/effects";
-import request from "../../request";
+import request, { buildBackUrl } from "../../request";
 import { checkValue } from "../../validations";
 import {
   addBlackListFailed,
@@ -13,23 +13,22 @@ import {
   EDIT_SETTINGS,
   getBlacklistFailed,
   getBlacklistSucceeded,
-  getHistoricalResearchDataFailed,
-  getHistoricalResearchDataSucceeded,
   getResearchFailed,
   getResearchSucceeded,
   getSettingsFailed,
   getSettingsSucceeded,
   GET_BLACKLIST,
-  GET_HISTORICAL_RESEARCH,
   GET_RESEARCH,
   GET_SETTINGS,
 } from "./actions";
+
+const baseUrl = buildBackUrl();
 
 /**
  * Bots request/response handler
  */
 export function* getResearchApi({ params }) {
-  let url = new URL(process.env.REACT_APP_RESEARCH_SIGNALS)
+  let url = new URL(process.env.REACT_APP_RESEARCH_SIGNALS, baseUrl);
   if (!checkValue(params)) {
     Object.keys(params).forEach(key => {
       if (key === "order") {
@@ -60,33 +59,12 @@ export function* watchResearchApi() {
 }
 
 
-/**
- * Historical research data
- */
- export function* getHistoricalResearchApi({ params }) {
-  let url = new URL(process.env.REACT_APP_RESEARCH_HISTORICAL_SIGNALS)
-  if (!checkValue(params)) {
-    url.search = new URLSearchParams(params).toString()
-  }
-  try {
-    const res = yield call(request, url);
-    yield put(getHistoricalResearchDataSucceeded(res));
-  } catch (err) {
-    yield put(getHistoricalResearchDataFailed(err));
-  }
-}
-
-export function* watchHistoricalResearchApi() {
-  yield takeLatest(GET_HISTORICAL_RESEARCH, getHistoricalResearchApi);
-}
-
-
 
 /**
  * Blacklist
  */
  export function* getBlacklistApi() {
-  let url = new URL(process.env.REACT_APP_RESEARCH_BLACKLIST)
+  let url = new URL(process.env.REACT_APP_RESEARCH_BLACKLIST, baseUrl);
   try {
     const res = yield call(request, url);
     yield put(getBlacklistSucceeded(res));
@@ -104,7 +82,7 @@ export function* watchGetBlacklistApi() {
  * Add element to blacklist
  */
  export function* addBlacklistApi({data}) {
-  const url = new URL(`${process.env.REACT_APP_RESEARCH_BLACKLIST}`);
+  const url = new URL(`${process.env.REACT_APP_RESEARCH_BLACKLIST}`, baseUrl);
   try {
     const res = yield call(request, url, "POST", data);
     yield put(addBlackListSucceeded(res));
@@ -138,7 +116,7 @@ export function* watchDeleteBlackListApi() {
  * Settings (controller)
  */
  export function* getSettingsApi() {
-  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER)
+  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER, baseUrl)
   try {
     const res = yield call(request, url);
     yield put(getSettingsSucceeded(res));
@@ -156,7 +134,7 @@ export function* watchGetSettingsApi() {
  * Edit Settings (controller)
  */
  export function* editSettingsApi({ data }) {
-  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER);
+  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER, baseUrl);
   try {
     const res = yield call(request, url, "PUT", data);
     yield put(editSettingsSucceeded(res));
