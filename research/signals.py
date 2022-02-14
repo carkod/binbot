@@ -11,6 +11,7 @@ from autotrade import Autotrade
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors, supress_notation
 from datetime import datetime
+from pattern_detection import pattern_detection
 
 load_dotenv()
 
@@ -158,21 +159,21 @@ class ResearchSignals(BinbotApi):
         handle_binance_errors(res)
         return
 
-    def on_close(self, ws, close_status_code, close_msg):
+    def on_close(self, **args):
         """
         Library bug not working
         https://github.com/websocket-client/websocket-client/issues/612
         """
         print("Active socket closed")
 
-    def on_open(self, ws):
+    def on_open(self, *args, **kwargs):
         print("Research signals websocket opened")
 
     def on_error(self, ws, error):
         msg = f'Research Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
         print(msg)
-        print("Restarting in 45 seconds...")
         # API restart 30 secs + 15
+        print("Restarting in 45 seconds...")
         sleep(45)
         self.start_stream(ws)
 
@@ -222,11 +223,17 @@ class ResearchSignals(BinbotApi):
             amplitude = float(data["amplitude"])
             msg = None
 
+            reversal = pattern_detection(data["trace"][0])
+
+            if reversal:
+                msg = f"- Candlesick <strong>reversal</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                self._send_msg(msg)
+
             if symbol not in self.last_processed_kline:
                 if (
                     # It doesn't have to be a red candle for upward trending
                     float(close_price) > float(open_price)
-                    and amplitude > 0.08
+                    # and amplitude > 0.08
                     and close_price > ma_7[len(ma_7) - 1]
                     and open_price > ma_7[len(ma_7) - 1]
                     and ma_7[len(ma_7) - 1] > ma_7[len(ma_7) - 2]
@@ -242,7 +249,8 @@ class ResearchSignals(BinbotApi):
                     and close_price > ma_25[len(ma_25) - 2]
                     and open_price > ma_25[len(ma_25) - 2]
                 ):
-                    msg = f"- Candlesick <strong>strong upward trend</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                    status = "strong upward trend"
+                    msg = f"- Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)
                     print(msg)
 

@@ -44,8 +44,8 @@ jobs:
         run: docker build --tag binbot .
       - name: Test app
         run: |
-          docker run -d --network host binbot
-          sleep 5
+          docker run -d --network host binbot && \
+          sleep 5 && \
           curl --head --fail --retry-delay 5 --retry 3 --retry-connrefused http://localhost
       - name: Test api
         run: |
@@ -62,24 +62,16 @@ jobs:
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
-          docker commit binbot &
+          docker commit binbot_api carloswufei/binbot &
           docker tag binbot carloswufei/binbot
       - name: Push to Docker Hub
         if: ${{ github.actor != 'dependabot[bot]' }}
-        uses: elgohr/Publish-Docker-Github-Action@master
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          name: carloswufei/binbot
-          tags: "latest"
-      - name: Invoke deployment hook
-        uses: distributhor/workflow-webhook@v2
-        env:
-          webhook_url: ${{ secrets.WEBHOOK_URL }}
-          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push carloswufei/binbot
 
   push_research_to_registry:
-    name: binbot_research docker image
+    name: Binbot research docker image
     runs-on: ubuntu-latest
     services:
       mongodb:
@@ -98,14 +90,21 @@ jobs:
           cd research
           docker build -t binbot_research .
       - name: Tag image
+        if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
-          docker commit binbot_research &
-          docker tag binbot_research carloswufei/binbot_research
+          docker tag binbot_research carloswufei/binbot_research:latest
       - name: Push to Docker Hub
-        uses: elgohr/Publish-Docker-Github-Action@master
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          workdir: research
-          name: carloswufei/binbot_research
-          tags: "latest"
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push carloswufei/binbot_research:latest
+
+  staging_deployment:
+    needs: [push_to_registry, push_research_to_registry]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke deployment hook
+        uses: distributhor/workflow-webhook@v2
+        env:
+          webhook_url: ${{ secrets.WEBHOOK_URL }}
+          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}

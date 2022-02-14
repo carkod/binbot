@@ -40,9 +40,10 @@ def handle_binance_errors(response: Response):
     content = response.json()
 
     if 400 <= response.status_code < 500:
+        print(response.status_code, response.url)
         if response.status_code == 418:
             sleep(120)
-        print(response.status_code, response.url)
+            
     
     # Calculate request weights and pause half of the way (1200/2=600)
     if (
