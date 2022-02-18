@@ -209,6 +209,14 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
+            # Update klines database
+            payload = {
+                "data": result["k"],
+                "symbol": result["k"]["s"],
+                "interval": self.interval,
+            }
+            klines_res = requests.put(url=self.bb_klines, json=payload)
+            handle_binance_errors(klines_res)
             print(f"Signal {symbol}")
             data = self._get_candlestick(symbol, self.interval, stats=True)
             if not data or len(data["trace"][1]["y"]) <= 100:

@@ -1,15 +1,71 @@
 from datetime import datetime, timedelta
+from numpy import number
 
 import pandas as pd
-from api.apis import BinanceApi
+from api.apis import BinbotApi
 from api.tools.handle_error import (
     jsonResp,
     jsonResp_error_message,
+    jsonResp_message
 )
-from flask import request
+from flask import request, current_app
+from typing import TypedDict
+from api.tools.round_numbers import round_numbers
 
 
-class Candlestick(BinanceApi):
+class KlinesParams(TypedDict):
+    symbol: str
+    interval: str
+    limit: int
+    offset: int
+
+
+class KlinesSchema:
+    def __init__(self, pair, interval, data, limit=300, offset=0) -> None:
+        self._id = pair  # pair
+        self.interval = interval
+        self.data: list = data
+
+    def create(self):
+        try:
+            result = current_app.db.klines.insert_one(
+                {"_id": self._id, "interval": self.interval, "data": self.data}
+            )
+            return result
+        except Exception as e:
+            raise e
+    
+    def update_data(self, timestamp):
+        """
+        Function that specifically updates candlesticks.
+        Finds existence of candlesticks and then updates with new stream kline data or adds new data
+        """
+        new_data = self.data # This is not existent data but stream data from API
+        try:
+            kline = current_app.db.klines.find_one({"_id": self._id })
+            curr_ts = kline["data"][len(kline["data"]) - 1][0]
+            if curr_ts == timestamp:
+                # If found timestamp match - update
+                update_kline = current_app.db.klines.update_one(
+                    {"_id": self._id}, {"$push": {"data": {
+                        "$each": [new_data],
+                        "$slice": -1
+                    }}}
+                )
+            else:
+                # If no timestamp match - push
+                update_kline = current_app.db.klines.update_one(
+                    {"_id": self._id}, {"$push": {"data": {
+                        "$each": [new_data],
+                    }}}
+                )
+
+            return update_kline
+        except Exception as e:
+            return e
+
+
+class Candlestick(BinbotApi):
     """
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
@@ -23,7 +79,7 @@ class Candlestick(BinanceApi):
         limit = request.view_args.get("limit") or 300
         if not params:
             params = {"symbol": pair, "interval": interval, "limit": limit}
-        data = self.request(url=self.candlestick_url, params=params)
+        data = self.request(url=self.bb_candlestick_url, params=params)
         if data:
             df = pd.DataFrame(data)
             dates = df[100:].reset_index()[0].tolist()
@@ -32,6 +88,72 @@ class Candlestick(BinanceApi):
             dates = []
 
         return df, dates
+
+    def get_klines(self, json=True, params: KlinesParams=None):
+        """
+        Servers 2 purposes:
+        - Endpoint, json=True. @input params as request.args
+        - Method returning dataframe and list of dates. @input params arg
+        """
+        symbol = request.args.get("pair")
+        interval = request.args.get("interval", "15m")
+        # 200 limit + 100 Moving Average = 300
+        limit = request.args.get("limit", 300)
+        offset = request.args.get("offset", 0)
+        if not params:
+            params: KlinesParams = {"symbol": symbol, "interval": interval, "limit": limit, "offset": offset}
+
+        klines = current_app.db.klines.find_one({"_id": params["symbol"] })
+        if not klines:
+            try:
+                data = self.request(url=self.candlestick_url, params=params)
+                result = KlinesSchema(params["symbol"], params["interval"], data).create()
+            except Exception as e:
+                raise e
+            
+        klines = current_app.db.klines.find_one({"_id": params["symbol"] })
+        if not json:
+            if klines:
+                df = pd.DataFrame(klines["data"])
+                dates = df[100:].reset_index()[0].tolist()
+            else:
+                df = []
+                dates = []
+            return df, dates
+        resp = jsonResp(
+                {"message": "Successfully retrieved candlesticks", "data": str(klines["data"])}
+            )
+        return resp
+    
+    def update_klines(self, stream_data):
+
+        stream_data = request.json.get("data")
+        pair = request.json.get("symbol")
+        interval = request.json.get("interval")
+        limit = request.json.get("limit", 300)
+        offset = request.json.get("offset", 0)
+
+        # Map stream to kline
+        # It must be in this order to match historical klines
+        data = [
+            stream_data["t"],
+            stream_data["o"],
+            stream_data["h"],
+            stream_data["l"],
+            stream_data["c"],
+            stream_data["v"],
+            stream_data["T"],
+            stream_data["q"],
+            stream_data["n"],
+            stream_data["V"],
+            stream_data["Q"],
+            stream_data["B"] 
+        ]
+        result = KlinesSchema(pair, interval, data, limit, offset).update_data(stream_data["t"])
+        if result:
+            return jsonResp_message("Successfully updated candlestick data!")
+        else:
+            return jsonResp_error_message(f"Failed to update candlestick data: {result}")
 
     def candlestick_trace(self, df, dates):
         """
@@ -131,7 +253,7 @@ class Candlestick(BinanceApi):
         # 200 limit + 100 Moving Average = 300
         limit = request.view_args.get("limit") or 300
 
-        df, dates = self._candlestick_request()
+        df, dates = self.get_klines(json=False, params={"limit": limit, "symbol": pair, "interval": interval})
         if len(dates) == 0:
             return jsonResp_error_message("There is not enough data for this symbol")
         trace = self.candlestick_trace(df, dates)
@@ -155,10 +277,10 @@ class Candlestick(BinanceApi):
                 {
                     "trace": [trace, ma_100, ma_25, ma_7],
                     "interval": interval,
-                    "curr_candle_spread": curr_candle_spread,
-                    "avg_candle_spread": avg_candle_spread,
-                    "curr_volume_spread": curr_volume_spread,
-                    "avg_volume_spread": avg_volume_spread,
+                    "curr_candle_spread": round_numbers(curr_candle_spread),
+                    "avg_candle_spread": round_numbers(avg_candle_spread),
+                    "curr_volume_spread": round_numbers(curr_volume_spread),
+                    "avg_volume_spread": round_numbers(avg_volume_spread),
                     "amplitude": amplitude,
                     "all_time_low": all_time_low,
                 }
