@@ -111,9 +111,9 @@ class Candlestick(BinbotApi):
         if not klines:
             try:
                 # Store more data for db to fill up candlestick charts
-                params["limit"] = 1000
+                params["limit"] = 600
                 data = self.request(url=self.candlestick_url, params=params)
-                result = KlinesSchema(params["symbol"], params["interval"], data).create()
+                KlinesSchema(params["symbol"], params["interval"], data).create()
             except DuplicateKeyError:
                 resp = jsonResp_error_message(f"Duplicate key {params['symbol']}")
                 return resp
@@ -165,7 +165,7 @@ class Candlestick(BinbotApi):
             return jsonResp_error_message(f"Failed to update candlestick data: {result}")
 
     def delete_klines(self):
-        symbol = request.args.get(symbol)
+        symbol = request.args.get("symbol")
         try:
             KlinesSchema(symbol).delete_klines()
             return jsonResp_message("Successfully deleted klines")

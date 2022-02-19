@@ -227,8 +227,9 @@ class ResearchSignals(BinbotApi):
                 print(msg)
                 # Possible error is that not enough klines data stored in DB
                 # Rectify by deleting entry
+                print("Cleaning db of incomplete data...")
                 delete_klines_res = requests.delete(url=self.bb_klines, params={"symbol": symbol})
-                handle_binance_errors(delete_klines_res)
+                result = handle_binance_errors(delete_klines_res)
                 return
 
             ma_100 = data["trace"][1]["y"]
@@ -239,6 +240,7 @@ class ResearchSignals(BinbotApi):
             msg = None
 
             reversal = pattern_detection(data["trace"][0])
+            print("reversal: ", reversal)
 
             if reversal:
                 msg = f"- Candlesick <strong>reversal</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
