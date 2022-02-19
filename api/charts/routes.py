@@ -1,3 +1,4 @@
+from crypt import methods
 from flask import Blueprint
 from api.charts.models import Candlestick
 
@@ -6,6 +7,13 @@ charts_blueprint = Blueprint("charts", __name__)
 
 @charts_blueprint.route("/klines")
 def get_klines():
+    """
+    Query params
+    pair=string
+    interval (optional)
+    limit=int (optional)
+    offset=int (optional)
+    """
     return Candlestick().get_klines()
 
 @charts_blueprint.route("/klines", methods=["PUT"])
@@ -21,6 +29,14 @@ def update_klines():
     }
     """
     return Candlestick().update_klines()
+
+@charts_blueprint.route("/klines", methods=["DELETE"])
+def delete_klines():
+    """
+    Query params
+    symbol
+    """
+    return Candlestick().delete_klines()
 
 @charts_blueprint.route("/candlestick/<pair>/<interval>", defaults={"stats": None})
 @charts_blueprint.route("/candlestick/<pair>/<interval>/<stats>", methods=["GET"])

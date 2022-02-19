@@ -36,8 +36,10 @@ def handle_binance_errors(response: Response):
 
     """
     # Reduce speed of requests to avoid rate limits
-    sleep(3) 
-    content = response.json()
+    try:
+        content = response.json()
+    except JSONDecodeError as error:
+        print(error)
 
     if 400 <= response.status_code < 500:
         print(response.status_code, response.url)

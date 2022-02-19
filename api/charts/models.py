@@ -11,8 +11,7 @@ from api.tools.handle_error import (
 from flask import request, current_app
 from typing import TypedDict
 from api.tools.round_numbers import round_numbers
-
-
+from pymongo.errors import DuplicateKeyError
 class KlinesParams(TypedDict):
     symbol: str
     interval: str
@@ -21,10 +20,12 @@ class KlinesParams(TypedDict):
 
 
 class KlinesSchema:
-    def __init__(self, pair, interval, data, limit=300, offset=0) -> None:
+    def __init__(self, pair, interval=None, data=None, limit=300, offset=0) -> None:
         self._id = pair  # pair
         self.interval = interval
         self.data: list = data
+        self.limit = limit
+        self.offset = offset
 
     def create(self):
         try:
@@ -33,7 +34,7 @@ class KlinesSchema:
             )
             return result
         except Exception as e:
-            raise e
+            return e
     
     def update_data(self, timestamp):
         """
@@ -63,7 +64,10 @@ class KlinesSchema:
             return update_kline
         except Exception as e:
             return e
-
+    
+    def delete_klines(self):
+        result = current_app.db.klines.delete_one({"_id": self._id})
+        return result
 
 class Candlestick(BinbotApi):
     """
@@ -103,13 +107,18 @@ class Candlestick(BinbotApi):
         if not params:
             params: KlinesParams = {"symbol": symbol, "interval": interval, "limit": limit, "offset": offset}
 
-        klines = current_app.db.klines.find_one({"_id": params["symbol"] })
+        klines = current_app.db.klines.find_one({"_id": params["symbol"]})
         if not klines:
             try:
+                # Store more data for db to fill up candlestick charts
+                params["limit"] = 1000
                 data = self.request(url=self.candlestick_url, params=params)
                 result = KlinesSchema(params["symbol"], params["interval"], data).create()
+            except DuplicateKeyError:
+                resp = jsonResp_error_message(f"Duplicate key {params['symbol']}")
+                return resp
             except Exception as e:
-                raise e
+                return jsonResp_error_message(f"Error creating klines: {e}")
             
         klines = current_app.db.klines.find_one({"_id": params["symbol"] })
         if not json:
@@ -125,7 +134,7 @@ class Candlestick(BinbotApi):
             )
         return resp
     
-    def update_klines(self, stream_data):
+    def update_klines(self):
 
         stream_data = request.json.get("data")
         pair = request.json.get("symbol")
@@ -154,6 +163,15 @@ class Candlestick(BinbotApi):
             return jsonResp_message("Successfully updated candlestick data!")
         else:
             return jsonResp_error_message(f"Failed to update candlestick data: {result}")
+
+    def delete_klines(self):
+        symbol = request.args.get(symbol)
+        try:
+            KlinesSchema(symbol).delete_klines()
+            return jsonResp_message("Successfully deleted klines")
+        except Exception as error:
+            return jsonResp_error_message(f"Failed deleting klines {symbol}: {error}")
+
 
     def candlestick_trace(self, df, dates):
         """

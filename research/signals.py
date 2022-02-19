@@ -203,6 +203,7 @@ class ResearchSignals(BinbotApi):
         )
         active_bots = handle_binance_errors(bots_res)["data"]
         active_symbols = [bot["pair"] for bot in active_bots]
+        sleep(10)
 
         if "k" in result and "s" in result["k"] and len(active_symbols) == 0:
             close_price = float(result["k"]["c"])
@@ -216,13 +217,19 @@ class ResearchSignals(BinbotApi):
                 "interval": self.interval,
             }
             klines_res = requests.put(url=self.bb_klines, json=payload)
-            handle_binance_errors(klines_res)
+            errors = handle_binance_errors(klines_res)
+            if errors == 1:
+                print(f"Error updating klines {symbol}")
             print(f"Signal {symbol}")
             data = self._get_candlestick(symbol, self.interval, stats=True)
-            if not data or len(data["trace"][1]["y"]) <= 100:
+            if "error" in data and data["error"] == 1:
                 msg = f"Not enough data to do research on {symbol}"
                 print(msg)
-                self.blacklist_coin(symbol, msg)
+                # Possible error is that not enough klines data stored in DB
+                # Rectify by deleting entry
+                delete_klines_res = requests.delete(url=self.bb_klines, params={"symbol": symbol})
+                handle_binance_errors(delete_klines_res)
+                return
 
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
