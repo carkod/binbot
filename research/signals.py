@@ -203,7 +203,6 @@ class ResearchSignals(BinbotApi):
         )
         active_bots = handle_binance_errors(bots_res)["data"]
         active_symbols = [bot["pair"] for bot in active_bots]
-        sleep(10)
 
         if "k" in result and "s" in result["k"] and len(active_symbols) == 0:
             close_price = float(result["k"]["c"])
@@ -222,7 +221,7 @@ class ResearchSignals(BinbotApi):
                 print(f"Error updating klines {symbol}")
             print(f"Signal {symbol}")
             data = self._get_candlestick(symbol, self.interval, stats=True)
-            if "error" in data and data["error"] == 1:
+            if not data:
                 msg = f"Not enough data to do research on {symbol}"
                 print(msg)
                 # Possible error is that not enough klines data stored in DB
@@ -241,10 +240,6 @@ class ResearchSignals(BinbotApi):
 
             reversal = pattern_detection(data["trace"][0])
             print("reversal: ", reversal)
-
-            if reversal:
-                msg = f"- Candlesick <strong>reversal</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-                self._send_msg(msg)
 
             if symbol not in self.last_processed_kline:
                 if (
@@ -265,8 +260,13 @@ class ResearchSignals(BinbotApi):
                     and open_price > ma_25[len(ma_25) - 1]
                     and close_price > ma_25[len(ma_25) - 2]
                     and open_price > ma_25[len(ma_25) - 2]
+                    and reversal
                 ):
+
                     status = "strong upward trend"
+                    if reversal:
+                        status += " and reversal"
+
                     msg = f"- Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)
                     print(msg)

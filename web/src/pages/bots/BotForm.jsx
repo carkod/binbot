@@ -138,7 +138,8 @@ class BotForm extends React.Component {
     ) {
       this.props.loadCandlestick(
         this.state.pair,
-        this.state.candlestick_interval
+        this.state.candlestick_interval,
+        this.props.bot?.deal?.buy_timestamp
       );
     }
     // If there is a newBotId, it means form was created
@@ -160,7 +161,11 @@ class BotForm extends React.Component {
       const interval = !checkValue(this.props.history.location.state)
         ? this.props.history.location.state.candlestick_interval
         : this.state.candlestick_interval;
-      this.props.loadCandlestick(this.state.pair, interval);
+      this.props.loadCandlestick(
+        this.state.pair,
+        interval,
+        this.props.bot?.deal?.buy_timestamp
+      );
       getQuoteAsset(this.state.pair).then(({ data }) =>
         this.setState({ quoteAsset: data })
       );
@@ -382,7 +387,8 @@ class BotForm extends React.Component {
     if (!checkValue(this.state.pair)) {
       this.props.loadCandlestick(
         this.state.pair,
-        this.state.candlestick_interval
+        this.state.candlestick_interval,
+        this.props.bot?.deal?.buy_timestamp
       );
     }
   };
@@ -470,7 +476,8 @@ class BotForm extends React.Component {
     if (!checkValue(this.state.pair)) {
       this.props.loadCandlestick(
         this.state.pair,
-        this.state.candlestick_interval
+        this.state.candlestick_interval,
+        this.props.bot?.deal?.buy_timestamp
       );
       this.computeAvailableBalance();
     }
@@ -552,6 +559,7 @@ class BotForm extends React.Component {
     });
 
   render() {
+    console.log(this.props.bot?.deal?.buy_timestamp)
     return (
       <div className="content">
         <Row>
@@ -561,20 +569,19 @@ class BotForm extends React.Component {
                 <CardTitle tag="h3">
                   {this.state.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
-                  !isNaN(this.state.bot_profit) && (
+                    !isNaN(this.state.bot_profit) && (
+                      <Badge
+                        color={
+                          parseFloat(this.state.bot_profit) > 0
+                            ? "success"
+                            : "danger"
+                        }
+                      >
+                        {this.state.bot_profit + "%"}
+                      </Badge>
+                    )}{" "}
+                  {!checkValue(this.state.status) && (
                     <Badge
-                      color={
-                        parseFloat(this.state.bot_profit) > 0
-                          ? "success"
-                          : "danger"
-                      }
-                    >
-                      {this.state.bot_profit + "%"}
-                    </Badge>
-                  )}
-                  {' '}
-                  {!checkValue(this.state.status) &&
-                  <Badge
                       color={
                         this.state.status === "active"
                           ? "success"
@@ -587,13 +594,15 @@ class BotForm extends React.Component {
                     >
                       {this.state.status}
                     </Badge>
-                  }
+                  )}
                   <br />
                   {!checkValue(this.state.bot_profit) &&
-                  !isNaN(this.state.bot_profit) &&
-                    <small>Earnings after commissions (est.): {parseFloat(this.state.bot_profit) - 0.3 + "%"}</small>
-                  }
-                  
+                    !isNaN(this.state.bot_profit) && (
+                      <small>
+                        Earnings after commissions (est.):{" "}
+                        {parseFloat(this.state.bot_profit) - 0.3 + "%"}
+                      </small>
+                    )}
                 </CardTitle>
                 <div className="">
                   {intervalOptions.map((item) => (
@@ -615,7 +624,9 @@ class BotForm extends React.Component {
                 </div>
               </CardHeader>
               <CardBody>
-                {this.props.candlestick && this.props.candlestick.error !== 1 && !checkValue(this.state.pair) ? (
+                {this.props.candlestick &&
+                this.props.candlestick.error !== 1 &&
+                !checkValue(this.state.pair) ? (
                   <Candlestick
                     data={this.props.candlestick}
                     bot={this.state}
@@ -821,7 +832,10 @@ class BotForm extends React.Component {
                             )}
                             {this.state.baseOrderSizeError && (
                               <>
-                                <li>Base order size (How much to trade?) must be filled</li>
+                                <li>
+                                  Base order size (How much to trade?) must be
+                                  filled
+                                </li>
                               </>
                             )}
                             {this.state.soSizeError && (

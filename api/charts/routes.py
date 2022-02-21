@@ -1,4 +1,3 @@
-from crypt import methods
 from flask import Blueprint
 from api.charts.models import Candlestick
 
@@ -12,9 +11,11 @@ def get_klines():
     pair=string
     interval (optional)
     limit=int (optional)
-    offset=int (optional)
+    start_time=int (optional)
+    end_time=int (optional)
     """
     return Candlestick().get_klines()
+
 
 @charts_blueprint.route("/klines", methods=["PUT"])
 def update_klines():
@@ -30,20 +31,29 @@ def update_klines():
     """
     return Candlestick().update_klines()
 
+
 @charts_blueprint.route("/klines", methods=["DELETE"])
 def delete_klines():
     """
     Query params
+
     symbol
     """
     return Candlestick().delete_klines()
 
-@charts_blueprint.route("/candlestick/<pair>/<interval>", defaults={"stats": None})
-@charts_blueprint.route("/candlestick/<pair>/<interval>/<stats>", methods=["GET"])
-def get(pair, interval, stats):
+
+@charts_blueprint.route("/candlestick")
+def get():
+    """
+    @json:
+        {
+            "pair": string,
+            "interval": string,
+            "stats": boolean, Additional statistics such as MA, amplitude, volume, candle spreads
+            "binance": boolean, whether to directly pull data from binance or from DB
+            "limit": int,
+            "start_time": int
+            "end_time": int
+        }
+    """
     return Candlestick().get()
-
-
-@charts_blueprint.route("/change/<pair>/<interval>", methods=["GET"])
-def get_diff(pair, interval):
-    return Candlestick().get_diff()
