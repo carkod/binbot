@@ -115,7 +115,8 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     try:
         response.json()
     except JSONDecodeError as e:
-        print(response)
+        print("Request error: ", e)
+        print("Response error: ", response)
     
     if response.status_code == 404:
         raise HTTPError()

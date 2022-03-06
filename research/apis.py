@@ -178,6 +178,7 @@ class BinbotApi(BinanceApi):
 
     bb_base_url = os.getenv("FLASK_DOMAIN")
     bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
+    bb_klines = f"{bb_base_url}/charts/klines"
     bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
     bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
     bb_bot_url = f"{bb_base_url}/bot"
@@ -211,10 +212,12 @@ class BinbotApi(BinanceApi):
         return data
 
     def _get_candlestick(self, market, interval, stats=None):
-        url = f"{self.bb_candlestick_url}/{market}/{interval}"
-        if stats:
-            url = f"{self.bb_candlestick_url}/{market}/{interval}/{stats}"
-        res = get(url=url)
+        params = {
+            "symbol": market,
+            "interval": interval,
+            "stats": stats
+        }
+        res = get(url=self.bb_candlestick_url, params=params)
         data = handle_binance_errors(res)
         return data
 

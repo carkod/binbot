@@ -400,13 +400,14 @@ export function getSymbolInfoFailed(error) {
   };
 }
 
-export function loadCandlestick(pair, interval) {
+export function loadCandlestick(pair, interval, start_time) {
   return {
     type: LOAD_CANDLESTICK,
     trace: null,
     layout: null,
     pair,
     interval,
+    start_time
   };
 }
 

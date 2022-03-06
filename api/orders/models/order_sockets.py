@@ -57,7 +57,7 @@ class OrderUpdates(BinanceApi):
     def close_stream(self, ws, close_status_code, close_msg):
         print("Active socket closed", close_status_code, close_msg)
 
-    def on_open(self, ws):
+    def on_open(self, *args, **kwargs):
         print("Orders websockets opened")
 
     def on_error(self, ws, error):

@@ -209,12 +209,27 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
+            # Update klines database
+            payload = {
+                "data": result["k"],
+                "symbol": result["k"]["s"],
+                "interval": self.interval,
+            }
+            klines_res = requests.put(url=self.bb_klines, json=payload)
+            errors = handle_binance_errors(klines_res)
+            if errors == 1:
+                print(f"Error updating klines {symbol}")
             print(f"Signal {symbol}")
             data = self._get_candlestick(symbol, self.interval, stats=True)
-            if not data or len(data["trace"][1]["y"]) <= 100:
+            if not data:
                 msg = f"Not enough data to do research on {symbol}"
                 print(msg)
-                self.blacklist_coin(symbol, msg)
+                # Possible error is that not enough klines data stored in DB
+                # Rectify by deleting entry
+                print("Cleaning db of incomplete data...")
+                delete_klines_res = requests.delete(url=self.bb_klines, params={"symbol": symbol})
+                result = handle_binance_errors(delete_klines_res)
+                return
 
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
@@ -224,10 +239,7 @@ class ResearchSignals(BinbotApi):
             msg = None
 
             reversal = pattern_detection(data["trace"][0])
-
-            if reversal:
-                msg = f"- Candlesick <strong>reversal</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-                self._send_msg(msg)
+            print("reversal: ", reversal)
 
             if symbol not in self.last_processed_kline:
                 if (
@@ -248,8 +260,13 @@ class ResearchSignals(BinbotApi):
                     and open_price > ma_25[len(ma_25) - 1]
                     and close_price > ma_25[len(ma_25) - 2]
                     and open_price > ma_25[len(ma_25) - 2]
+                    and reversal
                 ):
+
                     status = "strong upward trend"
+                    if reversal:
+                        status += " and reversal"
+
                     msg = f"- Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)
                     print(msg)
