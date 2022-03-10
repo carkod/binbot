@@ -1,5 +1,6 @@
 import json
 import threading
+import os
 from time import sleep, time
 
 import requests
@@ -239,7 +240,6 @@ class ResearchSignals(BinbotApi):
             msg = None
 
             reversal = pattern_detection(data["trace"][0])
-            print("reversal: ", reversal)
 
             if symbol not in self.last_processed_kline:
                 if (
@@ -267,7 +267,7 @@ class ResearchSignals(BinbotApi):
                     if reversal:
                         status += " and reversal"
 
-                    msg = f"- Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                    msg = f"- {os.getenv('ENV')} Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)
                     print(msg)
 

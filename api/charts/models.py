@@ -104,7 +104,7 @@ class Candlestick(BinbotApi):
         if binance and not json:
             klines = self.request(url=self.candlestick_url, params=params)
             df = pd.DataFrame(klines)
-            dates = df[100:].reset_index()[0].tolist()
+            dates = df[0].tolist()
             return df, dates
 
         klines = current_app.db.klines.find_one({"_id": params["symbol"]})
@@ -185,8 +185,6 @@ class Candlestick(BinbotApi):
         - Cut off first 100 for MA_100
         - Return data as lists with the correct format (defaults)
         """
-        # adjust to MAs
-        df = df[100:].reset_index()
         # create lists for plotly
         close = df[4].tolist()
         high = df[2].tolist()
@@ -226,30 +224,30 @@ class Candlestick(BinbotApi):
             .mean()
             .dropna()
             .reset_index(drop=True)
-            .values.tolist()[75:]
+            .values.tolist()
         )
         kline_df_7 = (
             data.rolling(window=7)
             .mean()
             .dropna()
             .reset_index(drop=True)
-            .values.tolist()[94:]
+            .values.tolist()
         )
 
         ma_100 = {
-            "x": dates,
+            "x": dates[99:],
             "y": kline_df_100,
             "line": {"color": "#9368e9"},
             "type": "scatter",
         }
         ma_25 = {
-            "x": dates,
+            "x": dates[24:],
             "y": kline_df_25,
             "line": {"color": "#fb404b"},
             "type": "scatter",
         }
         ma_7 = {
-            "x": dates,
+            "x": dates[6:],
             "y": kline_df_7,
             "line": {"color": "#ffa534"},
             "type": "scatter",

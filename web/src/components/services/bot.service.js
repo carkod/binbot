@@ -124,7 +124,7 @@ export const botCandlestick = (data, bot, deal = null) => {
       ).toFixed(8);
     }
 
-    if (traillingStopPrice > 0) {
+    if (parseFloat(traillingStopPrice) > 0) {
       // Trailling stop loss annotations and shapes
       const traillingStopA = {
         x: takeProfitTime,
@@ -141,9 +141,9 @@ export const botCandlestick = (data, bot, deal = null) => {
         type: "line",
         xref: "x",
         yref: "y",
-        x0: takeProfitTime,
+        x0: data.trace[0].x[0],
         y0: traillingStopPrice,
-        x1: data.trace[0].x[150],
+        x1: currentTime,
         y1: traillingStopPrice,
         line: {
           color: "green",
