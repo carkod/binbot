@@ -126,7 +126,7 @@ class Candlestick(BinbotApi):
         if not json:
             if klines:
                 df = pd.DataFrame(klines["data"])
-                dates = df[100:].reset_index()[0].tolist()
+                dates = df[0].tolist()
             else:
                 df = []
                 dates = []
