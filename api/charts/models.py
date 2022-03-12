@@ -44,9 +44,13 @@ class KlinesSchema:
             curr_ts = kline["data"][len(kline["data"]) - 1][0]
             if curr_ts == timestamp:
                 # If found timestamp match - update
+                current_app.db.klines.update_one(
+                    {"_id": self._id},
+                    {"$pop": {"data": 1}},
+                )
                 update_kline = current_app.db.klines.update_one(
                     {"_id": self._id},
-                    {"$push": {"data": {"$each": [new_data], "$slice": -1}}},
+                    {"$push": {"data": new_data }},
                 )
             else:
                 # If no timestamp match - push
@@ -85,7 +89,7 @@ class Candlestick(BinbotApi):
         symbol = request.args.get("symbol")
         interval = request.args.get("interval", "15m")
         # 200 limit + 100 Moving Average = 300
-        limit = request.args.get("limit", 300)
+        limit = request.args.get("limit", 600)
         start_time = request.args.get("start_time")
         end_time = request.args.get("end_time")
 
@@ -111,7 +115,6 @@ class Candlestick(BinbotApi):
         if not klines:
             try:
                 # Store more data for db to fill up candlestick charts
-                params["limit"] = 600
                 data = self.request(url=self.candlestick_url, params=params)
                 if "message" in data:
                     raise Exception(data["message"])

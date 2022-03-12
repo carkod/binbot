@@ -1,4 +1,5 @@
 import json
+import random
 import threading
 import os
 from time import sleep, time
@@ -67,7 +68,7 @@ class ResearchSignals(BinbotApi):
         ):
             settings_data["data"]["update_required"] = False
             research_controller_res = requests.put(
-                url=self.bb_controller_url, json=settings_data
+                url=self.bb_controller_url, json=settings_data["data"]
             )
             handle_binance_errors(research_controller_res)
 
@@ -160,7 +161,7 @@ class ResearchSignals(BinbotApi):
         handle_binance_errors(res)
         return
 
-    def on_close(self, **args):
+    def on_close(self, *args):
         """
         Library bug not working
         https://github.com/websocket-client/websocket-client/issues/612
@@ -210,31 +211,47 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
-            # Update klines database
-            payload = {
-                "data": result["k"],
-                "symbol": result["k"]["s"],
-                "interval": self.interval,
-            }
-            klines_res = requests.put(url=self.bb_klines, json=payload)
-            errors = handle_binance_errors(klines_res)
-            if errors == 1:
-                print(f"Error updating klines {symbol}")
+
             print(f"Signal {symbol}")
+
             data = self._get_candlestick(symbol, self.interval, stats=True)
-            if not data:
-                msg = f"Not enough data to do research on {symbol}"
-                print(msg)
+
+            last_kline_ts = (data["trace"][0]["x"][len(data["trace"][0]["x"]) - 1]) / 1000
+            current_ts = time()
+            if (current_ts - last_kline_ts) > 90000 and random.randint(0,10) == 5:
                 # Possible error is that not enough klines data stored in DB
                 # Rectify by deleting entry
+                # Random condition to avoid hitting weight rate limits
                 print("Cleaning db of incomplete data...")
                 delete_klines_res = requests.delete(url=self.bb_klines, params={"symbol": symbol})
                 result = handle_binance_errors(delete_klines_res)
                 return
 
+            if len(data["trace"][0]["x"]) > 1:
+                # Update klines database
+                payload = {
+                    "data": result["k"],
+                    "symbol": result["k"]["s"],
+                    "interval": self.interval,
+                }
+                klines_res = requests.put(url=self.bb_klines, json=payload)
+                errors = handle_binance_errors(klines_res)
+                if errors == 1:
+                    print(f"Error updating klines {symbol}")
+
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
             ma_7 = data["trace"][3]["y"]
+
+            if len(ma_100) == 0:
+                msg = f"Not enough data to do research on {symbol}"
+                print(msg)
+                if random.randint(0,20) == 15:
+                    print("Cleaning db of incomplete data...")
+                    delete_klines_res = requests.delete(url=self.bb_klines, params={"symbol": symbol})
+                    result = handle_binance_errors(delete_klines_res)
+                return
+
             # Average amplitude
             amplitude = float(data["amplitude"])
             msg = None
