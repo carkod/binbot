@@ -1,7 +1,8 @@
 import json
+import os
 import random
 import threading
-import os
+from datetime import datetime
 from time import sleep, time
 
 import requests
@@ -10,10 +11,13 @@ from websocket import WebSocketApp
 
 from apis import BinbotApi
 from autotrade import Autotrade
+from pattern_detection import (
+    reversal_confirmation,
+    reversal_signals,
+    test_pattern_recognition,
+)
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors, supress_notation
-from datetime import datetime
-from pattern_detection import pattern_detection
 
 load_dotenv()
 
@@ -200,9 +204,7 @@ class ResearchSignals(BinbotApi):
         # if autrotrade enabled and it's not an already active bot
         # this avoids running too many useless bots
         # Temporarily restricting to 1 bot for low funds
-        bots_res = requests.get(
-            url=self.bb_bot_url, params={"status": "active"}
-        )
+        bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
         active_bots = handle_binance_errors(bots_res)["data"]
         active_symbols = [bot["pair"] for bot in active_bots]
 
@@ -216,14 +218,18 @@ class ResearchSignals(BinbotApi):
 
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
-            last_kline_ts = (data["trace"][0]["x"][len(data["trace"][0]["x"]) - 1]) / 1000
+            last_kline_ts = (
+                data["trace"][0]["x"][len(data["trace"][0]["x"]) - 1]
+            ) / 1000
             current_ts = time()
-            if (current_ts - last_kline_ts) > 90000 and random.randint(0,10) == 5:
+            if (current_ts - last_kline_ts) > 2500 and random.randint(0, 10) == 5:
                 # Possible error is that not enough klines data stored in DB
                 # Rectify by deleting entry
                 # Random condition to avoid hitting weight rate limits
                 print("Cleaning db of incomplete data...")
-                delete_klines_res = requests.delete(url=self.bb_klines, params={"symbol": symbol})
+                delete_klines_res = requests.delete(
+                    url=self.bb_klines, params={"symbol": symbol}
+                )
                 result = handle_binance_errors(delete_klines_res)
                 return
 
@@ -246,9 +252,11 @@ class ResearchSignals(BinbotApi):
             if len(ma_100) == 0:
                 msg = f"Not enough data to do research on {symbol}"
                 print(msg)
-                if random.randint(0,20) == 15:
+                if random.randint(0, 20) == 15:
                     print("Cleaning db of incomplete data...")
-                    delete_klines_res = requests.delete(url=self.bb_klines, params={"symbol": symbol})
+                    delete_klines_res = requests.delete(
+                        url=self.bb_klines, params={"symbol": symbol}
+                    )
                     result = handle_binance_errors(delete_klines_res)
                 return
 
@@ -256,68 +264,86 @@ class ResearchSignals(BinbotApi):
             amplitude = float(data["amplitude"])
             msg = None
 
-            reversal = pattern_detection(data["trace"][0])
-
             if symbol not in self.last_processed_kline:
-                if (
-                    # It doesn't have to be a red candle for upward trending
-                    float(close_price) > float(open_price)
-                    # and amplitude > 0.08
-                    and close_price > ma_7[len(ma_7) - 1]
-                    and open_price > ma_7[len(ma_7) - 1]
-                    and ma_7[len(ma_7) - 1] > ma_7[len(ma_7) - 2]
-                    and close_price > ma_7[len(ma_7) - 2]
-                    and open_price > ma_7[len(ma_7) - 2]
-                    and ma_7[len(ma_7) - 2] > ma_7[len(ma_7) - 3]
-                    and close_price > ma_7[len(ma_7) - 3]
-                    and open_price > ma_7[len(ma_7) - 3]
-                    and close_price > ma_100[len(ma_100) - 1]
-                    and open_price > ma_100[len(ma_100) - 1]
-                    and close_price > ma_25[len(ma_25) - 1]
-                    and open_price > ma_25[len(ma_25) - 1]
-                    and close_price > ma_25[len(ma_25) - 2]
-                    and open_price > ma_25[len(ma_25) - 2]
-                    and reversal
-                ):
+                # all_patterns = test_pattern_recognition(data["trace"][0])
+                # if len(all_patterns) > 0:
+                #     for pattern in all_patterns:
+                #         msg = f"- {os.getenv('ENV')} Candlestick pattern detection: <strong>{pattern}</strong> {symbol} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                #         self._send_msg(msg)
+                #         print(msg)
 
-                    status = "strong upward trend"
+                #     self.last_processed_kline[symbol] = time()
+
+                sl_check, ll_check, hammer_check = reversal_signals(data["trace"][0])
+                reversal = reversal_confirmation(data["trace"][0])
+                status = ""
+                if reversal:
+                    
+                    if ll_check:
+                        status += " Long candle pattern"
+                    if hammer_check:
+                        status += " Hammer candle pattern"
                     if reversal:
-                        status += " and reversal"
+                        status += " and reversal confirmation"
 
                     msg = f"- {os.getenv('ENV')} Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)
                     print(msg)
 
-                    # Check balance to avoid failed autotrades
-                    check_balance_res = requests.get(url=self.bb_balance_estimate_url)
-                    balances = handle_binance_errors(check_balance_res)
-                    if "error" in balances and balances["error"] == 1:
-                        print(balances["message"])
-                        return
-
-                    balance_check = int(balances["data"]["total_fiat"])
-
-                    # If dashboard has changed any self.settings
-                    # Need to reload websocket
                     if (
-                        "update_required" in self.settings
-                        and self.settings["update_required"]
+                        # It doesn't have to be a red candle for upward trending
+                        float(close_price) > float(open_price)
+                        # and amplitude > 0.08
+                        and close_price > ma_7[len(ma_7) - 1]
+                        and open_price > ma_7[len(ma_7) - 1]
+                        and ma_7[len(ma_7) - 1] > ma_7[len(ma_7) - 2]
+                        and close_price > ma_7[len(ma_7) - 2]
+                        and open_price > ma_7[len(ma_7) - 2]
+                        and ma_7[len(ma_7) - 2] > ma_7[len(ma_7) - 3]
+                        and close_price > ma_7[len(ma_7) - 3]
+                        and open_price > ma_7[len(ma_7) - 3]
+                        and close_price > ma_100[len(ma_100) - 1]
+                        and open_price > ma_100[len(ma_100) - 1]
+                        and close_price > ma_25[len(ma_25) - 1]
+                        and open_price > ma_25[len(ma_25) - 1]
+                        and close_price > ma_25[len(ma_25) - 2]
+                        and open_price > ma_25[len(ma_25) - 2]
                     ):
-                        print("Update required, restart stream")
-                        self.start_stream(previous_ws=ws)
-                        pass
 
-                    if (
-                        int(self.settings["autotrade"]) == 1
-                        # Temporary restriction for few funds
-                        and balance_check > 0
-                    ):
-                        autotrade = Autotrade(symbol, self.settings, amplitude)
-                        autotrade.run()
+                        status = "strong upward trend"
+
+                        # Check balance to avoid failed autotrades
+                        check_balance_res = requests.get(
+                            url=self.bb_balance_estimate_url
+                        )
+                        balances = handle_binance_errors(check_balance_res)
+                        if "error" in balances and balances["error"] == 1:
+                            print(balances["message"])
+                            return
+
+                        balance_check = int(balances["data"]["total_fiat"])
+
+                        # If dashboard has changed any self.settings
+                        # Need to reload websocket
+                        if (
+                            "update_required" in self.settings
+                            and self.settings["update_required"]
+                        ):
+                            print("Update required, restart stream")
+                            self.start_stream(previous_ws=ws)
+                            pass
+
+                        if (
+                            int(self.settings["autotrade"]) == 1
+                            # Temporary restriction for few funds
+                            and balance_check > 0
+                        ):
+                            autotrade = Autotrade(symbol, self.settings, amplitude)
+                            autotrade.run()
 
                 self.last_processed_kline[symbol] = time()
 
             # If more than 6 hours passed has passed
             # Then we should resume sending signals for given symbol
-            if (float(time()) - float(self.last_processed_kline[symbol])) > 21600:
+            if (float(time()) - float(self.last_processed_kline[symbol])) > 10000:
                 del self.last_processed_kline[symbol]
