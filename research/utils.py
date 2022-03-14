@@ -40,6 +40,7 @@ def handle_binance_errors(response: Response):
         content = response.json()
     except JSONDecodeError as error:
         print(error)
+        print(response)
 
     if 400 <= response.status_code < 500:
         print(response.status_code, response.url)

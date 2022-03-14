@@ -218,21 +218,6 @@ class ResearchSignals(BinbotApi):
 
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
-            last_kline_ts = (
-                data["trace"][0]["x"][len(data["trace"][0]["x"]) - 1]
-            ) / 1000
-            current_ts = time()
-            if (current_ts - last_kline_ts) > 2500 and random.randint(0, 10) == 5:
-                # Possible error is that not enough klines data stored in DB
-                # Rectify by deleting entry
-                # Random condition to avoid hitting weight rate limits
-                print("Cleaning db of incomplete data...")
-                delete_klines_res = requests.delete(
-                    url=self.bb_klines, params={"symbol": symbol}
-                )
-                result = handle_binance_errors(delete_klines_res)
-                return
-
             if len(data["trace"][0]["x"]) > 1:
                 # Update klines database
                 payload = {
@@ -274,17 +259,14 @@ class ResearchSignals(BinbotApi):
 
                 #     self.last_processed_kline[symbol] = time()
 
-                sl_check, ll_check, hammer_check = reversal_signals(data["trace"][0])
+                patterns_detected = reversal_signals(data["trace"][0])
                 reversal = reversal_confirmation(data["trace"][0])
                 status = ""
                 if reversal:
                     
-                    if ll_check:
-                        status += " Long candle pattern"
-                    if hammer_check:
-                        status += " Hammer candle pattern"
-                    if reversal:
-                        status += " and reversal confirmation"
+                    if len(patterns_detected) > 0:
+                        for p in patterns_detected:
+                            status += f"{p} pattern "
 
                     msg = f"- {os.getenv('ENV')} Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)

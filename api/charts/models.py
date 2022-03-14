@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from multiprocessing.sharedctypes import Value
-from numpy import number
+from numpy import number, roll
 
 import pandas as pd
 from api.apis import BinbotApi
@@ -80,6 +80,29 @@ class Candlestick(BinbotApi):
     https://plotly.com/javascript/candlestick-charts/
     """
 
+    def check_gaps(self, df, params):
+        """
+        Checks gaps in the candlestick time series, using the dates difference between dates (index = 0)
+        If there are gaps, request data from Binance API (high weight, use cautiously)
+        @params
+        - df [Pandas dataframe]
+        """
+        print("Cleaning db of incomplete data...")
+        kline_df = df
+        df["check_gaps"] = df[0].diff()[1:]
+        df.dropna(inplace=True)
+        check_gaps = df["check_gaps"].to_numpy()
+        # If true, no gaps
+        no_gaps = (check_gaps[0] == check_gaps).all()
+        if not no_gaps:
+            self.delete_klines()
+            data = self.request(url=self.candlestick_url, params=params)
+            KlinesSchema(params["symbol"], params["interval"], data).create()
+            klines = current_app.db.klines.find_one({"_id": params["symbol"]})
+            kline_df = pd.DataFrame(klines["data"])
+        return kline_df
+
+
     def get_klines(self, binance=False, json=True, params: KlinesParams = None):
         """
         Servers 2 purposes:
@@ -108,6 +131,8 @@ class Candlestick(BinbotApi):
         if binance and not json:
             klines = self.request(url=self.candlestick_url, params=params)
             df = pd.DataFrame(klines)
+            # Check time series gaps before returning the list
+            df = self.check_gaps(df, params)
             dates = df[0].tolist()
             return df, dates
 
@@ -129,6 +154,7 @@ class Candlestick(BinbotApi):
         if not json:
             if klines:
                 df = pd.DataFrame(klines["data"])
+                df = self.check_gaps(df, params)
                 dates = df[0].tolist()
             else:
                 df = []
