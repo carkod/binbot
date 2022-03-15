@@ -12,6 +12,7 @@ from websocket import WebSocketApp
 from apis import BinbotApi
 from autotrade import Autotrade
 from pattern_detection import (
+    chaikin_oscillator,
     reversal_confirmation,
     reversal_signals,
     test_pattern_recognition,
@@ -261,14 +262,14 @@ class ResearchSignals(BinbotApi):
 
                 patterns_detected = reversal_signals(data["trace"][0])
                 reversal = reversal_confirmation(data["trace"][0])
-                status = ""
+                value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
                 if reversal:
-                    
+                    status = f"reversal confirmation \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'}"
                     if len(patterns_detected) > 0:
                         for p in patterns_detected:
-                            status += f"{p} pattern "
+                            status += f"\n- {p} pattern"
 
-                    msg = f"- {os.getenv('ENV')} Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                    msg = f"- [{os.getenv('ENV')}] Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)
                     print(msg)
 

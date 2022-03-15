@@ -1,6 +1,6 @@
 import math
 from decimal import Decimal
-
+import re
 
 def round_numbers(value, decimals=6):
     decimal_points = 10 ** int(decimals)
@@ -50,3 +50,25 @@ def supress_notation(num: float, precision: int = 0):
     else:
         decimal_points = Decimal(str(num)).as_tuple().exponent * -1
     return f"{num:.{decimal_points}f}"
+
+def interval_to_millisecs(interval: str) -> int:
+    time, notation = re.findall(r'[A-Za-z]+|\d+', interval)
+    if notation == "m":
+        # minutes
+        return int(time) * 60 * 1000
+    
+    if notation == "h":
+        # hours
+        return int(time) * 60 * 60 * 1000
+    
+    if notation == "d":
+        # day
+        return int(time) * 24 * 60 * 60 * 1000
+    
+    if notation == "w":
+        # weeks
+        return int(time) * 5 * 24 * 60 * 60 * 1000
+    
+    if notation == "M":
+        # month
+        return int(time) * 30 * 24 * 60 * 60 * 1000

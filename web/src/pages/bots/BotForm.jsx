@@ -139,7 +139,7 @@ class BotForm extends React.Component {
       this.props.loadCandlestick(
         this.state.pair,
         this.state.candlestick_interval,
-        this.props.bot?.deal?.buy_timestamp
+        this.props.bot?.deal?.buy_timestamp,
       );
     }
     // If there is a newBotId, it means form was created

@@ -44,7 +44,6 @@ patterns = {
     "CDLSPINNINGTOP": "Spinning Top",
     "CDLSTALLEDPATTERN": "Stalled Pattern",
     "CDLSTICKSANDWICH": "Stick Sandwich",
-    "CDLTAKURI": "Takuri (Dragonfly Doji with very long lower shadow)",
     "CDLTASUKIGAP": "Tasuki Gap",
     "CDLTHRUSTING": "Thrusting Pattern",
     "CDLTRISTAR": "Tristar Pattern",
@@ -58,23 +57,16 @@ test_patterns = {
     "CDL3BLACKCROWS": "Three Black Crows",
     "CDL3INSIDE": "Three Inside Up/Down",
     "CDL3LINESTRIKE": "Three-Line Strike",
-    "CDL3OUTSIDE": "Three Outside Up/Down",
     "CDL3STARSINSOUTH": "Three Stars In The South",
     "CDL3WHITESOLDIERS": "Three Advancing White Soldiers",
     "CDLABANDONEDBABY": "Abandoned Baby",
     "CDLADVANCEBLOCK": "Advance Block",
-    "CDLBELTHOLD": "Belt-hold",
     "CDLBREAKAWAY": "Breakaway",
     "CDLCONCEALBABYSWALL": "Concealing Baby Swallow",
     "CDLCOUNTERATTACK": "Counterattack",
     "CDLDARKCLOUDCOVER": "Dark Cloud Cover",
-    "CDLEVENINGSTAR": "Evening Star",
     "CDLGAPSIDESIDEWHITE": "Up/Down-gap side-by-side white lines",
-    "CDLGRAVESTONEDOJI": "Gravestone Doji",
     "CDLHANGINGMAN": "Hanging Man",
-    "CDLHARAMI": "Harami Pattern",
-    "CDLHARAMICROSS": "Harami Cross Pattern",
-    "CDLHIKKAKE": "Hikkake Pattern",
     "CDLHIKKAKEMOD": "Modified Hikkake Pattern",
     "CDLHOMINGPIGEON": "Homing Pigeon",
     "CDLIDENTICAL3CROWS": "Identical Three Crows",
@@ -97,28 +89,29 @@ test_patterns = {
     "CDLUPSIDEGAP2CROWS": "Upside Gap Two Crows",
 }
 
-reversal_patterns = {
-    "CDLSHORTLINE": "Short Line Candle",
-    "CDLLONGLINE": "Long Line Candle",
-    "CDLDOJI": "Doji",
-    "CDLDOJISTAR": "Doji Star",
-    "CDLDRAGONFLYDOJI": "Dragonfly Doji",
-    "CDLEVENINGDOJISTAR": "Evening Doji Star",
-    "CDLHAMMER": "Hammer",
-    "CDLINVERTEDHAMMER": "Inverted Hammer",
-    "CDLSEPARATINGLINES": "Separating Lines",
-    "CDLMATCHINGLOW": "Matching Low",
-    "CDLSPINNINGTOP": "Spinning Top",
-    "CDLHIGHWAVE": "High-Wave Candle",
-    "CDLRICKSHAWMAN": "Rickshaw Man",
-    "CDLLONGLEGGEDDOJI": "Long Legged Doji",
-}
-
 
 def reversal_signals(data):
     """
     Reversal signals that still require confirmation
     """
+    reversal_patterns = {
+        "CDLSHORTLINE": "Short Line Candle",
+        "CDLLONGLINE": "Long Line Candle",
+        "CDLDOJI": "Doji",
+        "CDLDOJISTAR": "Doji Star",
+        "CDLDRAGONFLYDOJI": "Dragonfly Doji",
+        "CDLEVENINGDOJISTAR": "Evening Doji Star",
+        "CDLHAMMER": "Hammer",
+        "CDLINVERTEDHAMMER": "Inverted Hammer",
+        "CDLSEPARATINGLINES": "Separating Lines",
+        "CDLMATCHINGLOW": "Matching Low",
+        "CDLSPINNINGTOP": "Spinning Top",
+        "CDLHIGHWAVE": "High-Wave Candle",
+        "CDLRICKSHAWMAN": "Rickshaw Man",
+        "CDLLONGLEGGEDDOJI": "Long Legged Doji",
+        "CDL3OUTSIDE": "Three Outside Up/Down",
+    }
+
     open = numpy.asarray(data["open"], dtype='f8')
     high = numpy.asarray(data["high"], dtype='f8')
     low = numpy.asarray(data["low"], dtype='f8')
@@ -173,6 +166,21 @@ def reversal_pattern_recognition(data):
 
     return detected_patterns
 
+def downtrend_patterns(data):
+    """
+    Downtrend patterns that I've found quite accurate
+    """
+    bearish_patterns = {
+        "CDLHARAMI": "Harami Pattern",
+        "CDLHARAMICROSS": "Harami Cross Pattern",
+        "CDLHIKKAKE": "Hikkake Pattern",
+        "CDLBELTHOLD": "Belt-hold",
+        "CDLEVENINGSTAR": "Evening Star", # Possibly down reversal confirmation
+        "CDLGRAVESTONEDOJI": "Gravestone Doji",
+        "CDLTAKURI": "Takuri (Dragonfly Doji with very long lower shadow)",
+    }
+
+
 def test_pattern_recognition(data):
     """
     Detect all patterns, not just reversal
@@ -192,3 +200,24 @@ def test_pattern_recognition(data):
             detected_patterns.append(test_patterns[pattern])
 
     return detected_patterns
+
+
+def chaikin_oscillator(data, volume):
+    """
+    On-balance volume.
+    Describes trading volume https://www.investopedia.com/terms/o/onbalancevolume.asp
+    @params
+    data: Candlestick data (Open, High, Low, Close)
+    @returns
+    - check: boolean. True = positive chaikin, volume is on the up, False = negative chaikin, market 
+    """
+    open = numpy.asarray(data["open"], dtype='f8')
+    high = numpy.asarray(data["high"], dtype='f8')
+    low = numpy.asarray(data["low"], dtype='f8')
+    close = numpy.asarray(data["close"], dtype='f8')
+    volume = numpy.asarray(volume, dtype='f8')
+
+    real = talib.ADOSC(high, low, close, volume, fastperiod=3, slowperiod=10)
+    last_value = real[len(real) - 1]
+    previous_last = real[len(real) - 2]
+    return last_value - (previous_last), last_value

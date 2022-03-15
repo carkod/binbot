@@ -1,13 +1,12 @@
-from datetime import datetime, timedelta
-from multiprocessing.sharedctypes import Value
-from numpy import number, roll
+from math import ceil
+from time import time
+from typing import TypedDict
 
 import pandas as pd
 from api.apis import BinbotApi
 from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
-from flask import request, current_app
-from typing import TypedDict
-from api.tools.round_numbers import round_numbers
+from api.tools.round_numbers import interval_to_millisecs, round_numbers
+from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
 
 
@@ -50,7 +49,7 @@ class KlinesSchema:
                 )
                 update_kline = current_app.db.klines.update_one(
                     {"_id": self._id},
-                    {"$push": {"data": new_data }},
+                    {"$push": {"data": new_data}},
                 )
             else:
                 # If no timestamp match - push
@@ -102,7 +101,6 @@ class Candlestick(BinbotApi):
             kline_df = pd.DataFrame(klines["data"])
         return kline_df
 
-
     def get_klines(self, binance=False, json=True, params: KlinesParams = None):
         """
         Servers 2 purposes:
@@ -136,9 +134,29 @@ class Candlestick(BinbotApi):
             dates = df[0].tolist()
             return df, dates
 
-        klines = current_app.db.klines.find_one({"_id": params["symbol"]})
+        # Do we require more candlesticks for charts data?
+        if params["startTime"]:
+            klines = current_app.db.klines.find_one(
+                {"_id": params["symbol"], "data.0.0": {"$lte": params["startTime"]}}
+            )
+        else:
+            klines = current_app.db.klines.find_one(
+                {"_id": params["symbol"]}
+            )
+
         if not klines:
             try:
+                if params["startTime"]:
+                    # Delete any remnants of this data
+                    KlinesSchema(symbol).delete_klines()
+                    # Calculate diff start_time and end_time
+                    # Divide by interval time to get limit
+                    diff_time = (time() * 1000) - int(params["startTime"])
+                    # where 15m = 900,000 milliseconds
+                    params["limit"] = ceil(
+                        diff_time / interval_to_millisecs(params["interval"])
+                    )
+
                 # Store more data for db to fill up candlestick charts
                 data = self.request(url=self.candlestick_url, params=params)
                 if "message" in data:
@@ -324,7 +342,7 @@ class Candlestick(BinbotApi):
                 "limit": limit,
                 "symbol": symbol,
                 "interval": interval,
-                "startTime": start_time, # starTime and endTime must be camel cased for the API
+                "startTime": start_time,  # starTime and endTime must be camel cased for the API
                 "endTime": end_time,
             },
         )
@@ -349,10 +367,12 @@ class Candlestick(BinbotApi):
             amplitude = (float(high_price) / float(low_price)) - 1
 
             all_time_low = pd.to_numeric(df[3]).min()
+            volumes = df[5].tolist()
             resp = jsonResp(
                 {
                     "trace": [trace, ma_100, ma_25, ma_7],
                     "interval": interval,
+                    "volumes": volumes,
                     "curr_candle_spread": round_numbers(curr_candle_spread),
                     "avg_candle_spread": round_numbers(avg_candle_spread),
                     "curr_volume_spread": round_numbers(curr_volume_spread),

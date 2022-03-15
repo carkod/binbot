@@ -108,3 +108,15 @@ jobs:
         env:
           webhook_url: ${{ secrets.WEBHOOK_URL }}
           webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
+  
+  python_tests:
+    name: Python code tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Run tests
+        run: python3 -m unittest api/tests/test_*
+
