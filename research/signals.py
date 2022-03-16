@@ -13,8 +13,10 @@ from apis import BinbotApi
 from autotrade import Autotrade
 from pattern_detection import (
     chaikin_oscillator,
+    linear_regression,
     reversal_confirmation,
     reversal_signals,
+    stdev,
     test_pattern_recognition,
 )
 from telegram_bot import TelegramBot
@@ -251,25 +253,27 @@ class ResearchSignals(BinbotApi):
             msg = None
 
             if symbol not in self.last_processed_kline:
-                # all_patterns = test_pattern_recognition(data["trace"][0])
-                # if len(all_patterns) > 0:
-                #     for pattern in all_patterns:
-                #         msg = f"- {os.getenv('ENV')} Candlestick pattern detection: <strong>{pattern}</strong> {symbol} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-                #         self._send_msg(msg)
-                #         print(msg)
+                all_patterns = test_pattern_recognition(data["trace"][0])
+                if len(all_patterns) > 0:
+                    for pattern in all_patterns:
+                        msg = f"- {os.getenv('ENV')} Candlestick pattern detection: <strong>{pattern}</strong> {symbol} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                        self._send_msg(msg)
+                        print(msg)
 
-                #     self.last_processed_kline[symbol] = time()
+                    self.last_processed_kline[symbol] = time()
 
                 patterns_detected = reversal_signals(data["trace"][0])
                 reversal = reversal_confirmation(data["trace"][0])
                 value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
+                regression = linear_regression(data["trace"][0])
+                sd = stdev(data["trace"][0])
                 if reversal:
-                    status = f"reversal confirmation \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'}"
+                    status = f"reversal confirmation "
                     if len(patterns_detected) > 0:
                         for p in patterns_detected:
                             status += f"\n- {p} pattern"
 
-                    msg = f"- [{os.getenv('ENV')}] Candlesick <strong>{status}</strong> {symbol} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                    msg = f"- [{os.getenv('ENV')}] Candlesick <strong>{status}</strong> {symbol} \n - SD {sd} \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'} \n - Regression line {regression} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
                     self._send_msg(msg)
                     print(msg)
 

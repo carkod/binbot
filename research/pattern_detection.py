@@ -27,7 +27,7 @@ patterns = {
     "CDLHIGHWAVE": "High-Wave Candle",
     "CDLHIKKAKE": "Hikkake Pattern",
     "CDLHIKKAKEMOD": "Modified Hikkake Pattern",
-    "CDLHOMINGPIGEON": "Homing Pigeon",
+    "CDLHOMINGPIGEON": "Homing Pigeon", # Too many false signals
     "CDLIDENTICAL3CROWS": "Identical Three Crows",
     "CDLINNECK": "In-Neck Pattern",
     "CDLKICKING": "Kicking",
@@ -50,6 +50,7 @@ patterns = {
     "CDLUNIQUE3RIVER": "Unique 3 River",
     "CDLUPSIDEGAP2CROWS": "Upside Gap Two Crows",
     "CDLXSIDEGAP3METHODS": "Upside/Downside Gap Three Methods",
+    "CDLTAKURI": "Takuri (Dragonfly Doji with very long lower shadow)", 
 }
 
 test_patterns = {
@@ -58,7 +59,7 @@ test_patterns = {
     "CDL3INSIDE": "Three Inside Up/Down",
     "CDL3LINESTRIKE": "Three-Line Strike",
     "CDL3STARSINSOUTH": "Three Stars In The South",
-    "CDL3WHITESOLDIERS": "Three Advancing White Soldiers",
+    "CDL3WHITESOLDIERS": "Three Advancing White Soldiers", # upward trend?
     "CDLABANDONEDBABY": "Abandoned Baby",
     "CDLADVANCEBLOCK": "Advance Block",
     "CDLBREAKAWAY": "Breakaway",
@@ -68,7 +69,6 @@ test_patterns = {
     "CDLGAPSIDESIDEWHITE": "Up/Down-gap side-by-side white lines",
     "CDLHANGINGMAN": "Hanging Man",
     "CDLHIKKAKEMOD": "Modified Hikkake Pattern",
-    "CDLHOMINGPIGEON": "Homing Pigeon",
     "CDLIDENTICAL3CROWS": "Identical Three Crows",
     "CDLINNECK": "In-Neck Pattern",
     "CDLKICKING": "Kicking",
@@ -81,7 +81,6 @@ test_patterns = {
     "CDLSHOOTINGSTAR": "Shooting Star",
     "CDLSTALLEDPATTERN": "Stalled Pattern",
     "CDLSTICKSANDWICH": "Stick Sandwich",
-    "CDLTAKURI": "Takuri (Dragonfly Doji with very long lower shadow)",
     "CDLTASUKIGAP": "Tasuki Gap",
     "CDLTHRUSTING": "Thrusting Pattern",
     "CDLTRISTAR": "Tristar Pattern",
@@ -146,26 +145,6 @@ def reversal_confirmation(data):
 
     return (ms_check or mds_check) and e_check
 
-def reversal_pattern_recognition(data):
-    """
-    Detect all patterns, not just reversal
-    """
-    # Detect morning star pattern (price reversal)
-    open = numpy.asarray(data["open"], dtype='f8')
-    high = numpy.asarray(data["high"], dtype='f8')
-    low = numpy.asarray(data["low"], dtype='f8')
-    close = numpy.asarray(data["close"], dtype='f8')
-
-    detected_patterns = []
-
-    for pattern in reversal_patterns:
-        pattern_function = getattr(talib, pattern)
-        results = pattern_function(open, high, low, close)
-        if results[len(results) - 1] > 0:
-            detected_patterns.append(reversal_patterns[pattern])
-
-    return detected_patterns
-
 def downtrend_patterns(data):
     """
     Downtrend patterns that I've found quite accurate
@@ -221,3 +200,29 @@ def chaikin_oscillator(data, volume):
     last_value = real[len(real) - 1]
     previous_last = real[len(real) - 2]
     return last_value - (previous_last), last_value
+
+def linear_regression(data):
+    """
+    Create linear regression equation y = X1*x + Intercept
+    The larger X1, the quicker prices are increasing, and viceversa
+    Larger intercept means higher starting point
+    @params
+    data: Candlestick data (Open, High, Low, Close)
+    @returns
+    string which contains an equation of the format y = X1x + i. Potentially can draw a graph
+    """
+    close = numpy.asarray(data["close"], dtype='f8')
+
+    slope = talib.LINEARREG_SLOPE(close, timeperiod=25)
+    intercept = talib.LINEARREG_INTERCEPT(close, timeperiod=25)
+
+    equation = f"{slope.tolist()[len(slope) - 1]}X + {intercept.tolist()[len(intercept) - 1]}"
+    return equation
+
+def stdev(data):
+    close = numpy.asarray(data["close"], dtype='f8')
+
+    standard_deviation = talib.STDDEV(close, timeperiod=25, nbdev=1)
+    last_sd = standard_deviation.tolist()[len(standard_deviation) - 1]
+    return last_sd
+
