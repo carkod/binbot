@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import random
 import threading
@@ -13,6 +14,7 @@ from apis import BinbotApi
 from autotrade import Autotrade
 from pattern_detection import (
     chaikin_oscillator,
+    downtrend_patterns,
     linear_regression,
     reversal_confirmation,
     reversal_signals,
@@ -142,6 +144,12 @@ class ResearchSignals(BinbotApi):
         self.load_data()
         raw_symbols = self.ticker_price()
         black_list = [x["pair"] for x in self.blacklist_data]
+
+        # Remove UPUSDT and DOWNUSDT
+        for s in raw_symbols:
+            if s in ["UPUSDT", "DOWNUSDT"]:
+                self.blacklist_coin(s, "No liquidity. Not the real crypto")
+
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
         list_markets = markets - subtract_list
@@ -253,51 +261,45 @@ class ResearchSignals(BinbotApi):
             msg = None
 
             if symbol not in self.last_processed_kline:
+                downtrend = downtrend_patterns(data["trace"][0])
                 all_patterns = test_pattern_recognition(data["trace"][0])
-                if len(all_patterns) > 0:
-                    for pattern in all_patterns:
-                        msg = f"- {os.getenv('ENV')} Candlestick pattern detection: <strong>{pattern}</strong> {symbol} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-                        self._send_msg(msg)
-                        print(msg)
 
-                    self.last_processed_kline[symbol] = time()
-
-                patterns_detected = reversal_signals(data["trace"][0])
                 reversal = reversal_confirmation(data["trace"][0])
                 value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
                 regression = linear_regression(data["trace"][0])
                 sd = stdev(data["trace"][0])
-                if reversal:
-                    status = f"reversal confirmation "
-                    if len(patterns_detected) > 0:
-                        for p in patterns_detected:
-                            status += f"\n- {p} pattern"
 
-                    msg = f"- [{os.getenv('ENV')}] Candlesick <strong>{status}</strong> {symbol} \n - SD {sd} \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'} \n - Regression line {regression} \n- Amplitude {supress_notation(amplitude, 2)} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-                    self._send_msg(msg)
-                    print(msg)
+                # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
+                if reversal and math.ceil(sd) > 0.006 and len(downtrend) == 0:
+                    status = f"reversal confirmation "
+                    if len(all_patterns) > 0:
+                        for p in all_patterns:
+                            status += f"\n- {p} pattern"
 
                     if (
                         # It doesn't have to be a red candle for upward trending
                         float(close_price) > float(open_price)
                         # and amplitude > 0.08
-                        and close_price > ma_7[len(ma_7) - 1]
-                        and open_price > ma_7[len(ma_7) - 1]
-                        and ma_7[len(ma_7) - 1] > ma_7[len(ma_7) - 2]
-                        and close_price > ma_7[len(ma_7) - 2]
-                        and open_price > ma_7[len(ma_7) - 2]
-                        and ma_7[len(ma_7) - 2] > ma_7[len(ma_7) - 3]
-                        and close_price > ma_7[len(ma_7) - 3]
-                        and open_price > ma_7[len(ma_7) - 3]
-                        and close_price > ma_100[len(ma_100) - 1]
-                        and open_price > ma_100[len(ma_100) - 1]
-                        and close_price > ma_25[len(ma_25) - 1]
-                        and open_price > ma_25[len(ma_25) - 1]
-                        and close_price > ma_25[len(ma_25) - 2]
-                        and open_price > ma_25[len(ma_25) - 2]
+                        # and close_price > ma_7[len(ma_7) - 1]
+                        # and open_price > ma_7[len(ma_7) - 1]
+                        # and ma_7[len(ma_7) - 1] > ma_7[len(ma_7) - 2]
+                        # and close_price > ma_7[len(ma_7) - 2]
+                        # and open_price > ma_7[len(ma_7) - 2]
+                        # and ma_7[len(ma_7) - 2] > ma_7[len(ma_7) - 3]
+                        # and close_price > ma_7[len(ma_7) - 3]
+                        # and open_price > ma_7[len(ma_7) - 3]
+                        # and close_price > ma_100[len(ma_100) - 1]
+                        # and open_price > ma_100[len(ma_100) - 1]
+                        # and close_price > ma_25[len(ma_25) - 1]
+                        # and open_price > ma_25[len(ma_25) - 1]
+                        # and close_price > ma_25[len(ma_25) - 2]
+                        # and open_price > ma_25[len(ma_25) - 2]
                     ):
 
-                        status = "strong upward trend"
+                        # status = "strong upward trend"
+                        msg = f"- [{os.getenv('ENV')}] Candlesick <strong>{status}</strong> {symbol} \n - SD {sd} \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'} \n - Regression line {regression} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+                        self._send_msg(msg)
+                        print(msg)
 
                         # Check balance to avoid failed autotrades
                         check_balance_res = requests.get(

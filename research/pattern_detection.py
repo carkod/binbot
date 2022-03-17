@@ -80,7 +80,6 @@ test_patterns = {
     "CDLRISEFALL3METHODS": "Rising/Falling Three Methods",
     "CDLSHOOTINGSTAR": "Shooting Star",
     "CDLSTALLEDPATTERN": "Stalled Pattern",
-    "CDLSTICKSANDWICH": "Stick Sandwich",
     "CDLTASUKIGAP": "Tasuki Gap",
     "CDLTHRUSTING": "Thrusting Pattern",
     "CDLTRISTAR": "Tristar Pattern",
@@ -109,6 +108,7 @@ def reversal_signals(data):
         "CDLRICKSHAWMAN": "Rickshaw Man",
         "CDLLONGLEGGEDDOJI": "Long Legged Doji",
         "CDL3OUTSIDE": "Three Outside Up/Down",
+        "CDLSTICKSANDWICH": "Stick Sandwich",
     }
 
     open = numpy.asarray(data["open"], dtype='f8')
@@ -158,7 +158,21 @@ def downtrend_patterns(data):
         "CDLGRAVESTONEDOJI": "Gravestone Doji",
         "CDLTAKURI": "Takuri (Dragonfly Doji with very long lower shadow)",
     }
+    
+    open = numpy.asarray(data["open"], dtype='f8')
+    high = numpy.asarray(data["high"], dtype='f8')
+    low = numpy.asarray(data["low"], dtype='f8')
+    close = numpy.asarray(data["close"], dtype='f8')
 
+    detected_patterns = []
+
+    for pattern in bearish_patterns:
+        pattern_function = getattr(talib, pattern)
+        results = pattern_function(open, high, low, close)
+        if results[len(results) - 1] > 0:
+            detected_patterns.append(bearish_patterns[pattern])
+    
+    return detected_patterns
 
 def test_pattern_recognition(data):
     """
