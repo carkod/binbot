@@ -355,6 +355,11 @@ class Candlestick(BinbotApi):
 
         if stats:
             df["candle_spread"] = abs(pd.to_numeric(df[1]) - pd.to_numeric(df[4]))
+            try:
+                df.shape[0]
+            except Exception as e:
+                print(symbol)
+                print(trace)
             curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
             avg_candle_spread = df["candle_spread"].median()
 

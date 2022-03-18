@@ -112,6 +112,7 @@ class Autotrade(BinbotApi):
             print(msg)
             return
 
+
         self.default_bot["trailling_deviation"] = self.settings["trailling_deviation"]
 
         # Create bot

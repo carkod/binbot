@@ -220,7 +220,7 @@ def linear_regression(data):
     Create linear regression equation y = X1*x + Intercept
     The larger X1, the quicker prices are increasing, and viceversa
     Larger intercept means higher starting point
-    @params
+    Args:
     data: Candlestick data (Open, High, Low, Close)
     @returns
     string which contains an equation of the format y = X1x + i. Potentially can draw a graph
@@ -230,8 +230,7 @@ def linear_regression(data):
     slope = talib.LINEARREG_SLOPE(close, timeperiod=25)
     intercept = talib.LINEARREG_INTERCEPT(close, timeperiod=25)
 
-    equation = f"{slope.tolist()[len(slope) - 1]}X + {intercept.tolist()[len(intercept) - 1]}"
-    return equation
+    return slope, intercept
 
 def stdev(data):
     close = numpy.asarray(data["close"], dtype='f8')

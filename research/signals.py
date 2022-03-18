@@ -148,7 +148,7 @@ class ResearchSignals(BinbotApi):
 
         # Remove UPUSDT and DOWNUSDT
         for s in raw_symbols:
-            if s in ["ETH", "BTC", "BNB"]:
+            if s in ["ETHUSD", "BTCUSD", "BNBUSD"]:
                 self.blacklist_coin(s, "Value too high, can't buy enough coins to earn.")
 
         markets = set([item["symbol"] for item in raw_symbols])
@@ -302,13 +302,15 @@ class ResearchSignals(BinbotApi):
 
                 reversal = reversal_confirmation(data["trace"][0])
                 value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
-                regression = linear_regression(data["trace"][0])
+                slope, intercept = linear_regression(data["trace"][0])
                 sd = stdev(data["trace"][0])
 
-                # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
-                candlestick_patterns(reversal, sd, close_price, open_price, value, chaikin_diff, regression, downtrend, all_patterns, self._send_msg, self.run_autotrade, symbol, ws)
+                reg_equation = f"{slope.tolist()[len(slope) - 1]}X + {intercept.tolist()[len(intercept) - 1]}"
 
-                ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd, value, chaikin_diff, regression, self._send_msg, self.run_autotrade, ws)
+                # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
+                candlestick_patterns(reversal, sd, close_price, open_price, value, chaikin_diff, reg_equation, downtrend, all_patterns, self._send_msg, self.run_autotrade, symbol, ws)
+
+                ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd, value, chaikin_diff, reg_equation, self._send_msg, self.run_autotrade, ws, intercept)
 
                 self.last_processed_kline[symbol] = time()
 
