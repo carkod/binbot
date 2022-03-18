@@ -17,12 +17,13 @@ from pattern_detection import (
     downtrend_patterns,
     linear_regression,
     reversal_confirmation,
-    reversal_signals,
     stdev,
     test_pattern_recognition,
 )
+from algorithms.candlestick_patterns import candlestick_patterns
+from algorithms.ma_candlestick_jump import ma_candlestick_jump
 from telegram_bot import TelegramBot
-from utils import handle_binance_errors, supress_notation
+from utils import handle_binance_errors
 
 load_dotenv()
 
@@ -147,8 +148,8 @@ class ResearchSignals(BinbotApi):
 
         # Remove UPUSDT and DOWNUSDT
         for s in raw_symbols:
-            if s in ["UPUSDT", "DOWNUSDT"]:
-                self.blacklist_coin(s, "No liquidity. Not the real crypto")
+            if s in ["ETH", "BTC", "BNB"]:
+                self.blacklist_coin(s, "Value too high, can't buy enough coins to earn.")
 
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
@@ -175,6 +176,42 @@ class ResearchSignals(BinbotApi):
         res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
         handle_binance_errors(res)
         return
+    
+    def run_autotrade(self, symbol, ws):
+        """
+        Refactored autotrade conditions.
+        Previously part of process_kline_stream
+        1. Checks if we have balance to trade
+        2. 
+        """
+        # Check balance to avoid failed autotrades
+        check_balance_res = requests.get(
+            url=self.bb_balance_estimate_url
+        )
+        balances = handle_binance_errors(check_balance_res)
+        if "error" in balances and balances["error"] == 1:
+            print(balances["message"])
+            return
+
+        balance_check = int(balances["data"]["total_fiat"])
+
+        # If dashboard has changed any self.settings
+        # Need to reload websocket
+        if (
+            "update_required" in self.settings
+            and self.settings["update_required"]
+        ):
+            print("Update required, restart stream")
+            self.start_stream(previous_ws=ws)
+            pass
+
+        if (
+            int(self.settings["autotrade"]) == 1
+            # Temporary restriction for few funds
+            and balance_check > 0
+        ):
+            autotrade = Autotrade(symbol, self.settings)
+            autotrade.run()
 
     def on_close(self, *args):
         """
@@ -257,7 +294,6 @@ class ResearchSignals(BinbotApi):
                 return
 
             # Average amplitude
-            amplitude = float(data["amplitude"])
             msg = None
 
             if symbol not in self.last_processed_kline:
@@ -270,65 +306,9 @@ class ResearchSignals(BinbotApi):
                 sd = stdev(data["trace"][0])
 
                 # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
-                if reversal and math.ceil(sd) > 0.006 and len(downtrend) == 0:
-                    status = f"reversal confirmation "
-                    if len(all_patterns) > 0:
-                        for p in all_patterns:
-                            status += f"\n- {p} pattern"
+                candlestick_patterns(reversal, sd, close_price, open_price, value, chaikin_diff, regression, downtrend, all_patterns, self._send_msg, self.run_autotrade, symbol, ws)
 
-                    if (
-                        # It doesn't have to be a red candle for upward trending
-                        float(close_price) > float(open_price)
-                        # and amplitude > 0.08
-                        # and close_price > ma_7[len(ma_7) - 1]
-                        # and open_price > ma_7[len(ma_7) - 1]
-                        # and ma_7[len(ma_7) - 1] > ma_7[len(ma_7) - 2]
-                        # and close_price > ma_7[len(ma_7) - 2]
-                        # and open_price > ma_7[len(ma_7) - 2]
-                        # and ma_7[len(ma_7) - 2] > ma_7[len(ma_7) - 3]
-                        # and close_price > ma_7[len(ma_7) - 3]
-                        # and open_price > ma_7[len(ma_7) - 3]
-                        # and close_price > ma_100[len(ma_100) - 1]
-                        # and open_price > ma_100[len(ma_100) - 1]
-                        # and close_price > ma_25[len(ma_25) - 1]
-                        # and open_price > ma_25[len(ma_25) - 1]
-                        # and close_price > ma_25[len(ma_25) - 2]
-                        # and open_price > ma_25[len(ma_25) - 2]
-                    ):
-
-                        # status = "strong upward trend"
-                        msg = f"- [{os.getenv('ENV')}] Candlesick <strong>{status}</strong> {symbol} \n - SD {sd} \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'} \n - Regression line {regression} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
-                        self._send_msg(msg)
-                        print(msg)
-
-                        # Check balance to avoid failed autotrades
-                        check_balance_res = requests.get(
-                            url=self.bb_balance_estimate_url
-                        )
-                        balances = handle_binance_errors(check_balance_res)
-                        if "error" in balances and balances["error"] == 1:
-                            print(balances["message"])
-                            return
-
-                        balance_check = int(balances["data"]["total_fiat"])
-
-                        # If dashboard has changed any self.settings
-                        # Need to reload websocket
-                        if (
-                            "update_required" in self.settings
-                            and self.settings["update_required"]
-                        ):
-                            print("Update required, restart stream")
-                            self.start_stream(previous_ws=ws)
-                            pass
-
-                        if (
-                            int(self.settings["autotrade"]) == 1
-                            # Temporary restriction for few funds
-                            and balance_check > 0
-                        ):
-                            autotrade = Autotrade(symbol, self.settings, amplitude)
-                            autotrade.run()
+                ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd, value, chaikin_diff, regression, self._send_msg, self.run_autotrade, ws)
 
                 self.last_processed_kline[symbol] = time()
 
