@@ -7,13 +7,14 @@ from datetime import datetime
 
 from requests import Session, get
 
-from apis import BinbotApi
 from telegram_bot import TelegramBot
 
 
-class NewTokens(BinbotApi):
+class NewTokens:
     def __init__(self) -> None:
-        self.annoucements_url = "https://www.binance.com/gateway-api/v1/public/cms/article/list/query"
+        self.annoucements_url = (
+            "https://www.binance.com/gateway-api/v1/public/cms/article/list/query"
+        )
         self.session = Session()
         self.telegram_bot = TelegramBot()
         self.last_processed_kline = {}
@@ -67,27 +68,24 @@ class NewTokens(BinbotApi):
                 ):
                     del self.last_processed_kline[t]
 
-                if t not in self.last_processed_kline:
-                    get_date = latest_announcement["data"]["catalogs"][0]["articles"][
-                        i
-                    ]["releaseDate"]
-                    dt_object = datetime.fromtimestamp(int(get_date / 1000))
-                    release_date = dt_object.strftime("%Y-%m-%dT%H:%M")
-                    if dt_object > datetime.now():
-                        headers = {"User-Agent": "SomeAgent"}
-                        coin_data = get(
-                            url=f"https://etherscan.io/searchHandler?term={t}&filterby=0",
-                            headers=headers,
-                        )
-                        json_data = json.loads(coin_data.text)
-                        for item in json_data:
-                            find_token = re.findall("\(([^)]+)", item)
-                            if len(find_token) > 0 and find_token[0] == t:
-                                # Get the address
-                                token_address = re.findall("0x[a-fA-F0-9]{40}", item)[0]
-                                msg = f"New token/cryptocurrency {t} about to launch {release_date}. Address: {token_address}"
-                                self.telegram_bot.send_msg(msg)
-                                print(msg)
-                        self.last_processed_kline[t] = time.time()
+                get_date = latest_announcement["data"]["catalogs"][0]["articles"][
+                    i
+                ]["releaseDate"]
+                dt_object = datetime.fromtimestamp(int(get_date / 1000))
+                release_date = dt_object.strftime("%Y-%m-%dT%H:%M")
+                headers = {"User-Agent": "SomeAgent"}
+                coin_data = get(
+                    url=f"https://etherscan.io/searchHandler?term={t}&filterby=0",
+                    headers=headers,
+                )
+                json_data = json.loads(coin_data.text)
+                for item in json_data:
+                    find_token = re.findall("\(([^)]+)", item)
+                    if len(find_token) > 0 and find_token[0] == t:
+                        # Get the address
+                        token_address = re.findall("0x[a-fA-F0-9]{40}", item)[0]
+                        msg = f"New token/cryptocurrency <strong>{t}</strong> about to launch {release_date}. \nAddress: {token_address}"
+                        self.telegram_bot.send_msg(msg)
+                        print(msg)
 
         pass

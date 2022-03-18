@@ -84,7 +84,7 @@ class BotForm extends React.Component {
       traillingDeviationError: false,
       formIsValid: true,
       activeTab: "main",
-      candlestick_interval: intervalOptions[11],
+      candlestick_interval: intervalOptions[3],
       deals: [],
       orders: [],
       quoteAsset: "",
@@ -129,7 +129,7 @@ class BotForm extends React.Component {
         safety_orders: this.props.bot.safety_orders,
         candlestick_interval: !checkValue(this.props.bot.candlestick_interval)
           ? this.props.bot.candlestick_interval
-          : intervalOptions[11],
+          : intervalOptions[3],
       });
     }
     if (
@@ -139,7 +139,7 @@ class BotForm extends React.Component {
       this.props.loadCandlestick(
         this.state.pair,
         this.state.candlestick_interval,
-        this.props.bot?.deal?.buy_timestamp
+        this.props.bot?.deal?.buy_timestamp,
       );
     }
     // If there is a newBotId, it means form was created
@@ -379,8 +379,10 @@ class BotForm extends React.Component {
 
   handlePairChange = (value) => {
     // Get pair base or quote asset and set new pair
-    this.props.getSymbolInfo(value[0]);
-    this.setState({ pair: value[0] });
+    if (!checkValue(value)) {
+      this.props.getSymbolInfo(value[0]);
+      this.setState({ pair: value[0] });
+    }
   };
 
   handlePairBlur = () => {
@@ -559,7 +561,6 @@ class BotForm extends React.Component {
     });
 
   render() {
-    console.log(this.props.bot?.deal?.buy_timestamp)
     return (
       <div className="content">
         <Row>

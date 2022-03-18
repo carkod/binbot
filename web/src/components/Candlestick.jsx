@@ -16,7 +16,8 @@ function Candlestick({ data, bot = null, deal = null }) {
     },
     showlegend: false,
     xaxis: {
-      autorange: true,
+      autorange: false,
+      range: [data.trace[0].x[50], data.trace[0].x[data.trace[0].x.length - 1]],
       title: "Date",
       type: "date",
     },

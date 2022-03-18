@@ -1,13 +1,12 @@
-from datetime import datetime, timedelta
-from multiprocessing.sharedctypes import Value
-from numpy import number
+from math import ceil
+from time import time
+from typing import TypedDict
 
 import pandas as pd
 from api.apis import BinbotApi
 from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
-from flask import request, current_app
-from typing import TypedDict
-from api.tools.round_numbers import round_numbers
+from api.tools.round_numbers import interval_to_millisecs, round_numbers
+from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
 
 
@@ -44,9 +43,13 @@ class KlinesSchema:
             curr_ts = kline["data"][len(kline["data"]) - 1][0]
             if curr_ts == timestamp:
                 # If found timestamp match - update
+                current_app.db.klines.update_one(
+                    {"_id": self._id},
+                    {"$pop": {"data": 1}},
+                )
                 update_kline = current_app.db.klines.update_one(
                     {"_id": self._id},
-                    {"$push": {"data": {"$each": [new_data], "$slice": -1}}},
+                    {"$push": {"data": new_data}},
                 )
             else:
                 # If no timestamp match - push
@@ -76,6 +79,28 @@ class Candlestick(BinbotApi):
     https://plotly.com/javascript/candlestick-charts/
     """
 
+    def check_gaps(self, df, params):
+        """
+        Checks gaps in the candlestick time series, using the dates difference between dates (index = 0)
+        If there are gaps, request data from Binance API (high weight, use cautiously)
+        @params
+        - df [Pandas dataframe]
+        """
+        print("Cleaning db of incomplete data...")
+        kline_df = df
+        df["check_gaps"] = df[0].diff()[1:]
+        df.dropna(inplace=True)
+        check_gaps = df["check_gaps"].to_numpy()
+        # If true, no gaps
+        no_gaps = (check_gaps[0] == check_gaps).all()
+        if not no_gaps:
+            self.delete_klines()
+            data = self.request(url=self.candlestick_url, params=params)
+            KlinesSchema(params["symbol"], params["interval"], data).create()
+            klines = current_app.db.klines.find_one({"_id": params["symbol"]})
+            kline_df = pd.DataFrame(klines["data"])
+        return kline_df
+
     def get_klines(self, binance=False, json=True, params: KlinesParams = None):
         """
         Servers 2 purposes:
@@ -85,7 +110,7 @@ class Candlestick(BinbotApi):
         symbol = request.args.get("symbol")
         interval = request.args.get("interval", "15m")
         # 200 limit + 100 Moving Average = 300
-        limit = request.args.get("limit", 300)
+        limit = request.args.get("limit", 600)
         start_time = request.args.get("start_time")
         end_time = request.args.get("end_time")
 
@@ -104,14 +129,35 @@ class Candlestick(BinbotApi):
         if binance and not json:
             klines = self.request(url=self.candlestick_url, params=params)
             df = pd.DataFrame(klines)
-            dates = df[100:].reset_index()[0].tolist()
+            # Check time series gaps before returning the list
+            df = self.check_gaps(df, params)
+            dates = df[0].tolist()
             return df, dates
 
-        klines = current_app.db.klines.find_one({"_id": params["symbol"]})
+        # Do we require more candlesticks for charts data?
+        if params["startTime"]:
+            klines = current_app.db.klines.find_one(
+                {"_id": params["symbol"], "data.0.0": {"$lte": params["startTime"]}}
+            )
+        else:
+            klines = current_app.db.klines.find_one(
+                {"_id": params["symbol"]}
+            )
+
         if not klines:
             try:
+                if params["startTime"]:
+                    # Delete any remnants of this data
+                    KlinesSchema(symbol).delete_klines()
+                    # Calculate diff start_time and end_time
+                    # Divide by interval time to get limit
+                    diff_time = (time() * 1000) - int(params["startTime"])
+                    # where 15m = 900,000 milliseconds
+                    params["limit"] = ceil(
+                        diff_time / interval_to_millisecs(params["interval"])
+                    )
+
                 # Store more data for db to fill up candlestick charts
-                params["limit"] = 600
                 data = self.request(url=self.candlestick_url, params=params)
                 if "message" in data:
                     raise Exception(data["message"])
@@ -126,7 +172,8 @@ class Candlestick(BinbotApi):
         if not json:
             if klines:
                 df = pd.DataFrame(klines["data"])
-                dates = df[100:].reset_index()[0].tolist()
+                df = self.check_gaps(df, params)
+                dates = df[0].tolist()
             else:
                 df = []
                 dates = []
@@ -185,8 +232,6 @@ class Candlestick(BinbotApi):
         - Cut off first 100 for MA_100
         - Return data as lists with the correct format (defaults)
         """
-        # adjust to MAs
-        df = df[100:].reset_index()
         # create lists for plotly
         close = df[4].tolist()
         high = df[2].tolist()
@@ -226,30 +271,30 @@ class Candlestick(BinbotApi):
             .mean()
             .dropna()
             .reset_index(drop=True)
-            .values.tolist()[75:]
+            .values.tolist()
         )
         kline_df_7 = (
             data.rolling(window=7)
             .mean()
             .dropna()
             .reset_index(drop=True)
-            .values.tolist()[94:]
+            .values.tolist()
         )
 
         ma_100 = {
-            "x": dates,
+            "x": dates[99:],
             "y": kline_df_100,
             "line": {"color": "#9368e9"},
             "type": "scatter",
         }
         ma_25 = {
-            "x": dates,
+            "x": dates[24:],
             "y": kline_df_25,
             "line": {"color": "#fb404b"},
             "type": "scatter",
         }
         ma_7 = {
-            "x": dates,
+            "x": dates[6:],
             "y": kline_df_7,
             "line": {"color": "#ffa534"},
             "type": "scatter",
@@ -297,7 +342,7 @@ class Candlestick(BinbotApi):
                 "limit": limit,
                 "symbol": symbol,
                 "interval": interval,
-                "startTime": start_time, # starTime and endTime must be camel cased for the API
+                "startTime": start_time,  # starTime and endTime must be camel cased for the API
                 "endTime": end_time,
             },
         )
@@ -322,10 +367,12 @@ class Candlestick(BinbotApi):
             amplitude = (float(high_price) / float(low_price)) - 1
 
             all_time_low = pd.to_numeric(df[3]).min()
+            volumes = df[5].tolist()
             resp = jsonResp(
                 {
                     "trace": [trace, ma_100, ma_25, ma_7],
                     "interval": interval,
+                    "volumes": volumes,
                     "curr_candle_spread": round_numbers(curr_candle_spread),
                     "avg_candle_spread": round_numbers(avg_candle_spread),
                     "curr_volume_spread": round_numbers(curr_volume_spread),
