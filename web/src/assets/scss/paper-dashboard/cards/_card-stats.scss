@@ -43,4 +43,7 @@
       line-height: 59px;
     }
   }
+  &.is-selected {
+    border: $border-thick solid $success-color;
+  }
 }

@@ -13,11 +13,13 @@ import {
 import { checkValue } from "../../validations";
 import { deleteBot, getBots, closeBot, archiveBot } from "./actions";
 import ConfirmModal from "../../components/ConfirmModal";
+import { produce, current } from "immer";
 class Bots extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       confirmModal: null,
+      selectedCards: [],
     };
   }
 
@@ -53,6 +55,24 @@ class Bots extends React.Component {
     return 0;
   };
 
+  handleSelection = (e) => {
+    if (!checkValue(e.target.dataset.id)) {
+      if (!this.state.selectedCards.includes(e.target.dataset.id)) {
+        const addCard = produce(this.state, (draft) => {
+          draft.selectedCards.push(e.target.dataset.id);
+        });
+        this.setState(addCard);
+      } else {
+        const unselectedCard = produce(this.state, (draft) => {
+          const index = draft.selectedCards.findIndex(x => x === e.target.dataset.id);
+          draft.selectedCards.splice(index, 1);
+        });
+        this.setState(unselectedCard);
+      }
+      
+    }
+  };
+
   render() {
     const { bots } = this.props;
     return (
@@ -62,7 +82,14 @@ class Bots extends React.Component {
             {!checkValue(bots)
               ? bots.map((x, i) => (
                   <Col key={x._id.$oid} sm="6" md="4" lg="3">
-                    <Card className="card-stats">
+                    <Card
+                      tabIndex={i}
+                      className={
+                        this.state.selectedCards.includes(x._id.$oid)
+                          ? "is-selected card-stats"
+                          : "card-stats"
+                      }
+                    >
                       <CardBody>
                         <Row>
                           <Col md="7" xs="12">
@@ -220,6 +247,7 @@ class Bots extends React.Component {
                         <div className="u-space-between">
                           <Button
                             color="info"
+                            title="Edit this bot"
                             onClick={() =>
                               this.props.history.push(
                                 `/admin/bots-edit/${x._id.$oid}`
@@ -227,6 +255,15 @@ class Bots extends React.Component {
                             }
                           >
                             <i className="fas fa-edit" />
+                          </Button>
+                          <Button
+                            color="success"
+                            title="Select this bot"
+                            data-index={i}
+                            data-id={x._id.$oid}
+                            onClick={this.handleSelection}
+                          >
+                            <i className="fas fa-check" />
                           </Button>
                           {x.status !== "active" && (
                             <Button

@@ -354,15 +354,6 @@ class Candlestick(BinbotApi):
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
 
         if stats:
-            df["candle_spread"] = abs(pd.to_numeric(df[1]) - pd.to_numeric(df[4]))
-            try:
-                df.shape[0]
-            except Exception as e:
-                print(symbol)
-                print(trace)
-            curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
-            avg_candle_spread = df["candle_spread"].median()
-
             df["volume_spread"] = abs(pd.to_numeric(df[1]) - pd.to_numeric(df[4]))
             curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
             avg_volume_spread = df["volume_spread"].median()
@@ -378,8 +369,6 @@ class Candlestick(BinbotApi):
                     "trace": [trace, ma_100, ma_25, ma_7],
                     "interval": interval,
                     "volumes": volumes,
-                    "curr_candle_spread": round_numbers(curr_candle_spread),
-                    "avg_candle_spread": round_numbers(avg_candle_spread),
                     "curr_volume_spread": round_numbers(curr_volume_spread),
                     "avg_volume_spread": round_numbers(avg_volume_spread),
                     "amplitude": amplitude,
