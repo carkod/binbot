@@ -256,6 +256,8 @@ class ResearchSignals(BinbotApi):
         active_bots = handle_binance_errors(bots_res)["data"]
         active_symbols = [bot["pair"] for bot in active_bots]
 
+        # Slow down websockets to avoid 100% server CPU
+        sleep(0.05)
         if "k" in result and "s" in result["k"] and len(active_symbols) == 0:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])

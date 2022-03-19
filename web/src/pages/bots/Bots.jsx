@@ -1,19 +1,23 @@
+import { produce } from "immer";
 import React from "react";
 import { connect } from "react-redux";
 import {
+  Badge,
   Button,
   Card,
   CardBody,
   CardFooter,
   CardTitle,
   Col,
-  Badge,
+  Container,
+  Form,
+  FormGroup,
+  Input,
   Row,
 } from "reactstrap";
-import { checkValue } from "../../validations";
-import { deleteBot, getBots, closeBot, archiveBot } from "./actions";
 import ConfirmModal from "../../components/ConfirmModal";
-import { produce, current } from "immer";
+import { checkValue } from "../../validations";
+import { archiveBot, closeBot, deleteBot, getBots } from "./actions";
 class Bots extends React.Component {
   constructor(props) {
     super(props);
@@ -27,6 +31,12 @@ class Bots extends React.Component {
     this.props.getBots();
   };
 
+  handleChange = (e) => {
+    this.setState({
+      [e.target.name]: e.target.value,
+    });
+  };
+
   convertPercent = (stringNum) => {
     return `${parseFloat(stringNum) * 100}%`;
   };
@@ -37,7 +47,8 @@ class Bots extends React.Component {
 
   confirmDelete = (option) => {
     if (parseInt(option) === 1) {
-      this.props.deleteBot(this.state.confirmModal);
+      this.props.deleteBot([this.state.confirmModal]);
+      this.props.getBots();
     } else {
       this.props.closeBot(this.state.confirmModal);
     }
@@ -64,12 +75,49 @@ class Bots extends React.Component {
         this.setState(addCard);
       } else {
         const unselectedCard = produce(this.state, (draft) => {
-          const index = draft.selectedCards.findIndex(x => x === e.target.dataset.id);
+          const index = draft.selectedCards.findIndex(
+            (x) => x === e.target.dataset.id
+          );
           draft.selectedCards.splice(index, 1);
         });
         this.setState(unselectedCard);
       }
-      
+    }
+  };
+
+  onSubmitBulkAction = () => {
+    if (!checkValue(this.state.bulkActions)) {
+      const value = this.state.bulkActions;
+      switch (value) {
+        case "delete-selected":
+          if (this.state.selectedCards.length > 0) {
+            this.props.deleteBot(this.state.selectedCards);
+            this.props.getBots();
+            this.setState({
+              selectedCards: [],
+            });
+          }
+          break;
+        case "unselect-all":
+          const unselectAll = produce(this.state, (draft) => {
+            draft.selectedCards = [];
+          });
+          this.setState(unselectAll);
+          break;
+        case "select-all":
+          const selectAll = produce(this.state, (draft) => {
+            let selectedCards = []
+            this.props.bots.forEach((element) => {
+              selectedCards.push(element._id.$oid);
+            });
+            draft.selectedCards = selectedCards
+            return draft;
+          });
+          this.setState(selectAll);
+          break;
+        default:
+          break;
+      }
     }
   };
 
@@ -77,6 +125,31 @@ class Bots extends React.Component {
     const { bots } = this.props;
     return (
       <>
+        <Container>
+          <Form>
+            <FormGroup row>
+              <Col sm={4}>
+                <Input
+                  bsSize="sm"
+                  type="select"
+                  name="bulkActions"
+                  id="bulk-actions"
+                  onChange={this.handleChange}
+                >
+                  <option value="">Select bulk action</option>
+                  <option value="delete-selected">Delete selected</option>
+                  <option value="unselect-all">Unselect all</option>
+                  <option value="select-all">Select all</option>
+                </Input>
+              </Col>
+              <Col sm={3}>
+                <Button onClick={this.onSubmitBulkAction}>
+                  Apply bulk action
+                </Button>
+              </Col>
+            </FormGroup>
+          </Form>
+        </Container>
         <div className="content">
           <Row>
             {!checkValue(bots)
@@ -299,6 +372,11 @@ class Bots extends React.Component {
         >
           Closing deals will close outstanding orders, sell coins and delete bot
         </ConfirmModal>
+        {this.state.selectedCards.length > 0 && (
+          <ConfirmModal>
+            You did not select the items for bulk action
+          </ConfirmModal>
+        )}
       </>
     );
   }

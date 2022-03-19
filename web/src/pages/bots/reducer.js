@@ -100,7 +100,6 @@ const botReducer = produce((draft, action) => {
     }
 
     case DELETE_BOT_SUCCESS: {
-      draft.data = draft.data.filter((x) => x._id.$oid !== draft.removeId);
       return draft;
     }
 
