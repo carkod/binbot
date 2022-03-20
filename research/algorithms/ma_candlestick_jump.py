@@ -15,10 +15,9 @@ def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd
     SD: standard deviation of 0.006 seems to be a good threshold after monitoring signals,
     whereas it is possible to get around 3% increase to actually make a profit
     """
-
     if (
         float(close_price) > float(open_price)
-        and not chaikin_diff
+        and chaikin_diff < 0
         and sd > 0.006
         and float(intercept) > 10
         and close_price > ma_7[len(ma_7) - 1]

@@ -257,14 +257,12 @@ class ResearchSignals(BinbotApi):
         active_symbols = [bot["pair"] for bot in active_bots]
 
         # Slow down websockets to avoid 100% server CPU
-        sleep(0.05)
+        sleep(0.01)
         if "k" in result and "s" in result["k"] and len(active_symbols) == 0:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
-
-            print(f"Signal {symbol}")
 
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
@@ -299,18 +297,16 @@ class ResearchSignals(BinbotApi):
             msg = None
 
             if symbol not in self.last_processed_kline:
-                downtrend = downtrend_patterns(data["trace"][0])
-                all_patterns = test_pattern_recognition(data["trace"][0])
-
-                reversal = reversal_confirmation(data["trace"][0])
+                print(f"Signal {symbol}")
+                
                 value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
                 slope, intercept = linear_regression(data["trace"][0])
                 sd = stdev(data["trace"][0])
 
-                reg_equation = f"{slope.tolist()[len(slope) - 1]}X + {intercept.tolist()[len(intercept) - 1]}"
+                reg_equation = f"{slope}X + {intercept}"
 
                 # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
-                candlestick_patterns(reversal, sd, close_price, open_price, value, chaikin_diff, reg_equation, downtrend, all_patterns, self._send_msg, self.run_autotrade, symbol, ws)
+                candlestick_patterns(data["trace"][0], sd, close_price, open_price, value, chaikin_diff, reg_equation, self._send_msg, self.run_autotrade, symbol, ws)
 
                 ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd, value, chaikin_diff, reg_equation, self._send_msg, self.run_autotrade, ws, intercept)
 
@@ -318,5 +314,6 @@ class ResearchSignals(BinbotApi):
 
             # If more than 6 hours passed has passed
             # Then we should resume sending signals for given symbol
-            if (float(time()) - float(self.last_processed_kline[symbol])) > 10000:
+            if (float(time()) - float(self.last_processed_kline[symbol])) > 1000:
                 del self.last_processed_kline[symbol]
+        pass
