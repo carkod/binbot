@@ -134,14 +134,14 @@ def reversal_confirmation(data):
     close = numpy.asarray(data["close"], dtype='f8')
 
     morning_doji_star = talib.CDLMORNINGDOJISTAR(open=open, high=high, low=low, close=close)
-    mds_check = bool(numpy.any(morning_doji_star[-10:]))
+    mds_check = bool(numpy.any(morning_doji_star[-3:]))
 
     morning_star_detection = talib.CDLMORNINGSTAR(open=open, high=high, low=low, close=close)
-    ms_check = bool(numpy.any(morning_star_detection[-10:]))
+    ms_check = bool(numpy.any(morning_star_detection[-3:]))
 
     # Reversal confirmation
     engulfing_detection = talib.CDLENGULFING(open=open, high=high, low=low, close=close)
-    e_check = bool(numpy.any(engulfing_detection[-10:]))
+    e_check = bool(numpy.any(engulfing_detection[-3:]))
 
     return (ms_check or mds_check) and e_check
 
@@ -220,7 +220,7 @@ def linear_regression(data):
     Create linear regression equation y = X1*x + Intercept
     The larger X1, the quicker prices are increasing, and viceversa
     Larger intercept means higher starting point
-    @params
+    Args:
     data: Candlestick data (Open, High, Low, Close)
     @returns
     string which contains an equation of the format y = X1x + i. Potentially can draw a graph
@@ -229,9 +229,10 @@ def linear_regression(data):
 
     slope = talib.LINEARREG_SLOPE(close, timeperiod=25)
     intercept = talib.LINEARREG_INTERCEPT(close, timeperiod=25)
+    last_slope = slope.tolist()[len(slope) - 1]
+    last_intercept = intercept.tolist()[len(intercept) - 1]
 
-    equation = f"{slope.tolist()[len(slope) - 1]}X + {intercept.tolist()[len(intercept) - 1]}"
-    return equation
+    return last_slope, last_intercept
 
 def stdev(data):
     close = numpy.asarray(data["close"], dtype='f8')

@@ -118,8 +118,9 @@ export function* watchEditBot() {
  * DELETE bot
  */
 export function* deleteBotApi(payload) {
-  const id = payload.data;
-  const requestURL = `${process.env.REACT_APP_GET_BOTS}?id=${id}`;
+  const ids = payload.removeId;
+  const params = new URLSearchParams(ids.map(s=>['id',s]))
+  const requestURL = `${process.env.REACT_APP_GET_BOTS}?${params.toString()}`;
   try {
     const res = yield call(request, requestURL, "DELETE");
     yield put(deleteBotSucceeded(res));

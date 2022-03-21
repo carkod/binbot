@@ -1,28 +1,40 @@
+import { produce } from "immer";
 import React from "react";
 import { connect } from "react-redux";
 import {
+  Badge,
   Button,
   Card,
   CardBody,
   CardFooter,
   CardTitle,
   Col,
-  Badge,
+  Container,
+  Form,
+  FormGroup,
+  Input,
   Row,
 } from "reactstrap";
-import { checkValue } from "../../validations";
-import { deleteBot, getBots, closeBot, archiveBot } from "./actions";
 import ConfirmModal from "../../components/ConfirmModal";
+import { checkValue } from "../../validations";
+import { archiveBot, closeBot, deleteBot, getBots } from "./actions";
 class Bots extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       confirmModal: null,
+      selectedCards: [],
     };
   }
 
   componentDidMount = () => {
     this.props.getBots();
+  };
+
+  handleChange = (e) => {
+    this.setState({
+      [e.target.name]: e.target.value,
+    });
   };
 
   convertPercent = (stringNum) => {
@@ -35,7 +47,8 @@ class Bots extends React.Component {
 
   confirmDelete = (option) => {
     if (parseInt(option) === 1) {
-      this.props.deleteBot(this.state.confirmModal);
+      this.props.deleteBot([this.state.confirmModal]);
+      this.props.getBots();
     } else {
       this.props.closeBot(this.state.confirmModal);
     }
@@ -53,16 +66,103 @@ class Bots extends React.Component {
     return 0;
   };
 
+  handleSelection = (e) => {
+    if (!checkValue(e.target.dataset.id)) {
+      if (!this.state.selectedCards.includes(e.target.dataset.id)) {
+        const addCard = produce(this.state, (draft) => {
+          draft.selectedCards.push(e.target.dataset.id);
+        });
+        this.setState(addCard);
+      } else {
+        const unselectedCard = produce(this.state, (draft) => {
+          const index = draft.selectedCards.findIndex(
+            (x) => x === e.target.dataset.id
+          );
+          draft.selectedCards.splice(index, 1);
+        });
+        this.setState(unselectedCard);
+      }
+    }
+  };
+
+  onSubmitBulkAction = () => {
+    if (!checkValue(this.state.bulkActions)) {
+      const value = this.state.bulkActions;
+      switch (value) {
+        case "delete-selected":
+          if (this.state.selectedCards.length > 0) {
+            this.props.deleteBot(this.state.selectedCards);
+            this.props.getBots();
+            this.setState({
+              selectedCards: [],
+            });
+          }
+          break;
+        case "unselect-all":
+          const unselectAll = produce(this.state, (draft) => {
+            draft.selectedCards = [];
+          });
+          this.setState(unselectAll);
+          break;
+        case "select-all":
+          const selectAll = produce(this.state, (draft) => {
+            let selectedCards = []
+            this.props.bots.forEach((element) => {
+              selectedCards.push(element._id.$oid);
+            });
+            draft.selectedCards = selectedCards
+            return draft;
+          });
+          this.setState(selectAll);
+          break;
+        default:
+          break;
+      }
+    }
+  };
+
   render() {
     const { bots } = this.props;
     return (
       <>
+        <Container>
+          <Form>
+            <FormGroup row>
+              <Col sm={4}>
+                <Input
+                  bsSize="sm"
+                  type="select"
+                  name="bulkActions"
+                  id="bulk-actions"
+                  onChange={this.handleChange}
+                >
+                  <option value="">Select bulk action</option>
+                  <option value="delete-selected">Delete selected</option>
+                  <option value="unselect-all">Unselect all</option>
+                  <option value="select-all">Select all</option>
+                </Input>
+              </Col>
+              <Col sm={3}>
+                <Button onClick={this.onSubmitBulkAction}>
+                  Apply bulk action
+                </Button>
+              </Col>
+            </FormGroup>
+          </Form>
+        </Container>
         <div className="content">
           <Row>
             {!checkValue(bots)
               ? bots.map((x, i) => (
                   <Col key={x._id.$oid} sm="6" md="4" lg="3">
-                    <Card className="card-stats">
+                    <Card
+                      tabIndex={i}
+                      className={
+                        this.state.selectedCards.includes(x._id.$oid)
+                          ? "is-selected card-stats"
+                          : "card-stats"
+                      }
+                    >
                       <CardBody>
                         <Row>
                           <Col md="7" xs="12">
@@ -220,6 +320,7 @@ class Bots extends React.Component {
                         <div className="u-space-between">
                           <Button
                             color="info"
+                            title="Edit this bot"
                             onClick={() =>
                               this.props.history.push(
                                 `/admin/bots-edit/${x._id.$oid}`
@@ -227,6 +328,15 @@ class Bots extends React.Component {
                             }
                           >
                             <i className="fas fa-edit" />
+                          </Button>
+                          <Button
+                            color="success"
+                            title="Select this bot"
+                            data-index={i}
+                            data-id={x._id.$oid}
+                            onClick={this.handleSelection}
+                          >
+                            <i className="fas fa-check" />
                           </Button>
                           {x.status !== "active" && (
                             <Button
@@ -262,6 +372,11 @@ class Bots extends React.Component {
         >
           Closing deals will close outstanding orders, sell coins and delete bot
         </ConfirmModal>
+        {this.state.selectedCards.length > 0 && (
+          <ConfirmModal>
+            You did not select the items for bulk action
+          </ConfirmModal>
+        )}
       </>
     );
   }

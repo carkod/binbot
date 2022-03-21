@@ -98,18 +98,14 @@ class Bot(Account):
         return resp
 
     def delete(self):
-        botId = request.args.get("id")
-        pair = request.args.get("pair")
-        status = request.args.get("status")
-        query = {}
-        if botId:
-            query["_id"] = ObjectId(botId)
-        if pair:
-            query["pair"] = pair
-        if status:
-            query["status"] = status
+        botIds = request.args.getlist("id")
+
+        if not botIds or not isinstance(botIds, list):
+            return jsonResp_error_message("At least one bot id is required")
+        
+
             
-        delete_action = self.app.db.bots.delete_one(query)
+        delete_action = self.app.db.bots.delete_many({"_id": {"$in": [ObjectId(item) for item in botIds]}})
         if delete_action:
             resp = jsonResp_message("Successfully deleted bot")
             self._restart_websockets()

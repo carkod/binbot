@@ -96,6 +96,7 @@ class Candlestick(BinbotApi):
         if not no_gaps:
             self.delete_klines()
             data = self.request(url=self.candlestick_url, params=params)
+            print("There are gaps in the candlestick data, requesting data from Binance")
             KlinesSchema(params["symbol"], params["interval"], data).create()
             klines = current_app.db.klines.find_one({"_id": params["symbol"]})
             kline_df = pd.DataFrame(klines["data"])
@@ -128,6 +129,7 @@ class Candlestick(BinbotApi):
 
         if binance and not json:
             klines = self.request(url=self.candlestick_url, params=params)
+            print("Requested candlestick data from Binance API")
             df = pd.DataFrame(klines)
             # Check time series gaps before returning the list
             df = self.check_gaps(df, params)
@@ -159,6 +161,7 @@ class Candlestick(BinbotApi):
 
                 # Store more data for db to fill up candlestick charts
                 data = self.request(url=self.candlestick_url, params=params)
+                print("Requested candlestick data from Binance API")
                 if "message" in data:
                     raise Exception(data["message"])
                 KlinesSchema(params["symbol"], params["interval"], data).create()
@@ -310,7 +313,7 @@ class Candlestick(BinbotApi):
         Index 2: ma_25
         Index 3: ma_7
 
-        @json:
+        Returns: json
         {
             "pair": string,
             "interval": string,
@@ -354,14 +357,6 @@ class Candlestick(BinbotApi):
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
 
         if stats:
-            df["candle_spread"] = abs(pd.to_numeric(df[1]) - pd.to_numeric(df[4]))
-            curr_candle_spread = df["candle_spread"][df.shape[0] - 1]
-            avg_candle_spread = df["candle_spread"].median()
-
-            df["volume_spread"] = abs(pd.to_numeric(df[1]) - pd.to_numeric(df[4]))
-            curr_volume_spread = df["volume_spread"][df.shape[0] - 1]
-            avg_volume_spread = df["volume_spread"].median()
-
             high_price = max(df[2])
             low_price = max(df[3])
             amplitude = (float(high_price) / float(low_price)) - 1
@@ -373,10 +368,6 @@ class Candlestick(BinbotApi):
                     "trace": [trace, ma_100, ma_25, ma_7],
                     "interval": interval,
                     "volumes": volumes,
-                    "curr_candle_spread": round_numbers(curr_candle_spread),
-                    "avg_candle_spread": round_numbers(avg_candle_spread),
-                    "curr_volume_spread": round_numbers(curr_volume_spread),
-                    "avg_volume_spread": round_numbers(avg_volume_spread),
                     "amplitude": amplitude,
                     "all_time_low": all_time_low,
                 }

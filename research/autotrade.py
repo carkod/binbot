@@ -8,9 +8,8 @@ from datetime import datetime
 
 
 class Autotrade(BinbotApi):
-    def __init__(self, pair, settings, amplitude=0) -> None:
+    def __init__(self, pair, settings) -> None:
         self.pair = pair
-        self.amplitude = amplitude
         self.settings = settings
         self.decimals = self.price_precision(pair)
         current_date = datetime.now().strftime("%Y-%m-%dT%H:%M")
@@ -113,12 +112,8 @@ class Autotrade(BinbotApi):
             print(msg)
             return
 
-        # Dynamic trailling
-        # the bigger the candlestick swings the larger should the trailling be to avoid selling too soon
-        dynamic_td = float(self.settings["trailling_deviation"]) * (
-            1 + float(self.amplitude)
-        )
-        self.default_bot["trailling_deviation"] = round(dynamic_td * 100) / 100
+
+        self.default_bot["trailling_deviation"] = self.settings["trailling_deviation"]
 
         # Create bot
         create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
