@@ -31,24 +31,27 @@ import {
   checkValue,
   intervalOptions,
 } from "../../validations.js";
+import { getSymbolInfo, getSymbols, loadCandlestick } from "../bots/actions";
 import {
-  createTestBot,
   activateTestBot,
+  createTestBot,
   deactivateTestBot,
   editTestBot,
   getTestBot,
+  setBotState,
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
 import MainTab from "./tabs/Main";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
-import { getSymbols, getSymbolInfo, loadCandlestick } from "../bots/actions";
 
 class TestBotForm extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       _id: props.match.params.id ? props.match.params.id : null,
+      bot_profit: 0,
+      activeTab: "main"
     };
   }
 
@@ -57,73 +60,36 @@ class TestBotForm extends React.Component {
     this.props.getBalance();
     this.props.getSymbols();
     if (!checkValue(this.props.match.params.id)) {
-      this.props.getTestBots(this.props.match.params.id);
+      this.props.getTestBot(this.props.match.params.id);
     }
   };
 
   componentDidUpdate = (p, s) => {
-    if (p.bot !== this.props.bot) {
-      this.setState({
-        status: this.props.bot.status,
-        balance_usage_size: this.props.bot.balance_usage_size,
-        balance_to_use: this.props.bot.balance_to_use,
-        base_order_size: this.props.bot.base_order_size,
-        max_so_count: this.props.bot.max_so_count,
-        name: this.props.bot.name,
-        pair: this.props.bot.pair,
-        price_deviation_so: this.props.bot.price_deviation_so,
-        so_size: this.props.bot.so_size,
-        take_profit: this.props.bot.take_profit,
-        trailling: this.props.bot.trailling,
-        trailling_deviation: this.props.bot.trailling_deviation,
-        orders: this.props.bot.orders,
-        stop_loss: this.props.bot.stop_loss,
-        candlestick_interval: !checkValue(this.props.bot.candlestick_interval)
-          ? this.props.bot.candlestick_interval
-          : intervalOptions[3],
-      });
-    }
-    if (
-      !checkValue(this.state.pair) &&
-      s.candlestick_interval !== this.state.candlestick_interval
-    ) {
+    if (!checkValue(this.props.bot.pair) && this.props.bot.pair !== p.bot.pair || this.props.bot.candlestick_interval !== p.bot.candlestick_interval) {
       this.props.loadCandlestick(
-        this.state.pair,
-        this.state.candlestick_interval,
+        this.props.bot.pair,
+        this.props.bot.candlestick_interval,
         this.props.bot?.deal?.buy_timestamp
       );
     }
-    // If there is a newBotId, it means form was created
-    // To make sure of this, check also URL has NO id param
-    if (
-      !checkValue(this.props.newBotId) &&
-      this.props.newBotId !== p.newBotId &&
-      checkValue(this.props.match.params.id)
-    ) {
-      this.props.history.push({
-        pathname: `/admin/paper-trading/edit/${this.props.newBotId}`,
-        state: { candlestick_interval: this.state.candlestick_interval },
-      });
-    }
-
     // Only for edit bot page
     // Fill up the candlestick when pair is available and inherit the interval too
-    if (!checkValue(this.state.pair) && this.state.pair !== s.pair) {
+    if (!checkValue(this.props.bot.pair) && this.props.bot.pair !== p.bot.pair) {
       const interval = !checkValue(this.props.history.location.state)
         ? this.props.history.location.state.candlestick_interval
-        : this.state.candlestick_interval;
+        : this.props.bot.candlestick_interval;
       this.props.loadCandlestick(
-        this.state.pair,
+        this.props.bot.pair,
         interval,
         this.props.bot?.deal?.buy_timestamp
       );
-      getQuoteAsset(this.state.pair).then(({ data }) =>
-        this.setState({ quoteAsset: data })
+      getQuoteAsset(this.props.bot.pair).then(({ data }) =>
+        this.props.setBotState({ quoteAsset: data })
       );
       const currentDate = moment().toISOString();
-      this.setState({
-        name: `${this.state.pair}_${currentDate}`,
-      });
+      this.props.setBotState({
+        name:`${this.props.bot.pair}_${currentDate}`
+      })
     }
 
     if (
@@ -169,46 +135,37 @@ class TestBotForm extends React.Component {
       trailling,
       trailling_deviation,
       stop_loss,
-    } = this.state;
+    } = this.props.bot;
 
     // If everything below is ok, form will be valid
-    this.setState({ formIsValid: true });
+    this.props.setBotState({formIsValid: true})
 
     if (checkValue(pair)) {
-      this.setState({ pairError: true, formIsValid: false });
+      this.props.setBotState({ pairError: true, formIsValid: false });
       return false;
     } else {
-      this.setState({ pairError: false });
+      this.props.setBotState({ pairError: false });
     }
 
     if (checkValue(base_order_size)) {
-      this.setState({ baseOrderSizeError: true, formIsValid: false });
+      this.props.setBotState({ baseOrderSizeError: true, formIsValid: false });
       return false;
     } else {
-      this.setState({ baseOrderSizeError: false });
+      this.props.setBotState({ baseOrderSizeError: false });
     }
 
     if (checkValue(take_profit) && checkBalance(take_profit)) {
-      this.setState({ takeProfitError: true, formIsValid: false });
+      this.props.setBotState({ takeProfitError: true, formIsValid: false });
       return false;
     } else {
-      this.setState({ takeProfitError: false });
-    }
-
-    if (checkValue(max_so_count)) {
-      if (checkBalance(so_size) && checkBalance(so_size)) {
-        this.setState({ soSizeError: true, formIsValid: false });
-        return false;
-      } else {
-        this.setState({ soSizeError: false });
-      }
+      this.props.setBotState({ takeProfitError: false });
     }
 
     if (!checkValue(stop_loss)) {
       if (parseFloat(stop_loss) > 100 || parseFloat(stop_loss) < 0) {
-        this.setState({ stopLossError: true, formIsValid: false });
+        this.props.setBotState({ stopLossError: true, formIsValid: false });
       } else {
-        this.setState({ stopLossError: false });
+        this.props.setBotState({ stopLossError: false });
       }
     }
 
@@ -217,10 +174,10 @@ class TestBotForm extends React.Component {
         checkBalance(trailling_deviation) &&
         checkBalance(trailling_deviation)
       ) {
-        this.setState({ traillingDeviationError: true, formIsValid: false });
+        this.props.setBotState({ traillingDeviationError: true, formIsValid: false });
         return false;
       } else {
-        this.setState({ traillingDeviationError: false });
+        this.props.setBotState({ traillingDeviationError: false });
       }
     }
 
@@ -237,14 +194,14 @@ class TestBotForm extends React.Component {
         base_order_size: String(this.state.base_order_size),
         max_so_count: this.state.max_so_count,
         name: this.state.name,
-        pair: this.state.pair,
+        pair: this.props.bot.pair,
         take_profit: this.state.take_profit,
         trailling: this.state.trailling,
         trailling_deviation: this.state.trailling_deviation,
         stop_loss: this.state.stop_loss,
         candlestick_interval: this.state.candlestick_interval,
       };
-      if (this.state._id === null) {
+      if (!checkValue(this.props.match.params.id)) {
         this.props.createTestBot(form);
       } else {
         this.props.editTestBot(this.state._id, form);
@@ -261,15 +218,15 @@ class TestBotForm extends React.Component {
     // Get pair base or quote asset and set new pair
     if (!checkValue(value)) {
       this.props.getSymbolInfo(value[0]);
-      this.setState({ pair: value[0] });
+      this.props.setBotState({ pair: value[0] });
     }
   };
 
   handlePairBlur = () => {
-    if (!checkValue(this.state.pair)) {
+    if (!checkValue(this.props.bot.pair)) {
       this.props.loadCandlestick(
-        this.state.pair,
-        this.state.candlestick_interval,
+        this.props.bot.pair,
+        this.props.bot.candlestick_interval,
         this.props.bot?.deal?.buy_timestamp
       );
     }
@@ -279,11 +236,11 @@ class TestBotForm extends React.Component {
     // Get pair base or quote asset and set new strategy
     const { pair } = this.state;
     this.props.getSymbolInfo(pair);
-    this.setState({ [e.target.name]: e.target.value });
+    this.props.setBotState({ [e.target.name]: e.target.value });
   };
 
   handleBaseChange = (e) => {
-    this.setState({
+    this.props.setBotState({
       base_order_size: e.target.value,
     });
   };
@@ -306,7 +263,7 @@ class TestBotForm extends React.Component {
         default:
           break;
       }
-      this.setState({ base_order_size: minAmount });
+      this.props.setBotState({ base_order_size: minAmount });
     }
   };
 
@@ -320,7 +277,7 @@ class TestBotForm extends React.Component {
         if (x.asset === "GBP") {
           const rate = await convertGBP(quoteAsset + "GBP");
           if ("code" in rate.data) {
-            this.setState({
+            this.props.setBotState({
               addAllError: "Conversion for this crypto not available",
             });
           }
@@ -336,40 +293,35 @@ class TestBotForm extends React.Component {
       }
 
       if (totalBalance <= 0) {
-        this.setState({ addAllError: "No balance available to add" });
+        this.props.setBotState({ addAllError: "No balance available to add" });
       } else {
-        this.setState({ base_order_size: totalBalance });
+        this.props.setBotState({ base_order_size: totalBalance });
       }
     }
   };
 
   handleSafety = (e) => {
-    const { pair } = this.state;
+    const { pair } = this.props;
     this.props.getSymbolInfo(pair);
-    this.setState({ [e.target.name]: e.target.value });
+    this.props.setBotState({
+      [e.target.name]: e.target.value
+    });
   };
 
   handleChange = (e) => {
     e.preventDefault();
-    this.setState({ [e.target.name]: e.target.value });
+    this.props.setBotState({
+      [e.target.name]: e.target.value
+    });
   };
 
   handleBlur = () => {
-    if (!checkValue(this.state.pair)) {
+    if (!checkValue(this.props.bot.pair)) {
       this.props.loadCandlestick(
-        this.state.pair,
+        this.props.bot.pair,
         this.state.candlestick_interval,
         this.props.bot?.deal?.buy_timestamp
       );
-    }
-  };
-
-  handleShortOrder = (e) => {
-    this.setState({ [e.target.name]: e.target.value });
-    if (parseFloat(e.target.value) > 0) {
-      this.setState({ strategy: "short" });
-    } else {
-      this.setState({ strategy: "long" });
     }
   };
 
@@ -381,10 +333,12 @@ class TestBotForm extends React.Component {
     }
   };
 
-  toggleTrailling = () =>
-    this.setState({
-      trailling: this.state.trailling === "true" ? "false" : "true",
+  toggleTrailling = () => {
+    const value = this.props.bot.trailling === "true" ? "false" : "true";
+    this.props.setBotState({
+      trailling: value
     });
+  };
 
   render() {
     return (
@@ -394,7 +348,7 @@ class TestBotForm extends React.Component {
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
                 <CardTitle tag="h3">
-                  {this.state.pair}{" "}
+                  {this.props.bot.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
                     !isNaN(this.state.bot_profit) && (
                       <Badge
@@ -407,19 +361,19 @@ class TestBotForm extends React.Component {
                         {this.state.bot_profit + "%"}
                       </Badge>
                     )}{" "}
-                  {!checkValue(this.state.status) && (
+                  {!checkValue(this.props.bot.status) && (
                     <Badge
                       color={
-                        this.state.status === "active"
+                        this.props.bot.status === "active"
                           ? "success"
-                          : this.state.status === "error"
+                          : this.props.bot.status === "error"
                           ? "warning"
-                          : this.state.status === "completed"
+                          : this.props.bot.status === "completed"
                           ? "info"
                           : "secondary"
                       }
                     >
-                      {this.state.status}
+                      {this.props.bot.status}
                     </Badge>
                   )}
                   <br />
@@ -436,10 +390,10 @@ class TestBotForm extends React.Component {
                     <Badge
                       key={item}
                       onClick={() =>
-                        this.setState({ candlestick_interval: item })
+                        this.props.setBotState({ candlestick_interval: item })
                       }
                       color={
-                        this.state.candlestick_interval === item
+                        this.props.candlestick_interval === item
                           ? "primary"
                           : "secondary"
                       }
@@ -451,17 +405,12 @@ class TestBotForm extends React.Component {
                 </div>
               </CardHeader>
               <CardBody>
-                {this.props.candlestick &&
-                this.props.candlestick.error !== 1 &&
-                !checkValue(this.state.pair) ? (
+                {this.props.candlestick && 
+                !checkValue(this.props.bot.pair) ? (
                   <Candlestick
                     data={this.props.candlestick}
-                    bot={this.state}
-                    deal={
-                      this.props.bot && this.props.bot.deal
-                        ? this.props.bot.deal
-                        : null
-                    }
+                    bot={this.props.bot}
+                    deal={this.props.bot?.deal}
                   />
                 ) : (
                   ""
@@ -508,18 +457,6 @@ class TestBotForm extends React.Component {
                       <NavItem>
                         <NavLink
                           className={
-                            this.state.activeTab === "safety-orders"
-                              ? "active"
-                              : ""
-                          }
-                          onClick={() => this.toggle("safety-orders")}
-                        >
-                          Safety Orders
-                        </NavLink>
-                      </NavItem>
-                      <NavItem>
-                        <NavLink
-                          className={
                             this.state.activeTab === "stop-loss" ? "active" : ""
                           }
                           onClick={() => this.toggle("stop-loss")}
@@ -549,7 +486,7 @@ class TestBotForm extends React.Component {
                   <TabContent activeTab={this.state.activeTab}>
                     <MainTab
                       symbols={this.props.symbols}
-                      state={this.state}
+                      state={this.props.bot}
                       handlePairChange={this.handlePairChange}
                       handlePairBlur={this.handlePairBlur}
                       handleChange={this.handleChange}
@@ -559,49 +496,22 @@ class TestBotForm extends React.Component {
                       addAll={this.addAll}
                     />
 
-                    {/*
-                      Safey orders tab
-                    */}
-                    <TabPane tabId="safety-orders">
-                      <Row className="u-margin-bottom">
-                        <Col md="6" sm="12">
-                          <Label htmlFor="max_so_count">
-                            Maximum number of Safety Orders
-                          </Label>
-                          <Input
-                            invalid={this.state.maxSOCountError}
-                            type="text"
-                            name="max_so_count"
-                            onChange={this.handleMaxSoChange}
-                            onBlur={this.handleBlur}
-                            value={this.state.max_so_count}
-                          />
-                          <FormFeedback>
-                            <strong>Safety order size</strong> is required.
-                          </FormFeedback>
-                          <small>
-                            If value = 0, Safety orders will be turned off
-                          </small>
-                        </Col>
-                      </Row>
-                    </TabPane>
-
                     <StopLoss
-                      stop_loss={this.state.stop_loss}
-                      stopLossError={this.state.stopLossError}
+                      stop_loss={this.props.bot.stop_loss}
+                      stopLossError={this.props.bot.stopLossError}
                       handleChange={this.handleChange}
                       handleBlur={this.handleBlur}
                     />
 
                     <TakeProfit
-                      takeProfitError={this.state.takeProfitError}
-                      take_profit={this.state.take_profit}
-                      trailling={this.state.trailling}
-                      trailling_deviation={this.state.trailling_deviation}
+                      takeProfitError={this.props.bot.takeProfitError}
+                      take_profit={this.props.bot.take_profit}
+                      trailling={this.props.bot.trailling}
+                      trailling_deviation={this.props.bot.trailling_deviation}
                       handleChange={this.handleChange}
                       handleBlur={this.handleBlur}
                       toggleTrailling={this.toggleTrailling}
-                    />
+                    /> 
                   </TabContent>
                   <Row xs="2">
                     <Col>
@@ -609,10 +519,10 @@ class TestBotForm extends React.Component {
                         className="btn-round"
                         color="primary"
                         onClick={this.handleActivation}
-                        disabled={checkValue(this.state._id)}
+                        disabled={checkValue(this.props.bot?._id?.$oid)}
                       >
-                        {(this.state.status === "active" ||
-                          this.state.active === "true") &&
+                        {(this.props.bot.status === "active" ||
+                          this.props.bot.active === "true") &&
                         Object.keys(this.props.bot.deal).length > 0
                           ? "Update deal"
                           : "Deal"}
@@ -628,17 +538,17 @@ class TestBotForm extends React.Component {
                       </Button>
                     </Col>
                   </Row>
-                  {!this.state.formIsValid && (
+                  {!this.props.bot.formIsValid && (
                     <Row>
                       <Col md="12">
                         <Alert color="danger">
                           <p>There are fields with errors</p>
                           <ul>
-                            {this.state.pairError && <li>Pair</li>}
-                            {this.state.baseOrderSizeError && (
+                            {this.props.bot.pairError && <li>Pair</li>}
+                            {this.props.bot.baseOrderSizeError && (
                               <li>Base order size</li>
                             )}
-                            {this.state.baseOrderSizeError && (
+                            {this.props.bot.baseOrderSizeError && (
                               <>
                                 <li>
                                   Base order size (How much to trade?) must be
@@ -646,17 +556,17 @@ class TestBotForm extends React.Component {
                                 </li>
                               </>
                             )}
-                            {this.state.soSizeError && (
+                            {this.props.bot.soSizeError && (
                               <>
                                 <li>Safety order size</li>
                                 <li>Check balance for Safety order size</li>
                               </>
                             )}
-                            {this.state.priceDevSoError && (
+                            {this.props.bot.priceDevSoError && (
                               <li>Price deviation</li>
                             )}
-                            {this.state.takeProfitError && <li>Take profit</li>}
-                            {this.state.traillingDeviationError && (
+                            {this.props.bot.takeProfitError && <li>Take profit</li>}
+                            {this.props.bot.traillingDeviationError && (
                               <li>Trailling deviation</li>
                             )}
                           </ul>
@@ -667,14 +577,14 @@ class TestBotForm extends React.Component {
                 </CardBody>
               </Card>
             </Col>
-            <Col md="5" sm="12">
-              {this.props.lastBalance && this.props.balance_raw && (
+            {/* <Col md="5" sm="12">
+              {this.props.lastBalance && this.props.balance_raw ? (
                 <BalanceAnalysis
                   balance={this.props.lastBalance}
                   balance_raw={this.props.balance_raw}
                 />
-              )}
-            </Col>
+              ) : ""}
+            </Col> */}
           </Row>
         </Form>
       </div>
@@ -682,23 +592,23 @@ class TestBotForm extends React.Component {
   }
 }
 
-const mapStateToProps = (state) => {
+const mapStateToProps = (state, props) => {
   let { data: balance } = state.balanceReducer;
   const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
-  const { data: bot } = state.testBotsReducer;
+  const { bot } = state.testBotsReducer;
   const { data: candlestick } = state.candlestickReducer;
   const { loading } = state.loadingReducer;
 
-  let lastBalance = null;
-  if (!checkValue(balance) && balance.length > 0) {
-    lastBalance = balance[0];
-  }
+  // let lastBalance = null;
+  // if (!checkValue(balance) && balance.length > 0) {
+  //   lastBalance = balance[0];
+  // }
 
   return {
-    lastBalance: lastBalance,
-    balance_raw: balance_raw,
-    symbols: symbols,
+    // lastBalance: lastBalance,
+    // balance_raw: balance_raw,
+    // symbols: symbols,
     bot: bot,
     candlestick: candlestick,
     loading: loading,
@@ -716,4 +626,5 @@ export default connect(mapStateToProps, {
   activateTestBot,
   deactivateTestBot,
   loadCandlestick,
+  setBotState,
 })(TestBotForm);

@@ -57,7 +57,8 @@ class Admin extends React.Component {
               {routes.map((prop, key) => {
                 return (
                   <Route
-                    path={prop.layout + prop.path}
+                    exact
+                    path={prop.layout ? prop.layout + prop.path : prop.path}
                     component={prop.component}
                     key={key}
                   />

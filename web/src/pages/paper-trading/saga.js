@@ -30,7 +30,7 @@ import {
  * Bots request/response handler
  */
 export function* getTestBotsApi() {
-  const requestURL = process.env.REACT_APP_GET_TEST_BOTS;
+  const requestURL = process.env.REACT_APP_TEST_BOT;
   try {
     yield put(loading(true));
     const res = yield call(request, requestURL);
@@ -42,16 +42,15 @@ export function* getTestBotsApi() {
   }
 }
 
-export default function* watchGetTestBotApi() {
+export default function* watchGetTestBotsApi() {
   yield takeLatest(GET_TEST_BOTS, getTestBotsApi);
 }
 
 /**
  * Get single bot
  */
-export function* getTestBot(payload) {
-  const id = payload.data;
-  const requestURL = `${process.env.REACT_APP_GET_TEST_BOTS}/${id}`;
+export function* getTestBotApi({ id }) {
+  const requestURL = `${process.env.REACT_APP_TEST_BOT}/${id}`;
 
   try {
     const res = yield call(request, requestURL);
@@ -61,8 +60,8 @@ export function* getTestBot(payload) {
   }
 }
 
-export function* watchGetTestBot() {
-  yield takeLatest(GET_TEST_BOT, getTestBot);
+export function* watchGetTestBotApi() {
+  yield takeLatest(GET_TEST_BOT, getTestBotApi);
 }
 
 /**
@@ -70,7 +69,7 @@ export function* watchGetTestBot() {
  */
 export function* createTestBotApi(body) {
   const { data } = body;
-  const requestURL = `${process.env.REACT_APP_GET_TEST_BOTS}`;
+  const requestURL = `${process.env.REACT_APP_TEST_BOT}`;
   try {
     const res = yield call(request, requestURL, "POST", data);
     yield put(createTestBotSucceeded(res));
@@ -88,7 +87,7 @@ export function* watchCreateTestBot() {
  */
 export function* editTestBotApi(payload) {
   const { data, id } = payload;
-  const requestURL = `${process.env.REACT_APP_GET_TEST_BOTS}/${id}`;
+  const requestURL = `${process.env.REACT_APP_TEST_BOT}/${id}`;
   try {
     const res = yield call(request, requestURL, "PUT", data);
     yield put(editTestBotSucceeded(res));
@@ -108,7 +107,7 @@ export function* deleteBotApi(payload) {
   const ids = payload.removeId;
   const params = new URLSearchParams(ids.map((s) => ["id", s]));
   const requestURL = `${
-    process.env.REACT_APP_GET_TEST_BOTS
+    process.env.REACT_APP_TEST_BOT
   }?${params.toString()}`;
   try {
     const res = yield call(request, requestURL, "DELETE");

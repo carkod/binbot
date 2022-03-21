@@ -322,7 +322,7 @@ class TestBots extends React.Component {
                             title="Edit this bot"
                             onClick={() =>
                               this.props.history.push(
-                                `/admin/bots-edit/${x._id.$oid}`
+                                `/admin/paper-trading/edit/${x._id.$oid}`
                               )
                             }
                           >

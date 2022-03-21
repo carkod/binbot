@@ -23,12 +23,12 @@ import {
   GET_TEST_BOT_ERROR,
   GET_TEST_BOT_SUCCESS,
   CLOSE_TEST_BOT,
+  SET_BOT_STATE
 } from "./actions";
 
 // The initial state of the App
-export const initialState = {
+export const bot = {
   _id: null,
-  active: false,
   status: "inactive",
   balance_available: "0",
   balance_available_asset: "",
@@ -48,15 +48,12 @@ export const initialState = {
   priceDevSoError: false,
   so_size: "0",
   soSizeError: false,
-  start_condition: true,
-  strategy: "long",
   take_profit: "3",
   takeProfitError: false,
   trailling: "false",
   trailling_deviation: "0.63",
   traillingDeviationError: false,
   formIsValid: true,
-  activeTab: "main",
   candlestick_interval: intervalOptions[3],
   deals: [],
   orders: [],
@@ -67,8 +64,18 @@ export const initialState = {
   safety_orders: {},
 };
 
+const initialState = {
+  bot: bot,
+  bots: []
+}
+
 const testBotsReducer = produce((draft, action) => {
   switch (action.type) {
+    case SET_BOT_STATE: {
+      const { payload } = action;
+      draft.bot = {...draft.bot, ...payload}
+    }
+    return draft
     case GET_TEST_BOTS: {
       return draft
     }
@@ -83,13 +90,28 @@ const testBotsReducer = produce((draft, action) => {
       };
     }
 
+    case GET_TEST_BOT: {
+      draft.bot = {...draft.bot, ...action.bot};
+      return draft;
+    }
+    case GET_TEST_BOT_SUCCESS: {
+      draft.bot = action.bot
+      return draft;
+    }
+
+    case GET_TEST_BOT_ERROR: {
+      return {
+        error: action.error,
+      };
+    }
+
     case CREATE_TEST_BOT: {
       const newState = {
         data: draft.data,
         botActive: false,
       };
 
-      return newState;
+      return draft;
     }
     case CREATE_TEST_BOT_SUCCESS: {
       const newState = {

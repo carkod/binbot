@@ -5,10 +5,12 @@ paper_trading_blueprint = Blueprint("paper-trading", __name__)
 
 
 @paper_trading_blueprint.route("/paper-trading", methods=["GET"])
-@paper_trading_blueprint.route("/paper-trading/<id>", methods=["GET"])
 def get():
     return Bot().get()
 
+@paper_trading_blueprint.route("/paper-trading/<id>", methods=["GET"])
+def get_one(id):
+    return Bot().get_one()
 
 @paper_trading_blueprint.route("/paper-trading", methods=["POST"])
 def create():

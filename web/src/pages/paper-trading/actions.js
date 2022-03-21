@@ -26,6 +26,16 @@ export const DEACTIVATE_TEST_BOT = "DEACTIVATE_TEST_BOT";
 export const DEACTIVATE_TEST_BOT_SUCCESS = "DEACTIVATE_TEST_BOT_SUCCESS";
 export const DEACTIVATE_TEST_BOT_ERROR = "DEACTIVATE_TEST_BOT_ERROR";
 
+export const SET_BOT_STATE = "SET_BOT_STATE";
+
+
+export function setBotState(payload) {
+  return {
+      type: SET_BOT_STATE,
+      payload
+  }
+}
+
 /**
  * Create new user
  *
@@ -75,8 +85,7 @@ export function getTestBotsFailed(error) {
 export function getTestBot(id) {
   return {
     type: GET_TEST_BOT,
-    isError: false,
-    data: id,
+    id: id,
   };
 }
 
@@ -91,7 +100,7 @@ export function getTestBot(id) {
 export function getTestBotSucceeded(res) {
   return {
     type: GET_TEST_BOT_SUCCESS,
-    bots: res.data,
+    bot: res.data,
     message: res.message,
   };
 }

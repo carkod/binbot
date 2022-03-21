@@ -30,7 +30,6 @@ const routes = [
   },
   {
     path: "/bots",
-    exact: true,
     name: "Bots",
     icon: "nc-icon nc-laptop",
     component: Bots,
@@ -40,7 +39,6 @@ const routes = [
   },
   {
     path: "/bots-create",
-    exact: true,
     name: "Create new Bot",
     icon: "nc-icon nc-laptop",
     component: BotForm,
@@ -59,7 +57,6 @@ const routes = [
   },
   {
     path: "/paper-trading",
-    exact: true,
     name: "Paper trading",
     icon: "nc-icon nc-laptop",
     component: TestBots,
@@ -69,7 +66,6 @@ const routes = [
   },
   {
     path: "/paper-trading/new/:symbol",
-    exact: true,
     name: "Create new test Bot",
     icon: "nc-icon nc-laptop",
     component: TestBotForm,
@@ -79,7 +75,6 @@ const routes = [
   },
   {
     path: "/paper-trading/edit/:id",
-    exact: true,
     name: "Edit test Bot",
     icon: "nc-icon nc-laptop",
     component: TestBotForm,

@@ -57,7 +57,7 @@ class Bot(Account):
         return resp
     
     def get_one(self):
-        findId = request.view_args["id"]
+        findId = request.view_args.get("id")
         bot = self.app.db.paper_trading.find_one({"_id": ObjectId(findId)})
         if bot:
             resp = jsonResp({"message": "Bot found", "data": bot})
