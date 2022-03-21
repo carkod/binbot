@@ -1,11 +1,13 @@
-import Dashboard from "../pages/dashboard/Dashboard";
+import Login from "../containers/login/Login";
 import Registration from "../containers/registration/Registration";
 import BotForm from "../pages/bots/BotForm";
 import Bots from "../pages/bots/Bots";
-import Research from "../pages/research/Research";
-import Login from "../containers/login/Login";
-import Users from "../pages/users/Users";
+import Dashboard from "../pages/dashboard/Dashboard";
 import NotFound from "../pages/NotFound";
+import TestBotForm from "../pages/paper-trading/TestBotForm";
+import TestBots from "../pages/paper-trading/TestBots";
+import Research from "../pages/research/Research";
+import Users from "../pages/users/Users";
 
 const routes = [
   {
@@ -51,6 +53,36 @@ const routes = [
     name: "Edit Bot",
     icon: "nc-icon nc-laptop",
     component: BotForm,
+    layout: "/admin",
+    nav: false,
+    private: true,
+  },
+  {
+    path: "/paper-trading",
+    exact: true,
+    name: "Paper trading",
+    icon: "nc-icon nc-laptop",
+    component: TestBots,
+    layout: "/admin",
+    nav: true,
+    private: true,
+  },
+  {
+    path: "/paper-trading/new/:symbol",
+    exact: true,
+    name: "Create new test Bot",
+    icon: "nc-icon nc-laptop",
+    component: TestBotForm,
+    layout: "/admin",
+    nav: false,
+    private: true,
+  },
+  {
+    path: "/paper-trading/edit/:id",
+    exact: true,
+    name: "Edit test Bot",
+    icon: "nc-icon nc-laptop",
+    component: TestBotForm,
     layout: "/admin",
     nav: false,
     private: true,

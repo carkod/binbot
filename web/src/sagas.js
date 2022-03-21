@@ -14,6 +14,7 @@ import watchGetBotApi, {
   watchGetBot,
   watchGetCandlestick
 } from "./pages/bots/saga";
+import watchGetTestBotApi from "./pages/paper-trading/saga";
 import {
   watchAddBlacklistApi,
   watchDeleteBlackListApi,
@@ -53,5 +54,6 @@ export default function* rootSaga() {
     watchEditUserApi(),
     watchDeleteUserApi(),
     watchCreateUserApi(),
+    watchGetTestBotApi(),
   ]);
 }
