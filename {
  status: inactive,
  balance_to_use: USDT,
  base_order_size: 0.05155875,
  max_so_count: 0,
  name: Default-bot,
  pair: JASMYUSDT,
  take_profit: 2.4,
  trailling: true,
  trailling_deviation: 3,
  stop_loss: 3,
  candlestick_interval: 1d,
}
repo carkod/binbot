@@ -1,0 +1,9 @@
+HTTP/1.0 405 METHOD NOT ALLOWED
+Content-Type: text/html; charset=utf-8
+Allow: GET, HEAD, OPTIONS
+Content-Length: 178
+Access-Control-Allow-Origin: *
+Access-Control-Expose-Headers: Authorization
+Server: Werkzeug/2.0.2 Python/3.9.5
+Date: Mon, 21 Mar 2022 04:42:40 GMT
+
