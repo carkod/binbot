@@ -67,11 +67,10 @@ export function* watchGetTestBotApi() {
 /**
  * Create bot
  */
-export function* createTestBotApi(body) {
-  const { data } = body;
+export function* createTestBotApi({ bot }) {
   const requestURL = `${process.env.REACT_APP_TEST_BOT}`;
   try {
-    const res = yield call(request, requestURL, "POST", data);
+    const res = yield call(request, requestURL, "POST", bot);
     yield put(createTestBotSucceeded(res));
   } catch (err) {
     yield put(createTestBotFailed(err));
@@ -87,7 +86,7 @@ export function* watchCreateTestBot() {
  */
 export function* editTestBotApi(payload) {
   const { data, id } = payload;
-  const requestURL = `${process.env.REACT_APP_TEST_BOT}/${id}`;
+  const requestURL = `${process.env.REACT_APP_TEST_BOT}`;
   try {
     const res = yield call(request, requestURL, "PUT", data);
     yield put(editTestBotSucceeded(res));

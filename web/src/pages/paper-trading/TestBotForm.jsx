@@ -51,7 +51,7 @@ class TestBotForm extends React.Component {
     this.state = {
       _id: props.match.params.id ? props.match.params.id : null,
       bot_profit: 0,
-      activeTab: "main"
+      activeTab: "main",
     };
   }
 
@@ -65,7 +65,11 @@ class TestBotForm extends React.Component {
   };
 
   componentDidUpdate = (p, s) => {
-    if (!checkValue(this.props.bot.pair) && this.props.bot.pair !== p.bot.pair || this.props.bot.candlestick_interval !== p.bot.candlestick_interval) {
+    if (
+      (!checkValue(this.props.bot.pair) &&
+        this.props.bot.pair !== p.bot.pair) ||
+      this.props.bot.candlestick_interval !== p.bot.candlestick_interval
+    ) {
       this.props.loadCandlestick(
         this.props.bot.pair,
         this.props.bot.candlestick_interval,
@@ -74,7 +78,10 @@ class TestBotForm extends React.Component {
     }
     // Only for edit bot page
     // Fill up the candlestick when pair is available and inherit the interval too
-    if (!checkValue(this.props.bot.pair) && this.props.bot.pair !== p.bot.pair) {
+    if (
+      !checkValue(this.props.bot.pair) &&
+      this.props.bot.pair !== p.bot.pair
+    ) {
       const interval = !checkValue(this.props.history.location.state)
         ? this.props.history.location.state.candlestick_interval
         : this.props.bot.candlestick_interval;
@@ -88,8 +95,8 @@ class TestBotForm extends React.Component {
       );
       const currentDate = moment().toISOString();
       this.props.setBotState({
-        name:`${this.props.bot.pair}_${currentDate}`
-      })
+        name: `${this.props.bot.pair}_${currentDate}`,
+      });
     }
 
     if (
@@ -138,7 +145,7 @@ class TestBotForm extends React.Component {
     } = this.props.bot;
 
     // If everything below is ok, form will be valid
-    this.props.setBotState({formIsValid: true})
+    this.props.setBotState({ formIsValid: true });
 
     if (checkValue(pair)) {
       this.props.setBotState({ pairError: true, formIsValid: false });
@@ -174,7 +181,10 @@ class TestBotForm extends React.Component {
         checkBalance(trailling_deviation) &&
         checkBalance(trailling_deviation)
       ) {
-        this.props.setBotState({ traillingDeviationError: true, formIsValid: false });
+        this.props.setBotState({
+          traillingDeviationError: true,
+          formIsValid: false,
+        });
         return false;
       } else {
         this.props.setBotState({ traillingDeviationError: false });
@@ -188,23 +198,35 @@ class TestBotForm extends React.Component {
     e.preventDefault();
     const validation = this.requiredinValidation();
     if (validation) {
-      const form = {
-        status: this.state.status,
-        balance_to_use: this.state.balance_to_use,
-        base_order_size: String(this.state.base_order_size),
-        max_so_count: this.state.max_so_count,
-        name: this.state.name,
-        pair: this.props.bot.pair,
-        take_profit: this.state.take_profit,
-        trailling: this.state.trailling,
-        trailling_deviation: this.state.trailling_deviation,
-        stop_loss: this.state.stop_loss,
-        candlestick_interval: this.state.candlestick_interval,
-      };
       if (!checkValue(this.props.match.params.id)) {
-        this.props.createTestBot(form);
+        const form = {
+          _id: this.props.match.params.id,
+          status: this.props.bot.status,
+          balance_available: this.props.bot.balance_available,
+          balance_available_asset: this.props.balance_available_asset,
+          balance_usage_size: this.props.bot.balance_usage_size, // Centralized
+          base_order_size: this.props.bot.base_order_size,
+          balance_to_use: this.props.bot.balance_to_use,
+          mode: "manual",
+          max_so_count: this.props.bot.max_so_count,
+          name: this.props.bot.name,
+          pair: this.props.bot.pair,
+          price_deviation_so: this.props.bot.price_deviation_so,
+          so_size: this.props.bot.so_size,
+          take_profit: this.props.bot.take_profit,
+          trailling: this.props.bot.trailling,
+          trailling_deviation: this.props.bot.trailling_deviation,
+          candlestick_interval: this.props.bot.candlestick_interval,
+          deals: this.props.bot.deals,
+          orders: this.props.bot.orders,
+          stop_loss: this.props.bot.stop_loss,
+          safety_orders: this.props.bot.safety_orders,
+        }
+        this.props.editTestBot(form);
       } else {
-        this.props.editTestBot(this.state._id, form);
+        let { bot } = this.props.bot;
+        bot._id = bot._id.$oid;
+        this.props.createTestBot(bot);
       }
     }
   };
@@ -304,14 +326,14 @@ class TestBotForm extends React.Component {
     const { pair } = this.props;
     this.props.getSymbolInfo(pair);
     this.props.setBotState({
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   handleChange = (e) => {
     e.preventDefault();
     this.props.setBotState({
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -336,7 +358,7 @@ class TestBotForm extends React.Component {
   toggleTrailling = () => {
     const value = this.props.bot.trailling === "true" ? "false" : "true";
     this.props.setBotState({
-      trailling: value
+      trailling: value,
     });
   };
 
@@ -348,19 +370,18 @@ class TestBotForm extends React.Component {
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
                 <CardTitle tag="h3">
-                  {this.props.bot.pair}{" "}
-                  {!checkValue(this.state.bot_profit) &&
-                    !isNaN(this.state.bot_profit) && (
-                      <Badge
-                        color={
-                          parseFloat(this.state.bot_profit) > 0
-                            ? "success"
-                            : "danger"
-                        }
-                      >
-                        {this.state.bot_profit + "%"}
-                      </Badge>
-                    )}{" "}
+                  {this.props.bot?.pair}{" "}
+                  {!checkValue(this.state.bot_profit) && (
+                    <Badge
+                      color={
+                        parseFloat(this.state.bot_profit) > 0
+                          ? "success"
+                          : "danger"
+                      }
+                    >
+                      {this.state.bot_profit + "%"}
+                    </Badge>
+                  )}{" "}
                   {!checkValue(this.props.bot.status) && (
                     <Badge
                       color={
@@ -385,7 +406,7 @@ class TestBotForm extends React.Component {
                       </small>
                     )}
                 </CardTitle>
-                <div className="">
+                <div>
                   {intervalOptions.map((item) => (
                     <Badge
                       key={item}
@@ -405,8 +426,7 @@ class TestBotForm extends React.Component {
                 </div>
               </CardHeader>
               <CardBody>
-                {this.props.candlestick && 
-                !checkValue(this.props.bot.pair) ? (
+                {this.props.candlestick && !checkValue(this.props.bot.pair) ? (
                   <Candlestick
                     data={this.props.candlestick}
                     bot={this.props.bot}
@@ -511,7 +531,7 @@ class TestBotForm extends React.Component {
                       handleChange={this.handleChange}
                       handleBlur={this.handleBlur}
                       toggleTrailling={this.toggleTrailling}
-                    /> 
+                    />
                   </TabContent>
                   <Row xs="2">
                     <Col>
@@ -565,7 +585,9 @@ class TestBotForm extends React.Component {
                             {this.props.bot.priceDevSoError && (
                               <li>Price deviation</li>
                             )}
-                            {this.props.bot.takeProfitError && <li>Take profit</li>}
+                            {this.props.bot.takeProfitError && (
+                              <li>Take profit</li>
+                            )}
                             {this.props.bot.traillingDeviationError && (
                               <li>Trailling deviation</li>
                             )}

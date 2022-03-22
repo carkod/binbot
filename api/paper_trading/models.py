@@ -80,11 +80,10 @@ class Bot(Account):
 
     def edit(self):
         data = request.get_json()
-        botId = request.view_args["id"]
         try:
             BotSchema().update(data)
             resp = jsonResp(
-                {"message": "Successfully updated bot", "botId": botId}, 200
+                {"message": "Successfully updated bot", "botId": ObjectId(data["_id"])}, 200
             )
         except Exception as e:
             resp = jsonResp_error_message(f"Failed to update bot: {e}")
@@ -106,7 +105,7 @@ class Bot(Account):
         return resp
 
     def activate(self):
-        findId = request.view_args["botId"]
+        findId = request.view_args.get("botId")
         bot = self.app.db.paper_trading.find_one({"_id": ObjectId(findId)})
 
         if bot:

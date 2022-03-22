@@ -127,7 +127,7 @@ export function getTestBotFailed(error) {
 export function createTestBot(body) {
   return {
     type: CREATE_TEST_BOT,
-    data: body,
+    bot: body,
   };
 }
 
@@ -173,11 +173,10 @@ export function createTestBotFailed(error) {
  *
  * @return {object} An action object with a type of BOT
  */
-export function editTestBot(id, body) {
+export function editTestBot(body) {
   return {
     type: EDIT_TEST_BOT,
     data: body,
-    id: id,
   };
 }
 

@@ -17,8 +17,8 @@ def create():
     return Bot().create()
 
 
-@paper_trading_blueprint.route("/paper-trading/<id>", methods=["PUT"])
-def edit(id):
+@paper_trading_blueprint.route("/paper-trading", methods=["PUT"])
+def edit():
     return Bot().edit()
 
 

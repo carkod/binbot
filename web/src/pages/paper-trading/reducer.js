@@ -39,6 +39,7 @@ export const bot = {
   baseOrderSizeError: false,
   balance_to_use: "GBP",
   bot_profit: 0,
+  mode: "manual",
   max_so_count: "0",
   maxSOCountError: false,
   name: "Default bot",
@@ -91,11 +92,10 @@ const testBotsReducer = produce((draft, action) => {
     }
 
     case GET_TEST_BOT: {
-      draft.bot = {...draft.bot, ...action.bot};
       return draft;
     }
     case GET_TEST_BOT_SUCCESS: {
-      draft.bot = action.bot
+      draft.bot = {...draft.bot, ...action.bot};
       return draft;
     }
 
@@ -106,28 +106,28 @@ const testBotsReducer = produce((draft, action) => {
     }
 
     case CREATE_TEST_BOT: {
-      const newState = {
-        data: draft.data,
-        botActive: false,
-      };
-
+      draft.bot = {...draft.bot, ...action.bot};
       return draft;
     }
     case CREATE_TEST_BOT_SUCCESS: {
-      const newState = {
-        botId: action.botId,
-        botActive: false,
-        data: draft.data,
-      };
-      return newState;
+      draft.bot = {...draft.bot, ...action.data};
+      return draft;
     }
 
     case CREATE_TEST_BOT_ERROR: {
-      return {
-        error: action.error,
-        botActive: false,
-      };
+      return draft
     }
+
+    case EDIT_TEST_BOT:
+      draft.bot = {...draft.bot, ...action.data};
+      return draft
+
+    case EDIT_TEST_BOT_SUCCESS:
+      draft.message = action.message
+      return draft;
+    
+    case EDIT_TEST_BOT_ERROR:
+      return draft;
 
     case DELETE_TEST_BOT: {
       draft.removeId = action.removeId
@@ -154,6 +154,14 @@ const testBotsReducer = produce((draft, action) => {
       };
     }
 
+    case ACTIVATE_TEST_BOT:
+      return draft;
+    
+    case ACTIVATE_TEST_BOT_SUCCESS:
+      return draft;
+    
+    case ACTIVATE_TEST_BOT_ERROR:
+      return draft;
 
     case DEACTIVATE_TEST_BOT: {
       const newState = {
