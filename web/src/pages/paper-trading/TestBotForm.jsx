@@ -70,18 +70,6 @@ class TestBotForm extends React.Component {
         this.props.bot.pair !== p.bot.pair) ||
       this.props.bot.candlestick_interval !== p.bot.candlestick_interval
     ) {
-      this.props.loadCandlestick(
-        this.props.bot.pair,
-        this.props.bot.candlestick_interval,
-        this.props.bot?.deal?.buy_timestamp
-      );
-    }
-    // Only for edit bot page
-    // Fill up the candlestick when pair is available and inherit the interval too
-    if (
-      !checkValue(this.props.bot.pair) &&
-      this.props.bot.pair !== p.bot.pair
-    ) {
       const interval = !checkValue(this.props.history.location.state)
         ? this.props.history.location.state.candlestick_interval
         : this.props.bot.candlestick_interval;
@@ -97,6 +85,10 @@ class TestBotForm extends React.Component {
       this.props.setBotState({
         name: `${this.props.bot.pair}_${currentDate}`,
       });
+    }
+
+    if (this.props.bot._id?.$oid && checkValue(this.props.match.params.id)) {
+      this.props.history.push(`/admin/paper-trading/edit/${this.props.bot._id.$oid}`)
     }
 
     if (
@@ -224,7 +216,8 @@ class TestBotForm extends React.Component {
         }
         this.props.editTestBot(form);
       } else {
-        let { bot } = this.props.bot;
+        let { bot } = this.props;
+        const id = bot._id.$oid;
         bot._id = bot._id.$oid;
         this.props.createTestBot(bot);
       }
@@ -351,7 +344,7 @@ class TestBotForm extends React.Component {
     const validation = this.requiredinValidation();
     if (validation) {
       this.handleSubmit(e);
-      this.props.activateBot(this.state._id);
+      this.props.activateTestBot(this.state._id);
     }
   };
 
@@ -440,7 +433,7 @@ class TestBotForm extends React.Component {
           </Col>
         </Row>
         <Row>
-          {!checkValue(this.props.bot) &&
+          {/* {!checkValue(this.props.bot) &&
           this.props.bot.orders.length > 0 &&
           !checkValue(this.props.match.params.id) ? (
             <Col md="7" sm="12">
@@ -448,7 +441,7 @@ class TestBotForm extends React.Component {
             </Col>
           ) : (
             ""
-          )}
+          )} */}
         </Row>
         <Form onSubmit={this.handleSubmit}>
           <Row>
@@ -630,7 +623,7 @@ const mapStateToProps = (state, props) => {
   return {
     // lastBalance: lastBalance,
     // balance_raw: balance_raw,
-    // symbols: symbols,
+    symbols: symbols,
     bot: bot,
     candlestick: candlestick,
     loading: loading,

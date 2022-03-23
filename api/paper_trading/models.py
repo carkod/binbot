@@ -1,10 +1,9 @@
 import threading
-from datetime import date
 from time import time
 from api.account.account import Account
-from api.deals.models import Deal
 from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
+from api.paper_trading.deal import TestDeal
 from api.threads import market_update_thread
 from api.tools.handle_error import (
     QuantityTooLow,
@@ -109,7 +108,7 @@ class Bot(Account):
         bot = self.app.db.paper_trading.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            order_errors = Deal(bot).open_deal()
+            order_errors = TestDeal(bot).open_deal()
 
             if isinstance(order_errors, Response):
                 return order_errors
@@ -193,7 +192,7 @@ class Bot(Account):
             # Sell everything
             pair = bot["pair"]
             base_asset = self.find_baseAsset(pair)
-            deal_object = Deal(bot)
+            deal_object = TestDeal(bot)
             precision = deal_object.price_precision
             qty_precision = deal_object.qty_precision
             balance = deal_object.get_one_balance(base_asset)

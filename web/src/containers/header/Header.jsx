@@ -115,10 +115,18 @@ class Header extends React.Component {
           </div>
           <NavbarBrand href="/">{this.getBrand()}</NavbarBrand>
           <div className="navbar-content">
-            {window.location.href.indexOf("/admin/bots") !== -1 && (
+            {this.props.location.pathname.replace(/\/$/, "") === "/admin/bots" && (
               <Button
                 color="link"
-                onClick={() => this.props.history.replace("/admin/bots-create")}
+                onClick={() => this.props.history.push("/admin/bots-create")}
+              >
+                New bot
+              </Button>
+            )}
+            {this.props.location.pathname.replace(/\/$/, "") === "/admin/paper-trading" && (
+              <Button
+                color="link"
+                onClick={() => this.props.history.push("/admin/paper-trading/new")}
               >
                 New bot
               </Button>
