@@ -426,7 +426,7 @@ class TestBotForm extends React.Component {
           </Col>
         </Row>
         <Row>
-          {/* {!checkValue(this.props.bot) &&
+          {!checkValue(this.props.bot) &&
           this.props.bot.orders.length > 0 &&
           !checkValue(this.props.match.params.id) ? (
             <Col md="7" sm="12">
@@ -434,7 +434,7 @@ class TestBotForm extends React.Component {
             </Col>
           ) : (
             ""
-          )} */}
+          )}
         </Row>
         <Form onSubmit={this.handleSubmit}>
           <Row>
@@ -583,14 +583,14 @@ class TestBotForm extends React.Component {
                 </CardBody>
               </Card>
             </Col>
-            {/* <Col md="5" sm="12">
+            <Col md="5" sm="12">
               {this.props.lastBalance && this.props.balance_raw ? (
                 <BalanceAnalysis
                   balance={this.props.lastBalance}
                   balance_raw={this.props.balance_raw}
                 />
               ) : ""}
-            </Col> */}
+            </Col>
           </Row>
         </Form>
       </div>
@@ -606,14 +606,14 @@ const mapStateToProps = (state, props) => {
   const { data: candlestick } = state.candlestickReducer;
   const { loading } = state.loadingReducer;
 
-  // let lastBalance = null;
-  // if (!checkValue(balance) && balance.length > 0) {
-  //   lastBalance = balance[0];
-  // }
+  let lastBalance = null;
+  if (!checkValue(balance) && balance.length > 0) {
+    lastBalance = balance[0];
+  }
 
   return {
-    // lastBalance: lastBalance,
-    // balance_raw: balance_raw,
+    lastBalance: lastBalance,
+    balance_raw: balance_raw,
     symbols: symbols,
     bot: bot,
     candlestick: candlestick,
