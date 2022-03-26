@@ -205,6 +205,10 @@ class BinbotApi(BinanceApi):
     bb_controller_url = f"{bb_base_url}/research/controller"
     bb_blacklist_url = f"{bb_base_url}/research/blacklist"
 
+    # paper trading
+    bb_test_bot_url = f"{bb_base_url}/bot"
+    bb_activate_test_bot_url = f"{bb_base_url}/bot/activate"
+
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"
         res = get(url=url)
