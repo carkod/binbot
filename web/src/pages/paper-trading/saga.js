@@ -102,7 +102,7 @@ export function* watchEditTestBotApi() {
 /**
  * DELETE bot
  */
-export function* deleteBotApi(payload) {
+export function* deleteTestBotApi(payload) {
   const ids = payload.removeId;
   const params = new URLSearchParams(ids.map((s) => ["id", s]));
   const requestURL = `${
@@ -116,8 +116,8 @@ export function* deleteBotApi(payload) {
   }
 }
 
-export function* watchDeleteBotApi() {
-  yield takeLatest(DELETE_TEST_BOT, deleteBotApi);
+export function* watchDeleteTestbotApi() {
+  yield takeLatest(DELETE_TEST_BOT, deleteTestBotApi);
 }
 
 export function* closeTestBotApi(payload) {

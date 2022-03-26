@@ -143,10 +143,6 @@ const testBotsReducer = produce((draft, action) => {
       return newState;
     }
 
-    case DELETE_TEST_BOT_SUCCESS: {
-      return draft;
-    }
-
     case DELETE_TEST_BOT_ERROR: {
       return {
         error: action.error,

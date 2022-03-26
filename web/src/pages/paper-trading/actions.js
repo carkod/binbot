@@ -222,7 +222,6 @@ export function editTestBotFailed(error) {
 export function deleteTestBot(id) {
   return {
     type: DELETE_TEST_BOT,
-    data: id,
     removeId: id
   };
 }

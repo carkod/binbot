@@ -19,6 +19,7 @@ import watchGetTestBotsApi, {
   watchCloseTestBotApi,
   watchCreateTestBot,
   watchDeactivateTestBotApi,
+  watchDeleteTestbotApi,
   watchEditTestBotApi,
   watchGetTestBotApi,
 } from "./pages/paper-trading/saga";
@@ -73,8 +74,8 @@ export default function* rootSaga() {
     watchGetTestBotApi(),
     watchCreateTestBot(),
     watchEditTestBotApi(),
-    watchDeleteBotApi(),
     watchCloseTestBotApi(),
+    watchDeleteTestbotApi(),
     watchActivateTestBotApi(),
     watchDeactivateTestBotApi(),
   ]);
