@@ -51,6 +51,9 @@ export default function MainTab({
         <Col md="6" sm="12">
           <Label htmlFor="base_order_size">
             Base order size<span className="u-required">*</span>
+            <small>
+              {" "}(Unimportant - real funds will not be used)
+              </small>
           </Label>
           <InputGroup>
             <Input
@@ -69,7 +72,7 @@ export default function MainTab({
           </FormFeedback>
           {state.status !== "active" &&
             <>
-            <Badge color="secondary" onClick={addMin}>
+              <Badge color="secondary" onClick={addMin}>
                 Min {state.quoteAsset === "BTC" ? 0.001 : (state.quoteAsset === "BNB" ? 0.051 : (state.quoteAsset === "GBP" ? 10 : ""))}
               </Badge>
               {' '}

@@ -18,12 +18,12 @@ class TestDeal(Account):
     def __init__(self, bot):
         # Inherit from parent class
         self.active_bot = bot
-        id = ObjectId()
+        id = str(ObjectId())
         self.order = {
             "symbol": "BTCUSDT",
-            "orderId": id.toString(),
+            "orderId": id,
             "orderListId": -1,
-            "clientOrderId": id.toString(),
+            "clientOrderId": id,
             "transactTime": time() * 1000,
             "price": "0.00000000",
             "origQty": "10.00000000",

@@ -5,7 +5,7 @@ from typing import TypedDict
 import pandas as pd
 from api.apis import BinbotApi
 from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
-from api.tools.round_numbers import interval_to_millisecs, round_numbers
+from api.tools.round_numbers import interval_to_millisecs
 from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
 
@@ -161,7 +161,6 @@ class Candlestick(BinbotApi):
 
                 # Store more data for db to fill up candlestick charts
                 data = self.request(url=self.candlestick_url, params=params)
-                print("Requested candlestick data from Binance API")
                 if "message" in data:
                     raise Exception(data["message"])
                 KlinesSchema(params["symbol"], params["interval"], data).create()

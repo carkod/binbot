@@ -65,6 +65,9 @@ class TestBotForm extends React.Component {
   };
 
   componentDidUpdate = (p, s) => {
+    if (!checkValue(this.props.createdBotId) && this.props.createdBotId !== p.createdBotId) {
+      this.props.history.push(`/admin/paper-trading/edit/${this.props.createdBotId}`)
+    }
     if (
       (!checkValue(this.props.bot.pair) &&
         this.props.bot.pair !== p.bot.pair) ||
@@ -85,10 +88,6 @@ class TestBotForm extends React.Component {
       this.props.setBotState({
         name: `${this.props.bot.pair}_${currentDate}`,
       });
-    }
-
-    if (this.props.bot._id?.$oid && checkValue(this.props.match.params.id)) {
-      this.props.history.push(`/admin/paper-trading/edit/${this.props.bot._id.$oid}`)
     }
 
     if (
@@ -129,8 +128,6 @@ class TestBotForm extends React.Component {
       pair,
       base_order_size,
       take_profit,
-      max_so_count,
-      so_size,
       trailling,
       trailling_deviation,
       stop_loss,
@@ -194,7 +191,6 @@ class TestBotForm extends React.Component {
         const form = {
           _id: this.props.match.params.id,
           status: this.props.bot.status,
-          balance_available: this.props.bot.balance_available,
           balance_available_asset: this.props.balance_available_asset,
           balance_usage_size: this.props.bot.balance_usage_size, // Centralized
           base_order_size: this.props.bot.base_order_size,
@@ -203,22 +199,18 @@ class TestBotForm extends React.Component {
           max_so_count: this.props.bot.max_so_count,
           name: this.props.bot.name,
           pair: this.props.bot.pair,
-          price_deviation_so: this.props.bot.price_deviation_so,
-          so_size: this.props.bot.so_size,
           take_profit: this.props.bot.take_profit,
           trailling: this.props.bot.trailling,
           trailling_deviation: this.props.bot.trailling_deviation,
           candlestick_interval: this.props.bot.candlestick_interval,
-          deals: this.props.bot.deals,
           orders: this.props.bot.orders,
           stop_loss: this.props.bot.stop_loss,
           safety_orders: this.props.bot.safety_orders,
         }
         this.props.editTestBot(form);
       } else {
-        let { bot } = this.props;
-        const id = bot._id.$oid;
-        bot._id = bot._id.$oid;
+        let bot = Object.assign({}, this.props.bot);
+        bot._id = undefined
         this.props.createTestBot(bot);
       }
     }
@@ -345,6 +337,7 @@ class TestBotForm extends React.Component {
     if (validation) {
       this.handleSubmit(e);
       this.props.activateTestBot(this.state._id);
+      this.props.getTestBot(this.props.match.params.id);
     }
   };
 
@@ -407,7 +400,7 @@ class TestBotForm extends React.Component {
                         this.props.setBotState({ candlestick_interval: item })
                       }
                       color={
-                        this.props.candlestick_interval === item
+                        this.props.bot.candlestick_interval === item
                           ? "primary"
                           : "secondary"
                       }
@@ -534,9 +527,7 @@ class TestBotForm extends React.Component {
                         onClick={this.handleActivation}
                         disabled={checkValue(this.props.bot?._id?.$oid)}
                       >
-                        {(this.props.bot.status === "active" ||
-                          this.props.bot.active === "true") &&
-                        Object.keys(this.props.bot.deal).length > 0
+                        {(this.props.bot.status === "active" && Object.keys(this.props.bot.deal).length > 0 )
                           ? "Update deal"
                           : "Deal"}
                       </ButtonToggle>
@@ -611,7 +602,7 @@ const mapStateToProps = (state, props) => {
   let { data: balance } = state.balanceReducer;
   const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
-  const { bot } = state.testBotsReducer;
+  const { bot, createdBotId } = state.testBotsReducer;
   const { data: candlestick } = state.candlestickReducer;
   const { loading } = state.loadingReducer;
 
@@ -627,6 +618,7 @@ const mapStateToProps = (state, props) => {
     bot: bot,
     candlestick: candlestick,
     loading: loading,
+    createdBotId: createdBotId
   };
 };
 

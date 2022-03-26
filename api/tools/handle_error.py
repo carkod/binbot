@@ -27,7 +27,6 @@ class QuantityTooLow(BinanceErrors):
     """
     pass
 
-
 def post_error(msg):
     url = f'{os.getenv("FLASK_DOMAIN")}/research/controller'
     res = put(url=url, json={"system_logs": msg})

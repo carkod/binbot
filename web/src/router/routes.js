@@ -65,7 +65,16 @@ const routes = [
     private: true,
   },
   {
-    path: "/paper-trading/new/:symbol?",
+    path: "/paper-trading/new/:symbol",
+    name: "Create new test Bot",
+    icon: "nc-icon nc-laptop",
+    component: TestBotForm,
+    layout: "/admin",
+    nav: false,
+    private: true,
+  },
+  {
+    path: "/paper-trading/new",
     name: "Create new test Bot",
     icon: "nc-icon nc-laptop",
     component: TestBotForm,

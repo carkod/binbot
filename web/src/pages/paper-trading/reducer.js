@@ -110,7 +110,7 @@ const testBotsReducer = produce((draft, action) => {
       return draft;
     }
     case CREATE_TEST_BOT_SUCCESS: {
-      draft.bot = {...draft.bot, ...action.data};
+      draft.createdBotId = action.botId;
       return draft;
     }
 
