@@ -90,8 +90,8 @@ class TestBots extends React.Component {
       switch (value) {
         case "delete-selected":
           if (this.state.selectedCards.length > 0) {
-            this.props.deleteBot(this.state.selectedCards);
-            this.props.getBots();
+            this.props.deleteTestBot(this.state.selectedCards);
+            this.props.getTestBots();
             this.setState({
               selectedCards: [],
             });

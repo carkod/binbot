@@ -17,7 +17,7 @@ class TestAutotrade(BinbotApi):
             "pair": pair,
             "status": "inactive",
             "name": f"{pair}_{current_date}",
-            "mode": "autotrade",
+            "mode": "test autotrade",
             "balance_usage_size": 100,
             "balance_to_use": settings["balance_to_use"],
             "base_order_size": 0,
@@ -59,7 +59,7 @@ class TestAutotrade(BinbotApi):
         2. Create bot with given parameters from research_controller
         3. Activate bot
         """
-        print("Autotrade running...")
+        print("Test Autotrade running...")
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)
@@ -106,11 +106,6 @@ class TestAutotrade(BinbotApi):
                     base_order_size, self.decimals
                 )
                 pass
-
-        if float(self.default_bot["base_order_size"]) == 0:
-            msg = f"No balance matched for {self.pair}"
-            print(msg)
-            return
 
 
         self.default_bot["trailling_deviation"] = self.settings["trailling_deviation"]

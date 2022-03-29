@@ -145,5 +145,5 @@ class Autotrade(BinbotApi):
             print(data)
             return
 
-        msg = f"Succesful autotrade, opened bot with {self.pair}!"
+        msg = f"Succesful test autotrade, opened bot with {self.pair}!"
         print(msg)

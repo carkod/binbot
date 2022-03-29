@@ -86,7 +86,7 @@ class Candlestick(BinbotApi):
         @params
         - df [Pandas dataframe]
         """
-        print("Cleaning db of incomplete data...")
+        print("Checking gaps in the kline data")
         kline_df = df
         df["check_gaps"] = df[0].diff()[1:]
         df.dropna(inplace=True)
@@ -94,6 +94,7 @@ class Candlestick(BinbotApi):
         # If true, no gaps
         no_gaps = (check_gaps[0] == check_gaps).all()
         if not no_gaps:
+            print("Cleaning db of incomplete data...")
             self.delete_klines()
             data = self.request(url=self.candlestick_url, params=params)
             print("There are gaps in the candlestick data, requesting data from Binance")
