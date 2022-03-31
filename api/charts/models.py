@@ -79,6 +79,23 @@ class Candlestick(BinbotApi):
     https://plotly.com/javascript/candlestick-charts/
     """
 
+    def delete_and_create_klines(self, params):
+        """
+        Args:
+        params
+
+        returns
+        df [Pandas dataframe]
+        """
+        print("Cleaning db of incomplete data...")
+        self.delete_klines()
+        data = self.request(url=self.candlestick_url, params=params)
+        print("There are gaps in the candlestick data, requesting data from Binance")
+        KlinesSchema(params["symbol"], params["interval"], data).create()
+        klines = current_app.db.klines.find_one({"_id": params["symbol"]})
+        kline_df = pd.DataFrame(klines["data"])
+        return kline_df
+
     def check_gaps(self, df, params):
         """
         Checks gaps in the candlestick time series, using the dates difference between dates (index = 0)
@@ -92,15 +109,14 @@ class Candlestick(BinbotApi):
         df.dropna(inplace=True)
         check_gaps = df["check_gaps"].to_numpy()
         # If true, no gaps
-        no_gaps = (check_gaps[0] == check_gaps).all()
-        if not no_gaps:
-            print("Cleaning db of incomplete data...")
-            self.delete_klines()
-            data = self.request(url=self.candlestick_url, params=params)
-            print("There are gaps in the candlestick data, requesting data from Binance")
-            KlinesSchema(params["symbol"], params["interval"], data).create()
-            klines = current_app.db.klines.find_one({"_id": params["symbol"]})
-            kline_df = pd.DataFrame(klines["data"])
+        try:
+            no_gaps = (check_gaps[1] == check_gaps).all()
+            if df.empty and not no_gaps:
+                kline_df = self.delete_and_create_klines(params)
+        except IndexError as e:
+            print("Check gaps Index Error", e)
+            kline_df = self.delete_and_create_klines(params)
+        
         return kline_df
 
     def get_klines(self, binance=False, json=True, params: KlinesParams = None):
@@ -350,8 +366,8 @@ class Candlestick(BinbotApi):
             },
         )
 
-        if len(dates) == 0:
-            return jsonResp_error_message("There is not enough data for this symbol")
+        if df.empty and len(dates) == 0:
+            return jsonResp_error_message(f"There is not enough data for symbol {symbol}")
 
         trace = self.candlestick_trace(df, dates)
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)

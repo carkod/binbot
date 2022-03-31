@@ -85,7 +85,7 @@ export function* watchCreateTestBot() {
  * Get single bot
  */
 export function* editTestBotApi(payload) {
-  const { data, id } = payload;
+  const { data } = payload;
   const requestURL = `${process.env.REACT_APP_TEST_BOT}`;
   try {
     const res = yield call(request, requestURL, "PUT", data);

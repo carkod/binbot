@@ -12,15 +12,11 @@ import {
   CardTitle,
   Col,
   Form,
-  FormFeedback,
-  Input,
-  Label,
   Nav,
   NavItem,
   NavLink,
   Row,
   TabContent,
-  TabPane,
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";

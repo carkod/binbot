@@ -100,25 +100,13 @@ class MarketUpdates(Account):
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
-                    print(
-                        f"{symbol} NEW current_take_profit_price: {current_take_profit_price}",
-                        f'buy_price: {bot["deal"]["buy_price"]}',
-                    )
                 else:
                     # Update trailling profit after first time
                     current_take_profit_price = float(
                         bot["deal"]["trailling_profit"]
                     ) * (1 + (float(bot["take_profit"]) / 100))
-                    print(
-                        f"{symbol} UPDATED current_take_profit_price: {current_take_profit_price}",
-                        f'trailling_profit: {bot["deal"]["trailling_profit"]}',
-                    )
 
-                print(f"Is {float(close_price)} >= {float(current_take_profit_price)}? {float(close_price) >= float(current_take_profit_price)}")
                 if float(close_price) >= float(current_take_profit_price):
-                    print(
-                        f"{symbol} close_price bigger than current_take_profit_price",
-                    )
                     new_take_profit = current_take_profit_price * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
@@ -135,9 +123,6 @@ class MarketUpdates(Account):
 
                     updated_bot = self.app.db.bots.find_one_and_update(
                         {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
-                    )
-                    print(
-                        f'{symbol} Updated trailling_stop_loss_price: {bot["deal"]["trailling_stop_loss_price"]}'
                     )
                     if not updated_bot:
                         self.app.db.bots.find_one_and_update(
@@ -219,11 +204,7 @@ class MarketUpdates(Account):
                         f'trailling_profit: {bot["deal"]["trailling_profit"]}',
                     )
 
-                print(f"Is {float(close_price)} >= {float(current_take_profit_price)}? {float(close_price) >= float(current_take_profit_price)}")
                 if float(close_price) >= float(current_take_profit_price):
-                    print(
-                        f"{symbol} close_price bigger than current_take_profit_price",
-                    )
                     new_take_profit = current_take_profit_price * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
@@ -240,9 +221,6 @@ class MarketUpdates(Account):
 
                     updated_bot = self.app.db.paper_trading.find_one_and_update(
                         {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
-                    )
-                    print(
-                        f'{symbol} Updated trailling_stop_loss_price: {bot["deal"]["trailling_stop_loss_price"]}'
                     )
                     if not updated_bot:
                         self.app.db.paper_trading.find_one_and_update(

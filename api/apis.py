@@ -100,9 +100,9 @@ class BinbotApi(BinanceApi):
     bb_activate_bot_url = f"{bb_base_url}/bot/activate"
 
     # paper-trading
-    bb_paper_trading_url = f"{bb_base_url}/bot/paper-trading"
-    bb_paper_trading_activate_url = f"{bb_base_url}/bot/paper-trading/activate"
-    bb_paper_trading_deactivate_url = f"{bb_base_url}/bot/paper-trading/deactivate"
+    bb_paper_trading_url = f"{bb_base_url}/paper-trading"
+    bb_paper_trading_activate_url = f"{bb_base_url}/paper-trading/activate"
+    bb_paper_trading_deactivate_url = f"{bb_base_url}/paper-trading/deactivate"
 
 
     # Trade operations

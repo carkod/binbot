@@ -211,12 +211,11 @@ class TestDealUpdates(Account):
         self.app.db.paper_trading.update_one(
             {"_id": bot["_id"]},
             {
+                "status": "completed",
                 "$push": {"orders": stop_limit_response},
                 "$set": {"deal.sell_timestamp": res["transactTime"]},
             },
         )
-        msg = "New stop_limit deal successfully updated"
-        bot_errors(msg, bot, status="completed")
         return "completed"
 
     def trailling_stop_loss(self, price):
