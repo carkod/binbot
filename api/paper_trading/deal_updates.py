@@ -260,7 +260,5 @@ class TestDealUpdates(Account):
                 },
             },
         )
-        msg = "Trailling stop loss set!"
-        bot_errors(msg)
         print("Bot completed", bot["pair"])
         return "completed"

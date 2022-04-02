@@ -111,7 +111,7 @@ class Candlestick(BinbotApi):
         # If true, no gaps
         try:
             no_gaps = (check_gaps[1] == check_gaps).all()
-            if df.empty and not no_gaps:
+            if df.empty or not no_gaps:
                 kline_df = self.delete_and_create_klines(params)
         except IndexError as e:
             print("Check gaps Index Error", e)

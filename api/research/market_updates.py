@@ -199,10 +199,6 @@ class MarketUpdates(Account):
                     current_take_profit_price = float(
                         bot["deal"]["trailling_profit"]
                     ) * (1 + (float(bot["take_profit"]) / 100))
-                    print(
-                        f"{symbol} UPDATED current_take_profit_price: {current_take_profit_price}",
-                        f'trailling_profit: {bot["deal"]["trailling_profit"]}',
-                    )
 
                 if float(close_price) >= float(current_take_profit_price):
                     new_take_profit = current_take_profit_price * (

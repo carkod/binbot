@@ -55,6 +55,10 @@ class Book_Order(BinanceApi):
 
         df["qty"] = df["qty"].astype(float)
 
+        # Test bots qty = None
+        if not qty:
+            return df["price"].iloc[0]
+
         # If quantity matches list
         match_qty = df[df.qty > float(qty)]
         condition = df["qty"] > float(qty)
