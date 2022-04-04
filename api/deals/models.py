@@ -195,7 +195,7 @@ class Deal(Account):
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
         book_order = Book_Order(pair)
-        initial_price = float(book_order.matching_engine(False, 1))
+        initial_price = float(book_order.matching_engine(False))
         qty = round_numbers(
             (float(self.active_bot["base_order_size"]) / float(initial_price)),
             self.qty_precision,

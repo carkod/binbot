@@ -32,10 +32,11 @@ class Book_Order(BinanceApi):
         price = df["price"].astype(float)[0]
         return price
 
-    def matching_engine(self, order_side, qty, limit_index=0):
+    def matching_engine(self, order_side, qty=None):
         """
         Match quantity with available 100% fill order price,
         so that order can immediately buy/sell
+        If it doesn't match, do split order
         @param: order_side -
             Buy order = get ask prices = True
             Sell order = get bids prices = False
@@ -44,8 +45,7 @@ class Book_Order(BinanceApi):
         """
 
         url = self.order_book_url
-        limit = EnumDefinitions.order_book_limits[limit_index]
-        params = [("symbol", self.symbol), ("limit", limit)]
+        params = [("symbol", self.symbol)]
         res = requests.get(url=url, params=params)
         data = handle_binance_errors(res)
         if order_side:
@@ -60,13 +60,12 @@ class Book_Order(BinanceApi):
             return df["price"].iloc[0]
 
         # If quantity matches list
+        df = df[:5]
         match_qty = df[df.qty > float(qty)]
         condition = df["qty"] > float(qty)
         if not condition.any():
-            limit_index += limit_index
-            if limit_index == 4:
-                return None
-            self.matching_engine(order_side, qty, limit_index)
+            # force market order
+            return None
         try:
             match_qty["price"].iloc[0]
         except IndexError as e:
