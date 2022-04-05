@@ -3,7 +3,7 @@ import hmac
 import os
 from urllib.parse import urlencode
 from time import time
-from requests import Session, get, request
+from requests import get, request
 from api.tools.handle_error import handle_binance_errors
 
 
