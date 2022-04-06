@@ -211,6 +211,7 @@ class BinbotApi(BinanceApi):
     # paper trading
     bb_test_bot_url = f"{bb_base_url}/paper-trading"
     bb_activate_test_bot_url = f"{bb_base_url}/paper-trading/activate"
+    bb_test_bot_active_list = f"{bb_base_url}/paper-trading/active-list"
 
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"

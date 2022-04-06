@@ -16,7 +16,6 @@ def get_one(id):
 def create():
     return Bot().create()
 
-
 @paper_trading_blueprint.route("/paper-trading", methods=["PUT"])
 def edit():
     return Bot().edit()

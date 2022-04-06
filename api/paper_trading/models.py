@@ -38,6 +38,7 @@ class Bot(Account):
         print("Finished restarting market_updates")
         return
 
+
     def get(self):
         """
         Get all bots in the db except archived

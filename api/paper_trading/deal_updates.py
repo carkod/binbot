@@ -94,7 +94,8 @@ class TestDealUpdates(Account):
     def simulate_order(self, pair, price, qty, side):
         self.response_order["symbol"] = pair
         self.response_order["price"] = price
-        self.response_order["origQty"] = qty
+        if qty:
+            self.response_order["origQty"] = qty
         self.response_order["executedQty"] = qty
         self.response_order["cummulativeQuoteQty"] = qty
         self.response_order["side"] = side
@@ -162,32 +163,20 @@ class TestDealUpdates(Account):
         - Deactivate bot
         """
         bot = self.active_bot
-        qty = self._compute_qty(bot["pair"])
-
-        # If for some reason, the bot has been closed already (e.g. transacted on Binance)
-        # Inactivate bot
-        if not qty:
-            print(f"Cannot execute update stop limit, quantity is {qty}")
-            params = {
-                "id": self.active_bot['_id']
-            }
-            inactivate_bot = requests.delete(
-                url=f"{self.bb_paper_trading_url}", params=params
-            )
-            handle_binance_errors(inactivate_bot)
-            return
+        qty = bot["deal"]["buy_total_qty"]
 
         book_order = Book_Order(bot["pair"])
         price = float(book_order.matching_engine(True, qty))
+        if not price:
+            price = float(book_order.matching_engine(True))
 
         for order in bot["orders"]:
             if order["deal_type"] == "take_profit":
                 bot["orders"].remove(order)
                 break
 
-        if price:
-            price = supress_notation(price, self.price_precision)
-            res = self.simulate_order(bot["pair"], price, qty, "SELL")
+        price = supress_notation(price, self.price_precision)
+        res = self.simulate_order(bot["pair"], price, qty, "SELL")
 
         if res["status"] == "NEW":
             bot_errors("Failed to execute order (status NEW), retrying...", bot, status="completed")
@@ -226,13 +215,16 @@ class TestDealUpdates(Account):
         - Deactivate bot
         """
         bot = self.active_bot
-        qty = self._compute_qty(bot["pair"])
+        qty = bot["deal"]["buy_total_qty"]
         book_order = Book_Order(bot["pair"])
+        
+        # In the case of test bots, qty is not real, so there always will be prices
         price = float(book_order.matching_engine(True, qty))
+        if not price:
+            price = float(book_order.matching_engine(True))
 
-        if price:
-            price = supress_notation(price, self.price_precision)
-            res = self.simulate_order(bot["pair"], price, qty, "SELL")
+        price = supress_notation(price, self.price_precision)
+        res = self.simulate_order(bot["pair"], price, qty, "SELL")
 
         # Append now stop_loss deal
         trailling_stop_loss_response = {

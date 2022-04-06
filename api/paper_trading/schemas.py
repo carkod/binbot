@@ -60,6 +60,8 @@ class BotSchema:
 
     def validate_model(self, data):
 
+        # If there is cannibalism, fail the trade
+        # only for testing bots
         try:
             self.pair = data.get("pair")
             check_cannibalism = current_app.db.paper_trading.find_one({"pair": self.pair, "status": "active"})

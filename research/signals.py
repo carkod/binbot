@@ -198,9 +198,13 @@ class ResearchSignals(BinbotApi):
             self.start_stream(previous_ws=ws)
             pass
         
-        # Test autotrade runs independently of autotrade = 1
-        test_autotrade = TestAutotrade(symbol, self.settings)
-        test_autotrade.run()
+        paper_trading_bots_res = requests.get(url=self.bb_test_bot_url)
+        paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
+        active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
+        if symbol not in active_test_bots:
+            # Test autotrade runs independently of autotrade = 1
+            test_autotrade = TestAutotrade(symbol, self.settings)
+            test_autotrade.run()
 
         if (
             int(self.settings["autotrade"]) == 1
@@ -271,9 +275,7 @@ class ResearchSignals(BinbotApi):
                     "interval": self.interval,
                 }
                 klines_res = requests.put(url=self.bb_klines, json=payload)
-                errors = handle_binance_errors(klines_res)
-                if errors == 1:
-                    print(f"Error updating klines {symbol}")
+                # Not handling binance errors to avoid cluttering the log
 
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
@@ -294,8 +296,6 @@ class ResearchSignals(BinbotApi):
             msg = None
 
             if symbol not in self.last_processed_kline:
-                print(f"Signal {symbol}")
-
                 value, chaikin_diff = chaikin_oscillator(
                     data["trace"][0], data["volumes"]
                 )
