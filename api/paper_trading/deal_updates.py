@@ -197,15 +197,17 @@ class TestDealUpdates(Account):
         }
 
         self.active_bot["orders"].append(stop_limit_response)
-        self.app.db.paper_trading.update_one(
-            {"_id": bot["_id"]},
-            {
-                "status": "completed",
-                "$push": {"orders": stop_limit_response},
-                "$set": {"deal.sell_timestamp": res["transactTime"]},
-            },
-        )
-        return "completed"
+        try:
+            self.app.db.paper_trading.update_one(
+                {"_id": bot["_id"]},
+                {
+                    "$push": {"orders": stop_limit_response},
+                    "$set": {"deal.sell_timestamp": res["transactTime"], "status": "completed"},
+                },
+            )
+        except Exception as error:
+            print(error)
+        pass
 
     def trailling_stop_loss(self, price):
         """

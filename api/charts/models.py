@@ -22,6 +22,7 @@ class KlinesSchema:
         self.interval = interval
         self.data: list = data
         self.limit = limit
+    
 
     def create(self):
         try:
@@ -178,8 +179,8 @@ class Candlestick(BinbotApi):
 
                 # Store more data for db to fill up candlestick charts
                 data = self.request(url=self.candlestick_url, params=params)
-                if "message" in data:
-                    raise Exception(data["message"])
+                if "msg" in data:
+                    raise Exception(data["msg"])
                 KlinesSchema(params["symbol"], params["interval"], data).create()
                 klines = current_app.db.klines.find_one({"_id": params["symbol"]})
             except DuplicateKeyError:
@@ -190,6 +191,7 @@ class Candlestick(BinbotApi):
 
         if not json:
             if klines:
+                print(klines)
                 df = pd.DataFrame(klines["data"])
                 df = self.check_gaps(df, params)
                 dates = df[0].tolist()

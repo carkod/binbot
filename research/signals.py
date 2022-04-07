@@ -20,8 +20,10 @@ from pattern_detection import (
 from test_autotrade import TestAutotrade
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors
+import logging
 
 load_dotenv()
+logging.basicConfig()
 
 
 class ResearchSignals(BinbotApi):
@@ -175,7 +177,7 @@ class ResearchSignals(BinbotApi):
         handle_binance_errors(res)
         return
 
-    def run_autotrade(self, symbol, ws):
+    def run_autotrade(self, symbol, ws, test_only=False):
         """
         Refactored autotrade conditions.
         Previously part of process_kline_stream
@@ -210,6 +212,7 @@ class ResearchSignals(BinbotApi):
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
             and balance_check > 0
+            and not test_only
         ):
             autotrade = Autotrade(symbol, self.settings)
             autotrade.run()
@@ -264,6 +267,7 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
+            logging.debug(f"Signal: {symbol}")
 
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
@@ -317,6 +321,8 @@ class ResearchSignals(BinbotApi):
                     self.run_autotrade,
                     symbol,
                     ws,
+                    intercept,
+                    ma_100
                 )
 
                 ma_candlestick_jump(
