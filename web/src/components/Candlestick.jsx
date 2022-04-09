@@ -2,6 +2,8 @@ import React from "react";
 import Plot from "react-plotly.js";
 import { checkValue } from "../validations";
 import { botCandlestick } from "./services/bot.service";
+import PropTypes from "prop-types";
+
 
 function Candlestick({ data, bot = null, deal = null }) {
   let layout = {
@@ -44,5 +46,12 @@ function Candlestick({ data, bot = null, deal = null }) {
     />
   );
 }
+
+Candlestick.propTypes = {
+  data: PropTypes.object.isRequired,
+  bot: PropTypes.shape({
+    pair: PropTypes.string.isRequired,
+  })
+};
 
 export default Candlestick;

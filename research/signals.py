@@ -1,6 +1,4 @@
 import json
-import math
-import os
 import random
 import threading
 from datetime import datetime
@@ -10,22 +8,22 @@ import requests
 from dotenv import load_dotenv
 from websocket import WebSocketApp
 
+from algorithms.candlestick_patterns import candlestick_patterns
+from algorithms.ma_candlestick_jump import ma_candlestick_jump
 from apis import BinbotApi
 from autotrade import Autotrade
 from pattern_detection import (
     chaikin_oscillator,
-    downtrend_patterns,
     linear_regression,
-    reversal_confirmation,
     stdev,
-    test_pattern_recognition,
 )
-from algorithms.candlestick_patterns import candlestick_patterns
-from algorithms.ma_candlestick_jump import ma_candlestick_jump
+from test_autotrade import TestAutotrade
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors
+import logging
 
 load_dotenv()
+logging.basicConfig()
 
 
 class ResearchSignals(BinbotApi):
@@ -149,7 +147,9 @@ class ResearchSignals(BinbotApi):
         # Remove UPUSDT and DOWNUSDT
         for s in raw_symbols:
             if s in ["ETHUSD", "BTCUSD", "BNBUSD"]:
-                self.blacklist_coin(s, "Value too high, can't buy enough coins to earn.")
+                self.blacklist_coin(
+                    s, "Value too high, can't buy enough coins to earn."
+                )
 
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
@@ -176,18 +176,16 @@ class ResearchSignals(BinbotApi):
         res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
         handle_binance_errors(res)
         return
-    
-    def run_autotrade(self, symbol, ws):
+
+    def run_autotrade(self, symbol, ws, test_only=False):
         """
         Refactored autotrade conditions.
         Previously part of process_kline_stream
         1. Checks if we have balance to trade
-        2. 
+        2.
         """
         # Check balance to avoid failed autotrades
-        check_balance_res = requests.get(
-            url=self.bb_balance_estimate_url
-        )
+        check_balance_res = requests.get(url=self.bb_balance_estimate_url)
         balances = handle_binance_errors(check_balance_res)
         if "error" in balances and balances["error"] == 1:
             print(balances["message"])
@@ -197,18 +195,24 @@ class ResearchSignals(BinbotApi):
 
         # If dashboard has changed any self.settings
         # Need to reload websocket
-        if (
-            "update_required" in self.settings
-            and self.settings["update_required"]
-        ):
+        if "update_required" in self.settings and self.settings["update_required"]:
             print("Update required, restart stream")
             self.start_stream(previous_ws=ws)
             pass
+        
+        paper_trading_bots_res = requests.get(url=self.bb_test_bot_url)
+        paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
+        active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
+        if symbol not in active_test_bots:
+            # Test autotrade runs independently of autotrade = 1
+            test_autotrade = TestAutotrade(symbol, self.settings)
+            test_autotrade.run()
 
         if (
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
             and balance_check > 0
+            and not test_only
         ):
             autotrade = Autotrade(symbol, self.settings)
             autotrade.run()
@@ -263,6 +267,7 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
+            logging.debug(f"Signal: {symbol}")
 
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
@@ -274,9 +279,7 @@ class ResearchSignals(BinbotApi):
                     "interval": self.interval,
                 }
                 klines_res = requests.put(url=self.bb_klines, json=payload)
-                errors = handle_binance_errors(klines_res)
-                if errors == 1:
-                    print(f"Error updating klines {symbol}")
+                # Not handling binance errors to avoid cluttering the log
 
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
@@ -297,18 +300,47 @@ class ResearchSignals(BinbotApi):
             msg = None
 
             if symbol not in self.last_processed_kline:
-                print(f"Signal {symbol}")
-                
-                value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
+                value, chaikin_diff = chaikin_oscillator(
+                    data["trace"][0], data["volumes"]
+                )
                 slope, intercept = linear_regression(data["trace"][0])
                 sd = stdev(data["trace"][0])
 
                 reg_equation = f"{slope}X + {intercept}"
 
                 # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
-                candlestick_patterns(data["trace"][0], sd, close_price, open_price, value, chaikin_diff, reg_equation, self._send_msg, self.run_autotrade, symbol, ws)
+                candlestick_patterns(
+                    data["trace"][0],
+                    sd,
+                    close_price,
+                    open_price,
+                    value,
+                    chaikin_diff,
+                    reg_equation,
+                    self._send_msg,
+                    self.run_autotrade,
+                    symbol,
+                    ws,
+                    intercept,
+                    ma_100
+                )
 
-                ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd, value, chaikin_diff, reg_equation, self._send_msg, self.run_autotrade, ws, intercept)
+                ma_candlestick_jump(
+                    close_price,
+                    open_price,
+                    ma_7,
+                    ma_100,
+                    ma_25,
+                    symbol,
+                    sd,
+                    value,
+                    chaikin_diff,
+                    reg_equation,
+                    self._send_msg,
+                    self.run_autotrade,
+                    ws,
+                    intercept,
+                )
 
                 self.last_processed_kline[symbol] = time()
 

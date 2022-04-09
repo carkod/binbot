@@ -5,7 +5,7 @@ from typing import TypedDict
 import pandas as pd
 from api.apis import BinbotApi
 from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
-from api.tools.round_numbers import interval_to_millisecs, round_numbers
+from api.tools.round_numbers import interval_to_millisecs
 from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
 
@@ -22,6 +22,7 @@ class KlinesSchema:
         self.interval = interval
         self.data: list = data
         self.limit = limit
+    
 
     def create(self):
         try:
@@ -79,6 +80,23 @@ class Candlestick(BinbotApi):
     https://plotly.com/javascript/candlestick-charts/
     """
 
+    def delete_and_create_klines(self, params):
+        """
+        Args:
+        params
+
+        returns
+        df [Pandas dataframe]
+        """
+        print("Cleaning db of incomplete data...")
+        self.delete_klines()
+        data = self.request(url=self.candlestick_url, params=params)
+        print("There are gaps in the candlestick data, requesting data from Binance")
+        KlinesSchema(params["symbol"], params["interval"], data).create()
+        klines = current_app.db.klines.find_one({"_id": params["symbol"]})
+        kline_df = pd.DataFrame(klines["data"])
+        return kline_df
+
     def check_gaps(self, df, params):
         """
         Checks gaps in the candlestick time series, using the dates difference between dates (index = 0)
@@ -86,20 +104,20 @@ class Candlestick(BinbotApi):
         @params
         - df [Pandas dataframe]
         """
-        print("Cleaning db of incomplete data...")
+        print("Checking gaps in the kline data")
         kline_df = df
         df["check_gaps"] = df[0].diff()[1:]
         df.dropna(inplace=True)
         check_gaps = df["check_gaps"].to_numpy()
         # If true, no gaps
-        no_gaps = (check_gaps[0] == check_gaps).all()
-        if not no_gaps:
-            self.delete_klines()
-            data = self.request(url=self.candlestick_url, params=params)
-            print("There are gaps in the candlestick data, requesting data from Binance")
-            KlinesSchema(params["symbol"], params["interval"], data).create()
-            klines = current_app.db.klines.find_one({"_id": params["symbol"]})
-            kline_df = pd.DataFrame(klines["data"])
+        try:
+            no_gaps = (check_gaps[1] == check_gaps).all()
+            if df.empty or not no_gaps:
+                kline_df = self.delete_and_create_klines(params)
+        except IndexError as e:
+            print("Check gaps Index Error", e)
+            kline_df = self.delete_and_create_klines(params)
+        
         return kline_df
 
     def get_klines(self, binance=False, json=True, params: KlinesParams = None):
@@ -161,9 +179,8 @@ class Candlestick(BinbotApi):
 
                 # Store more data for db to fill up candlestick charts
                 data = self.request(url=self.candlestick_url, params=params)
-                print("Requested candlestick data from Binance API")
-                if "message" in data:
-                    raise Exception(data["message"])
+                if "msg" in data:
+                    raise Exception(data["msg"])
                 KlinesSchema(params["symbol"], params["interval"], data).create()
                 klines = current_app.db.klines.find_one({"_id": params["symbol"]})
             except DuplicateKeyError:
@@ -174,6 +191,7 @@ class Candlestick(BinbotApi):
 
         if not json:
             if klines:
+                print(klines)
                 df = pd.DataFrame(klines["data"])
                 df = self.check_gaps(df, params)
                 dates = df[0].tolist()
@@ -350,8 +368,8 @@ class Candlestick(BinbotApi):
             },
         )
 
-        if len(dates) == 0:
-            return jsonResp_error_message("There is not enough data for this symbol")
+        if df.empty and len(dates) == 0:
+            return jsonResp_error_message(f"There is not enough data for symbol {symbol}")
 
         trace = self.candlestick_trace(df, dates)
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)

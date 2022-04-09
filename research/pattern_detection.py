@@ -143,7 +143,7 @@ def reversal_confirmation(data):
     engulfing_detection = talib.CDLENGULFING(open=open, high=high, low=low, close=close)
     e_check = bool(numpy.any(engulfing_detection[-3:]))
 
-    return (ms_check or mds_check) and e_check
+    return (ms_check) and e_check
 
 def downtrend_patterns(data):
     """

@@ -9,6 +9,7 @@ from requests import Session, get
 
 from utils import handle_binance_errors
 from dotenv import load_dotenv
+from random import randrange
 
 load_dotenv()
 
@@ -16,9 +17,11 @@ load_dotenv()
 class BinanceApi:
     """
     Binance Api URLs
+    Picks root url randomly to avoid rate limits
     """
 
-    BASE = "https://api3.binance.com"
+    api_servers = ["https://api.binance.com", "https://api2.binance.com", "https://api3.binance.com"]
+    BASE = api_servers[randrange(3) - 1]
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
@@ -204,6 +207,11 @@ class BinbotApi(BinanceApi):
     # research
     bb_controller_url = f"{bb_base_url}/research/controller"
     bb_blacklist_url = f"{bb_base_url}/research/blacklist"
+
+    # paper trading
+    bb_test_bot_url = f"{bb_base_url}/paper-trading"
+    bb_activate_test_bot_url = f"{bb_base_url}/paper-trading/activate"
+    bb_test_bot_active_list = f"{bb_base_url}/paper-trading/active-list"
 
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"

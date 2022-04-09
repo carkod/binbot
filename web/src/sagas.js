@@ -12,18 +12,35 @@ import watchGetBotApi, {
   watchDeleteBotApi,
   watchEditBot,
   watchGetBot,
-  watchGetCandlestick
+  watchGetCandlestick,
 } from "./pages/bots/saga";
+import watchGetTestBotsApi, {
+  watchActivateTestBotApi,
+  watchCloseTestBotApi,
+  watchCreateTestBot,
+  watchDeactivateTestBotApi,
+  watchDeleteTestbotApi,
+  watchEditTestBotApi,
+  watchGetTestBotApi,
+} from "./pages/paper-trading/saga";
 import {
   watchAddBlacklistApi,
   watchDeleteBlackListApi,
   watchEditSettingsApi,
   watchGetBlacklistApi,
   watchGetSettingsApi,
-  watchResearchApi
+  watchResearchApi,
 } from "./pages/research/saga";
-import watchUsersApi, { watchCreateUserApi, watchDeleteUserApi, watchEditUserApi } from "./pages/users/saga";
-import { watchGetBalanceApi, watchGetEstimate, watchRawBalance } from "./state/balances/saga";
+import watchUsersApi, {
+  watchCreateUserApi,
+  watchDeleteUserApi,
+  watchEditUserApi,
+} from "./pages/users/saga";
+import {
+  watchGetBalanceApi,
+  watchGetEstimate,
+  watchRawBalance,
+} from "./state/balances/saga";
 
 export default function* rootSaga() {
   yield all([
@@ -53,5 +70,13 @@ export default function* rootSaga() {
     watchEditUserApi(),
     watchDeleteUserApi(),
     watchCreateUserApi(),
+    watchGetTestBotsApi(),
+    watchGetTestBotApi(),
+    watchCreateTestBot(),
+    watchEditTestBotApi(),
+    watchCloseTestBotApi(),
+    watchDeleteTestbotApi(),
+    watchActivateTestBotApi(),
+    watchDeactivateTestBotApi(),
   ]);
 }

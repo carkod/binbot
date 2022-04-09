@@ -3,7 +3,7 @@ import hmac
 import os
 from urllib.parse import urlencode
 from time import time
-from requests import Session, get, request
+from requests import get, request
 from api.tools.handle_error import handle_binance_errors
 
 
@@ -98,6 +98,12 @@ class BinbotApi(BinanceApi):
     bb_symbols_raw = f"{bb_base_url}/account/symbols/raw"
     bb_bot_url = f"{bb_base_url}/bot"
     bb_activate_bot_url = f"{bb_base_url}/bot/activate"
+
+    # paper-trading
+    bb_paper_trading_url = f"{bb_base_url}/paper-trading"
+    bb_paper_trading_activate_url = f"{bb_base_url}/paper-trading/activate"
+    bb_paper_trading_deactivate_url = f"{bb_base_url}/paper-trading/deactivate"
+
 
     # Trade operations
     bb_buy_order_url = f"{bb_base_url}/order/buy"

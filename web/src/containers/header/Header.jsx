@@ -1,15 +1,16 @@
 import React from "react";
-import { withRouter } from "react-router-dom";
+import { Link, withRouter } from "react-router-dom";
 import {
   Button,
-  Collapse, Input,
+  Collapse,
+  Input,
   InputGroup,
   InputGroupText,
   Nav,
   Navbar,
   NavbarBrand,
   NavbarToggler,
-  NavItem
+  NavItem,
 } from "reactstrap";
 import { removeToken } from "../../request";
 import routes from "../../router/routes";
@@ -115,13 +116,13 @@ class Header extends React.Component {
           </div>
           <NavbarBrand href="/">{this.getBrand()}</NavbarBrand>
           <div className="navbar-content">
-            {window.location.href.indexOf("/admin/bots") !== -1 && (
-              <Button
-                color="link"
-                onClick={() => this.props.history.replace("/admin/bots-create")}
-              >
-                New bot
-              </Button>
+            {this.props.location.pathname.includes("/admin/bots") && (
+              <Link to="/admin/bots-create">
+                <Button className="btn btn-link">New bot</Button>
+              </Link>
+            )}
+            {this.props.location.pathname.includes("/admin/paper-trading") && (
+                <Button className="btn btn-link" onClick={() => window.location.href = "/admin/paper-trading/new"}>New bot</Button>
             )}
           </div>
         </div>

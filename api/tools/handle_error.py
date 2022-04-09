@@ -27,7 +27,6 @@ class QuantityTooLow(BinanceErrors):
     """
     pass
 
-
 def post_error(msg):
     url = f'{os.getenv("FLASK_DOMAIN")}/research/controller'
     res = put(url=url, json={"system_logs": msg})
@@ -124,7 +123,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     if response.status_code >= 400:
         return response.json()
 
-    if response.status_code == 429:
+    if response.status_code == 418 or response.status_code == 429:
         print("Request weight limit hit, ban will come soon, waiting 1 hour")
         sleep(3600)
 

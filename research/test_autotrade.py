@@ -7,7 +7,7 @@ from utils import InvalidSymbol, handle_binance_errors, supress_notation
 from datetime import datetime
 
 
-class Autotrade(BinbotApi):
+class TestAutotrade(BinbotApi):
     def __init__(self, pair, settings) -> None:
         self.pair = pair
         self.settings = settings
@@ -17,7 +17,7 @@ class Autotrade(BinbotApi):
             "pair": pair,
             "status": "inactive",
             "name": f"{pair}_{current_date}",
-            "mode": "autotrade",
+            "mode": "test autotrade",
             "balance_usage_size": 100,
             "balance_to_use": settings["balance_to_use"],
             "base_order_size": 0,
@@ -59,7 +59,7 @@ class Autotrade(BinbotApi):
         2. Create bot with given parameters from research_controller
         3. Activate bot
         """
-        print("Autotrade running...")
+        print("Test Autotrade running...")
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)
@@ -107,21 +107,16 @@ class Autotrade(BinbotApi):
                 )
                 pass
 
-        if float(self.default_bot["base_order_size"]) == 0:
-            msg = f"No balance matched for {self.pair}"
-            print(msg)
-            return
-
 
         self.default_bot["trailling_deviation"] = self.settings["trailling_deviation"]
 
         # Create bot
-        create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
+        create_bot_res = requests.post(url=self.bb_test_bot_url, json=self.default_bot)
         create_bot = handle_binance_errors(create_bot_res)
 
         if "error" in create_bot and create_bot["error"] == 1:
             print(
-                f"Autotrade: {create_bot['message']}",
+                f"Test Autotrade: {create_bot['message']}",
                 f"Pair: {self.pair}.",
                 f"Balance: {b['free']}",
             )
@@ -130,7 +125,7 @@ class Autotrade(BinbotApi):
         # Activate bot
         botId = create_bot["botId"]
         print("Trying to activate bot...")
-        res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
+        res = requests.get(url=f"{self.bb_activate_test_bot_url}/{botId}")
         bot = handle_binance_errors(res)
 
         if "error" in bot and bot["error"] == 1:
@@ -140,10 +135,10 @@ class Autotrade(BinbotApi):
             payload = {
                 "id": botId,
             }
-            delete_res = requests.delete(url=f"{self.bb_bot_url}", params=payload)
+            delete_res = requests.delete(url=f"{self.bb_test_bot_url}", params=payload)
             data = handle_binance_errors(delete_res)
             print(data)
             return
 
-        msg = f"Succesful test autotrade, opened bot with {self.pair}!"
+        msg = f"Succesful autotrade, opened bot with {self.pair}!"
         print(msg)
