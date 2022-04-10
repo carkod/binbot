@@ -28,6 +28,11 @@ export const DEACTIVATE_TEST_BOT_ERROR = "DEACTIVATE_TEST_BOT_ERROR";
 
 export const SET_BOT_STATE = "SET_BOT_STATE";
 
+export const GET_TEST_AUTOTRADE_SETTINGS_SUCCESS = "GET_TEST_AUTOTRADE_SETTINGS_SUCCESS";
+export const GET_TEST_AUTOTRADE_SETTINGS = "GET_TEST_AUTOTRADE_SETTINGS";
+export const SET_TEST_AUTOTRADE_SETTING = "SET_TEST_AUTOTRADE_SETTING";
+export const SAVE_TEST_AUTOTRADE_SETTINGS = "SAVE_TEST_AUTOTRADE_SETTINGS";
+export const SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS = "SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS";
 
 export function setBotState(payload) {
   return {
@@ -334,4 +339,47 @@ export function deactivateTestBotFailed(error) {
     type: DEACTIVATE_TEST_BOT_ERROR,
     error: error.message,
   };
+}
+
+export function getTestAutotradeSettings() {
+  return {
+    type: GET_TEST_AUTOTRADE_SETTINGS
+  }
+}
+
+export function getTestAutotradeSettingsSucceeded(payload) {
+  if (payload.error === 1) {
+    addNotification("FAILED!", payload.message, "error");
+  } else {
+    addNotification("SUCCESS!", payload.message, "success");
+  }
+  return {
+    type: GET_TEST_AUTOTRADE_SETTINGS_SUCCESS,
+    data: payload.data
+  }
+}
+
+export function saveTestAutotradeSettingsSucceeded(payload) {
+  if (payload.error === 1) {
+    addNotification("FAILED!", payload.message, "error");
+  } else {
+    addNotification("SUCCESS!", payload.message, "success");
+  }
+  return {
+    type: SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS,
+  }
+}
+
+export function setTestAutotradeSetting(payload) {
+  return {
+    type: SET_TEST_AUTOTRADE_SETTING,
+    payload: payload
+  }
+}
+
+export function saveTestAutoTradeSettings(payload) {
+  return {
+    type: SAVE_TEST_AUTOTRADE_SETTINGS,
+    payload: payload
+  }
 }

@@ -15,8 +15,20 @@ class TestAutotradeSchema:
     """
 
     def __init__(self) -> None:
-        id = "test_autotrade_settings"
-        settings = current_app.db.research_controller.find_one({"_id": id})
+        self._id = "test_autotrade_settings"
+        settings = current_app.db.research_controller.find_one({"_id": self._id})
+        if not settings:
+            self.candlestick_interval = "15m"
+            self.test_autotrade = 0
+            self.trailling = "true"
+            self.trailling_deviation = 3
+            self.trailling_profit = 2.4
+            self.stop_loss = 3
+            self.take_profit = 2.4
+            self.balance_to_use = "GBP"
+            self.balance_size_to_use = 100
+            self.telegram_signals = 1
+            self.create()
         try:
             self.candlestick_interval = settings["candlestick_interval"]
             self.test_autotrade = settings["test_autotrade"]
@@ -37,6 +49,7 @@ class TestAutotradeSchema:
             self.take_profit = 2.4
             self.balance_to_use = "GBP"
             self.balance_size_to_use = 100
+            self.telegram_signals = 1
 
     def validate_model(self, data):
         if "_id" in data:
@@ -142,6 +155,10 @@ class TestAutotradeSchema:
         if "balance_to_use" in data:
             self.balance_to_use = data.get("balance_to_use")
             del data["balance_to_use"]
+        
+        if "telegram_signals" in data:
+            self.telegram_signals = data.get("telegram_signals")
+            del data["telegram_signals"]
 
         if len(data) > 0:
             for item in data:
@@ -150,15 +167,22 @@ class TestAutotradeSchema:
                 )
 
         return self.__dict__
+    
+    def create(self):
+        data = self.__dict__
+        try:
+            current_app.db.research_controller.insert_one(data)
+        except Exception as error:
+            print(error)
 
     def update(self, data):
         """Insert logic"""
         validated_data = self.validate_model(data)
         current_app.db.research_controller.update_one(
-            {"_id": self.id}, {"$set": validated_data}, True
+            {"_id": self._id}, {"$set": validated_data}, True
         )
         pass
 
     def get(self):
-        settings = current_app.db.research_controller.find_one({"_id": self.id})
+        settings = current_app.db.research_controller.find_one({"_id": self._id})
         return settings

@@ -25,8 +25,6 @@ export const EDIT_SETTINGS = "EDIT_SETTINGS";
 export const EDIT_SETTINGS_SUCCESS = "EDIT_SETTINGS_SUCCESS";
 export const EDIT_SETTINGS_ERROR = "EDIT_SETTINGS_ERROR";
 
-export const GET_TEST_AUTOTRADE_SETTINGS_SUCCESS = "GET_TEST_AUTOTRADE_SETTINGS_SUCCESS";
-
 /**
  * Dispatched when the repositories are loaded by the request saga
  *
@@ -181,18 +179,5 @@ export function editSettingsSucceeded(payload) {
 export function editSettingsFailed() {
   return {
     type: EDIT_SETTINGS_ERROR
-  }
-}
-
-
-export function getTestAutotradeSettingsSucceeded(payload) {
-  if (payload.error === 1) {
-    addNotification("FAILED!", payload.message, "error");
-  } else {
-    addNotification("SUCCESS!", payload.message, "success");
-  }
-  return {
-    type: GET_TEST_AUTOTRADE_SETTINGS_SUCCESS,
-    data: payload.data
   }
 }

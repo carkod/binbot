@@ -9,7 +9,6 @@ import {
   CardFooter,
   CardTitle,
   Col,
-  Container,
   Form,
   FormGroup,
   Input,
@@ -147,7 +146,7 @@ class TestBots extends React.Component {
     const { bots } = this.props;
     return (
       <>
-        <Container>
+        <div className="content">
           <Form>
             <FormGroup row>
               <Col sm={3}>
@@ -181,8 +180,6 @@ class TestBots extends React.Component {
               </Col>
             </FormGroup>
           </Form>
-        </Container>
-        <div className="content">
           <Row>
             {!checkValue(bots)
               ? bots.map((x, i) => (

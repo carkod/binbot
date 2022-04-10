@@ -121,20 +121,22 @@ class Header extends React.Component {
                 <Link to="/admin/bots/new">
                   <Button className="btn btn-link">New bot</Button>
                 </Link>
-                <Link to="/admin/bots/autotrade">
-                  <Button className="btn btn-link">Autotrade</Button>
-                </Link>
               </>
             )}
             {this.props.location.pathname.includes("/admin/paper-trading") && (
-              <Button
-                className="btn btn-link"
-                onClick={() =>
-                  (window.location.href = "/admin/paper-trading/new")
-                }
-              >
-                New bot
-              </Button>
+              <>
+                <Button
+                  className="btn btn-link"
+                  onClick={() =>
+                    (window.location.href = "/admin/paper-trading/new")
+                  }
+                >
+                  New bot
+                </Button>
+                <Link to="/admin/paper-trading/autotrade">
+                  <Button className="btn btn-link">Autotrade settings</Button>
+                </Link>
+              </>
             )}
           </div>
         </div>

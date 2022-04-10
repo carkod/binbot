@@ -1,5 +1,6 @@
 import produce from "immer";
 import { checkValue } from "../../validations";
+import { GET_TEST_AUTOTRADE_SETTINGS, SET_TEST_AUTOTRADE_SETTING } from "../paper-trading/actions";
 import {
   ADD_BLACKLIST,
   ADD_BLACKLIST_ERROR,
@@ -16,8 +17,9 @@ import {
   GET_SETTINGS,
   GET_SETTINGS_ERROR,
   GET_SETTINGS_SUCCESS,
-  GET_TEST_AUTOTRADE_SETTINGS_SUCCESS
 } from "./actions";
+
+import { GET_TEST_AUTOTRADE_SETTINGS_SUCCESS } from "../../pages/paper-trading/actions";
 
 // The initial state of the App
 export const initialState = {
@@ -117,6 +119,14 @@ const settingsReducer = produce((draft, action) => {
       return {
         data: action.data
       };
+    case GET_TEST_AUTOTRADE_SETTINGS:
+      return draft;
+    case SET_TEST_AUTOTRADE_SETTING:
+      for (const [key, value] of Object.entries(action.payload)) {
+        draft.test_autotrade_settings[key] = value
+      }
+      
+      return draft;
     case GET_SETTINGS_ERROR:
       // OK: the immer way
       return;

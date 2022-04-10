@@ -36,47 +36,6 @@ class Research extends React.Component {
     };
   }
 
-  getData = () => {
-    clearInterval(this.pollData);
-    let filterBy,
-      filter = null;
-    if (this.state.sideFilter === "BUY" || this.state.sideFilter === "SELL") {
-      filter = this.state.sideFilter;
-      filterBy = "signal_side";
-    }
-
-    if (
-      this.state.strengthFilter === "STRONG" ||
-      this.state.strengthFilter === "WEAK"
-    ) {
-      filter = this.state.strengthFilter;
-      filterBy = "signal_strength";
-    }
-
-    if (
-      this.state.candlestickSignalFilter === "positive" ||
-      this.state.candlestickSignalFilter === "negative"
-    ) {
-      filter = this.state.candlestickSignalFilter;
-      filterBy = "candlestick_signal";
-    }
-
-    const params = {
-      order_by: this.state.order_by,
-      order: this.state.order,
-      filter_by: filterBy,
-      filter: filter,
-    };
-    if (
-      (!checkValue(params.filter_by) && !checkValue(params.filter)) ||
-      !checkValue(params.order_by)
-    ) {
-      this.props.getResearchData(params);
-    } else {
-      this.props.getResearchData();
-    }
-  };
-
   componentDidMount = () => {
     this.props.getSettings();
     this.props.getBlacklist();
@@ -163,30 +122,6 @@ class Research extends React.Component {
 
   showNotification = (message) => {
     new Notification(message);
-  };
-
-  handleSignalsOrder = (type) => {
-    const { order } = this.state;
-    this.setState({ order: !order, order_by: type }, () => {
-      this.pollData = setInterval(this.getData, this.state.poll_ms);
-    });
-  };
-
-  handleSignalsFilter = (e) => {
-    this.setState({ [e.target.name]: e.target.value }, () => {
-      this.pollData = setInterval(this.getData, this.state.poll_ms);
-    });
-  };
-
-  toggleSignalTab = () => {
-    this.getData();
-    this.pollData = setInterval(this.getData, this.state.poll_ms);
-    if (!("Notification" in window)) {
-      alert("This browser does not support desktop notification");
-    } else {
-      Notification.requestPermission();
-    }
-    this.setState({ activeTab: "signalTab" });
   };
 
   handleSettings = (e) => {
@@ -278,6 +213,7 @@ class Research extends React.Component {
                 blacklistData={this.state.blacklistData}
                 symbols={this.props.symbols}
                 settings={this.state.settings}
+
                 handleInput={this.handleSettings}
                 handleBlacklist={this.handleBlacklist}
                 saveSettings={this.saveSettings}
