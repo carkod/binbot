@@ -117,12 +117,24 @@ class Header extends React.Component {
           <NavbarBrand href="/">{this.getBrand()}</NavbarBrand>
           <div className="navbar-content">
             {this.props.location.pathname.includes("/admin/bots") && (
-              <Link to="/admin/bots-create">
-                <Button className="btn btn-link">New bot</Button>
-              </Link>
+              <>
+                <Link to="/admin/bots/new">
+                  <Button className="btn btn-link">New bot</Button>
+                </Link>
+                <Link to="/admin/bots/autotrade">
+                  <Button className="btn btn-link">Autotrade</Button>
+                </Link>
+              </>
             )}
             {this.props.location.pathname.includes("/admin/paper-trading") && (
-                <Button className="btn btn-link" onClick={() => window.location.href = "/admin/paper-trading/new"}>New bot</Button>
+              <Button
+                className="btn btn-link"
+                onClick={() =>
+                  (window.location.href = "/admin/paper-trading/new")
+                }
+              >
+                New bot
+              </Button>
             )}
           </div>
         </div>

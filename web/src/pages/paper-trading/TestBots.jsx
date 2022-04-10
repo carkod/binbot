@@ -32,6 +32,12 @@ class TestBots extends React.Component {
     this.props.getTestBots();
   };
 
+  componentDidUpdate = (p, s) => {
+    if (this.props.bots !== p.bots) {
+      this.computeTotalProfit(this.props.bots);
+    }
+  };
+
   handleChange = (e) => {
     this.setState({
       [e.target.name]: e.target.value,
@@ -120,6 +126,23 @@ class TestBots extends React.Component {
     }
   };
 
+  computeTotalProfit = (bots) => {
+    if (bots) {
+      const totalProfit = bots
+        .map((bot) => bot.deal)
+        .reduce((accumulator, currBot) => {
+          let currTotalProfit = this.getProfit(
+            currBot.buy_price,
+            currBot.current_price
+          );
+          return parseFloat(accumulator) + parseFloat(currTotalProfit);
+        }, 0);
+      this.setState({
+        totalProfit: totalProfit.toFixed(2),
+      });
+    }
+  };
+
   render() {
     const { bots } = this.props;
     return (
@@ -127,6 +150,16 @@ class TestBots extends React.Component {
         <Container>
           <Form>
             <FormGroup row>
+              <Col sm={3}>
+                <h3>
+                  <Badge
+                    color={this.state.totalProfit > 0 ? "success" : "danger"}
+                  >
+                    <i className="nc-icon nc-bank" />{" "}
+                    {this.state.totalProfit + "%"}
+                  </Badge>
+                </h3>
+              </Col>
               <Col sm={4}>
                 <Input
                   bsSize="sm"

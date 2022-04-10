@@ -24,11 +24,18 @@ class Bots extends React.Component {
     this.state = {
       confirmModal: null,
       selectedCards: [],
+      totalProfit: 0,
     };
   }
 
   componentDidMount = () => {
     this.props.getBots();
+  };
+
+  componentDidUpdate = (p, s) => {
+    if (this.props?.bots && this.props.bots !== p.bots) {
+      this.computeTotalProfit(this.props.bots);
+    }
   };
 
   handleChange = (e) => {
@@ -106,11 +113,11 @@ class Bots extends React.Component {
           break;
         case "select-all":
           const selectAll = produce(this.state, (draft) => {
-            let selectedCards = []
+            let selectedCards = [];
             this.props.bots.forEach((element) => {
               selectedCards.push(element._id.$oid);
             });
-            draft.selectedCards = selectedCards
+            draft.selectedCards = selectedCards;
             return draft;
           });
           this.setState(selectAll);
@@ -121,6 +128,23 @@ class Bots extends React.Component {
     }
   };
 
+  computeTotalProfit = (bots) => {
+    if (bots) {
+      const totalProfit = bots
+        .map((bot) => bot.deal)
+        .reduce((accumulator, currBot) => {
+          let currTotalProfit = this.getProfit(
+            currBot.buy_price,
+            currBot.current_price
+          );
+          return parseFloat(accumulator) + parseFloat(currTotalProfit)
+        }, 0);
+      this.setState({
+        totalProfit: totalProfit.toFixed(2),
+      });
+    }
+  };
+
   render() {
     const { bots } = this.props;
     return (
@@ -128,6 +152,17 @@ class Bots extends React.Component {
         <Container>
           <Form>
             <FormGroup row>
+              <Col sm={3}>
+                <h3>
+                  
+                  <Badge
+                    color={this.state.totalProfit > 0 ? "success" : "danger"}
+                  >
+                    <i className="nc-icon nc-bank" />{" "}
+                    {this.state.totalProfit + "%"}
+                  </Badge>
+                </h3>
+              </Col>
               <Col sm={4}>
                 <Input
                   bsSize="sm"

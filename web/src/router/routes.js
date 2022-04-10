@@ -38,7 +38,7 @@ const routes = [
     private: true,
   },
   {
-    path: "/bots-create",
+    path: "/bots/new/:symbol?",
     name: "Create new Bot",
     icon: "nc-icon nc-laptop",
     component: BotForm,
@@ -47,7 +47,7 @@ const routes = [
     private: true,
   },
   {
-    path: "/bots-edit/:id",
+    path: "/bots/edit/:id",
     name: "Edit Bot",
     icon: "nc-icon nc-laptop",
     component: BotForm,
