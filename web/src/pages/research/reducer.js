@@ -10,15 +10,13 @@ import {
   GET_BLACKLIST,
   GET_BLACKLIST_ERROR,
   GET_BLACKLIST_SUCCESS,
-  GET_HISTORICAL_RESEARCH,
-  GET_HISTORICAL_RESEARCH_ERROR,
-  GET_HISTORICAL_RESEARCH_SUCCESS,
   GET_RESEARCH,
   GET_RESEARCH_ERROR,
   GET_RESEARCH_SUCCESS,
   GET_SETTINGS,
   GET_SETTINGS_ERROR,
   GET_SETTINGS_SUCCESS,
+  GET_TEST_AUTOTRADE_SETTINGS_SUCCESS
 } from "./actions";
 
 // The initial state of the App
@@ -61,37 +59,6 @@ function researchReducer(state = initialState, action) {
   }
 }
 
-function historicalResearchReducer(state = initialState, action) {
-  switch (action.type) {
-    case GET_HISTORICAL_RESEARCH: {
-      const newState = {
-        ...state,
-        data: action.data,
-      };
-
-      return newState;
-    }
-    case GET_HISTORICAL_RESEARCH_SUCCESS: {
-      const newState = {
-        ...state,
-
-        isError: false,
-        data: action.data,
-      };
-      return newState;
-    }
-
-    case GET_HISTORICAL_RESEARCH_ERROR: {
-      return {
-        ...state,
-        error: action.error,
-        isError: true,
-      };
-    }
-    default:
-      return state;
-  }
-}
 
 const blacklistReducer = produce((draft, action) => {
   switch (action.type) {
@@ -142,6 +109,9 @@ const settingsReducer = produce((draft, action) => {
   switch (action.type) {
     case GET_SETTINGS:
       return draft; // same as just 'return'
+    case GET_TEST_AUTOTRADE_SETTINGS_SUCCESS:
+      draft.test_autotrade_settings = action.data;
+      return draft
     case GET_SETTINGS_SUCCESS:
       // OK: we return an entirely new state
       return {
@@ -165,7 +135,6 @@ const settingsReducer = produce((draft, action) => {
 
 export {
   researchReducer,
-  historicalResearchReducer,
   blacklistReducer,
   settingsReducer,
 };

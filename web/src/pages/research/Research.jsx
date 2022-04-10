@@ -15,7 +15,6 @@ import {
   deleteBlackList,
 } from "./actions";
 import ControllerTab from "./ControllerTab";
-import SignalsTab from "./SignalsTab";
 import { gbpHedge } from "./requests";
 
 class Research extends React.Component {
@@ -272,14 +271,6 @@ class Research extends React.Component {
                 Controller
               </NavLink>
             </NavItem>
-            <NavItem>
-              <NavLink
-                className={this.state.activeTab === "signalTab" ? "active" : ""}
-                onClick={this.toggleSignalTab}
-              >
-                Signals
-              </NavLink>
-            </NavItem>
           </Nav>
           <TabContent activeTab={this.state.activeTab}>
             <TabPane tabId="controllerTab">
@@ -296,21 +287,6 @@ class Research extends React.Component {
                 triggerGbpHedge={this.triggerGbpHedge}
               />
             </TabPane>
-            <TabPane tabId="signalTab">
-              <SignalsTab
-                candlestick={this.props.candlestick}
-                pair={this.state.pair}
-                candlestick_interval={this.state.candlestick_interval}
-                strengthFilter={this.state.strengthFilter}
-                research={this.props.research}
-                sideFilter={this.state.sideFilter}
-                candlestickSignalFilter={this.state.candlestickSignalFilter}
-                handleInterval={this.handleInterval}
-                handleSignalsFilter={this.handleSignalsFilter}
-                handleSetPair={this.handleSetPair}
-                handleSignalsOrder={this.handleSignalsOrder}
-              />
-            </TabPane>
           </TabContent>
         </div>
       </>
@@ -321,7 +297,6 @@ class Research extends React.Component {
 const mapStateToProps = (state) => {
   const { data: research } = state.researchReducer;
   const { data: candlestick } = state.candlestickReducer;
-  const { data: historicalSignalReducer } = state.historicalResearchReducer;
   const { data: symbols } = state.symbolReducer;
   const { data: blacklistData } = state.blacklistReducer;
   const { data: settings } = state.settingsReducer;
@@ -330,7 +305,6 @@ const mapStateToProps = (state) => {
   return {
     research: research,
     candlestick: candlestick,
-    historicalSignalReducer: historicalSignalReducer,
     symbols: symbols,
     blacklistData: blacklistData,
     settings: settings,

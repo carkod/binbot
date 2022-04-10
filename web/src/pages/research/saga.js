@@ -146,3 +146,40 @@ export function* watchGetSettingsApi() {
 export function* watchEditSettingsApi() {
   yield takeLatest(EDIT_SETTINGS, editSettingsApi);
 }
+
+
+
+/**
+ * Settings (controller)
+ */
+ export function* getTestAutotradeSettingsApi() {
+  const url = new URL(process.env.REACT_APP_TEST_AUTOTRADE_SETTINGS, baseUrl)
+  try {
+    const res = yield call(request, url);
+    yield put(getTestAutotradeSettingsApi(res));
+  } catch (err) {
+    yield put(getSettingsFailed(err));
+  }
+}
+
+export function* watchGetTestAutotradeSettingsApi() {
+  yield takeLatest(GET_SETTINGS, getTestAutotradeSettingsApi);
+}
+
+
+/**
+ * Edit Settings (controller)
+ */
+ export function* editTestAutotradeSettings({ data }) {
+  const url = new URL(process.env.REACT_APP_TEST_AUTOTRADE_SETTINGS, baseUrl);
+  try {
+    const res = yield call(request, url, "PUT", data);
+    yield put(getTestAutotradeSettingsApi(res));
+  } catch (err) {
+    yield put(getSettingsFailed(err));
+  }
+}
+
+export function* watchEditTestAutotradeSettings() {
+  yield takeLatest(EDIT_SETTINGS, editTestAutotradeSettings);
+}

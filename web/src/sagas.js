@@ -27,8 +27,10 @@ import {
   watchAddBlacklistApi,
   watchDeleteBlackListApi,
   watchEditSettingsApi,
+  watchEditTestAutotradeSettings,
   watchGetBlacklistApi,
   watchGetSettingsApi,
+  watchGetTestAutotradeSettingsApi,
   watchResearchApi,
 } from "./pages/research/saga";
 import watchUsersApi, {
@@ -78,5 +80,7 @@ export default function* rootSaga() {
     watchDeleteTestbotApi(),
     watchActivateTestBotApi(),
     watchDeactivateTestBotApi(),
+    watchGetTestAutotradeSettingsApi(),
+    watchEditTestAutotradeSettings()
   ]);
 }

@@ -154,7 +154,6 @@ class Bots extends React.Component {
             <FormGroup row>
               <Col sm={3}>
                 <h3>
-                  
                   <Badge
                     color={this.state.totalProfit > 0 ? "success" : "danger"}
                   >
