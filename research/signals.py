@@ -1,3 +1,4 @@
+from cgi import test
 import json
 import random
 import threading
@@ -84,6 +85,10 @@ class ResearchSignals(BinbotApi):
         research_controller_res = requests.get(url=self.bb_controller_url)
         research_controller = handle_binance_errors(research_controller_res)
         self.settings = research_controller["data"]
+
+        test_autotrade_settings = requests.get(url=f"{self.bb_test_autotrade_url}")
+        test_autotrade = handle_binance_errors(test_autotrade_settings)
+        self.test_autotrade = test_autotrade["data"]
 
         self.settings = settings_data["data"]
         self.blacklist_data = blacklist_data["data"]
@@ -203,9 +208,9 @@ class ResearchSignals(BinbotApi):
         paper_trading_bots_res = requests.get(url=self.bb_test_bot_url)
         paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
         active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
-        if symbol not in active_test_bots:
+        if symbol not in active_test_bots and self.test_autotrade.test_autotrade == 1:
             # Test autotrade runs independently of autotrade = 1
-            test_autotrade = TestAutotrade(symbol, self.settings)
+            test_autotrade = TestAutotrade(symbol, self.test_autotrade)
             test_autotrade.run()
 
         if (

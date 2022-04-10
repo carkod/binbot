@@ -191,7 +191,8 @@ class Candlestick(BinbotApi):
 
         if not json:
             if klines:
-                print(klines)
+                if "data" not in klines:
+                    print(klines)
                 df = pd.DataFrame(klines["data"])
                 df = self.check_gaps(df, params)
                 dates = df[0].tolist()

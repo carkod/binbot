@@ -4,7 +4,7 @@ import BotForm from "../pages/bots/BotForm";
 import Bots from "../pages/bots/Bots";
 import Dashboard from "../pages/dashboard/Dashboard";
 import NotFound from "../pages/NotFound";
-import TestAutotrade from "../pages/paper-trading/TestAutotade";
+import TestAutotrade from "../pages/paper-trading/TestAutotrade";
 import TestBotForm from "../pages/paper-trading/TestBotForm";
 import TestBots from "../pages/paper-trading/TestBots";
 import Research from "../pages/research/Research";

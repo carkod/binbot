@@ -19,22 +19,17 @@ import {
 
 export default function TestAutotrade() {
   const dispatch = useDispatch();
-
   const settingsProps = useSelector((state) => {
     return state.settingsReducer?.test_autotrade_settings;
   });
   const dispatchSetSettings = (payload) =>
     dispatch(setTestAutotradeSetting(payload));
-  const saveSettings = () => {
-    dispatch(saveTestAutoTradeSettings(settingsProps));
-  };
-  const getSettings = () => dispatch(getTestAutotradeSettings());
+  const saveSettings = () => dispatch(saveTestAutoTradeSettings(settingsProps));
 
   useEffect(() => {
-    if (!settingsProps) {
-      getSettings();
-    }
-  }, [getSettings, settingsProps]);
+    const getSettings = () => dispatch(getTestAutotradeSettings())
+    getSettings();
+  }, [dispatch]);
 
   const handleInput = (e) =>
     dispatchSetSettings({
