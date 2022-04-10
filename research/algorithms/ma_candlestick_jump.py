@@ -31,7 +31,7 @@ def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd
         and open_price > ma_25[len(ma_25) - 1]
     ):
 
-        msg = f"- [{os.getenv('ENV')}] Candlesick <strong>jump algorithm</strong> {symbol} \n - SD {sd} \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'} \n - Regression line {regression} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots-create"
+        msg = f"- [{os.getenv('ENV')}] Candlesick <strong>jump algorithm</strong> {symbol} \n - SD {sd} \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'} \n - Regression line {regression} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots/new/{symbol}"
         _send_msg(msg)
         print(msg)
 
