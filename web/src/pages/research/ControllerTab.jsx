@@ -8,7 +8,6 @@ import {
   CardTitle,
   Col,
   Form,
-  FormFeedback,
   FormGroup,
   Input,
   Label,
@@ -17,33 +16,7 @@ import {
 import { useImmer } from "use-immer";
 import SymbolSearch from "../../components/SymbolSearch";
 import { checkValue } from "../../validations";
-
-const SettingsInput = ({
-  value,
-  name,
-  label,
-  handleChange,
-  handleBlur,
-  errorMsg,
-  ...props
-}) => {
-  return (
-    <FormGroup>
-      <Label for={name}>{label}</Label>
-      <Input
-        type="input"
-        name={name}
-        id={name}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        defaultValue={value}
-        invalid={!checkValue(errorMsg)}
-        {...props}
-      />
-      {errorMsg && <FormFeedback>{errorMsg}</FormFeedback>}
-    </FormGroup>
-  );
-};
+import SettingsInput from "../../components/SettingsInput";
 
 export const ControllerTab = ({
   blacklistData,

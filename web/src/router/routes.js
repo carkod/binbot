@@ -4,6 +4,7 @@ import BotForm from "../pages/bots/BotForm";
 import Bots from "../pages/bots/Bots";
 import Dashboard from "../pages/dashboard/Dashboard";
 import NotFound from "../pages/NotFound";
+import TestAutotrade from "../pages/paper-trading/TestAutotrade";
 import TestBotForm from "../pages/paper-trading/TestBotForm";
 import TestBots from "../pages/paper-trading/TestBots";
 import Research from "../pages/research/Research";
@@ -38,7 +39,7 @@ const routes = [
     private: true,
   },
   {
-    path: "/bots-create",
+    path: "/bots/new/:symbol?",
     name: "Create new Bot",
     icon: "nc-icon nc-laptop",
     component: BotForm,
@@ -47,7 +48,7 @@ const routes = [
     private: true,
   },
   {
-    path: "/bots-edit/:id",
+    path: "/bots/edit/:id",
     name: "Edit Bot",
     icon: "nc-icon nc-laptop",
     component: BotForm,
@@ -58,16 +59,16 @@ const routes = [
   {
     path: "/paper-trading",
     name: "Paper trading",
-    icon: "nc-icon nc-laptop",
+    icon: "nc-icon nc-paper",
     component: TestBots,
     layout: "/admin",
     nav: true,
     private: true,
   },
   {
-    path: "/paper-trading/new/:symbol",
+    path: "/paper-trading/new/:symbol?",
     name: "Create new test Bot",
-    icon: "nc-icon nc-laptop",
+    icon: "nc-icon nc-paper",
     component: TestBotForm,
     layout: "/admin",
     nav: false,
@@ -76,7 +77,7 @@ const routes = [
   {
     path: "/paper-trading/new",
     name: "Create new test Bot",
-    icon: "nc-icon nc-laptop",
+    icon: "nc-icon nc-paper",
     component: TestBotForm,
     layout: "/admin",
     nav: false,
@@ -85,8 +86,17 @@ const routes = [
   {
     path: "/paper-trading/edit/:id",
     name: "Edit test Bot",
-    icon: "nc-icon nc-laptop",
+    icon: "nc-icon nc-paper",
     component: TestBotForm,
+    layout: "/admin",
+    nav: false,
+    private: true,
+  },
+  {
+    path: "/paper-trading/autotrade",
+    name: "Test bots Autotrade",
+    icon: "",
+    component: TestAutotrade,
     layout: "/admin",
     nav: false,
     private: true,

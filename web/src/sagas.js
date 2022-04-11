@@ -22,6 +22,8 @@ import watchGetTestBotsApi, {
   watchDeleteTestbotApi,
   watchEditTestBotApi,
   watchGetTestBotApi,
+  watchGetTestAutotradeSettingsApi,
+  watchEditTestAutotradeSettings,
 } from "./pages/paper-trading/saga";
 import {
   watchAddBlacklistApi,
@@ -78,5 +80,7 @@ export default function* rootSaga() {
     watchDeleteTestbotApi(),
     watchActivateTestBotApi(),
     watchDeactivateTestBotApi(),
+    watchGetTestAutotradeSettingsApi(),
+    watchEditTestAutotradeSettings(),
   ]);
 }

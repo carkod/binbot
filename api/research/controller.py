@@ -1,3 +1,4 @@
+from api.research.test_autotrade_schema import TestAutotradeSchema
 from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
 from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
@@ -96,3 +97,27 @@ class Controller:
             {"message": "Successfully updated blacklist", "blacklist": blacklist}
         )
         return resp
+    
+    def get_test_autotrade_settings(self):
+        settings = TestAutotradeSchema().get()
+
+        if settings:
+            resp = jsonResp(
+                {"message": "Successfully retrieved settings", "data": settings}
+            )
+        else:
+            resp = jsonResp_error_message(
+                "Database error ocurred. Could not retrieve settings."
+            )
+        return resp
+
+    def edit_test_autotrade_settings(self):
+        data = request.get_json()
+        controller_schema = TestAutotradeSchema()
+        try:
+            controller_schema.update(data)
+            resp = jsonResp_message("Successfully updated settings")
+        except TypeError as e:
+            resp = jsonResp_error_message(f"Data validation error: {e}")
+        return resp
+

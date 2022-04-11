@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 class TestAutotrade(BinbotApi):
-    def __init__(self, pair, settings) -> None:
+    def __init__(self, pair, settings, algorithm) -> None:
         self.pair = pair
         self.settings = settings
         self.decimals = self.price_precision(pair)
@@ -16,7 +16,7 @@ class TestAutotrade(BinbotApi):
         self.default_bot = {
             "pair": pair,
             "status": "inactive",
-            "name": f"{pair}_{current_date}",
+            "name": f"{algorithm}_{current_date}",
             "mode": "test autotrade",
             "balance_usage_size": 100,
             "balance_to_use": settings["balance_to_use"],

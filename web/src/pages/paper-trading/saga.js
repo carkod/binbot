@@ -1,6 +1,7 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
-import request from "../../request";
+import request, { buildBackUrl } from "../../request";
+import { getSettingsFailed } from "../research/actions";
 import {
   activateTestBotFailed,
   activateTestBotSucceeded,
@@ -24,7 +25,13 @@ import {
   getTestBotsFailed,
   deleteTestBotSucceeded,
   deleteTestBotFailed,
+  GET_TEST_AUTOTRADE_SETTINGS,
+  SAVE_TEST_AUTOTRADE_SETTINGS,
+  getTestAutotradeSettingsSucceeded,
+  saveTestAutotradeSettingsSucceeded,
 } from "./actions";
+
+const baseUrl = buildBackUrl();
 
 /**
  * Bots request/response handler
@@ -166,4 +173,40 @@ export function* deactivateTestBotApi(payload) {
 
 export function* watchDeactivateTestBotApi() {
   yield takeLatest(DEACTIVATE_TEST_BOT, deactivateTestBotApi);
+}
+
+
+/**
+ * Settings (controller)
+ */
+ export function* getTestAutotradeSettingsApi() {
+  const url = new URL(process.env.REACT_APP_TEST_AUTOTRADE_SETTINGS, baseUrl)
+  try {
+    const res = yield call(request, url);
+    yield put(getTestAutotradeSettingsSucceeded(res));
+  } catch (err) {
+    yield put(getSettingsFailed(err));
+  }
+}
+
+export function* watchGetTestAutotradeSettingsApi() {
+  yield takeLatest(GET_TEST_AUTOTRADE_SETTINGS, getTestAutotradeSettingsApi);
+}
+
+
+/**
+ * Edit Settings (controller)
+ */
+ export function* editTestAutotradeSettings({ payload }) {
+  const url = new URL(process.env.REACT_APP_TEST_AUTOTRADE_SETTINGS, baseUrl);
+  try {
+    const res = yield call(request, url, "PUT", payload);
+    yield put(saveTestAutotradeSettingsSucceeded(res));
+  } catch (err) {
+    yield put(getSettingsFailed(err));
+  }
+}
+
+export function* watchEditTestAutotradeSettings() {
+  yield takeLatest(SAVE_TEST_AUTOTRADE_SETTINGS, editTestAutotradeSettings);
 }

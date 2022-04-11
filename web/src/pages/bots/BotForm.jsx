@@ -103,6 +103,11 @@ class BotForm extends React.Component {
       this.props.getBot(this.props.match.params.id);
       this.computeAvailableBalance();
     }
+    if (!checkValue(this.props.match.params?.symbol)) {
+      this.setState({
+        pair: this.props.match.params.symbol
+      }, () => this.computeAvailableBalance())
+    }
   };
 
   componentDidUpdate = (p, s) => {
@@ -150,7 +155,7 @@ class BotForm extends React.Component {
       checkValue(this.props.match.params.id)
     ) {
       this.props.history.push({
-        pathname: `/admin/bots-edit/${this.props.newBotId}`,
+        pathname: `/admin/bots/edit/${this.props.newBotId}`,
         state: { candlestick_interval: this.state.candlestick_interval },
       });
     }

@@ -1,19 +1,6 @@
 const tokenName = "binbot-token";
 
 /**
- * Parses the JSON returned by a network request
- *
- * @param  {object} response A response from a network request
- * @return {object}          The parsed JSON from the request
- */
-function parseJSON(response) {
-  if (response.status === 204 || response.status === 205) {
-    return null;
-  }
-  return response.json();
-}
-
-/**
  * Checks if a network request came back fine, and throws an error if not
  *
  * @param  {object} response   A response from a network request
@@ -29,7 +16,7 @@ function checkStatus(response) {
   }
 
   if (response.status >= 200 && response.status < 300) {
-    return response;
+    return response.json();
   }
 
   if (response.status < 404) {
@@ -104,7 +91,7 @@ export default async function request(url, verb = "GET", json = undefined) {
   const baseUrl = buildBackUrl();
   url = url instanceof URL ? url : baseUrl + url;
   const response = await fetch(url, options);
-  const content = checkStatus(response);
-  return parseJSON(content);
+  const content = await checkStatus(response);
+  return content;
 }
 

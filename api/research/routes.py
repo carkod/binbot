@@ -62,3 +62,11 @@ def put_controller():
 @research_blueprint.route("/controller", methods=["GET"])
 def get_controller():
     return Controller().get_settings()
+
+@research_blueprint.route("/test-autotrade-settings", methods=["GET"])
+def get_test_autotrade_settings():
+    return Controller().get_test_autotrade_settings()
+
+@research_blueprint.route("/test-autotrade-settings", methods=["PUT"])
+def edit_test_autotrade_settings():
+    return Controller().edit_test_autotrade_settings()

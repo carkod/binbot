@@ -58,6 +58,11 @@ class TestBotForm extends React.Component {
     if (!checkValue(this.props.match.params.id)) {
       this.props.getTestBot(this.props.match.params.id);
     }
+    if (!checkValue(this.props.match.params?.symbol)) {
+      this.setState({
+        pair: this.props.match.params.symbol
+      })
+    }
   };
 
   componentDidUpdate = (p, s) => {

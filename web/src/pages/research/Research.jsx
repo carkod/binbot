@@ -15,7 +15,6 @@ import {
   deleteBlackList,
 } from "./actions";
 import ControllerTab from "./ControllerTab";
-import SignalsTab from "./SignalsTab";
 import { gbpHedge } from "./requests";
 
 class Research extends React.Component {
@@ -36,47 +35,6 @@ class Research extends React.Component {
       balanceToUseUnmatchError: "",
     };
   }
-
-  getData = () => {
-    clearInterval(this.pollData);
-    let filterBy,
-      filter = null;
-    if (this.state.sideFilter === "BUY" || this.state.sideFilter === "SELL") {
-      filter = this.state.sideFilter;
-      filterBy = "signal_side";
-    }
-
-    if (
-      this.state.strengthFilter === "STRONG" ||
-      this.state.strengthFilter === "WEAK"
-    ) {
-      filter = this.state.strengthFilter;
-      filterBy = "signal_strength";
-    }
-
-    if (
-      this.state.candlestickSignalFilter === "positive" ||
-      this.state.candlestickSignalFilter === "negative"
-    ) {
-      filter = this.state.candlestickSignalFilter;
-      filterBy = "candlestick_signal";
-    }
-
-    const params = {
-      order_by: this.state.order_by,
-      order: this.state.order,
-      filter_by: filterBy,
-      filter: filter,
-    };
-    if (
-      (!checkValue(params.filter_by) && !checkValue(params.filter)) ||
-      !checkValue(params.order_by)
-    ) {
-      this.props.getResearchData(params);
-    } else {
-      this.props.getResearchData();
-    }
-  };
 
   componentDidMount = () => {
     this.props.getSettings();
@@ -166,30 +124,6 @@ class Research extends React.Component {
     new Notification(message);
   };
 
-  handleSignalsOrder = (type) => {
-    const { order } = this.state;
-    this.setState({ order: !order, order_by: type }, () => {
-      this.pollData = setInterval(this.getData, this.state.poll_ms);
-    });
-  };
-
-  handleSignalsFilter = (e) => {
-    this.setState({ [e.target.name]: e.target.value }, () => {
-      this.pollData = setInterval(this.getData, this.state.poll_ms);
-    });
-  };
-
-  toggleSignalTab = () => {
-    this.getData();
-    this.pollData = setInterval(this.getData, this.state.poll_ms);
-    if (!("Notification" in window)) {
-      alert("This browser does not support desktop notification");
-    } else {
-      Notification.requestPermission();
-    }
-    this.setState({ activeTab: "signalTab" });
-  };
-
   handleSettings = (e) => {
     e.preventDefault();
     this.setState(
@@ -272,14 +206,6 @@ class Research extends React.Component {
                 Controller
               </NavLink>
             </NavItem>
-            <NavItem>
-              <NavLink
-                className={this.state.activeTab === "signalTab" ? "active" : ""}
-                onClick={this.toggleSignalTab}
-              >
-                Signals
-              </NavLink>
-            </NavItem>
           </Nav>
           <TabContent activeTab={this.state.activeTab}>
             <TabPane tabId="controllerTab">
@@ -287,6 +213,7 @@ class Research extends React.Component {
                 blacklistData={this.state.blacklistData}
                 symbols={this.props.symbols}
                 settings={this.state.settings}
+
                 handleInput={this.handleSettings}
                 handleBlacklist={this.handleBlacklist}
                 saveSettings={this.saveSettings}
@@ -294,21 +221,6 @@ class Research extends React.Component {
                 balanceToUseUnmatchError={this.state.balanceToUseUnmatchError}
                 handleBalanceToUseBlur={this.handleBalanceToUseBlur}
                 triggerGbpHedge={this.triggerGbpHedge}
-              />
-            </TabPane>
-            <TabPane tabId="signalTab">
-              <SignalsTab
-                candlestick={this.props.candlestick}
-                pair={this.state.pair}
-                candlestick_interval={this.state.candlestick_interval}
-                strengthFilter={this.state.strengthFilter}
-                research={this.props.research}
-                sideFilter={this.state.sideFilter}
-                candlestickSignalFilter={this.state.candlestickSignalFilter}
-                handleInterval={this.handleInterval}
-                handleSignalsFilter={this.handleSignalsFilter}
-                handleSetPair={this.handleSetPair}
-                handleSignalsOrder={this.handleSignalsOrder}
               />
             </TabPane>
           </TabContent>
@@ -321,7 +233,6 @@ class Research extends React.Component {
 const mapStateToProps = (state) => {
   const { data: research } = state.researchReducer;
   const { data: candlestick } = state.candlestickReducer;
-  const { data: historicalSignalReducer } = state.historicalResearchReducer;
   const { data: symbols } = state.symbolReducer;
   const { data: blacklistData } = state.blacklistReducer;
   const { data: settings } = state.settingsReducer;
@@ -330,7 +241,6 @@ const mapStateToProps = (state) => {
   return {
     research: research,
     candlestick: candlestick,
-    historicalSignalReducer: historicalSignalReducer,
     symbols: symbols,
     blacklistData: blacklistData,
     settings: settings,

@@ -44,3 +44,26 @@ content-Type: application/json
     "autotrade": 0,
     "errors": []
 }
+
+
+### Get bot autotrade settings
+GET http://localhost:5000/research/test-autotrade-settings HTTP/1.1 
+content-Type: application/json
+
+### Get bot autotrade settings
+PUT http://localhost:5000/research/test-autotrade-settings HTTP/1.1 
+content-Type: application/json
+
+{
+    "_id": "test_autotrade_settings",
+    "balance_size_to_use":100,
+    "balance_to_use": "GBP",
+    "candlestick_interval": "15m",
+    "stop_loss": 3,
+    "take_profit": 2.4,
+    "telegram_signals": 1,
+    "test_autotrade": 0,
+    "trailling": "false",
+    "trailling_deviation": 3,
+    "trailling_profit": 2.4
+}
