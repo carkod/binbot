@@ -21,5 +21,5 @@ def candlestick_patterns(data, sd, close_price, open_price, value, chaikin_diff,
         _send_msg(msg)
         print(msg)
 
-        run_autotrade(symbol, ws)
+        run_autotrade(symbol, ws, "candlestick_patterns")
     pass

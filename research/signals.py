@@ -182,7 +182,7 @@ class ResearchSignals(BinbotApi):
         handle_binance_errors(res)
         return
 
-    def run_autotrade(self, symbol, ws, test_only=False):
+    def run_autotrade(self, symbol, ws, algorithm, test_only=False):
         """
         Refactored autotrade conditions.
         Previously part of process_kline_stream
@@ -210,7 +210,7 @@ class ResearchSignals(BinbotApi):
         active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
         if symbol not in active_test_bots and self.test_autotrade.test_autotrade == 1:
             # Test autotrade runs independently of autotrade = 1
-            test_autotrade = TestAutotrade(symbol, self.test_autotrade)
+            test_autotrade = TestAutotrade(symbol, self.test_autotrade, algorithm)
             test_autotrade.run()
 
         if (
@@ -219,7 +219,7 @@ class ResearchSignals(BinbotApi):
             and balance_check > 0
             and not test_only
         ):
-            autotrade = Autotrade(symbol, self.settings)
+            autotrade = Autotrade(symbol, self.settings, algorithm)
             autotrade.run()
 
     def on_close(self, *args):
