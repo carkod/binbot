@@ -1,4 +1,3 @@
-from cgi import test
 import json
 import random
 import threading
@@ -6,7 +5,6 @@ from datetime import datetime
 from time import sleep, time
 
 import requests
-from dotenv import load_dotenv
 from websocket import WebSocketApp
 
 from algorithms.candlestick_patterns import candlestick_patterns
@@ -21,11 +19,6 @@ from pattern_detection import (
 from test_autotrade import TestAutotrade
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors
-import logging
-
-load_dotenv()
-logging.basicConfig()
-
 
 class ResearchSignals(BinbotApi):
     def __init__(self):
@@ -147,6 +140,7 @@ class ResearchSignals(BinbotApi):
 
         self.load_data()
         raw_symbols = self.ticker_price()
+        print("blacklist data here", self.blacklist_data)
         black_list = [x["pair"] for x in self.blacklist_data]
 
         # Remove UPUSDT and DOWNUSDT
@@ -197,6 +191,8 @@ class ResearchSignals(BinbotApi):
             return
 
         balance_check = int(balances["data"]["total_fiat"])
+
+        print("update required?", self.settings["update_required"])
 
         # If dashboard has changed any self.settings
         # Need to reload websocket
@@ -272,7 +268,7 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
-            logging.debug(f"Signal: {symbol}")
+            print(f"Signal: {symbol}")
 
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
@@ -351,6 +347,6 @@ class ResearchSignals(BinbotApi):
 
             # If more than 6 hours passed has passed
             # Then we should resume sending signals for given symbol
-            if (float(time()) - float(self.last_processed_kline[symbol])) > 1000:
+            if (float(time()) - float(self.last_processed_kline[symbol])) > 8000:
                 del self.last_processed_kline[symbol]
         pass
