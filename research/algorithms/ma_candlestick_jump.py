@@ -17,7 +17,7 @@ def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd
     """
     if (
         float(close_price) > float(open_price)
-        and chaikin_diff < -5
+        and chaikin_diff < -3
         and sd > 0.006
         and float(intercept) > 10
         and close_price > ma_7[len(ma_7) - 1]

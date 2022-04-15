@@ -195,6 +195,8 @@ class Candlestick(BinbotApi):
                     pd.DataFrame(klines["data"])
                 except ValueError as e:
                     klines = self.delete_and_create_klines(params)
+                except KeyError as e:
+                    print(klines)
                 df = pd.DataFrame(klines["data"])
                 df = self.check_gaps(df, params)
                 dates = df[0].tolist()

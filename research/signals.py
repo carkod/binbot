@@ -140,12 +140,11 @@ class ResearchSignals(BinbotApi):
 
         self.load_data()
         raw_symbols = self.ticker_price()
-        print("blacklist data here", self.blacklist_data)
         black_list = [x["pair"] for x in self.blacklist_data]
 
         # Remove UPUSDT and DOWNUSDT
         for s in raw_symbols:
-            if s in ["ETHUSD", "BTCUSD", "BNBUSD"]:
+            if s in ["ETHUSD", "BTCUSD", "BNBUSD", "ETHUSDT", "BTCUSDT", "BNBUSDT",]:
                 self.blacklist_coin(
                     s, "Value too high, can't buy enough coins to earn."
                 )
@@ -192,8 +191,6 @@ class ResearchSignals(BinbotApi):
 
         balance_check = int(balances["data"]["total_fiat"])
 
-        print("update required?", self.settings["update_required"])
-
         # If dashboard has changed any self.settings
         # Need to reload websocket
         if "update_required" in self.settings and self.settings["update_required"]:
@@ -206,7 +203,7 @@ class ResearchSignals(BinbotApi):
         active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
         if symbol not in active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
             # Test autotrade runs independently of autotrade = 1
-            test_autotrade = TestAutotrade(symbol, self.test_autotrade, algorithm)
+            test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm)
             test_autotrade.run()
 
         if (
@@ -347,6 +344,6 @@ class ResearchSignals(BinbotApi):
 
             # If more than 6 hours passed has passed
             # Then we should resume sending signals for given symbol
-            if (float(time()) - float(self.last_processed_kline[symbol])) > 8000:
+            if (float(time()) - float(self.last_processed_kline[symbol])) > 10000:
                 del self.last_processed_kline[symbol]
         pass

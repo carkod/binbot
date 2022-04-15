@@ -1,9 +1,7 @@
-import math
-
 import requests
 
 from apis import BinbotApi
-from utils import InvalidSymbol, handle_binance_errors, supress_notation
+from utils import handle_binance_errors
 from datetime import datetime
 
 
@@ -21,7 +19,6 @@ class TestAutotrade(BinbotApi):
             "balance_usage_size": 100,
             "balance_to_use": settings["balance_to_use"],
             "base_order_size": 0,
-            "base_order_type": "limit",
             "candlestick_interval": settings["candlestick_interval"],
             "take_profit": settings["take_profit"],
             "trailling": settings["trailling"],
@@ -63,51 +60,14 @@ class TestAutotrade(BinbotApi):
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)
-        balances = handle_binance_errors(res)
         qty = 0
 
-        # Get balance that match the pair
-        # Check that we have minimum binance required qty to trade
-        for b in balances["data"]:
-            if self.pair.endswith(b["asset"]):
-                qty = supress_notation(b["free"], self.decimals)
-                if self.min_amount_check(self.pair, qty):
-                    self.default_bot["base_order_size"] = qty
-                    break
-            # If we have GBP we can trade anything
-            # And we have roughly the min BTC equivalent amount
-            if (
-                self.settings["balance_to_use"] == "GBP"
-                and b["asset"] == "GBP"
-                # Trading with less than 40 GBP will not be profitable
-                and float(b["free"]) > 40
-            ):
-                base_asset = self.find_quoteAsset(self.pair)
-                # e.g. XRPBTC
-                if base_asset == "GBP":
-                    self.default_bot["base_order_size"] = b["free"]
-                    break
-                try:
-                    rate = self.ticker_price(f"{base_asset}GBP")
-                except InvalidSymbol:
-                    msg = f"Cannot trade {self.pair} with GBP. Adding to blacklist"
-                    self.handle_error(msg)
-                    self.add_to_blacklist(self.pair, msg)
-                    print(msg)
-                    return
 
-                rate = rate["price"]
-                qty = supress_notation(b["free"], self.decimals)
-                # Round down to 6 numbers to avoid not enough funds
-                base_order_size = (
-                    math.floor((float(qty) / float(rate)) * 10000000) / 10000000
-                )
-                self.default_bot["base_order_size"] = supress_notation(
-                    base_order_size, self.decimals
-                )
-                pass
-
-
+        # Can't get balance qty, because balance = 0 if real bot is trading
+        # Base order set to default 1 to avoid errors
+        # and because there is no matching engine endpoint to get market qty
+        # So deal base_order should update this to the correct amount
+        self.default_bot["base_order_size"] = 1
         self.default_bot["trailling_deviation"] = self.settings["trailling_deviation"]
 
         # Create bot
@@ -118,7 +78,6 @@ class TestAutotrade(BinbotApi):
             print(
                 f"Test Autotrade: {create_bot['message']}",
                 f"Pair: {self.pair}.",
-                f"Balance: {b['free']}",
             )
             return
 

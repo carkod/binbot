@@ -21,7 +21,6 @@ class Autotrade(BinbotApi):
             "balance_usage_size": 100,
             "balance_to_use": settings["balance_to_use"],
             "base_order_size": 0,
-            "base_order_type": "limit",
             "candlestick_interval": settings["candlestick_interval"],
             "take_profit": settings["take_profit"],
             "trailling": settings["trailling"],

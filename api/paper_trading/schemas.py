@@ -26,7 +26,6 @@ class BotSchema:
         self.balance_usage_size: float = 100
         self.base_order_size: str = "0.0001" # Min Binance
         self.balance_to_use: str = "GBP"
-        self.base_order_type: str = "limit"
         self.candlestick_interval: str = "15m"
         self.take_profit: float = 3
         self.trailling: str = "false"

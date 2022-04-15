@@ -48,6 +48,7 @@ class Book_Order(BinanceApi):
         params = [("symbol", self.symbol)]
         res = requests.get(url=url, params=params)
         data = handle_binance_errors(res)
+        
         if order_side:
             df = pd.DataFrame(data["bids"], columns=["price", "qty"])
         else:

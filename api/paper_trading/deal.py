@@ -69,63 +69,12 @@ class TestDeal(Account):
         )
         return symbol_balance
 
-    def sell_gbp_balance(self):
-        """
-        To sell GBP e.g.:
-        - BNBGBP market buy BNB with GBP
-        """
-        pair = self.active_bot["pair"]
-        market = self.find_quoteAsset(pair)
-        new_pair = f"{market}GBP"
-
-        bo_size = self.active_bot["base_order_size"]
-        book_order = Book_Order(new_pair)
-        price = float(book_order.matching_engine(False, bo_size))
-        # Precision for balance conversion, not for the deal
-        qty_precision = -(
-            Decimal(str(self.lot_size_by_symbol(new_pair, "stepSize")))
-            .as_tuple()
-            .exponent
-        )
-        price_precision = -(
-            Decimal(str(self.price_filter_by_symbol(new_pair, "tickSize")))
-            .as_tuple()
-            .exponent
-        )
-        qty = round_numbers(
-            float(bo_size),
-            qty_precision,
-        )
-
-        if price:
-            res = self.simulate_order(new_pair, supress_notation(price, price_precision), qty, "BUY")
-        else:
-            # Matching engine failed - market order
-            price = float(book_order.matching_engine(False))
-            res = self.simulate_order(new_pair, supress_notation(price, price_precision), qty, "BUY")
-
-        # If error pass it up to parent function, can't continue
-        if "error" in res:
-            return res
-
-        app.db.paper_trading.update_one(
-            {"_id": self.active_bot["_id"]},
-        )
-
-        return
-
     def base_order(self):
         """
         Required initial order to trigger bot.
         Other orders require this to execute,
         therefore should fail if not successful
         """
-        # Transform GBP balance to required market balance
-        # Unlike the real conversion, this simulates conversion
-        if self.active_bot["balance_to_use"] == "GBP":
-            transformed_balance = self.sell_gbp_balance()
-            if isinstance(transformed_balance, Response):
-                return transformed_balance
 
         pair = self.active_bot["pair"]
 

@@ -1,4 +1,5 @@
 import { produce } from "immer";
+import moment from "moment";
 import React from "react";
 import { connect } from "react-redux";
 import {
@@ -339,6 +340,31 @@ class Bots extends React.Component {
                                   <Col md="5">
                                     <p className="card-category">
                                       {`${x.commissions} BNB`}
+                                    </p>
+                                  </Col>
+                                </Row>
+                              )}
+                              {parseInt(x.deal?.buy_timestamp) > 0 && (
+                                <Row>
+                                  <Col md="7">
+                                    <p className="card-category">Buy time</p>
+                                  </Col>
+                                  <Col md="5">
+                                    <p className="card-category">
+                                    {moment(x.deal?.buy_timestamp).format("D, MMM, hh:mm")}
+                                    </p>
+                                  </Col>
+                                </Row>
+                              )}
+
+                              {parseInt(x.deal?.sell_timestamp) > 0 && (
+                                <Row>
+                                  <Col md="7">
+                                    <p className="card-category">Sell time</p>
+                                  </Col>
+                                  <Col md="5">
+                                    <p className="card-category">
+                                      {moment(x.deal?.sell_timestamp).format("D MMM, hh:mm")}
                                     </p>
                                   </Col>
                                 </Row>
