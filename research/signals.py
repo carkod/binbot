@@ -1,4 +1,3 @@
-from cgi import test
 import json
 import random
 import threading
@@ -6,7 +5,6 @@ from datetime import datetime
 from time import sleep, time
 
 import requests
-from dotenv import load_dotenv
 from websocket import WebSocketApp
 
 from algorithms.candlestick_patterns import candlestick_patterns
@@ -21,11 +19,6 @@ from pattern_detection import (
 from test_autotrade import TestAutotrade
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors
-import logging
-
-load_dotenv()
-logging.basicConfig()
-
 
 class ResearchSignals(BinbotApi):
     def __init__(self):
@@ -88,7 +81,7 @@ class ResearchSignals(BinbotApi):
 
         test_autotrade_settings = requests.get(url=f"{self.bb_test_autotrade_url}")
         test_autotrade = handle_binance_errors(test_autotrade_settings)
-        self.test_autotrade = test_autotrade["data"]
+        self.test_autotrade_settings = test_autotrade["data"]
 
         self.settings = settings_data["data"]
         self.blacklist_data = blacklist_data["data"]
@@ -151,7 +144,7 @@ class ResearchSignals(BinbotApi):
 
         # Remove UPUSDT and DOWNUSDT
         for s in raw_symbols:
-            if s in ["ETHUSD", "BTCUSD", "BNBUSD"]:
+            if s in ["ETHUSD", "BTCUSD", "BNBUSD", "ETHUSDT", "BTCUSDT", "BNBUSDT",]:
                 self.blacklist_coin(
                     s, "Value too high, can't buy enough coins to earn."
                 )
@@ -208,9 +201,9 @@ class ResearchSignals(BinbotApi):
         paper_trading_bots_res = requests.get(url=self.bb_test_bot_url)
         paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
         active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
-        if symbol not in active_test_bots and self.test_autotrade.test_autotrade == 1:
+        if symbol not in active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
             # Test autotrade runs independently of autotrade = 1
-            test_autotrade = TestAutotrade(symbol, self.test_autotrade, algorithm)
+            test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm)
             test_autotrade.run()
 
         if (
@@ -272,7 +265,7 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
-            logging.debug(f"Signal: {symbol}")
+            print(f"Signal: {symbol}")
 
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
@@ -351,6 +344,6 @@ class ResearchSignals(BinbotApi):
 
             # If more than 6 hours passed has passed
             # Then we should resume sending signals for given symbol
-            if (float(time()) - float(self.last_processed_kline[symbol])) > 1000:
+            if (float(time()) - float(self.last_processed_kline[symbol])) > 10000:
                 del self.last_processed_kline[symbol]
         pass
