@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Alert,
+  Badge,
   Button,
   Card,
   CardBody,
@@ -8,8 +9,11 @@ import {
   CardTitle,
   Col,
   Form,
+  FormFeedback,
   FormGroup,
   Input,
+  InputGroup,
+  InputGroupText,
   Label,
   Row,
 } from "reactstrap";
@@ -28,7 +32,11 @@ export const ControllerTab = ({
   toggleTrailling,
   handleBalanceToUseBlur,
   balanceToUseUnmatchError,
+  handleBalanceSizeToUseBlur,
+  minBalanceSizeToUseError,
   triggerGbpHedge,
+  allBalance,
+  addAll,
 }) => {
   const [addBlacklist, setAddBlacklist] = useImmer({ reason: "", pair: "" });
   const [removeBlacklist, setRemoveBlacklist] = useState("");
@@ -114,14 +122,36 @@ export const ControllerTab = ({
                           />
                         </Col>
                         <Col md="3">
-                          <SettingsInput
-                            value={settings.balance_size_to_use}
-                            name={"balance_size_to_use"}
-                            label={"Amount of balance to use (%)"}
-                            handleChange={handleInput}
-                            type="number"
-                            min="0"
-                          />
+                          <label htmlFor={"balance_size_to_use"}>
+                            Base order for each bot
+                          </label>
+                          <InputGroup>
+                            <Input
+                              value={settings?.balance_size_to_use || 0}
+                              name={"balance_size_to_use"}
+                              label={"Base order per bot"}
+                              onChange={handleInput}
+                              onBlur={handleBalanceSizeToUseBlur}
+                              type="number"
+                              min="0"
+                            />
+                            {settings.balance_to_use && (
+                              <InputGroupText>
+                                {settings.balance_to_use}
+                              </InputGroupText>
+                            )}
+                            {minBalanceSizeToUseError && (
+                              <FormFeedback>
+                                {minBalanceSizeToUseError}
+                              </FormFeedback>
+                            )}
+                          </InputGroup>
+                          <Badge color="secondary" onClick={allBalance}>
+                            Use 100%
+                          </Badge>{" "}
+                          <Badge color="secondary" onClick={addAll}>
+                            Current balance
+                          </Badge>
                         </Col>
                         <Col md="3" sm="6">
                           <label>Trailling</label>

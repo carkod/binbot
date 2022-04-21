@@ -27,12 +27,12 @@ class Research extends React.Component {
       strengthFilter: "ALL",
       sideFilter: "ALL",
       signal_notification: null,
-      poll_ms: 10000,
       activeTab: "controllerTab",
       candlestickSignalFilter: "positive",
       settings: {},
       selectedBlacklist: "",
       balanceToUseUnmatchError: "",
+      minBalanceSizeToUseError: ""
     };
   }
 
@@ -64,34 +64,8 @@ class Research extends React.Component {
       );
     }
 
-    if (
-      !checkValue(this.props.research) &&
-      this.props.research !== p.research
-    ) {
-      let strongest = [];
-      this.props.research.forEach((element) => {
-        if (element.signal_strength === "STRONG") {
-          const strongBuy = {
-            pair: element.market,
-            spread: element.spread,
-          };
-          strongest.push(strongBuy);
-        }
-      });
-      if (strongest.length > 0) {
-        const maxSpread = Math.max.apply(
-          Math,
-          strongest.map((element) => element.spread)
-        );
-        const maxPair = strongest.find((x) => x.spread === maxSpread);
-        if (maxPair.pair !== this.state.signal_notification) {
-          this.setState({ signal_notification: maxPair.pair });
-          this.showNotification(`STRONG BUY signal for ${maxPair.pair}`);
-        }
-      }
-    }
 
-    if (p.settings !== this.props.settings) {
+    if (!checkValue(this.state.settings) && p.settings !== this.props.settings) {
       this.setState({ settings: this.props.settings });
     }
     if (p.blacklistData !== this.props.blacklistData) {
@@ -101,10 +75,6 @@ class Research extends React.Component {
     if (p.balance_raw !== this.props.balance_raw) {
       this.handleBalanceToUseBlur();
     }
-  };
-
-  componentWillUnmount = () => {
-    clearInterval(this.pollData);
   };
 
   handleSetPair = (pair) => {
@@ -118,10 +88,6 @@ class Research extends React.Component {
       this.props.loadCandlestick(this.state.pair, e.target.value);
     }
     this.setState({ candlestick_interval: e.target.value });
-  };
-
-  showNotification = (message) => {
-    new Notification(message);
   };
 
   handleSettings = (e) => {
@@ -176,8 +142,24 @@ class Research extends React.Component {
         balanceToUseUnmatchError: "Balance to use does not match available balance. Autotrade will fail."
       });
     } else {
+      this.setState(
+        produce((draft) => {
+          draft.balanceToUseUnmatchError = ""
+          draft.settings.balance_size_to_use = searchBalance.free;
+        })
+      );
+    }
+  }
+
+  handleBalanceSizeToUseBlur = () => {
+    const searchBalance = this.props.balance_raw.find(b => b["asset"] === this.state.settings.balance_to_use);
+    if (parseFloat(searchBalance.free) < parseFloat(this.state.settings.balance_size_to_use)) {
       this.setState({
-        balanceToUseUnmatchError: ""
+        minBalanceSizeToUseError: "Not enough balance for bot base orders"
+      });
+    } else {
+      this.setState({
+        minBalanceSizeToUseError: ""
       });
     }
   }
@@ -189,6 +171,15 @@ class Research extends React.Component {
     } else {
       addNotification("SUCCESS!", res.message, "success");
     }
+  }
+
+  addCurrentBalance = () => {
+    const searchBalance = this.props.balance_raw.find(b => b.asset === this.state.settings.balance_to_use);
+    this.setState(
+      produce((draft) => {
+        draft.settings.balance_size_to_use = searchBalance.free;
+      })
+    )
   }
 
   render() {
@@ -209,11 +200,10 @@ class Research extends React.Component {
           </Nav>
           <TabContent activeTab={this.state.activeTab}>
             <TabPane tabId="controllerTab">
-              <ControllerTab
+              { this.state.settings && <ControllerTab
                 blacklistData={this.state.blacklistData}
                 symbols={this.props.symbols}
                 settings={this.state.settings}
-
                 handleInput={this.handleSettings}
                 handleBlacklist={this.handleBlacklist}
                 saveSettings={this.saveSettings}
@@ -221,7 +211,15 @@ class Research extends React.Component {
                 balanceToUseUnmatchError={this.state.balanceToUseUnmatchError}
                 handleBalanceToUseBlur={this.handleBalanceToUseBlur}
                 triggerGbpHedge={this.triggerGbpHedge}
-              />
+                handleBalanceSizeToUseBlur={this.handleBalanceSizeToUseBlur}
+                minBalanceSizeToUseError={this.state.minBalanceSizeToUseError}
+                allBalance={() => this.setState(
+                  produce((draft) => {
+                    draft.settings.balance_size_to_use = 0;
+                  })
+                )}
+                addAll={this.addCurrentBalance}
+              /> }
             </TabPane>
           </TabContent>
         </div>
