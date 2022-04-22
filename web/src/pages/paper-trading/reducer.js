@@ -26,6 +26,7 @@ import {
   SET_BOT_STATE,
   computeTotalProfit,
   filterByWeek,
+  DELETE_TEST_BOT_SUCCESS,
 } from "./actions";
 
 // The initial state of the App
@@ -70,26 +71,27 @@ export const bot = {
 const initialState = {
   bot: bot,
   bots: [],
-  totalProfit: 0
-}
+  totalProfit: 0,
+};
 
 const testBotsReducer = produce((draft, action) => {
   switch (action.type) {
-    case SET_BOT_STATE: {
-      const { payload } = action;
-      draft.bot = {...draft.bot, ...payload}
-    }
-    return draft
+    case SET_BOT_STATE:
+      {
+        const { payload } = action;
+        draft.bot = { ...draft.bot, ...payload };
+      }
+      return draft;
     case GET_TEST_BOTS: {
-      return draft
+      return draft;
     }
     case GET_TEST_BOTS_SUCCESS: {
       if (action.bots) {
         const filteredBots = filterByWeek(action.bots);
-        draft.bots = filteredBots
-        draft.totalProfit = computeTotalProfit(filteredBots)
+        draft.bots = filteredBots;
+        draft.totalProfit = computeTotalProfit(filteredBots);
       } else {
-        draft.bots = action.bots
+        draft.bots = action.bots;
       }
       return draft;
     }
@@ -104,7 +106,7 @@ const testBotsReducer = produce((draft, action) => {
       return draft;
     }
     case GET_TEST_BOT_SUCCESS: {
-      draft.bot = {...draft.bot, ...action.bot};
+      draft.bot = { ...draft.bot, ...action.bot };
       return draft;
     }
 
@@ -115,7 +117,7 @@ const testBotsReducer = produce((draft, action) => {
     }
 
     case CREATE_TEST_BOT: {
-      draft.bot = {...draft.bot, ...action.bot};
+      draft.bot = { ...draft.bot, ...action.bot };
       return draft;
     }
     case CREATE_TEST_BOT_SUCCESS: {
@@ -124,24 +126,30 @@ const testBotsReducer = produce((draft, action) => {
     }
 
     case CREATE_TEST_BOT_ERROR: {
-      return draft
+      return draft;
     }
 
     case EDIT_TEST_BOT:
-      draft.bot = {...draft.bot, ...action.data};
-      return draft
+      draft.bot = { ...draft.bot, ...action.data };
+      return draft;
 
     case EDIT_TEST_BOT_SUCCESS:
-      draft.message = action.message
+      draft.message = action.message;
       return draft;
-    
+
     case EDIT_TEST_BOT_ERROR:
       return draft;
 
     case DELETE_TEST_BOT: {
-      draft.removeId = action.removeId
+      draft.removeId = action.removeId;
       return draft;
     }
+
+    case DELETE_TEST_BOT_SUCCESS:
+      draft.bots = draft.bots.filter(
+        (x) => !x._id.$oid.includes(draft.removeId)
+      );
+      return draft;
 
     case CLOSE_TEST_BOT: {
       const newState = {
@@ -161,10 +169,10 @@ const testBotsReducer = produce((draft, action) => {
 
     case ACTIVATE_TEST_BOT:
       return draft;
-    
+
     case ACTIVATE_TEST_BOT_SUCCESS:
       return draft;
-    
+
     case ACTIVATE_TEST_BOT_ERROR:
       return draft;
 
@@ -177,8 +185,8 @@ const testBotsReducer = produce((draft, action) => {
       return newState;
     }
     case DEACTIVATE_TEST_BOT_SUCCESS: {
-      const findidx = draft.data.findIndex(x => x._id.$oid === action.id);
-      draft.data[findidx].status = "inactive"
+      const findidx = draft.data.findIndex((x) => x._id.$oid === action.id);
+      draft.data[findidx].status = "inactive";
       const newState = {
         data: draft.data,
         message: action.message,
@@ -203,6 +211,4 @@ const testBotsReducer = produce((draft, action) => {
   }
 }, initialState);
 
-export {
-  testBotsReducer
-};
+export { testBotsReducer };

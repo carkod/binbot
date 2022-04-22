@@ -49,7 +49,6 @@ class TestBots extends React.Component {
   confirmDelete = (option) => {
     if (parseInt(option) === 1) {
       this.props.deleteTestBot([this.state.confirmModal]);
-      this.props.getTestBots();
     }
     this.setState({ confirmModal: null });
   };
