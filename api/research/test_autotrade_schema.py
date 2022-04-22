@@ -2,6 +2,7 @@ from api.tools.enum_definitions import EnumDefinitions
 from flask import current_app
 from copy import deepcopy
 
+
 class NewFieldError(Exception):
     pass
 
@@ -26,7 +27,7 @@ class TestAutotradeSchema:
             self.stop_loss = 3
             self.take_profit = 2.4
             self.balance_to_use = "GBP"
-            self.balance_size_to_use = 100
+            self.balance_size_to_use = 0
             self.telegram_signals = 1
             self.create()
         try:
@@ -48,7 +49,7 @@ class TestAutotradeSchema:
             self.stop_loss = 3
             self.take_profit = 2.4
             self.balance_to_use = "GBP"
-            self.balance_size_to_use = 100
+            self.balance_size_to_use = 0
             self.telegram_signals = 1
 
     def validate_model(self, data):
@@ -137,25 +138,20 @@ class TestAutotradeSchema:
             del data["trailling_profit"]
 
         if "balance_size_to_use" in data:
-            if not isinstance(data.get("balance_size_to_use"), int):
-                try:
-                    if 1 <= float(data.get("balance_size_to_use")) <= 100:
-                        self.balance_size_to_use = float(
-                            data.get("balance_size_to_use")
-                        )
-                except Exception:
-                    raise TypeError(
-                        f"balance_size_to_use must be a positive integer between 0 and 100"
-                    )
-            elif not data.get("balance_size_to_use") is not None:
-                self.balance_size_to_use = data.get("balance_size_to_use")
+            if not isinstance(data.get("balance_size_to_use"), float or int):
+                self.balance_size_to_use = float(data.get("balance_size_to_use"))
+
+            else:
+                raise TypeError(
+                    f"balance_size_to_use must be a positive integer between 0 and 100"
+                )
 
             del data["balance_size_to_use"]
 
         if "balance_to_use" in data:
             self.balance_to_use = data.get("balance_to_use")
             del data["balance_to_use"]
-        
+
         if "telegram_signals" in data:
             self.telegram_signals = data.get("telegram_signals")
             del data["telegram_signals"]
@@ -167,7 +163,7 @@ class TestAutotradeSchema:
                 )
 
         return self.__dict__
-    
+
     def create(self):
         data = self.__dict__
         try:

@@ -1,5 +1,6 @@
 import produce from "immer";
 import { intervalOptions } from "../../validations";
+import { FILTER_BY_WEEK } from "../bots/actions";
 import {
   ACTIVATE_TEST_BOT,
   ACTIVATE_TEST_BOT_ERROR,
@@ -33,7 +34,7 @@ export const bot = {
   balance_available_asset: "",
   balanceAvailableError: false,
   balanceUsageError: false,
-  balance_usage_size: "100", // Centralized
+  balance_size_to_use: "100", // Centralized
   base_order_size: "",
   baseOrderSizeError: false,
   balance_to_use: "GBP",
@@ -183,6 +184,19 @@ const testBotsReducer = produce((draft, action) => {
         botActive: true,
       };
     }
+
+    case FILTER_BY_WEEK:
+      const today = new Date();
+      const lastWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate()-7);
+      if (draft.bots.length > 0) {
+        draft.bots.filter(x => {
+          if (x.created_at) {
+            return x.created_at >= lastWeek.getTime()
+          }
+          return false
+        })
+      }
+      return draft;
 
     default:
       return draft;

@@ -18,7 +18,7 @@ class Autotrade(BinbotApi):
             "status": "inactive",
             "name": f"{algorithm_name}_{current_date}",
             "mode": "autotrade",
-            "balance_usage_size": settings["balance_usage_size"],
+            "balance_size_to_use": settings["balance_size_to_use"],
             "balance_to_use": settings["balance_to_use"],
             "base_order_size": 0,
             "candlestick_interval": settings["candlestick_interval"],
@@ -71,12 +71,12 @@ class Autotrade(BinbotApi):
             if self.pair.endswith(b["asset"]):
                 qty = supress_notation(b["free"], self.decimals)
                 if self.min_amount_check(self.pair, qty):
-                    if float(self.default_bot["balance_usage_size"]) != 0:
-                        if b["free"] < float(self.default_bot["balance_usage_size"]):
-                            print(f"Error: balance ({qty}) is less than balance_usage_size ({float(self.default_bot['balance_usage_size'])}). Trying with all balance...")
+                    if float(self.default_bot["balance_size_to_use"]) != 0:
+                        if b["free"] < float(self.default_bot["balance_size_to_use"]):
+                            print(f"Error: balance ({qty}) is less than balance_size_to_use ({float(self.default_bot['balance_size_to_use'])}). Skipped autotrade")
                             return
                         else:
-                            qty = float(self.default_bot["balance_usage_size"])
+                            qty = float(self.default_bot["balance_size_to_use"])
                 
                     self.default_bot["base_order_size"] = qty
                     break

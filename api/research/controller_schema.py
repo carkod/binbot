@@ -38,7 +38,7 @@ class ControllerSchema:
             self.stop_loss = 3
             self.take_profit = 2.4
             self.balance_to_use = "GBP"
-            self.balance_size_to_use = 100
+            self.balance_size_to_use = 0 # All balance
             self.max_request = 950
             self.system_logs = []
             self.update_required = False

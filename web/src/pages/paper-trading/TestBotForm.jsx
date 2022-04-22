@@ -193,7 +193,7 @@ class TestBotForm extends React.Component {
           _id: this.props.match.params.id,
           status: this.props.bot.status,
           balance_available_asset: this.props.balance_available_asset,
-          balance_usage_size: this.props.bot.balance_usage_size, // Centralized
+          balance_size_to_use: this.props.bot.balance_size_to_use, // Centralized
           base_order_size: this.props.bot.base_order_size,
           balance_to_use: this.props.bot.balance_to_use,
           mode: "manual",

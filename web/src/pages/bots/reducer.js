@@ -33,6 +33,8 @@ import {
   LOAD_CANDLESTICK,
   LOAD_CANDLESTICK_ERROR,
   LOAD_CANDLESTICK_SUCCESS,
+  FILTER_BY_WEEK,
+  FILTER_BY_MONTH
 } from "./actions";
 
 // The initial state of the App
@@ -176,6 +178,10 @@ const botReducer = produce((draft, action) => {
       }
       return draft;
     }
+    case FILTER_BY_WEEK:
+      const today = new Date();
+      // draft.filter(x => x)
+      return draft;
     default:
       break;
   }

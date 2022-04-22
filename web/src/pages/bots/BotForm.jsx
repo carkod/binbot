@@ -61,7 +61,7 @@ class BotForm extends React.Component {
       balance_available_asset: "",
       balanceAvailableError: false,
       balanceUsageError: false,
-      balance_usage_size: "100", // Centralized
+      balance_size_to_use: "100", // Centralized
       base_order_size: "",
       baseOrderSizeError: false,
       balance_to_use: "GBP",
@@ -118,7 +118,7 @@ class BotForm extends React.Component {
     if (p.bot !== this.props.bot) {
       this.setState({
         status: this.props.bot.status,
-        balance_usage_size: this.props.bot.balance_usage_size,
+        balance_size_to_use: this.props.bot.balance_size_to_use,
         balance_to_use: this.props.bot.balance_to_use,
         base_order_size: this.props.bot.base_order_size,
         max_so_count: this.props.bot.max_so_count,

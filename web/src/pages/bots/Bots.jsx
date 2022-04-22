@@ -17,7 +17,7 @@ import {
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
 import { checkValue } from "../../validations";
-import { archiveBot, closeBot, deleteBot, getBots } from "./actions";
+import { archiveBot, closeBot, deleteBot, getBots, filterByWeek, filterByMonth } from "./actions";
 class Bots extends React.Component {
   constructor(props) {
     super(props);
@@ -145,6 +145,16 @@ class Bots extends React.Component {
     }
   };
 
+  handleFilterBy = (e) => {
+    const { value } = e.target;
+    this.props.filterByWeek();
+    if (value === "last-week") {
+      
+    } else {
+      this.props.filterByMonth();
+    }
+  }
+
   render() {
     const { bots } = this.props;
     return (
@@ -162,7 +172,7 @@ class Bots extends React.Component {
                   </Badge>
                 </h3>
               </Col>
-              <Col sm={4}>
+              <Col sm={3}>
                 <Input
                   bsSize="sm"
                   type="select"
@@ -180,6 +190,19 @@ class Bots extends React.Component {
                 <Button onClick={this.onSubmitBulkAction}>
                   Apply bulk action
                 </Button>
+              </Col>
+              <Col sm={3}>
+                <label>Filter by:</label>
+                <Input
+                  bsSize="sm"
+                  type="select"
+                  name="filterBy"
+                  id="filter-by"
+                  onChange={this.handleFilterBy}
+                >
+                  <option value="last-week">Last week</option>
+                  <option value="last-month">Last month</option>
+                </Input>
               </Col>
             </FormGroup>
           </Form>
@@ -379,22 +402,22 @@ class Bots extends React.Component {
                           <Button
                             color="info"
                             title="Edit this bot"
+                            className="fas fa-edit"
                             onClick={() =>
                               this.props.history.push(
                                 `/admin/bots/edit/${x._id.$oid}`
                               )
                             }
                           >
-                            <i className="fas fa-edit" />
                           </Button>
                           <Button
                             color="success"
                             title="Select this bot"
+                            className="fas fa-check"
                             data-index={i}
                             data-id={x._id.$oid}
                             onClick={this.handleSelection}
                           >
-                            <i className="fas fa-check" />
                           </Button>
                           {x.status !== "active" && (
                             <Button
@@ -409,9 +432,9 @@ class Bots extends React.Component {
                           )}
                           <Button
                             color="danger"
+                            className="fas fa-trash"
                             onClick={() => this.handleDelete(x._id.$oid)}
                           >
-                            <i className="fas fa-trash" />
                           </Button>
                         </div>
                       </CardFooter>
@@ -466,4 +489,6 @@ export default connect(mapStateToProps, {
   deleteBot,
   closeBot,
   archiveBot,
+  filterByWeek,
+  filterByMonth
 })(Bots);

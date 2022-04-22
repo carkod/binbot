@@ -49,6 +49,9 @@ export const ARCHIVE_BOT = "ARCHIVE_BOT";
 export const ARCHIVE_BOT_SUCCESS = "ARCHIVE_BOT_SUCCESS";
 export const ARCHIVE_BOT_ERROR = "ARCHIVE_BOT_ERROR";
 
+export const FILTER_BY_WEEK = "FILTER_BY_WEEK";
+export const FILTER_BY_MONTH = "FILTER_BY_MONTH";
+
 /**
  * Create new user
  *
@@ -449,4 +452,16 @@ export function archiveBotFailed(payload) {
     type: ARCHIVE_BOT_ERROR,
     id: payload.botId,
   };
+}
+
+export function filterByWeek() {
+  return {
+    type: FILTER_BY_WEEK,
+  }
+}
+
+export function filterByMonth() {
+  return {
+    type: FILTER_BY_MONTH,
+  }
 }

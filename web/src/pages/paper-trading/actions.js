@@ -1,4 +1,5 @@
 import { addNotification } from "../../validations";
+import { FILTER_BY_WEEK } from "../bots/actions";
 
 export const GET_TEST_BOTS = "GET_TEST_BOTS";
 export const GET_TEST_BOTS_SUCCESS = "GET_TEST_BOTS_SUCCESS";

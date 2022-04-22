@@ -6,7 +6,6 @@ from api.deals.models import Deal
 from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
-from api.tools.enum_definitions import EnumDefinitions
 from api.tools.handle_error import (
     QuantityTooLow,
     handle_binance_errors,
