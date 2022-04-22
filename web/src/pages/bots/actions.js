@@ -454,7 +454,7 @@ export function archiveBotFailed(payload) {
   };
 }
 
-export function filterByWeek() {
+export function setFilterByWeek() {
   return {
     type: FILTER_BY_WEEK,
   }

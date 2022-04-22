@@ -1,4 +1,5 @@
 import produce from "immer";
+import { computeTotalProfit, filterByWeek } from "../paper-trading/actions";
 import {
   ACTIVATE_BOT,
   ACTIVATE_BOT_ERROR,
@@ -34,7 +35,6 @@ import {
   LOAD_CANDLESTICK_ERROR,
   LOAD_CANDLESTICK_SUCCESS,
   FILTER_BY_WEEK,
-  FILTER_BY_MONTH
 } from "./actions";
 
 // The initial state of the App
@@ -51,10 +51,14 @@ const botReducer = produce((draft, action) => {
       };
     }
     case GET_BOTS_SUCCESS: {
-      const newState = {
-        data: action.bots,
-      };
-      return newState;
+      if (action.bots) {
+        const filteredBots = filterByWeek(action.bots);
+        draft.bots = filteredBots
+        draft.totalProfit = computeTotalProfit(filteredBots)
+      } else {
+        draft.bots = action.bots
+      }
+      return draft;
     }
 
     case GET_BOTS_ERROR: {
@@ -179,8 +183,7 @@ const botReducer = produce((draft, action) => {
       return draft;
     }
     case FILTER_BY_WEEK:
-      const today = new Date();
-      // draft.filter(x => x)
+      draft.bots = filterByWeek(draft.bots);
       return draft;
     default:
       break;

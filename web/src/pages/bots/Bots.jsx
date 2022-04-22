@@ -17,7 +17,7 @@ import {
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
 import { checkValue } from "../../validations";
-import { archiveBot, closeBot, deleteBot, getBots, filterByWeek, filterByMonth } from "./actions";
+import { archiveBot, closeBot, deleteBot, getBots, setFilterByWeek, filterByMonth } from "./actions";
 class Bots extends React.Component {
   constructor(props) {
     super(props);
@@ -147,13 +147,16 @@ class Bots extends React.Component {
 
   handleFilterBy = (e) => {
     const { value } = e.target;
-    this.props.filterByWeek();
+    
     if (value === "last-week") {
-      
-    } else {
+      this.props.setFilterByWeek();  
+    } else if (value === "last-week") {
       this.props.filterByMonth();
+    } else {
+      this.props.getTestBots();
     }
   }
+
 
   render() {
     const { bots } = this.props;
@@ -464,24 +467,12 @@ class Bots extends React.Component {
 }
 
 const mapStateToProps = (state) => {
-  const { message } = state.botReducer;
-  if (state.botReducer.data && state.botReducer.data.length > 0) {
-    // Sort active status first
-    const bots = state.botReducer.data.filter((a, b) => {
-      if (a.status === "active") {
-        return -1;
-      } else {
-        return 1;
-      }
-    });
-    return {
-      ...state.botReducer,
-      bots: bots,
-      message: message,
-    };
-  }
-
-  return state;
+  const { message, bots, totalProfit } = state.botReducer;
+  return {
+    bots: bots,
+    message: message,
+    totalProfit: totalProfit
+  };
 };
 
 export default connect(mapStateToProps, {
@@ -489,6 +480,6 @@ export default connect(mapStateToProps, {
   deleteBot,
   closeBot,
   archiveBot,
-  filterByWeek,
+  setFilterByWeek,
   filterByMonth
 })(Bots);

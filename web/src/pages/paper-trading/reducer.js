@@ -23,7 +23,9 @@ import {
   GET_TEST_BOT_ERROR,
   GET_TEST_BOT_SUCCESS,
   CLOSE_TEST_BOT,
-  SET_BOT_STATE
+  SET_BOT_STATE,
+  computeTotalProfit,
+  filterByWeek,
 } from "./actions";
 
 // The initial state of the App
@@ -67,7 +69,8 @@ export const bot = {
 
 const initialState = {
   bot: bot,
-  bots: []
+  bots: [],
+  totalProfit: 0
 }
 
 const testBotsReducer = produce((draft, action) => {
@@ -81,7 +84,13 @@ const testBotsReducer = produce((draft, action) => {
       return draft
     }
     case GET_TEST_BOTS_SUCCESS: {
-      draft.bots = action.bots
+      if (action.bots) {
+        const filteredBots = filterByWeek(action.bots);
+        draft.bots = filteredBots
+        draft.totalProfit = computeTotalProfit(filteredBots)
+      } else {
+        draft.bots = action.bots
+      }
       return draft;
     }
 
@@ -186,16 +195,7 @@ const testBotsReducer = produce((draft, action) => {
     }
 
     case FILTER_BY_WEEK:
-      const today = new Date();
-      const lastWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate()-7);
-      if (draft.bots.length > 0) {
-        draft.bots.filter(x => {
-          if (x.created_at) {
-            return x.created_at >= lastWeek.getTime()
-          }
-          return false
-        })
-      }
+      draft.bots = filterByWeek(draft.bots);
       return draft;
 
     default:

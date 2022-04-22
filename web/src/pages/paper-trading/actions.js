@@ -1,5 +1,4 @@
-import { addNotification } from "../../validations";
-import { FILTER_BY_WEEK } from "../bots/actions";
+import { addNotification, checkValue } from "../../validations";
 
 export const GET_TEST_BOTS = "GET_TEST_BOTS";
 export const GET_TEST_BOTS_SUCCESS = "GET_TEST_BOTS_SUCCESS";
@@ -29,17 +28,19 @@ export const DEACTIVATE_TEST_BOT_ERROR = "DEACTIVATE_TEST_BOT_ERROR";
 
 export const SET_BOT_STATE = "SET_BOT_STATE";
 
-export const GET_TEST_AUTOTRADE_SETTINGS_SUCCESS = "GET_TEST_AUTOTRADE_SETTINGS_SUCCESS";
+export const GET_TEST_AUTOTRADE_SETTINGS_SUCCESS =
+  "GET_TEST_AUTOTRADE_SETTINGS_SUCCESS";
 export const GET_TEST_AUTOTRADE_SETTINGS = "GET_TEST_AUTOTRADE_SETTINGS";
 export const SET_TEST_AUTOTRADE_SETTING = "SET_TEST_AUTOTRADE_SETTING";
 export const SAVE_TEST_AUTOTRADE_SETTINGS = "SAVE_TEST_AUTOTRADE_SETTINGS";
-export const SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS = "SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS";
+export const SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS =
+  "SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS";
 
 export function setBotState(payload) {
   return {
-      type: SET_BOT_STATE,
-      payload
-  }
+    type: SET_BOT_STATE,
+    payload,
+  };
 }
 
 /**
@@ -151,7 +152,7 @@ export function createTestBotSucceeded(res) {
   } else {
     addNotification("SUCCESS!", res.message, "success");
   }
-  
+
   return {
     type: CREATE_TEST_BOT_SUCCESS,
     botId: res.botId,
@@ -223,26 +224,25 @@ export function editTestBotFailed(error) {
 
 /**
  * Simple Delete bot
- * @return {objectId} 
+ * @return {objectId}
  */
 export function deleteTestBot(id) {
   return {
     type: DELETE_TEST_BOT,
-    removeId: id
+    removeId: id,
   };
 }
 /**
  * Close deal, sell coins and delete bot
- * @return {objectId} 
+ * @return {objectId}
  */
 export function closeTestBot(id) {
   return {
     type: CLOSE_TEST_BOT,
     data: id,
-    removeId: id
+    removeId: id,
   };
 }
-
 
 /**
  * Dispatched when the repositories are loaded by the request saga
@@ -344,8 +344,8 @@ export function deactivateTestBotFailed(error) {
 
 export function getTestAutotradeSettings() {
   return {
-    type: GET_TEST_AUTOTRADE_SETTINGS
-  }
+    type: GET_TEST_AUTOTRADE_SETTINGS,
+  };
 }
 
 export function getTestAutotradeSettingsSucceeded(payload) {
@@ -356,8 +356,8 @@ export function getTestAutotradeSettingsSucceeded(payload) {
   }
   return {
     type: GET_TEST_AUTOTRADE_SETTINGS_SUCCESS,
-    data: payload.data
-  }
+    data: payload.data,
+  };
 }
 
 export function saveTestAutotradeSettingsSucceeded(payload) {
@@ -368,19 +368,59 @@ export function saveTestAutotradeSettingsSucceeded(payload) {
   }
   return {
     type: SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS,
-  }
+  };
 }
 
 export function setTestAutotradeSetting(payload) {
   return {
     type: SET_TEST_AUTOTRADE_SETTING,
-    payload: payload
-  }
+    payload: payload,
+  };
 }
 
 export function saveTestAutoTradeSettings(payload) {
   return {
     type: SAVE_TEST_AUTOTRADE_SETTINGS,
-    payload: payload
+    payload: payload,
+  };
+}
+
+export function getProfit(base_price, current_price) {
+  if (!checkValue(base_price) && !checkValue(current_price)) {
+    const percent =
+      ((parseFloat(current_price) - parseFloat(base_price)) /
+        parseFloat(base_price)) *
+      100;
+    return percent.toFixed(2);
   }
+  return 0;
+}
+
+export function computeTotalProfit(bots) {
+  const totalProfit = bots
+    .map((bot) => bot.deal)
+    .reduce((accumulator, currBot) => {
+      let currTotalProfit = getProfit(currBot.buy_price, currBot.current_price);
+      return parseFloat(accumulator) + parseFloat(currTotalProfit);
+    }, 0);
+  return totalProfit.toFixed(2);
+}
+
+export function filterByWeek(bots) {
+  const today = new Date();
+  const lastWeek = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() - 7
+  );
+  let filteredBots = bots;
+  if (bots.length > 0) {
+    filteredBots = bots.filter((x) => {
+      if (x.created_at) {
+        return x.created_at >= lastWeek.getTime();
+      }
+      return true;
+    });
+  }
+  return filteredBots;
 }
