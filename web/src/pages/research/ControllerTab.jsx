@@ -127,7 +127,7 @@ export const ControllerTab = ({
                           </label>
                           <InputGroup>
                             <Input
-                              value={settings?.balance_size_to_use || 0}
+                              value={settings?.balance_size_to_use}
                               name={"balance_size_to_use"}
                               label={"Base order per bot"}
                               onChange={handleInput}

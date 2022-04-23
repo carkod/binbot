@@ -7,12 +7,12 @@ import { addNotification, checkValue } from "../../validations";
 import { loadCandlestick, getSymbols } from "../bots/actions";
 import { getBalanceRaw } from "../../state/balances/actions";
 import {
-  getResearchData,
   getBlacklist,
   getSettings,
   editSettings,
   addBlackList,
   deleteBlackList,
+  setSettingsState
 } from "./actions";
 import ControllerTab from "./ControllerTab";
 import { gbpHedge } from "./requests";
@@ -64,10 +64,6 @@ class Research extends React.Component {
       );
     }
 
-
-    if (!checkValue(this.state.settings) && p.settings !== this.props.settings) {
-      this.setState({ settings: this.props.settings });
-    }
     if (p.blacklistData !== this.props.blacklistData) {
       this.setState({ blacklistData: this.props.blacklistData });
     }
@@ -92,20 +88,17 @@ class Research extends React.Component {
 
   handleSettings = (e) => {
     e.preventDefault();
-    this.setState(
-      produce((draft) => {
-        draft.settings[e.target.name] = e.target.value;
-      })
-    );
+    this.props.setSettingsState({
+      [e.target.name]: e.target.value
+    })
   };
 
   saveSettings = (e) => {
     e.preventDefault();
-    this.setState(
-      produce((draft) => {
-        draft.settings.update_required = "true";
-      }), () => this.props.editSettings(this.state.settings)
-    );
+    this.props.setSettingsState({
+      update_required: "true"
+    });
+    this.props.editSettings(this.props.settings)
   };
 
 
@@ -120,23 +113,19 @@ class Research extends React.Component {
   };
 
   toggleTrailling = () => {
-    if (this.state.settings.trailling === "true") {
-      this.setState(
-        produce((draft) => {
-          draft.settings.trailling = "false"
-        })
-      );
+    if (this.props.settings.trailling === "true") {
+      this.props.setSettingsState({
+        trailling: "false"
+      });
     } else {
-      this.setState(
-        produce((draft) => {
-          draft.settings.trailling = "true"
-        })
-      );
+      this.props.setSettingsState({
+        trailling: "true"
+      });
     }
   }
 
   handleBalanceToUseBlur = () => {
-    const searchBalance = this.props.balance_raw.findIndex(b => b["asset"] === this.state.settings.balance_to_use);
+    const searchBalance = this.props.balance_raw.findIndex(b => b["asset"] === this.props.settings.balance_to_use);
     if (searchBalance === -1) {
       this.setState({
         balanceToUseUnmatchError: "Balance to use does not match available balance. Autotrade will fail."
@@ -145,15 +134,14 @@ class Research extends React.Component {
       this.setState(
         produce((draft) => {
           draft.balanceToUseUnmatchError = ""
-          draft.settings.balance_size_to_use = searchBalance.free;
         })
       );
     }
   }
 
   handleBalanceSizeToUseBlur = () => {
-    const searchBalance = this.props.balance_raw.find(b => b["asset"] === this.state.settings.balance_to_use);
-    if (parseFloat(searchBalance.free) < parseFloat(this.state.settings.balance_size_to_use)) {
+    const searchBalance = this.props.balance_raw.find(b => b["asset"] === this.props.settings.balance_to_use);
+    if (parseFloat(searchBalance.free) < parseFloat(this.props.settings.balance_size_to_use)) {
       this.setState({
         minBalanceSizeToUseError: "Not enough balance for bot base orders"
       });
@@ -174,12 +162,10 @@ class Research extends React.Component {
   }
 
   addCurrentBalance = () => {
-    const searchBalance = this.props.balance_raw.find(b => b.asset === this.state.settings.balance_to_use);
-    this.setState(
-      produce((draft) => {
-        draft.settings.balance_size_to_use = searchBalance.free;
-      })
-    )
+    const searchBalance = this.props.balance_raw.find(b => b.asset === this.props.settings.balance_to_use);
+    this.props.setSettingsState({
+      balance_size_to_use: searchBalance.free
+    })
   }
 
   render() {
@@ -200,10 +186,10 @@ class Research extends React.Component {
           </Nav>
           <TabContent activeTab={this.state.activeTab}>
             <TabPane tabId="controllerTab">
-              { this.state.settings && <ControllerTab
+              { this.props.settings && <ControllerTab
                 blacklistData={this.state.blacklistData}
                 symbols={this.props.symbols}
-                settings={this.state.settings}
+                settings={this.props.settings}
                 handleInput={this.handleSettings}
                 handleBlacklist={this.handleBlacklist}
                 saveSettings={this.saveSettings}
@@ -229,15 +215,13 @@ class Research extends React.Component {
 }
 
 const mapStateToProps = (state) => {
-  const { data: research } = state.researchReducer;
   const { data: candlestick } = state.candlestickReducer;
   const { data: symbols } = state.symbolReducer;
   const { data: blacklistData } = state.blacklistReducer;
-  const { data: settings } = state.settingsReducer;
+  const { settings } = state.settingsReducer;
   const { data: balance_raw } = state.balanceRawReducer;
 
   return {
-    research: research,
     candlestick: candlestick,
     symbols: symbols,
     blacklistData: blacklistData,
@@ -247,7 +231,6 @@ const mapStateToProps = (state) => {
 };
 
 export default connect(mapStateToProps, {
-  getResearchData,
   loadCandlestick,
   getSymbols,
   getBlacklist,
@@ -256,4 +239,5 @@ export default connect(mapStateToProps, {
   getSettings,
   editSettings,
   getBalanceRaw,
+  setSettingsState
 })(Research);

@@ -154,14 +154,12 @@ class ControllerSchema:
             del data["update_required"]
 
         if "balance_size_to_use" in data:
-            if not isinstance(data.get("balance_size_to_use"), float):
-                raise TypeError(
-                    f"balance_size_to_use must be a float and smaller than the balance"
-                )
-                    
-            elif not data.get("balance_size_to_use") is not None:
-                self.balance_size_to_use = data.get("balance_size_to_use")
+            try:
+                float(data.get("balance_size_to_use"))
+            except Exception as error:
+                raise Exception(error)
 
+            self.balance_size_to_use = data.get("balance_size_to_use")
             del data["balance_size_to_use"]
 
         if "max_request" in data:

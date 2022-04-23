@@ -37,10 +37,10 @@ export const bot = {
   balance_available_asset: "",
   balanceAvailableError: false,
   balanceUsageError: false,
-  balance_size_to_use: "100", // Centralized
+  balance_size_to_use: 0, // Centralized
   base_order_size: "",
   baseOrderSizeError: false,
-  balance_to_use: "GBP",
+  balance_to_use: "USDT",
   bot_profit: 0,
   mode: "manual",
   max_so_count: "0",

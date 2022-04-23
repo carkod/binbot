@@ -79,7 +79,7 @@ class MarketUpdates(Account):
                 {"_id": current_bot["_id"]},
                 {"$set": {"deal.current_price": close_price}},
             )
-            print(f'{symbol} Current price updated! {bot["deal"]["current_price"]}')
+            print(f'{symbol} Current price in deal updated! {bot["deal"]["current_price"]}')
             # Stop loss
             if (
                 float(current_bot["stop_loss"]) > 0
@@ -140,6 +140,7 @@ class MarketUpdates(Account):
                 if "trailling_stop_loss_price" in bot["deal"]:
                     price = bot["deal"]["trailling_stop_loss_price"]
                     if float(close_price) <= float(price):
+                        print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
                         deal = DealUpdates(bot)
                         completion = deal.trailling_stop_loss(price)
                         if completion == "completed":
@@ -169,7 +170,6 @@ class MarketUpdates(Account):
                 {"_id": current_bot["_id"]},
                 {"$set": {"deal.current_price": close_price}},
             )
-            print(f'{symbol} Current price updated! {bot["deal"]["current_price"]} (test bot)')
             # Stop loss
             if (
                 float(current_bot["stop_loss"]) > 0
