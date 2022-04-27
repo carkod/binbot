@@ -1,6 +1,6 @@
 import os
 
-from pattern_detection import downtrend_patterns, reversal_confirmation, test_pattern_recognition
+from pattern_detection import downtrend_patterns, reversal_confirmation
 
 def candlestick_patterns(data, sd, close_price, open_price, value, chaikin_diff, regression, _send_msg, run_autotrade, symbol, ws, intercept, ma_25):
     """
@@ -9,7 +9,6 @@ def candlestick_patterns(data, sd, close_price, open_price, value, chaikin_diff,
 
     reversal = reversal_confirmation(data)
     downtrend = downtrend_patterns(data)
-    all_patterns = test_pattern_recognition(data)
 
     # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
     # if reversal and (round(sd * 10000) / 10000) > 0.006 and len(downtrend) == 0 and chaikin_diff < 0 and len(all_patterns) > 0:
