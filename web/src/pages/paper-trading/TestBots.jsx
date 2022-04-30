@@ -15,9 +15,9 @@ import {
   Row,
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
+import { getProfit, setFilterByMonthState, setFilterByWeek } from "../../state/bots/actions";
 import { checkValue } from "../../validations";
-import { closeTestBot, deleteTestBot, getTestBots, getProfit } from "./actions";
-import { setFilterByWeek, filterByMonth } from "../bots/actions";
+import { closeTestBot, deleteTestBot, getTestBots } from "./actions";
 
 class TestBots extends React.Component {
   constructor(props) {
@@ -423,5 +423,5 @@ export default connect(mapStateToProps, {
   deleteTestBot,
   closeTestBot,
   setFilterByWeek,
-  filterByMonth
+  setFilterByMonthState
 })(TestBots);

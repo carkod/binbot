@@ -17,7 +17,8 @@ import {
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
 import { checkValue } from "../../validations";
-import { archiveBot, closeBot, deleteBot, getBots, setFilterByWeek, filterByMonth } from "./actions";
+import { archiveBot, closeBot, deleteBot, getBots } from "./actions";
+import { setFilterByMonthState, setFilterByWeek } from "../../state/bots/actions";
 class Bots extends React.Component {
   constructor(props) {
     super(props);
@@ -151,7 +152,7 @@ class Bots extends React.Component {
     if (value === "last-week") {
       this.props.setFilterByWeek();  
     } else if (value === "last-week") {
-      this.props.filterByMonth();
+      this.props.setFilterByMonthState();
     } else {
       this.props.getTestBots();
     }
@@ -481,5 +482,5 @@ export default connect(mapStateToProps, {
   closeBot,
   archiveBot,
   setFilterByWeek,
-  filterByMonth
+  setFilterByMonthState
 })(Bots);

@@ -1,0 +1,2 @@
+export const FILTER_BY_WEEK = "FILTER_BY_WEEK";
+export const FILTER_BY_MONTH = "FILTER_BY_MONTH";

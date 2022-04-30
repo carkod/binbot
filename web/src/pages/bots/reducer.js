@@ -1,5 +1,6 @@
 import produce from "immer";
-import { computeTotalProfit, filterByWeek } from "../paper-trading/actions";
+import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../../state/constants";
+import { filterByMonth, filterByWeek, computeTotalProfit } from "../../state/bots/actions";
 import {
   ACTIVATE_BOT,
   ACTIVATE_BOT_ERROR,
@@ -34,7 +35,6 @@ import {
   LOAD_CANDLESTICK,
   LOAD_CANDLESTICK_ERROR,
   LOAD_CANDLESTICK_SUCCESS,
-  FILTER_BY_WEEK,
 } from "./actions";
 
 // The initial state of the App
@@ -46,17 +46,15 @@ export const initialState = {
 const botReducer = produce((draft, action) => {
   switch (action.type) {
     case GET_BOTS: {
-      return {
-        data: action.data,
-      };
+      return draft;
     }
     case GET_BOTS_SUCCESS: {
       if (action.bots) {
         const filteredBots = filterByWeek(action.bots);
-        draft.bots = filteredBots
-        draft.totalProfit = computeTotalProfit(filteredBots)
+        draft.bots = filteredBots;
+        draft.totalProfit = computeTotalProfit(filteredBots);
       } else {
-        draft.bots = action.bots
+        draft.bots = action.bots;
       }
       return draft;
     }
@@ -92,7 +90,7 @@ const botReducer = produce((draft, action) => {
     }
 
     case DELETE_BOT: {
-      draft.removeId = action.removeId
+      draft.removeId = action.removeId;
       return draft;
     }
 
@@ -101,7 +99,7 @@ const botReducer = produce((draft, action) => {
         (x) => !x._id.$oid.includes(draft.removeId)
       );
       return draft;
-    
+
     case DELETE_BOT_ERROR: {
       return {
         error: action.error,
@@ -152,8 +150,8 @@ const botReducer = produce((draft, action) => {
       return newState;
     }
     case DEACTIVATE_BOT_SUCCESS: {
-      const findidx = draft.data.findIndex(x => x._id.$oid === action.id);
-      draft.data[findidx].status = "inactive"
+      const findidx = draft.data.findIndex((x) => x._id.$oid === action.id);
+      draft.data[findidx].status = "inactive";
       const newState = {
         data: draft.data,
         message: action.message,
@@ -176,16 +174,20 @@ const botReducer = produce((draft, action) => {
       };
     }
     case ARCHIVE_BOT_SUCCESS: {
-      const findidx = draft.data.findIndex(x => x._id.$oid === action.id);
+      const findidx = draft.data.findIndex((x) => x._id.$oid === action.id);
       if (draft.data[findidx].status === "archived") {
-        draft.data[findidx].status = "inactive"  
+        draft.data[findidx].status = "inactive";
       } else {
-        draft.data[findidx].status = "archived"
+        draft.data[findidx].status = "archived";
       }
       return draft;
     }
     case FILTER_BY_WEEK:
       draft.bots = filterByWeek(draft.bots);
+      return draft;
+
+    case FILTER_BY_MONTH:
+      draft.bots = filterByMonth(draft.bots);
       return draft;
     default:
       break;

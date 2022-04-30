@@ -1,10 +1,16 @@
 import produce from "immer";
+import {
+  computeTotalProfit,
+  filterByMonth,
+  filterByWeek,
+} from "../../state/bots/actions";
+import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../../state/constants";
 import { intervalOptions } from "../../validations";
-import { FILTER_BY_WEEK } from "../bots/actions";
 import {
   ACTIVATE_TEST_BOT,
   ACTIVATE_TEST_BOT_ERROR,
   ACTIVATE_TEST_BOT_SUCCESS,
+  CLOSE_TEST_BOT,
   CREATE_TEST_BOT,
   CREATE_TEST_BOT_ERROR,
   CREATE_TEST_BOT_SUCCESS,
@@ -13,6 +19,7 @@ import {
   DEACTIVATE_TEST_BOT_SUCCESS,
   DELETE_TEST_BOT,
   DELETE_TEST_BOT_ERROR,
+  DELETE_TEST_BOT_SUCCESS,
   EDIT_TEST_BOT,
   EDIT_TEST_BOT_ERROR,
   EDIT_TEST_BOT_SUCCESS,
@@ -22,11 +29,7 @@ import {
   GET_TEST_BOTS_SUCCESS,
   GET_TEST_BOT_ERROR,
   GET_TEST_BOT_SUCCESS,
-  CLOSE_TEST_BOT,
   SET_BOT_STATE,
-  computeTotalProfit,
-  filterByWeek,
-  DELETE_TEST_BOT_SUCCESS,
 } from "./actions";
 
 // The initial state of the App
@@ -204,6 +207,10 @@ const testBotsReducer = produce((draft, action) => {
 
     case FILTER_BY_WEEK:
       draft.bots = filterByWeek(draft.bots);
+      return draft;
+
+    case FILTER_BY_MONTH:
+      draft.bots = filterByMonth(draft.bots);
       return draft;
 
     default:
