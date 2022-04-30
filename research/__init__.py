@@ -14,7 +14,7 @@ if os.getenv("ENV") != "ci":
         func=nt.run,
         timezone="Europe/London",
         trigger="interval",
-        hours=3,
+        hours=6,
     )
     scheduler.start()
 
