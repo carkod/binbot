@@ -38,7 +38,7 @@ class ControllerSchema:
             self.stop_loss = 3
             self.take_profit = 2.4
             self.balance_to_use = "GBP"
-            self.balance_size_to_use = 100
+            self.balance_size_to_use = 0 # All balance
             self.max_request = 950
             self.system_logs = []
             self.update_required = False
@@ -154,19 +154,12 @@ class ControllerSchema:
             del data["update_required"]
 
         if "balance_size_to_use" in data:
-            if not isinstance(data.get("balance_size_to_use"), int):
-                try:
-                    if 1 <= float(data.get("balance_size_to_use")) <= 100:
-                        self.balance_size_to_use = float(
-                            data.get("balance_size_to_use")
-                        )
-                except Exception:
-                    raise TypeError(
-                        f"balance_size_to_use must be a positive integer between 0 and 100"
-                    )
-            elif not data.get("balance_size_to_use") is not None:
-                self.balance_size_to_use = data.get("balance_size_to_use")
+            try:
+                float(data.get("balance_size_to_use"))
+            except Exception as error:
+                raise Exception(error)
 
+            self.balance_size_to_use = data.get("balance_size_to_use")
             del data["balance_size_to_use"]
 
         if "max_request" in data:

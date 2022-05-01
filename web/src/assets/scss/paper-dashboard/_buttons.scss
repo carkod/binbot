@@ -29,6 +29,12 @@
     margin: 0;
   }
 
+  .fa, .far, .fas, .nc-icon {
+    &::before {
+      pointer-events: none;
+    }
+  }
+
   &.btn-icon {
     // see above for color variations
     height: $btn-icon-size-regular;

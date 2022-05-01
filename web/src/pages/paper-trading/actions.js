@@ -28,17 +28,19 @@ export const DEACTIVATE_TEST_BOT_ERROR = "DEACTIVATE_TEST_BOT_ERROR";
 
 export const SET_BOT_STATE = "SET_BOT_STATE";
 
-export const GET_TEST_AUTOTRADE_SETTINGS_SUCCESS = "GET_TEST_AUTOTRADE_SETTINGS_SUCCESS";
+export const GET_TEST_AUTOTRADE_SETTINGS_SUCCESS =
+  "GET_TEST_AUTOTRADE_SETTINGS_SUCCESS";
 export const GET_TEST_AUTOTRADE_SETTINGS = "GET_TEST_AUTOTRADE_SETTINGS";
 export const SET_TEST_AUTOTRADE_SETTING = "SET_TEST_AUTOTRADE_SETTING";
 export const SAVE_TEST_AUTOTRADE_SETTINGS = "SAVE_TEST_AUTOTRADE_SETTINGS";
-export const SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS = "SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS";
+export const SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS =
+  "SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS";
 
 export function setBotState(payload) {
   return {
-      type: SET_BOT_STATE,
-      payload
-  }
+    type: SET_BOT_STATE,
+    payload,
+  };
 }
 
 /**
@@ -150,7 +152,7 @@ export function createTestBotSucceeded(res) {
   } else {
     addNotification("SUCCESS!", res.message, "success");
   }
-  
+
   return {
     type: CREATE_TEST_BOT_SUCCESS,
     botId: res.botId,
@@ -222,26 +224,25 @@ export function editTestBotFailed(error) {
 
 /**
  * Simple Delete bot
- * @return {objectId} 
+ * @return {objectId}
  */
 export function deleteTestBot(id) {
   return {
     type: DELETE_TEST_BOT,
-    removeId: id
+    removeId: id,
   };
 }
 /**
  * Close deal, sell coins and delete bot
- * @return {objectId} 
+ * @return {objectId}
  */
 export function closeTestBot(id) {
   return {
     type: CLOSE_TEST_BOT,
     data: id,
-    removeId: id
+    removeId: id,
   };
 }
-
 
 /**
  * Dispatched when the repositories are loaded by the request saga
@@ -343,8 +344,8 @@ export function deactivateTestBotFailed(error) {
 
 export function getTestAutotradeSettings() {
   return {
-    type: GET_TEST_AUTOTRADE_SETTINGS
-  }
+    type: GET_TEST_AUTOTRADE_SETTINGS,
+  };
 }
 
 export function getTestAutotradeSettingsSucceeded(payload) {
@@ -355,8 +356,8 @@ export function getTestAutotradeSettingsSucceeded(payload) {
   }
   return {
     type: GET_TEST_AUTOTRADE_SETTINGS_SUCCESS,
-    data: payload.data
-  }
+    data: payload.data,
+  };
 }
 
 export function saveTestAutotradeSettingsSucceeded(payload) {
@@ -367,19 +368,19 @@ export function saveTestAutotradeSettingsSucceeded(payload) {
   }
   return {
     type: SAVE_TEST_AUTOTRADE_SETTINGS_SUCCESS,
-  }
+  };
 }
 
 export function setTestAutotradeSetting(payload) {
   return {
     type: SET_TEST_AUTOTRADE_SETTING,
-    payload: payload
-  }
+    payload: payload,
+  };
 }
 
 export function saveTestAutoTradeSettings(payload) {
   return {
     type: SAVE_TEST_AUTOTRADE_SETTINGS,
-    payload: payload
-  }
+    payload: payload,
+  };
 }

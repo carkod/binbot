@@ -4,6 +4,7 @@ from api.account.account import Account
 from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
 from api.paper_trading.deal import TestDeal
+from api.paper_trading.schemas import PaperTradingBotSchema
 from api.threads import market_update_thread
 from api.tools.handle_error import (
     QuantityTooLow,
@@ -16,14 +17,13 @@ from api.tools.round_numbers import supress_notation
 from bson.objectid import ObjectId
 from flask import Response, current_app, request
 from requests import delete
-from api.paper_trading.schemas import BotSchema
+from api.paper_trading.schemas import PaperTradingBotSchema
 
 
 class Bot(Account):
     def __init__(self):
         self.app = current_app
         self.default_deal = DealSchema()
-        self.defaults = BotSchema()
 
     def _restart_websockets(self):
         """
@@ -43,13 +43,8 @@ class Bot(Account):
         """
         Get all bots in the db except archived
         """
-        params = {}
-        BotSchema()
-        bot = list(
-            self.app.db.paper_trading.find(params).sort(
-                [("_id", -1), ("pair", 1)]
-            )
-        )
+        sort = [("_id", -1), ("pair", 1)]
+        bot = PaperTradingBotSchema().get_test_bots(sort)
         if bot:
             resp = jsonResp({"message": "Successfully found a bot!", "data": bot})
         else:
@@ -69,7 +64,7 @@ class Bot(Account):
     def create(self):
         data = request.get_json()
         try:
-            result = BotSchema().update(data)
+            result = PaperTradingBotSchema().update_test_bots(data)
             botId = str(result.inserted_id)
             resp = jsonResp(
                 {"message": "Successfully created new bot", "botId": str(botId)}
@@ -81,7 +76,7 @@ class Bot(Account):
     def edit(self):
         data = request.get_json()
         try:
-            BotSchema().update(data)
+            bot = PaperTradingBotSchema().update_test_bots(data)
             resp = jsonResp(
                 {"message": "Successfully updated bot", "botId": ObjectId(data["_id"])}, 200
             )
@@ -215,7 +210,7 @@ class Bot(Account):
                     except QuantityTooLow:
                         bot["status"] = "closed"
                         try:
-                            BotSchema().update(bot)
+                            bot = PaperTradingBotSchema().update_test_bots(bot)
                         except Exception as e:
                             resp = jsonResp_error_message(e)
                     return resp
@@ -231,7 +226,7 @@ class Bot(Account):
                     except QuantityTooLow:
                         bot["status"] = "closed"
                         try:
-                            BotSchema().update(bot)
+                            bot = PaperTradingBotSchema().update_test_bots(bot)
                         except Exception as e:
                             resp = jsonResp_error_message(e)
                         return resp

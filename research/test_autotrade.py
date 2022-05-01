@@ -16,7 +16,7 @@ class TestAutotrade(BinbotApi):
             "status": "inactive",
             "name": f"{algorithm}_{current_date}",
             "mode": "test autotrade",
-            "balance_usage_size": 100,
+            "balance_size_to_use": settings["balance_size_to_use"],
             "balance_to_use": settings["balance_to_use"],
             "base_order_size": 0,
             "candlestick_interval": settings["candlestick_interval"],
@@ -60,8 +60,6 @@ class TestAutotrade(BinbotApi):
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)
-        qty = 0
-
 
         # Can't get balance qty, because balance = 0 if real bot is trading
         # Base order set to default 1 to avoid errors
@@ -74,7 +72,7 @@ class TestAutotrade(BinbotApi):
         create_bot_res = requests.post(url=self.bb_test_bot_url, json=self.default_bot)
         create_bot = handle_binance_errors(create_bot_res)
 
-        if "error" in create_bot and create_bot["error"] == 1:
+        if ("error" in create_bot and create_bot["error"] == 1):
             print(
                 f"Test Autotrade: {create_bot['message']}",
                 f"Pair: {self.pair}.",
@@ -83,7 +81,7 @@ class TestAutotrade(BinbotApi):
 
         # Activate bot
         botId = create_bot["botId"]
-        print("Trying to activate bot...")
+        print("Trying to activate test bot...")
         res = requests.get(url=f"{self.bb_activate_test_bot_url}/{botId}")
         bot = handle_binance_errors(res)
 
@@ -99,5 +97,5 @@ class TestAutotrade(BinbotApi):
             print(data)
             return
 
-        msg = f"Succesful autotrade, opened bot with {self.pair}!"
-        print(msg)
+        print(f"Succesful test autotrade, opened test bot with {self.pair}!")
+        pass

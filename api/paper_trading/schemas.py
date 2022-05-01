@@ -3,61 +3,22 @@ from api.deals.schema import DealSchema
 from api.tools.enum_definitions import EnumDefinitions
 from flask import current_app
 from datetime import date
-
+from api.bots.models import BotSchema
 class BotSchemaValidation(Exception):
     pass
 
 
-class BotSchema:
+class PaperTradingBotSchema(BotSchema):
     """
     Blueprint of the bots collection on MongoDB
     All validation and database fields new or old handled here
     """
     statuses = ["inactive", "active", "completed", "error", "archived"]
 
-    def __init__(self) -> None:
-        """
-        Set up optional defaults
-        """
-        self.pair: str = "BNBBTC"
-        self.status: str = "inactive"
-        self.name: str = "Default bot"
-        self.mode: str = "manual"
-        self.balance_usage_size: float = 100
-        self.base_order_size: str = "0.0001" # Min Binance
-        self.balance_to_use: str = "GBP"
-        self.candlestick_interval: str = "15m"
-        self.take_profit: float = 3
-        self.trailling: str = "false"
-        self.trailling_deviation: float = 0.63
-        self.trailling_profit: float = 0 # Trailling activation (first take profit hit)
-        self.orders: list = [] # Internal
-        self.stop_loss: float = 0
-        # Deal and orders are internal, should never be updated by outside data
-        self.deal: object = DealSchema()
-        self.max_so_count: int = 0
-        self.safety_orders: object = {}
-        self.errors: list[str] = []
-        self.total_commission: float = 0
+    def __init__(self):
+        return super().__init__()
     
-    def validate_percentage(self, property, data):
-        """Support function for validate_model to reduce repetition"""
-
-        if property in data:
-            if not isinstance(data.get(property), (int, float)):
-                try:
-                    if 0 <= float(data.get(property)) <= 100:
-                        setattr(self, property, float(data.get(property)))
-                    else:
-                        raise BotSchemaValidation(f"{property} must be an integer or float percentage")
-                except Exception:
-                    raise BotSchemaValidation(f"{property} must be an integer or float percentage")
-            setattr(self, property, float(data.get(property)))
-            del data[property]
-        return data
-
-
-    def validate_model(self, data):
+    def validate_test_bot(self, data):
 
         # If there is cannibalism, fail the trade
         # only for testing bots
@@ -69,7 +30,7 @@ class BotSchema:
             else:
                 del data["pair"]
         except Exception as e:
-            raise BotSchemaValidation(f"pair is required")
+            raise BotSchemaValidation(e)
         
         if "status" in data:
             if not isinstance(data.get("status"), str) and data.get("status") in self.statuses:
@@ -91,17 +52,17 @@ class BotSchema:
             self.mode = data.get("mode")
             del data["mode"]
         
-        if "balance_usage_size" in data:
-            if not isinstance(data.get("balance_usage_size"), (int, float)):
+        if "balance_size_to_use" in data:
+            if not isinstance(data.get("balance_size_to_use"), (int, float)):
                 try:
-                    if 0 <= float(data.get("balance_usage_size")) <= 100:
-                        self.balance_usage_size = float(data.get("balance_usage_size"))
+                    if 0 <= float(data.get("balance_size_to_use")) <= 100:
+                        self.balance_size_to_use = float(data.get("balance_size_to_use"))
                     else:
-                        raise BotSchemaValidation(f"balance_usage_size must be percentage")
+                        raise BotSchemaValidation(f"balance_size_to_use must be percentage")
                 except Exception:
-                    raise BotSchemaValidation(f"balance_usage_size must be percentage")
-            self.balance_usage_size = data.get("balance_usage_size")
-            del data["balance_usage_size"]
+                    raise BotSchemaValidation(f"balance_size_to_use must be percentage")
+            self.balance_size_to_use = data.get("balance_size_to_use")
+            del data["balance_size_to_use"]
         
         if "base_order_size" in data:
             if not isinstance(data.get("base_order_size"), (int, float)):
@@ -208,9 +169,9 @@ class BotSchema:
 
         return self.__dict__
 
-    def update(self, data):
+    def update_test_bots(self, data):
         """Insert logic"""
-        validated_data = self.validate_model(data)
+        validated_data = self.validate_test_bot(data)
         if "_id" in data:
             result = current_app.db.paper_trading.update_one(
                 {"_id": data["_id"]}, {"$set": validated_data}, True
@@ -219,10 +180,9 @@ class BotSchema:
             result = current_app.db.paper_trading.insert_one(validated_data)
         return result
 
-    def get(self):
-        bots = current_app.db.paper_trading.find()
-        # If mismatch no. fields
-        # Make it consistent
-        if not bots:
-            bots = []
-        return bots
+    def get_test_bots(self, sort=None):
+        if sort:
+            bots = current_app.db.paper_trading.find().sort(sort)
+        else:
+            bots = current_app.db.paper_trading.find()
+        return list(bots)

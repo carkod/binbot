@@ -65,8 +65,7 @@ def handle_binance_errors(response: Response):
 
             if content["code"] == -1121:
                 raise InvalidSymbol("Binance error, invalid symbol")
-        if "error" in content:
-            print(content["message"])
+
         else:
             return content
     except HTTPError:

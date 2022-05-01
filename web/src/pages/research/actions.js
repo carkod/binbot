@@ -20,6 +20,7 @@ export const DELETE_BLACKLIST_ERROR = "DELETE_BLACKLIST_ERROR";
 export const GET_SETTINGS = "GET_SETTINGS";
 export const GET_SETTINGS_SUCCESS = "GET_SETTINGS_SUCCESS";
 export const GET_SETTINGS_ERROR = "GET_SETTINGS_ERROR";
+export const SET_SETTINGS_STATE = "SET_SETTINGS_STATE";
 
 export const EDIT_SETTINGS = "EDIT_SETTINGS";
 export const EDIT_SETTINGS_SUCCESS = "EDIT_SETTINGS_SUCCESS";
@@ -136,6 +137,14 @@ export function deleteBlackListFailed() {
     type: DELETE_BLACKLIST_ERROR
   }
 }
+
+export function setSettingsState(payload) {
+  return {
+    type: SET_SETTINGS_STATE,
+    payload: payload
+  }
+}
+
 
 export function getSettings() {
   return {

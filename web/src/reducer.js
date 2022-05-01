@@ -7,7 +7,7 @@ import {
   botReducer, candlestickReducer, editBotReducer, getSingleBotReducer, symbolInfoReducer,
   symbolReducer
 } from "./pages/bots/reducer";
-import { researchReducer, blacklistReducer, settingsReducer } from "./pages/research/reducer";
+import { blacklistReducer, settingsReducer } from "./pages/research/reducer";
 import {
   balanceRawReducer, balanceReducer, estimateReducer
 } from "./state/balances/reducer";
@@ -27,7 +27,6 @@ const rootReducer = combineReducers({
   candlestickReducer,
   toastr: toastrReducer,
   loadingReducer,
-  researchReducer,
   blacklistReducer,
   settingsReducer,
   estimateReducer,

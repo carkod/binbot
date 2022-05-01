@@ -218,7 +218,7 @@ export function* watchDeactivateBot() {
  * Get single bot
  */
 export function* getCandlestick({ pair, interval, start_time = null }) {
-  const requestURL = `${process.env.REACT_APP_CANDLESTICK}?symbol=${pair}&interval=${interval}${start_time ? "&start_time=" + start_time : ""}`;
+  const requestURL = `${process.env.REACT_APP_CANDLESTICK}?symbol=${pair}&interval=${interval}`;
   try {
     const res = yield call(request, requestURL);
     yield put(loadCandlestickSucceeded(res));

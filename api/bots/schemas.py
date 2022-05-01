@@ -3,6 +3,7 @@ from api.deals.schema import DealSchema
 from api.tools.enum_definitions import EnumDefinitions
 from flask import current_app
 from datetime import date
+from time import time
 
 class BotSchemaValidation(Exception):
     pass
@@ -22,8 +23,10 @@ class BotSchema:
         self.pair: str = "BNBBTC"
         self.status: str = "inactive"
         self.name: str = "Default bot"
+        self.created_at: float = time() * 1000
+        self.updated_at: float = 0
         self.mode: str = "manual"
-        self.balance_usage_size: float = 100
+        self.balance_usage_size: float = 0
         self.base_order_size: str = "0.0001" # Min Binance
         self.balance_to_use: str = "GBP"
         self.candlestick_interval: str = "15m"
@@ -82,6 +85,10 @@ class BotSchema:
             else:
                 self.name = data["name"] if data["name"] != "" else f"{data['pair']}-{date.today()}"
                 del data["name"]
+        
+        if "updated_at" in data:
+            self.updated_at = time() * 1000
+            del data["updated_at"]
         
         if "mode" in data:
             if not isinstance(data.get("mode"), str):
@@ -214,13 +221,10 @@ class BotSchema:
                 {"_id": data["_id"]}, {"$set": validated_data}, True
             )
         else:
+            validated_data["created_at"] = time() * 1000
             result = current_app.db.bots.insert_one(validated_data)
         return result
 
     def get(self):
         bots = current_app.db.bots.find()
-        # If mismatch no. fields
-        # Make it consistent
-        if not bots:
-            bots = []
-        return bots
+        return list(bots)

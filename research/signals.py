@@ -144,7 +144,7 @@ class ResearchSignals(BinbotApi):
 
         # Remove UPUSDT and DOWNUSDT
         for s in raw_symbols:
-            if s in ["ETHUSD", "BTCUSD", "BNBUSD", "ETHUSDT", "BTCUSDT", "BNBUSDT",]:
+            if s in ["ETHUSD", "BTCUSD", "BNBUSD", "ETHUSDT", "BTCUSDT", "BNBUSDT", "BNBUP", "BNBDOWN", "BTCUPUSDT", "ETHUPUSDT", "BTCDOWN", "ETHDOWN"]:
                 self.blacklist_coin(
                     s, "Value too high, can't buy enough coins to earn."
                 )
@@ -258,8 +258,6 @@ class ResearchSignals(BinbotApi):
         active_bots = handle_binance_errors(bots_res)["data"]
         active_symbols = [bot["pair"] for bot in active_bots]
 
-        # Slow down websockets to avoid 100% server CPU
-        sleep(0.01)
         if "k" in result and "s" in result["k"] and len(active_symbols) == 0:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
@@ -320,7 +318,7 @@ class ResearchSignals(BinbotApi):
                     symbol,
                     ws,
                     intercept,
-                    ma_100
+                    ma_25
                 )
 
                 ma_candlestick_jump(

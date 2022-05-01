@@ -15,6 +15,7 @@ import {
   Row,
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
+import { getProfit, setFilterByMonthState, setFilterByWeek } from "../../state/bots/actions";
 import { checkValue } from "../../validations";
 import { closeTestBot, deleteTestBot, getTestBots } from "./actions";
 
@@ -29,12 +30,6 @@ class TestBots extends React.Component {
 
   componentDidMount = () => {
     this.props.getTestBots();
-  };
-
-  componentDidUpdate = (p, s) => {
-    if (this.props.bots !== p.bots) {
-      this.computeTotalProfit(this.props.bots);
-    }
   };
 
   handleChange = (e) => {
@@ -54,20 +49,8 @@ class TestBots extends React.Component {
   confirmDelete = (option) => {
     if (parseInt(option) === 1) {
       this.props.deleteTestBot([this.state.confirmModal]);
-      this.props.getTestBots();
     }
     this.setState({ confirmModal: null });
-  };
-
-  getProfit = (base_price, current_price) => {
-    if (!checkValue(base_price) && !checkValue(current_price)) {
-      const percent =
-        ((parseFloat(current_price) - parseFloat(base_price)) /
-          parseFloat(base_price)) *
-        100;
-      return percent.toFixed(2);
-    }
-    return 0;
   };
 
   handleSelection = (e) => {
@@ -125,22 +108,19 @@ class TestBots extends React.Component {
     }
   };
 
-  computeTotalProfit = (bots) => {
-    if (bots) {
-      const totalProfit = bots
-        .map((bot) => bot.deal)
-        .reduce((accumulator, currBot) => {
-          let currTotalProfit = this.getProfit(
-            currBot.buy_price,
-            currBot.current_price
-          );
-          return parseFloat(accumulator) + parseFloat(currTotalProfit);
-        }, 0);
-      this.setState({
-        totalProfit: totalProfit.toFixed(2),
-      });
+
+
+  handleFilterBy = (e) => {
+    const { value } = e.target;
+    
+    if (value === "last-week") {
+      this.props.setFilterByWeek();  
+    } else if (value === "last-week") {
+      this.props.filterByMonth();
+    } else {
+      this.props.getTestBots();
     }
-  };
+  }
 
   render() {
     const { bots } = this.props;
@@ -152,14 +132,14 @@ class TestBots extends React.Component {
               <Col sm={3}>
                 <h3>
                   <Badge
-                    color={this.state.totalProfit > 0 ? "success" : "danger"}
+                    color={this.props.totalProfit > 0 ? "success" : "danger"}
                   >
                     <i className="nc-icon nc-bank" />{" "}
-                    {this.state.totalProfit + "%"}
+                    {this.props.totalProfit + "%"}
                   </Badge>
                 </h3>
               </Col>
-              <Col sm={4}>
+              <Col sm={3}>
                 <Input
                   bsSize="sm"
                   type="select"
@@ -177,6 +157,20 @@ class TestBots extends React.Component {
                 <Button onClick={this.onSubmitBulkAction}>
                   Apply bulk action
                 </Button>
+              </Col>
+              <Col sm={3}>
+                <label>Filter by:</label>
+                <Input
+                  bsSize="sm"
+                  type="select"
+                  name="filterBy"
+                  id="filter-by"
+                  onChange={this.handleFilterBy}
+                >
+                  <option value="last-week">Last week</option>
+                  <option value="last-month">Last month</option>
+                  <option value="show all">Show all</option>
+                </Input>
               </Col>
             </FormGroup>
           </Form>
@@ -209,7 +203,7 @@ class TestBots extends React.Component {
                               {!checkValue(x.deal) && (
                                 <Badge
                                   color={
-                                    this.getProfit(
+                                    getProfit(
                                       x.deal.buy_price,
                                       x.deal.current_price
                                     ) > 0
@@ -217,7 +211,7 @@ class TestBots extends React.Component {
                                       : "danger"
                                   }
                                 >
-                                  {this.getProfit(
+                                  {getProfit(
                                     x.deal.buy_price,
                                     x.deal.current_price
                                   ) + "%"}
@@ -350,22 +344,22 @@ class TestBots extends React.Component {
                           <Button
                             color="info"
                             title="Edit this bot"
+                            className="fas fa-edit"
                             onClick={() =>
                               this.props.history.push(
                                 `/admin/paper-trading/edit/${x._id.$oid}`
                               )
                             }
                           >
-                            <i className="fas fa-edit" />
                           </Button>
                           <Button
                             color="success"
                             title="Select this bot"
+                            className="fas fa-check"
                             data-index={i}
                             data-id={x._id.$oid}
                             onClick={this.handleSelection}
                           >
-                            <i className="fas fa-check" />
                           </Button>
                           {x.status !== "active" && (
                             <Button
@@ -380,9 +374,9 @@ class TestBots extends React.Component {
                           )}
                           <Button
                             color="danger"
+                            className="fas fa-trash"
                             onClick={() => this.handleDelete(x._id.$oid)}
                           >
-                            <i className="fas fa-trash" />
                           </Button>
                         </div>
                       </CardFooter>
@@ -412,11 +406,12 @@ class TestBots extends React.Component {
 }
 
 const mapStateToProps = (state) => {
-  const { message, bots } = state.testBotsReducer;
+  const { message, bots, totalProfit } = state.testBotsReducer;
   if (bots && bots.length > 0) {
     return {
       bots: bots,
       message: message,
+      totalProfit: totalProfit
     };
   }
 
@@ -427,4 +422,6 @@ export default connect(mapStateToProps, {
   getTestBots,
   deleteTestBot,
   closeTestBot,
+  setFilterByWeek,
+  setFilterByMonthState
 })(TestBots);

@@ -221,25 +221,26 @@ class Deal(Account):
             )
 
         # If error pass it up to parent function, can't continue
-        if "error" in res:
-            return res
+        data = handle_binance_errors(res)
+        if "error" in data:
+            return data
 
         base_deal = {
-            "timestamp": res["transactTime"],
-            "order_id": res["orderId"],
+            "timestamp": data["transactTime"],
+            "order_id": data["orderId"],
             "deal_type": "base_order",
-            "pair": res["symbol"],
-            "order_side": res["side"],
-            "order_type": res["type"],
-            "price": res["price"],
-            "qty": res["origQty"],
-            "fills": res["fills"],
-            "time_in_force": res["timeInForce"],
-            "status": res["status"],
+            "pair": data["symbol"],
+            "order_side": data["side"],
+            "order_type": data["type"],
+            "price": data["price"],
+            "qty": data["origQty"],
+            "fills": data["fills"],
+            "time_in_force": data["timeInForce"],
+            "status": data["status"],
         }
 
         commission = 0
-        for chunk in res["fills"]:
+        for chunk in data["fills"]:
             commission += float(chunk["commission"])
 
         tp_price = float(order["price"]) * 1 + (
@@ -257,11 +258,11 @@ class Deal(Account):
             so_num += 1
 
         deal = {
-            "last_order_id": res["orderId"],
-            "buy_timestamp": res["transactTime"],
-            "buy_price": res["price"],
-            "buy_total_qty": res["origQty"],
-            "current_price": res["price"],
+            "last_order_id": data["orderId"],
+            "buy_timestamp": data["transactTime"],
+            "buy_price": data["price"],
+            "buy_total_qty": data["origQty"],
+            "current_price": data["price"],
             "take_profit_price": tp_price,
             "safety_order_prices": so_prices,
         }

@@ -18,7 +18,7 @@ class Autotrade(BinbotApi):
             "status": "inactive",
             "name": f"{algorithm_name}_{current_date}",
             "mode": "autotrade",
-            "balance_usage_size": 100,
+            "balance_size_to_use": settings["balance_size_to_use"],
             "balance_to_use": settings["balance_to_use"],
             "base_order_size": 0,
             "candlestick_interval": settings["candlestick_interval"],
@@ -71,6 +71,14 @@ class Autotrade(BinbotApi):
             if self.pair.endswith(b["asset"]):
                 qty = supress_notation(b["free"], self.decimals)
                 if self.min_amount_check(self.pair, qty):
+                    # balance_size_to_use = 0.0 means "Use all balance". float(0) = 0.0
+                    if float(self.default_bot["balance_size_to_use"]) != 0.0:
+                        if b["free"] < float(self.default_bot["balance_size_to_use"]):
+                            # Display warning and continue with full balance
+                            print(f"Error: balance ({qty}) is less than balance_size_to_use ({float(self.default_bot['balance_size_to_use'])}). Autotrade will use all balance")
+                        else:
+                            qty = float(self.default_bot["balance_size_to_use"])
+                
                     self.default_bot["base_order_size"] = qty
                     break
             # If we have GBP we can trade anything
@@ -133,8 +141,7 @@ class Autotrade(BinbotApi):
         bot = handle_binance_errors(res)
 
         if "error" in bot and bot["error"] == 1:
-            msg = f"Error activating bot {self.pair} with id {botId}"
-            print(msg)
+            print(f"Error activating bot {self.pair} with id {botId}")
             # Delete inactivatable bot
             payload = {
                 "id": botId,
@@ -144,5 +151,4 @@ class Autotrade(BinbotApi):
             print(data)
             return
 
-        msg = f"Succesful test autotrade, opened bot with {self.pair}!"
-        print(msg)
+        print(f"Succesful test autotrade, opened bot with {self.pair}!")
