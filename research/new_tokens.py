@@ -67,31 +67,15 @@ class NewTokens:
                 ):
                     del self.last_processed_kline[t]
 
-                get_date = latest_announcement["data"]["catalogs"][0]["articles"][
-                    i
-                ]["releaseDate"]
+                get_date = latest_announcement["data"]["catalogs"][0]["articles"][i]["releaseDate"]
                 dt_object = datetime.fromtimestamp(int(get_date / 1000))
                 release_date = dt_object.strftime("%Y-%m-%dT%H:%M")
 
-                msg = f"New token/cryptocurrency <strong>{t}</strong> about to launch {release_date}."
-                self.telegram_bot.send_msg(msg)
-                print(msg)
-                pass
-
-                # Reconsider logic below, it's not always possible to find the token in etherscan
-                # headers = {"User-Agent": "SomeAgent"}
-                # coin_data = get(
-                #     url=f"https://etherscan.io/searchHandler?term={t}&filterby=0",
-                #     headers=headers,
-                # )
-                # json_data = json.loads(coin_data.text)
-                # for item in json_data:
-                #     find_token = re.findall("\(([^)]+)", item)
-                #     if len(find_token) > 0 and find_token[0] == t:
-                #         # Get the address
-                #         token_address = re.findall("0x[a-fA-F0-9]{40}", item)[0]
-                #         msg = f"New token/cryptocurrency <strong>{t}</strong> about to launch {release_date}. \nAddress: {token_address}"
-                #         self.telegram_bot.send_msg(msg)
-                #         print(msg)
+                # launched already?
+                if datetime.now() < dt_object:
+                    msg = f"New token/cryptocurrency <strong>{t}</strong> about to launch {release_date}."
+                    self.telegram_bot.send_msg(msg)
+                    print(msg)
+                    pass
 
         pass
