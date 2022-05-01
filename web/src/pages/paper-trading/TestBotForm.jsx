@@ -59,7 +59,7 @@ class TestBotForm extends React.Component {
       this.props.getTestBot(this.props.match.params.id);
     }
     if (!checkValue(this.props.match.params?.symbol)) {
-      this.setState({
+      this.props.setBotState({
         pair: this.props.match.params.symbol
       })
     }
@@ -127,7 +127,6 @@ class TestBotForm extends React.Component {
   requiredinValidation = () => {
     const {
       pair,
-      base_order_size,
       take_profit,
       trailling,
       trailling_deviation,
@@ -142,13 +141,6 @@ class TestBotForm extends React.Component {
       return false;
     } else {
       this.props.setBotState({ pairError: false });
-    }
-
-    if (checkValue(base_order_size)) {
-      this.props.setBotState({ baseOrderSizeError: true, formIsValid: false });
-      return false;
-    } else {
-      this.props.setBotState({ baseOrderSizeError: false });
     }
 
     if (checkValue(take_profit) && checkBalance(take_profit)) {
@@ -197,7 +189,6 @@ class TestBotForm extends React.Component {
           base_order_size: this.props.bot.base_order_size,
           balance_to_use: this.props.bot.balance_to_use,
           mode: "manual",
-          max_so_count: this.props.bot.max_so_count,
           name: this.props.bot.name,
           pair: this.props.bot.pair,
           take_profit: this.props.bot.take_profit,
@@ -206,7 +197,6 @@ class TestBotForm extends React.Component {
           candlestick_interval: this.props.bot.candlestick_interval,
           orders: this.props.bot.orders,
           stop_loss: this.props.bot.stop_loss,
-          safety_orders: this.props.bot.safety_orders,
         }
         this.props.editTestBot(form);
       } else {
@@ -339,6 +329,9 @@ class TestBotForm extends React.Component {
       this.handleSubmit(e);
       this.props.activateTestBot(this.state._id);
       this.props.getTestBot(this.props.match.params.id);
+      if (this.props.match.params.id) {
+        this.props.history.push(`/admin/paper-trading/edit/${this.props.createdBotId}`)
+      }
     }
   };
 
@@ -526,7 +519,7 @@ class TestBotForm extends React.Component {
                         className="btn-round"
                         color="primary"
                         onClick={this.handleActivation}
-                        disabled={checkValue(this.props.bot?._id?.$oid)}
+                        disabled={checkValue(this.props.bot?._id)}
                       >
                         {(this.props.bot.status === "active" && Object.keys(this.props.bot.deal).length > 0 )
                           ? "Update deal"

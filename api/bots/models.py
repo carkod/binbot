@@ -86,6 +86,8 @@ class Bot(Account):
     def edit(self):
         data = request.get_json()
         botId = request.view_args["id"]
+        if botId:
+            data["_id"] = botId
         try:
             BotSchema().update(data)
             resp = jsonResp(
@@ -102,8 +104,6 @@ class Bot(Account):
         if not botIds or not isinstance(botIds, list):
             return jsonResp_error_message("At least one bot id is required")
         
-
-            
         delete_action = self.app.db.bots.delete_many({"_id": {"$in": [ObjectId(item) for item in botIds]}})
         if delete_action:
             resp = jsonResp_message("Successfully deleted bot")

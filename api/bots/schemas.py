@@ -1,4 +1,5 @@
 
+from bson import ObjectId
 from api.deals.schema import DealSchema
 from api.tools.enum_definitions import EnumDefinitions
 from flask import current_app
@@ -61,6 +62,9 @@ class BotSchema:
 
 
     def validate_model(self, data):
+
+        if "_id" in data:
+            del data["_id"]
 
         try:
             self.pair = data.get("pair")
@@ -215,10 +219,11 @@ class BotSchema:
 
     def update(self, data):
         """Insert logic"""
+        id = data["_id"]
         validated_data = self.validate_model(data)
-        if "_id" in data:
+        if id:
             result = current_app.db.bots.update_one(
-                {"_id": data["_id"]}, {"$set": validated_data}, True
+                {"_id": ObjectId(id)}, {"$set": validated_data}
             )
         else:
             validated_data["created_at"] = time() * 1000
