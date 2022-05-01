@@ -6,7 +6,7 @@ verify_ssl = false
 [packages]
 flask = "*"
 flask_cors = "*"
-pymongo = "3.12.3"
+pymongo = "4.1.1"
 python-jose = "*"
 passlib = "*"
 pandas = "1.3.5"
