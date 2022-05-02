@@ -108,12 +108,7 @@ const botReducer = produce((draft, action) => {
     }
 
     case CLOSE_BOT: {
-      const newState = {
-        data: draft.data,
-        botActive: draft.botActive,
-      };
-
-      return newState;
+      return draft;
     }
 
     case ACTIVATE_BOT: {

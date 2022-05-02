@@ -210,7 +210,7 @@ class Bot(Account):
                 book_order = Book_Order(pair)
                 price = float(book_order.matching_engine(False, qty))
 
-                if price:
+                if price and float(supress_notation(qty, qty_precision)) < 1:
                     order = {
                         "pair": pair,
                         "qty": supress_notation(qty, qty_precision),

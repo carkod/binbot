@@ -452,8 +452,8 @@ class Bots extends React.Component {
           close={() => this.setState({ confirmModal: null })}
           modal={this.state.confirmModal}
           handleActions={this.confirmDelete}
-          acceptText={"Close orders, sell coins and delete bot"}
-          cancelText={"Just delete bot"}
+          acceptText={"Close"}
+          cancelText={"Delete"}
         >
           Closing deals will close outstanding orders, sell coins and delete bot
         </ConfirmModal>

@@ -1,13 +1,9 @@
-import hashlib
-import hmac
 import json
-import time as tm
-from urllib.parse import urlparse
 
-import requests
+from requests import HTTPError
 from api.apis import BinanceApi
 from api.tools.enum_definitions import EnumDefinitions
-from api.tools.handle_error import handle_error
+from api.tools.handle_error import handle_error, jsonResp_error_message
 from flask import request
 
 
@@ -45,7 +41,10 @@ class SellOrder(BinanceApi):
             "price": price,
             "quantity": qty,
         }
-        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        try:
+            data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        except HTTPError as e:
+            return jsonResp_error_message(e)
         return data
 
     def post_take_profit_limit(self):
