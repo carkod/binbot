@@ -63,3 +63,4 @@ if os.getenv("ENV") != "ci":
         name="market_updates_thread", target=market_updates.start_stream
     )
     market_updates_thread.start()
+    pass

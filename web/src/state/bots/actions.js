@@ -35,39 +35,19 @@ export function computeTotalProfit(bots) {
   return totalProfit.toFixed(2);
 }
 
-export function filterByWeek(bots) {
+export function weekAgo() {
   const today = new Date();
   const lastWeek = new Date(
     today.getFullYear(),
     today.getMonth(),
     today.getDate() - 7
   );
-  let filteredBots = bots;
-  if (bots.length > 0) {
-    filteredBots = bots.filter((x) => {
-      if (x.created_at) {
-        return x.created_at >= lastWeek.getTime();
-      }
-      return true;
-    });
-  }
-  return filteredBots;
+  return lastWeek.getTime();
 }
 
-export function filterByMonth(bots) {
+export function monthAgo() {
   let today = new Date();
   today.setMonth(today.getMonth() - 1);
   today.setHours(0, 0, 0, 0);
-  const lastMonth = today;
-
-  let filteredBots = bots;
-  if (bots.length > 0) {
-    filteredBots = bots.filter((x) => {
-      if (x.created_at) {
-        return x.created_at >= lastMonth.getTime();
-      }
-      return true;
-    });
-  }
-  return filteredBots;
+  return today.getTime();
 }

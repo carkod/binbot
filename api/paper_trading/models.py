@@ -1,3 +1,4 @@
+from datetime import datetime
 import threading
 from time import time
 from api.account.account import Account
@@ -43,8 +44,42 @@ class Bot(Account):
         """
         Get all bots in the db except archived
         """
+        status = request.args.get("status")
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        params = {}
+
+        bot_schema = PaperTradingBotSchema()
+
+        if start_date:
+            try:
+                float(start_date)
+            except ValueError as e:
+                resp = jsonResp({"message": f"start_date must be a timestamp float", "data": []})
+                return resp
+
+            obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
+            gte_tp_id = ObjectId.from_datetime(obj_start_date)
+            try:
+                params["_id"]["$gte"] = gte_tp_id
+            except KeyError:
+                params["_id"] = {
+                    "$gte": gte_tp_id
+                }
+        
+        if end_date:
+            try:
+                float(end_date)
+            except ValueError as e:
+                resp = jsonResp({"message": f"end_date must be a timestamp float", "data": []})
+                return resp
+
+            obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
+            lte_tp_id = ObjectId.from_datetime(obj_end_date)
+            params["_id"]["$lte"] = lte_tp_id
+
         sort = [("_id", -1), ("pair", 1)]
-        bot = PaperTradingBotSchema().get_test_bots(sort)
+        bot = bot_schema.get_test_bots(sort, params)
         if bot:
             resp = jsonResp({"message": "Successfully found a bot!", "data": bot})
         else:

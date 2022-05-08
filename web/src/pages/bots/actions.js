@@ -54,10 +54,10 @@ export const ARCHIVE_BOT_ERROR = "ARCHIVE_BOT_ERROR";
  *
  * @return {object} An action object with a type of BOT
  */
-export function getBots() {
+export function getBots(params) {
   return {
     type: GET_BOTS,
-    isError: false,
+    params: params
   };
 }
 

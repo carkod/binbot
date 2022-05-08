@@ -1,10 +1,5 @@
 import produce from "immer";
-import {
-  computeTotalProfit,
-  filterByMonth,
-  filterByWeek,
-} from "../../state/bots/actions";
-import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../../state/constants";
+import { computeTotalProfit } from "../../state/bots/actions";
 import { intervalOptions } from "../../validations";
 import {
   ACTIVATE_TEST_BOT,
@@ -90,9 +85,8 @@ const testBotsReducer = produce((draft, action) => {
     }
     case GET_TEST_BOTS_SUCCESS: {
       if (action.bots) {
-        const filteredBots = filterByWeek(action.bots);
-        draft.bots = filteredBots;
-        draft.totalProfit = computeTotalProfit(filteredBots);
+        draft.bots = action.bots;
+        draft.totalProfit = computeTotalProfit(action.bots);
       } else {
         draft.bots = action.bots;
       }
@@ -204,14 +198,6 @@ const testBotsReducer = produce((draft, action) => {
         botActive: true,
       };
     }
-
-    case FILTER_BY_WEEK:
-      draft.bots = filterByWeek(draft.bots);
-      return draft;
-
-    case FILTER_BY_MONTH:
-      draft.bots = filterByMonth(draft.bots);
-      return draft;
 
     default:
       return draft;

@@ -42,8 +42,14 @@ import {
 /**
  * Bots request/response handler
  */
-export function* getBotsApi() {
-  const requestURL = process.env.REACT_APP_GET_BOTS;
+export function* getBotsApi(payload) {
+  let requestURL = `${process.env.REACT_APP_GET_BOTS}`;
+  if (payload.params) {
+    const { startDate, endDate } = payload.params;
+    const params = `${startDate ? "start_date=" + startDate + "&" : ""}${endDate ? "end_date=" + endDate : ""}`;
+    requestURL += `?${params}`
+  }
+
   try {
     yield put(loading(true));
     const res = yield call(request, requestURL);

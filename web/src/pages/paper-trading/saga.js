@@ -36,8 +36,13 @@ const baseUrl = buildBackUrl();
 /**
  * Bots request/response handler
  */
-export function* getTestBotsApi() {
-  const requestURL = process.env.REACT_APP_TEST_BOT;
+export function* getTestBotsApi(payload) {
+  let requestURL = process.env.REACT_APP_TEST_BOT;
+  if (payload.params) {
+    const { startDate, endDate } = payload.params;
+    const params = `${startDate ? "start_date=" + startDate + "&" : ""}${endDate ? "end_date=" + endDate : ""}`;
+    requestURL += `?${params}`
+  }
   try {
     yield put(loading(true));
     const res = yield call(request, requestURL);

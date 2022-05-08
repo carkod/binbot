@@ -25,7 +25,7 @@ class BotSchema:
         self.status: str = "inactive"
         self.name: str = "Default bot"
         self.created_at: float = time() * 1000
-        self.updated_at: float = 0
+        self.updated_at: float = time() * 1000
         self.mode: str = "manual"
         self.balance_usage_size: float = 0
         self.base_order_size: str = "0.0001" # Min Binance
