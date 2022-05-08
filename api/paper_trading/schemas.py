@@ -180,9 +180,9 @@ class PaperTradingBotSchema(BotSchema):
             result = current_app.db.paper_trading.insert_one(validated_data)
         return result
 
-    def get_test_bots(self, sort=None):
+    def get_test_bots(self, sort=None, params={}):
         if sort:
-            bots = current_app.db.paper_trading.find().sort(sort)
+            bots = current_app.db.paper_trading.find(params).sort(sort)
         else:
-            bots = current_app.db.paper_trading.find()
+            bots = current_app.db.paper_trading.find(params)
         return list(bots)

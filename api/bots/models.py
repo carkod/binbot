@@ -1,5 +1,5 @@
 import threading
-from datetime import date
+from datetime import datetime
 from time import time
 from api.account.account import Account
 from api.deals.models import Deal
@@ -45,11 +45,46 @@ class Bot(Account):
         Get all bots in the db except archived
         Args:
         - archive=false
+        - filter_by: string - last-week, last-month, all
         """
+        status = request.args.get("status")
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
         params = {}
+        
         bot_schema = BotSchema()
-        if request.args.get("status") in bot_schema.statuses:
-            params["active"] = request.args.get("status")
+        if status and status in bot_schema.statuses:
+            params["active"] = status
+        elif status:
+            resp = jsonResp({"message": f"Bots status {status} not allowed", "data": []})
+            return resp
+
+        if start_date:
+            try:
+                float(start_date)
+            except ValueError as e:
+                resp = jsonResp({"message": f"start_date must be a timestamp float", "data": []})
+                return resp
+
+            obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
+            gte_tp_id = ObjectId.from_datetime(obj_start_date)
+            try:
+                params["_id"]["$gte"] = gte_tp_id
+            except KeyError:
+                params["_id"] = {
+                    "$gte": gte_tp_id
+                }
+        
+        if end_date:
+            try:
+                float(end_date)
+            except ValueError as e:
+                resp = jsonResp({"message": f"end_date must be a timestamp float", "data": []})
+                return resp
+
+            obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
+            lte_tp_id = ObjectId.from_datetime(obj_end_date)
+            params["_id"]["$lte"] = lte_tp_id
 
         bot = list(
             self.app.db.bots.find(params).sort(
@@ -86,6 +121,8 @@ class Bot(Account):
     def edit(self):
         data = request.get_json()
         botId = request.view_args["id"]
+        if botId:
+            data["_id"] = botId
         try:
             BotSchema().update(data)
             resp = jsonResp(
@@ -102,8 +139,6 @@ class Bot(Account):
         if not botIds or not isinstance(botIds, list):
             return jsonResp_error_message("At least one bot id is required")
         
-
-            
         delete_action = self.app.db.bots.delete_many({"_id": {"$in": [ObjectId(item) for item in botIds]}})
         if delete_action:
             resp = jsonResp_message("Successfully deleted bot")
@@ -210,7 +245,7 @@ class Bot(Account):
                 book_order = Book_Order(pair)
                 price = float(book_order.matching_engine(False, qty))
 
-                if price:
+                if price and float(supress_notation(qty, qty_precision)) < 1:
                     order = {
                         "pair": pair,
                         "qty": supress_notation(qty, qty_precision),

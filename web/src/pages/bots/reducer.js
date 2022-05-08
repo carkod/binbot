@@ -1,6 +1,7 @@
 import produce from "immer";
-import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../../state/constants";
-import { filterByMonth, filterByWeek, computeTotalProfit } from "../../state/bots/actions";
+import {
+  computeTotalProfit
+} from "../../state/bots/actions";
 import {
   ACTIVATE_BOT,
   ACTIVATE_BOT_ERROR,
@@ -34,25 +35,33 @@ import {
   GET_SYMBOL_INFO_SUCCESS,
   LOAD_CANDLESTICK,
   LOAD_CANDLESTICK_ERROR,
-  LOAD_CANDLESTICK_SUCCESS,
+  LOAD_CANDLESTICK_SUCCESS
 } from "./actions";
 
 // The initial state of the App
 export const initialState = {
   data: null,
   message: null,
+  params: {
+    startDate: null,
+    endDate: null,
+  },
 };
 
 const botReducer = produce((draft, action) => {
   switch (action.type) {
     case GET_BOTS: {
+      if (action.params) {
+        draft.params = action.params;
+      } else {
+        draft.params = initialState.params;
+      }
       return draft;
     }
     case GET_BOTS_SUCCESS: {
       if (action.bots) {
-        const filteredBots = filterByWeek(action.bots);
-        draft.bots = filteredBots;
-        draft.totalProfit = computeTotalProfit(filteredBots);
+        draft.bots = action.bots;
+        draft.totalProfit = computeTotalProfit(action.bots);
       } else {
         draft.bots = action.bots;
       }
@@ -108,12 +117,7 @@ const botReducer = produce((draft, action) => {
     }
 
     case CLOSE_BOT: {
-      const newState = {
-        data: draft.data,
-        botActive: draft.botActive,
-      };
-
-      return newState;
+      return draft;
     }
 
     case ACTIVATE_BOT: {
@@ -182,13 +186,7 @@ const botReducer = produce((draft, action) => {
       }
       return draft;
     }
-    case FILTER_BY_WEEK:
-      draft.bots = filterByWeek(draft.bots);
-      return draft;
 
-    case FILTER_BY_MONTH:
-      draft.bots = filterByMonth(draft.bots);
-      return draft;
     default:
       break;
   }

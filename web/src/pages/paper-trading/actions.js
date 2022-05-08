@@ -48,9 +48,10 @@ export function setBotState(payload) {
  *
  * @return {object} An action object with a type of BOT
  */
-export function getTestBots() {
+export function getTestBots(params) {
   return {
     type: GET_TEST_BOTS,
+    params: params
   };
 }
 

@@ -4,7 +4,7 @@ APScheduler==3.6.3
 requests==2.26.0
 websocket-client==1.2.1
 pymongo==3.12.0
-python-dotenv==0.19.0
+python-dotenv==0.20.0
 requests-html==0.10.0
 TA-Lib==0.4.24
 python-telegram-bot==13.7

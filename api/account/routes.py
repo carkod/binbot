@@ -23,12 +23,7 @@ def raw_balance():
 
 @account_blueprint.route("/symbols", methods=["GET"])
 def get_symbols():
-    return Account().get_symbols_raw()
-
-
-@account_blueprint.route("/symbols/raw", methods=["GET"])
-def get_symbols_raw():
-    return Account().get_symbols_raw()
+    return Account().get_symbols()
 
 
 @account_blueprint.route("/symbols/no-cannibal", methods=["GET"])

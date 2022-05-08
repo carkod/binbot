@@ -15,7 +15,7 @@ import {
   Row,
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
-import { getProfit, setFilterByMonthState, setFilterByWeek } from "../../state/bots/actions";
+import { getProfit, monthAgo, setFilterByMonthState, setFilterByWeek, weekAgo } from "../../state/bots/actions";
 import { checkValue } from "../../validations";
 import { closeTestBot, deleteTestBot, getTestBots } from "./actions";
 
@@ -29,7 +29,10 @@ class TestBots extends React.Component {
   }
 
   componentDidMount = () => {
-    this.props.getTestBots();
+    const startDate = weekAgo();
+    const endDate = new Date().getTime();
+    this.props.getTestBots({ startDate, endDate });
+    this.setState({ startDate: startDate, endDate: endDate });
   };
 
   handleChange = (e) => {
@@ -108,19 +111,27 @@ class TestBots extends React.Component {
     }
   };
 
-
-
   handleFilterBy = (e) => {
     const { value } = e.target;
-    
+    let startDate, endDate;
     if (value === "last-week") {
-      this.props.setFilterByWeek();  
-    } else if (value === "last-week") {
-      this.props.filterByMonth();
+      startDate = weekAgo();
+      endDate = new Date().getTime();
+      this.props.getTestBots({ startDate, endDate });
+    } else if (value === "last-month") {
+      startDate = monthAgo();
+      endDate = new Date().getTime();
+      this.props.getTestBots({ startDate, endDate });
     } else {
+      startDate = undefined;
+      endDate = undefined;
       this.props.getTestBots();
     }
-  }
+    this.setState({
+      startDate: startDate,
+      endDate: endDate,
+    });
+  };
 
   render() {
     const { bots } = this.props;

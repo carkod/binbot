@@ -9,6 +9,7 @@ from websocket import WebSocketApp
 
 from algorithms.candlestick_patterns import candlestick_patterns
 from algorithms.ma_candlestick_jump import ma_candlestick_jump
+from algorithms.candlejump_sd import candlejump_sd
 from apis import BinbotApi
 from autotrade import Autotrade
 from pattern_detection import (
@@ -175,7 +176,7 @@ class ResearchSignals(BinbotApi):
         handle_binance_errors(res)
         return
 
-    def run_autotrade(self, symbol, ws, algorithm, test_only=False):
+    def run_autotrade(self, symbol, ws, algorithm, test_only=False, *args, **kwargs):
         """
         Refactored autotrade conditions.
         Previously part of process_kline_stream
@@ -203,7 +204,7 @@ class ResearchSignals(BinbotApi):
         active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
         if symbol not in active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
             # Test autotrade runs independently of autotrade = 1
-            test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm)
+            test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm, *args)
             test_autotrade.run()
 
         if (
@@ -322,6 +323,23 @@ class ResearchSignals(BinbotApi):
                 )
 
                 ma_candlestick_jump(
+                    close_price,
+                    open_price,
+                    ma_7,
+                    ma_100,
+                    ma_25,
+                    symbol,
+                    sd,
+                    value,
+                    chaikin_diff,
+                    reg_equation,
+                    self._send_msg,
+                    self.run_autotrade,
+                    ws,
+                    intercept,
+                )
+
+                candlejump_sd(
                     close_price,
                     open_price,
                     ma_7,

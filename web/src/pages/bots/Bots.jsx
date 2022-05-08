@@ -13,12 +13,17 @@ import {
   Form,
   FormGroup,
   Input,
-  Row,
+  Row
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
+import {
+  monthAgo,
+  setFilterByMonthState,
+  setFilterByWeek,
+  weekAgo
+} from "../../state/bots/actions";
 import { checkValue } from "../../validations";
 import { archiveBot, closeBot, deleteBot, getBots } from "./actions";
-import { setFilterByMonthState, setFilterByWeek } from "../../state/bots/actions";
 class Bots extends React.Component {
   constructor(props) {
     super(props);
@@ -26,11 +31,16 @@ class Bots extends React.Component {
       confirmModal: null,
       selectedCards: [],
       totalProfit: 0,
+      startDate: null,
+      endDate: null
     };
   }
 
   componentDidMount = () => {
-    this.props.getBots();
+    const startDate = weekAgo();
+    const endDate = new Date().getTime();
+    this.props.getBots({ startDate, endDate });
+    this.setState({ startDate: startDate, endDate: endDate });
   };
 
   componentDidUpdate = (p, s) => {
@@ -56,7 +66,6 @@ class Bots extends React.Component {
   confirmDelete = (option) => {
     if (parseInt(option) === 1) {
       this.props.deleteBot([this.state.confirmModal]);
-      this.props.getBots();
     } else {
       this.props.closeBot(this.state.confirmModal);
     }
@@ -100,7 +109,6 @@ class Bots extends React.Component {
         case "delete-selected":
           if (this.state.selectedCards.length > 0) {
             this.props.deleteBot(this.state.selectedCards);
-            this.props.getBots();
             this.setState({
               selectedCards: [],
             });
@@ -138,7 +146,7 @@ class Bots extends React.Component {
             currBot.buy_price,
             currBot.current_price
           );
-          return parseFloat(accumulator) + parseFloat(currTotalProfit)
+          return parseFloat(accumulator) + parseFloat(currTotalProfit);
         }, 0);
       this.setState({
         totalProfit: totalProfit.toFixed(2),
@@ -148,16 +156,25 @@ class Bots extends React.Component {
 
   handleFilterBy = (e) => {
     const { value } = e.target;
-    
+    let startDate, endDate;
     if (value === "last-week") {
-      this.props.setFilterByWeek();  
-    } else if (value === "last-week") {
-      this.props.setFilterByMonthState();
+      startDate = weekAgo();
+      endDate = new Date().getTime();
+      this.props.getBots({ startDate, endDate });
+    } else if (value === "last-month") {
+      startDate = monthAgo();
+      endDate = new Date().getTime();
+      this.props.getBots({ startDate, endDate });
     } else {
-      this.props.getTestBots();
+      startDate = undefined;
+      endDate = undefined;
+      this.props.getBots();
     }
-  }
-
+    this.setState({
+      startDate: startDate,
+      endDate: endDate,
+    });
+  };
 
   render() {
     const { bots } = this.props;
@@ -206,11 +223,12 @@ class Bots extends React.Component {
                 >
                   <option value="last-week">Last week</option>
                   <option value="last-month">Last month</option>
+                  <option value="all">Show all</option>
                 </Input>
               </Col>
             </FormGroup>
           </Form>
-        
+
           <Row>
             {!checkValue(bots)
               ? bots.map((x, i) => (
@@ -378,7 +396,9 @@ class Bots extends React.Component {
                                   </Col>
                                   <Col md="5">
                                     <p className="card-category">
-                                    {moment(x.deal?.buy_timestamp).format("D, MMM, hh:mm")}
+                                      {moment(x.deal?.buy_timestamp).format(
+                                        "D, MMM, hh:mm"
+                                      )}
                                     </p>
                                   </Col>
                                 </Row>
@@ -391,7 +411,9 @@ class Bots extends React.Component {
                                   </Col>
                                   <Col md="5">
                                     <p className="card-category">
-                                      {moment(x.deal?.sell_timestamp).format("D MMM, hh:mm")}
+                                      {moment(x.deal?.sell_timestamp).format(
+                                        "D MMM, hh:mm"
+                                      )}
                                     </p>
                                   </Col>
                                 </Row>
@@ -412,8 +434,7 @@ class Bots extends React.Component {
                                 `/admin/bots/edit/${x._id.$oid}`
                               )
                             }
-                          >
-                          </Button>
+                          ></Button>
                           <Button
                             color="success"
                             title="Select this bot"
@@ -421,8 +442,7 @@ class Bots extends React.Component {
                             data-index={i}
                             data-id={x._id.$oid}
                             onClick={this.handleSelection}
-                          >
-                          </Button>
+                          ></Button>
                           {x.status !== "active" && (
                             <Button
                               color="secondary"
@@ -438,8 +458,7 @@ class Bots extends React.Component {
                             color="danger"
                             className="fas fa-trash"
                             onClick={() => this.handleDelete(x._id.$oid)}
-                          >
-                          </Button>
+                          ></Button>
                         </div>
                       </CardFooter>
                     </Card>
@@ -452,8 +471,8 @@ class Bots extends React.Component {
           close={() => this.setState({ confirmModal: null })}
           modal={this.state.confirmModal}
           handleActions={this.confirmDelete}
-          acceptText={"Close orders, sell coins and delete bot"}
-          cancelText={"Just delete bot"}
+          acceptText={"Close"}
+          cancelText={"Delete"}
         >
           Closing deals will close outstanding orders, sell coins and delete bot
         </ConfirmModal>
@@ -472,7 +491,7 @@ const mapStateToProps = (state) => {
   return {
     bots: bots,
     message: message,
-    totalProfit: totalProfit
+    totalProfit: totalProfit,
   };
 };
 
@@ -482,5 +501,5 @@ export default connect(mapStateToProps, {
   closeBot,
   archiveBot,
   setFilterByWeek,
-  setFilterByMonthState
+  setFilterByMonthState,
 })(Bots);
