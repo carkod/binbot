@@ -122,7 +122,7 @@ class Account(BinbotApi):
         else:
             return jsonResp_message("Pair not found")
 
-    def get_symbols_raw(self):
+    def get_symbols(self):
         symbols = self._ticker_price()
         symbols_list = [x["symbol"] for x in symbols]
         symbols_list.sort()
@@ -138,15 +138,6 @@ class Account(BinbotApi):
 
         no_cannibal_list = [x for x in symbols_list if x not in active_symbols]
         return jsonResp({"data": no_cannibal_list, "count": len(no_cannibal_list)})
-
-    def get_symbols(self):
-
-        args = {"blacklisted": False}
-        project = {"market": 1, "_id": 0}
-        query = self.app.db.correlations.find(args, project)
-        symbols_list = list(query.distinct("market"))
-        symbols_list.sort()
-        return jsonResp({"data": symbols_list})
 
     def get_quote_asset_precision(self, symbol, quote=True):
         """
