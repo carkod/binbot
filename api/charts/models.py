@@ -1,3 +1,4 @@
+from copy import deepcopy
 from math import ceil
 from time import time
 from typing import TypedDict
@@ -105,17 +106,23 @@ class Candlestick(BinbotApi):
         - df [Pandas dataframe]
         """
         print(f"Checking gaps in the kline data for {params['symbol']}")
-        kline_df = df
-        df["check_gaps"] = df[0].diff()[1:]
-        df.dropna(inplace=True)
-        check_gaps = df["check_gaps"].to_numpy()
+        kline_df = df.copy(deep=True)
+        df["gaps_check"] = df[0].diff()[1:]
+        df = df.dropna()
+        if df.empty:
+            kline_df = self.delete_and_create_klines(params)
+            return kline_df
+        gaps_check = df["gaps_check"].to_numpy()
 
         # Check difference between now and last kline
-        check_latest = ((time() * 1000) - df[0].to_numpy()[-1]) > check_gaps[-1]
+        try:
+            check_latest = ((time() * 1000) - df[0].to_numpy()[-1]) > gaps_check[-1]
+        except Exception as e:
+            print(e)
         # If true, no gaps
         try:
-            no_gaps = (check_gaps[1] == check_gaps).all()
-            if df.empty or not no_gaps or check_latest:
+            no_gaps = (gaps_check[1] == gaps_check).all()
+            if not no_gaps or check_latest:
                 kline_df = self.delete_and_create_klines(params)
         except IndexError as e:
             print("Check gaps Index Error", e)

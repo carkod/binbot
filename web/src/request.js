@@ -94,4 +94,3 @@ export default async function request(url, verb = "GET", json = undefined) {
   const content = await checkStatus(response);
   return content;
 }
-
