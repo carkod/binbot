@@ -15,21 +15,16 @@ class WhaleAlertSignals:
         self.start_time = int(time.time() - 600)
         self.transaction_count_limit = 1
     
-    def get_last_transaction(self, index):
+    def get_last_transaction(self):
         success, transactions, status = self.whale_alert.get_transactions(self.start_time, api_key=self.api_key, limit=self.transaction_count_limit)
         if success:
-            return transactions[index - 1]
+            return transactions[self.transaction_count_limit - 1]
         else:
             return status
 
     def run_bot(self, index=1) -> None:
         """Run the bot."""
         transaction = self.get_last_transaction(index)
-        if transaction["symbol"] not in ["USDT", "BTC"]:
-
-            msg = f'[{os.getenv("ENV")}]Whale alert: {transaction["transaction_type"]} of {transaction["symbol"]} ({transaction["amount_usd"]} USD) from {transaction["from"]["owner"]} ({transaction["from"]["owner_type"]}) to {transaction["to"]["owner"]} ({transaction["to"]["owner_type"]})'
-            self.telegram_bot.send_msg(msg)
-        else:
-            index += 1
-            self.run_bot(index)
-        return
+        msg = f'[{os.getenv("ENV")}] <strong>Whale alert</strong>: {transaction["transaction_type"]} of {transaction["symbol"]} ({transaction["amount_usd"]} USD) from {transaction["from"]["owner"]} ({transaction["from"]["owner_type"]}) to {transaction["to"]["owner"]} ({transaction["to"]["owner_type"]})'
+        self.telegram_bot.send_msg(msg)
+        pass

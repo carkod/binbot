@@ -18,6 +18,9 @@ class InvalidSymbol(BinanceErrors):
     pass
 
 
+class NotEnoughFunds(BinanceErrors):
+    pass
+
 class QuantityTooLow(BinanceErrors):
     """
     Raised when LOT_SIZE filter error triggers
@@ -145,17 +148,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         if content["code"] == -2010 or content["code"] == -1013 or content["code"] == -2015:
             # Not enough funds. Ignore, send to bot errors
             # Need to be dealt with at higher levels
-            if not bot:
-                return jsonResp_error_message(content["msg"])
-            else:
-                error = f'{message + content["msg"] if message else content["msg"]}'
-                bot["errors"].append(error)
-                app = create_app()
-                bot = app.db.bots.find_one_and_update(
-                    {"_id": ObjectId(bot["_id"])},
-                    {"$set": {"status": "error", "errors": bot["errors"]}},
-                )
-                return "errored"
+            raise NotEnoughFunds(content["msg"])
 
         if content["code"] == -1003:
             # Too many requests, most likely exceeded API rate limits

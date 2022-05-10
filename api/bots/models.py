@@ -7,6 +7,7 @@ from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
 from api.tools.handle_error import (
+    NotEnoughFunds,
     QuantityTooLow,
     handle_binance_errors,
     jsonResp,
@@ -152,7 +153,10 @@ class Bot(Account):
         bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            order_errors = Deal(bot).open_deal()
+            try:
+                order_errors = Deal(bot).open_deal()
+            except NotEnoughFunds as e:
+                return jsonResp_error_message(e)
 
             if isinstance(order_errors, Response):
                 return order_errors

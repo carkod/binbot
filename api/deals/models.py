@@ -2,7 +2,7 @@ from decimal import Decimal
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp
+from api.tools.handle_error import NotEnoughFunds, bot_errors, handle_binance_errors, jsonResp, jsonResp_error_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from flask import current_app as app
@@ -208,7 +208,7 @@ class Deal(Account):
                 "qty": qty,
                 "price": supress_notation(price, self.price_precision),
             }
-            res = self.bb_request(
+            data = self.bb_request(
                 method="POST", url=self.bb_buy_order_url, payload=order
             )
         else:
@@ -216,14 +216,9 @@ class Deal(Account):
                 "pair": pair,
                 "qty": qty,
             }
-            res = self.bb_request(
+            data = self.bb_request(
                 method="POST", url=self.bb_buy_market_order_url, payload=order
             )
-
-        # If error pass it up to parent function, can't continue
-        data = handle_binance_errors(res)
-        if "error" in data:
-            return data
 
         base_deal = {
             "timestamp": data["transactTime"],
