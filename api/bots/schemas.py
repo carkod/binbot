@@ -219,7 +219,9 @@ class BotSchema:
 
     def update(self, data):
         """Insert logic"""
-        id = data["_id"]
+        id = None
+        if "_id" in data:
+            id = data["_id"]
         validated_data = self.validate_model(data)
         if id:
             result = current_app.db.bots.update_one(
