@@ -71,3 +71,25 @@ class TelegramBot:
         )
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.button))
         return
+
+
+class WhaleAlert:
+    """
+    Receive Whale alerts from telegram channel
+    """
+    def __init__(self):
+        self.token = os.getenv("TELEGRAM_BOT_KEY")
+        self.chat_id = os.getenv("TELEGRAM_USER_ID")
+    
+    def run_bot(self) -> None:
+        """Run the bot."""
+        self.updater = Updater(self.token)
+        # self.updater.dispatcher.add_handler(CommandHandler("t", self.buy))
+        self.updater.dispatcher.add_handler(
+            MessageHandler(
+                Filters.text & ~Filters.command,
+                lambda u, c: u.message.reply_text(u.message.text),
+            )
+        )
+        self.updater.dispatcher.add_handler(CallbackQueryHandler(self.button))
+        return
