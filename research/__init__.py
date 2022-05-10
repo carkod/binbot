@@ -27,9 +27,6 @@ if os.getenv("ENV") != "ci":
 
     scheduler.start()
 
-    whale_alert = WhaleAlert()
-    whale_alert.run_bot()
-
 if __name__ == "__main__":
     rs = ResearchSignals()
     rs_thread = threading.Thread(
