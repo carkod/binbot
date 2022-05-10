@@ -4,6 +4,7 @@ import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from new_tokens import NewTokens
+from telegram_bot import WhaleAlert
 from signals import ResearchSignals
 import time
 
@@ -17,6 +18,9 @@ if os.getenv("ENV") != "ci":
         hours=6,
     )
     scheduler.start()
+
+    whale_alert = WhaleAlert()
+    whale_alert.run_bot()
 
 if __name__ == "__main__":
     rs = ResearchSignals()
