@@ -1,8 +1,9 @@
+import os
 import time
-from pprint import pprint
+
 from telegram_bot import TelegramBot  # For formatted dictionary printing
 from whalealert.whalealert import WhaleAlert
-import os
+
 
 class WhaleAlertSignals:
     """
