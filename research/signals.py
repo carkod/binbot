@@ -145,7 +145,7 @@ class ResearchSignals(BinbotApi):
 
         # Remove UPUSDT and DOWNUSDT
         for s in raw_symbols:
-            if s in ["ETHUSD", "BTCUSD", "BNBUSD", "ETHUSDT", "BTCUSDT", "BNBUSDT", "BNBUP", "BNBDOWN", "BTCUPUSDT", "ETHUPUSDT", "BTCDOWN", "ETHDOWN"]:
+            if s in ["BNBUSDT", "ETHUSD", "BTCUSD", "BNBUSD", "ETHUSDT", "BTCUSDT", "BNBUSDT", "BNBUP", "BNBDOWN", "BTCUPUSDT", "ETHUPUSDT", "BTCDOWN", "ETHDOWN"]:
                 self.blacklist_coin(
                     s, "Value too high, can't buy enough coins to earn."
                 )

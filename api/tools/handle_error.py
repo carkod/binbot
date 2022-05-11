@@ -113,7 +113,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     """
     try:
         response.json()
-    except JSONDecodeError as e:
+    except Exception as e:
         print("Request error: ", e)
         print("Response error: ", response)
     

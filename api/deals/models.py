@@ -243,15 +243,15 @@ class Deal(Account):
         for chunk in data["fills"]:
             commission += float(chunk["commission"])
 
-        tp_price = float(order["price"]) * 1 + (
+        tp_price = float(data["price"]) * 1 + (
             float(self.active_bot["take_profit"]) / 100
         )
 
         so_prices = {}
         so_num = 1
         for key, value in self.active_bot["safety_orders"].items():
-            price = float(order["price"]) - (
-                float(order["price"]) * (float(value["price_deviation_so"]) / 100)
+            price = float(data["price"]) - (
+                float(data["price"]) * (float(value["price_deviation_so"]) / 100)
             )
             price = supress_notation(price, self.price_precision)
             so_prices[str(so_num)] = price
