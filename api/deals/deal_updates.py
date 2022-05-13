@@ -390,7 +390,7 @@ class DealUpdates(Account):
             {
                 "$push": {"orders": stop_limit_response},
                 "$inc": {"total_commission": commission},
-                "$set": {"deal.sell_timestamp": res["transactTime"]},
+                "$set": {"deal.sell_timestamp": res["transactTime"], "deal.sell_price": res["price"]},
             },
         )
         msg = "New stop_limit deal successfully updated"
@@ -459,6 +459,7 @@ class DealUpdates(Account):
                     "deal.take_profit_price": res["price"],
                     "orders": bot["orders"],
                     "deal.sell_timestamp": res["transactTime"],
+                    "deal.sell_price": res["price"]
                 },
                 "$inc": {"total_commission": commission},
             },

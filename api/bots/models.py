@@ -321,7 +321,7 @@ class Bot(Account):
                 self.app.db.bots.update_one(
                     {"_id": ObjectId(findId)},
                     {
-                        "$set": {"status": "completed", "deal.sell_timestamp": time()},
+                        "$set": {"status": "completed", "deal.sell_timestamp": time(), "deal.sell_price": order_res["price"]},
                         "$push": {"orders": deactivation_order, "errors": "Orders updated. Trying to close bot..."},
                     },
                 )
