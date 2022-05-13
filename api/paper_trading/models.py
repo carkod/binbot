@@ -51,6 +51,9 @@ class Bot(Account):
 
         bot_schema = PaperTradingBotSchema()
 
+        if status:
+            params["status"] = status
+
         if start_date:
             try:
                 float(start_date)
