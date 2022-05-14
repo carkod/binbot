@@ -1,6 +1,5 @@
 import produce from "immer";
-import { computeTotalProfit } from "../../state/bots/actions";
-import { intervalOptions } from "../../validations";
+import { bot, computeTotalProfit } from "../../state/bots/actions";
 import {
   ACTIVATE_TEST_BOT,
   ACTIVATE_TEST_BOT_ERROR,
@@ -26,45 +25,6 @@ import {
   GET_TEST_BOT_SUCCESS,
   SET_BOT_STATE,
 } from "./actions";
-
-// The initial state of the App
-export const bot = {
-  _id: null,
-  status: "inactive",
-  balance_available: "0",
-  balance_available_asset: "",
-  balanceAvailableError: false,
-  balanceUsageError: false,
-  balance_size_to_use: 0, // Centralized
-  base_order_size: "",
-  baseOrderSizeError: false,
-  balance_to_use: "USDT",
-  bot_profit: 0,
-  mode: "manual",
-  max_so_count: "0",
-  maxSOCountError: false,
-  name: "Default bot",
-  nameError: false,
-  pair: "",
-  price_deviation_so: "0.63",
-  priceDevSoError: false,
-  so_size: "0",
-  soSizeError: false,
-  take_profit: "3",
-  takeProfitError: false,
-  trailling: "false",
-  trailling_deviation: "0.63",
-  traillingDeviationError: false,
-  formIsValid: true,
-  candlestick_interval: intervalOptions[3],
-  deals: [],
-  orders: [],
-  quoteAsset: "",
-  baseAsset: "",
-  stop_loss: 0,
-  stopLossError: false,
-  safety_orders: {},
-};
 
 const initialState = {
   bot: bot,

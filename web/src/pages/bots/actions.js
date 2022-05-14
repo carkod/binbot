@@ -49,6 +49,15 @@ export const ARCHIVE_BOT = "ARCHIVE_BOT";
 export const ARCHIVE_BOT_SUCCESS = "ARCHIVE_BOT_SUCCESS";
 export const ARCHIVE_BOT_ERROR = "ARCHIVE_BOT_ERROR";
 
+export const SET_BOT = "SET_BOT";
+
+export function setBot(payload) {
+  return {
+    type: SET_BOT,
+    payload,
+  }
+}
+
 /**
  * Create new user
  *
