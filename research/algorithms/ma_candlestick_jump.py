@@ -37,6 +37,6 @@ def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd
         _send_msg(msg)
         print(msg)
 
-        run_autotrade(symbol, ws, "ma_candlestick_jump")
+        run_autotrade(symbol, ws, "ma_candlestick_jump", False, sd)
     
     return

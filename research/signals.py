@@ -199,14 +199,6 @@ class ResearchSignals(BinbotApi):
             self.start_stream(previous_ws=ws)
             pass
         
-        paper_trading_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active"})
-        paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
-        active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
-        if symbol not in active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
-            # Test autotrade runs independently of autotrade = 1
-            test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm, *args)
-            test_autotrade.run()
-
         if (
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
@@ -215,6 +207,18 @@ class ResearchSignals(BinbotApi):
         ):
             autotrade = Autotrade(symbol, self.settings, algorithm)
             autotrade.run()
+
+        # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
+        # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
+        # the downfall is that it can increase load for the server if there are multiple bots opened
+        # e.g. autotrade bots not updating can be a symptom of this
+        paper_trading_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active"})
+        paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
+        active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
+        if symbol not in active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
+            # Test autotrade runs independently of autotrade = 1
+            test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm, args)
+            test_autotrade.run()
 
     def on_close(self, *args):
         """
