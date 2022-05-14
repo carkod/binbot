@@ -1,11 +1,12 @@
 import os
 import threading
+import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from new_tokens import NewTokens
+from algorithms.new_tokens import NewTokens
+from algorithms.whale_alert_signals import WhaleAlertSignals
 from signals import ResearchSignals
-import time
 
 if os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()
@@ -16,6 +17,14 @@ if os.getenv("ENV") != "ci":
         trigger="interval",
         hours=6,
     )
+    wa = WhaleAlertSignals()
+    scheduler.add_job(
+        func=wa.run_bot,
+        timezone="Europe/London",
+        trigger="interval",
+        minutes=10,
+    )
+
     scheduler.start()
 
 if __name__ == "__main__":

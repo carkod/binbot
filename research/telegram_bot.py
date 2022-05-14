@@ -11,12 +11,13 @@ from telegram.ext import (
 )
 from dotenv import load_dotenv
 
+load_dotenv()
 
 class TelegramBot:
     def __init__(self):
-        load_dotenv()
         self.token = os.getenv("TELEGRAM_BOT_KEY")
         self.chat_id = os.getenv("TELEGRAM_USER_ID")
+        self.updater = Updater(self.token)
 
     def buy(self, update: Update, context: CallbackContext) -> None:
         """Sends a message with three inline buttons attached."""
@@ -61,7 +62,6 @@ class TelegramBot:
 
     def run_bot(self) -> None:
         """Run the bot."""
-        self.updater = Updater(self.token)
         self.updater.dispatcher.add_handler(CommandHandler("t", self.buy))
         self.updater.dispatcher.add_handler(
             MessageHandler(

@@ -202,8 +202,11 @@ class BotForm extends React.Component {
           Object.keys(this.props.bot.deal).length > 0 &&
           !checkValue(this.props.bot.base_order_size)
         ) {
-          const currentPrice = parseFloat(this.props.bot.deal.current_price);
+          let currentPrice = parseFloat(this.props.bot.deal.current_price);
           const buyPrice = parseFloat(this.props.bot.deal.buy_price);
+          if (this.props.bot.status === "completed" && !checkValue(this.props.bot.deal.sell_price)) {
+            currentPrice = this.props.bot.deal.sell_price
+          }
           const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
           this.setState({ bot_profit: profitChange.toFixed(4) });
         } else {

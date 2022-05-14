@@ -1,0 +1,17 @@
+node_modules
+__pycache__
+jsconfig.json
+.eslintrc.js
+*.md
+.vscode
+.devcontainer
+.ini
+.git
+.github
+.gitignore
+.github/
+docs/
+ecosystem.config.js
+.http
+mongo_data
+mongo_data.old

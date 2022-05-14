@@ -21,6 +21,7 @@ python-dotenv = "*"
 gevent = "*"
 flask-httpauth = "4.6.0"
 
+
 [dev-packages]
 autopep8 = "*"
 isort = "5.9.2"

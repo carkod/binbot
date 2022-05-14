@@ -51,6 +51,9 @@ class Bot(Account):
 
         bot_schema = PaperTradingBotSchema()
 
+        if status:
+            params["status"] = status
+
         if start_date:
             try:
                 float(start_date)
@@ -304,7 +307,7 @@ class Bot(Account):
                 self.app.db.paper_trading.update_one(
                     {"_id": ObjectId(findId)},
                     {
-                        "$set": {"status": "completed", "deal.sell_timestamp": time()},
+                        "$set": {"status": "completed", "deal.sell_timestamp": time(), "deal.sell_price": order_res["price"]},
                         "$push": {"orders": deactivation_order, "errors": "Orders updated. Trying to close bot..."},
                     },
                 )

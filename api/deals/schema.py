@@ -11,5 +11,7 @@ def DealSchema():
         "take_profit_price": "",
         "so_prices": [],
         "sell_timestamp": 0,
+        "sell_price": "",
+        "sell_qty": "",
         "post_closure_current_price": "",
     }

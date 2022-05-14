@@ -2,7 +2,7 @@ from decimal import Decimal
 import requests
 from api.account.account import Account
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp
+from api.tools.handle_error import NotEnoughFunds, bot_errors, handle_binance_errors, jsonResp, jsonResp_error_message
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import Response
 from flask import current_app as app
@@ -208,7 +208,7 @@ class Deal(Account):
                 "qty": qty,
                 "price": supress_notation(price, self.price_precision),
             }
-            res = self.bb_request(
+            data = self.bb_request(
                 method="POST", url=self.bb_buy_order_url, payload=order
             )
         else:
@@ -216,14 +216,9 @@ class Deal(Account):
                 "pair": pair,
                 "qty": qty,
             }
-            res = self.bb_request(
+            data = self.bb_request(
                 method="POST", url=self.bb_buy_market_order_url, payload=order
             )
-
-        # If error pass it up to parent function, can't continue
-        data = handle_binance_errors(res)
-        if "error" in data:
-            return data
 
         base_deal = {
             "timestamp": data["transactTime"],
@@ -243,15 +238,15 @@ class Deal(Account):
         for chunk in data["fills"]:
             commission += float(chunk["commission"])
 
-        tp_price = float(order["price"]) * 1 + (
+        tp_price = float(data["price"]) * 1 + (
             float(self.active_bot["take_profit"]) / 100
         )
 
         so_prices = {}
         so_num = 1
         for key, value in self.active_bot["safety_orders"].items():
-            price = float(order["price"]) - (
-                float(order["price"]) * (float(value["price_deviation_so"]) / 100)
+            price = float(data["price"]) - (
+                float(data["price"]) * (float(value["price_deviation_so"]) / 100)
             )
             price = supress_notation(price, self.price_precision)
             so_prices[str(so_num)] = price

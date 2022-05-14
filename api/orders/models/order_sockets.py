@@ -87,7 +87,7 @@ class OrderUpdates(BinanceApi):
                     }
                 },
                 {
-                    "$set": {"status": "completed", "deal.current_price": result["p"]},
+                    "$set": {"status": "completed", "deal.current_price": result["p"], "deal.sell_price": result["p"]},
                     "$inc": {"deal.commission": float(result["n"])},
                     "$push": {"errors": "Bot take_profit completed!"},
                 },
@@ -103,7 +103,7 @@ class OrderUpdates(BinanceApi):
                     }
                 },
                 {
-                    "$set": {"status": "completed", "deal.current_price": result["p"]},
+                    "$set": {"status": "completed", "deal.current_price": result["p"], "deal.sell_price": result["p"]},
                     "$inc": {"deal.commission": float(result["n"])},
                     "$push": {"errors": "Bot trailling_stop_loss completed!"},
                 },
