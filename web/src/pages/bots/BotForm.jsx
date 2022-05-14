@@ -1,7 +1,5 @@
-import React from "react";
-import produce from "immer";
-import { nanoid } from "nanoid";
 import moment from "moment";
+import React from "react";
 import { connect } from "react-redux";
 import {
   Alert,
@@ -22,17 +20,18 @@ import {
   NavLink,
   Row,
   TabContent,
-  TabPane,
+  TabPane
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import Candlestick from "../../components/Candlestick";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
+import { bot } from "../../state/bots/actions";
 import {
   checkBalance,
   checkValue,
   intervalOptions,
-  roundDecimals,
+  roundDecimals
 } from "../../validations.js";
 import {
   activateBot,
@@ -45,15 +44,12 @@ import {
   loadCandlestick,
   setBot
 } from "./actions";
-import { ErrorLog } from "./ErrorLog";
 import { convertGBP, getQuoteAsset } from "./requests";
-import SafetyOrderField from "./SafetyOrderField";
 import MainTab from "./tabs/Main";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
 
 class BotForm extends React.Component {
-
   constructor(props) {
     super(props);
     this.state = {
@@ -72,9 +68,15 @@ class BotForm extends React.Component {
       this.computeAvailableBalance();
     }
     if (!checkValue(this.props.match.params?.symbol)) {
-      this.props.setBot({
-        pair: this.props.match.params.symbol
-      }, () => this.computeAvailableBalance())
+      this.props.setBot(
+        {
+          pair: this.props.match.params.symbol,
+        },
+        () => this.computeAvailableBalance()
+      );
+    }
+    if (checkValue(this.props.match.params.symbol)) {
+      this.props.setBot(bot);
     }
   };
 
@@ -83,16 +85,16 @@ class BotForm extends React.Component {
       this.computeAvailableBalance();
     }
 
-    // if (
-    //   !checkValue(this.props.bot.pair) &&
-    //   s.candlestick_interval !== this.props.bot.candlestick_interval
-    // ) {
-    //   this.props.loadCandlestick(
-    //     this.props.bot.pair,
-    //     this.props.bot.candlestick_interval,
-    //     this.props.bot?.deal?.buy_timestamp,
-    //   );
-    // }
+    if (
+      !checkValue(this.props.bot.pair) &&
+      p.bot.candlestick_interval !== this.props.bot.candlestick_interval
+    ) {
+      this.props.loadCandlestick(
+        this.props.bot.pair,
+        this.props.bot.candlestick_interval,
+        this.props.bot?.deal?.buy_timestamp
+      );
+    }
     // If there is a newBotId, it means form was created
     // To make sure of this, check also URL has NO id param
     if (
@@ -108,36 +110,38 @@ class BotForm extends React.Component {
 
     // Only for edit bot page
     // Fill up the candlestick when pair is available and inherit the interval too
-    // if (!checkValue(this.props.bot.pair) && this.props.bot.pair !== s.pair) {
-    //   const interval = !checkValue(this.props.history.location.state)
-    //     ? this.props.history.location.state.candlestick_interval
-    //     : this.props.bot.candlestick_interval;
-    //   this.props.loadCandlestick(
-    //     this.props.bot.pair,
-    //     interval,
-    //     this.props.bot?.deal?.buy_timestamp
-    //   );
-    //   getQuoteAsset(this.props.bot.pair).then(({ data }) =>
-    //     this.setState({ quoteAsset: data })
-    //   );
-    //   const currentDate = moment().toISOString();
-    //   this.setState({
-    //     name: `${this.props.bot.pair}_${currentDate}`,
-    //   });
-    // }
-
     if (
-      this.props.botActive !== p.botActive &&
-      !checkValue(this.props.match.params.id)
+      !checkValue(this.props.bot.pair) &&
+      this.props.bot.pair !== p.bot.pair
     ) {
-      this.props.getBot(this.props.match.params.id);
+      const interval = !checkValue(this.props.history.location.state)
+        ? this.props.history.location.state.candlestick_interval
+        : this.props.bot.candlestick_interval;
+      this.props.loadCandlestick(
+        this.props.bot.pair,
+        interval,
+        this.props.bot?.deal?.buy_timestamp
+      );
+      getQuoteAsset(this.props.bot.pair).then(({ data }) =>
+        this.props.setBot({ quoteAsset: data })
+      );
+      const currentDate = moment().toISOString();
+      this.props.setBot({
+        name: `${this.props.bot.pair}_${currentDate}`,
+      });
     }
+
+    // if (
+    //   this.props.botActive !== p.botActive &&
+    //   !checkValue(this.props.match.params.id)
+    // ) {
+    //   this.props.getBot(this.props.match.params.id);
+    // }
 
     // Candlestick data updates
     if (
       !checkValue(this.props.candlestick) &&
       this.props.candlestick !== p.candlestick &&
-      this.props.candlestick.error !== 1 &&
       !checkValue(this.props.bot)
     ) {
       const { trace } = this.props.candlestick;
@@ -150,8 +154,11 @@ class BotForm extends React.Component {
         ) {
           let currentPrice = parseFloat(this.props.bot.deal.current_price);
           const buyPrice = parseFloat(this.props.bot.deal.buy_price);
-          if (this.props.bot.status === "completed" && !checkValue(this.props.bot.deal.sell_price)) {
-            currentPrice = this.props.bot.deal.sell_price
+          if (
+            this.props.bot.status === "completed" &&
+            !checkValue(this.props.bot.deal.sell_price)
+          ) {
+            currentPrice = this.props.bot.deal.sell_price;
           }
           const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
           this.setState({ bot_profit: profitChange.toFixed(4) });
@@ -161,12 +168,12 @@ class BotForm extends React.Component {
       }
     }
 
-    // if (
-    //   this.props.bot.quoteAsset !== p.bot.quoteAsset &&
-    //   !checkValue(this.props.balances)
-    // ) {
-    //   this.computeAvailableBalance();
-    // }
+    if (
+      this.props.bot.quoteAsset !== p.bot.quoteAsset &&
+      !checkValue(this.props.balances)
+    ) {
+      this.computeAvailableBalance();
+    }
   };
 
   requiredinValidation = () => {
@@ -227,7 +234,10 @@ class BotForm extends React.Component {
         checkBalance(trailling_deviation) &&
         checkBalance(trailling_deviation)
       ) {
-        this.props.setBot({ traillingDeviationError: true, formIsValid: false });
+        this.props.setBot({
+          traillingDeviationError: true,
+          formIsValid: false,
+        });
         return false;
       } else {
         this.props.setBot({ traillingDeviationError: false });
@@ -235,6 +245,61 @@ class BotForm extends React.Component {
     }
 
     return true;
+  };
+
+  computeAvailableBalance = () => {
+    /**
+     * Refer to bots.md
+     */
+    const { base_order_size } = this.props.bot;
+    const { balances } = this.props;
+
+    let value = "0";
+    let name = "";
+    if (!checkValue(this.state.quoteAsset) && !checkValue(balances)) {
+      balances.forEach((x) => {
+        if (this.state.quoteAsset === x.asset) {
+          value = x.free;
+          name = x.asset;
+        }
+      });
+
+      if (
+        !checkValue(value) &&
+        !checkBalance(value) &&
+        this.props.bot
+      ) {
+        const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
+        const checkBaseOrder = this.props.bot.orders.find(
+          (x) => x.deal_type === "base_order"
+        );
+        let updatedValue = value - (baseOrder);
+        if (!checkValue(checkBaseOrder) && "deal_type" in checkBaseOrder) {
+          updatedValue = baseOrder + updatedValue;
+        }
+        updatedValue.toFixed(8);
+
+        // Check that we have enough funds
+        // If not return error
+        if (parseFloat(updatedValue) > 0) {
+          this.setState({
+            balance_available: updatedValue,
+            balance_available_asset: name,
+            baseOrderSizeError: false,
+            balanceAvailableError: false,
+          });
+        } else {
+          this.setState({ baseOrderSizeError: true, formIsValid: false });
+        }
+      } else {
+        this.setState({
+          balance_available: value,
+          balance_available_asset: name,
+          balanceAvailableError: true,
+          formIsValid: false,
+        });
+      }
+    }
   };
 
   handleSubmit = (e) => {
@@ -252,7 +317,6 @@ class BotForm extends React.Component {
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
         stop_loss: this.props.bot.stop_loss,
-        safety_orders: this.props.bot.safety_orders,
         candlestick_interval: this.props.bot.candlestick_interval,
       };
       if (this.state._id === null) {
@@ -267,7 +331,6 @@ class BotForm extends React.Component {
     const { activeTab } = this.state;
     if (activeTab !== tab) this.setState({ activeTab: tab });
   };
-
 
   handlePairChange = (value) => {
     // Get pair base or quote asset and set new pair
@@ -286,7 +349,6 @@ class BotForm extends React.Component {
       );
     }
   };
-
 
   handleBaseChange = (e) => {
     this.setState({
@@ -317,7 +379,7 @@ class BotForm extends React.Component {
   };
 
   addAll = async () => {
-    const { pair, quoteAsset } = this.state;
+    const { pair, quoteAsset } = this.props.bot;
     const { balance_raw: balances } = this.props;
     if (!checkValue(pair) && balances?.length > 0) {
       this.props.getSymbolInfo(pair);
@@ -371,7 +433,6 @@ class BotForm extends React.Component {
     }
   };
 
-
   handleActivation = (e) => {
     const validation = this.requiredinValidation();
     if (validation) {
@@ -380,57 +441,16 @@ class BotForm extends React.Component {
     }
   };
 
-  renderSO = () => {
-    const count = parseInt(this.props.bot.max_so_count);
-    const length = Object.keys(this.props.bot.safety_orders).length;
-    let newState = {};
-    if (count > 0 && length === 0) {
-      for (let i = 0; i < count; i++) {
-        const id = nanoid();
-        newState[id] = {
-          so_size: "",
-          price_deviation_so: "0.63",
-          priceDevSoError: false,
-          soSizeError: false,
-        };
-      }
-    } else if (count - length > 0) {
-      newState = this.props.bot.safety_orders;
-      for (let i = 0; i < count - length; i++) {
-        const id = nanoid();
-        newState[id] = {
-          so_size: "",
-          price_deviation_so: "0.63",
-          priceDevSoError: false,
-          soSizeError: false,
-        };
-      }
-    } else if (count - length < 0) {
-      newState = this.props.bot.safety_orders;
-      for (let i = 0; i < length - count; i++) {
-        const id = Object.keys(newState)[length - 1];
-        delete newState[id];
-      }
-    }
-    this.props.setBot({ safety_orders: newState });
-  };
 
   handleMaxSoChange = (e) => {
     e.preventDefault();
     const count = parseInt(this.props.bot.max_so_count);
     const value = parseInt(e.target.value);
     if (count !== value) {
-      this.props.setBot({ [e.target.name]: e.target.value }, () => this.renderSO());
+      this.props.setBot({ [e.target.name]: e.target.value }, () =>
+        this.renderSO()
+      );
     }
-  };
-
-  handleSoChange = (id) => (e) => {
-    e.preventDefault();
-    let safetyOrders = this.props.bot.safety_orders;
-    safetyOrders[id][e.target.name] = e.target.value;
-    this.props.setBot({
-      safety_orders: safetyOrders
-    });
   };
 
   toggleTrailling = () =>
@@ -446,7 +466,7 @@ class BotForm extends React.Component {
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
                 <CardTitle tag="h3">
-                  {this.props.bot.pair}{" "}
+                  {this.props.bot?.pair}{" "}
                   {!checkValue(this.state.bot_profit) &&
                     !isNaN(this.state.bot_profit) && (
                       <Badge
@@ -459,7 +479,7 @@ class BotForm extends React.Component {
                         {this.state.bot_profit + "%"}
                       </Badge>
                     )}{" "}
-                  {!checkValue(this.props.bot.status) && (
+                  {!checkValue(this.props.bot?.status) && (
                     <Badge
                       color={
                         this.props.bot.status === "active"
@@ -479,7 +499,9 @@ class BotForm extends React.Component {
                     !isNaN(this.state.bot_profit) && (
                       <small>
                         Earnings after commissions (est.):{" "}
-                        {roundDecimals(parseFloat(this.state.bot_profit) - 0.3) + "%"}
+                        {roundDecimals(
+                          parseFloat(this.state.bot_profit) - 0.3
+                        ) + "%"}
                       </small>
                     )}
                 </CardTitle>
@@ -560,18 +582,6 @@ class BotForm extends React.Component {
                       <NavItem>
                         <NavLink
                           className={
-                            this.state.activeTab === "safety-orders"
-                              ? "active"
-                              : ""
-                          }
-                          onClick={() => this.toggle("safety-orders")}
-                        >
-                          Safety Orders
-                        </NavLink>
-                      </NavItem>
-                      <NavItem>
-                        <NavLink
-                          className={
                             this.state.activeTab === "stop-loss" ? "active" : ""
                           }
                           onClick={() => this.toggle("stop-loss")}
@@ -636,25 +646,6 @@ class BotForm extends React.Component {
                           </small>
                         </Col>
                       </Row>
-                      {parseInt(this.props.bot.max_so_count) > 0 &&
-                        Object.keys(this.props.bot.safety_orders).map((so) => (
-                          <SafetyOrderField
-                            key={so}
-                            id={so}
-                            price_deviation_so={
-                              this.props.bot.safety_orders[so].price_deviation_so
-                            }
-                            priceDevSoError={
-                              this.props.bot.safety_orders[so].priceDevSoError
-                            }
-                            so_size={this.props.bot.safety_orders[so].so_size}
-                            soSizeError={
-                              this.props.bot.safety_orders[so].soSizeError
-                            }
-                            handleChange={this.handleSoChange}
-                            handleBlur={this.handleBlur}
-                          />
-                        ))}
                     </TabPane>
 
                     <StopLoss
@@ -726,7 +717,9 @@ class BotForm extends React.Component {
                             {this.props.bot.priceDevSoError && (
                               <li>Price deviation</li>
                             )}
-                            {this.props.bot.takeProfitError && <li>Take profit</li>}
+                            {this.props.bot.takeProfitError && (
+                              <li>Take profit</li>
+                            )}
                             {this.props.bot.traillingDeviationError && (
                               <li>Trailling deviation</li>
                             )}
@@ -765,8 +758,6 @@ const mapStateToProps = (state) => {
   if (!checkValue(balance) && balance.length > 0) {
     lastBalance = balance[0];
   }
-
-  
 
   return {
     lastBalance: lastBalance,

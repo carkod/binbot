@@ -1,8 +1,5 @@
 import produce from "immer";
-import {
-  bot,
-  computeTotalProfit
-} from "../../state/bots/actions";
+import { bot, computeTotalProfit } from "../../state/bots/actions";
 import {
   ACTIVATE_BOT,
   ACTIVATE_BOT_ERROR,
@@ -22,11 +19,9 @@ import {
   EDIT_BOT,
   EDIT_BOT_ERROR,
   EDIT_BOT_SUCCESS,
-  GET_BOT,
   GET_BOTS,
   GET_BOTS_ERROR,
   GET_BOTS_SUCCESS,
-  GET_BOT_ERROR,
   GET_BOT_SUCCESS,
   GET_SYMBOLS,
   GET_SYMBOLS_ERROR,
@@ -34,13 +29,11 @@ import {
   GET_SYMBOL_INFO,
   GET_SYMBOL_INFO_ERROR,
   GET_SYMBOL_INFO_SUCCESS,
-  loadCandlestick,
   LOAD_CANDLESTICK,
   LOAD_CANDLESTICK_ERROR,
   LOAD_CANDLESTICK_SUCCESS,
-  SET_BOT
+  SET_BOT,
 } from "./actions";
-import { getQuoteAsset } from "./requests";
 
 // The initial state of the App
 export const initialState = {
@@ -52,83 +45,6 @@ export const initialState = {
     endDate: null,
   },
 };
-
-
-computeAvailableBalance = (draft) => {
-  /**
-   * Refer to bots.md
-   */
-  const { base_order_size, safety_orders, short_order, quoteAsset, orders } = draft.bot;
-  const { balances } = this.props;
-
-  let value = "0";
-  let name = "";
-  if (!checkValue(quoteAsset) && !checkValue(balances)) {
-    balances.forEach((x) => {
-      if (quoteAsset === x.asset) {
-        value = x.free;
-        name = x.asset;
-      }
-    });
-
-    if (
-      !checkValue(value) &&
-      !checkBalance(value) &&
-      Object.values(safety_orders).length > 0 &&
-      this.props.bot
-    ) {
-      const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
-      const safetyOrders = Object.values(safety_orders).reduce(
-        (v, a) => {
-          return parseFloat(v.so_size) + parseFloat(a.so_size);
-        },
-        { so_size: 0 }
-      );
-      const shortOrder = parseFloat(short_order);
-      const checkBaseOrder = orders.find(
-        (x) => x.deal_type === "base_order"
-      );
-      let updatedValue = value - (baseOrder + safetyOrders + shortOrder);
-      if (!checkValue(checkBaseOrder) && "deal_type" in checkBaseOrder) {
-        updatedValue = baseOrder + updatedValue;
-      }
-      updatedValue.toFixed(8);
-
-      // Check that we have enough funds
-      // If not return error
-      if (parseFloat(updatedValue) > 0) {
-        draft.bot.balance_available = updatedValue;
-        draft.bot.balance_available_asset = name;
-        draft.bot.baseOrderSizeError = false;
-        draft.bot.balanceAvailableError = false;
-
-      } else {
-        draft.bot.baseOrderSizeError = true;
-        draft.bot.formIsValid = false;
-      }
-    } else {
-      draft.bot.balance_available = value;
-      draft.bot.balance_available_asset = name;
-      draft.bot.balanceAvailableError = true;
-      draft.bot.formIsValid = false;
-    }
-  }
-};
-
-const pairUpdate = async (pair, draft) => {
-  /**
-   * Every time the pair updates do:
-   * 1. Update quoteAsset
-   * 2. Update candlesticks
-   * 3. Compute available balance
-   */
-  const quoteAsset = getQuoteAsset(pair);
-  draft.bot.quoteAsset = quoteAsset;
-  
-  loadCandlestick(pair, draft.bot.candlestick_interval, draft.bot.deal.buy_timestamp)
-
-
-}
 
 const botReducer = produce((draft, action) => {
   switch (action.type) {
@@ -153,30 +69,6 @@ const botReducer = produce((draft, action) => {
     case GET_BOTS_ERROR: {
       return {
         error: action.error,
-      };
-    }
-
-    case CREATE_BOT: {
-      const newState = {
-        data: draft.data,
-        botActive: false,
-      };
-
-      return newState;
-    }
-    case CREATE_BOT_SUCCESS: {
-      const newState = {
-        botId: action.botId,
-        botActive: false,
-        data: draft.data,
-      };
-      return newState;
-    }
-
-    case CREATE_BOT_ERROR: {
-      return {
-        error: action.error,
-        botActive: false,
       };
     }
 
@@ -270,19 +162,32 @@ const botReducer = produce((draft, action) => {
     }
 
     // Single bot
-    case SET_BOT: {
-      const { payload } = action;
-      if ("pair" in payload) {
-        pairUpdate(payload.pair)
+    case SET_BOT:
+      {
+        const { payload } = action;
+        draft.bot = { ...draft.bot, ...payload };
       }
-      draft.bot = { ...draft.bot, ...payload };
-    }
-    return draft;
+      return draft;
 
     case GET_BOT_SUCCESS: {
-      draft.bot = action.data
-      draft.data = action.bots
+      draft.bot = action.bots;
       return draft;
+    }
+
+    case CREATE_BOT: {
+      draft.bot = action.data;
+      return draft;
+    }
+    case CREATE_BOT_SUCCESS: {
+      draft.botId = action.botId;
+      return draft;
+    }
+
+    case CREATE_BOT_ERROR: {
+      return {
+        error: action.error,
+        botActive: false,
+      };
     }
 
     default:
@@ -348,40 +253,6 @@ function symbolInfoReducer(state = initialState, action) {
         error: action.error,
         isError: true,
         data: action.data,
-      };
-    }
-
-    default:
-      return state;
-  }
-}
-
-function getSingleBotReducer(state = initialState, action) {
-  switch (action.type) {
-    case GET_BOT: {
-      const newState = {
-        ...state,
-        isError: false,
-        data: state.data,
-      };
-
-      return newState;
-    }
-    case GET_BOT_SUCCESS: {
-      const newState = {
-        ...state,
-        isError: false,
-        data: action.bots,
-        message: action.message,
-      };
-      return newState;
-    }
-
-    case GET_BOT_ERROR: {
-      return {
-        ...state,
-        error: action.error,
-        isError: true,
       };
     }
 
@@ -460,7 +331,6 @@ export {
   botReducer,
   symbolInfoReducer,
   symbolReducer,
-  getSingleBotReducer,
   editBotReducer,
   candlestickReducer,
 };
