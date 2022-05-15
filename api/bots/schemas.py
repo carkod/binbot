@@ -220,6 +220,11 @@ class BotSchema:
             id = data["_id"]
         validated_data = self.validate_model(data)
         if id:
+            # Delete internal attributes created by bot
+            # Only when updating existing
+            del validated_data["deal"]
+            del validated_data["orders"]
+            del validated_data["created_at"]
             result = current_app.db.bots.update_one(
                 {"_id": ObjectId(id)}, {"$set": validated_data}
             )
