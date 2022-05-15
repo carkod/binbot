@@ -123,11 +123,11 @@ class MarketUpdates(Account):
                     )
                     print(f'{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}')
                     updated_bot = self.app.db.bots.find_one_and_update(
-                        {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
+                        {"pair": symbol, "status": "active"}, {"$set": {"deal": bot["deal"]}}
                     )
                     if not updated_bot:
                         self.app.db.bots.find_one_and_update(
-                            {"pair": symbol},
+                            {"pair": symbol, "status": "active"},
                             {
                                 "$push": {
                                     "errors": f"Error updating trailling order {updated_bot}"
