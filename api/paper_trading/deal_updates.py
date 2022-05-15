@@ -1,19 +1,14 @@
 from decimal import Decimal
 from time import time
 
-import requests
 from api.account.account import Account
 from api.app import create_app
 from api.deals.models import Deal
-from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import (
-    bot_errors,
-    handle_binance_errors,
-    jsonResp,
-)
+from api.orders.models.book_order import Book_Order
+from api.tools.handle_error import bot_errors
 from api.tools.round_numbers import round_numbers, supress_notation
-from flask import Response
 from bson.objectid import ObjectId
+from flask import Response
 
 
 class TestDealUpdates(Account):

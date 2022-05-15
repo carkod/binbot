@@ -68,13 +68,9 @@ class BotSchema:
 
         try:
             self.pair = data.get("pair")
-            check_cannibalism = current_app.db.bots.find_one({"pair": self.pair, "status": "active"})
-            if check_cannibalism and not data.get("_id"):
-                raise BotSchemaValidation(f"Bot canibalism: there is an active bot trading with this pair")
-            else:
-                del data["pair"]
         except Exception as e:
-            raise BotSchemaValidation(f"pair is required")
+            raise BotSchemaValidation(f"{e.args[0]}")
+        del data["pair"]
         
         if "status" in data:
             if not isinstance(data.get("status"), str) and data.get("status") in self.statuses:

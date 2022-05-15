@@ -6,7 +6,6 @@ import { loadingReducer } from "./containers/spinner/reducer";
 import {
   botReducer,
   candlestickReducer,
-  editBotReducer,
   symbolInfoReducer,
   symbolReducer,
 } from "./pages/bots/reducer";
@@ -27,7 +26,6 @@ const rootReducer = combineReducers({
   botReducer,
   symbolInfoReducer,
   symbolReducer,
-  editBotReducer,
   candlestickReducer,
   toastr: toastrReducer,
   loadingReducer,

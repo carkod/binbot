@@ -20,7 +20,7 @@ import {
   NavLink,
   Row,
   TabContent,
-  TabPane
+  TabPane,
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
@@ -31,7 +31,7 @@ import {
   checkBalance,
   checkValue,
   intervalOptions,
-  roundDecimals
+  roundDecimals,
 } from "../../validations.js";
 import {
   activateBot,
@@ -42,7 +42,7 @@ import {
   getSymbolInfo,
   getSymbols,
   loadCandlestick,
-  setBot
+  setBot,
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
 import MainTab from "./tabs/Main";
@@ -64,6 +64,7 @@ class BotForm extends React.Component {
     this.props.getBalance();
     this.props.getSymbols();
     if (!checkValue(this.props.match.params.id)) {
+      this.props.setBot({ formIsValid: true });
       this.props.getBot(this.props.match.params.id);
       this.computeAvailableBalance();
     }
@@ -130,13 +131,6 @@ class BotForm extends React.Component {
         name: `${this.props.bot.pair}_${currentDate}`,
       });
     }
-
-    // if (
-    //   this.props.botActive !== p.botActive &&
-    //   !checkValue(this.props.match.params.id)
-    // ) {
-    //   this.props.getBot(this.props.match.params.id);
-    // }
 
     // Candlestick data updates
     if (
@@ -264,16 +258,12 @@ class BotForm extends React.Component {
         }
       });
 
-      if (
-        !checkValue(value) &&
-        !checkBalance(value) &&
-        this.props.bot
-      ) {
+      if (!checkValue(value) && !checkBalance(value) && this.props.bot) {
         const baseOrder = parseFloat(base_order_size) * 1; // base order * 100% of all balance
         const checkBaseOrder = this.props.bot.orders.find(
           (x) => x.deal_type === "base_order"
         );
-        let updatedValue = value - (baseOrder);
+        let updatedValue = value - baseOrder;
         if (!checkValue(checkBaseOrder) && "deal_type" in checkBaseOrder) {
           updatedValue = baseOrder + updatedValue;
         }
@@ -433,14 +423,13 @@ class BotForm extends React.Component {
     }
   };
 
-  handleActivation = (e) => {
+  handleActivation = async (e) => {
     const validation = this.requiredinValidation();
     if (validation) {
-      this.handleSubmit(e);
+      await this.handleSubmit(e);
       this.props.activateBot(this.state._id);
     }
   };
-
 
   handleMaxSoChange = (e) => {
     e.preventDefault();
@@ -505,7 +494,7 @@ class BotForm extends React.Component {
                       </small>
                     )}
                 </CardTitle>
-                <div className="">
+                <div>
                   {intervalOptions.map((item) => (
                     <Badge
                       key={item}
@@ -667,26 +656,29 @@ class BotForm extends React.Component {
                   </TabContent>
                   <Row xs="2">
                     <Col>
-                      {this.props.bot.status !== "active" &&
-                        Object.keys(this.props.bot.deal).length === 0 && (
-                          <ButtonToggle
-                            className="btn-round"
-                            color="primary"
-                            onClick={this.handleActivation}
-                            disabled={checkValue(this.props.bot._id)}
-                          >
-                            Deal
-                          </ButtonToggle>
-                        )}
-                    </Col>
-                    <Col>
-                      <Button
+                      <ButtonToggle
                         className="btn-round"
                         color="primary"
-                        type="submit"
+                        onClick={this.handleActivation}
+                        disabled={checkValue(this.props.bot._id)}
                       >
-                        Save
-                      </Button>
+                        {this.props.bot.status === "active" &&
+                        Object.keys(this.props.bot.deal).length > 0
+                          ? "Update deal"
+                          : "Deal"}
+                      </ButtonToggle>
+                    </Col>
+                    <Col>
+                      {(this.props.bot.status !== "active" ||
+                        Object.keys(this.props.bot.deal).length === 0) && (
+                        <Button
+                          className="btn-round"
+                          color="primary"
+                          type="submit"
+                        >
+                          Save
+                        </Button>
+                      )}
                     </Col>
                   </Row>
                   {!this.props.bot.formIsValid && (
