@@ -4,7 +4,10 @@ Active, inactive, error, complete, closed, archive
 These are the values of the `status` property of the bot.
 
 ## Active bot
-Indicates that the bot is actively trading. It must include data in the `deal` property which contain the prices that the bot is currenly trading, at least bought price (buy_price) and price to be sold e.g. take_profit, trailling profit
+Indicates that the bot is actively trading. It must include data in the `deal` property which contain the prices that the bot is currenly trading, at least bought price (buy_price) and price to be sold e.g. take_profit, trailling profit.
+
+An active bot cannot update the deal, because this relies on orders, and orders have already been executed.
+Although it is allowed to "Save" again, but this relies on the research app and the websocket to trigger the change in market_updates
 
 ## Inactive bot
 Indicates the bot is not currently trading. This usually happens when the bot is created, saved but no deal is opened.

@@ -39,7 +39,7 @@ export const bot = {
   traillingDeviationError: false,
   formIsValid: true,
   candlestick_interval: intervalOptions[3],
-  deals: [],
+  deal: {},
   orders: [],
   quoteAsset: "",
   baseAsset: "",

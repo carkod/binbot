@@ -667,18 +667,17 @@ class BotForm extends React.Component {
                   </TabContent>
                   <Row xs="2">
                     <Col>
-                      <ButtonToggle
-                        className="btn-round"
-                        color="primary"
-                        onClick={this.handleActivation}
-                        disabled={checkValue(this.props.bot._id)}
-                      >
-                        {(this.props.bot.status === "active" ||
-                          this.props.bot.active === "true") &&
-                        Object.keys(this.props.bot.deal).length > 0
-                          ? "Update deal"
-                          : "Deal"}
-                      </ButtonToggle>
+                      {this.props.bot.status !== "active" &&
+                        Object.keys(this.props.bot.deal).length === 0 && (
+                          <ButtonToggle
+                            className="btn-round"
+                            color="primary"
+                            onClick={this.handleActivation}
+                            disabled={checkValue(this.props.bot._id)}
+                          >
+                            Deal
+                          </ButtonToggle>
+                        )}
                     </Col>
                     <Col>
                       <Button
@@ -691,6 +690,8 @@ class BotForm extends React.Component {
                     </Col>
                   </Row>
                   {!this.props.bot.formIsValid && (
+                    <div>
+                    <br />
                     <Row>
                       <Col md="12">
                         <Alert color="danger">
@@ -727,6 +728,7 @@ class BotForm extends React.Component {
                         </Alert>
                       </Col>
                     </Row>
+                    </div>
                   )}
                 </CardBody>
               </Card>

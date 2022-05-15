@@ -424,7 +424,7 @@ export function loadCandlestickSucceeded(payload) {
   if (payload.error === 1) {
     addNotification("Some errors encountered", payload.message, "error");
   } else {
-    addNotification("SUCCESS!", payload.message, "success");
+    addNotification("SUCCESS!", "Candlestick data reloaded", "success");
   }
   return {
     type: LOAD_CANDLESTICK_SUCCESS,

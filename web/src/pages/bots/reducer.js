@@ -40,6 +40,7 @@ export const initialState = {
   bot: bot,
   data: null,
   message: null,
+  botId: null,
   params: {
     startDate: null,
     endDate: null,
@@ -188,6 +189,17 @@ const botReducer = produce((draft, action) => {
         error: action.error,
         botActive: false,
       };
+    }
+
+    case EDIT_BOT: {
+      draft.bot = { ...draft.bot, ...action.data};
+      return draft;
+    }
+
+    case EDIT_BOT_SUCCESS: {
+      draft.message = action.bots.message;
+      draft.botId = action.bots.botId;
+      return draft;
     }
 
     default:
