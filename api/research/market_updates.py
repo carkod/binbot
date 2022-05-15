@@ -105,6 +105,7 @@ class MarketUpdates(Account):
                     current_take_profit_price = float(
                         bot["deal"]["trailling_profit"]
                     ) * (1 + (float(bot["take_profit"]) / 100))
+                    print(f'{symbol} Update current_take_profit_price first time! {current_take_profit_price}')
 
                 if float(close_price) >= float(current_take_profit_price):
                     new_take_profit = current_take_profit_price * (
@@ -120,7 +121,7 @@ class MarketUpdates(Account):
                         float(new_take_profit)
                         * (float(bot["trailling_deviation"]) / 100)
                     )
-
+                    print(f'{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}')
                     updated_bot = self.app.db.bots.find_one_and_update(
                         {"pair": symbol}, {"$set": {"deal": bot["deal"]}}
                     )
