@@ -23,17 +23,13 @@ from utils import handle_binance_errors
 
 class ResearchSignals(BinbotApi):
     def __init__(self):
-        self.interval = "1h"
+        self.interval = "15m"
         self.markets_streams = None
         self.last_processed_kline = {}
         self.skipped_fiat_currencies = [
-            "USD",
             "DOWN",
-            "EUR",
+            "UP",
             "AUD",
-            "TRY",
-            "BRL",
-            "RUB",
         ]  # on top of blacklist
         self.telegram_bot = TelegramBot()
         self.max_request = 950  # Avoid HTTP 411 error by separating streams
@@ -143,12 +139,12 @@ class ResearchSignals(BinbotApi):
         raw_symbols = self.ticker_price()
         black_list = [x["pair"] for x in self.blacklist_data]
 
-        # Remove UPUSDT and DOWNUSDT
         for s in raw_symbols:
-            if s in ["BNBUSDT", "ETHUSD", "BTCUSD", "BNBUSD", "ETHUSDT", "BTCUSDT", "BNBUSDT", "BNBUP", "BNBDOWN", "BTCUPUSDT", "ETHUPUSDT", "BTCDOWN", "ETHDOWN"]:
-                self.blacklist_coin(
-                    s, "Value too high, can't buy enough coins to earn."
-                )
+            for pair in self.skipped_fiat_currencies:
+                if pair in s["symbol"]:
+                    self.blacklist_coin(
+                        s["symbol"], "Value too high, can't buy enough coins to earn."
+                    )
 
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
@@ -268,8 +264,6 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
-            print(f"Signal: {symbol}")
-
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
             if len(data["trace"][0]["x"]) > 1:

@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import atexit
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -26,6 +27,7 @@ if os.getenv("ENV") != "ci":
     )
 
     scheduler.start()
+    atexit.register(lambda: scheduler.shutdown())
 
 if __name__ == "__main__":
     rs = ResearchSignals()
