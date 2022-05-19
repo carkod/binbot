@@ -7,19 +7,16 @@ from time import sleep, time
 import requests
 from websocket import WebSocketApp
 
+from algorithms.candlejump_sd import candlejump_sd
 from algorithms.candlestick_patterns import candlestick_patterns
 from algorithms.ma_candlestick_jump import ma_candlestick_jump
-from algorithms.candlejump_sd import candlejump_sd
 from apis import BinbotApi
 from autotrade import Autotrade
-from pattern_detection import (
-    chaikin_oscillator,
-    linear_regression,
-    stdev,
-)
-from test_autotrade import TestAutotrade
+from pattern_detection import chaikin_oscillator, linear_regression, stdev
 from telegram_bot import TelegramBot
+from test_autotrade import TestAutotrade
 from utils import handle_binance_errors
+
 
 class ResearchSignals(BinbotApi):
     def __init__(self):

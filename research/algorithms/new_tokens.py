@@ -73,7 +73,7 @@ class NewTokens:
 
                 # launched already?
                 if datetime.now() < dt_object:
-                    msg = f"New token/cryptocurrency <strong>{t}</strong> about to launch {release_date}."
+                    msg = f"New token/cryptocurrency <strong>#{t}</strong> about to launch {release_date}."
                     self.telegram_bot.send_msg(msg)
                     print(msg)
                     pass

@@ -26,6 +26,6 @@ class WhaleAlertSignals:
     def run_bot(self) -> None:
         """Run the bot."""
         transaction = self.get_last_transaction()
-        msg = f'[{os.getenv("ENV")}] <strong>Whale alert</strong>: {transaction["transaction_type"]} of {transaction["symbol"]} ({transaction["amount_usd"]} USD) from {transaction["from"]["owner"]} ({transaction["from"]["owner_type"]}) to {transaction["to"]["owner"]} ({transaction["to"]["owner_type"]})'
+        msg = f'[{os.getenv("ENV")}] <strong>Whale alert</strong>: {transaction["transaction_type"]} of #{transaction["symbol"]} ({transaction["amount_usd"]} USD) from {transaction["from"]["owner"]} ({transaction["from"]["owner_type"]}) to {transaction["to"]["owner"]} ({transaction["to"]["owner_type"]})\n- https://www.binance.com/en/trade/{transaction["symbol"]}USDT \n- Dashboard trade http://binbot.in/admin/bots/new{transaction["symbol"]}USDT'
         self.telegram_bot.send_msg(msg)
         pass
