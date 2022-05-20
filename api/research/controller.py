@@ -55,13 +55,13 @@ class Controller:
         self.default_blacklist.update(data)
         self.default_blacklist["_id"] = data["pair"]
         try:
-            blacklist = current_app.db.blacklist.insert(self.default_blacklist)
+            blacklist = current_app.db.blacklist.insert_one(self.default_blacklist)
         except DuplicateKeyError:
             return jsonResp({"message": "Pair already exists in blacklist", "error": 1})
 
         if blacklist:
             resp = jsonResp(
-                {"message": "Successfully updated blacklist", "data": blacklist}
+                {"message": "Successfully updated blacklist", "data": str(blacklist)}
             )
         else:
             resp = jsonResp({"message": "Failed to update blacklist", "error": 1})

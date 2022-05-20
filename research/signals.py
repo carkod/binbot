@@ -7,33 +7,26 @@ from time import sleep, time
 import requests
 from websocket import WebSocketApp
 
+from algorithms.candlejump_sd import candlejump_sd
 from algorithms.candlestick_patterns import candlestick_patterns
 from algorithms.ma_candlestick_jump import ma_candlestick_jump
-from algorithms.candlejump_sd import candlejump_sd
 from apis import BinbotApi
 from autotrade import Autotrade
-from pattern_detection import (
-    chaikin_oscillator,
-    linear_regression,
-    stdev,
-)
-from test_autotrade import TestAutotrade
+from pattern_detection import chaikin_oscillator, linear_regression, stdev
 from telegram_bot import TelegramBot
+from test_autotrade import TestAutotrade
 from utils import handle_binance_errors
+
 
 class ResearchSignals(BinbotApi):
     def __init__(self):
-        self.interval = "1h"
+        self.interval = "15m"
         self.markets_streams = None
         self.last_processed_kline = {}
         self.skipped_fiat_currencies = [
-            "USD",
             "DOWN",
-            "EUR",
+            "UP",
             "AUD",
-            "TRY",
-            "BRL",
-            "RUB",
         ]  # on top of blacklist
         self.telegram_bot = TelegramBot()
         self.max_request = 950  # Avoid HTTP 411 error by separating streams
@@ -143,12 +136,12 @@ class ResearchSignals(BinbotApi):
         raw_symbols = self.ticker_price()
         black_list = [x["pair"] for x in self.blacklist_data]
 
-        # Remove UPUSDT and DOWNUSDT
         for s in raw_symbols:
-            if s in ["BNBUSDT", "ETHUSD", "BTCUSD", "BNBUSD", "ETHUSDT", "BTCUSDT", "BNBUSDT", "BNBUP", "BNBDOWN", "BTCUPUSDT", "ETHUPUSDT", "BTCDOWN", "ETHDOWN"]:
-                self.blacklist_coin(
-                    s, "Value too high, can't buy enough coins to earn."
-                )
+            for pair in self.skipped_fiat_currencies:
+                if pair in s["symbol"]:
+                    self.blacklist_coin(
+                        s["symbol"], "Value too high, can't buy enough coins to earn."
+                    )
 
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
@@ -199,14 +192,6 @@ class ResearchSignals(BinbotApi):
             self.start_stream(previous_ws=ws)
             pass
         
-        paper_trading_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active"})
-        paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
-        active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
-        if symbol not in active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
-            # Test autotrade runs independently of autotrade = 1
-            test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm, *args)
-            test_autotrade.run()
-
         if (
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
@@ -215,6 +200,18 @@ class ResearchSignals(BinbotApi):
         ):
             autotrade = Autotrade(symbol, self.settings, algorithm)
             autotrade.run()
+
+        # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
+        # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
+        # the downfall is that it can increase load for the server if there are multiple bots opened
+        # e.g. autotrade bots not updating can be a symptom of this
+        paper_trading_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active"})
+        paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
+        active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
+        if symbol not in active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
+            # Test autotrade runs independently of autotrade = 1
+            test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm, args)
+            test_autotrade.run()
 
     def on_close(self, *args):
         """
@@ -264,8 +261,6 @@ class ResearchSignals(BinbotApi):
             open_price = float(result["k"]["o"])
             symbol = result["k"]["s"]
             ws.symbol = symbol
-            print(f"Signal: {symbol}")
-
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
             if len(data["trace"][0]["x"]) > 1:

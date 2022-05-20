@@ -1,7 +1,5 @@
 import produce from "immer";
-import {
-  computeTotalProfit
-} from "../../state/bots/actions";
+import { bot, computeTotalProfit } from "../../state/bots/actions";
 import {
   ACTIVATE_BOT,
   ACTIVATE_BOT_ERROR,
@@ -19,13 +17,10 @@ import {
   DELETE_BOT_ERROR,
   DELETE_BOT_SUCCESS,
   EDIT_BOT,
-  EDIT_BOT_ERROR,
   EDIT_BOT_SUCCESS,
-  GET_BOT,
   GET_BOTS,
   GET_BOTS_ERROR,
   GET_BOTS_SUCCESS,
-  GET_BOT_ERROR,
   GET_BOT_SUCCESS,
   GET_SYMBOLS,
   GET_SYMBOLS_ERROR,
@@ -35,13 +30,16 @@ import {
   GET_SYMBOL_INFO_SUCCESS,
   LOAD_CANDLESTICK,
   LOAD_CANDLESTICK_ERROR,
-  LOAD_CANDLESTICK_SUCCESS
+  LOAD_CANDLESTICK_SUCCESS,
+  SET_BOT,
 } from "./actions";
 
 // The initial state of the App
 export const initialState = {
+  bot: bot,
   data: null,
   message: null,
+  botId: null,
   params: {
     startDate: null,
     endDate: null,
@@ -74,30 +72,6 @@ const botReducer = produce((draft, action) => {
       };
     }
 
-    case CREATE_BOT: {
-      const newState = {
-        data: draft.data,
-        botActive: false,
-      };
-
-      return newState;
-    }
-    case CREATE_BOT_SUCCESS: {
-      const newState = {
-        botId: action.botId,
-        botActive: false,
-        data: draft.data,
-      };
-      return newState;
-    }
-
-    case CREATE_BOT_ERROR: {
-      return {
-        error: action.error,
-        botActive: false,
-      };
-    }
-
     case DELETE_BOT: {
       draft.removeId = action.removeId;
       return draft;
@@ -121,21 +95,12 @@ const botReducer = produce((draft, action) => {
     }
 
     case ACTIVATE_BOT: {
-      const newState = {
-        isError: false,
-        botActive: false,
-        data: draft.data,
-      };
-
-      return newState;
+      return draft;
     }
     case ACTIVATE_BOT_SUCCESS: {
-      const newState = {
-        data: draft.data,
-        message: action.message,
-        botActive: true,
-      };
-      return newState;
+      draft.message = action.message;
+      draft.botId = action.data;
+      return draft;
     }
 
     case ACTIVATE_BOT_ERROR: {
@@ -184,6 +149,45 @@ const botReducer = produce((draft, action) => {
       } else {
         draft.data[findidx].status = "archived";
       }
+      return draft;
+    }
+
+    // Single bot
+    case SET_BOT:
+      {
+        const { payload } = action;
+        draft.bot = { ...draft.bot, ...payload };
+      }
+      return draft;
+
+    case GET_BOT_SUCCESS: {
+      draft.bot = action.bots;
+      return draft;
+    }
+
+    case CREATE_BOT: {
+      draft.bot = action.data;
+      return draft;
+    }
+    case CREATE_BOT_SUCCESS: {
+      draft.botId = action.botId;
+      return draft;
+    }
+
+    case CREATE_BOT_ERROR: {
+      return {
+        error: action.error,
+        botActive: false,
+      };
+    }
+
+    case EDIT_BOT: {
+      draft.bot = { ...draft.bot, ...action.data};
+      return draft;
+    }
+
+    case EDIT_BOT_SUCCESS: {
+      draft.message = action.bots.message;
       return draft;
     }
 
@@ -258,73 +262,6 @@ function symbolInfoReducer(state = initialState, action) {
   }
 }
 
-function getSingleBotReducer(state = initialState, action) {
-  switch (action.type) {
-    case GET_BOT: {
-      const newState = {
-        ...state,
-        isError: false,
-        data: state.data,
-      };
-
-      return newState;
-    }
-    case GET_BOT_SUCCESS: {
-      const newState = {
-        ...state,
-        isError: false,
-        data: action.bots,
-        message: action.message,
-      };
-      return newState;
-    }
-
-    case GET_BOT_ERROR: {
-      return {
-        ...state,
-        error: action.error,
-        isError: true,
-      };
-    }
-
-    default:
-      return state;
-  }
-}
-
-function editBotReducer(state = initialState, action) {
-  switch (action.type) {
-    case EDIT_BOT: {
-      const newState = {
-        ...state,
-        isError: false,
-        data: action.data,
-      };
-
-      return newState;
-    }
-    case EDIT_BOT_SUCCESS: {
-      const newState = {
-        ...state,
-        isError: false,
-        data: action.data,
-      };
-      return newState;
-    }
-
-    case EDIT_BOT_ERROR: {
-      return {
-        ...state,
-        error: action.error,
-        isError: true,
-      };
-    }
-
-    default:
-      return state;
-  }
-}
-
 function candlestickReducer(state = initialState, action) {
   switch (action.type) {
     case LOAD_CANDLESTICK: {
@@ -362,7 +299,5 @@ export {
   botReducer,
   symbolInfoReducer,
   symbolReducer,
-  getSingleBotReducer,
-  editBotReducer,
   candlestickReducer,
 };

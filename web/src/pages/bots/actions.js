@@ -49,6 +49,15 @@ export const ARCHIVE_BOT = "ARCHIVE_BOT";
 export const ARCHIVE_BOT_SUCCESS = "ARCHIVE_BOT_SUCCESS";
 export const ARCHIVE_BOT_ERROR = "ARCHIVE_BOT_ERROR";
 
+export const SET_BOT = "SET_BOT";
+
+export function setBot(payload) {
+  return {
+    type: SET_BOT,
+    payload,
+  }
+}
+
 /**
  * Create new user
  *
@@ -415,7 +424,7 @@ export function loadCandlestickSucceeded(payload) {
   if (payload.error === 1) {
     addNotification("Some errors encountered", payload.message, "error");
   } else {
-    addNotification("SUCCESS!", payload.message, "success");
+    addNotification("SUCCESS!", "Candlestick data reloaded", "success");
   }
   return {
     type: LOAD_CANDLESTICK_SUCCESS,

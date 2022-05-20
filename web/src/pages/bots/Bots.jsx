@@ -17,6 +17,7 @@ import {
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
 import {
+  getProfit,
   monthAgo,
   setFilterByMonthState,
   setFilterByWeek,
@@ -43,12 +44,6 @@ class Bots extends React.Component {
     this.setState({ startDate: startDate, endDate: endDate });
   };
 
-  componentDidUpdate = (p, s) => {
-    if (this.props?.bots && this.props.bots !== p.bots) {
-      this.computeTotalProfit(this.props.bots);
-    }
-  };
-
   handleChange = (e) => {
     this.setState({
       [e.target.name]: e.target.value,
@@ -70,17 +65,6 @@ class Bots extends React.Component {
       this.props.closeBot(this.state.confirmModal);
     }
     this.setState({ confirmModal: null });
-  };
-
-  getProfit = (base_price, current_price) => {
-    if (!checkValue(base_price) && !checkValue(current_price)) {
-      const percent =
-        ((parseFloat(current_price) - parseFloat(base_price)) /
-          parseFloat(base_price)) *
-        100;
-      return percent.toFixed(2);
-    }
-    return 0;
   };
 
   handleSelection = (e) => {
@@ -137,22 +121,6 @@ class Bots extends React.Component {
     }
   };
 
-  computeTotalProfit = (bots) => {
-    if (bots) {
-      const totalProfit = bots
-        .map((bot) => bot.deal)
-        .reduce((accumulator, currBot) => {
-          let currTotalProfit = this.getProfit(
-            currBot.buy_price,
-            currBot.current_price
-          );
-          return parseFloat(accumulator) + parseFloat(currTotalProfit);
-        }, 0);
-      this.setState({
-        totalProfit: totalProfit.toFixed(2),
-      });
-    }
-  };
 
   handleFilterBy = (e) => {
     const { value } = e.target;
@@ -186,10 +154,10 @@ class Bots extends React.Component {
               <Col sm={3}>
                 <h3>
                   <Badge
-                    color={this.state.totalProfit > 0 ? "success" : "danger"}
+                    color={this.props.totalProfit > 0 ? "success" : "danger"}
                   >
                     <i className="nc-icon nc-bank" />{" "}
-                    {this.state.totalProfit + "%"}
+                    {this.props.totalProfit + "%"}
                   </Badge>
                 </h3>
               </Col>
@@ -258,7 +226,7 @@ class Bots extends React.Component {
                               {!checkValue(x.deal) && (
                                 <Badge
                                   color={
-                                    this.getProfit(
+                                    getProfit(
                                       x.deal.buy_price,
                                       x.deal.current_price
                                     ) > 0
@@ -266,7 +234,7 @@ class Bots extends React.Component {
                                       : "danger"
                                   }
                                 >
-                                  {this.getProfit(
+                                  {getProfit(
                                     x.deal.buy_price,
                                     x.deal.current_price
                                   ) + "%"}

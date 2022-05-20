@@ -156,7 +156,7 @@ class Bot(Account):
             try:
                 order_errors = Deal(bot).open_deal()
             except NotEnoughFunds as e:
-                return jsonResp_error_message(e)
+                return jsonResp_error_message(e.args[0])
 
             if isinstance(order_errors, Response):
                 return order_errors

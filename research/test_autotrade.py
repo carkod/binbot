@@ -11,7 +11,7 @@ class TestAutotrade(BinbotApi):
         self.settings = settings
         self.decimals = self.price_precision(pair)
         current_date = datetime.now().strftime("%Y-%m-%dT%H:%M")
-        self.args = args
+        self.args = args[0]
         self.default_bot = {
             "pair": pair,
             "status": "inactive",
@@ -67,7 +67,10 @@ class TestAutotrade(BinbotApi):
         # and because there is no matching engine endpoint to get market qty
         # So deal base_order should update this to the correct amount
         self.default_bot["base_order_size"] = 1
-        self.default_bot["trailling_deviation"] = self.args[0]
+        try:
+            self.default_bot["trailling_deviation"] = self.args[0]
+        except IndexError:
+            self.default_bot["trailling_deviation"] = float(self.settings["trailling_deviation"])
 
         # Create bot
         create_bot_res = requests.post(url=self.bb_test_bot_url, json=self.default_bot)
