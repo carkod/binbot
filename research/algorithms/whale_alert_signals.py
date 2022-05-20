@@ -13,19 +13,26 @@ class WhaleAlertSignals:
         self.api_key = os.getenv("WHALER_KEY")
         self.whale_alert = WhaleAlert()
         self.telegram_bot = TelegramBot()
-        self.start_time = int(time.time() - 600)
-        self.transaction_count_limit = 1
+        self.transaction_count_limit = 2
+        self.exclude_list = ["USDT", "BUSD", "BTC"]
     
     def get_last_transaction(self):
-        success, transactions, status = self.whale_alert.get_transactions(self.start_time, api_key=self.api_key, limit=self.transaction_count_limit)
+        start_time = int(time.time() - 600)
+        success, transactions, status = self.whale_alert.get_transactions(start_time, api_key=self.api_key, limit=self.transaction_count_limit)
         if success:
-            return transactions[0]
+            if (transactions[0]["amount_usd"] != transactions[1]["amount_usd"]) and transactions[1]["symbol"] not in self.exclude_list:
+                return transactions[1]
+            else:
+                return None
         else:
             return status
 
     def run_bot(self) -> None:
         """Run the bot."""
+        print("Running Whale alert signals...")
         transaction = self.get_last_transaction()
-        msg = f'[{os.getenv("ENV")}] <strong>Whale alert</strong>: {transaction["transaction_type"]} of #{transaction["symbol"]} ({transaction["amount_usd"]} USD) from {transaction["from"]["owner"]} ({transaction["from"]["owner_type"]}) to {transaction["to"]["owner"]} ({transaction["to"]["owner_type"]})\n- https://www.binance.com/en/trade/{transaction["symbol"]}USDT \n- Dashboard trade http://binbot.in/admin/bots/new{transaction["symbol"]}USDT'
-        self.telegram_bot.send_msg(msg)
+        if transaction:
+            msg = f'[{os.getenv("ENV")}] <strong>Whale alert</strong>: {transaction["transaction_type"]} of #{transaction["symbol"]} ({transaction["amount_usd"]} USD) from {transaction["from"]["owner"]} ({transaction["from"]["owner_type"]}) to {transaction["to"]["owner"]} ({transaction["to"]["owner_type"]})\n- https://www.binance.com/en/trade/{transaction["symbol"]}USDT \n- Dashboard trade http://binbot.in/admin/bots/new{transaction["symbol"]}USDT'
+            self.telegram_bot.send_msg(msg)
+        
         pass
