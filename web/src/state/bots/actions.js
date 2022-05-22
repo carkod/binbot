@@ -97,10 +97,3 @@ export function weekAgo() {
   );
   return lastWeek.getTime();
 }
-
-export function monthAgo() {
-  let today = new Date();
-  today.setMonth(today.getMonth() - 1);
-  today.setHours(0, 0, 0, 0);
-  return today.getTime();
-}

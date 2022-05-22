@@ -1,5 +1,6 @@
 import { produce } from "immer";
 import React from "react";
+import { Form } from "react-bootstrap";
 import { connect } from "react-redux";
 import {
   Badge,
@@ -9,13 +10,17 @@ import {
   CardFooter,
   CardTitle,
   Col,
-  Form,
   FormGroup,
   Input,
   Row,
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
-import { getProfit, monthAgo, setFilterByMonthState, setFilterByWeek, weekAgo } from "../../state/bots/actions";
+import {
+  getProfit,
+  setFilterByMonthState,
+  setFilterByWeek,
+  weekAgo,
+} from "../../state/bots/actions";
 import { checkValue } from "../../validations";
 import { closeTestBot, deleteTestBot, getTestBots } from "./actions";
 
@@ -26,13 +31,21 @@ class TestBots extends React.Component {
       confirmModal: null,
       selectedCards: [],
     };
+    this.startDate = React.createRef();
+    this.endDate = React.createRef();
   }
 
   componentDidMount = () => {
-    const startDate = weekAgo();
-    const endDate = new Date().getTime();
+    // Default values for date filtering
+    let startDate = new Date(weekAgo());
+    let endDate = new Date();
+    this.startDate.valueAsDate = startDate;
+    this.endDate.valueAsDate = endDate;
+
+    // Convert to millseconds for endpoint
+    startDate = this.startDate.valueAsNumber;
+    endDate = this.endDate.valueAsNumber;
     this.props.getTestBots({ startDate, endDate });
-    this.setState({ startDate: startDate, endDate: endDate });
   };
 
   handleChange = (e) => {
@@ -111,26 +124,14 @@ class TestBots extends React.Component {
     }
   };
 
-  handleFilterBy = (e) => {
-    const { value } = e.target;
-    let startDate, endDate;
-    if (value === "last-week") {
-      startDate = weekAgo();
-      endDate = new Date().getTime();
-      this.props.getTestBots({ startDate, endDate });
-    } else if (value === "last-month") {
-      startDate = monthAgo();
-      endDate = new Date().getTime();
-      this.props.getTestBots({ startDate, endDate });
-    } else {
-      startDate = undefined;
-      endDate = undefined;
+  handleDateFilters = (e) => {
+    const startDate = this.startDate.valueAsNumber;
+    const endDate = this.endDate.valueAsNumber;
+    if (!checkValue(startDate) && !checkValue(endDate)) {
       this.props.getTestBots();
+    } else {
+      this.props.getTestBots({ startDate, endDate });
     }
-    this.setState({
-      startDate: startDate,
-      endDate: endDate,
-    });
   };
 
   render() {
@@ -140,7 +141,7 @@ class TestBots extends React.Component {
         <div className="content">
           <Form>
             <FormGroup row>
-              <Col sm={3}>
+              <Col sm={2}>
                 <h3>
                   <Badge
                     color={this.props.totalProfit > 0 ? "success" : "danger"}
@@ -150,7 +151,7 @@ class TestBots extends React.Component {
                   </Badge>
                 </h3>
               </Col>
-              <Col sm={3}>
+              <Col sm={2}>
                 <Input
                   bsSize="sm"
                   type="select"
@@ -164,24 +165,34 @@ class TestBots extends React.Component {
                   <option value="select-all">Select all</option>
                 </Input>
               </Col>
-              <Col sm={3}>
+              <Col sm={2}>
                 <Button onClick={this.onSubmitBulkAction}>
                   Apply bulk action
                 </Button>
               </Col>
-              <Col sm={3}>
-                <label>Filter by:</label>
-                <Input
-                  bsSize="sm"
-                  type="select"
-                  name="filterBy"
-                  id="filter-by"
-                  onChange={this.handleFilterBy}
-                >
-                  <option value="last-week">Last week</option>
-                  <option value="last-month">Last month</option>
-                  <option value="show all">Show all</option>
-                </Input>
+              <Col sm={2}>
+                <label htmlFor="startDate">
+                  Filter by start date
+                </label>
+                <Form.Control
+                  type="date"
+                  name="startDate"
+                  // error={errors.date_of_birth}
+                  ref={element => this.startDate = element}
+                  onChange={this.handleDateFilters}
+                />
+              </Col>
+              <Col sm={2}>
+                <label htmlFor="endDate">
+                  Filter by end date
+                </label>
+                <Form.Control
+                  type="date"
+                  name="endDate"
+                  // error={errors.date_of_birth}
+                  onChange={this.handleDateFilters}
+                  ref={element => this.endDate = element}
+                />
               </Col>
             </FormGroup>
           </Form>
@@ -361,8 +372,7 @@ class TestBots extends React.Component {
                                 `/admin/paper-trading/edit/${x._id.$oid}`
                               )
                             }
-                          >
-                          </Button>
+                          ></Button>
                           <Button
                             color="success"
                             title="Select this bot"
@@ -370,8 +380,7 @@ class TestBots extends React.Component {
                             data-index={i}
                             data-id={x._id.$oid}
                             onClick={this.handleSelection}
-                          >
-                          </Button>
+                          ></Button>
                           {x.status !== "active" && (
                             <Button
                               color="secondary"
@@ -387,8 +396,7 @@ class TestBots extends React.Component {
                             color="danger"
                             className="fas fa-trash"
                             onClick={() => this.handleDelete(x._id.$oid)}
-                          >
-                          </Button>
+                          ></Button>
                         </div>
                       </CardFooter>
                     </Card>
@@ -422,7 +430,7 @@ const mapStateToProps = (state) => {
     return {
       bots: bots,
       message: message,
-      totalProfit: totalProfit
+      totalProfit: totalProfit,
     };
   }
 
@@ -434,5 +442,5 @@ export default connect(mapStateToProps, {
   deleteTestBot,
   closeTestBot,
   setFilterByWeek,
-  setFilterByMonthState
+  setFilterByMonthState,
 })(TestBots);
