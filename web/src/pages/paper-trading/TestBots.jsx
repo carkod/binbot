@@ -138,6 +138,9 @@ class TestBots extends React.Component {
     } else {
       this.props.getTestBots({ startDate, endDate });
     }
+    this.setState({
+      dateFilterError: ""
+    });
   };
 
   render() {
@@ -375,21 +378,23 @@ class TestBots extends React.Component {
                           <Button
                             color="info"
                             title="Edit this bot"
-                            className="fas fa-edit"
                             onClick={() =>
                               this.props.history.push(
                                 `/admin/paper-trading/edit/${x._id.$oid}`
                               )
                             }
-                          ></Button>
+                          >
+                            <i className="fas fa-edit" />
+                          </Button>
                           <Button
                             color="success"
                             title="Select this bot"
-                            className="fas fa-check"
                             data-index={i}
                             data-id={x._id.$oid}
                             onClick={this.handleSelection}
-                          ></Button>
+                          >
+                            <i className="fas fa-check" />
+                          </Button>
                           {x.status !== "active" && (
                             <Button
                               color="secondary"
@@ -403,9 +408,10 @@ class TestBots extends React.Component {
                           )}
                           <Button
                             color="danger"
-                            className="fas fa-trash"
                             onClick={() => this.handleDelete(x._id.$oid)}
-                          ></Button>
+                          >
+                            <i className="fas fa-trash" />
+                          </Button>
                         </div>
                       </CardFooter>
                     </Card>
