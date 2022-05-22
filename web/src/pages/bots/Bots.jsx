@@ -10,21 +10,21 @@ import {
   CardFooter,
   CardTitle,
   Col,
-  Form,
   FormGroup,
   Input,
-  Row
+  Row,
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
 import {
   getProfit,
-  monthAgo,
   setFilterByMonthState,
   setFilterByWeek,
-  weekAgo
+  weekAgo,
 } from "../../state/bots/actions";
 import { checkValue } from "../../validations";
 import { archiveBot, closeBot, deleteBot, getBots } from "./actions";
+import { Form } from "react-bootstrap";
+
 class Bots extends React.Component {
   constructor(props) {
     super(props);
@@ -32,16 +32,24 @@ class Bots extends React.Component {
       confirmModal: null,
       selectedCards: [],
       totalProfit: 0,
-      startDate: null,
-      endDate: null
+      dateFilterError: ""
     };
+
+    this.startDate = React.createRef();
+    this.endDate = React.createRef();
   }
 
   componentDidMount = () => {
-    const startDate = weekAgo();
-    const endDate = new Date().getTime();
+    // Default values for date filtering
+    let startDate = new Date(weekAgo());
+    let endDate = new Date();
+    this.startDate.valueAsDate = startDate;
+    this.endDate.valueAsDate = endDate;
+
+    // Convert to millseconds for endpoint
+    startDate = this.startDate.valueAsNumber;
+    endDate = this.endDate.valueAsNumber;
     this.props.getBots({ startDate, endDate });
-    this.setState({ startDate: startDate, endDate: endDate });
   };
 
   handleChange = (e) => {
@@ -121,27 +129,20 @@ class Bots extends React.Component {
     }
   };
 
-
-  handleFilterBy = (e) => {
-    const { value } = e.target;
-    let startDate, endDate;
-    if (value === "last-week") {
-      startDate = weekAgo();
-      endDate = new Date().getTime();
-      this.props.getBots({ startDate, endDate });
-    } else if (value === "last-month") {
-      startDate = monthAgo();
-      endDate = new Date().getTime();
-      this.props.getBots({ startDate, endDate });
-    } else {
-      startDate = undefined;
-      endDate = undefined;
-      this.props.getBots();
+  handleDateFilters = (e) => {
+    const startDate = this.startDate.valueAsNumber;
+    const endDate = this.endDate.valueAsNumber;
+    if (startDate >= endDate) {
+      this.setState({
+        dateFilterError: "Start date must be earlier than end date"
+      });
+      return
     }
-    this.setState({
-      startDate: startDate,
-      endDate: endDate,
-    });
+    if (checkValue(startDate) || checkValue(endDate)) {
+      this.props.getBots();
+    } else {
+      this.props.getBots({ startDate, endDate });
+    }
   };
 
   render() {
@@ -151,7 +152,7 @@ class Bots extends React.Component {
         <div className="content">
           <Form>
             <FormGroup row>
-              <Col sm={3}>
+              <Col sm={2}>
                 <h3>
                   <Badge
                     color={this.props.totalProfit > 0 ? "success" : "danger"}
@@ -161,7 +162,7 @@ class Bots extends React.Component {
                   </Badge>
                 </h3>
               </Col>
-              <Col sm={3}>
+              <Col sm={2}>
                 <Input
                   bsSize="sm"
                   type="select"
@@ -175,24 +176,33 @@ class Bots extends React.Component {
                   <option value="select-all">Select all</option>
                 </Input>
               </Col>
-              <Col sm={3}>
+              <Col sm={2}>
                 <Button onClick={this.onSubmitBulkAction}>
-                  Apply bulk action
+                  Apply action
                 </Button>
               </Col>
-              <Col sm={3}>
-                <label>Filter by:</label>
-                <Input
-                  bsSize="sm"
-                  type="select"
-                  name="filterBy"
-                  id="filter-by"
-                  onChange={this.handleFilterBy}
-                >
-                  <option value="last-week">Last week</option>
-                  <option value="last-month">Last month</option>
-                  <option value="all">Show all</option>
-                </Input>
+              <Col sm={2}>
+                <label htmlFor="startDate">Filter by start date</label>
+                <Form.Control
+                  type="date"
+                  name="startDate"
+                  ref={(element) => (this.startDate = element)}
+                  onBlur={this.handleDateFilters}
+                  isInvalid={!checkValue(this.state.dateFilterError)}
+                />
+              </Col>
+              <Col sm={2}>
+                <label htmlFor="endDate">Filter by end date</label>
+                <Form.Control
+                  type="date"
+                  name="endDate"
+                  onBlur={this.handleDateFilters}
+                  ref={(element) => (this.endDate = element)}
+                  isInvalid={!checkValue(this.state.dateFilterError)}
+                />
+                {!checkValue(this.state.dateFilterError) &&
+                  <Form.Control.Feedback type="invalid">{this.state.dateFilterError}</Form.Control.Feedback>
+                }
               </Col>
             </FormGroup>
           </Form>

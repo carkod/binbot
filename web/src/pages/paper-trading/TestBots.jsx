@@ -127,7 +127,13 @@ class TestBots extends React.Component {
   handleDateFilters = (e) => {
     const startDate = this.startDate.valueAsNumber;
     const endDate = this.endDate.valueAsNumber;
-    if (!checkValue(startDate) && !checkValue(endDate)) {
+    if (startDate >= endDate) {
+      this.setState({
+        dateFilterError: "Start date must be earlier than end date"
+      });
+      return
+    }
+    if (checkValue(startDate) || checkValue(endDate)) {
       this.props.getTestBots();
     } else {
       this.props.getTestBots({ startDate, endDate });
@@ -177,9 +183,9 @@ class TestBots extends React.Component {
                 <Form.Control
                   type="date"
                   name="startDate"
-                  // error={errors.date_of_birth}
                   ref={element => this.startDate = element}
-                  onChange={this.handleDateFilters}
+                  onBlur={this.handleDateFilters}
+                  isInvalid={!checkValue(this.state.dateFilterError)}
                 />
               </Col>
               <Col sm={2}>
@@ -189,10 +195,13 @@ class TestBots extends React.Component {
                 <Form.Control
                   type="date"
                   name="endDate"
-                  // error={errors.date_of_birth}
-                  onChange={this.handleDateFilters}
+                  onBlur={this.handleDateFilters}
                   ref={element => this.endDate = element}
+                  isInvalid={!checkValue(this.state.dateFilterError)}
                 />
+                {!checkValue(this.state.dateFilterError) &&
+                  <Form.Control.Feedback type="invalid">{this.state.dateFilterError}</Form.Control.Feedback>
+                }
               </Col>
             </FormGroup>
           </Form>
