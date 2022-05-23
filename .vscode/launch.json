@@ -26,9 +26,9 @@
       },
       "outFiles": [
         "${workspaceFolder}/web/**/*.js",
-        "!**/node_modules/**"
+        "${workspaceFolder}/web/src/node_modules/**"
       ]
-    },
+   },
     {
       "name": "Python: Research",
       "type": "python",

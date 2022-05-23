@@ -23,6 +23,7 @@ import {
 } from "../../state/bots/actions";
 import { checkValue } from "../../validations";
 import { closeTestBot, deleteTestBot, getTestBots } from "./actions";
+import moment from "moment";
 
 class TestBots extends React.Component {
   constructor(props) {
@@ -38,7 +39,10 @@ class TestBots extends React.Component {
   componentDidMount = () => {
     // Default values for date filtering
     let startDate = new Date(weekAgo());
-    let endDate = new Date();
+    // Temporary fix - get tomorrow's endDate to include today's bot
+    const today = new Date()
+    let endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + 1)
     this.startDate.valueAsDate = startDate;
     this.endDate.valueAsDate = endDate;
 
@@ -142,6 +146,13 @@ class TestBots extends React.Component {
       dateFilterError: ""
     });
   };
+
+  botDuration = (start, end) => {
+    const startTime = moment(start)
+    const endTime = moment(end);
+    const duration = moment(endTime.diff(startTime)).format("m[m] s[s]")
+    return duration
+  }
 
   render() {
     const { bots } = this.props;
@@ -327,6 +338,17 @@ class TestBots extends React.Component {
                                   </p>
                                 </Col>
                               </Row>
+
+                              {!checkValue(x.deal.buy_timestamp) && !checkValue(x.deal.sell_timestamp) && (
+                                <Row>
+                                  <Col md="7">
+                                    Duration
+                                  </Col>
+                                  <Col md="7">
+                                    {this.botDuration(x.deal.buy_timestamp, x.deal.sell_timestamp)}
+                                  </Col>
+                                </Row>
+                              )}
 
                               {x.trailling === "true" && (
                                 <Row>

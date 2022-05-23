@@ -42,7 +42,11 @@ class Bots extends React.Component {
   componentDidMount = () => {
     // Default values for date filtering
     let startDate = new Date(weekAgo());
-    let endDate = new Date();
+    
+    // Temporary fix - get tomorrow's endDate to include today's bot
+    const today = new Date()
+    let endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + 1)
     this.startDate.valueAsDate = startDate;
     this.endDate.valueAsDate = endDate;
 
