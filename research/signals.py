@@ -174,7 +174,9 @@ class ResearchSignals(BinbotApi):
         Refactored autotrade conditions.
         Previously part of process_kline_stream
         1. Checks if we have balance to trade
-        2.
+        2. Check if we need to update websockets
+        3. Check if autotrade is enabled
+        4. Check if test autotrades
         """
         # Check balance to avoid failed autotrades
         check_balance_res = requests.get(url=self.bb_balance_estimate_url)
@@ -262,6 +264,7 @@ class ResearchSignals(BinbotApi):
             symbol = result["k"]["s"]
             ws.symbol = symbol
             data = self._get_candlestick(symbol, self.interval, stats=True)
+            print(f"Signal:{result['k']['s']}")
 
             if len(data["trace"][0]["x"]) > 1:
                 # Update klines database
