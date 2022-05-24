@@ -32,7 +32,7 @@ class WhaleAlertSignals:
         print("Running Whale alert signals...")
         transaction = self.get_last_transaction()
         if transaction:
-            msg = f'[{os.getenv("ENV")}] <strong>Whale alert</strong>: {transaction["transaction_type"]} of #{transaction["symbol"]} ({transaction["amount_usd"]} USD) from {transaction["from"]["owner"]} wallet to {transaction["to"]["owner"]}\n- https://www.binance.com/en/trade/{transaction["symbol"]}USDT \n- Dashboard trade http://binbot.in/admin/bots/new{transaction["symbol"]}USDT'
+            msg = f'[{os.getenv("ENV")}] <strong>#Whale alert</strong>: {transaction["transaction_type"]} of #{transaction["symbol"]} ({transaction["amount_usd"]} USD) from {transaction["from"]["owner"]} wallet to {transaction["to"]["owner"]}\n- https://www.binance.com/en/trade/{transaction["symbol"]}USDT \n- Dashboard trade http://binbot.in/admin/bots/new{transaction["symbol"]}USDT'
             self.telegram_bot.send_msg(msg)
         
         pass

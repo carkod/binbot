@@ -16,14 +16,14 @@ import {
 } from "reactstrap";
 import ConfirmModal from "../../components/ConfirmModal";
 import {
+  botDuration,
   getProfit,
   setFilterByMonthState,
   setFilterByWeek,
   weekAgo,
 } from "../../state/bots/actions";
-import { checkValue } from "../../validations";
+import { checkValue, roundDecimals } from "../../validations";
 import { closeTestBot, deleteTestBot, getTestBots } from "./actions";
-import moment from "moment";
 
 class TestBots extends React.Component {
   constructor(props) {
@@ -40,9 +40,9 @@ class TestBots extends React.Component {
     // Default values for date filtering
     let startDate = new Date(weekAgo());
     // Temporary fix - get tomorrow's endDate to include today's bot
-    const today = new Date()
+    const today = new Date();
     let endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 1)
+    endDate.setDate(endDate.getDate() + 1);
     this.startDate.valueAsDate = startDate;
     this.endDate.valueAsDate = endDate;
 
@@ -133,9 +133,9 @@ class TestBots extends React.Component {
     const endDate = this.endDate.valueAsNumber;
     if (startDate >= endDate) {
       this.setState({
-        dateFilterError: "Start date must be earlier than end date"
+        dateFilterError: "Start date must be earlier than end date",
       });
-      return
+      return;
     }
     if (checkValue(startDate) || checkValue(endDate)) {
       this.props.getTestBots();
@@ -143,16 +143,9 @@ class TestBots extends React.Component {
       this.props.getTestBots({ startDate, endDate });
     }
     this.setState({
-      dateFilterError: ""
+      dateFilterError: "",
     });
   };
-
-  botDuration = (start, end) => {
-    const startTime = moment(start)
-    const endTime = moment(end);
-    const duration = moment(endTime.diff(startTime)).format("m[m] s[s]")
-    return duration
-  }
 
   render() {
     const { bots } = this.props;
@@ -191,31 +184,29 @@ class TestBots extends React.Component {
                 </Button>
               </Col>
               <Col sm={2}>
-                <label htmlFor="startDate">
-                  Filter by start date
-                </label>
+                <label htmlFor="startDate">Filter by start date</label>
                 <Form.Control
                   type="date"
                   name="startDate"
-                  ref={element => this.startDate = element}
+                  ref={(element) => (this.startDate = element)}
                   onBlur={this.handleDateFilters}
                   isInvalid={!checkValue(this.state.dateFilterError)}
                 />
               </Col>
               <Col sm={2}>
-                <label htmlFor="endDate">
-                  Filter by end date
-                </label>
+                <label htmlFor="endDate">Filter by end date</label>
                 <Form.Control
                   type="date"
                   name="endDate"
                   onBlur={this.handleDateFilters}
-                  ref={element => this.endDate = element}
+                  ref={(element) => (this.endDate = element)}
                   isInvalid={!checkValue(this.state.dateFilterError)}
                 />
-                {!checkValue(this.state.dateFilterError) &&
-                  <Form.Control.Feedback type="invalid">{this.state.dateFilterError}</Form.Control.Feedback>
-                }
+                {!checkValue(this.state.dateFilterError) && (
+                  <Form.Control.Feedback type="invalid">
+                    {this.state.dateFilterError}
+                  </Form.Control.Feedback>
+                )}
               </Col>
             </FormGroup>
           </Form>
@@ -338,18 +329,24 @@ class TestBots extends React.Component {
                                   </p>
                                 </Col>
                               </Row>
-
-                              {!checkValue(x.deal.buy_timestamp) && !checkValue(x.deal.sell_timestamp) && (
+                              {!checkValue(x.deal?.buy_timestamp) &&
+                              !checkValue(x.deal?.sell_timestamp) ? (
                                 <Row>
                                   <Col md="7">
-                                    Duration
+                                    <p className="card-category">Duration</p>
                                   </Col>
-                                  <Col md="7">
-                                    {this.botDuration(x.deal.buy_timestamp, x.deal.sell_timestamp)}
+                                  <Col md="5">
+                                    <p className="card-category">
+                                      {botDuration(
+                                        x.deal.sell_timestamp,
+                                        x.deal.buy_timestamp
+                                      )}
+                                    </p>
                                   </Col>
                                 </Row>
+                              ) : (
+                                ""
                               )}
-
                               {x.trailling === "true" && (
                                 <Row>
                                   <Col md="7">
@@ -359,7 +356,8 @@ class TestBots extends React.Component {
                                   </Col>
                                   <Col md="5">
                                     <p className="card-category">
-                                      {x.trailling_deviation + "%"}
+                                      {roundDecimals(x.trailling_deviation) +
+                                        "%"}
                                     </p>
                                   </Col>
                                 </Row>

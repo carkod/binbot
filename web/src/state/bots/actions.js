@@ -1,3 +1,4 @@
+import moment from "moment";
 import { checkValue, intervalOptions } from "../../validations";
 import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../constants";
 
@@ -96,4 +97,11 @@ export function weekAgo() {
     today.getDate() - 7
   );
   return lastWeek.getTime();
+}
+
+export function botDuration (start, end) {
+  const startTime = moment(start)
+  const endTime = moment(end);
+  const duration = moment(endTime.diff(startTime)).format("m[m] s[s]")
+  return duration
 }
