@@ -29,7 +29,6 @@ class Research extends React.Component {
       signal_notification: null,
       activeTab: "controllerTab",
       candlestickSignalFilter: "positive",
-      settings: {},
       selectedBlacklist: "",
       balanceToUseUnmatchError: "",
       minBalanceSizeToUseError: ""
@@ -168,6 +167,18 @@ class Research extends React.Component {
     })
   }
 
+  toggleAutotrade = () => {
+    if (this.props.settings.autotrade === 1) {
+      this.props.setSettingsState({
+        autotrade: 0
+      });
+    } else {
+      this.props.setSettingsState({
+        autotrade: 1
+      });
+    }
+  }
+
   render() {
     return (
       <>
@@ -194,6 +205,7 @@ class Research extends React.Component {
                 handleBlacklist={this.handleBlacklist}
                 saveSettings={this.saveSettings}
                 toggleTrailling={this.toggleTrailling}
+                toggleAutotrade={this.toggleAutotrade}
                 balanceToUseUnmatchError={this.state.balanceToUseUnmatchError}
                 handleBalanceToUseBlur={this.handleBalanceToUseBlur}
                 triggerGbpHedge={this.triggerGbpHedge}

@@ -18,9 +18,9 @@ import {
   Row,
 } from "reactstrap";
 import { useImmer } from "use-immer";
+import SettingsInput from "../../components/SettingsInput";
 import SymbolSearch from "../../components/SymbolSearch";
 import { checkValue } from "../../validations";
-import SettingsInput from "../../components/SettingsInput";
 
 export const ControllerTab = ({
   blacklistData,
@@ -30,6 +30,7 @@ export const ControllerTab = ({
   saveSettings,
   handleBlacklist,
   toggleTrailling,
+  toggleAutotrade,
   handleBalanceToUseBlur,
   balanceToUseUnmatchError,
   handleBalanceSizeToUseBlur,
@@ -78,12 +79,17 @@ export const ControllerTab = ({
                       />
                     </Col>
                     <Col md="3">
-                      <SettingsInput
-                        value={settings.autotrade}
-                        name={"autotrade"}
-                        label={"Allow autotrade? 0 or 1"}
-                        handleChange={handleInput}
-                      />
+                      <label>Autotrade?</label>
+                      <br />
+                      <Button
+                        color={
+                          settings.autotrade === 1 ? "success" : "secondary"
+                        }
+                        name="autotrade"
+                        onClick={toggleAutotrade}
+                      >
+                        {settings.autotrade === 1 ? "On" : "Off"}
+                      </Button>
                     </Col>
                     <Col md="3">
                       <SettingsInput

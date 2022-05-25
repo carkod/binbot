@@ -15,12 +15,11 @@ const SettingsInput = ({
     <FormGroup>
       <Label for={name}>{label}</Label>
       <Input
-        type="input"
         name={name}
         id={name}
         onChange={handleChange}
         onBlur={handleBlur}
-        defaultValue={value}
+        value={value}
         invalid={!checkValue(errorMsg)}
         {...props}
       />
