@@ -357,6 +357,6 @@ class ResearchSignals(BinbotApi):
 
         # If more than 6 hours passed has passed
         # Then we should resume sending signals for given symbol
-        if (float(time()) - float(self.last_processed_kline[symbol])) > 10000:
+        if (float(time()) - float(self.last_processed_kline[symbol])) > 1000:
             del self.last_processed_kline[symbol]
         pass

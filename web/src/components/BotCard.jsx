@@ -209,7 +209,7 @@ export default function BotCard({
             color="info"
             title="Edit this bot"
             onClick={() =>
-              history.push(`/admin/paper-trading/edit/${x._id.$oid}`)
+              history.push(`${history.location.pathname}/edit/${x._id.$oid}`)
             }
           >
             <i className="fas fa-edit" />
