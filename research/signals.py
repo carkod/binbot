@@ -16,7 +16,7 @@ from pattern_detection import chaikin_oscillator, linear_regression, stdev
 from telegram_bot import TelegramBot
 from test_autotrade import TestAutotrade
 from utils import handle_binance_errors
-
+from datetime import datetime
 
 class ResearchSignals(BinbotApi):
     def __init__(self):
@@ -30,6 +30,7 @@ class ResearchSignals(BinbotApi):
         ]  # on top of blacklist
         self.telegram_bot = TelegramBot()
         self.max_request = 950  # Avoid HTTP 411 error by separating streams
+        self.active_symbols = []
 
     def blacklist_coin(self, pair, msg):
         res = requests.post(
@@ -81,6 +82,13 @@ class ResearchSignals(BinbotApi):
         self.blacklist_data = blacklist_data["data"]
         self.interval = self.settings["candlestick_interval"]
         self.max_request = int(self.settings["max_request"])
+
+        # if autrotrade enabled and it's not an already active bot
+        # this avoids running too many useless bots
+        # Temporarily restricting to 1 bot for low funds
+        bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
+        active_bots = handle_binance_errors(bots_res)["data"]
+        self.active_symbols = [bot["pair"] for bot in active_bots]
         pass
 
     def new_tokens(self, projects) -> list:
@@ -251,17 +259,10 @@ class ResearchSignals(BinbotApi):
         if datetime.now().time().hour == 0 and datetime.now().time().minute == 0:
             sleep(3600)
 
-        # if autrotrade enabled and it's not an already active bot
-        # this avoids running too many useless bots
-        # Temporarily restricting to 1 bot for low funds
-        bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
-        active_bots = handle_binance_errors(bots_res)["data"]
-        active_symbols = [bot["pair"] for bot in active_bots]
-
-        if "k" in result and "s" in result["k"] and len(active_symbols) == 0:
+        symbol = result["k"]["s"]
+        if "k" in result and "s" in result["k"] and len(self.active_symbols) == 0 and symbol not in self.last_processed_kline:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
-            symbol = result["k"]["s"]
             ws.symbol = symbol
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
@@ -292,72 +293,70 @@ class ResearchSignals(BinbotApi):
 
             # Average amplitude
             msg = None
+            print(f"[{datetime.now()}] Signal:{result['k']['s']}")
+            value, chaikin_diff = chaikin_oscillator(
+                data["trace"][0], data["volumes"]
+            )
+            slope, intercept = linear_regression(data["trace"][0])
+            sd = stdev(data["trace"][0])
 
-            if symbol not in self.last_processed_kline:
-                print(f"Signal:{result['k']['s']}")
-                value, chaikin_diff = chaikin_oscillator(
-                    data["trace"][0], data["volumes"]
-                )
-                slope, intercept = linear_regression(data["trace"][0])
-                sd = stdev(data["trace"][0])
+            reg_equation = f"{slope}X + {intercept}"
 
-                reg_equation = f"{slope}X + {intercept}"
+            # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
+            candlestick_patterns(
+                data["trace"][0],
+                sd,
+                close_price,
+                open_price,
+                value,
+                chaikin_diff,
+                reg_equation,
+                self._send_msg,
+                self.run_autotrade,
+                symbol,
+                ws,
+                intercept,
+                ma_25
+            )
 
-                # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
-                candlestick_patterns(
-                    data["trace"][0],
-                    sd,
-                    close_price,
-                    open_price,
-                    value,
-                    chaikin_diff,
-                    reg_equation,
-                    self._send_msg,
-                    self.run_autotrade,
-                    symbol,
-                    ws,
-                    intercept,
-                    ma_25
-                )
+            ma_candlestick_jump(
+                close_price,
+                open_price,
+                ma_7,
+                ma_100,
+                ma_25,
+                symbol,
+                sd,
+                value,
+                chaikin_diff,
+                reg_equation,
+                self._send_msg,
+                self.run_autotrade,
+                ws,
+                intercept,
+            )
 
-                ma_candlestick_jump(
-                    close_price,
-                    open_price,
-                    ma_7,
-                    ma_100,
-                    ma_25,
-                    symbol,
-                    sd,
-                    value,
-                    chaikin_diff,
-                    reg_equation,
-                    self._send_msg,
-                    self.run_autotrade,
-                    ws,
-                    intercept,
-                )
+            candlejump_sd(
+                close_price,
+                open_price,
+                ma_7,
+                ma_100,
+                ma_25,
+                symbol,
+                sd,
+                value,
+                chaikin_diff,
+                reg_equation,
+                self._send_msg,
+                self.run_autotrade,
+                ws,
+                intercept,
+            )
 
-                candlejump_sd(
-                    close_price,
-                    open_price,
-                    ma_7,
-                    ma_100,
-                    ma_25,
-                    symbol,
-                    sd,
-                    value,
-                    chaikin_diff,
-                    reg_equation,
-                    self._send_msg,
-                    self.run_autotrade,
-                    ws,
-                    intercept,
-                )
+            self.last_processed_kline[symbol] = time()
 
-                self.last_processed_kline[symbol] = time()
-
-            # If more than 6 hours passed has passed
-            # Then we should resume sending signals for given symbol
-            if (float(time()) - float(self.last_processed_kline[symbol])) > 10000:
-                del self.last_processed_kline[symbol]
+        # If more than 6 hours passed has passed
+        # Then we should resume sending signals for given symbol
+        if (float(time()) - float(self.last_processed_kline[symbol])) > 10000:
+            del self.last_processed_kline[symbol]
         pass
