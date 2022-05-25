@@ -264,7 +264,6 @@ class ResearchSignals(BinbotApi):
             symbol = result["k"]["s"]
             ws.symbol = symbol
             data = self._get_candlestick(symbol, self.interval, stats=True)
-            print(f"Signal:{result['k']['s']}")
 
             if len(data["trace"][0]["x"]) > 1:
                 # Update klines database
@@ -295,6 +294,7 @@ class ResearchSignals(BinbotApi):
             msg = None
 
             if symbol not in self.last_processed_kline:
+                print(f"Signal:{result['k']['s']}")
                 value, chaikin_diff = chaikin_oscillator(
                     data["trace"][0], data["volumes"]
                 )
