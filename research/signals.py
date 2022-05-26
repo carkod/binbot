@@ -1,6 +1,7 @@
 import json
 import random
 import threading
+import math
 from datetime import datetime
 from time import sleep, time
 
@@ -142,6 +143,8 @@ class ResearchSignals(BinbotApi):
 
         self.load_data()
         raw_symbols = self.ticker_price()
+        if not raw_symbols:
+            print("raw_symbols here", raw_symbols)
         black_list = [x["pair"] for x in self.blacklist_data]
 
         for s in raw_symbols:
@@ -165,12 +168,12 @@ class ResearchSignals(BinbotApi):
         for market in list_markets:
             params.append(f"{market.lower()}@kline_{self.interval}")
 
-        stream_1 = params[: self.max_request]
-        self._run_streams(stream_1, 1)
-
-        if len(params) > self.max_request:
-            stream_2 = params[(self.max_request + 1) :]
-            self._run_streams(stream_2, 2)
+        total_threads = math.floor(len(list_markets) / self.max_request) + (1 if len(list_markets) % self.max_request > 0 else 0)
+        for index in range(total_threads - 1):
+            stream = params[(self.max_request + 1) :]
+            if index == 0:
+                stream = params[:self.max_request]
+            self._run_streams(stream, index)
 
     def post_error(self, msg):
         res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
@@ -260,7 +263,7 @@ class ResearchSignals(BinbotApi):
             sleep(3600)
 
         symbol = result["k"]["s"]
-        if "k" in result and "s" in result["k"] and len(self.active_symbols) == 0 and symbol not in self.last_processed_kline:
+        if symbol and "k" in result and "s" in result["k"] and len(self.active_symbols) == 0 and symbol not in self.last_processed_kline:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             ws.symbol = symbol
@@ -357,6 +360,6 @@ class ResearchSignals(BinbotApi):
 
         # If more than 6 hours passed has passed
         # Then we should resume sending signals for given symbol
-        if (float(time()) - float(self.last_processed_kline[symbol])) > 1000:
+        if (float(time()) - float(self.last_processed_kline[symbol])) > 3500:
             del self.last_processed_kline[symbol]
         pass
