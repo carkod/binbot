@@ -192,7 +192,7 @@ export default function BotCard({
                 </Col>
                 <Col md="5">
                   <p className="card-category">
-                    {botDuration(x.deal.sell_timestamp, x.deal.buy_timestamp)}
+                    {botDuration(x.deal.buy_timestamp, x.deal.sell_timestamp)}
                   </p>
                 </Col>
               </Row>
