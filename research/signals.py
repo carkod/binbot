@@ -284,7 +284,7 @@ class ResearchSignals(BinbotApi):
             ma_7 = data["trace"][3]["y"]
 
             if len(ma_100) == 0:
-                msg = f"Not enough data to do research on {symbol}"
+                msg = f"    {symbol}"
                 print(msg)
                 if random.randint(0, 20) == 15:
                     print("Cleaning db of incomplete data...")
@@ -292,6 +292,7 @@ class ResearchSignals(BinbotApi):
                         url=self.bb_klines, params={"symbol": symbol}
                     )
                     result = handle_binance_errors(delete_klines_res)
+                    self.last_processed_kline[symbol] = time()
                 return
 
             # Average amplitude

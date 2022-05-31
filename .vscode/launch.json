@@ -16,7 +16,7 @@
       "jinja": true,
     },
     {
-      "type": "pwa-chrome",
+      "type": "chrome",
       "request": "launch",
       "name": "Web",
       "url": "http://localhost:3000",
