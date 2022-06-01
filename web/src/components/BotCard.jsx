@@ -14,6 +14,20 @@ import {
 import { botDuration, getProfit } from "../state/bots/actions";
 import { checkValue, roundDecimals } from "../validations";
 
+const renderSellTimestamp = (bot) => {
+  if (!checkValue(bot.deal?.buy_timestamp)) {
+    let sell_timestamp = new Date();
+    if (!checkValue(bot.deal.sell_timestamp)) {
+      sell_timestamp = bot.deal.sell_timestamp;
+      return (
+        <>
+          {botDuration(bot.deal.buy_timestamp, sell_timestamp)}
+        </>
+      )
+    }
+  }
+  return ""
+}
 export default function BotCard({
   tabIndex,
   x,
@@ -192,7 +206,7 @@ export default function BotCard({
                 </Col>
                 <Col md="5">
                   <p className="card-category">
-                    {botDuration(x.deal.buy_timestamp, x.deal.sell_timestamp)}
+                    {renderSellTimestamp(x)}
                   </p>
                 </Col>
               </Row>

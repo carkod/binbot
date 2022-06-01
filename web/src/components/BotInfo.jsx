@@ -9,6 +9,7 @@ const renderSellTimestamp = (bot) => {
   if (!checkValue(bot.deal?.buy_timestamp)) {
     let sell_timestamp = new Date();
     if (!checkValue(bot.deal.sell_timestamp)) {
+      sell_timestamp = bot.deal.sell_timestamp;
       return (
         <ListGroupItem className="d-flex justify-content-between align-items-start">
           <strong>duration</strong>{botDuration(bot.deal.buy_timestamp, sell_timestamp)}

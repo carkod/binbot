@@ -19,7 +19,7 @@ export const botCandlestick = (data, bot, deal = null) => {
   takeProfit = data.trace[0].close[data.trace[0].close.length - 1];
   takeProfitTime = data.trace[0].x[data.trace[0].x.length - 1];
 
-  if (bot.orders.length > 0) {
+  if (bot.orders?.length > 0) {
     const baseOrder = bot.orders.find((x) => x.deal_type === "base_order");
     if (!checkValue(baseOrder)) {
       currentPrice = baseOrder.price;

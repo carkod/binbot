@@ -97,7 +97,7 @@ export function weekAgo() {
 export function botDuration(start, end) {
   const startTime = moment(start);
   const endTime = moment(end);
-  const duration = moment.duration(startTime.diff(endTime));
+  const duration = moment.duration(endTime.diff(startTime));
 
   let days = Math.floor(duration.asDays());
   duration.subtract(moment.duration(days, "days"));

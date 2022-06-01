@@ -81,7 +81,7 @@ class Bot(Account):
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
             params["_id"]["$lte"] = lte_tp_id
 
-        sort = [("_id", -1), ("pair", 1)]
+        sort = [("status", 1), ("_id", -1), ("pair", 1)]
         bot = bot_schema.get_test_bots(sort, params)
         if bot:
             resp = jsonResp({"message": "Successfully found a bot!", "data": bot})
