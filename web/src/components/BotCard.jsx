@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { useHistory } from "react-router-dom";
 import {
 	Badge,
-	Button,
 	Card,
 	CardBody,
 	CardFooter,
@@ -13,6 +12,7 @@ import {
 } from "reactstrap";
 import { botDuration, getProfit } from "../state/bots/actions";
 import { checkValue, roundDecimals } from "../validations";
+import { Button } from "react-bootstrap";
 
 const renderSellTimestamp = (bot) => {
   if (!checkValue(bot.deal?.buy_timestamp)) {
@@ -220,36 +220,36 @@ export default function BotCard({
         <hr />
         <div className="u-space-between">
           <Button
-            color="info"
+            variant="info"
             title="Edit this bot"
             onClick={() =>
               history.push(`${history.location.pathname}/edit/${x._id.$oid}`)
             }
           >
-            <i className="fas fa-edit" />
+            <i className="fas fa-edit u-disable-events" />
           </Button>
           <Button
-            color="success"
+            variant="success"
             title="Select this bot"
             data-index={tabIndex}
             data-id={x._id.$oid}
             onClick={handleSelection}
           >
-            <i className="fas fa-check" />
+            <i className="fa fa-check u-disable-events" aria-hidden="true" />
           </Button>
           {x.status !== "active" && (
             <Button
-              color="secondary"
+              variant="secondary"
               title="Archive bot"
               onClick={() => {
                 archiveBot(x._id.$oid);
               }}
             >
-              <i className="fas fa-folder" />
+              <i className="fas fa-folder u-disable-events" />
             </Button>
           )}
-          <Button color="danger" onClick={() => handleDelete(x._id.$oid)}>
-            <i className="fas fa-trash" />
+          <Button variant="danger" onClick={() => handleDelete(x._id.$oid)}>
+            <i className="fas fa-trash u-disable-events" />
           </Button>
         </div>
       </CardFooter>
