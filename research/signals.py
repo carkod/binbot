@@ -169,11 +169,19 @@ class ResearchSignals(BinbotApi):
             params.append(f"{market.lower()}@kline_{self.interval}")
 
         total_threads = math.floor(len(list_markets) / self.max_request) + (1 if len(list_markets) % self.max_request > 0 else 0)
-        for index in range(total_threads - 1):
-            stream = params[(self.max_request + 1) :]
-            if index == 0:
-                stream = params[:self.max_request]
-            self._run_streams(stream, index)
+        # It's not possible to have websockets with more 950 pairs
+        # So set default to max 950
+        stream = params[:950]
+
+        if total_threads > 1 or not self.max_request:
+            for index in range(total_threads - 1):
+                stream = params[(self.max_request + 1) :]
+                if index == 0:
+                    stream = params[:self.max_request]
+                self._run_streams(stream, index)
+        else:
+            self._run_streams(stream, 1)
+        
 
     def post_error(self, msg):
         res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})

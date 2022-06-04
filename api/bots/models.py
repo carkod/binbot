@@ -38,7 +38,7 @@ class Bot(Account):
             if thread.name == "market_updates_thread" and hasattr(thread, "_target"):
                 thread._target.__self__.markets_streams.close()
                 market_update_thread()
-        print("Finished restarting market_updates")
+        print("Finished restarting market_updates. Current #threads", threading.enumerate())
         return
 
     def get(self):
