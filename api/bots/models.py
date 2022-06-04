@@ -33,10 +33,14 @@ class Bot(Account):
         Restart websockets threads after list of active bots altered
         """
         print("Restarting market_updates")
+        global stop_threads
+        stop_threads = True
         # Notify market updates websockets to update
         for thread in threading.enumerate():
             if thread.name == "market_updates_thread" and hasattr(thread, "_target"):
                 thread._target.__self__.markets_streams.close()
+                global stop_threads
+                stop_threads = False
                 market_update_thread()
         print("Finished restarting market_updates. Current #threads", threading.enumerate())
         return
