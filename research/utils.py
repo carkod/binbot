@@ -35,6 +35,7 @@ def handle_binance_errors(response: Response):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
+    response.raise_for_status()
     # Reduce speed of requests to avoid rate limits
     try:
         response.json()

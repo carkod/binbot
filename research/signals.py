@@ -32,6 +32,22 @@ class ResearchSignals(BinbotApi):
         self.telegram_bot = TelegramBot()
         self.max_request = 950  # Avoid HTTP 411 error by separating streams
         self.active_symbols = []
+        self.thread_ids = []
+    
+    def _restart_websockets(self):
+        """
+        Restart websockets threads after list of active bots altered
+        """
+        print("Starting thread cleanup")
+        global stop_threads
+        stop_threads = True
+        # Notify market updates websockets to update
+        for thread in threading.enumerate():
+            if hasattr(thread, "tag") and thread.name == "market_updates" and hasattr(thread, "_target"):
+                thread._target.__self__.markets_streams.close()
+                stop_threads = False
+                print("Cleaning threads. #threads: ", threading.enumerate())
+        pass
 
     def blacklist_coin(self, pair, msg):
         res = requests.post(
@@ -135,6 +151,7 @@ class ResearchSignals(BinbotApi):
             target=ws.run_forever,
             kwargs={"ping_interval": 60},
         )
+        worker_thread.tag = "market_updates"
         worker_thread.start()
 
     def start_stream(self, previous_ws=None):
@@ -250,6 +267,7 @@ class ResearchSignals(BinbotApi):
         # API restart 30 secs + 15
         print("Restarting in 45 seconds...")
         sleep(45)
+        self._restart_websockets()
         self.start_stream(ws)
 
     def on_message(self, ws, message):

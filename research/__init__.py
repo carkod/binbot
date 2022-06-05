@@ -41,7 +41,6 @@ if __name__ == "__main__":
         # This is here to simulate application activity (which keeps the main thread alive).
         while True:
             time.sleep(5)
-            print("stop_threads? ", stop_threads)
             if stop_threads:
                 break
     except (KeyboardInterrupt, SystemExit):
