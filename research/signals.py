@@ -295,22 +295,15 @@ class ResearchSignals(BinbotApi):
             ws.symbol = symbol
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
-            if len(data["trace"][0]["x"]) > 1:
-                # Update klines database
-                payload = {
-                    "data": result["k"],
-                    "symbol": result["k"]["s"],
-                    "interval": self.interval,
-                }
-                klines_res = requests.put(url=self.bb_klines, json=payload)
-                # Not handling binance errors to avoid cluttering the log
+            if "error" in data and data["error"] == 1:
+                return
 
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
             ma_7 = data["trace"][3]["y"]
 
             if len(ma_100) == 0:
-                msg = f"    {symbol}"
+                msg = f"Not enough ma_100 data: {symbol}"
                 print(msg)
                 if random.randint(0, 20) == 15:
                     print("Cleaning db of incomplete data...")

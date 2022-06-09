@@ -27,8 +27,18 @@ class KlinesSchema:
     def create(self, data):
         try:
             result = current_app.db.klines.insert_one(
-                {"_id": self._id, [self.interval]: data}
+                {"_id": self._id, self.interval: data}
             )
+            return result
+        except Exception as e:
+            return e
+    
+    def replace_klines(self, data):
+        try:
+            current_app.db.klines.update_one(
+                {"_id": self._id} , {"$set": {self.interval: data}}
+            )
+            result = current_app.db.klines.find_one({"_id": self._id})
             return result
         except Exception as e:
             return e
@@ -46,11 +56,11 @@ class KlinesSchema:
                 # If found timestamp match - update
                 current_app.db.klines.update_one(
                     {"_id": self._id},
-                    {"$pop": {[self.interval]: 1}},
+                    {"$pop": {self.interval: 1}},
                 )
                 update_kline = current_app.db.klines.update_one(
                     {"_id": self._id},
-                    {"$push": {[self.interval]: new_data}},
+                    {"$push": {self.interval: new_data}},
                 )
             else:
                 # If no timestamp match - push
@@ -58,7 +68,7 @@ class KlinesSchema:
                     {"_id": self._id},
                     {
                         "$push": {
-                            [self.interval]: {
+                            self.interval: {
                                 "$each": [new_data],
                             }
                         }
@@ -70,7 +80,7 @@ class KlinesSchema:
             return e
 
     def delete_klines(self):
-        result = current_app.db.klines.delete_one({"_id": self._id})
+        result = current_app.db.klines.update_one({"_id": self._id})
         return result
 
 
@@ -88,13 +98,11 @@ class Candlestick(BinbotApi):
         returns
         df [Pandas dataframe]
         """
-        print("Cleaning db of incomplete data...")
-        self.delete_klines()
+        print("Requesting and Cleaning db of incomplete data...")
         data = self.request(url=self.candlestick_url, params=params)
-        print("There are gaps in the candlestick data, requesting data from Binance")
-        KlinesSchema(params["symbol"], params["interval"], data).create()
-        klines = current_app.db.klines.find_one({"_id": params["symbol"]})
-        kline_df = pd.DataFrame(klines[self.interval])
+        klines_schema = KlinesSchema(params["symbol"], params["interval"], params["limit"])
+        klines = klines_schema.replace_klines(data)
+        kline_df = pd.DataFrame(klines[params["interval"]])
         return kline_df
 
     def check_gaps(self, df, params):
@@ -120,8 +128,8 @@ class Candlestick(BinbotApi):
             print(e)
         # If true, no gaps
         try:
-            no_gaps = (gaps_check[1] == gaps_check).all()
-            if not no_gaps and check_latest:
+            no_gaps = gaps_check.all()
+            if not bool(no_gaps) and check_latest:
                 kline_df = self.delete_and_create_klines(params)
         except IndexError as e:
             print("Check gaps Index Error", e)
@@ -158,8 +166,6 @@ class Candlestick(BinbotApi):
             klines = self.request(url=self.candlestick_url, params=params)
             print("Requested candlestick data from Binance API")
             df = pd.DataFrame(klines)
-            # Check time series gaps before returning the list
-            df = self.check_gaps(df, params)
             dates = df[0].tolist()
             return df, dates
 
@@ -192,7 +198,7 @@ class Candlestick(BinbotApi):
                 if "msg" in data:
                     raise Exception(data["msg"])
 
-                klines_schema.create(data)
+                klines_schema.replace_klines(data)
                 klines = current_app.db.klines.find_one({"_id": params["symbol"]})
             except DuplicateKeyError:
                 resp = jsonResp_error_message(f"Duplicate key {params['symbol']}")
@@ -204,18 +210,14 @@ class Candlestick(BinbotApi):
             if klines:
                 try:
                     df = pd.DataFrame(klines[params["interval"]])
-                except ValueError as e:
-                    klines = self.delete_and_create_klines(params)
-                    df = pd.DataFrame(klines[params["interval"]])
-                except KeyError as e:
-                    klines = self.request(url=self.candlestick_url, params=params)
-                    print("Requested candlestick data from Binance API")
-                    df = pd.DataFrame(klines)
+                    df = self.check_gaps(df, params)
+                except Exception as e:
+                    print("Error converting to dataframe, deleting and creating new klines", e)
+                    df = self.delete_and_create_klines(params)
 
-                df = self.check_gaps(df, params)
                 dates = df[0].tolist()
             else:
-                df = []
+                df = pd.DataFrame([])
                 dates = []
             return df, dates
 
@@ -387,7 +389,7 @@ class Candlestick(BinbotApi):
             },
         )
 
-        if df.empty and len(dates) == 0:
+        if df.empty or len(dates) == 0:
             return jsonResp_error_message(f"There is not enough data for symbol {symbol}")
 
         trace = self.candlestick_trace(df, dates)
