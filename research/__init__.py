@@ -8,6 +8,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from algorithms.new_tokens import NewTokens
 from algorithms.whale_alert_signals import WhaleAlertSignals
 from signals import ResearchSignals
+from apis import ThreeCommasApi
+
 
 if os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()
@@ -24,6 +26,15 @@ if os.getenv("ENV") != "ci":
         timezone="Europe/London",
         trigger="interval",
         minutes=10,
+    )
+
+    three_c_api = ThreeCommasApi()
+    three_c_api.run()
+    scheduler.add_job(
+        func=three_c_api.run,
+        timezone="Europe/London",
+        trigger="interval",
+        hours=12,
     )
 
     scheduler.start()

@@ -120,4 +120,3 @@ class Controller:
         except TypeError as e:
             resp = jsonResp_error_message(f"Data validation error: {e}")
         return resp
-

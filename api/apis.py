@@ -6,7 +6,6 @@ from time import time
 from requests import get, request
 from api.tools.handle_error import handle_binance_errors
 
-
 class BinanceApi:
     """
     Binance API URLs

@@ -1,18 +1,28 @@
 import hashlib
 import hmac
 import os
-from datetime import datetime
 from decimal import Decimal
 from urllib.parse import urlencode
 
 from requests import Session, get
+from telegram_bot import TelegramBot
 
 from utils import handle_binance_errors
 from dotenv import load_dotenv
 from random import randrange
+from py3cw.request import Py3CW
+
 
 load_dotenv()
 
+class ThreeCommasApiError:
+    """3commas.io API error"""
+
+    def __init__(self, status):
+        self.status = status
+
+    def __str__(self):
+        return "APIError: status={}".format(self.status)
 
 class BinanceApi:
     """
@@ -231,26 +241,56 @@ class BinbotApi(BinanceApi):
         return data
 
 
-class CoinBaseApi:
-    """
-    Currency and Cryptocurrency conversion service
-    """
 
-    BASE = "https://api.coinbase.com/v2"
-    EXG_URL = f"{BASE}/prices"
+class ThreeCommasApi:
 
-    def get_conversion(self, base="BTC", quote="GBP", time=datetime.now()):
+    def __init__(self) -> None:
+        self.telegram_bot = TelegramBot()
+        pass
 
-        params = {
-            "apikey": os.environ["COINAPI_KEY"],
-            "date": time.strftime("%Y-%m-%d"),
-        }
-        url = f"{self.EXG_URL}/{base}-{quote}/spot"
-        data = get(url, params).json()
-        try:
-            data["data"]["amount"]
-        except KeyError:
-            print(data)
+    def get_marketplace_presets(self):
+        p3cw = Py3CW(
+            key=os.environ["3C_API_KEY"],
+            secret=os.environ["3C_SECRET"]
+        )
+        error, data = p3cw.request(
+            entity='marketplace',
+            action="presets",
+            payload={
+                "sort_direction": "asc",
+                "bot_strategy": "long",
+                "profit_per_day_from": 1,
+            }
+        )
+        if error:
+            raise ThreeCommasApiError(error)
+        else:
+            return data["bots"]
 
-        rate = float(data["data"]["amount"])
-        return rate
+    def get_marketplace_item(self):
+        p3cw = Py3CW(
+            key=os.environ["3C_API_KEY"],
+            secret=os.environ["3C_SECRET"]
+        )
+        error, data = p3cw.request(
+            entity='marketplace',
+            action="items",
+            payload={
+                "sort_direction": "asc",
+                "bot_strategy": "long",
+            }
+        )
+        if error:
+            raise ThreeCommasApiError(error)
+        else:
+            return data["bots"]
+
+    def run(self):
+        data = self.get_marketplace_presets()
+        for s in data:
+            if s["copies"] > 1 and float(s["profit"]["amount"]) > 8:
+                chart_data = s["profit"]["chart_data"]
+
+                msg = f'[{os.getenv("ENV")}] <strong>#Preset portfolio</strong>:\n- {s["name"]} \n- Portfolio: {", ".join(s["currencies"])} \n- Monthly return: {s["profit"]["amount"]} per {s["profit"]["period"]} \n- Last day return: {chart_data[len(chart_data) - 1]}'
+
+                self.telegram_bot.send_msg(msg)
