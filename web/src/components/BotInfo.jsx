@@ -2,8 +2,26 @@ import React from "react";
 import { Card, CardBody, CardHeader, CardTitle, ListGroup, ListGroupItem, Table } from "reactstrap";
 import { checkValue } from "../validations";
 import moment from "moment";  
+import { botDuration } from "../state/bots/actions";
+
+
+const renderSellTimestamp = (bot) => {
+  if (!checkValue(bot.deal?.buy_timestamp)) {
+    let sell_timestamp = new Date();
+    if (!checkValue(bot.deal.sell_timestamp)) {
+      sell_timestamp = bot.deal.sell_timestamp;
+      return (
+        <ListGroupItem className="d-flex justify-content-between align-items-start">
+          <strong>duration</strong>{botDuration(bot.deal.buy_timestamp, sell_timestamp)}
+        </ListGroupItem>
+      )
+    }
+  }
+  return ""
+}
 
 export default function BotInfo({ bot }) {
+  
   return (
     <Card>
       <CardHeader>
@@ -65,7 +83,8 @@ export default function BotInfo({ bot }) {
                   </ListGroup>
                 )
               }
-            } )}
+            })}
+            {renderSellTimestamp(bot)}
           </ListGroup>
           </div>
         )}

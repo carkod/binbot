@@ -16,7 +16,7 @@
       "jinja": true,
     },
     {
-      "type": "pwa-chrome",
+      "type": "chrome",
       "request": "launch",
       "name": "Web",
       "url": "http://localhost:3000",
@@ -26,9 +26,9 @@
       },
       "outFiles": [
         "${workspaceFolder}/web/**/*.js",
-        "!**/node_modules/**"
+        "${workspaceFolder}/web/src/node_modules/**"
       ]
-    },
+   },
     {
       "name": "Python: Research",
       "type": "python",

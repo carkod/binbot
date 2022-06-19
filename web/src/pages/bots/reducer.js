@@ -78,9 +78,11 @@ const botReducer = produce((draft, action) => {
     }
 
     case DELETE_BOT_SUCCESS:
-      draft.bots = draft.bots.filter(
+      let bots = draft.bots.filter(
         (x) => !x._id.$oid.includes(draft.removeId)
       );
+      draft.bots = bots;
+      draft.totalProfit = computeTotalProfit(bots);
       return draft;
 
     case DELETE_BOT_ERROR: {

@@ -1,21 +1,15 @@
 import { produce } from "immer";
 import React from "react";
+import { Form } from "react-bootstrap";
 import { connect } from "react-redux";
-import {
-  Badge,
-  Button,
-  Card,
-  CardBody,
-  CardFooter,
-  CardTitle,
-  Col,
-  Form,
-  FormGroup,
-  Input,
-  Row,
-} from "reactstrap";
+import { Badge, Button, Col, FormGroup, Input, Row } from "reactstrap";
+import BotCard from "../../components/BotCard";
 import ConfirmModal from "../../components/ConfirmModal";
-import { getProfit, monthAgo, setFilterByMonthState, setFilterByWeek, weekAgo } from "../../state/bots/actions";
+import {
+  setFilterByMonthState,
+  setFilterByWeek,
+  weekAgo,
+} from "../../state/bots/actions";
 import { checkValue } from "../../validations";
 import { closeTestBot, deleteTestBot, getTestBots } from "./actions";
 
@@ -26,13 +20,24 @@ class TestBots extends React.Component {
       confirmModal: null,
       selectedCards: [],
     };
+    this.startDate = React.createRef();
+    this.endDate = React.createRef();
   }
 
   componentDidMount = () => {
-    const startDate = weekAgo();
-    const endDate = new Date().getTime();
+    // Default values for date filtering
+    let startDate = new Date(weekAgo());
+    // Temporary fix - get tomorrow's endDate to include today's bot
+    const today = new Date();
+    let endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + 1);
+    this.startDate.valueAsDate = startDate;
+    this.endDate.valueAsDate = endDate;
+
+    // Convert to millseconds for endpoint
+    startDate = this.startDate.valueAsNumber;
+    endDate = this.endDate.valueAsNumber;
     this.props.getTestBots({ startDate, endDate });
-    this.setState({ startDate: startDate, endDate: endDate });
   };
 
   handleChange = (e) => {
@@ -111,25 +116,22 @@ class TestBots extends React.Component {
     }
   };
 
-  handleFilterBy = (e) => {
-    const { value } = e.target;
-    let startDate, endDate;
-    if (value === "last-week") {
-      startDate = weekAgo();
-      endDate = new Date().getTime();
-      this.props.getTestBots({ startDate, endDate });
-    } else if (value === "last-month") {
-      startDate = monthAgo();
-      endDate = new Date().getTime();
-      this.props.getTestBots({ startDate, endDate });
-    } else {
-      startDate = undefined;
-      endDate = undefined;
+  handleDateFilters = (e) => {
+    const startDate = this.startDate.valueAsNumber;
+    const endDate = this.endDate.valueAsNumber;
+    if (startDate >= endDate) {
+      this.setState({
+        dateFilterError: "Start date must be earlier than end date",
+      });
+      return;
+    }
+    if (checkValue(startDate) || checkValue(endDate)) {
       this.props.getTestBots();
+    } else {
+      this.props.getTestBots({ startDate, endDate });
     }
     this.setState({
-      startDate: startDate,
-      endDate: endDate,
+      dateFilterError: "",
     });
   };
 
@@ -140,7 +142,7 @@ class TestBots extends React.Component {
         <div className="content">
           <Form>
             <FormGroup row>
-              <Col sm={3}>
+              <Col sm={2}>
                 <h3>
                   <Badge
                     color={this.props.totalProfit > 0 ? "success" : "danger"}
@@ -150,7 +152,7 @@ class TestBots extends React.Component {
                   </Badge>
                 </h3>
               </Col>
-              <Col sm={3}>
+              <Col sm={2}>
                 <Input
                   bsSize="sm"
                   type="select"
@@ -164,24 +166,35 @@ class TestBots extends React.Component {
                   <option value="select-all">Select all</option>
                 </Input>
               </Col>
-              <Col sm={3}>
+              <Col sm={2}>
                 <Button onClick={this.onSubmitBulkAction}>
                   Apply bulk action
                 </Button>
               </Col>
-              <Col sm={3}>
-                <label>Filter by:</label>
-                <Input
-                  bsSize="sm"
-                  type="select"
-                  name="filterBy"
-                  id="filter-by"
-                  onChange={this.handleFilterBy}
-                >
-                  <option value="last-week">Last week</option>
-                  <option value="last-month">Last month</option>
-                  <option value="show all">Show all</option>
-                </Input>
+              <Col sm={2}>
+                <label htmlFor="startDate">Filter by start date</label>
+                <Form.Control
+                  type="date"
+                  name="startDate"
+                  ref={(element) => (this.startDate = element)}
+                  onBlur={this.handleDateFilters}
+                  isInvalid={!checkValue(this.state.dateFilterError)}
+                />
+              </Col>
+              <Col sm={2}>
+                <label htmlFor="endDate">Filter by end date</label>
+                <Form.Control
+                  type="date"
+                  name="endDate"
+                  onBlur={this.handleDateFilters}
+                  ref={(element) => (this.endDate = element)}
+                  isInvalid={!checkValue(this.state.dateFilterError)}
+                />
+                {!checkValue(this.state.dateFilterError) && (
+                  <Form.Control.Feedback type="invalid">
+                    {this.state.dateFilterError}
+                  </Form.Control.Feedback>
+                )}
               </Col>
             </FormGroup>
           </Form>
@@ -189,209 +202,15 @@ class TestBots extends React.Component {
             {!checkValue(bots)
               ? bots.map((x, i) => (
                   <Col key={i} sm="6" md="4" lg="3">
-                    <Card
+                    <BotCard
                       tabIndex={i}
-                      className={
-                        this.state.selectedCards.includes(x._id.$oid)
-                          ? "is-selected card-stats"
-                          : "card-stats"
-                      }
-                    >
-                      <CardBody>
-                        <Row>
-                          <Col md="7" xs="12">
-                            <div className="stats">
-                              <CardTitle tag="h5" className="card-title">
-                                {x.pair}
-                              </CardTitle>
-                            </div>
-                          </Col>
-                          <Col md="5" xs="12">
-                            <CardTitle
-                              tag="h5"
-                              className="card-title u-uppercase"
-                            >
-                              {!checkValue(x.deal) && (
-                                <Badge
-                                  color={
-                                    getProfit(
-                                      x.deal.buy_price,
-                                      x.deal.current_price
-                                    ) > 0
-                                      ? "success"
-                                      : "danger"
-                                  }
-                                >
-                                  {getProfit(
-                                    x.deal.buy_price,
-                                    x.deal.current_price
-                                  ) + "%"}
-                                </Badge>
-                              )}
-                            </CardTitle>
-                          </Col>
-                        </Row>
-                        <Row className="u-align-baseline">
-                          <Col md="7" xs="12">
-                            <div className="stats">
-                              <p className="card-category">{x.name}</p>
-                            </div>
-                          </Col>
-                          <Col md="5" xs="12">
-                            <div className="stats">
-                              <Badge
-                                color={
-                                  x.status === "active"
-                                    ? "success"
-                                    : x.status === "error"
-                                    ? "warning"
-                                    : x.status === "completed"
-                                    ? "info"
-                                    : "secondary"
-                                }
-                              >
-                                {!checkValue(x.status) &&
-                                  x.status.toUpperCase()}
-                              </Badge>
-                            </div>
-                          </Col>
-                        </Row>
-                        <hr />
-                        <Row>
-                          <Col md="12" xs="12">
-                            <div className="stats">
-                              <Row>
-                                <Col md="7">
-                                  <p className="card-category">Mode</p>
-                                </Col>
-                                <Col md="5">
-                                  <p className="card-category">
-                                    {!checkValue(x.mode) ? x.mode : "Unknown"}
-                                  </p>
-                                </Col>
-                              </Row>
-                              <Row>
-                                <Col md="7">
-                                  <p className="card-category">
-                                    # Safety Orders
-                                  </p>
-                                </Col>
-                                <Col md="5">
-                                  <p className="card-category">
-                                    {x.max_so_count}
-                                  </p>
-                                </Col>
-                              </Row>
-
-                              <Row>
-                                <Col md="7">
-                                  <p className="card-category">Bought @</p>
-                                </Col>
-                                <Col md="5">
-                                  <p className="card-category">
-                                    {!checkValue(x.deal) && x.deal.buy_price}
-                                  </p>
-                                </Col>
-                              </Row>
-
-                              <Row>
-                                <Col md="7">
-                                  <p className="card-category">Take profit</p>
-                                </Col>
-                                <Col md="5">
-                                  <p className="card-category">
-                                    {x.take_profit + "%"}
-                                  </p>
-                                </Col>
-                              </Row>
-
-                              {x.trailling === "true" && (
-                                <Row>
-                                  <Col md="7">
-                                    <p className="card-category">
-                                      Trailling loss
-                                    </p>
-                                  </Col>
-                                  <Col md="5">
-                                    <p className="card-category">
-                                      {x.trailling_deviation + "%"}
-                                    </p>
-                                  </Col>
-                                </Row>
-                              )}
-
-                              {parseInt(x.stop_loss) > 0 && (
-                                <Row>
-                                  <Col md="7">
-                                    <p className="card-category">Stop loss</p>
-                                  </Col>
-                                  <Col md="5">
-                                    <p className="card-category">
-                                      {x.stop_loss + "%"}
-                                    </p>
-                                  </Col>
-                                </Row>
-                              )}
-
-                              {parseFloat(x.commissions) > 0 && (
-                                <Row>
-                                  <Col md="7">
-                                    <p className="card-category">Comissions</p>
-                                  </Col>
-                                  <Col md="5">
-                                    <p className="card-category">
-                                      {`${x.commissions} BNB`}
-                                    </p>
-                                  </Col>
-                                </Row>
-                              )}
-                            </div>
-                          </Col>
-                        </Row>
-                      </CardBody>
-                      <CardFooter>
-                        <hr />
-                        <div className="u-space-between">
-                          <Button
-                            color="info"
-                            title="Edit this bot"
-                            className="fas fa-edit"
-                            onClick={() =>
-                              this.props.history.push(
-                                `/admin/paper-trading/edit/${x._id.$oid}`
-                              )
-                            }
-                          >
-                          </Button>
-                          <Button
-                            color="success"
-                            title="Select this bot"
-                            className="fas fa-check"
-                            data-index={i}
-                            data-id={x._id.$oid}
-                            onClick={this.handleSelection}
-                          >
-                          </Button>
-                          {x.status !== "active" && (
-                            <Button
-                              color="secondary"
-                              title="Archive bot"
-                              onClick={() => {
-                                this.props.archiveBot(x._id.$oid);
-                              }}
-                            >
-                              <i className="fas fa-folder" />
-                            </Button>
-                          )}
-                          <Button
-                            color="danger"
-                            className="fas fa-trash"
-                            onClick={() => this.handleDelete(x._id.$oid)}
-                          >
-                          </Button>
-                        </div>
-                      </CardFooter>
-                    </Card>
+                      x={x}
+                      selectedCards={this.state.selectedCards}
+                      history={(url) => this.props.history.push(url)}
+                      archiveBot={(id) => this.props.archiveBot(id)}
+                      handleDelete={(id) => this.handleDelete(id)}
+                      handleSelection={this.handleSelection}
+                    />
                   </Col>
                 ))
               : "No data available"}
@@ -422,7 +241,7 @@ const mapStateToProps = (state) => {
     return {
       bots: bots,
       message: message,
-      totalProfit: totalProfit
+      totalProfit: totalProfit,
     };
   }
 
@@ -434,5 +253,5 @@ export default connect(mapStateToProps, {
   deleteTestBot,
   closeTestBot,
   setFilterByWeek,
-  setFilterByMonthState
+  setFilterByMonthState,
 })(TestBots);

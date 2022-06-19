@@ -1,6 +1,7 @@
 import json
 import random
 import threading
+import math
 from datetime import datetime
 from time import sleep, time
 
@@ -16,7 +17,7 @@ from pattern_detection import chaikin_oscillator, linear_regression, stdev
 from telegram_bot import TelegramBot
 from test_autotrade import TestAutotrade
 from utils import handle_binance_errors
-
+from datetime import datetime
 
 class ResearchSignals(BinbotApi):
     def __init__(self):
@@ -30,6 +31,23 @@ class ResearchSignals(BinbotApi):
         ]  # on top of blacklist
         self.telegram_bot = TelegramBot()
         self.max_request = 950  # Avoid HTTP 411 error by separating streams
+        self.active_symbols = []
+        self.thread_ids = []
+    
+    def _restart_websockets(self):
+        """
+        Restart websockets threads after list of active bots altered
+        """
+        print("Starting thread cleanup")
+        global stop_threads
+        stop_threads = True
+        # Notify market updates websockets to update
+        for thread in threading.enumerate():
+            if hasattr(thread, "tag") and thread.name == "market_updates" and hasattr(thread, "_target"):
+                thread._target.__self__.markets_streams.close()
+                stop_threads = False
+                print("Cleaning threads. #threads: ", threading.enumerate())
+        pass
 
     def blacklist_coin(self, pair, msg):
         res = requests.post(
@@ -81,6 +99,13 @@ class ResearchSignals(BinbotApi):
         self.blacklist_data = blacklist_data["data"]
         self.interval = self.settings["candlestick_interval"]
         self.max_request = int(self.settings["max_request"])
+
+        # if autrotrade enabled and it's not an already active bot
+        # this avoids running too many useless bots
+        # Temporarily restricting to 1 bot for low funds
+        bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
+        active_bots = handle_binance_errors(bots_res)["data"]
+        self.active_symbols = [bot["pair"] for bot in active_bots]
         pass
 
     def new_tokens(self, projects) -> list:
@@ -126,6 +151,7 @@ class ResearchSignals(BinbotApi):
             target=ws.run_forever,
             kwargs={"ping_interval": 60},
         )
+        worker_thread.tag = "market_updates"
         worker_thread.start()
 
     def start_stream(self, previous_ws=None):
@@ -134,6 +160,8 @@ class ResearchSignals(BinbotApi):
 
         self.load_data()
         raw_symbols = self.ticker_price()
+        if not raw_symbols:
+            print("raw_symbols here", raw_symbols)
         black_list = [x["pair"] for x in self.blacklist_data]
 
         for s in raw_symbols:
@@ -157,12 +185,20 @@ class ResearchSignals(BinbotApi):
         for market in list_markets:
             params.append(f"{market.lower()}@kline_{self.interval}")
 
-        stream_1 = params[: self.max_request]
-        self._run_streams(stream_1, 1)
+        total_threads = math.floor(len(list_markets) / self.max_request) + (1 if len(list_markets) % self.max_request > 0 else 0)
+        # It's not possible to have websockets with more 950 pairs
+        # So set default to max 950
+        stream = params[:950]
 
-        if len(params) > self.max_request:
-            stream_2 = params[(self.max_request + 1) :]
-            self._run_streams(stream_2, 2)
+        if total_threads > 1 or not self.max_request:
+            for index in range(total_threads - 1):
+                stream = params[(self.max_request + 1) :]
+                if index == 0:
+                    stream = params[:self.max_request]
+                self._run_streams(stream, index)
+        else:
+            self._run_streams(stream, 1)
+        
 
     def post_error(self, msg):
         res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
@@ -174,7 +210,9 @@ class ResearchSignals(BinbotApi):
         Refactored autotrade conditions.
         Previously part of process_kline_stream
         1. Checks if we have balance to trade
-        2.
+        2. Check if we need to update websockets
+        3. Check if autotrade is enabled
+        4. Check if test autotrades
         """
         # Check balance to avoid failed autotrades
         check_balance_res = requests.get(url=self.bb_balance_estimate_url)
@@ -229,6 +267,7 @@ class ResearchSignals(BinbotApi):
         # API restart 30 secs + 15
         print("Restarting in 45 seconds...")
         sleep(45)
+        self._restart_websockets()
         self.start_stream(ws)
 
     def on_message(self, ws, message):
@@ -249,36 +288,22 @@ class ResearchSignals(BinbotApi):
         if datetime.now().time().hour == 0 and datetime.now().time().minute == 0:
             sleep(3600)
 
-        # if autrotrade enabled and it's not an already active bot
-        # this avoids running too many useless bots
-        # Temporarily restricting to 1 bot for low funds
-        bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
-        active_bots = handle_binance_errors(bots_res)["data"]
-        active_symbols = [bot["pair"] for bot in active_bots]
-
-        if "k" in result and "s" in result["k"] and len(active_symbols) == 0:
+        symbol = result["k"]["s"]
+        if symbol and "k" in result and "s" in result["k"] and len(self.active_symbols) == 0 and symbol not in self.last_processed_kline:
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
-            symbol = result["k"]["s"]
             ws.symbol = symbol
             data = self._get_candlestick(symbol, self.interval, stats=True)
 
-            if len(data["trace"][0]["x"]) > 1:
-                # Update klines database
-                payload = {
-                    "data": result["k"],
-                    "symbol": result["k"]["s"],
-                    "interval": self.interval,
-                }
-                klines_res = requests.put(url=self.bb_klines, json=payload)
-                # Not handling binance errors to avoid cluttering the log
+            if "error" in data and data["error"] == 1:
+                return
 
             ma_100 = data["trace"][1]["y"]
             ma_25 = data["trace"][2]["y"]
             ma_7 = data["trace"][3]["y"]
 
             if len(ma_100) == 0:
-                msg = f"Not enough data to do research on {symbol}"
+                msg = f"Not enough ma_100 data: {symbol}"
                 print(msg)
                 if random.randint(0, 20) == 15:
                     print("Cleaning db of incomplete data...")
@@ -286,75 +311,75 @@ class ResearchSignals(BinbotApi):
                         url=self.bb_klines, params={"symbol": symbol}
                     )
                     result = handle_binance_errors(delete_klines_res)
+                    self.last_processed_kline[symbol] = time()
                 return
 
             # Average amplitude
             msg = None
+            print(f"[{datetime.now()}] Signal:{result['k']['s']}")
+            value, chaikin_diff = chaikin_oscillator(
+                data["trace"][0], data["volumes"]
+            )
+            slope, intercept = linear_regression(data["trace"][0])
+            sd = stdev(data["trace"][0])
 
-            if symbol not in self.last_processed_kline:
-                value, chaikin_diff = chaikin_oscillator(
-                    data["trace"][0], data["volumes"]
-                )
-                slope, intercept = linear_regression(data["trace"][0])
-                sd = stdev(data["trace"][0])
+            reg_equation = f"{slope}X + {intercept}"
 
-                reg_equation = f"{slope}X + {intercept}"
+            # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
+            candlestick_patterns(
+                data["trace"][0],
+                sd,
+                close_price,
+                open_price,
+                value,
+                chaikin_diff,
+                reg_equation,
+                self._send_msg,
+                self.run_autotrade,
+                symbol,
+                ws,
+                intercept,
+                ma_25
+            )
 
-                # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
-                candlestick_patterns(
-                    data["trace"][0],
-                    sd,
-                    close_price,
-                    open_price,
-                    value,
-                    chaikin_diff,
-                    reg_equation,
-                    self._send_msg,
-                    self.run_autotrade,
-                    symbol,
-                    ws,
-                    intercept,
-                    ma_25
-                )
+            ma_candlestick_jump(
+                close_price,
+                open_price,
+                ma_7,
+                ma_100,
+                ma_25,
+                symbol,
+                sd,
+                value,
+                chaikin_diff,
+                reg_equation,
+                self._send_msg,
+                self.run_autotrade,
+                ws,
+                intercept,
+            )
 
-                ma_candlestick_jump(
-                    close_price,
-                    open_price,
-                    ma_7,
-                    ma_100,
-                    ma_25,
-                    symbol,
-                    sd,
-                    value,
-                    chaikin_diff,
-                    reg_equation,
-                    self._send_msg,
-                    self.run_autotrade,
-                    ws,
-                    intercept,
-                )
+            candlejump_sd(
+                close_price,
+                open_price,
+                ma_7,
+                ma_100,
+                ma_25,
+                symbol,
+                sd,
+                value,
+                chaikin_diff,
+                reg_equation,
+                self._send_msg,
+                self.run_autotrade,
+                ws,
+                intercept,
+            )
 
-                candlejump_sd(
-                    close_price,
-                    open_price,
-                    ma_7,
-                    ma_100,
-                    ma_25,
-                    symbol,
-                    sd,
-                    value,
-                    chaikin_diff,
-                    reg_equation,
-                    self._send_msg,
-                    self.run_autotrade,
-                    ws,
-                    intercept,
-                )
+            self.last_processed_kline[symbol] = time()
 
-                self.last_processed_kline[symbol] = time()
-
-            # If more than 6 hours passed has passed
-            # Then we should resume sending signals for given symbol
-            if (float(time()) - float(self.last_processed_kline[symbol])) > 10000:
-                del self.last_processed_kline[symbol]
+        # If more than 6 hours passed has passed
+        # Then we should resume sending signals for given symbol
+        if (float(time()) - float(self.last_processed_kline[symbol])) > 3500:
+            del self.last_processed_kline[symbol]
         pass

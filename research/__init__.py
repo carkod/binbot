@@ -35,11 +35,14 @@ if __name__ == "__main__":
         name="rs_thread", target=rs.start_stream
     )
     rs_thread.start()
-
+    global stop_threads
+    stop_threads = False
     try:
         # This is here to simulate application activity (which keeps the main thread alive).
         while True:
             time.sleep(5)
+            if stop_threads:
+                break
     except (KeyboardInterrupt, SystemExit):
         # Not strictly necessary if daemonic mode is enabled but should be done if possible
         scheduler.shutdown()
