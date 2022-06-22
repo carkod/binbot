@@ -40,7 +40,7 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()
     assets = Assets()
     scheduler.add_job(
-        func=assets.store_balance_snapshot,
+        func=assets.store_balance,
         trigger="cron",
         timezone="Europe/London",
         hour=00,

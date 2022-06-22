@@ -1,6 +1,8 @@
 import json
 import threading
 import requests
+from api.account.account import Account
+from api.account.assets import Assets
 from api.apis import BinanceApi
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
@@ -77,6 +79,9 @@ class OrderUpdates(BinanceApi):
     def process_report_execution(self, result):
         # Parse result. Print result for raw result from Binance
         order_id = result["i"]
+
+        # save balance
+        Assets().store_balance()
 
         if result["X"] == "FILLED":
             # Close successful take_profit

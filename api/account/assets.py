@@ -1,5 +1,6 @@
 import pandas as pd
 from requests.models import HTTPError
+from api.account.schemas import BalanceSchema
 from api.tools.round_numbers import round_numbers, supress_notation
 from decimal import Decimal
 
@@ -178,59 +179,45 @@ class Assets(Account):
         Store current balance in Db
         """
         # Store balance works outside of context as cronjob
-        app = create_app()
-        print("Store balance starting...")
         balances = self.get_raw_balance().json
         current_time = datetime.utcnow()
-        total_gbp = 0
-        total_btc = 0
+        total_usdt = 0
         rate = 0
         for b in balances["data"]:
             # Only tether coins for hedging
-            if b["asset"] in ["USD", "BTC", "BNB", "ETH", "XRP"]:
+            if b["asset"] == "NFT":
+                break
+            elif b["asset"] in ["USD"]:
                 qty = self._check_locked(b)
-                rate = self.get_ticker_price(f'{b["asset"]}GBP')
-                total_gbp += float(qty) * float(rate)
-            elif "GBP" in b["asset"]:
-                total_gbp += self._check_locked(b)
+                total_usdt += qty
             else:
                 try:
-                    # BTC and ALT markets
-                    symbol = self.find_market(b["asset"])
+                    qty = self._check_locked(b)
+                    rate = self.get_ticker_price(f'{b["asset"]}USDT')
+                    total_usdt += float(qty) * float(rate)
                 except InvalidSymbol:
                     print(InvalidSymbol(b["asset"]))
                     # Some coins like NFT are air dropped and cannot be traded
                     break
-                market = self.find_quoteAsset(symbol)
-                rate = self.get_ticker_price(symbol)
-                qty = self._check_locked(b)
-                total = float(qty) * float(rate)
-                if market == "BNB":
-                    gbp_rate = self.get_ticker_price("BNBGBP")
-                else:
-                    gbp_rate = self.coinbase_api.get_conversion(
-                        current_time, market, "GBP"
-                    )
 
-                total_gbp += float(total) * float(gbp_rate)
-
-        # BTC value estimation from GBP
-        gbp_btc_rate = self.get_ticker_price("BTCGBP")
-        total_btc = float(total_gbp) / float(gbp_btc_rate)
-
-        balance = {
+        balances = {
             "time": current_time.strftime("%Y-%m-%d"),
             "balances": balances,
-            "estimated_total_btc": total_btc,
-            "estimated_total_gbp": total_gbp,
+            "estimated_total_usdt": round_numbers(total_usdt)
         }
-        balanceId = app.db.balances.insert_one(
-            balance, {"$currentDate": {"createdAt": "true"}}
-        )
-        if balanceId:
-            print(f"{current_time} Balance stored!")
-        else:
-            print(f"{current_time} Unable to store balance! Error: {balanceId}")
+
+        try:
+            balance_schema = BalanceSchema()
+            balances = balance_schema.validate_model(balances)
+            self.app.db.balances.update_one(
+                {"time": current_time.strftime("%Y-%m-%d")},
+                {"$set": balances},
+                upsert=True
+            )
+        except Exception as error:
+            return jsonResp_error_message(f"Failed to store balance: {error}")
+
+        return jsonResp_message("Successfully stored balance!")
 
     def get_value(self):
         try:
@@ -373,7 +360,7 @@ class Assets(Account):
         ]
         total_btc = spot_data["data"]["totalAssetOfBtc"]
         fiat_rate = self.get_ticker_price("BTCGBP")
-        total_gbp = float(total_btc) * float(fiat_rate)
+        total_usdt = float(total_btc) * float(fiat_rate)
         balanceId = app.db.balances.insert_one(
             {
                 "_id": spot_data["updateTime"],
@@ -382,7 +369,7 @@ class Assets(Account):
                 ).strftime("%Y-%m-%d"),
                 "balances": balances,
                 "estimated_total_btc": total_btc,
-                "estimated_total_gbp": total_gbp,
+                "estimated_total_usdt": total_usdt,
             }
         )
         if balanceId:
