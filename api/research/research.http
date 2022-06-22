@@ -69,5 +69,5 @@ content-Type: application/json
 }
 
 ### Get 3 commas preset ots
-GET http://localhost:5000/research/3-commas-data HTTP/1.1 
+GET http://localhost:5000/research/3commas-presets HTTP/1.1 
 content-Type: application/json

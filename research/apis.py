@@ -285,12 +285,3 @@ class ThreeCommasApi:
         else:
             return data["bots"]
 
-    def run(self):
-        data = self.get_marketplace_presets()
-        for s in data:
-            if s["copies"] > 1 and float(s["profit"]["amount"]) > 8:
-                chart_data = s["profit"]["chart_data"]
-
-                msg = f'[{os.getenv("ENV")}] <strong>#Preset portfolio</strong>:\n- {s["name"]} \n- Portfolio: {", ".join(s["currencies"])} \n- Monthly return: {s["profit"]["amount"]} per {s["profit"]["period"]} \n- Last day return: {chart_data[len(chart_data) - 1]}'
-
-                self.telegram_bot.send_msg(msg)
