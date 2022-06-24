@@ -1,3 +1,11 @@
+---
+layout: default
+title: Home
+description: "Homepage"
+nav_order: 1
+permalink: /
+---
+
 PLOTTING DOES NOT WORK WITH DEBUGGER
 
 ## To Develop
