@@ -3,12 +3,11 @@ email: carkodesign@gmail.com
 description: >-
   Concepts, reasoning behind solutions, strategy explanations...
   behind the Binbot API logic
-baseurl: "/docs/"
+baseurl: "/"
 url: "https://carkod.github.io/" # the base hostname & protocol for your site, e.g. http://example.com
 
 # Build settings
 remote_theme: just-the-docs/just-the-docs
-theme: just-the-docs
 plugins:
   - jekyll-feed
 
