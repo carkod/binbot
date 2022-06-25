@@ -1,3 +1,8 @@
+---
+layout: default
+title:  Back-testing
+---
+
 # Binance 418 Teapot errors
 This error happens actually after rate limits violation. The HTTP codes ocurr in the following order
 

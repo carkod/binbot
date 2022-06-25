@@ -1,3 +1,8 @@
+---
+layout: default
+title:  Back-testing
+---
+
 # About Back-testing
 Back testing is a strategy often used by algorithmic traders to test an algorithm before using it on real data.
 

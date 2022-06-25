@@ -1,3 +1,8 @@
+---
+layout: default
+title: Third party APIs
+---
+
 # APIs `/api/apis.py`
 
 This file contains third party API endpoints used by the project. At the time of writing, only URLs are added, as DRY patterns emerge, it should be easy to refactor code and centralize them in this file.
