@@ -9,6 +9,7 @@ from algorithms.new_tokens import NewTokens
 from algorithms.whale_alert_signals import WhaleAlertSignals
 from signals import ResearchSignals
 
+
 if os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()
     nt = NewTokens()

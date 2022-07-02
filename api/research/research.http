@@ -67,3 +67,11 @@ content-Type: application/json
     "trailling_deviation": 3,
     "trailling_profit": 2.4
 }
+
+### Get 3 commas preset ots
+GET http://localhost:5000/research/3commas-presets HTTP/1.1 
+content-Type: application/json
+
+### Get 3 commas preset signals
+GET http://localhost:5000/research/3commas-items HTTP/1.1 
+content-Type: application/json

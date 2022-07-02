@@ -6,6 +6,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from api.account.assets import Assets
 from api.app import create_app
 from api.orders.models.order_sockets import OrderUpdates
+from api.research.controller import Controller
 from api.research.market_updates import MarketUpdates
 from api.tools.handle_error import jsonResp
 
@@ -40,11 +41,19 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()
     assets = Assets()
     scheduler.add_job(
-        func=assets.store_balance_snapshot,
+        func=assets.store_balance,
         trigger="cron",
         timezone="Europe/London",
-        hour=00,
-        minute=1,
+        hour=1,
+        minute=0
+    )
+    controller = Controller()
+    scheduler.add_job(
+        func=controller.store_profitable_signals,
+        trigger="cron",
+        timezone="Europe/London",
+        hour=23,
+        minute=20,
     )
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))

@@ -4,8 +4,8 @@ import os
 from urllib.parse import urlencode
 from time import time
 from requests import get, request
-from api.tools.handle_error import handle_binance_errors
-
+from api.tools.handle_error import handle_binance_errors, jsonResp, jsonResp_error_message, jsonResp_message
+from py3cw.request import Py3CW
 
 class BinanceApi:
     """
@@ -157,3 +157,75 @@ class CoinBaseApi:
             print(e)
         rate = float(data["data"]["amount"])
         return rate
+
+
+class ThreeCommasApiError:
+    """3commas.io API error"""
+
+    def __init__(self, status):
+        self.status = status
+
+    def __str__(self):
+        return "3commas API error: status={}".format(self.status)
+
+class ThreeCommasApi:
+
+    def get_marketplace_presets(self):
+        p3cw = Py3CW(
+            key=os.environ["3C_API_KEY"],
+            secret=os.environ["3C_SECRET"]
+        )
+        error, data = p3cw.request(
+            entity='marketplace',
+            action="presets",
+            payload={
+                "sort_direction": "asc",
+                "bot_strategy": "long",
+                "profit_per_day_from": 1,
+            }
+        )
+        if error:
+            error = ThreeCommasApiError(error)
+            return jsonResp_error_message(error)
+        else:
+            return jsonResp({"message": "Sucessfully retrieved preset bots!", "data": data["bots"]})
+
+    def get_all_marketplace_item(self):
+        p3cw = Py3CW(
+            key=os.environ["3C_API_KEY"],
+            secret=os.environ["3C_SECRET"]
+        )
+        error, data = p3cw.request(
+            entity='marketplace',
+            action="items",
+            payload={
+                "scope": "all",
+                "limit": 1000,
+                "offset": 0,
+                "order": "newest",
+                "locale": "en"
+            }
+        )
+
+        if error:
+            error = ThreeCommasApiError(error["msg"])
+            return error
+        else:
+            return data
+
+    def get_marketplace_item_signals(self, id):
+        p3cw = Py3CW(
+            key=os.environ["3C_API_KEY"],
+            secret=os.environ["3C_SECRET"]
+        )
+        error, data = p3cw.request(
+            entity='marketplace',
+            action="signals",
+            action_id=str(id),
+        )
+
+        if error:
+            error = ThreeCommasApiError(error["msg"])
+            return error
+        else:
+            return data

@@ -37,3 +37,6 @@ GET http://localhost:5000/account/symbols/no-cannibal HTTP/1.1
 
 ### Manual Hedge GBP
 GET http://localhost:5000/account/hedge-gbp/bnb HTTP/1.1
+
+### Get table balances
+GET http://localhost:5000/account/store-balance HTTP/1.1

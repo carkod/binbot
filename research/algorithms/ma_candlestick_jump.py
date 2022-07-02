@@ -18,8 +18,8 @@ def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd
     if (
         float(close_price) > float(open_price)
         and chaikin_diff < -3
-        and sd > 0.004
-        and float(intercept) > 10
+        and sd > 0.0000001
+        # and float(intercept) > 10
         and close_price > ma_7[len(ma_7) - 1]
         and open_price > ma_7[len(ma_7) - 1]
         and close_price > ma_25[len(ma_25) - 1]
@@ -38,5 +38,5 @@ def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd
         print(msg)
 
         run_autotrade(symbol, ws, "ma_candlestick_jump", False, sd)
-    
+
     return

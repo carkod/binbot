@@ -202,3 +202,4 @@ class Account(BinbotApi):
             .exponent
         )
         return qty_precision
+

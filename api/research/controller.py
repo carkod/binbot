@@ -1,9 +1,11 @@
+from time import sleep
+from api.app import create_app
 from api.research.test_autotrade_schema import TestAutotradeSchema
 from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
 from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
 from api.research.controller_schema import ControllerSchema
-
+from api.apis import ThreeCommasApi
 
 class Controller:
     """
@@ -120,4 +122,53 @@ class Controller:
         except TypeError as e:
             resp = jsonResp_error_message(f"Data validation error: {e}")
         return resp
+
+    def store_profitable_signals(self):
+        """
+        3commas signals that are profitable
+        in the past week
+        """
+        print("Storing profitable signals from 3commas.io...")
+        app = create_app()
+        consolidated_signals = []
+        api = ThreeCommasApi()
+        items = api.get_all_marketplace_item()
+
+        for item in items:
+            signals = api.get_marketplace_item_signals(item
+            ["id"])
+            if hasattr(signals, "status"):
+                sleep(10)
+                signals = api.get_marketplace_item_signals(item
+            ["id"])
+            portfolio = []
+            for signal in signals:
+                print(signal["pair"])
+                if signal["exchange"] == "Binance" and signal["signal_type"] == "long":
+                    portfolio.append(signal)
+
+            consolidated_signals.append({
+                "id": item["id"],
+                "name": item["name"],
+                "portfolio": portfolio
+            })
+
+        try:
+            app.db.three_commas_signals.delete_many({})    
+            app.db.three_commas_signals.insert_many(consolidated_signals)
+        except Exception as err:
+            print(err)
+
+        print("Successfully stored new 3commas.io signals", consolidated_signals)
+
+        # return jsonResp({"message": "Successfully retrieved profitable 3commas signals", "data": consolidated_signals})
+
+    def get_3commas_signals(self):
+        """
+        Retrieve 3commas.io/marketplace signals
+        per week
+        """
+        query = {}
+        current_app.db.three_commas_signals.find(query)
+
 

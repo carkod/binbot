@@ -1,5 +1,7 @@
 from flask import Blueprint
+from api.apis import ThreeCommasApi
 from api.research.controller import Controller
+from api.auth import auth
 
 research_blueprint = Blueprint("research", __name__)
 
@@ -39,3 +41,13 @@ def get_test_autotrade_settings():
 @research_blueprint.route("/test-autotrade-settings", methods=["PUT"])
 def edit_test_autotrade_settings():
     return Controller().edit_test_autotrade_settings()
+
+@research_blueprint.route("/3commas-presets", methods=["GET"])
+@auth.login_required
+def three_commas_presets():
+    return ThreeCommasApi().get_marketplace_presets()
+
+@research_blueprint.route("/3commas-items", methods=["GET"])
+@auth.login_required
+def three_commas_items():
+    return Controller().get_profitable_signals()

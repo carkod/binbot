@@ -1,18 +1,19 @@
 import hashlib
 import hmac
 import os
-from datetime import datetime
 from decimal import Decimal
 from urllib.parse import urlencode
 
 from requests import Session, get
+from telegram_bot import TelegramBot
 
 from utils import handle_binance_errors
 from dotenv import load_dotenv
 from random import randrange
+from py3cw.request import Py3CW
+
 
 load_dotenv()
-
 
 class BinanceApi:
     """
@@ -229,28 +230,3 @@ class BinbotApi(BinanceApi):
         res = get(url=self.bb_candlestick_url, params=params)
         data = handle_binance_errors(res)
         return data
-
-
-class CoinBaseApi:
-    """
-    Currency and Cryptocurrency conversion service
-    """
-
-    BASE = "https://api.coinbase.com/v2"
-    EXG_URL = f"{BASE}/prices"
-
-    def get_conversion(self, base="BTC", quote="GBP", time=datetime.now()):
-
-        params = {
-            "apikey": os.environ["COINAPI_KEY"],
-            "date": time.strftime("%Y-%m-%d"),
-        }
-        url = f"{self.EXG_URL}/{base}-{quote}/spot"
-        data = get(url, params).json()
-        try:
-            data["data"]["amount"]
-        except KeyError:
-            print(data)
-
-        rate = float(data["data"]["amount"])
-        return rate
