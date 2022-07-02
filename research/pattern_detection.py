@@ -234,10 +234,13 @@ def linear_regression(data):
 
     return last_slope, last_intercept
 
-def stdev(data, period=7):
+def stdev(data):
+    """
+    TA-lib returns 0.0 for a lot of data
+    Use numpy std instead
+    """
+
     close = numpy.asarray(data["close"], dtype='f8')
 
-    standard_deviation = talib.STDDEV(close, timeperiod=period, nbdev=1)
-    last_sd = standard_deviation.tolist()[len(standard_deviation) - 1]
-    return last_sd
-
+    standard_deviation = numpy.std(close)
+    return standard_deviation

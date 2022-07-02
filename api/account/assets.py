@@ -179,6 +179,7 @@ class Assets(Account):
         Store current balance in Db
         """
         # Store balance works outside of context as cronjob
+        app = create_app()
         balances = self.get_raw_balance().json
         current_time = datetime.utcnow()
         total_usdt = 0
@@ -209,7 +210,7 @@ class Assets(Account):
         try:
             balance_schema = BalanceSchema()
             balances = balance_schema.validate_model(balances)
-            self.app.db.balances.update_one(
+            app.db.balances.update_one(
                 {"time": current_time.strftime("%Y-%m-%d")},
                 {"$set": balances},
                 upsert=True

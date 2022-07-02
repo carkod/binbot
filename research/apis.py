@@ -15,15 +15,6 @@ from py3cw.request import Py3CW
 
 load_dotenv()
 
-class ThreeCommasApiError:
-    """3commas.io API error"""
-
-    def __init__(self, status):
-        self.status = status
-
-    def __str__(self):
-        return "APIError: status={}".format(self.status)
-
 class BinanceApi:
     """
     Binance Api URLs
@@ -239,4 +230,3 @@ class BinbotApi(BinanceApi):
         res = get(url=self.bb_candlestick_url, params=params)
         data = handle_binance_errors(res)
         return data
-

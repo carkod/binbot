@@ -46,3 +46,8 @@ def edit_test_autotrade_settings():
 @auth.login_required
 def three_commas_presets():
     return ThreeCommasApi().get_marketplace_presets()
+
+@research_blueprint.route("/3commas-items", methods=["GET"])
+@auth.login_required
+def three_commas_items():
+    return Controller().get_profitable_signals()

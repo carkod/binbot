@@ -190,7 +190,7 @@ class ThreeCommasApi:
         else:
             return jsonResp({"message": "Sucessfully retrieved preset bots!", "data": data["bots"]})
 
-    def get_marketplace_item(self):
+    def get_all_marketplace_item(self):
         p3cw = Py3CW(
             key=os.environ["3C_API_KEY"],
             secret=os.environ["3C_SECRET"]
@@ -199,13 +199,33 @@ class ThreeCommasApi:
             entity='marketplace',
             action="items",
             payload={
-                "sort_direction": "asc",
-                "bot_strategy": "long",
+                "scope": "all",
+                "limit": 1000,
+                "offset": 0,
+                "order": "newest",
+                "locale": "en"
             }
         )
 
         if error:
-            error = ThreeCommasApiError(error)
-            return jsonResp_error_message(error)
+            error = ThreeCommasApiError(error["msg"])
+            return error
         else:
-            return jsonResp({"message": "Sucessfully retrieved preset bots!", "data": str(data["bots"])})
+            return data
+
+    def get_marketplace_item_signals(self, id):
+        p3cw = Py3CW(
+            key=os.environ["3C_API_KEY"],
+            secret=os.environ["3C_SECRET"]
+        )
+        error, data = p3cw.request(
+            entity='marketplace',
+            action="signals",
+            action_id=str(id),
+        )
+
+        if error:
+            error = ThreeCommasApiError(error["msg"])
+            return error
+        else:
+            return data
