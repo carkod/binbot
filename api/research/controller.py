@@ -161,14 +161,14 @@ class Controller:
 
         print("Successfully stored new 3commas.io signals", consolidated_signals)
 
-        # return jsonResp({"message": "Successfully retrieved profitable 3commas signals", "data": consolidated_signals})
-
     def get_3commas_signals(self):
         """
         Retrieve 3commas.io/marketplace signals
         per week
         """
         query = {}
-        current_app.db.three_commas_signals.find(query)
+        signals = list(current_app.db.three_commas_signals.find(query))
+
+        return jsonResp({"message": "Successfully retrieved profitable 3commas signals", "data": signals})
 
 

@@ -52,8 +52,8 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
         func=controller.store_profitable_signals,
         trigger="cron",
         timezone="Europe/London",
-        hour=23,
-        minute=20,
+        hour=2,
+        minute=0,
     )
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))

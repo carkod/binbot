@@ -37,6 +37,13 @@ class BalanceSchema:
             self.estimated_total_usdt = data.get("estimated_total_usdt")
             del data["estimated_total_usdt"]
         
+        if "balances" in data:
+            if not isinstance(data.get("balances"), object) and data.get("balances"):
+                raise BalanceSchemaValidation(f"balances is not an object or are empty")
+                    
+            self.balances = data["balances"]
+            del data["balances"]
+
         if len(data) > 0:
             for item in data:
                 if item != "_id":

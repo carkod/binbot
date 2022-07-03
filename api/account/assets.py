@@ -25,7 +25,8 @@ class Assets(Account):
         """
         Unrestricted balance
         """
-        asset = request.args.get("asset") or asset
+        if request:
+            asset = request.args.get("asset")
         data = self.signed_request(url=self.account_url)
         df = pd.DataFrame(data["balances"])
         df["free"] = pd.to_numeric(df["free"])
@@ -180,11 +181,11 @@ class Assets(Account):
         """
         # Store balance works outside of context as cronjob
         app = create_app()
-        balances = self.get_raw_balance().json
+        bin_balance = self.get_raw_balance().json
         current_time = datetime.utcnow()
         total_usdt = 0
         rate = 0
-        for b in balances["data"]:
+        for b in bin_balance["data"]:
             # Only tether coins for hedging
             if b["asset"] == "NFT":
                 break
@@ -201,24 +202,24 @@ class Assets(Account):
                     # Some coins like NFT are air dropped and cannot be traded
                     break
 
-        balances = {
+        total_balance = {
             "time": current_time.strftime("%Y-%m-%d"),
-            "balances": balances,
+            "balances": bin_balance["data"],
             "estimated_total_usdt": round_numbers(total_usdt)
         }
 
         try:
             balance_schema = BalanceSchema()
-            balances = balance_schema.validate_model(balances)
+            balances = balance_schema.validate_model(total_balance)
             app.db.balances.update_one(
                 {"time": current_time.strftime("%Y-%m-%d")},
                 {"$set": balances},
                 upsert=True
             )
         except Exception as error:
-            return jsonResp_error_message(f"Failed to store balance: {error}")
+            print(f"Failed to store balance: {error}")
 
-        return jsonResp_message("Successfully stored balance!")
+        print("Successfully stored balance!")
 
     def get_value(self):
         try:
