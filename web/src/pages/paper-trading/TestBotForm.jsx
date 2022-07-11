@@ -333,7 +333,7 @@ class TestBotForm extends React.Component {
       this.props.activateTestBot(this.state._id);
       this.props.getTestBot(this.props.match.params.id);
       if (this.props.match.params.id) {
-        this.props.history.push(`/admin/paper-trading/edit/${this.props.createdBotId}`)
+        this.props.history.push(`/admin/paper-trading/edit/${this.props.match.params.id}`)
       }
     }
   };
