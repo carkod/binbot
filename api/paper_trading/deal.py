@@ -223,7 +223,7 @@ class TestDeal(Account):
             deal_buy_price
         )
         price = supress_notation(price, self.price_precision)
-        botId = app.db.paper_trading.find_one_and_update(
+        botId = app.db.paper_trading.update_one(
             {"_id": self.active_bot["_id"]},
             {"$set": {"deal.take_profit_price": price, "deal.trailling_profit": price}},
         )

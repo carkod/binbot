@@ -122,15 +122,15 @@ class MarketUpdates(Account):
                         * (float(bot["trailling_deviation"]) / 100)
                     )
                     print(f'{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}')
-                    updated_bot = self.app.db.bots.find_one_and_update(
+                    updated_bot = self.app.db.bots.update_one(
                         {"_id": current_bot["_id"]}, {"$set": {"deal": bot["deal"]}}
                     )
                     if not updated_bot:
-                        self.app.db.bots.find_one_and_update(
+                        self.app.db.bots.update_one(
                             {"_id": current_bot["_id"]},
                             {
                                 "$push": {
-                                    "errors": f"Error updating trailling order {updated_bot}"
+                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
                                 }
                             },
                         )
@@ -216,15 +216,15 @@ class MarketUpdates(Account):
                         * (float(bot["trailling_deviation"]) / 100)
                     )
 
-                    updated_bot = self.app.db.paper_trading.find_one_and_update(
+                    updated_bot = self.app.db.paper_trading.update_one(
                         {"_id": current_bot["_id"]}, {"$set": {"deal": bot["deal"]}}
                     )
                     if not updated_bot:
-                        self.app.db.paper_trading.find_one_and_update(
+                        self.app.db.paper_trading.update_one(
                             {"_id": current_bot["_id"]},
                             {
                                 "$push": {
-                                    "errors": f"Error updating trailling order {updated_bot}"
+                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
                                 }
                             },
                         )

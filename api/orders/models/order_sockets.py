@@ -85,7 +85,7 @@ class OrderUpdates(BinanceApi):
 
         if result["X"] == "FILLED":
             # Close successful take_profit
-            self.app.db.bots.find_one_and_update(
+            self.app.db.bots.update_one(
                 {
                     "orders": {
                         "$elemMatch": {"deal_type": "take_profit", "order_id": order_id}
@@ -98,7 +98,7 @@ class OrderUpdates(BinanceApi):
                 },
             )
             # Close successful orders
-            self.app.db.bots.find_one_and_update(
+            self.app.db.bots.update_one(
                 {
                     "orders": {
                         "$elemMatch": {

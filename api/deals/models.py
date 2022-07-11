@@ -352,7 +352,7 @@ class Deal(Account):
             deal_buy_price
         )
         price = supress_notation(price, self.price_precision)
-        botId = app.db.bots.find_one_and_update(
+        botId = app.db.bots.update_one(
             {"_id": self.active_bot["_id"]},
             {"$set": {"deal.take_profit_price": price, "deal.trailling_profit": price}},
         )

@@ -88,7 +88,7 @@ class Controller:
             return jsonResp({"message": "Missing required field 'pair'.", "error": 1})
 
         self.default_blacklist.update(data)
-        blacklist = current_app.db.blacklist.find_one_and_update(
+        blacklist = current_app.db.blacklist.update_one(
             {"_id": data["pair"]}, {"$set": self.default_blacklist}
         )
 

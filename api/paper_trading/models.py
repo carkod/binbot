@@ -168,7 +168,7 @@ class Bot(Account):
                     )
                 return resp
 
-            botId = self.app.db.paper_trading.find_one_and_update(
+            botId = self.app.db.paper_trading.update_one(
                 {"_id": ObjectId(findId)}, {"$set": {"status": "active"}}
             )
 

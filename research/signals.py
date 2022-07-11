@@ -44,9 +44,10 @@ class ResearchSignals(BinbotApi):
         # Notify market updates websockets to update
         for thread in threading.enumerate():
             if hasattr(thread, "tag") and thread.name == "market_updates" and hasattr(thread, "_target"):
-                thread._target.__self__.markets_streams.close()
                 stop_threads = False
-                print("Cleaning threads. #threads: ", threading.enumerate())
+                print("closeing websockets thread", thread)
+                thread._target.__self__.markets_streams.close()
+
         pass
 
     def blacklist_coin(self, pair, msg):
