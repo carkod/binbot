@@ -16,7 +16,7 @@ def candlestick_patterns(data, sd, close_price, open_price, value, chaikin_diff,
         status = f"reversal confirmation "
         # for p in all_patterns:
         # status += f"\n- {p} pattern"
-        msg = f"- [{os.getenv('ENV')}] Candlestick pattern <strong>{status}</strong> #{symbol} \n - SD {sd} \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'} \n - Regression line {regression} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://binbot.in/admin/bots/new{symbol}"
+        msg = f"- [{os.getenv('ENV')}] Candlestick pattern <strong>{status}</strong> #{symbol} \n - SD {sd} \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'} \n - Regression line {regression} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://terminal.binbot.in/admin/bots/new{symbol}"
         _send_msg(msg)
         print(msg)
 

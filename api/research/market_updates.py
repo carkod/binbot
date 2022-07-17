@@ -80,10 +80,13 @@ class MarketUpdates(Account):
                 {"$set": {"deal.current_price": close_price}},
             )
             print(f'{symbol} Current price in deal updated! {bot["deal"]["current_price"]}')
+            if symbol == "YFIIUSDT":
+                print("current_bot: ", current_bot)
             # Stop loss
             if (
-                float(current_bot["stop_loss"]) > 0
-                and "stop_loss" in current_bot["deal"]
+                "stop_loss" in current_bot["deal"]
+                and "stop_loss" in current_bot
+                and float(current_bot["stop_loss"]) > 0
                 and float(current_bot["deal"]["stop_loss"]) > float(close_price)
             ):
                 deal = DealUpdates(bot)

@@ -2,7 +2,7 @@
   "name": "binbot",
   "version": "2",
   "private": true,
-  "homepage": "http://binbot.in/",
+  "homepage": "http://terminal.binbot.in/",
   "dependencies": {
     "bootstrap": "5.2.0-beta1",
     "history": "^5.0.0",
