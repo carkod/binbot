@@ -1,4 +1,3 @@
-from copy import deepcopy
 from math import ceil
 from time import time
 from typing import TypedDict
@@ -35,10 +34,9 @@ class KlinesSchema:
     
     def replace_klines(self, data):
         try:
-            current_app.db.klines.update_one(
-                {"_id": self._id} , {"$set": {self.interval: data}}
+            result = current_app.db.klines.find_one_and_update(
+                {"_id": self._id} , {"$set": {self.interval: data}}, upsert=True
             )
-            result = current_app.db.klines.find_one({"_id": self._id})
             return result
         except Exception as e:
             return e
@@ -161,13 +159,6 @@ class Candlestick(BinbotApi):
                 "startTime": start_time,
                 "endTime": end_time,
             }
-
-        if binance and not json:
-            klines = self.request(url=self.candlestick_url, params=params)
-            print("Requested candlestick data from Binance API")
-            df = pd.DataFrame(klines)
-            dates = df[0].tolist()
-            return df, dates
 
         # Do we require more candlesticks for charts data?
         if params["startTime"]:
@@ -377,16 +368,19 @@ class Candlestick(BinbotApi):
         if not interval:
             return jsonResp_error_message("Provide a candlestick interval")
 
-        df, dates = self.get_klines(
-            binance=binance,
-            json=False,
-            params={
+        params = {
                 "limit": limit,
                 "symbol": symbol,
                 "interval": interval,
                 "startTime": start_time,  # starTime and endTime must be camel cased for the API
                 "endTime": end_time,
-            },
+            }
+
+
+        df, dates = self.get_klines(
+            binance=binance,
+            json=False,
+            params=params
         )
 
         if df.empty or len(dates) == 0:
