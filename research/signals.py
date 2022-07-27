@@ -318,6 +318,7 @@ class ResearchSignals(BinbotApi):
             # Average amplitude
             msg = None
             print(f"[{datetime.now()}] Signal:{result['k']['s']}")
+            print("Surpassed last ma_7 and ma_100? ", close_price > ma_7[len(ma_7) - 1], close_price > ma_100[len(ma_100) - 1])
             value, chaikin_diff = chaikin_oscillator(
                 data["trace"][0], data["volumes"]
             )

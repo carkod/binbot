@@ -2,16 +2,13 @@ import hashlib
 import hmac
 import os
 from decimal import Decimal
+from random import randrange
 from urllib.parse import urlencode
 
+from dotenv import load_dotenv
 from requests import Session, get
-from telegram_bot import TelegramBot
 
 from utils import handle_binance_errors
-from dotenv import load_dotenv
-from random import randrange
-from py3cw.request import Py3CW
-
 
 load_dotenv()
 
@@ -21,7 +18,7 @@ class BinanceApi:
     Picks root url randomly to avoid rate limits
     """
 
-    api_servers = ["https://api.binance.com", "https://api2.binance.com", "https://api3.binance.com"]
+    api_servers = ["https://api.binance.com", "https://api3.binance.com"]
     BASE = api_servers[randrange(3) - 1]
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
