@@ -44,9 +44,10 @@ class ResearchSignals(BinbotApi):
         # Notify market updates websockets to update
         for thread in threading.enumerate():
             if hasattr(thread, "tag") and thread.name == "market_updates" and hasattr(thread, "_target"):
-                thread._target.__self__.markets_streams.close()
                 stop_threads = False
-                print("Cleaning threads. #threads: ", threading.enumerate())
+                print("closeing websockets thread", thread)
+                thread._target.__self__.markets_streams.close()
+
         pass
 
     def blacklist_coin(self, pair, msg):
@@ -317,6 +318,7 @@ class ResearchSignals(BinbotApi):
             # Average amplitude
             msg = None
             print(f"[{datetime.now()}] Signal:{result['k']['s']}")
+            print("Surpassed last ma_7 and ma_100? ", close_price > ma_7[len(ma_7) - 1], close_price > ma_100[len(ma_100) - 1])
             value, chaikin_diff = chaikin_oscillator(
                 data["trace"][0], data["volumes"]
             )
@@ -380,6 +382,6 @@ class ResearchSignals(BinbotApi):
 
         # If more than 6 hours passed has passed
         # Then we should resume sending signals for given symbol
-        if (float(time()) - float(self.last_processed_kline[symbol])) > 3500:
+        if (float(time()) - float(self.last_processed_kline[symbol])) > 6000:
             del self.last_processed_kline[symbol]
         pass

@@ -4,7 +4,7 @@ import os
 from urllib.parse import urlencode
 from time import time
 from requests import get, request
-from api.tools.handle_error import handle_binance_errors, jsonResp, jsonResp_error_message, jsonResp_message
+from api.tools.handle_error import handle_binance_errors, jsonResp, jsonResp_error_message
 from py3cw.request import Py3CW
 
 class BinanceApi:

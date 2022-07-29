@@ -88,7 +88,7 @@ class Controller:
             return jsonResp({"message": "Missing required field 'pair'.", "error": 1})
 
         self.default_blacklist.update(data)
-        blacklist = current_app.db.blacklist.find_one_and_update(
+        blacklist = current_app.db.blacklist.update_one(
             {"_id": data["pair"]}, {"$set": self.default_blacklist}
         )
 
@@ -161,14 +161,14 @@ class Controller:
 
         print("Successfully stored new 3commas.io signals", consolidated_signals)
 
-        # return jsonResp({"message": "Successfully retrieved profitable 3commas signals", "data": consolidated_signals})
-
     def get_3commas_signals(self):
         """
         Retrieve 3commas.io/marketplace signals
         per week
         """
         query = {}
-        current_app.db.three_commas_signals.find(query)
+        signals = list(current_app.db.three_commas_signals.find(query))
+
+        return jsonResp({"message": "Successfully retrieved profitable 3commas signals", "data": signals})
 
 

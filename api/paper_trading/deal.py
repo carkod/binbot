@@ -1,14 +1,15 @@
-from time import time
 from decimal import Decimal
+from time import time
+
 import requests
 from api.account.account import Account
+from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp
 from api.tools.round_numbers import round_numbers, supress_notation
+from bson.objectid import ObjectId
 from flask import Response
 from flask import current_app as app
-from api.deals.schema import DealSchema
-from bson.objectid import ObjectId
 
 
 class TestDeal(Account):
@@ -222,7 +223,7 @@ class TestDeal(Account):
             deal_buy_price
         )
         price = supress_notation(price, self.price_precision)
-        botId = app.db.paper_trading.find_one_and_update(
+        botId = app.db.paper_trading.update_one(
             {"_id": self.active_bot["_id"]},
             {"$set": {"deal.take_profit_price": price, "deal.trailling_profit": price}},
         )
@@ -284,6 +285,22 @@ class TestDeal(Account):
             bot["deal"]["stop_loss"] = supress_notation(
                 stop_loss_price, self.price_precision
             )
+        
+        # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
+        if "deal" in bot:
+            if "trailling_stop_loss_price" in bot["deal"]:
+
+                take_profit = float(bot["deal"]["trailling_profit"]) * (
+                    1 + (float(bot["take_profit"]) / 100)
+                )
+                # Update trailling_stop_loss
+                bot["deal"]["trailling_stop_loss_price"] = float(
+                    take_profit
+                ) - (
+                    float(take_profit)
+                    * (float(bot["trailling_deviation"]) / 100)
+                )
+
             try:
                 app.db.paper_trading.update_one(
                     {"_id": bot["_id"]}, {"$set": {"deal": bot["deal"]}}

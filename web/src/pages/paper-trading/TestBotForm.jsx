@@ -183,29 +183,26 @@ class TestBotForm extends React.Component {
     e.preventDefault();
     const validation = this.requiredinValidation();
     if (validation) {
+      let form = {
+        status: this.props.bot.status,
+        balance_size_to_use: this.props.bot.balance_size_to_use, // Centralized
+        base_order_size: this.props.bot.base_order_size,
+        balance_to_use: this.props.bot.balance_to_use,
+        mode: "manual",
+        name: this.props.bot.name,
+        pair: this.props.bot.pair,
+        take_profit: this.props.bot.take_profit,
+        trailling: this.props.bot.trailling,
+        trailling_deviation: this.props.bot.trailling_deviation,
+        candlestick_interval: this.props.bot.candlestick_interval,
+        orders: this.props.bot.orders,
+        stop_loss: this.props.bot.stop_loss,
+      }
       if (!checkValue(this.props.match.params.id)) {
-        const form = {
-          _id: this.props.match.params.id,
-          status: this.props.bot.status,
-          balance_available_asset: this.props.balance_available_asset,
-          balance_size_to_use: this.props.bot.balance_size_to_use, // Centralized
-          base_order_size: this.props.bot.base_order_size,
-          balance_to_use: this.props.bot.balance_to_use,
-          mode: "manual",
-          name: this.props.bot.name,
-          pair: this.props.bot.pair,
-          take_profit: this.props.bot.take_profit,
-          trailling: this.props.bot.trailling,
-          trailling_deviation: this.props.bot.trailling_deviation,
-          candlestick_interval: this.props.bot.candlestick_interval,
-          orders: this.props.bot.orders,
-          stop_loss: this.props.bot.stop_loss,
-        }
+        form._id = this.props.match.params.id;
         this.props.editTestBot(form);
       } else {
-        let bot = Object.assign({}, this.props.bot);
-        bot._id = undefined
-        this.props.createTestBot(bot);
+        this.props.createTestBot(form);
       }
     }
   };
@@ -333,7 +330,7 @@ class TestBotForm extends React.Component {
       this.props.activateTestBot(this.state._id);
       this.props.getTestBot(this.props.match.params.id);
       if (this.props.match.params.id) {
-        this.props.history.push(`/admin/paper-trading/edit/${this.props.createdBotId}`)
+        this.props.history.push(`/admin/paper-trading/edit/${this.props.match.params.id}`)
       }
     }
   };
@@ -393,9 +390,12 @@ class TestBotForm extends React.Component {
                   {intervalOptions.map((item) => (
                     <Badge
                       key={item}
-                      onClick={() =>
+                      onClick={() => {
+                        if (!this.props.bot.pair) {
+                          alert("Please, set Pair first")
+                        }
                         this.props.setBotState({ candlestick_interval: item })
-                      }
+                      }}
                       color={
                         this.props.bot.candlestick_interval === item
                           ? "primary"
