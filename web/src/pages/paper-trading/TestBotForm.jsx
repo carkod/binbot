@@ -21,6 +21,7 @@ import {
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import Candlestick from "../../components/Candlestick";
+import IndicatorsButtons from "../../components/IndicatorsButtons";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import {
   checkBalance,
@@ -48,6 +49,7 @@ class TestBotForm extends React.Component {
       _id: props.match.params.id ? props.match.params.id : null,
       bot_profit: 0,
       activeTab: "main",
+      toggleIndicators: true,
     };
   }
 
@@ -60,14 +62,19 @@ class TestBotForm extends React.Component {
     }
     if (!checkValue(this.props.match.params?.symbol)) {
       this.props.setBotState({
-        pair: this.props.match.params.symbol
-      })
+        pair: this.props.match.params.symbol,
+      });
     }
   };
 
   componentDidUpdate = (p, s) => {
-    if (!checkValue(this.props.createdBotId) && this.props.createdBotId !== p.createdBotId) {
-      this.props.history.push(`/admin/paper-trading/edit/${this.props.createdBotId}`)
+    if (
+      !checkValue(this.props.createdBotId) &&
+      this.props.createdBotId !== p.createdBotId
+    ) {
+      this.props.history.push(
+        `/admin/paper-trading/edit/${this.props.createdBotId}`
+      );
     }
     if (
       (!checkValue(this.props.bot.pair) &&
@@ -116,8 +123,11 @@ class TestBotForm extends React.Component {
           let currentPrice = parseFloat(this.props.bot.deal.current_price);
           const buyPrice = parseFloat(this.props.bot.deal.buy_price);
           const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-          if (this.props.bot.status === "completed" && !checkValue(this.props.bot.deal.sell_price)) {
-            currentPrice = this.props.bot.deal.sell_price
+          if (
+            this.props.bot.status === "completed" &&
+            !checkValue(this.props.bot.deal.sell_price)
+          ) {
+            currentPrice = this.props.bot.deal.sell_price;
           }
           this.setState({ bot_profit: profitChange.toFixed(4) });
         } else {
@@ -128,13 +138,8 @@ class TestBotForm extends React.Component {
   };
 
   requiredinValidation = () => {
-    const {
-      pair,
-      take_profit,
-      trailling,
-      trailling_deviation,
-      stop_loss,
-    } = this.props.bot;
+    const { pair, take_profit, trailling, trailling_deviation, stop_loss } =
+      this.props.bot;
 
     // If everything below is ok, form will be valid
     this.props.setBotState({ formIsValid: true });
@@ -197,7 +202,7 @@ class TestBotForm extends React.Component {
         candlestick_interval: this.props.bot.candlestick_interval,
         orders: this.props.bot.orders,
         stop_loss: this.props.bot.stop_loss,
-      }
+      };
       if (!checkValue(this.props.match.params.id)) {
         form._id = this.props.match.params.id;
         this.props.editTestBot(form);
@@ -330,7 +335,9 @@ class TestBotForm extends React.Component {
       this.props.activateTestBot(this.state._id);
       this.props.getTestBot(this.props.match.params.id);
       if (this.props.match.params.id) {
-        this.props.history.push(`/admin/paper-trading/edit/${this.props.match.params.id}`)
+        this.props.history.push(
+          `/admin/paper-trading/edit/${this.props.match.params.id}`
+        );
       }
     }
   };
@@ -342,6 +349,10 @@ class TestBotForm extends React.Component {
     });
   };
 
+  handleToggleIndicator = (value) => {
+    this.setState({ toggleIndicators: value });
+  };
+
   render() {
     return (
       <div className="content">
@@ -349,64 +360,84 @@ class TestBotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <CardTitle tag="h3">
-                  {this.props.bot?.pair}{" "}
-                  {!checkValue(this.state.bot_profit) && (
-                    <Badge
-                      color={
-                        parseFloat(this.state.bot_profit) > 0
-                          ? "success"
-                          : "danger"
-                      }
-                    >
-                      {this.state.bot_profit + "%"}
-                    </Badge>
-                  )}{" "}
-                  {!checkValue(this.props.bot.status) && (
-                    <Badge
-                      color={
-                        this.props.bot.status === "active"
-                          ? "success"
-                          : this.props.bot.status === "error"
-                          ? "warning"
-                          : this.props.bot.status === "completed"
-                          ? "info"
-                          : "secondary"
-                      }
-                    >
-                      {this.props.bot.status}
-                    </Badge>
-                  )}
-                  <br />
-                  {!checkValue(this.state.bot_profit) &&
-                    !isNaN(this.state.bot_profit) && (
-                      <small>
-                        Earnings after commissions (est.):{" "}
-                        {parseFloat(this.state.bot_profit) - 0.3 + "%"}
-                      </small>
-                    )}
-                </CardTitle>
-                <div>
-                  {intervalOptions.map((item) => (
-                    <Badge
-                      key={item}
-                      onClick={() => {
-                        if (!this.props.bot.pair) {
-                          alert("Please, set Pair first")
+                <Row>
+                  <Col>
+                    <CardTitle tag="h3">
+                      {this.props.bot?.pair}{" "}
+                      {!checkValue(this.state.bot_profit) && (
+                        <Badge
+                          color={
+                            parseFloat(this.state.bot_profit) > 0
+                              ? "success"
+                              : "danger"
+                          }
+                        >
+                          {this.state.bot_profit + "%"}
+                        </Badge>
+                      )}{" "}
+                      {!checkValue(this.props.bot.status) && (
+                        <Badge
+                          color={
+                            this.props.bot.status === "active"
+                              ? "success"
+                              : this.props.bot.status === "error"
+                              ? "warning"
+                              : this.props.bot.status === "completed"
+                              ? "info"
+                              : "secondary"
+                          }
+                        >
+                          {this.props.bot.status}
+                        </Badge>
+                      )}
+                      <br />
+                      <Col>
+                        {!checkValue(this.state.bot_profit) &&
+                          !isNaN(this.state.bot_profit) && (
+                            <h4>
+                              Earnings after commissions (est.):{" "}
+                              {parseFloat(this.state.bot_profit) - 0.3 + "%"}
+                            </h4>
+                          )}
+                      </Col>
+                    </CardTitle>
+                  </Col>
+                </Row>
+                <br />
+                <Row>
+                  <Col>
+                    {intervalOptions.map((item) => (
+                      <Badge
+                        key={item}
+                        onClick={() => {
+                          if (!this.props.bot.pair) {
+                            alert("Please, set Pair first");
+                          }
+                          this.props.setBotState({
+                            candlestick_interval: item,
+                          });
+                        }}
+                        color={
+                          this.props.bot.candlestick_interval === item
+                            ? "primary"
+                            : "secondary"
                         }
-                        this.props.setBotState({ candlestick_interval: item })
-                      }}
-                      color={
-                        this.props.bot.candlestick_interval === item
-                          ? "primary"
-                          : "secondary"
-                      }
-                      className="btn btn-margin-right"
-                    >
-                      {item}
-                    </Badge>
-                  ))}
-                </div>
+                        className="btn btn-margin-right"
+                      >
+                        {item}
+                      </Badge>
+                    ))}
+                  </Col>
+                </Row>
+                <br />
+                <Row>
+                  <Col>
+                    <IndicatorsButtons
+                      toggle={this.state.toggleIndicators}
+                      handleChange={this.handleToggleIndicator}
+                    />
+                  </Col>
+                </Row>
               </CardHeader>
               <CardBody>
                 {this.props.candlestick && !checkValue(this.props.bot.pair) ? (
@@ -414,6 +445,7 @@ class TestBotForm extends React.Component {
                     data={this.props.candlestick}
                     bot={this.props.bot}
                     deal={this.props.bot?.deal}
+                    toggleIndicators={this.state.toggleIndicators}
                   />
                 ) : (
                   ""
@@ -524,7 +556,8 @@ class TestBotForm extends React.Component {
                         onClick={this.handleActivation}
                         disabled={checkValue(this.props.bot?._id)}
                       >
-                        {(this.props.bot.status === "active" && Object.keys(this.props.bot.deal).length > 0 )
+                        {this.props.bot.status === "active" &&
+                        Object.keys(this.props.bot.deal).length > 0
                           ? "Update deal"
                           : "Deal"}
                       </ButtonToggle>
@@ -586,7 +619,9 @@ class TestBotForm extends React.Component {
                   balance={this.props.lastBalance}
                   balance_raw={this.props.balance_raw}
                 />
-              ) : ""}
+              ) : (
+                ""
+              )}
             </Col>
           </Row>
         </Form>
@@ -615,7 +650,7 @@ const mapStateToProps = (state, props) => {
     bot: bot,
     candlestick: candlestick,
     loading: loading,
-    createdBotId: createdBotId
+    createdBotId: createdBotId,
   };
 };
 

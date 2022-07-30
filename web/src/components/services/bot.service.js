@@ -71,6 +71,38 @@ export const botCandlestick = (data, bot, deal = null) => {
   shapes.push(baseOrderTS);
   annotations.push(baseOrderA);
 
+  // Sell time Shape
+  if (!checkValue(deal) && deal.sell_timestamp) {
+    const sellTime = deal.sell_timestamp;
+    const takeProfitTS = {
+      type: "rect",
+      xref: "x",
+      yref: "y",
+      x0: boughtTime,
+      y0: parseFloat(currentPrice) * 1.03,
+      x1: sellTime,
+      y1: parseFloat(currentPrice) - (parseFloat(currentPrice) * 0.03),
+      fillcolor: 'DarkOrange',
+      opacity: "0.8",
+      line: {
+        color: "DarkOrange",
+        width: 2,
+      },
+    };
+    const botText = {
+      x: boughtTime,
+      y: parseFloat(currentPrice),
+      xref: "x",
+      yref: "y",
+      text: `Bot`,
+      font: { color: "white", size: 18 },
+      showarrow: false,
+      xanchor: "left"
+    };
+    shapes.push(takeProfitTS);
+    annotations.push(botText);
+  }
+
   if (
     !checkValue(bot.stop_loss) &&
     parseFloat(bot.stop_loss) > 0

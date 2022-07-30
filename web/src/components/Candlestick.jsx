@@ -5,7 +5,7 @@ import { botCandlestick } from "./services/bot.service";
 import PropTypes from "prop-types";
 
 
-function Candlestick({ data, bot = null, deal = null }) {
+function Candlestick({ data, toggleIndicators = true, bot = null, deal = null }) {
   let layout = {
     dragmode: "zoom",
     autosize: true,
@@ -33,8 +33,10 @@ function Candlestick({ data, bot = null, deal = null }) {
 
   if (!checkValue(bot)) {
     const { annotations, shapes } = botCandlestick(data, bot, deal);
-    layout.annotations = annotations;
-    layout.shapes = shapes
+    if (toggleIndicators) {
+      layout.annotations = annotations;
+      layout.shapes = shapes
+    }
   }
 
   return (
