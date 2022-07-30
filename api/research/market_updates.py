@@ -1,5 +1,7 @@
 import json
 
+from pymongo import ReturnDocument
+
 from api.account.account import Account
 from api.app import create_app
 from api.deals.deal_updates import DealUpdates
@@ -78,6 +80,7 @@ class MarketUpdates(Account):
             bot = self.app.db.bots.find_one_and_update(
                 {"_id": current_bot["_id"]},
                 {"$set": {"deal.current_price": close_price}},
+                return_document=ReturnDocument.AFTER
             )
             print(f'{symbol} Current price in deal updated! {bot["deal"]["current_price"]}')
             if symbol == "YFIIUSDT":
@@ -173,6 +176,7 @@ class MarketUpdates(Account):
             bot = self.app.db.paper_trading.find_one_and_update(
                 {"_id": current_bot["_id"]},
                 {"$set": {"deal.current_price": close_price}},
+                return_document=ReturnDocument.AFTER
             )
             # Stop loss
             if (

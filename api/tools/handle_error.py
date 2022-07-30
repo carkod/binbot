@@ -4,6 +4,7 @@ from time import sleep
 import os
 from bson.objectid import ObjectId
 from flask import Response as FlaskResponse
+from pymongo import ReturnDocument
 from requests import Response, put
 from requests.exceptions import HTTPError, Timeout
 from bson import json_util
@@ -72,6 +73,7 @@ def bot_errors(error, bot, status="error"):
     bot = app.db.bots.find_one_and_update(
         {"_id": ObjectId(bot["_id"])},
         {"$set": {"status": status, "errors": bot["errors"]}},
+        return_document=ReturnDocument.AFTER
     )
 
     return bot

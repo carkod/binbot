@@ -3,6 +3,7 @@ from time import time
 from typing import TypedDict
 
 import pandas as pd
+from pymongo import ReturnDocument
 from api.apis import BinbotApi
 from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
 from api.tools.round_numbers import interval_to_millisecs
@@ -35,7 +36,7 @@ class KlinesSchema:
     def replace_klines(self, data):
         try:
             result = current_app.db.klines.find_one_and_update(
-                {"_id": self._id} , {"$set": {self.interval: data}}, upsert=True
+                {"_id": self._id} , {"$set": {self.interval: data}}, upsert=True, return_document=ReturnDocument.AFTER
             )
             return result
         except Exception as e:
@@ -127,7 +128,7 @@ class Candlestick(BinbotApi):
         # If true, no gaps
         try:
             no_gaps = gaps_check.all()
-            if not bool(no_gaps) and check_latest:
+            if not bool(no_gaps) or check_latest:
                 kline_df = self.delete_and_create_klines(params)
         except IndexError as e:
             print("Check gaps Index Error", e)

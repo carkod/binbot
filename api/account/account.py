@@ -52,9 +52,9 @@ class Account(BinbotApi):
         data = handle_binance_errors(res)
         try:
             price = data["price"]
+            return price
         except KeyError:
             print(symbol)
-        return price
 
     def ticker_24(self):
         url = self.ticker24_url

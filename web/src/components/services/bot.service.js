@@ -94,7 +94,7 @@ export const botCandlestick = (data, bot, deal = null) => {
       y: parseFloat(currentPrice),
       xref: "x",
       yref: "y",
-      text: `Bot`,
+      text: "Deal",
       font: { color: "white", size: 18 },
       showarrow: false,
       xanchor: "left"
