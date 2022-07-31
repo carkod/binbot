@@ -191,7 +191,7 @@ export const botCandlestick = (data, bot, deal = null) => {
       parseFloat(takeProfit) +
       parseFloat(takeProfit) * (bot.take_profit / 100)
     ).toFixed(8);
-    if (bot.orders.length > 0) {
+    if (bot.orders?.length > 0) {
       const findTp = bot.orders.find((x) => x.deal_type === "take_profit");
       if (!checkValue(findTp)) {
         takeProfitPrice = findTp.price;   

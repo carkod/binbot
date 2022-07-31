@@ -10,6 +10,7 @@ import {
   Row,
   TabPane,
 } from "reactstrap";
+import BotFormTooltip from "../../../components/BotFormTooltip";
 import SymbolSearch from "../../../components/SymbolSearch";
 import { checkValue } from "../../../validations";
 
@@ -126,6 +127,25 @@ export default function MainTab({
             </FormGroup>
           </Col>
         )}
+      </Row>
+      <Row>
+        <Col md="6" sm="12">
+          <FormGroup>
+            <BotFormTooltip
+              name="cooldown"
+              text="Time until next bot activation with same pair"
+            >
+              Cooldown (seconds)
+            </BotFormTooltip>
+            <Input
+              type="number"
+              name="cooldown"
+              onChange={handleChange}
+              value={bot.cooldown}
+              autoComplete="off"
+            />
+          </FormGroup>
+        </Col>
       </Row>
     </TabPane>
   );

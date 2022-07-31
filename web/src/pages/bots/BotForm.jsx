@@ -20,7 +20,7 @@ import {
   NavLink,
   Row,
   TabContent,
-  TabPane
+  TabPane,
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
@@ -32,7 +32,7 @@ import {
   checkBalance,
   checkValue,
   intervalOptions,
-  roundDecimals
+  roundDecimals,
 } from "../../validations.js";
 import {
   activateBot,
@@ -43,7 +43,7 @@ import {
   getSymbolInfo,
   getSymbols,
   loadCandlestick,
-  setBot
+  setBot,
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
 import MainTab from "./tabs/Main";
@@ -57,7 +57,7 @@ class BotForm extends React.Component {
       _id: props.match.params.id ? props.match.params.id : null,
       bot_profit: 0,
       activeTab: "main",
-      toggleIndicators: true
+      toggleIndicators: true,
     };
   }
 
@@ -274,17 +274,17 @@ class BotForm extends React.Component {
         // Check that we have enough funds
         // If not return error
         if (parseFloat(updatedValue) > 0) {
-          this.setState({
+          this.props.setBot({
             balance_available: updatedValue,
             balance_available_asset: name,
             baseOrderSizeError: false,
             balanceAvailableError: false,
           });
         } else {
-          this.setState({ baseOrderSizeError: true, formIsValid: false });
+          this.props.setBot({ baseOrderSizeError: true, formIsValid: false });
         }
       } else {
-        this.setState({
+        this.props.setBot({
           balance_available: value,
           balance_available_asset: name,
           balanceAvailableError: true,
@@ -310,6 +310,7 @@ class BotForm extends React.Component {
         trailling_deviation: this.props.bot.trailling_deviation,
         stop_loss: this.props.bot.stop_loss,
         candlestick_interval: this.props.bot.candlestick_interval,
+        cooldown: this.props.bot.cooldown
       };
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -332,20 +333,8 @@ class BotForm extends React.Component {
     }
   };
 
-  handlePairBlur = () => {
-    if (!checkValue(this.props.bot.pair)) {
-      this.props.loadCandlestick(
-        this.props.bot.pair,
-        this.props.bot.candlestick_interval,
-        this.props.bot?.deal?.buy_timestamp
-      );
-    }
-  };
-
   handleBaseChange = (e) => {
-    this.setState({
-      base_order_size: e.target.value,
-    });
+    this.props.setBot({ base_order_size: e.target.value });
   };
 
   addMin = () => {
@@ -366,7 +355,7 @@ class BotForm extends React.Component {
         default:
           break;
       }
-      this.setState({ base_order_size: minAmount });
+      this.props.setBot({ base_order_size: minAmount });
     }
   };
 
@@ -415,7 +404,10 @@ class BotForm extends React.Component {
   };
 
   handleBlur = () => {
-    if (!checkValue(this.props.bot.pair)) {
+    if (
+      !checkValue(this.props.bot.pair) &&
+      !checkValue(this.props.bot.candlestick_interval)
+    ) {
       this.props.loadCandlestick(
         this.props.bot.pair,
         this.props.bot.candlestick_interval,
@@ -448,10 +440,10 @@ class BotForm extends React.Component {
     this.props.setBot({
       trailling: this.state.trailling === "true" ? "false" : "true",
     });
-  
+
   handleToggleIndicator = (value) => {
-    this.setState({ toggleIndicators: value })
-  }
+    this.setState({ toggleIndicators: value });
+  };
 
   render() {
     return (
@@ -529,7 +521,10 @@ class BotForm extends React.Component {
                 <br />
                 <Row>
                   <Col>
-                    <IndicatorsButtons toggle={this.state.toggleIndicators} handleChange={this.handleToggleIndicator} />
+                    <IndicatorsButtons
+                      toggle={this.state.toggleIndicators}
+                      handleChange={this.handleToggleIndicator}
+                    />
                   </Col>
                 </Row>
               </CardHeader>
@@ -546,7 +541,6 @@ class BotForm extends React.Component {
                         : null
                     }
                     toggleIndicators={this.state.toggleIndicators}
-
                   />
                 ) : (
                   ""
@@ -624,7 +618,7 @@ class BotForm extends React.Component {
                       symbols={this.props.symbols}
                       bot={this.props.bot}
                       handlePairChange={this.handlePairChange}
-                      handlePairBlur={this.handlePairBlur}
+                      handlePairBlur={this.handleBlur}
                       handleChange={this.handleChange}
                       handleBaseChange={this.handleBaseChange}
                       handleBlur={this.handleBlur}

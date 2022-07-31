@@ -33,6 +33,7 @@ class ResearchSignals(BinbotApi):
         self.max_request = 950  # Avoid HTTP 411 error by separating streams
         self.active_symbols = []
         self.thread_ids = []
+        self.active_test_bots = []
     
     def _restart_websockets(self):
         """
@@ -104,9 +105,13 @@ class ResearchSignals(BinbotApi):
         # if autrotrade enabled and it's not an already active bot
         # this avoids running too many useless bots
         # Temporarily restricting to 1 bot for low funds
-        bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
+        bots_res = requests.get(url=self.bb_bot_url, params={"status": "active", "no_cooldown": "true"})
         active_bots = handle_binance_errors(bots_res)["data"]
         self.active_symbols = [bot["pair"] for bot in active_bots]
+
+        paper_trading_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active", "no_cooldown": "true"})
+        paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
+        self.active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
         pass
 
     def new_tokens(self, projects) -> list:
@@ -244,10 +249,7 @@ class ResearchSignals(BinbotApi):
         # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
         # the downfall is that it can increase load for the server if there are multiple bots opened
         # e.g. autotrade bots not updating can be a symptom of this
-        paper_trading_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active"})
-        paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
-        active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
-        if symbol not in active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
+        if symbol not in self.active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
             # Test autotrade runs independently of autotrade = 1
             test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm, args)
             test_autotrade.run()

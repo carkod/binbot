@@ -202,6 +202,7 @@ class TestBotForm extends React.Component {
         candlestick_interval: this.props.bot.candlestick_interval,
         orders: this.props.bot.orders,
         stop_loss: this.props.bot.stop_loss,
+        cooldown: this.props.bot.cooldown
       };
       if (!checkValue(this.props.match.params.id)) {
         form._id = this.props.match.params.id;
@@ -222,16 +223,6 @@ class TestBotForm extends React.Component {
     if (!checkValue(value)) {
       this.props.getSymbolInfo(value[0]);
       this.props.setBotState({ pair: value[0] });
-    }
-  };
-
-  handlePairBlur = () => {
-    if (!checkValue(this.props.bot.pair)) {
-      this.props.loadCandlestick(
-        this.props.bot.pair,
-        this.props.bot.candlestick_interval,
-        this.props.bot?.deal?.buy_timestamp
-      );
     }
   };
 
@@ -318,11 +309,12 @@ class TestBotForm extends React.Component {
     });
   };
 
+
   handleBlur = () => {
-    if (!checkValue(this.props.bot.pair)) {
+    if (!checkValue(this.props.bot.pair) && !checkValue(this.props.bot.candlestick_interval)) {
       this.props.loadCandlestick(
         this.props.bot.pair,
-        this.state.candlestick_interval,
+        this.props.bot.candlestick_interval,
         this.props.bot?.deal?.buy_timestamp
       );
     }
@@ -390,17 +382,16 @@ class TestBotForm extends React.Component {
                           {this.props.bot.status}
                         </Badge>
                       )}
-                      <br />
-                      <Col>
-                        {!checkValue(this.state.bot_profit) &&
-                          !isNaN(this.state.bot_profit) && (
-                            <h4>
-                              Earnings after commissions (est.):{" "}
-                              {parseFloat(this.state.bot_profit) - 0.3 + "%"}
-                            </h4>
-                          )}
-                      </Col>
                     </CardTitle>
+                  </Col>
+                  <Col>
+                    {!checkValue(this.state.bot_profit) &&
+                      !isNaN(this.state.bot_profit) && (
+                        <h5>
+                          Earnings after commissions (est.):{" "}
+                          {parseFloat(this.state.bot_profit) - 0.3 + "%"}
+                        </h5>
+                      )}
                   </Col>
                 </Row>
                 <br />
@@ -523,7 +514,7 @@ class TestBotForm extends React.Component {
                       symbols={this.props.symbols}
                       state={this.props.bot}
                       handlePairChange={this.handlePairChange}
-                      handlePairBlur={this.handlePairBlur}
+                      handlePairBlur={this.handleBlur}
                       handleChange={this.handleChange}
                       handleBaseChange={this.handleBaseChange}
                       handleBlur={this.handleBlur}

@@ -43,6 +43,7 @@ class BotSchema:
         self.safety_orders: object = {}
         self.errors: list[str] = []
         self.total_commission: float = 0
+        self.cooldown: float = 0
     
     def validate_percentage(self, property, data):
         """Support function for validate_model to reduce repetition"""
@@ -205,6 +206,16 @@ class BotSchema:
         if "orders" in data:
             self.orders = data.get("orders")
             del data["orders"]
+
+        if "cooldown" in data:
+            try:
+                float(data["cooldown"])
+            except Exception:
+                raise BotSchemaValidation(
+                    f"cooldown must be a number integer or decimal"
+                )
+            self.cooldown = data.get("cooldown")
+            del data["cooldown"]
         
         if len(data) > 0:
             for item in data:
