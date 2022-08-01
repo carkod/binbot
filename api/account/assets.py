@@ -189,7 +189,7 @@ class Assets(Account):
             # Only tether coins for hedging
             if b["asset"] == "NFT":
                 break
-            elif b["asset"] in ["USD"]:
+            elif b["asset"] in ["USD", "USDT"]:
                 qty = self._check_locked(b)
                 total_usdt += qty
             else:

@@ -13,7 +13,6 @@ class PaperTradingBotSchema(BotSchema):
     Blueprint of the bots collection on MongoDB
     All validation and database fields new or old handled here
     """
-    statuses = ["inactive", "active", "completed", "error", "archived"]
 
     def __init__(self):
         return super().__init__()
@@ -161,6 +160,16 @@ class PaperTradingBotSchema(BotSchema):
         if "orders" in data:
             self.orders = data.get("orders")
             del data["orders"]
+        
+        if "cooldown" in data:
+            try:
+                float(data["cooldown"])
+            except Exception:
+                raise BotSchemaValidation(
+                    f"cooldown must be a number integer or decimal"
+                )
+            self.cooldown = data.get("cooldown")
+            del data["cooldown"]
         
         if len(data) > 0:
             for item in data:

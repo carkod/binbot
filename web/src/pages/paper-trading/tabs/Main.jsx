@@ -10,6 +10,7 @@ import {
   Row,
   TabPane,
 } from "reactstrap";
+import BotFormTooltip from "../../../components/BotFormTooltip";
 import SymbolSearch from "../../../components/SymbolSearch";
 import { checkValue } from "../../../validations";
 
@@ -50,10 +51,13 @@ export default function MainTab({
       <Row className="u-margin-bottom">
         <Col md="6" sm="12">
           <Label htmlFor="base_order_size">
-            Base order size<span className="u-required">*</span>
-            <small>
-              {" "}(Unimportant - real funds will not be used)
-              </small>
+            <BotFormTooltip
+              name="base_order_size"
+              text="Not important, real funds not used"
+            >
+              Base order size
+            </BotFormTooltip>
+            <span className="u-required">*</span>
           </Label>
           <InputGroup>
             <Input
@@ -70,44 +74,84 @@ export default function MainTab({
           <FormFeedback valid={!state.baseOrderSizeError}>
             Not enough balance
           </FormFeedback>
-          {state.status !== "active" &&
+          {state.status !== "active" && (
             <>
               <Badge color="secondary" onClick={addMin}>
-                Min {state.quoteAsset === "BTC" ? 0.001 : (state.quoteAsset === "BNB" ? 0.051 : (state.quoteAsset === "GBP" ? 10 : ""))}
-              </Badge>
-              {' '}
+                Min{" "}
+                {state.quoteAsset === "BTC"
+                  ? 0.001
+                  : state.quoteAsset === "BNB"
+                  ? 0.051
+                  : state.quoteAsset === "GBP"
+                  ? 10
+                  : ""}
+              </Badge>{" "}
               <Badge color="secondary" onClick={addAll}>
                 Add all
               </Badge>
             </>
-          }
+          )}
           <FormFeedback valid={!checkValue(state.addAllError)}>
             state.addAllError
           </FormFeedback>
         </Col>
-        {state.status !== "active" && 
-        <Col md="6" sm="12">
-          <Label htmlFor="balance_to_use">
-            Balance to use<span className="u-required">*</span>
-          </Label>
-          <FormGroup check style={{
-            display: "flex",
-            alignItems: "center",
-            fontSize: "1.5rem"
-          }}>
-            {state.quoteAsset &&
-              <Label check>
-                <Input type="radio" name="balance_to_use" checked={state.balance_to_use === state.quoteAsset} value={state.quoteAsset} onChange={handleChange}/>{' '}
-                {state.quoteAsset}
-              </Label>
-            }
-            <Label check>
-              <Input type="radio" name="balance_to_use" checked={state.balance_to_use === "GBP"} value={"GBP"} onChange={handleChange}/>{' '}
-              GBP
+        {state.status !== "active" && (
+          <Col md="6" sm="12">
+            <Label htmlFor="balance_to_use">
+              Balance to use<span className="u-required">*</span>
             </Label>
+            <FormGroup
+              check
+              style={{
+                display: "flex",
+                alignItems: "center",
+                fontSize: "1.5rem",
+              }}
+            >
+              {state.quoteAsset && (
+                <Label check>
+                  <Input
+                    type="radio"
+                    name="balance_to_use"
+                    checked={state.balance_to_use === state.quoteAsset}
+                    value={state.quoteAsset}
+                    onChange={handleChange}
+                  />{" "}
+                  {state.quoteAsset}
+                </Label>
+              )}
+              <Label check>
+                <Input
+                  type="radio"
+                  name="balance_to_use"
+                  checked={state.balance_to_use === "GBP"}
+                  value={"GBP"}
+                  onChange={handleChange}
+                />{" "}
+                GBP
+              </Label>
+            </FormGroup>
+          </Col>
+        )}
+      </Row>
+      <Row>
+        <Col md="6" sm="12">
+          <FormGroup>
+            <BotFormTooltip
+              name="cooldown"
+              text="Time until next bot activation with same pair"
+            >
+              Cooldown (seconds)
+            </BotFormTooltip>
+            <Input
+              type="number"
+              name="cooldown"
+              onChange={handleChange}
+              value={state.cooldown}
+              autoComplete="off"
+            />
           </FormGroup>
         </Col>
-        }
       </Row>
     </TabPane>
   );

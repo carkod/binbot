@@ -46,6 +46,7 @@ export const bot = {
   stopLossError: false,
   safety_orders: {},
   addAllError: "",
+  cooldown: 0
 };
 
 export function setFilterByWeek() {

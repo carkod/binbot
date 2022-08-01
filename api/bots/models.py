@@ -51,9 +51,11 @@ class Bot(Account):
         status = request.args.get("status")
         start_date = request.args.get("start_date")
         end_date = request.args.get("end_date")
+        no_cooldown = request.args.get("no_cooldown")
         params = {}
         
         bot_schema = BotSchema()
+
         if status and status in bot_schema.statuses:
             params["active"] = status
         elif status:
@@ -86,6 +88,17 @@ class Bot(Account):
             obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
             params["_id"]["$lte"] = lte_tp_id
+
+        # Only retrieve active and cooldown bots
+        # These bots will be removed from signals
+        if status and no_cooldown:
+            current_ts = time() * 1000
+            params = {
+                "$or": [
+                    {"status": status},
+                    {"$where": f"{current_ts} - this.deal.sell_timestamp < (this.cooldown * 1000)"}
+                ]
+            }
 
         bot = list(
             self.app.db.bots.find(params).sort(

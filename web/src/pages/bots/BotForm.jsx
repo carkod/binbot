@@ -25,6 +25,7 @@ import {
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import Candlestick from "../../components/Candlestick";
+import IndicatorsButtons from "../../components/IndicatorsButtons";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import { bot } from "../../state/bots/actions";
 import {
@@ -56,6 +57,7 @@ class BotForm extends React.Component {
       _id: props.match.params.id ? props.match.params.id : null,
       bot_profit: 0,
       activeTab: "main",
+      toggleIndicators: true,
     };
   }
 
@@ -272,17 +274,17 @@ class BotForm extends React.Component {
         // Check that we have enough funds
         // If not return error
         if (parseFloat(updatedValue) > 0) {
-          this.setState({
+          this.props.setBot({
             balance_available: updatedValue,
             balance_available_asset: name,
             baseOrderSizeError: false,
             balanceAvailableError: false,
           });
         } else {
-          this.setState({ baseOrderSizeError: true, formIsValid: false });
+          this.props.setBot({ baseOrderSizeError: true, formIsValid: false });
         }
       } else {
-        this.setState({
+        this.props.setBot({
           balance_available: value,
           balance_available_asset: name,
           balanceAvailableError: true,
@@ -308,6 +310,7 @@ class BotForm extends React.Component {
         trailling_deviation: this.props.bot.trailling_deviation,
         stop_loss: this.props.bot.stop_loss,
         candlestick_interval: this.props.bot.candlestick_interval,
+        cooldown: this.props.bot.cooldown
       };
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -330,20 +333,8 @@ class BotForm extends React.Component {
     }
   };
 
-  handlePairBlur = () => {
-    if (!checkValue(this.props.bot.pair)) {
-      this.props.loadCandlestick(
-        this.props.bot.pair,
-        this.props.bot.candlestick_interval,
-        this.props.bot?.deal?.buy_timestamp
-      );
-    }
-  };
-
   handleBaseChange = (e) => {
-    this.setState({
-      base_order_size: e.target.value,
-    });
+    this.props.setBot({ base_order_size: e.target.value });
   };
 
   addMin = () => {
@@ -364,7 +355,7 @@ class BotForm extends React.Component {
         default:
           break;
       }
-      this.setState({ base_order_size: minAmount });
+      this.props.setBot({ base_order_size: minAmount });
     }
   };
 
@@ -413,7 +404,10 @@ class BotForm extends React.Component {
   };
 
   handleBlur = () => {
-    if (!checkValue(this.props.bot.pair)) {
+    if (
+      !checkValue(this.props.bot.pair) &&
+      !checkValue(this.props.bot.candlestick_interval)
+    ) {
       this.props.loadCandlestick(
         this.props.bot.pair,
         this.props.bot.candlestick_interval,
@@ -447,6 +441,10 @@ class BotForm extends React.Component {
       trailling: this.state.trailling === "true" ? "false" : "true",
     });
 
+  handleToggleIndicator = (value) => {
+    this.setState({ toggleIndicators: value });
+  };
+
   render() {
     return (
       <div className="content">
@@ -454,64 +452,81 @@ class BotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <CardTitle tag="h3">
-                  {this.props.bot?.pair}{" "}
-                  {!checkValue(this.state.bot_profit) &&
-                    !isNaN(this.state.bot_profit) && (
+                <Row>
+                  <Col>
+                    <CardTitle tag="h3">
+                      {this.props.bot?.pair}{" "}
+                      {!checkValue(this.state.bot_profit) &&
+                        !isNaN(this.state.bot_profit) && (
+                          <Badge
+                            color={
+                              parseFloat(this.state.bot_profit) > 0
+                                ? "success"
+                                : "danger"
+                            }
+                          >
+                            {this.state.bot_profit + "%"}
+                          </Badge>
+                        )}{" "}
+                      {!checkValue(this.props.bot?.status) && (
+                        <Badge
+                          color={
+                            this.props.bot.status === "active"
+                              ? "success"
+                              : this.props.bot.status === "error"
+                              ? "warning"
+                              : this.props.bot.status === "completed"
+                              ? "info"
+                              : "secondary"
+                          }
+                        >
+                          {this.props.bot.status}
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </Col>
+                  <Col>
+                    {!checkValue(this.state.bot_profit) &&
+                      !isNaN(this.state.bot_profit) && (
+                        <h4>
+                          Earnings after commissions (est.):{" "}
+                          {roundDecimals(
+                            parseFloat(this.state.bot_profit) - 0.3
+                          ) + "%"}
+                        </h4>
+                      )}
+                  </Col>
+                </Row>
+                <br />
+                <Row>
+                  <Col>
+                    {intervalOptions.map((item) => (
                       <Badge
-                        color={
-                          parseFloat(this.state.bot_profit) > 0
-                            ? "success"
-                            : "danger"
+                        key={item}
+                        onClick={() =>
+                          this.props.setBot({ candlestick_interval: item })
                         }
+                        color={
+                          this.props.bot.candlestick_interval === item
+                            ? "primary"
+                            : "secondary"
+                        }
+                        className="btn btn-margin-right"
                       >
-                        {this.state.bot_profit + "%"}
+                        {item}
                       </Badge>
-                    )}{" "}
-                  {!checkValue(this.props.bot?.status) && (
-                    <Badge
-                      color={
-                        this.props.bot.status === "active"
-                          ? "success"
-                          : this.props.bot.status === "error"
-                          ? "warning"
-                          : this.props.bot.status === "completed"
-                          ? "info"
-                          : "secondary"
-                      }
-                    >
-                      {this.props.bot.status}
-                    </Badge>
-                  )}
-                  <br />
-                  {!checkValue(this.state.bot_profit) &&
-                    !isNaN(this.state.bot_profit) && (
-                      <small>
-                        Earnings after commissions (est.):{" "}
-                        {roundDecimals(
-                          parseFloat(this.state.bot_profit) - 0.3
-                        ) + "%"}
-                      </small>
-                    )}
-                </CardTitle>
-                <div>
-                  {intervalOptions.map((item) => (
-                    <Badge
-                      key={item}
-                      onClick={() =>
-                        this.props.setBot({ candlestick_interval: item })
-                      }
-                      color={
-                        this.props.bot.candlestick_interval === item
-                          ? "primary"
-                          : "secondary"
-                      }
-                      className="btn btn-margin-right"
-                    >
-                      {item}
-                    </Badge>
-                  ))}
-                </div>
+                    ))}
+                  </Col>
+                </Row>
+                <br />
+                <Row>
+                  <Col>
+                    <IndicatorsButtons
+                      toggle={this.state.toggleIndicators}
+                      handleChange={this.handleToggleIndicator}
+                    />
+                  </Col>
+                </Row>
               </CardHeader>
               <CardBody>
                 {this.props.candlestick &&
@@ -525,6 +540,7 @@ class BotForm extends React.Component {
                         ? this.props.bot.deal
                         : null
                     }
+                    toggleIndicators={this.state.toggleIndicators}
                   />
                 ) : (
                   ""
@@ -602,7 +618,7 @@ class BotForm extends React.Component {
                       symbols={this.props.symbols}
                       bot={this.props.bot}
                       handlePairChange={this.handlePairChange}
-                      handlePairBlur={this.handlePairBlur}
+                      handlePairBlur={this.handleBlur}
                       handleChange={this.handleChange}
                       handleBaseChange={this.handleBaseChange}
                       handleBlur={this.handleBlur}
@@ -683,43 +699,43 @@ class BotForm extends React.Component {
                   </Row>
                   {!this.props.bot.formIsValid && (
                     <div>
-                    <br />
-                    <Row>
-                      <Col md="12">
-                        <Alert color="danger">
-                          <p>There are fields with errors</p>
-                          <ul>
-                            {this.props.bot.pairError && <li>Pair</li>}
-                            {this.props.bot.baseOrderSizeError && (
-                              <li>Base order size</li>
-                            )}
-                            {this.props.bot.baseOrderSizeError && (
-                              <>
-                                <li>
-                                  Base order size (How much to trade?) must be
-                                  filled
-                                </li>
-                              </>
-                            )}
-                            {this.props.bot.soSizeError && (
-                              <>
-                                <li>Safety order size</li>
-                                <li>Check balance for Safety order size</li>
-                              </>
-                            )}
-                            {this.props.bot.priceDevSoError && (
-                              <li>Price deviation</li>
-                            )}
-                            {this.props.bot.takeProfitError && (
-                              <li>Take profit</li>
-                            )}
-                            {this.props.bot.traillingDeviationError && (
-                              <li>Trailling deviation</li>
-                            )}
-                          </ul>
-                        </Alert>
-                      </Col>
-                    </Row>
+                      <br />
+                      <Row>
+                        <Col md="12">
+                          <Alert color="danger">
+                            <p>There are fields with errors</p>
+                            <ul>
+                              {this.props.bot.pairError && <li>Pair</li>}
+                              {this.props.bot.baseOrderSizeError && (
+                                <li>Base order size</li>
+                              )}
+                              {this.props.bot.baseOrderSizeError && (
+                                <>
+                                  <li>
+                                    Base order size (How much to trade?) must be
+                                    filled
+                                  </li>
+                                </>
+                              )}
+                              {this.props.bot.soSizeError && (
+                                <>
+                                  <li>Safety order size</li>
+                                  <li>Check balance for Safety order size</li>
+                                </>
+                              )}
+                              {this.props.bot.priceDevSoError && (
+                                <li>Price deviation</li>
+                              )}
+                              {this.props.bot.takeProfitError && (
+                                <li>Take profit</li>
+                              )}
+                              {this.props.bot.traillingDeviationError && (
+                                <li>Trailling deviation</li>
+                              )}
+                            </ul>
+                          </Alert>
+                        </Col>
+                      </Row>
                     </div>
                   )}
                 </CardBody>

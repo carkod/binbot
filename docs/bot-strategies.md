@@ -19,3 +19,6 @@ If prices are likely to go up, it's always better to use a trailling order, beca
 If prices are likely to go down, then either not create a bot, use margin trading (not available at time of writing) or use safety orders if prices will bounce back for sure.
 
 Another problem with SOs, is that a lot of balance is kept on hold. If SO deals are triggered only then balance will be used to cover that drop in prices, however if many bots use SOs, then this will easily drain balance available that could be used for other bots with more potential of price growth.
+
+## Cooldown
+Set time in seconds for a specific bot, to avoid immediately opening another bot right after completing one.

@@ -47,6 +47,7 @@ class Bot(Account):
         status = request.args.get("status")
         start_date = request.args.get("start_date")
         end_date = request.args.get("end_date")
+        no_cooldown = request.args.get("no_cooldown")
         params = {}
 
         bot_schema = PaperTradingBotSchema()
@@ -82,6 +83,16 @@ class Bot(Account):
             params["_id"]["$lte"] = lte_tp_id
 
         sort = [("status", 1), ("_id", -1), ("pair", 1)]
+
+        if status and no_cooldown:
+            current_ts = time() * 1000
+            params = {
+                "$or": [
+                    {"status": status},
+                    {"$where": f"{current_ts} - this.deal.sell_timestamp < (this.cooldown * 1000)"}
+                ]
+            }
+
         bot = bot_schema.get_test_bots(sort, params)
         if bot:
             resp = jsonResp({"message": "Successfully found a bot!", "data": bot})

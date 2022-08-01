@@ -1,3 +1,4 @@
+from datetime import datetime
 from time import sleep
 from api.app import create_app
 from api.research.test_autotrade_schema import TestAutotradeSchema
@@ -6,6 +7,7 @@ from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
 from api.research.controller_schema import ControllerSchema
 from api.apis import ThreeCommasApi
+from api.tools.round_numbers import round_numbers
 
 class Controller:
     """
@@ -127,6 +129,8 @@ class Controller:
         """
         3commas signals that are profitable
         in the past week
+
+        Uses the average of min and max to compute AYP
         """
         print("Storing profitable signals from 3commas.io...")
         app = create_app()
@@ -142,15 +146,31 @@ class Controller:
                 signals = api.get_marketplace_item_signals(item
             ["id"])
             portfolio = []
+            total_ayp = 0
+            previous_ts = ""
+            pairs = []
             for signal in signals:
-                print(signal["pair"])
-                if signal["exchange"] == "Binance" and signal["signal_type"] == "long":
-                    portfolio.append(signal)
+                if signal["exchange"] == "Binance" and signal["signal_type"] == "long" and signal["min"] and signal["max"]:
+                    pairs.append(signal["pair"])
+                    current_ts = datetime.fromtimestamp(signal["timestamp"]).strftime("%Y-%m-%d")
+                    avg_return = float(signal["min"]) + float(signal["max"]) / 2
+                    if current_ts == previous_ts:
+                        total_ayp += avg_return
+                    else:
+                        total_ayp += avg_return
+                        asset = {
+                            "time": current_ts,
+                            "estimated_ayp": round_numbers(total_ayp, 4),
+                            "pairs": pairs
+                        }
+                        portfolio.append(asset)
+                    
+                    previous_ts = datetime.fromtimestamp(signal["timestamp"]).strftime("%Y-%m-%d")
 
             consolidated_signals.append({
                 "id": item["id"],
                 "name": item["name"],
-                "portfolio": portfolio
+                "portfolio": portfolio,
             })
 
         try:
