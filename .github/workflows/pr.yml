@@ -98,16 +98,6 @@ jobs:
         run: |
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker push carloswufei/binbot_research:latest
-
-  staging_deployment:
-    needs: [push_to_registry, push_research_to_registry]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Invoke deployment hook
-        uses: distributhor/workflow-webhook@v2
-        env:
-          webhook_url: ${{ secrets.WEBHOOK_URL }}
-          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
   
   python_tests:
     name: Python code tests
