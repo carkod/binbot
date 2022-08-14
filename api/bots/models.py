@@ -1,7 +1,9 @@
 import threading
 from datetime import datetime
 from time import time
+
 from api.account.account import Account
+from api.bots.schemas import BotSchema, SafetyOrderSchema
 from api.deals.models import Deal
 from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
@@ -18,7 +20,28 @@ from api.tools.round_numbers import supress_notation
 from bson.objectid import ObjectId
 from flask import Response, current_app, request
 from requests import delete
-from api.bots.schemas import BotSchema
+
+
+class SafetyOrderModel:
+    def __init__(
+        self,
+        name="so_1",
+        order_id="",
+        buy_price=0,
+        buy_timestamp=0,
+        safety_order_size=0,
+        errors=[],
+        total_comission=0,
+    ):
+        self.name: str = name  # should be so_<index>
+        self.order_id: str = order_id
+        self.created_at: float = time() * 1000
+        self.updated_at: float = time() * 1000
+        self.buy_price: float = buy_price
+        self.buy_timestamp: float = buy_timestamp
+        self.safety_order_size: float = safety_order_size
+        self.errors: list[str] = errors
+        self.total_commission: float = total_comission
 
 
 class Bot(Account):
@@ -26,7 +49,9 @@ class Bot(Account):
         self.app = current_app
         self.default_deal = DealSchema()
         self.defaults = BotSchema()
-        self.default_so = {"so_size": "0", "price": "0", "price_deviation_so": "0.63"}
+        self.so_schema = SafetyOrderSchema()
+        self.so_model = SafetyOrderModel()
+        self.safety_orders: SafetyOrderModel = list(self.so_schema.dump(self.so_model))
 
     def _restart_websockets(self):
         """
@@ -38,7 +63,10 @@ class Bot(Account):
             if thread.name == "market_updates_thread" and hasattr(thread, "_target"):
                 thread._target.__self__.markets_streams.close()
                 market_update_thread()
-                print("Finished restarting market_updates. Current #threads", threading.enumerate())
+                print(
+                    "Finished restarting market_updates. Current #threads",
+                    threading.enumerate(),
+                )
         return
 
     def get(self):
@@ -53,20 +81,24 @@ class Bot(Account):
         end_date = request.args.get("end_date")
         no_cooldown = request.args.get("no_cooldown")
         params = {}
-        
+
         bot_schema = BotSchema()
 
         if status and status in bot_schema.statuses:
             params["active"] = status
         elif status:
-            resp = jsonResp({"message": f"Bots status {status} not allowed", "data": []})
+            resp = jsonResp(
+                {"message": f"Bots status {status} not allowed", "data": []}
+            )
             return resp
 
         if start_date:
             try:
                 float(start_date)
             except ValueError as e:
-                resp = jsonResp({"message": f"start_date must be a timestamp float", "data": []})
+                resp = jsonResp(
+                    {"message": f"start_date must be a timestamp float", "data": []}
+                )
                 return resp
 
             obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
@@ -74,15 +106,15 @@ class Bot(Account):
             try:
                 params["_id"]["$gte"] = gte_tp_id
             except KeyError:
-                params["_id"] = {
-                    "$gte": gte_tp_id
-                }
-        
+                params["_id"] = {"$gte": gte_tp_id}
+
         if end_date:
             try:
                 float(end_date)
             except ValueError as e:
-                resp = jsonResp({"message": f"end_date must be a timestamp float", "data": []})
+                resp = jsonResp(
+                    {"message": f"end_date must be a timestamp float", "data": []}
+                )
                 return resp
 
             obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
@@ -96,7 +128,9 @@ class Bot(Account):
             params = {
                 "$or": [
                     {"status": status},
-                    {"$where": f"{current_ts} - this.deal.sell_timestamp < (this.cooldown * 1000)"}
+                    {
+                        "$where": f"{current_ts} - this.deal.sell_timestamp < (this.cooldown * 1000)"
+                    },
                 ]
             }
 
@@ -152,8 +186,10 @@ class Bot(Account):
 
         if not botIds or not isinstance(botIds, list):
             return jsonResp_error_message("At least one bot id is required")
-        
-        delete_action = self.app.db.bots.delete_many({"_id": {"$in": [ObjectId(item) for item in botIds]}})
+
+        delete_action = self.app.db.bots.delete_many(
+            {"_id": {"$in": [ObjectId(item) for item in botIds]}}
+        )
         if delete_action:
             resp = jsonResp_message("Successfully deleted bot")
             self._restart_websockets()
@@ -241,7 +277,7 @@ class Bot(Account):
                 for d in orders:
                     if "deal_type" in d and (
                         d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
-                    ):  
+                    ):
                         order_id = d["order_id"]
                         res = delete(
                             url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
@@ -314,7 +350,10 @@ class Bot(Account):
                     self.app.db.bots.update_one(
                         {"_id": ObjectId(findId)},
                         {
-                            "$push": {"orders": deactivation_order, "errors": "Order failed to close. Re-deactivating..."},
+                            "$push": {
+                                "orders": deactivation_order,
+                                "errors": "Order failed to close. Re-deactivating...",
+                            },
                         },
                     )
                     self.deactivate()
@@ -334,8 +373,15 @@ class Bot(Account):
                 self.app.db.bots.update_one(
                     {"_id": ObjectId(findId)},
                     {
-                        "$set": {"status": "completed", "deal.sell_timestamp": time(), "deal.sell_price": order_res["price"]},
-                        "$push": {"orders": deactivation_order, "errors": "Orders updated. Trying to close bot..."},
+                        "$set": {
+                            "status": "completed",
+                            "deal.sell_timestamp": time(),
+                            "deal.sell_price": order_res["price"],
+                        },
+                        "$push": {
+                            "orders": deactivation_order,
+                            "errors": "Orders updated. Trying to close bot...",
+                        },
                     },
                 )
 

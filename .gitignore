@@ -5,6 +5,7 @@
 .env.test.local
 /.env
 .vscode/settings.json
+.venv/
 
 ##
 #

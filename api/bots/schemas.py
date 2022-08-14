@@ -1,13 +1,31 @@
-
 from bson import ObjectId
-from api.deals.schema import DealSchema, SafetyOrdersSchema
+from api.deals.schema import DealSchema
 from api.tools.enum_definitions import EnumDefinitions
 from flask import current_app
 from datetime import date
 from time import time
+from time import time
+from marshmallow import Schema, fields
+from marshmallow.exceptions import ValidationError
 
 class BotSchemaValidation(Exception):
     pass
+
+
+class SafetyOrderSchema(Schema):
+    name: str = fields.Str(required=True, dump_default="so_1") # should be so_<index>
+    order_id: str = fields.Str(dump_default="")
+    created_at: float = fields.Float(dump_default=time() * 1000)
+    updated_at: float = fields.Float(dump_default=time() * 1000)
+    buy_price: float = fields.Float(required=True, dump_default=0) # base currency quantity e.g. 3000 USDT in BTCUSDT
+    buy_timestamp: float = fields.Float(dump_default=0)
+    so_size: float = fields.Float(required=True, dump_default=0) # quote currency quantity e.g. 0.00003 BTC in BTCUSDT 
+    max_active_so: float = fields.Float(dump_default=0)
+    so_volume_scale: float = fields.Float(dump_default=0)
+    so_step_scale: float = fields.Float(dump_default=0)
+    so_asset: str = fields.Str(dump_default="USDT")
+    errors: list[str] = fields.List(fields.Str(), dump_default=[])
+    total_commission: float = fields.Float(dump_default=0)
 
 
 class BotSchema:
@@ -39,11 +57,14 @@ class BotSchema:
         self.stop_loss: float = 0
         # Deal and orders are internal, should never be updated by outside data
         self.deal: object = DealSchema()
-        self.max_so_count: int = 0
-        self.safety_orders: object = SafetyOrdersSchema()
         self.errors: list[str] = []
         self.total_commission: float = 0
         self.cooldown: float = 0
+        # Safety orders
+        self.max_so_count: int = 0
+        self.locked_so_funds: float = 0
+        self.safety_orders = []
+
     
     def validate_percentage(self, property, data):
         """Support function for validate_model to reduce repetition"""
@@ -194,11 +215,15 @@ class BotSchema:
 
             del data["max_so_count"]
         
-        if "safety_orders" in data:
-            self.safety_orders = data.get("safety_orders")
-
+        if "safety_orders" in data and data.get("safety_orders") and isinstance(data.get("safety_orders"), list):
+            so_schema = SafetyOrderSchema()
+            try:
+                for so in data.get("safety_orders"):
+                    self.safety_orders = so_schema.load(so)
+            except ValidationError as error:
+                BotSchemaValidation(f"Safety order error: {error}")
             del data["safety_orders"]
-        
+
         if "deal" in data:
             self.deal = data.get("deal")
             del data["deal"]

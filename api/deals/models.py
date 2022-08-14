@@ -1,12 +1,41 @@
 from decimal import Decimal
+from time import time
 import requests
 from api.account.account import Account
+from api.bots.schemas import SafetyOrderSchema
 from api.orders.models.book_order import Book_Order, handle_error
-from api.tools.handle_error import NotEnoughFunds, bot_errors, handle_binance_errors, jsonResp, jsonResp_error_message
+from api.tools.handle_error import bot_errors, handle_binance_errors, jsonResp
 from api.tools.round_numbers import round_numbers, supress_notation
-from flask import Response
-from flask import current_app as app
+from flask import current_app as app, Response
 from api.deals.schema import DealSchema
+
+
+class DealModel(DealSchema):
+    def __init__(
+        self,
+        buy_price,
+        last_order_id=0,
+        buy_total_qty=0,
+        buy_timestamp=time() * 1000,
+        current_price=0,
+        avg_buy_price=0,
+        take_profit_price=0,
+        sell_timestamp=time() * 1000,
+        sell_price=0,
+        sell_qty=0,
+        total_comission=0,
+    ):
+        self.last_order_id: int = last_order_id
+        self.buy_timestamp: float = buy_timestamp
+        self.buy_total_qty: float = buy_total_qty
+        self.current_price: float = current_price
+        self.buy_price: float = buy_price
+        self.avg_buy_price: float = avg_buy_price
+        self.take_profit_price: float = take_profit_price
+        self.sell_timestamp: float = sell_timestamp
+        self.sell_price: float = sell_price
+        self.sell_qty: float = sell_qty
+        self.total_commission: float = total_comission
 
 
 class Deal(Account):
@@ -38,7 +67,9 @@ class Deal(Account):
             .as_tuple()
             .exponent
         )
-        self.deal = DealSchema()
+        self.deal_schema = SafetyOrderSchema()
+        self.deal_model = DealModel()
+        self.deal = self.deal_schema.dump(self.deal_model)
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
