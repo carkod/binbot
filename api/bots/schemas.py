@@ -1,6 +1,6 @@
 
 from bson import ObjectId
-from api.deals.schema import DealSchema
+from api.deals.schema import DealSchema, SafetyOrdersSchema
 from api.tools.enum_definitions import EnumDefinitions
 from flask import current_app
 from datetime import date
@@ -40,7 +40,7 @@ class BotSchema:
         # Deal and orders are internal, should never be updated by outside data
         self.deal: object = DealSchema()
         self.max_so_count: int = 0
-        self.safety_orders: object = {}
+        self.safety_orders: object = SafetyOrdersSchema()
         self.errors: list[str] = []
         self.total_commission: float = 0
         self.cooldown: float = 0
