@@ -39,8 +39,17 @@ import {
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
 import MainTab from "./tabs/Main";
+import SafetyOrders from "./tabs/SafetyOrders";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
+
+
+let defaultSo = {
+  name: "so_1",
+  order_id: "",
+  buy_price: 0,
+  so_size: 0,
+}
 
 class TestBotForm extends React.Component {
   constructor(props) {
@@ -50,6 +59,8 @@ class TestBotForm extends React.Component {
       bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
+      soPriceDeviation: 0,
+      numSafetyOrders: 0,
     };
   }
 
@@ -202,7 +213,7 @@ class TestBotForm extends React.Component {
         candlestick_interval: this.props.bot.candlestick_interval,
         orders: this.props.bot.orders,
         stop_loss: this.props.bot.stop_loss,
-        cooldown: this.props.bot.cooldown
+        cooldown: this.props.bot.cooldown,
       };
       if (!checkValue(this.props.match.params.id)) {
         form._id = this.props.match.params.id;
@@ -309,9 +320,11 @@ class TestBotForm extends React.Component {
     });
   };
 
-
   handleBlur = () => {
-    if (!checkValue(this.props.bot.pair) && !checkValue(this.props.bot.candlestick_interval)) {
+    if (
+      !checkValue(this.props.bot.pair) &&
+      !checkValue(this.props.bot.candlestick_interval)
+    ) {
       this.props.loadCandlestick(
         this.props.bot.pair,
         this.props.bot.candlestick_interval,
@@ -343,6 +356,41 @@ class TestBotForm extends React.Component {
 
   handleToggleIndicator = (value) => {
     this.setState({ toggleIndicators: value });
+  };
+
+  handleSoChange = (e) => {
+    if (e.target.name === "numSafetyOrders") {
+      this.setState({
+        numSafetyOrders: e.target.value
+      })
+    } else {
+      this.props.setBotState({
+        [e.target.value]: e.target.value
+      })
+    }
+    return false;
+  };
+
+  handleSoBlur = (e) => {
+    const { safety_orders } = this.props.bot;
+    if ((!safety_orders || Object.getPrototypeOf(safety_orders) === Object.prototype) && e.target.name === "numSafetyOrders") {
+      let so_list = []
+      this.setState({
+        numSafetyOrders: e.target.value,
+      });
+      for (let i = 0; i < parseInt(e.target.value) - 1; i++) {
+        defaultSo.name = `so_${i}`
+        so_list.push(defaultSo);
+      }
+      this.props.setBotState({
+        safety_orders: so_list
+      })
+    } else if (safety_orders) {
+      this.setState({
+        numSafetyOrders: safety_orders.length,
+      });
+    }
+    return false;
   };
 
   render() {
@@ -483,6 +531,16 @@ class TestBotForm extends React.Component {
                       <NavItem>
                         <NavLink
                           className={
+                            this.state.activeTab === "safety-orders" ? "active" : ""
+                          }
+                          onClick={() => this.toggle("safety-orders")}
+                        >
+                          Safety orders
+                        </NavLink>
+                      </NavItem>
+                      <NavItem>
+                        <NavLink
+                          className={
                             this.state.activeTab === "stop-loss" ? "active" : ""
                           }
                           onClick={() => this.toggle("stop-loss")}
@@ -520,6 +578,16 @@ class TestBotForm extends React.Component {
                       handleBlur={this.handleBlur}
                       addMin={this.addMin}
                       addAll={this.addAll}
+                    />
+
+                    <SafetyOrders
+                      safetyOrders={this.props.bot.safety_orders}
+                      numSafetyOrders={this.state.numSafetyOrders}
+                      asset={this.props.bot.pair}
+                      quoteAsset={this.props.bot.quoteAsset}
+                      soPriceDeviation={this.state.soPriceDeviation}
+                      handleChange={this.handleSoChange}
+                      handleBlur={this.handleSoBlur}
                     />
 
                     <StopLoss
