@@ -176,6 +176,7 @@ class MarketUpdates(Account):
                 {"$set": {"deal.current_price": close_price}},
                 return_document=ReturnDocument.AFTER
             )
+
             # Stop loss
             if (
                 float(current_bot["stop_loss"]) > 0
@@ -190,7 +191,7 @@ class MarketUpdates(Account):
             if bot["trailling"] == "true":
 
                 # Update trailling profit reached the first time
-                if ("trailling_profit" not in bot["deal"]) or float(
+                if ("trailling_profit" not in bot["deal"]) or bot["deal"]["buy_price"] != "" or float(
                     bot["deal"]["take_profit_price"]
                 ) <= 0:
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (
