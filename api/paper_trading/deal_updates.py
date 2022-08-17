@@ -3,12 +3,10 @@ from time import time
 
 from api.account.account import Account
 from api.app import create_app
-from api.deals.models import Deal
 from api.orders.models.book_order import Book_Order
 from api.tools.handle_error import bot_errors
 from api.tools.round_numbers import round_numbers, supress_notation
 from bson.objectid import ObjectId
-from flask import Response
 
 
 class TestDealUpdates(Account):

@@ -73,16 +73,23 @@ class MarketUpdates(Account):
             else:
                 print(f'Error: {json_response["data"]}')
 
-    def process_deals_bot(self, current_bot, close_price, symbol, ws):
+    def process_deals_bot(self, current_bot, close_price, symbol, ws, db_collection, DealUpdatesCls):
+        """
+        Processes the deal market websocket price updates
+
+        It updates the bots deals, safety orders, trailling orders, stop loss
+        for both paper trading test bots and real bots
+        """
         if current_bot and "deal" in current_bot:
             # Update Current price only for active bots
             # This is to keep historical profit intact
-            bot = self.app.db.bots.find_one_and_update(
+            bot = db_collection.find_one_and_update(
                 {"_id": current_bot["_id"]},
                 {"$set": {"deal.current_price": close_price}},
                 return_document=ReturnDocument.AFTER
             )
             print(f'{symbol} Current price in deal updated! {bot["deal"]["current_price"]}')
+
             # Stop loss
             if (
                 "stop_loss" in current_bot["deal"]
@@ -90,12 +97,12 @@ class MarketUpdates(Account):
                 and float(current_bot["stop_loss"]) > 0
                 and float(current_bot["deal"]["stop_loss"]) > float(close_price)
             ):
-                deal = DealUpdates(bot)
+                deal = DealUpdatesCls(bot)
                 deal.execute_stop_loss(close_price)
                 return
 
             # Take profit trailling
-            if bot["trailling"] == "true":
+            if bot["trailling"] == "true" and bot["deal"]["buy_price"] != "":
 
                 # Update trailling profit reached the first time
                 if ("trailling_profit" not in bot["deal"]) or float(
@@ -126,11 +133,11 @@ class MarketUpdates(Account):
                         * (float(bot["trailling_deviation"]) / 100)
                     )
                     print(f'{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}')
-                    updated_bot = self.app.db.bots.update_one(
+                    updated_bot = db_collection.update_one(
                         {"_id": current_bot["_id"]}, {"$set": {"deal": bot["deal"]}}
                     )
                     if not updated_bot:
-                        self.app.db.bots.update_one(
+                        db_collection.update_one(
                             {"_id": current_bot["_id"]},
                             {
                                 "$push": {
@@ -146,7 +153,7 @@ class MarketUpdates(Account):
                     price = bot["deal"]["trailling_stop_loss_price"]
                     if float(close_price) <= float(price):
                         print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
-                        deal = DealUpdates(bot)
+                        deal = DealUpdatesCls(bot)
                         completion = deal.trailling_stop_loss(price)
                         if completion == "completed":
                             self.start_stream(ws)
@@ -160,108 +167,12 @@ class MarketUpdates(Account):
                 for key, value in bot["safety_orders"]:
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(value) >= float(close_price):
-                        deal = DealUpdates(bot)
+                        deal = DealUpdatesCls(bot)
                         print("Update so deal executed")
                         # No need to pass price to update deal
                         # The price already matched market price
                         deal.so_update_deal(key)
         pass
-
-    def process_deals_test_bot(self, current_bot, close_price, symbol, ws):
-        if current_bot and "deal" in current_bot:
-            # Update Current price only for active bots
-            # This is to keep historical profit intact
-            bot = self.app.db.paper_trading.find_one_and_update(
-                {"_id": current_bot["_id"]},
-                {"$set": {"deal.current_price": close_price}},
-                return_document=ReturnDocument.AFTER
-            )
-
-            # Stop loss
-            if (
-                float(current_bot["stop_loss"]) > 0
-                and "stop_loss" in current_bot["deal"]
-                and float(current_bot["deal"]["stop_loss"]) > float(close_price)
-            ):
-                deal = TestDealUpdates(bot)
-                deal.execute_stop_loss(close_price)
-                return
-
-            # Take profit trailling
-            if bot["trailling"] == "true":
-
-                # Update trailling profit reached the first time
-                if ("trailling_profit" not in bot["deal"]) or bot["deal"]["buy_price"] != "" or float(
-                    bot["deal"]["take_profit_price"]
-                ) <= 0:
-                    current_take_profit_price = float(bot["deal"]["buy_price"]) * (
-                        1 + (float(bot["take_profit"]) / 100)
-                    )
-                    print(
-                        f"{symbol} NEW current_take_profit_price: {current_take_profit_price}",
-                        f'buy_price: {bot["deal"]["buy_price"]}',
-                    )
-                else:
-                    # Update trailling profit after first time
-                    current_take_profit_price = float(
-                        bot["deal"]["trailling_profit"]
-                    ) * (1 + (float(bot["take_profit"]) / 100))
-
-                if float(close_price) >= float(current_take_profit_price):
-                    new_take_profit = current_take_profit_price * (
-                        1 + (float(bot["take_profit"]) / 100)
-                    )
-                    # Update deal take_profit
-                    bot["deal"]["take_profit_price"] = new_take_profit
-                    bot["deal"]["trailling_profit"] = new_take_profit
-                    # Update trailling_stop_loss
-                    bot["deal"]["trailling_stop_loss_price"] = float(
-                        new_take_profit
-                    ) - (
-                        float(new_take_profit)
-                        * (float(bot["trailling_deviation"]) / 100)
-                    )
-
-                    updated_bot = self.app.db.paper_trading.update_one(
-                        {"_id": current_bot["_id"]}, {"$set": {"deal": bot["deal"]}}
-                    )
-                    if not updated_bot:
-                        self.app.db.paper_trading.update_one(
-                            {"_id": current_bot["_id"]},
-                            {
-                                "$push": {
-                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
-                                }
-                            },
-                        )
-                        # restart scanner
-                        self.start_stream(ws)
-
-                # Sell after hitting trailling stop_loss
-                if "trailling_stop_loss_price" in bot["deal"]:
-                    price = bot["deal"]["trailling_stop_loss_price"]
-                    if float(close_price) <= float(price):
-                        deal = TestDealUpdates(bot)
-                        completion = deal.trailling_stop_loss(price)
-                        if completion == "completed":
-                            self.start_stream(ws)
-
-            # Open safety orders
-            # When bot = None, when bot doesn't exist (unclosed websocket)
-            if (
-                "safety_orders" in bot
-                and len(bot["safety_orders"]) > 0
-            ):
-                for key, value in bot["safety_orders"]:
-                    # Index is the ID of the safety order price that matches safety_orders list
-                    if float(value) >= float(close_price):
-                        deal = TestDealUpdates(bot)
-                        print("Update deal executed")
-                        # No need to pass price to update deal
-                        # The price already matched market price
-                        deal.so_update_deal(key)
-        pass
-
 
     def process_deals(self, result, ws):
         """
@@ -279,5 +190,5 @@ class MarketUpdates(Account):
                 {"pair": symbol, "status": "active"}
             )
 
-            self.process_deals_bot(current_bot, close_price, symbol, ws)
-            self.process_deals_test_bot(current_test_bot, close_price, symbol, ws)
+            self.process_deals_bot(current_bot, close_price, symbol, ws, self.app.db.bots, DealUpdates)
+            self.process_deals_bot(current_test_bot, close_price, symbol, ws, self.app.db.paper_trading, TestDealUpdates)
