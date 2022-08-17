@@ -83,8 +83,6 @@ class MarketUpdates(Account):
                 return_document=ReturnDocument.AFTER
             )
             print(f'{symbol} Current price in deal updated! {bot["deal"]["current_price"]}')
-            if symbol == "YFIIUSDT":
-                print("current_bot: ", current_bot)
             # Stop loss
             if (
                 "stop_loss" in current_bot["deal"]
@@ -156,14 +154,14 @@ class MarketUpdates(Account):
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
             if (
-                "safety_order_prices" in bot["deal"]
-                and len(bot["deal"]["safety_order_prices"]) > 0
+                "safety_orders" in bot
+                and len(bot["safety_orders"]) > 0
             ):
-                for key, value in bot["deal"]["safety_order_prices"]:
+                for key, value in bot["safety_orders"]:
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(value) >= float(close_price):
                         deal = DealUpdates(bot)
-                        print("Update deal executed")
+                        print("Update so deal executed")
                         # No need to pass price to update deal
                         # The price already matched market price
                         deal.so_update_deal(key)
@@ -250,10 +248,10 @@ class MarketUpdates(Account):
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
             if (
-                "safety_order_prices" in bot["deal"]
-                and len(bot["deal"]["safety_order_prices"]) > 0
+                "safety_orders" in bot
+                and len(bot["safety_orders"]) > 0
             ):
-                for key, value in bot["deal"]["safety_order_prices"]:
+                for key, value in bot["safety_orders"]:
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(value) >= float(close_price):
                         deal = TestDealUpdates(bot)

@@ -61,7 +61,6 @@ class BotSchema:
         self.total_commission: float = 0
         self.cooldown: float = 0
         # Safety orders
-        self.max_so_count: int = 0
         self.locked_so_funds: float = 0
         self.safety_orders = []
 

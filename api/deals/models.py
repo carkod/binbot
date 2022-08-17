@@ -251,7 +251,7 @@ class Deal(Account):
                 method="POST", url=self.bb_buy_market_order_url, payload=order
             )
 
-        base_deal = {
+        deal_order = {
             "timestamp": data["transactTime"],
             "order_id": data["orderId"],
             "deal_type": "base_order",
@@ -287,6 +287,7 @@ class Deal(Account):
             "last_order_id": data["orderId"],
             "buy_timestamp": data["transactTime"],
             "buy_price": data["price"],
+            "avg_buy_price": data["price"],
             "buy_total_qty": data["origQty"],
             "current_price": data["price"],
             "take_profit_price": tp_price,
@@ -297,7 +298,7 @@ class Deal(Account):
             {"_id": self.active_bot["_id"]},
             {
                 "$set": {"deal": deal, "total_commission": commission},
-                "$push": {"orders": base_deal},
+                "$push": {"orders": deal_order},
             },
         )
 
@@ -311,7 +312,7 @@ class Deal(Account):
             )
             return resp
 
-        return base_deal
+        return deal_order
 
     def take_profit_order(self):
         """
