@@ -1,4 +1,5 @@
 
+from api.bots.schemas import SafetyOrderSchema
 from api.deals.schema import DealSchema
 from api.tools.enum_definitions import EnumDefinitions
 from flask import current_app
@@ -149,12 +150,14 @@ class PaperTradingBotSchema(BotSchema):
             del data["max_so_count"]
         
         if "safety_orders" in data:
-            self.safety_orders = data.get("safety_orders")
+            so_schema = SafetyOrderSchema()
+            self.safety_orders = so_schema.dump(data.get("safety_orders"))
 
             del data["safety_orders"]
         
         if "deal" in data:
-            self.deal = data.get("deal")
+            deal_schema = DealSchema()
+            self.deal = deal_schema.dump(data.get("deal"))
             del data["deal"]
         
         if "orders" in data:

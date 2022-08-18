@@ -1,5 +1,4 @@
 from bson import ObjectId
-from api.deals.schema import DealSchema
 from api.tools.enum_definitions import EnumDefinitions
 from flask import current_app
 from datetime import date
@@ -56,7 +55,7 @@ class BotSchema:
         self.orders: list = [] # Internal
         self.stop_loss: float = 0
         # Deal and orders are internal, should never be updated by outside data
-        self.deal: object = DealSchema()
+        self.deal: object = {}
         self.errors: list[str] = []
         self.total_commission: float = 0
         self.cooldown: float = 0
@@ -96,7 +95,7 @@ class BotSchema:
         if "status" in data:
             if not isinstance(data.get("status"), str) and data.get("status") in self.statuses:
                 raise BotSchemaValidation(f"status must be {', '.join(self.statuses)}")
-                    
+
             self.status = data.get("status")
             del data["status"]
         

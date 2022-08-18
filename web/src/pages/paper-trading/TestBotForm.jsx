@@ -1,3 +1,4 @@
+import produce from "immer";
 import moment from "moment";
 import React from "react";
 import { connect } from "react-redux";
@@ -60,7 +61,6 @@ class TestBotForm extends React.Component {
       activeTab: "main",
       toggleIndicators: true,
       soPriceDeviation: 0,
-      numSafetyOrders: 0,
     };
   }
 
@@ -214,6 +214,7 @@ class TestBotForm extends React.Component {
         orders: this.props.bot.orders,
         stop_loss: this.props.bot.stop_loss,
         cooldown: this.props.bot.cooldown,
+        safety_orders: this.props.bot.safety_orders
       };
       if (!checkValue(this.props.match.params.id)) {
         form._id = this.props.match.params.id;
@@ -359,39 +360,37 @@ class TestBotForm extends React.Component {
   };
 
   handleSoChange = (e) => {
-    if (e.target.name === "numSafetyOrders") {
-      this.setState({
-        numSafetyOrders: e.target.value
-      })
-    } else {
-      this.props.setBotState({
-        [e.target.value]: e.target.value
-      })
+    if (e.target.name === "so_size" || e.target.name === "buy_price") {
+      const safety_orders = produce(this.props.bot, draft => {
+        draft.safety_orders[e.target.dataset.index][e.target.name] = e.target.value;
+      });
+      this.props.setBotState(safety_orders)
     }
-    return false;
+    return;
   };
 
-  handleSoBlur = (e) => {
-    const { safety_orders } = this.props.bot;
-    if ((!safety_orders || Object.getPrototypeOf(safety_orders) === Object.prototype) && e.target.name === "numSafetyOrders") {
-      let so_list = []
-      this.setState({
-        numSafetyOrders: e.target.value,
-      });
-      for (let i = 0; i < parseInt(e.target.value) - 1; i++) {
-        defaultSo.name = `so_${i}`
-        so_list.push(defaultSo);
+
+  addSo = () => {
+    const safety_orders = produce(this.props.bot, draft => {
+      if (Object.getPrototypeOf(draft.safety_orders) === Object.prototype) {
+        draft.safety_orders = [defaultSo]
+      } else {
+        let newSo = {...defaultSo}
+        newSo.name = `so_${draft.safety_orders.length + 1}`
+        draft.safety_orders.push(newSo)
       }
-      this.props.setBotState({
-        safety_orders: so_list
-      })
-    } else if (safety_orders) {
-      this.setState({
-        numSafetyOrders: safety_orders.length,
-      });
-    }
-    return false;
-  };
+      
+    });
+    this.props.setBotState(safety_orders)
+  }
+
+  removeSo = (e) => {
+    e.preventDefault();
+    const safety_orders = produce(this.props.bot, draft => {
+      draft.safety_orders.splice(e.target.dataset.index, 1)
+    });
+    this.props.setBotState(safety_orders);
+  }
 
   render() {
     return (
@@ -582,12 +581,12 @@ class TestBotForm extends React.Component {
 
                     <SafetyOrders
                       safetyOrders={this.props.bot.safety_orders}
-                      numSafetyOrders={this.state.numSafetyOrders}
                       asset={this.props.bot.pair}
                       quoteAsset={this.props.bot.quoteAsset}
                       soPriceDeviation={this.state.soPriceDeviation}
                       handleChange={this.handleSoChange}
-                      handleBlur={this.handleSoBlur}
+                      addSo={this.addSo}
+                      removeSo={this.removeSo}
                     />
 
                     <StopLoss
