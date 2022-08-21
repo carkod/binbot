@@ -4,7 +4,7 @@ from api.deals.schema import DealSchema
 from api.tools.enum_definitions import EnumDefinitions
 from flask import current_app
 from datetime import date
-from api.bots.models import BotSchema
+from api.bots.schemas import BotSchema
 class BotSchemaValidation(Exception):
     pass
 

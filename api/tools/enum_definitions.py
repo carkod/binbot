@@ -1,4 +1,5 @@
 class EnumDefinitions:
+    statuses = ["inactive", "active", "completed", "error", "archived"]
     symbol_status = (
         "PRE_TRADING",
         "TRADING",

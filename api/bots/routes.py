@@ -1,5 +1,5 @@
 from flask import Blueprint
-from api.bots.models import Bot
+from api.bots.controllers import Bot
 from api.auth import auth
 
 bot_blueprint = Blueprint("bot", __name__)

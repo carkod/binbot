@@ -9,113 +9,19 @@ POST http://localhost:5000/bot HTTP/1.1
 content-Type: "application/json"
 
 {
-   "pair":"XMRUSDT",
-   "status":"completed",
-   "name":"ma_candlestick_jump_2022-05-08T21:35",
-   "created_at": 1652045756491.7024,
-   "updated_at": 0,
-   "mode": "autotrade",
-   "balance_usage_size": 0,
-   "base_order_size": "34.7",
-   "balance_to_use": "USDT",
-   "candlestick_interval": "15m",
-   "take_profit":"2.5",
-   "trailling":"true",
-   "trailling_deviation":2.8,
-   "trailling_profit":0,
-   "orders":[
-      {
-         "timestamp":1652045758130,
-         "order_id":1128818050,
-         "deal_type":"base_order",
-         "pair":"XMRUSDT",
-         "order_side":"BUY",
-         "order_type":"LIMIT",
-         "price":"220.90000000",
-         "qty":"0.15700000",
-         "fills":[
-            {
-               "commission":"0.00000045",
-               "commissionAsset":"BNB",
-               "price":"220.80000000",
-               "qty":"0.00100000",
-               "tradeId":51297250
-            },
-            {
-               "commission":"0.00006000",
-               "commissionAsset":"XMR",
-               "price":"220.80000000",
-               "qty":"0.06000000",
-               "tradeId":51297251
-            },
-            {
-               "commission":"0.00009600",
-               "commissionAsset":"XMR",
-               "price":"220.90000000",
-               "qty":"0.09600000",
-               "tradeId":51297252
-            }
-         ],
-         "time_in_force":"GTC",
-         "status":"FILLED"
-      },
-      {
-         "deal_type":"stop_loss",
-         "order_id":1128849559,
-         "pair":"XMRUSDT",
-         "order_side":"SELL",
-         "order_type":"LIMIT",
-         "price":"218.20000000",
-         "qty":"0.15700000",
-         "fills":[
-            {
-               "commission":"0.03425740",
-               "commissionAsset":"USDT",
-               "price":"218.20000000",
-               "qty":"0.15700000",
-               "tradeId":51299124
-            }
-         ],
-         "time_in_force":"GTC",
-         "status":"FILLED"
-      }
-   ],
-   "stop_loss":1,
-   "deal":{
-      "last_order_id":1128818050,
-      "buy_timestamp":1652045758130,
-      "buy_price":"220.90000000",
-      "buy_total_qty":"0.15700000",
-      "current_price":"218.40000000",
-      "take_profit_price":220.925,
-      "stop_loss":"218.6",
-      "sell_timestamp":1652047352523
-   },
-   "max_so_count":0,
-   "safety_orders":[
-      {
-         "name":"so_1",
-         "order_id": 1128818050,
-         "buy_price":12,
-         "buy_timestamp":1660507003265,
-         "so_size":1200,
-         "so_asset":"USDT"
-      },
-      {
-         "name":"so_2",
-         "order_id":1128818051,
-         "buy_price":9,
-         "buy_timestamp":1660507003265,
-         "so_size":1200,
-         "so_asset":"USDT"
-      }
-   ],
-   "errors":[
-      "New stop_limit deal successfully updated"
-   ],
-   "total_commission":0.03441385
+    "status":"inactive",
+    "balance_to_use":"USDT",
+    "base_order_size":"15",
+    "max_so_count":0,
+    "name":"APEUSDT_2022-08-20T21:39:42.741Z",
+    "pair":"APEUSDT",
+    "take_profit":"3",
+    "trailling":"false",
+    "trailling_deviation":"0.63",
+    "stop_loss":0,
+    "candlestick_interval":"15m",
+    "cooldown":0
 }
-
 
 
 ###
