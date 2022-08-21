@@ -114,7 +114,7 @@ export default function BotCard({
                   <p className="card-category"># Safety Orders</p>
                 </Col>
                 <Col md="5">
-                  <p className="card-category">{x.max_so_count}</p>
+                  <p className="card-category">{x.safety_orders.length}</p>
                 </Col>
               </Row>
 

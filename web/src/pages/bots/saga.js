@@ -105,8 +105,7 @@ export function* watchCreateBot() {
 /**
  * Get single bot
  */
-export function* editBot(payload) {
-  const { data, id } = payload;
+export function* editBot({ data, id }) {
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
   try {
     const res = yield call(request, requestURL, "PUT", data);

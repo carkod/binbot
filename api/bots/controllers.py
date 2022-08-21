@@ -24,8 +24,9 @@ from marshmallow.exceptions import ValidationError
 from marshmallow import EXCLUDE
 
 class Bot(Account):
-    def __init__(self):
+    def __init__(self, collection_name="bots"):
         self.app = current_app
+        self.db_collection = self.app.db[collection_name]
 
     def _restart_websockets(self):
         """
@@ -42,7 +43,7 @@ class Bot(Account):
                     threading.enumerate(),
                 )
         return
-    
+
     def post_dump(self, schema, data):
         """
         Deserialize to store in DB
@@ -109,7 +110,7 @@ class Bot(Account):
             }
 
         bot = list(
-            self.app.db.bots.find(params).sort(
+            self.db_collection.find(params).sort(
                 [("_id", -1), ("status", 1), ("pair", 1)]
             )
         )
@@ -121,7 +122,7 @@ class Bot(Account):
 
     def get_one(self):
         findId = request.view_args["id"]
-        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"_id": ObjectId(findId)})
         if bot:
             resp = jsonResp({"message": "Bot found", "data": bot})
         else:
@@ -134,12 +135,12 @@ class Bot(Account):
             bot_schema = BotSchema(unknown=EXCLUDE)
             bot = bot_schema.load(data)
             if "_id" in bot:
-                result = self.app.db.bots.update_one({"_id": ObjectId(bot["_id"])}, bot)
+                result = self.db_collection.update_one({"_id": ObjectId(bot["_id"])}, bot)
                 resp = jsonResp(
                     {"message": "This bot already exists, successfully updated bot", "botId": str(result.updated_id)}
                 )
             else:
-                result = self.app.db.bots.insert_one(bot)
+                result = self.db_collection.insert_one(bot)
                 resp = jsonResp(
                     {"message": "Successfully created new bot", "botId": str(result.inserted_id)}
                 )
@@ -151,11 +152,16 @@ class Bot(Account):
 
     def edit(self):
         data = request.get_json()
+        if "id" not in request.view_args:
+            return jsonResp_error_message("id is required to update bot")
+
         botId = request.view_args["id"]
         try:
             bot_schema = BotSchema()
             bot = bot_schema.load(data)
-            result = self.app.db.bots.update_one({"_id": ObjectId(botId)}, {"$set": bot})
+            if "_id" in bot:
+                bot.pop("_id")
+            result = self.db_collection.update_one({"_id": ObjectId(botId)}, {"$set": bot})
             resp = jsonResp({"message": "Successfully updated bot", "botId": str(botId)})
         except ValidationError as e:
             resp = jsonResp_error_message(f"Failed validation: {e.messages}")
@@ -169,7 +175,7 @@ class Bot(Account):
         if not botIds or not isinstance(botIds, list):
             return jsonResp_error_message("At least one bot id is required")
 
-        delete_action = self.app.db.bots.delete_many(
+        delete_action = self.db_collection.delete_many(
             {"_id": {"$in": [ObjectId(item) for item in botIds]}}
         )
         if delete_action:
@@ -181,7 +187,7 @@ class Bot(Account):
 
     def activate(self):
         findId = request.view_args["botId"]
-        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"_id": ObjectId(findId)})
 
         if bot:
             try:
@@ -213,7 +219,7 @@ class Bot(Account):
                     )
                 return resp
 
-            botId = self.app.db.bots.update_one(
+            botId = self.db_collection.update_one(
                 {"_id": ObjectId(findId)}, {"$set": {"status": "active"}}
             )
 
@@ -247,7 +253,7 @@ class Bot(Account):
         3. Delete bot
         """
         findId = request.view_args["id"]
-        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"_id": ObjectId(findId)})
         resp = jsonResp_error_message(
             "Not enough balance to close and sell. Please directly delete the bot."
         )
@@ -329,7 +335,7 @@ class Bot(Account):
                         "time_in_force": order_res["timeInForce"],
                         "status": order_res["status"],
                     }
-                    self.app.db.bots.update_one(
+                    self.db_collection.update_one(
                         {"_id": ObjectId(findId)},
                         {
                             "$push": {
@@ -352,7 +358,7 @@ class Bot(Account):
                     "time_in_force": order_res["timeInForce"],
                     "status": order_res["status"],
                 }
-                self.app.db.bots.update_one(
+                self.db_collection.update_one(
                     {"_id": ObjectId(findId)},
                     {
                         "$set": {
@@ -372,7 +378,7 @@ class Bot(Account):
                     "Active orders closed, sold base asset, deactivated"
                 )
             else:
-                self.app.db.bots.update_one(
+                self.db_collection.update_one(
                     {"_id": ObjectId(findId)}, {"$set": {"status": "error"}}
                 )
                 return jsonResp_error_message("Not enough balance to close and sell")
@@ -382,7 +388,7 @@ class Bot(Account):
         Change status to archived
         """
         botId = request.view_args["id"]
-        bot = self.app.db.bots.find_one({"_id": ObjectId(botId)})
+        bot = self.db_collection.find_one({"_id": ObjectId(botId)})
         if bot["status"] == "active":
             return jsonResp(
                 {"message": "Cannot archive an active bot!", "botId": botId}
@@ -393,7 +399,7 @@ class Bot(Account):
         else:
             status = "archived"
 
-        archive = self.app.db.bots.update(
+        archive = self.db_collection.update(
             {"_id": ObjectId(botId)}, {"$set": {"status": status}}
         )
         if archive:

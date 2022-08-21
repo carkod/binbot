@@ -7,7 +7,6 @@ from api.tools.enum_definitions import EnumDefinitions
 class BotSchemaValidation(Exception):
     pass
 
-
 class SafetyOrderModel:
     def __init__(
         self,

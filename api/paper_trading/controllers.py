@@ -2,11 +2,15 @@ from datetime import datetime
 import threading
 from time import time
 from api.account.account import Account
+from api.bots.controllers import Bot
+from api.bots.schemas import BotSchema
+from api.deals.models import DealModel
 from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
 from api.paper_trading.deal import TestDeal
 from api.paper_trading.schemas import PaperTradingBotSchema
 from api.threads import market_update_thread
+from api.tools.exceptions import BaseDealError
 from api.tools.handle_error import (
     QuantityTooLow,
     handle_binance_errors,
@@ -19,9 +23,11 @@ from bson.objectid import ObjectId
 from flask import Response, current_app, request
 from requests import delete
 from api.paper_trading.schemas import PaperTradingBotSchema
+from api.tools.enum_definitions import EnumDefinitions
+from marshmallow import EXCLUDE
+from marshmallow.exceptions import ValidationError
 
-
-class Bot(Account):
+class PaperTradingController(Bot):
     def __init__(self):
         self.app = current_app
         self.default_deal = DealSchema()
@@ -39,145 +45,15 @@ class Bot(Account):
         print("Finished restarting market_updates")
         return
 
-
-    def get(self):
-        """
-        Get all bots in the db except archived
-        """
-        status = request.args.get("status")
-        start_date = request.args.get("start_date")
-        end_date = request.args.get("end_date")
-        no_cooldown = request.args.get("no_cooldown")
-        params = {}
-
-        bot_schema = PaperTradingBotSchema()
-
-        if status:
-            params["status"] = status
-
-        if start_date:
-            try:
-                float(start_date)
-            except ValueError as e:
-                resp = jsonResp({"message": f"start_date must be a timestamp float", "data": []})
-                return resp
-
-            obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
-            gte_tp_id = ObjectId.from_datetime(obj_start_date)
-            try:
-                params["_id"]["$gte"] = gte_tp_id
-            except KeyError:
-                params["_id"] = {
-                    "$gte": gte_tp_id
-                }
-        
-        if end_date:
-            try:
-                float(end_date)
-            except ValueError as e:
-                resp = jsonResp({"message": f"end_date must be a timestamp float", "data": []})
-                return resp
-
-            obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
-            lte_tp_id = ObjectId.from_datetime(obj_end_date)
-            params["_id"]["$lte"] = lte_tp_id
-
-        sort = [("status", 1), ("_id", -1), ("pair", 1)]
-
-        if status and no_cooldown:
-            current_ts = time() * 1000
-            params = {
-                "$or": [
-                    {"status": status},
-                    {"$where": f"{current_ts} - this.deal.sell_timestamp < (this.cooldown * 1000)"}
-                ]
-            }
-
-        bot = bot_schema.get_test_bots(sort, params)
-        if bot:
-            resp = jsonResp({"message": "Successfully found a bot!", "data": bot})
-        else:
-            resp = jsonResp({"message": "Bots not found", "data": []})
-        return resp
-    
-    def get_one(self):
-        findId = request.view_args.get("id")
-        bot = self.app.db.paper_trading.find_one({"_id": ObjectId(findId)})
-        if bot:
-            resp = jsonResp({"message": "Bot found", "data": bot})
-        else:
-            resp = jsonResp({"message": "Bots not found"}, 404)
-        return resp
-
-
-    def create(self):
-        data = request.get_json()
-        try:
-            result = PaperTradingBotSchema().update_test_bots(data)
-            botId = str(result.inserted_id)
-            resp = jsonResp(
-                {"message": "Successfully created new bot", "botId": str(botId)}
-            )
-        except Exception as e:
-            resp = jsonResp_error_message(f"Failed to create new bot: {e}")
-        return resp
-
-    def edit(self):
-        data = request.get_json()
-        try:
-            bot = PaperTradingBotSchema().update_test_bots(data)
-            resp = jsonResp(
-                {"message": "Successfully updated bot", "botId": ObjectId(data["_id"])}, 200
-            )
-        except Exception as e:
-            resp = jsonResp_error_message(f"Failed to update bot: {e}")
-
-        return resp
-
-    def delete(self):
-        botIds = request.args.getlist("id")
-
-        if not botIds or not isinstance(botIds, list):
-            return jsonResp_error_message("At least one bot id is required")
-            
-        delete_action = self.app.db.paper_trading.delete_many({"_id": {"$in": [ObjectId(item) for item in botIds]}})
-        if delete_action:
-            resp = jsonResp_message("Successfully deleted bot")
-            self._restart_websockets()
-        else:
-            resp = jsonResp({"message": "Bot deletion is not available"}, 400)
-        return resp
-
     def activate(self):
         findId = request.view_args.get("botId")
         bot = self.app.db.paper_trading.find_one({"_id": ObjectId(findId)})
 
         if bot:
-            order_errors = TestDeal(bot).open_deal()
-
-            if isinstance(order_errors, Response):
-                return order_errors
-
-            # If error
-            if len(order_errors) > 0:
-                # If base order fails makes no sense to activate
-                if "base_order_error" in order_errors[0]:
-                    resp = jsonResp(
-                        {
-                            "message": f'Failed to activate bot, {order_errors[0]["base_order_error"]}',
-                            "botId": str(findId),
-                            "error": 1,
-                        }
-                    )
-                else:
-                    resp = jsonResp(
-                        {
-                            "message": f"Failed to activate bot, {','.join(order_errors)}",
-                            "botId": str(findId),
-                            "error": 1,
-                        }
-                    )
-                return resp
+            try:
+                TestDeal(bot).open_deal()
+            except BaseDealError as error:
+                return jsonResp_error_message(error)
 
             botId = self.app.db.paper_trading.update_one(
                 {"_id": ObjectId(findId)}, {"$set": {"status": "active"}}
@@ -225,7 +101,7 @@ class Bot(Account):
                 for d in orders:
                     if "deal_type" in d and (
                         d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
-                    ):  
+                    ):
                         order_id = d["order_id"]
                         res = delete(
                             url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
@@ -298,7 +174,10 @@ class Bot(Account):
                     self.app.db.paper_trading.update_one(
                         {"_id": ObjectId(findId)},
                         {
-                            "$push": {"orders": deactivation_order, "errors": "Order failed to close. Re-deactivating..."},
+                            "$push": {
+                                "orders": deactivation_order,
+                                "errors": "Order failed to close. Re-deactivating...",
+                            },
                         },
                     )
                     self.deactivate()
@@ -318,8 +197,15 @@ class Bot(Account):
                 self.app.db.paper_trading.update_one(
                     {"_id": ObjectId(findId)},
                     {
-                        "$set": {"status": "completed", "deal.sell_timestamp": time(), "deal.sell_price": order_res["price"]},
-                        "$push": {"orders": deactivation_order, "errors": "Orders updated. Trying to close bot..."},
+                        "$set": {
+                            "status": "completed",
+                            "deal.sell_timestamp": time(),
+                            "deal.sell_price": order_res["price"],
+                        },
+                        "$push": {
+                            "orders": deactivation_order,
+                            "errors": "Orders updated. Trying to close bot...",
+                        },
                     },
                 )
 
@@ -332,28 +218,3 @@ class Bot(Account):
                     {"_id": ObjectId(findId)}, {"$set": {"status": "error"}}
                 )
                 return jsonResp_error_message("Not enough balance to close and sell")
-
-    def put_archive(self):
-        """
-        Change status to archived
-        """
-        botId = request.view_args["id"]
-        bot = self.app.db.paper_trading.find_one({"_id": ObjectId(botId)})
-        if bot["status"] == "active":
-            return jsonResp(
-                {"message": "Cannot archive an active bot!", "botId": botId}
-            )
-
-        if bot["status"] == "archived":
-            status = "inactive"
-        else:
-            status = "archived"
-
-        archive = self.app.db.paper_trading.update(
-            {"_id": ObjectId(botId)}, {"$set": {"status": status}}
-        )
-        if archive:
-            resp = jsonResp({"message": "Successfully archived bot", "botId": botId})
-        else:
-            resp = jsonResp({"message": "Failed to archive bot"})
-        return resp

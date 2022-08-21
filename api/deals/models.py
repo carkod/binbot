@@ -10,11 +10,38 @@ from flask import current_app as app, Response
 from api.deals.schema import DealSchema
 
 
-class DealModel(DealSchema):
+class OrderModel:
+    def __init__(
+        self,
+        timestamp,
+        order_id,
+        pair,
+        order_type,
+        price,
+        qty,
+        fills,
+        status,
+        deal_type="base_order",
+        order_side="BUY",
+        time_in_force="GTC",
+    ) -> None:
+        self.timestamp=timestamp,
+        self.order_id=order_id,
+        self.deal_type=deal_type,
+        self.pair=pair,
+        self.order_side=order_side,
+        self.order_type=order_type,
+        self.price=price,
+        self.qty=qty,
+        self.fills=fills,
+        self.time_in_force=time_in_force,
+        self.status=status,
+
+class DealModel:
     def __init__(
         self,
         buy_price,
-        last_order_id=0,
+        order_id=0,
         buy_total_qty=0,
         buy_timestamp=time() * 1000,
         current_price=0,
@@ -24,8 +51,11 @@ class DealModel(DealSchema):
         sell_price=0,
         sell_qty=0,
         total_comission=0,
+        trailling_stop_loss_price=0,
+        stop_loss_price=0,
+        trailling_profit=0
     ):
-        self.last_order_id: int = last_order_id
+        self.order_id: int = order_id
         self.buy_timestamp: float = buy_timestamp
         self.buy_total_qty: float = buy_total_qty
         self.current_price: float = current_price
@@ -36,6 +66,9 @@ class DealModel(DealSchema):
         self.sell_price: float = sell_price
         self.sell_qty: float = sell_qty
         self.total_commission: float = total_comission
+        self.trailling_stop_loss_price: float = trailling_stop_loss_price
+        self.stop_loss_price: float = stop_loss_price
+        self.trailling_profit: float = trailling_profit
 
 
 class Deal(Account):

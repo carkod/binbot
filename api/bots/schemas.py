@@ -21,7 +21,7 @@ class SafetyOrderSchema(Schema):
     total_commission: float = fields.Float(dump_default=0)
 
 class BotSchema(Schema):
-    _id = fields.UUID()
+    _id = fields.Str()
     pair = fields.Str(required=True)
     status = fields.Str(required=True, dump_default="inactive", validate=OneOf(EnumDefinitions.statuses))
     name = fields.Str(dump_default="Default bot")

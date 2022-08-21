@@ -1,13 +1,20 @@
 from time import time
 from marshmallow import Schema, fields, post_load
 
-
-class SafetyOrdersErrorValidation(Exception):
-    pass
-
+class OrderSchema(Schema):
+    deal_type = fields.Str()
+    order_id = fields.Str()
+    pair = fields.Str()
+    order_side = fields.Str()
+    order_type = fields.Str()
+    price = fields.Str()
+    qty = fields.Str()
+    fills = fields.Str()
+    time_in_force = fields.Str()
+    status = fields.Str()
 
 class DealSchema(Schema):
-    last_order_id: int = fields.Int(dump_default=0) # should be so_<index>
+    order_id: int = fields.Int(dump_default=0) # should be so_<index>
     buy_timestamp: float = fields.Float(dump_default=0)
     buy_total_qty: float = fields.Float(dump_default=0)
     current_price: float = fields.Float(dump_default=0)

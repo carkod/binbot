@@ -194,7 +194,6 @@ class TestBotForm extends React.Component {
     if (validation) {
       let form = {
         status: this.props.bot.status,
-        balance_size_to_use: this.props.bot.balance_size_to_use, // Centralized
         base_order_size: this.props.bot.base_order_size,
         balance_to_use: this.props.bot.balance_to_use,
         mode: "manual",
@@ -211,7 +210,7 @@ class TestBotForm extends React.Component {
       };
       if (!checkValue(this.props.match.params.id)) {
         form._id = this.props.match.params.id;
-        this.props.editTestBot(form);
+        this.props.editTestBot(this.props.match.params.id, form);
       } else {
         this.props.createTestBot(form);
       }
