@@ -28,8 +28,7 @@ class BotSchema(Schema):
     created_at = fields.Float()
     updated_at = fields.Float()
     mode = fields.Str(dump_default="manual")
-
-    base_order_size: fields.Str(required=True, error="base_order_size is required and must be a string") # Min Binance
+    base_order_size: str = fields.Str(required=True) # Min Binance 0.0001 BNB
     balance_to_use: str = fields.Str(required=True)
     candlestick_interval: str = fields.Str(required=True)
     take_profit: float = fields.Float(required=True)

@@ -19,7 +19,7 @@ export default function SafetyOrders({
           <p>
             {safetyOrders &&
             Object.getPrototypeOf(safetyOrders) !== Object.prototype
-              ? safetyOrders.length + 1
+              ? safetyOrders.length
               : 0}
           </p>
         </Col>

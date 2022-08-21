@@ -3,10 +3,8 @@ from datetime import datetime
 from time import time
 
 from api.account.account import Account
-from api.bots.models import BotModel, SafetyOrderModel
 from api.bots.schemas import BotSchema, SafetyOrderSchema
 from api.deals.models import Deal
-from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
 from api.tools.enum_definitions import EnumDefinitions
@@ -24,7 +22,6 @@ from flask import Response, current_app, request
 from requests import delete
 from marshmallow.exceptions import ValidationError
 from marshmallow import EXCLUDE
-
 
 class Bot(Account):
     def __init__(self):
@@ -137,7 +134,7 @@ class Bot(Account):
             bot_schema = BotSchema(unknown=EXCLUDE)
             bot = bot_schema.load(data)
             if "_id" in bot:
-                result = self.app.db.bots.update_one({"_id": bot["_id"]}, bot)
+                result = self.app.db.bots.update_one({"_id": ObjectId(bot["_id"])}, bot)
                 resp = jsonResp(
                     {"message": "This bot already exists, successfully updated bot", "botId": str(result.updated_id)}
                 )
@@ -156,9 +153,9 @@ class Bot(Account):
         data = request.get_json()
         botId = request.view_args["id"]
         try:
-            bot_schema = BotSchema(unknown=EXCLUDE)
+            bot_schema = BotSchema()
             bot = bot_schema.load(data)
-            result = self.app.db.bots.update_one({"_id": botId}, {"$set": bot})
+            result = self.app.db.bots.update_one({"_id": ObjectId(botId)}, {"$set": bot})
             resp = jsonResp({"message": "Successfully updated bot", "botId": str(botId)})
         except ValidationError as e:
             resp = jsonResp_error_message(f"Failed validation: {e.messages}")

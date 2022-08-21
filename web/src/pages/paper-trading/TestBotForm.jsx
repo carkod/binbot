@@ -24,6 +24,7 @@ import BotInfo from "../../components/BotInfo";
 import Candlestick from "../../components/Candlestick";
 import IndicatorsButtons from "../../components/IndicatorsButtons";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
+import { defaultSo } from "../../state/constants";
 import {
   checkBalance,
   checkValue,
@@ -43,14 +44,6 @@ import MainTab from "./tabs/Main";
 import SafetyOrders from "./tabs/SafetyOrders";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
-
-
-let defaultSo = {
-  name: "so_1",
-  order_id: "",
-  buy_price: 0,
-  so_size: 0,
-}
 
 class TestBotForm extends React.Component {
   constructor(props) {

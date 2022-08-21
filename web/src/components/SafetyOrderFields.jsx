@@ -33,6 +33,7 @@ const SafetyOrderFields = ({
                 onChange={handleChange}
                 onBlur={handleBlur}
                 data-index={i}
+                defaultValue={e.buy_price}
               />
               <InputGroupText>{quoteAsset}</InputGroupText>
             </InputGroup>
@@ -46,6 +47,7 @@ const SafetyOrderFields = ({
                 onChange={handleChange}
                 onBlur={handleBlur}
                 data-index={i}
+                defaultValue={e.so_size}
               />
               <InputGroupText>{asset.replace(quoteAsset, "")}</InputGroupText>
             </InputGroup>

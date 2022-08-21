@@ -1,3 +1,4 @@
+import produce from "immer";
 import moment from "moment";
 import React from "react";
 import { connect } from "react-redux";
@@ -24,6 +25,7 @@ import Candlestick from "../../components/Candlestick";
 import IndicatorsButtons from "../../components/IndicatorsButtons";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import { bot } from "../../state/bots/actions";
+import { defaultSo } from "../../state/constants";
 import {
   checkBalance,
   checkValue,
@@ -290,6 +292,7 @@ class BotForm extends React.Component {
         base_order_size: String(this.props.bot.base_order_size),
         name: this.props.bot.name,
         pair: this.props.bot.pair,
+        safety_orders: this.props.bot.safety_orders,
         take_profit: this.props.bot.take_profit,
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
@@ -418,6 +421,38 @@ class BotForm extends React.Component {
   handleToggleIndicator = (value) => {
     this.setState({ toggleIndicators: value });
   };
+
+  handleSoChange = (e) => {
+    if (e.target.name === "so_size" || e.target.name === "buy_price") {
+      const safety_orders = produce(this.props.bot, draft => {
+        draft.safety_orders[e.target.dataset.index][e.target.name] = e.target.value;
+      });
+      this.props.setBot(safety_orders)
+    }
+    return;
+  };
+
+  addSo = () => {
+    const safety_orders = produce(this.props.bot, draft => {
+      if (Object.getPrototypeOf(draft.safety_orders) === Object.prototype) {
+        draft.safety_orders = [defaultSo]
+      } else {
+        let newSo = {...defaultSo}
+        newSo.name = `so_${draft.safety_orders.length + 1}`
+        draft.safety_orders.push(newSo)
+      }
+      
+    });
+    this.props.setBot(safety_orders)
+  }
+
+  removeSo = (e) => {
+    e.preventDefault();
+    const safety_orders = produce(this.props.bot, draft => {
+      draft.safety_orders.splice(e.target.dataset.index, 1)
+    });
+    this.props.setBot(safety_orders);
+  }
 
   render() {
     return (

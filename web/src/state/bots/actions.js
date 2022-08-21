@@ -73,16 +73,14 @@ export function getProfit(base_price, current_price) {
 }
 
 export function computeTotalProfit(bots) {
+  let currTotalProfit = 0
   const totalProfit = bots
     .map((bot) => bot.deal)
     .reduce((accumulator, currBot) => {
-      if (currBot && currBot.status === "completed" && !checkValue(currBot.sell_price)) {
-        const currTotalProfit = this.getProfit(currBot.buy_price, currBot.sell_price);
-        return parseFloat(accumulator) + parseFloat(currTotalProfit);
-      } else {
-        return 0
+      if (currBot && !checkValue(currBot.sell_price)) {
+          currTotalProfit = this.getProfit(currBot.buy_price, currBot.sell_price);
       }
-      
+      return parseFloat(accumulator) + parseFloat(currTotalProfit);
     }, 0);
   return totalProfit.toFixed(2);
 }
