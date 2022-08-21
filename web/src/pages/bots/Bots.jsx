@@ -153,7 +153,7 @@ class Bots extends React.Component {
                     color={this.props.totalProfit > 0 ? "success" : "danger"}
                   >
                     <i className="nc-icon nc-bank" />{" "}
-                    {this.props.totalProfit + "%"}
+                    {(this.props.totalProfit || 0) + "%"}
                   </Badge>
                 </h3>
               </Col>

@@ -9,6 +9,7 @@ from api.deals.models import Deal
 from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
+from api.tools.enum_definitions import EnumDefinitions
 from api.tools.handle_error import (
     NotEnoughFunds,
     QuantityTooLow,
@@ -65,18 +66,13 @@ class Bot(Account):
         no_cooldown = request.args.get("no_cooldown")
         params = {}
 
-        if status and status in self.bot_schema.statuses:
+        if status and status in EnumDefinitions.statuses:
             params["active"] = status
-        elif status:
-            resp = jsonResp(
-                {"message": f"Bots status {status} not allowed", "data": []}
-            )
-            return resp
 
         if start_date:
             try:
                 float(start_date)
-            except ValueError as e:
+            except ValueError as error:
                 resp = jsonResp(
                     {"message": f"start_date must be a timestamp float", "data": []}
                 )
@@ -121,7 +117,7 @@ class Bot(Account):
             )
         )
         if bot:
-            resp = jsonResp({"data": bot})
+            resp = jsonResp({"message": "Sucessfully found bots!", "data": bot})
         else:
             resp = jsonResp({"message": "Bots not found", "data": []})
         return resp
@@ -159,16 +155,15 @@ class Bot(Account):
     def edit(self):
         data = request.get_json()
         botId = request.view_args["id"]
-        if botId:
-            data["_id"] = botId
         try:
-            BotSchema().update(data)
-            resp = jsonResp(
-                {"message": "Successfully updated bot", "botId": botId}, 200
-            )
+            bot_schema = BotSchema(unknown=EXCLUDE)
+            bot = bot_schema.load(data)
+            result = self.app.db.bots.update_one({"_id": botId}, {"$set": bot})
+            resp = jsonResp({"message": "Successfully updated bot", "botId": str(botId)})
+        except ValidationError as e:
+            resp = jsonResp_error_message(f"Failed validation: {e.messages}")
         except Exception as e:
-            resp = jsonResp_error_message(f"Failed to update bot: {e}")
-
+            resp = jsonResp_error_message(f"Failed to create new bot: {e}")
         return resp
 
     def delete(self):

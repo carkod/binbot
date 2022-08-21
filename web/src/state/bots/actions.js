@@ -76,11 +76,13 @@ export function computeTotalProfit(bots) {
   const totalProfit = bots
     .map((bot) => bot.deal)
     .reduce((accumulator, currBot) => {
-      let currTotalProfit = getProfit(currBot.buy_price, currBot.current_price);
-      if (currBot.status === "completed" && !checkValue(currBot.sell_price)) {
-        currTotalProfit = this.getProfit(currBot.buy_price, currBot.sell_price);
+      if (currBot && currBot.status === "completed" && !checkValue(currBot.sell_price)) {
+        const currTotalProfit = this.getProfit(currBot.buy_price, currBot.sell_price);
+        return parseFloat(accumulator) + parseFloat(currTotalProfit);
+      } else {
+        return 0
       }
-      return parseFloat(accumulator) + parseFloat(currTotalProfit);
+      
     }, 0);
   return totalProfit.toFixed(2);
 }

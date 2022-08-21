@@ -12,15 +12,11 @@ import {
   CardTitle,
   Col,
   Form,
-  FormFeedback,
-  Input,
-  Label,
   Nav,
   NavItem,
   NavLink,
   Row,
   TabContent,
-  TabPane,
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
@@ -178,7 +174,6 @@ class BotForm extends React.Component {
       pair,
       base_order_size,
       take_profit,
-      so_size,
       trailling,
       trailling_deviation,
       stop_loss,
@@ -563,7 +558,7 @@ class BotForm extends React.Component {
                           Main
                         </NavLink>
                       </NavItem>
-                      {/* <NavItem>
+                      <NavItem>
                         <NavLink
                           className={
                             this.state.activeTab === "safety-orders" ? "active" : ""
@@ -572,7 +567,7 @@ class BotForm extends React.Component {
                         >
                           Safety orders
                         </NavLink>
-                      </NavItem> */}
+                      </NavItem>
                       <NavItem>
                         <NavLink
                           className={
@@ -618,7 +613,7 @@ class BotForm extends React.Component {
                     {/*
                       Safey orders tab
                     */}
-                    {/* <SafetyOrders
+                    <SafetyOrders
                       safetyOrders={this.props.bot.safety_orders}
                       asset={this.props.bot.pair}
                       quoteAsset={this.props.bot.quoteAsset}
@@ -626,7 +621,7 @@ class BotForm extends React.Component {
                       handleChange={this.handleSoChange}
                       addSo={this.addSo}
                       removeSo={this.removeSo}
-                    /> */}
+                    />
 
                     <StopLoss
                       stop_loss={this.props.bot.stop_loss}
