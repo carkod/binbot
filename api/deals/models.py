@@ -14,18 +14,20 @@ class OrderModel:
         deal_type="base_order",
         order_side="BUY",
         time_in_force="GTC",
-    ) -> None:
-        self.timestamp=timestamp,
-        self.order_id=order_id,
-        self.deal_type=deal_type,
-        self.pair=pair,
-        self.order_side=order_side,
-        self.order_type=order_type,
-        self.price=float(price),
-        self.qty=float(qty),
-        self.fills=fills,
-        self.time_in_force=time_in_force,
-        self.status=status,
+        *args,
+        **kwargs
+    ):
+        self.timestamp=timestamp
+        self.order_id=order_id
+        self.deal_type=deal_type
+        self.pair=pair
+        self.order_side=order_side
+        self.order_type=order_type
+        self.price=float(price)
+        self.qty=float(qty)
+        self.fills=fills
+        self.time_in_force=time_in_force
+        self.status=status
 
 class DealModel:
     def __init__(
@@ -43,7 +45,9 @@ class DealModel:
         stop_loss_price=0,
         trailling_profit=0,
         so_prices=0, # old
-        post_closure_current_price=0 # old
+        post_closure_current_price=0, # old
+        *args,
+        **kwargs        
     ):
         self.avg_buy_price: float = float(avg_buy_price)
         self.buy_price: float = float(buy_price)

@@ -87,7 +87,6 @@ class MarketUpdates(Account):
                 {"$set": {"deal.current_price": close_price}},
                 return_document=ReturnDocument.AFTER
             )
-            print(f'{symbol} Current price in deal updated! {bot["deal"]["current_price"]}')
 
             # Stop loss
             if (
@@ -163,13 +162,10 @@ class MarketUpdates(Account):
                 "safety_orders" in bot
                 and len(bot["safety_orders"]) > 0
             ):
-                for key, value in bot["safety_orders"]:
+                for key, deal in enumerate(bot["safety_orders"]):
                     # Index is the ID of the safety order price that matches safety_orders list
-                    if float(value) >= float(close_price):
+                    if float(deal["buy_price"]) >= float(close_price):
                         deal = CreateDealController(bot, db_collection)
-                        print("Update so deal executed")
-                        # No need to pass price to update deal
-                        # The price already matched market price
                         deal.so_update_deal(key)
         pass
 

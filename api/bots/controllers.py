@@ -198,12 +198,12 @@ class Bot(Account):
             except NotEnoughFunds as e:
                 return jsonResp_error_message(e.args[0])
 
-
             try:
                 botId = self.db_collection.update_one(
                     {"_id": ObjectId(botId)}, {"$set": {"status": "active"}}
                 )
                 resp = jsonResp_message("Successfully activated bot!")
+                self._restart_websockets()
             except Exception as error:
                 resp = jsonResp(
                     {

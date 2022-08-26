@@ -1,5 +1,6 @@
 from time import time
 from bson.objectid import ObjectId
+from api.deals.models import DealModel
 from api.tools.enum_definitions import EnumDefinitions
 
 
@@ -10,22 +11,28 @@ class SafetyOrderModel:
     def __init__(
         self,
         buy_price,
-        safety_order_size,
+        so_size,
         name="so_1",
         order_id="",
         buy_timestamp=0,
         errors=[],
         total_comission=0,
+        so_volume_scale=0,
+        created_at=time() * 1000,
+        updated_at=time() * 1000,
+        *args,
+        **kwargs
     ):
         self.name: str = name  # should be so_<index>
         self.order_id: str = order_id
-        self.created_at: float = time() * 1000
-        self.updated_at: float = time() * 1000
+        self.created_at: float = created_at
+        self.updated_at: float = updated_at
         self.buy_price: float = buy_price
         self.buy_timestamp: float = buy_timestamp
-        self.safety_order_size: float = safety_order_size
+        self.so_size: float = so_size
         self.errors: list[str] = errors
-        self.total_commission: float = total_comission
+        self.total_commission: float = float(total_comission)
+        self.so_volume_scale = so_volume_scale
 
 class BotModel:
     """
@@ -68,7 +75,7 @@ class BotModel:
         self.candlestick_interval = candlestick_interval
         self.cooldown = cooldown
         self.created_at = created_at
-        self.deal = deal
+        self.deal = DealModel(**deal)
         self.errors = errors
         self.locked_so_funds = locked_so_funds
         self.mode = mode
@@ -76,7 +83,7 @@ class BotModel:
         self._id = _id or ObjectId()
         self.orders = orders
         self.pair = pair
-        self.safety_orders = safety_orders
+        self.safety_orders = self.append_so(safety_orders)
         self.status = status
         self.stop_loss = stop_loss
         self.take_profit = take_profit
@@ -85,3 +92,10 @@ class BotModel:
         self.trailling_deviation = trailling_deviation
         self.trailling_profit = trailling_profit
         self.updated_at = updated_at
+
+    def append_so(self, so_list):
+        safety_orders = []
+        for so in so_list:
+            so_model = SafetyOrderModel(**so)
+            safety_orders.append(so_model)
+        return safety_orders
