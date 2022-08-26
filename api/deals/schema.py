@@ -1,5 +1,5 @@
 from time import time
-from marshmallow import Schema, fields, post_load
+from marshmallow import Schema, fields
 
 class OrderSchema(Schema):
     deal_type = fields.Str()
@@ -14,7 +14,6 @@ class OrderSchema(Schema):
     status = fields.Str()
 
 class DealSchema(Schema):
-    order_id: int = fields.Int(dump_default=0) # should be so_<index>
     buy_timestamp: float = fields.Float(dump_default=0)
     buy_total_qty: float = fields.Float(dump_default=0)
     current_price: float = fields.Float(dump_default=0)
@@ -26,4 +25,3 @@ class DealSchema(Schema):
     sell_price: float = fields.Float(dump_default=0)
     sell_qty: float = fields.Float(dump_default=0)
     post_closure_current_price: float = fields.Float(dump_default=0)
-    total_commission: float = fields.Float(dump_default=0)

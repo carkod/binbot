@@ -4,10 +4,11 @@ from time import time
 
 from api.account.account import Account
 from api.bots.schemas import BotSchema, SafetyOrderSchema
-from api.deals.models import Deal
+from api.deals.controllers import CreateDealController
 from api.orders.models.book_order import Book_Order
 from api.threads import market_update_thread
 from api.tools.enum_definitions import EnumDefinitions
+from api.tools.exceptions import OpenDealError
 from api.tools.handle_error import (
     NotEnoughFunds,
     QuantityTooLow,
@@ -186,63 +187,33 @@ class Bot(Account):
         return resp
 
     def activate(self):
-        findId = request.view_args["botId"]
-        bot = self.db_collection.find_one({"_id": ObjectId(findId)})
+        botId = request.view_args["botId"]
+        bot = self.db_collection.find_one({"_id": ObjectId(botId)})
 
         if bot:
             try:
-                order_errors = Deal(bot).open_deal()
+                CreateDealController(bot).open_deal()
+            except OpenDealError as error:
+                return jsonResp_error_message(error)
             except NotEnoughFunds as e:
                 return jsonResp_error_message(e.args[0])
 
-            if isinstance(order_errors, Response):
-                return order_errors
 
-            # If error
-            if len(order_errors) > 0:
-                # If base order fails makes no sense to activate
-                if "base_order_error" in order_errors[0]:
-                    resp = jsonResp(
-                        {
-                            "message": f'Failed to activate bot, {order_errors[0]["base_order_error"]}',
-                            "botId": str(findId),
-                            "error": 1,
-                        }
-                    )
-                else:
-                    resp = jsonResp(
-                        {
-                            "message": f"Failed to activate bot, {','.join(order_errors)}",
-                            "botId": str(findId),
-                            "error": 1,
-                        }
-                    )
+            try:
+                botId = self.db_collection.update_one(
+                    {"_id": ObjectId(botId)}, {"$set": {"status": "active"}}
+                )
+                resp = jsonResp_message("Successfully activated bot!")
+            except Exception as error:
+                resp = jsonResp(
+                    {
+                        "message": f"Unable to save bot: {error}",
+                        "botId": str(botId),
+                    },
+                    200,
+                )
                 return resp
 
-            botId = self.db_collection.update_one(
-                {"_id": ObjectId(findId)}, {"$set": {"status": "active"}}
-            )
-
-            if botId:
-                resp = jsonResp(
-                    {
-                        "message": "Successfully activated bot and triggered deals with no errors",
-                        "botId": str(findId),
-                    },
-                    200,
-                )
-                self._restart_websockets()
-            else:
-                resp = jsonResp(
-                    {
-                        "message": "Unable to save bot",
-                        "botId": str(findId),
-                    },
-                    200,
-                )
-            return resp
-        else:
-            resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
         return resp
 
     def deactivate(self):

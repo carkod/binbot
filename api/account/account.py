@@ -202,4 +202,11 @@ class Account(BinbotApi):
             .exponent
         )
         return qty_precision
-
+    
+    def get_one_balance(self, symbol="BTC"):
+        # Response after request
+        data = self.bb_request(url=self.bb_balance_url)
+        symbol_balance = next(
+            (x["free"] for x in data["data"] if x["asset"] == symbol), None
+        )
+        return symbol_balance

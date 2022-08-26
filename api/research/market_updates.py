@@ -4,9 +4,8 @@ from pymongo import ReturnDocument
 
 from api.account.account import Account
 from api.app import create_app
-from api.deals.deal_updates import DealUpdates
+from api.deals.controllers import CreateDealController
 from websocket import WebSocketApp
-from api.paper_trading.deal_updates import TestDealUpdates
 
 class MarketUpdates(Account):
     """
@@ -73,7 +72,7 @@ class MarketUpdates(Account):
             else:
                 print(f'Error: {json_response["data"]}')
 
-    def process_deals_bot(self, current_bot, close_price, symbol, ws, db_collection, DealUpdatesCls):
+    def process_deals_bot(self, current_bot, close_price, symbol, ws, db_collection, CreateDealController):
         """
         Processes the deal market websocket price updates
 
@@ -83,7 +82,7 @@ class MarketUpdates(Account):
         if current_bot and "deal" in current_bot:
             # Update Current price only for active bots
             # This is to keep historical profit intact
-            bot = db_collection.find_one_and_update(
+            bot = self.app.db[db_collection].find_one_and_update(
                 {"_id": current_bot["_id"]},
                 {"$set": {"deal.current_price": close_price}},
                 return_document=ReturnDocument.AFTER
@@ -97,7 +96,7 @@ class MarketUpdates(Account):
                 and float(current_bot["stop_loss"]) > 0
                 and float(current_bot["deal"]["stop_loss"]) > float(close_price)
             ):
-                deal = DealUpdatesCls(bot)
+                deal = CreateDealController(bot, db_collection)
                 deal.execute_stop_loss(close_price)
                 return
 
@@ -133,11 +132,11 @@ class MarketUpdates(Account):
                         * (float(bot["trailling_deviation"]) / 100)
                     )
                     print(f'{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}')
-                    updated_bot = db_collection.update_one(
+                    updated_bot = self.app.db[db_collection].update_one(
                         {"_id": current_bot["_id"]}, {"$set": {"deal": bot["deal"]}}
                     )
                     if not updated_bot:
-                        db_collection.update_one(
+                        self.app.db[db_collection].update_one(
                             {"_id": current_bot["_id"]},
                             {
                                 "$push": {
@@ -153,7 +152,7 @@ class MarketUpdates(Account):
                     price = bot["deal"]["trailling_stop_loss_price"]
                     if float(close_price) <= float(price):
                         print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
-                        deal = DealUpdatesCls(bot)
+                        deal = CreateDealController(bot, db_collection)
                         completion = deal.trailling_stop_loss(price)
                         if completion == "completed":
                             self.start_stream(ws)
@@ -167,7 +166,7 @@ class MarketUpdates(Account):
                 for key, value in bot["safety_orders"]:
                     # Index is the ID of the safety order price that matches safety_orders list
                     if float(value) >= float(close_price):
-                        deal = DealUpdatesCls(bot)
+                        deal = CreateDealController(bot, db_collection)
                         print("Update so deal executed")
                         # No need to pass price to update deal
                         # The price already matched market price
@@ -190,5 +189,5 @@ class MarketUpdates(Account):
                 {"pair": symbol, "status": "active"}
             )
 
-            self.process_deals_bot(current_bot, close_price, symbol, ws, self.app.db.bots, DealUpdates)
-            self.process_deals_bot(current_test_bot, close_price, symbol, ws, self.app.db.paper_trading, TestDealUpdates)
+            self.process_deals_bot(current_bot, close_price, symbol, ws, "bots", CreateDealController)
+            self.process_deals_bot(current_test_bot, close_price, symbol, ws, "paper_trading", CreateDealController)

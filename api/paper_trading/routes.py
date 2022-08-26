@@ -1,7 +1,6 @@
 from flask import Blueprint
 from api.bots.controllers import Bot
 from api.auth import auth
-from api.paper_trading.controllers import PaperTradingController
 
 paper_trading_blueprint = Blueprint("paper-trading", __name__)
 
@@ -36,7 +35,7 @@ def delete():
 @paper_trading_blueprint.route("/paper-trading/activate/<botId>", methods=["GET"])
 @auth.login_required
 def activate(botId):
-    return PaperTradingController().activate()
+    return Bot(collection_name="paper_trading").activate()
 
 
 @paper_trading_blueprint.route("/paper-trading/deactivate/<id>", methods=["DELETE"])
@@ -46,4 +45,4 @@ def deactivate(id):
     Deactivation means closing all deals and selling to GBP
     Otherwise losses will be incurred
     """
-    return PaperTradingController().deactivate()
+    return Bot(collection_name="paper_trading").deactivate()

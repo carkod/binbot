@@ -5,7 +5,7 @@ from api.account.account import Account
 from api.account.assets import Assets
 from api.apis import BinanceApi
 from api.app import create_app
-from api.deals.deal_updates import DealUpdates
+from api.deals.controllers import CreateDealController
 from api.threads import market_update_thread
 from api.tools.handle_error import handle_error
 from websocket import WebSocketApp
@@ -128,8 +128,8 @@ class OrderUpdates(BinanceApi):
 
             if bot:
                 # It is a safety order, now find safety order deal price
-                deal = DealUpdates(bot)
-                deal.default_deal.update(bot)
+                deal = CreateDealController(bot)
+                deal.update_so()
                 deal.update_take_profit(order_id)
 
             # Restart market_update websockets to pick up new active bots

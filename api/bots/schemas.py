@@ -1,8 +1,8 @@
 from time import time
-from marshmallow import Schema, fields, post_load, pre_dump
+from marshmallow import Schema, fields
 from marshmallow.validate import OneOf
 from api.bots.models import BotModel
-from api.deals.schema import DealSchema
+from api.deals.schema import DealSchema, OrderSchema
 from api.tools.enum_definitions import EnumDefinitions
 
 class SafetyOrderSchema(Schema):
@@ -21,28 +21,29 @@ class SafetyOrderSchema(Schema):
     total_commission: float = fields.Float(dump_default=0)
 
 class BotSchema(Schema):
-    _id = fields.Str()
+    balance_size_to_use: float= fields.Float()
+    balance_to_use: str = fields.Str(required=True)
+    base_order_size: str = fields.Str(required=True) # Min Binance 0.0001 BNB
+    candlestick_interval: str = fields.Str(required=True)
+    cooldown: int = fields.Int() # cooldown period before opening next bot with same pair
+    created_at = fields.Float()
+    deal = fields.Nested(DealSchema)
+    errors: list[str] = fields.List(fields.Str)
+    locked_so_funds: float = fields.Float() # funds locked by Safety orders
+    mode = fields.Str(dump_default="manual")
+    name = fields.Str(dump_default="Default bot")
+    orders: list = fields.List(fields.Nested(OrderSchema)) # Internal
     pair = fields.Str(required=True)
     status = fields.Str(required=True, dump_default="inactive", validate=OneOf(EnumDefinitions.statuses))
-    name = fields.Str(dump_default="Default bot")
-    created_at = fields.Float()
-    updated_at = fields.Float()
-    mode = fields.Str(dump_default="manual")
-    base_order_size: str = fields.Str(required=True) # Min Binance 0.0001 BNB
-    balance_to_use: str = fields.Str(required=True)
-    candlestick_interval: str = fields.Str(required=True)
+    stop_loss: float = fields.Float()
     take_profit: float = fields.Float(required=True)
     trailling: str = fields.Str(required=True)
     trailling_deviation: float = fields.Float(required=True)
     trailling_profit: float = fields.Float() # Trailling activation (first take profit hit)
-    orders: list = fields.List(fields.Str) # Internal
-    stop_loss: float = fields.Float()
-    # Deal and orders are internal, should never be updated by outside data
-    deal = fields.Nested(DealSchema)
-    errors: list[str] = fields.List(fields.Str)
-    total_commission: float = fields.Float()
-    cooldown: int = fields.Int()
-    # Safety orders
-    locked_so_funds: float = fields.Float()
     safety_orders = fields.List(fields.Nested(SafetyOrderSchema))
+    # Deal and orders are internal, should never be updated by outside data
+    total_commission: float = fields.Float()
+    # Safety orders
+    updated_at = fields.Float()
+    _id = fields.Str()
 
