@@ -72,7 +72,7 @@ class MarketUpdates(Account):
             else:
                 print(f'Error: {json_response["data"]}')
 
-    def process_deals_bot(self, current_bot, close_price, symbol, ws, db_collection, CreateDealController):
+    def process_deals_bot(self, current_bot, close_price, symbol, ws, db_collection):
         """
         Processes the deal market websocket price updates
 
@@ -90,9 +90,8 @@ class MarketUpdates(Account):
 
             # Stop loss
             if (
-                "stop_loss" in current_bot["deal"]
-                and "stop_loss" in current_bot
-                and float(current_bot["stop_loss"]) > 0
+                "stop_loss" in current_bot
+                and float(current_bot["stop_loss"]) > 0.0
                 and float(current_bot["deal"]["stop_loss"]) > float(close_price)
             ):
                 deal = CreateDealController(bot, db_collection)
@@ -185,5 +184,5 @@ class MarketUpdates(Account):
                 {"pair": symbol, "status": "active"}
             )
 
-            self.process_deals_bot(current_bot, close_price, symbol, ws, "bots", CreateDealController)
-            self.process_deals_bot(current_test_bot, close_price, symbol, ws, "paper_trading", CreateDealController)
+            self.process_deals_bot(current_bot, close_price, symbol, ws, "bots")
+            self.process_deals_bot(current_test_bot, close_price, symbol, ws, "paper_trading")

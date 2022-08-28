@@ -78,7 +78,7 @@ export function computeTotalProfit(bots) {
     .map((bot) => bot.deal)
     .reduce((accumulator, currBot) => {
       if (currBot && !checkValue(currBot.sell_price)) {
-          currTotalProfit = this.getProfit(currBot.buy_price, currBot.sell_price);
+          currTotalProfit = getProfit(currBot.buy_price, currBot.sell_price);
       }
       return parseFloat(accumulator) + parseFloat(currTotalProfit);
     }, 0);

@@ -1,6 +1,6 @@
 from time import time
 from bson.objectid import ObjectId
-from api.deals.models import DealModel
+from api.deals.models import DealModel, OrderModel
 from api.tools.enum_definitions import EnumDefinitions
 
 
@@ -81,7 +81,7 @@ class BotModel:
         self.mode = mode
         self.name = name
         self._id = _id or ObjectId()
-        self.orders = orders
+        self.orders = self.append_order(orders)
         self.pair = pair
         self.safety_orders = self.append_so(safety_orders)
         self.status = status
@@ -95,7 +95,16 @@ class BotModel:
 
     def append_so(self, so_list):
         safety_orders = []
-        for so in so_list:
-            so_model = SafetyOrderModel(**so)
-            safety_orders.append(so_model)
+        if len(so_list) > 0:
+            for so in so_list:
+                so_model = SafetyOrderModel(**so)
+                safety_orders.append(so_model)
         return safety_orders
+    
+    def append_order(self, orders):
+        cls_orders = []
+        if len(orders) > 0:
+            for o in orders:
+                order_model = OrderModel(**o)
+                cls_orders.append(order_model)
+        return cls_orders

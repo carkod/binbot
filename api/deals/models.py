@@ -17,22 +17,22 @@ class OrderModel:
         *args,
         **kwargs
     ):
+        self.order_type=order_type
+        self.time_in_force=time_in_force
         self.timestamp=timestamp
         self.order_id=order_id
-        self.deal_type=deal_type
-        self.pair=pair
         self.order_side=order_side
-        self.order_type=order_type
-        self.price=float(price)
-        self.qty=float(qty)
+        self.pair=pair
         self.fills=fills
-        self.time_in_force=time_in_force
+        self.qty=float(qty)
         self.status=status
+        self.price=float(price)
+        self.deal_type=deal_type
 
 class DealModel:
     def __init__(
         self,
-        buy_price,
+        buy_price=0,
         buy_total_qty=0,
         buy_timestamp=time() * 1000,
         current_price=0,

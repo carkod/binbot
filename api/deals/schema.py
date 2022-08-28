@@ -1,17 +1,19 @@
+from sqlite3 import Timestamp
 from time import time
 from marshmallow import Schema, fields
 
 class OrderSchema(Schema):
-    deal_type = fields.Str()
-    order_id = fields.Str()
-    pair = fields.Str()
-    order_side = fields.Str()
     order_type = fields.Str()
-    price = fields.Str()
-    qty = fields.Str()
-    fills = fields.Str()
     time_in_force = fields.Str()
+    timestamp = fields.Float()
+    pair = fields.Str()
+    qty = fields.Str()
+    order_side = fields.Str()
+    order_id = fields.Str()
+    fills = fields.Str()
+    price = fields.Str()
     status = fields.Str()
+    deal_type = fields.Str()
 
 class DealSchema(Schema):
     buy_timestamp: float = fields.Float(dump_default=0)

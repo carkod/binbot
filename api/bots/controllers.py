@@ -181,7 +181,6 @@ class Bot(Account):
         )
         if delete_action:
             resp = jsonResp_message("Successfully deleted bot")
-            self._restart_websockets()
         else:
             resp = jsonResp({"message": "Bot deletion is not available"}, 400)
         return resp
