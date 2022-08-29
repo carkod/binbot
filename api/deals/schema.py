@@ -21,7 +21,7 @@ class DealSchema(Schema):
     current_price: float = fields.Float(dump_default=0)
     buy_price: float = fields.Float(required=True, dump_default=0) # base currency quantity e.g. 3000 USDT in BTCUSDT
     avg_buy_price: float = fields.Float(dump_default=0) # same as buy_price but a copy for safety orders
-    take_profit_price: float = fields.Float(dump_default=0) # quote currency quantity e.g. 0.00003 BTC in BTCUSDT 
+    take_profit_price: float = fields.Float(dump_default=0) # quote currency quantity e.g. 0.00003 BTC in BTCUSDT (sell price)
     so_prices: float = fields.Float(dump_default=0)
     sell_timestamp: float = fields.Float(dump_default=0)
     sell_price: float = fields.Float(dump_default=0)

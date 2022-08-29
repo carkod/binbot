@@ -65,8 +65,7 @@ export function getProfit(base_price, current_price) {
   if (!checkValue(base_price) && !checkValue(current_price)) {
     const percent =
       ((parseFloat(current_price) - parseFloat(base_price)) /
-        parseFloat(base_price)) *
-      100;
+        parseFloat(base_price)) * 100;
     return percent.toFixed(2);
   }
   return 0;
@@ -77,8 +76,8 @@ export function computeTotalProfit(bots) {
   const totalProfit = bots
     .map((bot) => bot.deal)
     .reduce((accumulator, currBot) => {
-      if (currBot && !checkValue(currBot.sell_price)) {
-          currTotalProfit = getProfit(currBot.buy_price, currBot.sell_price);
+      if (currBot && !checkValue(currBot.take_profit_price) && parseFloat(currBot.take_profit_price) > 0) {
+          currTotalProfit = getProfit(currBot.buy_price, currBot.take_profit_price);
       }
       return parseFloat(accumulator) + parseFloat(currTotalProfit);
     }, 0);

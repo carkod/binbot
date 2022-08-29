@@ -136,7 +136,7 @@ class TestBots extends React.Component {
   };
 
   render() {
-    const { bots } = this.props;
+    const { bots, totalProfit } = this.props;
     return (
       <>
         <div className="content">
@@ -145,10 +145,10 @@ class TestBots extends React.Component {
               <Col sm={2}>
                 <h3>
                   <Badge
-                    color={this.props.totalProfit > 0 ? "success" : "danger"}
+                    color={totalProfit > 0 ? "success" : "danger"}
                   >
                     <i className="nc-icon nc-bank" />{" "}
-                    {this.props.totalProfit + "%"}
+                    {totalProfit ? totalProfit + "%" : "0%"}
                   </Badge>
                 </h3>
               </Col>
