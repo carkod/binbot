@@ -23,6 +23,7 @@ import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import Candlestick from "../../components/Candlestick";
 import IndicatorsButtons from "../../components/IndicatorsButtons";
+import { TVChartContainer } from "../../components/TvChartContainer";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import { defaultSo } from "../../state/constants";
 import {
@@ -387,6 +388,9 @@ class TestBotForm extends React.Component {
   render() {
     return (
       <div className="content">
+
+        <TVChartContainer />
+
         <Row>
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
