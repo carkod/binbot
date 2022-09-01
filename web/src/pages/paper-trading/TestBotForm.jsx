@@ -23,7 +23,7 @@ import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import Candlestick from "../../components/Candlestick";
 import IndicatorsButtons from "../../components/IndicatorsButtons";
-import { TVChartContainer } from "../../components/TvChartContainer";
+import { TVChartContainer } from "binbot-charts";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import { defaultSo } from "../../state/constants";
 import {
@@ -45,6 +45,23 @@ import MainTab from "./tabs/Main";
 import SafetyOrders from "./tabs/SafetyOrders";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
+
+
+const testTimeMarks = [{
+  id: "tsm4",
+  time: 1652572800,
+  color: "red",
+  label: "B",
+  tooltip: ["Safety Order 4"],
+}]
+
+const testOrderLines = [{
+  text: "Take profit order: 10",
+  tooltip: ["Additional position information"],
+  quantity: "200 USDT",
+  price: 5.5,
+  color: "green",
+}]
 
 class TestBotForm extends React.Component {
   constructor(props) {
@@ -389,7 +406,12 @@ class TestBotForm extends React.Component {
     return (
       <div className="content">
 
-        <TVChartContainer />
+        <TVChartContainer
+          symbol="Binance:APE/USDT"
+          interval="1H"
+          timescaleMarks={testTimeMarks}
+          orderLines={testOrderLines}
+        />
 
         <Row>
           <Col md="12">
