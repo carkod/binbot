@@ -44,7 +44,7 @@ export const bot = {
   baseAsset: "",
   stop_loss: 0,
   stopLossError: false,
-  safety_orders: {},
+  safety_orders: [],
   addAllError: "",
   cooldown: 0
 };
