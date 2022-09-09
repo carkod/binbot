@@ -88,12 +88,6 @@ class TestBotForm extends React.Component {
       });
     }
 
-    if (
-      this.props.botActive !== p.botActive &&
-      !checkValue(this.props.match.params.id)
-    ) {
-      this.props.getBot(this.props.match.params.id);
-    }
 
     if (
       Object.keys(this.props.bot.deal).length > 0 &&
@@ -173,7 +167,7 @@ class TestBotForm extends React.Component {
         status: this.props.bot.status,
         base_order_size: this.props.bot.base_order_size,
         balance_to_use: this.props.bot.balance_to_use,
-        mode: "manual",
+        mode: "manual", // Always manual in terminal.binbot
         name: this.props.bot.name,
         pair: this.props.bot.pair,
         take_profit: this.props.bot.take_profit,
@@ -205,13 +199,6 @@ class TestBotForm extends React.Component {
       this.props.getSymbolInfo(value[0]);
       this.props.setBotState({ pair: value[0] });
     }
-  };
-
-  handleStrategy = (e) => {
-    // Get pair base or quote asset and set new strategy
-    const { pair } = this.state;
-    this.props.getSymbolInfo(pair);
-    this.props.setBotState({ [e.target.name]: e.target.value });
   };
 
   handleBaseChange = (e) => {

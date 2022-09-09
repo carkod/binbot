@@ -151,9 +151,11 @@ class MarketUpdates(Account):
                     if float(close_price) <= float(price):
                         print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
                         deal = CreateDealController(bot, db_collection)
-                        completion = deal.trailling_stop_loss(price)
-                        if completion == "completed":
-                            self.start_stream(ws)
+                        try:
+                            deal.trailling_profit(price)
+                        except Exception as error:
+                            return
+                        self.start_stream(ws)
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)

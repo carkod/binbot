@@ -298,32 +298,84 @@ class CreateDealController(Account):
 
         return bot
 
-    def trailling_profit(self, deal_data):
+    def trailling_profit(self, current_price):
         """
-        Trailling profit is not an order, it simply updates prices
-        for potentially opening an order in the future
+        Sell at take_profit price, because prices will not reach trailling
         """
 
         try:
+            bot = self.active_bot
+            deal_data = self.active_bot.deal
             deal_buy_price = deal_data.buy_price
             price = (1 + (float(self.active_bot.take_profit) / 100)) * float(
                 deal_buy_price
             )
-            deal_data.take_profit_price = supress_notation(price, self.price_precision)
-            deal_data.trailling_profit = supress_notation(price, self.price_precision)
+            deal_data.take_profit_price = price
+            deal_data.trailling_profit = price
+
+
+            if self.db_collection.name == "paper_trading":
+                qty = deal_data.buy_total_qty
+            else:
+                qty = self.compute_qty(bot.pair)
+
+
+            # Dispatch fake order
+            if self.db_collection.name == "paper_trading":
+                res = self.simulate_order(bot.pair, price, qty, "SELL")
+                if price:
+                    res = self.simulate_order(
+                        self.active_bot.pair,
+                        price,
+                        qty,
+                        "SELL",
+                    )
+                else:
+                    price = current_price
+                    res = self.simulate_order(
+                        self.active_bot.pair,
+                        price,
+                        qty,
+                        "SELL",
+                    )
+            # Dispatch real order
+            else:
+                if price:
+                    tp_order = {
+                        "pair": bot.pair,
+                        "qty": supress_notation(qty, self.qty_precision),
+                        "price": supress_notation(price, self.price_precision),
+                    }
+                    res = self.bb_request(
+                        method="POST", url=self.bb_sell_order_url, payload=tp_order
+                    )
+                else:
+                    tp_order = {"pair": bot.pair, "qty": supress_notation(qty, self.qty_precision)}
+                    res = self.bb_request(
+                        method="POST",
+                        url=self.bb_sell_market_order_url,
+                        payload=tp_order,
+                    )
+            
+            # If error pass it up to parent function, can't continue
+            if "error" in res:
+                raise TraillingProfitError(res["error"])
 
             deal_schema = DealSchema()
             deal = deal_schema.dump(deal_data)
 
-            bot = self.db_collection.find_one_and_update(
+            msg = f"Completed take profit after failing to break trailling"
+
+            bot = self.db_collection.update_one(
                 {"_id": self.active_bot._id},
-                {"$set": {"deal": deal}},
-                return_document=ReturnDocument.AFTER,
+                {"$set": {"deal": deal, "status": "completed"}},
+                {"$push": {"errors": msg}}
             )
         except Exception as error:
+            self.update_deal_logs("Failed to close trailling take profit: " + error)
             raise TraillingProfitError(error)
 
-        return bot
+        pass # Completed
 
     def open_deal(self):
 
