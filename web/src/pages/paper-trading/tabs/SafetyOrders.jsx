@@ -9,7 +9,8 @@ export default function SafetyOrders({
   soPriceDeviation,
   handleChange,
   addSo,
-  removeSo
+  removeSo,
+  handleBlur,
 }) {
   return (
     <TabPane tabId="safety-orders">
@@ -52,6 +53,7 @@ export default function SafetyOrders({
           quoteAsset={quoteAsset}
           handleChange={handleChange}
           removeSo={removeSo}
+          handleBlur={handleBlur}
         />
       ) : (
         ""

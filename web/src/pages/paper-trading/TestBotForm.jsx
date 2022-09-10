@@ -38,7 +38,8 @@ import MainTab from "./tabs/Main";
 import SafetyOrders from "./tabs/SafetyOrders";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
-import Charting from "../../components/Charting";
+import { updateOrderLines, updateTimescaleMarks } from "../../components/services/charting.service";
+import { TVChartContainer } from "binbot-charts";
 
 class TestBotForm extends React.Component {
   constructor(props) {
@@ -48,7 +49,11 @@ class TestBotForm extends React.Component {
       bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
-      soPriceDeviation: 0
+      soPriceDeviation: 0,
+      // Chart state
+      currentChartPrice: 0,
+      currentOrderLines: [],
+      currentTimeMarks: [],
     };
   }
 
@@ -93,11 +98,13 @@ class TestBotForm extends React.Component {
       !checkValue(this.props.bot.base_order_size) &&
       this.props.bot.deal !== p.bot.deal
     ) {
-      let currentPrice = parseFloat(this.props.bot.deal.current_price);
+ 
+      let currentPrice = this.state.currentChartPrice || parseFloat(this.props.bot.deal.current_price);
       if (this.props.bot.deal.buy_price) {
         const buyPrice = parseFloat(this.props.bot.deal.buy_price);
 
         const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
+
         if (
           this.props.bot.status === "completed" &&
           !checkValue(this.props.bot.deal.sell_price)
@@ -108,6 +115,11 @@ class TestBotForm extends React.Component {
       } else {
         this.setState({ bot_profit: 0 });
       }
+    }
+
+    if (!checkValue(this.props.bot.orders) && this.props.bot.orders !== p.bot.orders) {
+      const currentTimeMarks = updateTimescaleMarks(this.props.bot);
+      this.setState({currentTimeMarks: currentTimeMarks});
     }
   };
 
@@ -280,6 +292,17 @@ class TestBotForm extends React.Component {
     if (name === "pair") {
       this.props.getSymbolInfo(value);
     }
+
+    // Update charts
+    const newOrderLines = updateOrderLines(
+      this.props.bot,
+      this.state.currentChartPrice
+    );
+    this.setState(
+      produce(this.state, (draft) => {
+        draft.currentOrderLines = newOrderLines;
+      })
+    );
   };
 
   handleActivation = (e) => {
@@ -292,7 +315,10 @@ class TestBotForm extends React.Component {
         this.props.history.push(
           `/admin/paper-trading/edit/${this.props.match.params.id}`
         );
-      }
+      } else {}
+        this.props.history.push(
+          `/admin/paper-trading/edit/${this.state._id}`
+        )      
     }
   };
 
@@ -338,6 +364,28 @@ class TestBotForm extends React.Component {
     });
     this.props.setBotState(safety_orders);
   };
+
+  handleInitialPrice = (price) => {
+    if (!this.props.bot.deal.buy_price && this.props.bot.status !== "active") {
+      this.setState(
+        produce(this.state, (draft) => {
+          draft.currentChartPrice = parseFloat(price);
+        })
+      );
+    }
+  }
+
+  updatedPrice = (price) => {
+    if (parseFloat(this.state.currentChartPrice) !== parseFloat(price)) {
+      const newOrderLines = updateOrderLines(this.props.bot, price);
+      this.setState(
+        produce(this.state, (draft) => {
+          draft.currentOrderLines = newOrderLines;
+          draft.currentChartPrice = parseFloat(price);
+        })
+      );
+    }
+  }
 
   render() {
     return (
@@ -390,9 +438,15 @@ class TestBotForm extends React.Component {
                 </Row>
               </CardHeader>
               <CardBody>
-                {!this.state.reloadingChart &&
-                  !checkValue(this.props.bot?.pair) && (
-                    <Charting bot={this.props.bot} />
+                {!checkValue(this.props.bot?.pair) && (
+                    <TVChartContainer
+                      symbol={this.props.bot.pair}
+                      interval={this.props.bot.interval}
+                      timescaleMarks={this.state.currentTimeMarks}
+                      orderLines={this.state.currentOrderLines}
+                      onTick={(tick) => this.updatedPrice(tick.close)}
+                      getLatestBar={(bar) => this.handleInitialPrice(bar[3])}
+                    />
                   )}
               </CardBody>
             </Card>
@@ -493,6 +547,7 @@ class TestBotForm extends React.Component {
                       quoteAsset={this.props.bot.quoteAsset}
                       soPriceDeviation={this.state.soPriceDeviation}
                       handleChange={this.handleSoChange}
+                      handleBlur={this.handleBlur}
                       addSo={this.addSo}
                       removeSo={this.removeSo}
                     />

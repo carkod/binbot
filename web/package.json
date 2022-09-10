@@ -1,6 +1,6 @@
 {
   "name": "binbot",
-  "version": "2",
+  "version": "2.0.1",
   "private": true,
   "homepage": "http://terminal.binbot.in/",
   "scripts": {
@@ -17,7 +17,7 @@
     "analyze": "source-map-explorer build/static/js/main.*"
   },
   "dependencies": {
-    "binbot-charts": "^0.2.18",
+    "binbot-charts": "^0.2.49",
     "bootstrap": "5.2.0",
     "history": "^5.0.0",
     "immer": "^9.0.6",

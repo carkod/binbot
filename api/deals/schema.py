@@ -13,7 +13,7 @@ class OrderSchema(Schema):
     fills = fields.Str()
     price = fields.Str()
     status = fields.Str()
-    deal_type = fields.Str()
+    deal_type = fields.Str() # base_order, take_profit, so_{x}
 
 class DealSchema(Schema):
     buy_timestamp: float = fields.Float(dump_default=0)
