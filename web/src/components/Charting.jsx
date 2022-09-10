@@ -24,8 +24,6 @@ export const Charting = memo(({ bot }) => {
     setOrderLines(newOrderLines);
   };
 
-
-
   return (
     <TVChartContainer
       symbol={bot.pair}

@@ -48,7 +48,7 @@ class TestBotForm extends React.Component {
       bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
-      soPriceDeviation: 0,
+      soPriceDeviation: 0
     };
   }
 
@@ -87,7 +87,6 @@ class TestBotForm extends React.Component {
         name: `${this.props.bot.pair}_${currentDate}`,
       });
     }
-
 
     if (
       Object.keys(this.props.bot.deal).length > 0 &&
@@ -196,7 +195,6 @@ class TestBotForm extends React.Component {
   handlePairChange = (value) => {
     // Get pair base or quote asset and set new pair
     if (!checkValue(value)) {
-      this.props.getSymbolInfo(value[0]);
       this.props.setBotState({ pair: value[0] });
     }
   };
@@ -277,17 +275,11 @@ class TestBotForm extends React.Component {
     });
   };
 
-  handleBlur = () => {
-    // if (
-    //   !checkValue(this.props.bot.pair) &&
-    //   !checkValue(this.props.bot.candlestick_interval)
-    // ) {
-    //   this.props.loadCandlestick(
-    //     this.props.bot.pair,
-    //     this.props.bot.candlestick_interval,
-    //     this.props.bot?.deal?.buy_timestamp
-    //   );
-    // }
+  handleBlur = (e) => {
+    const { name, value } = e.target;
+    if (name === "pair") {
+      this.props.getSymbolInfo(value);
+    }
   };
 
   handleActivation = (e) => {
@@ -398,9 +390,10 @@ class TestBotForm extends React.Component {
                 </Row>
               </CardHeader>
               <CardBody>
-                {!checkValue(this.props.bot?.pair) && (
-                  <Charting bot={this.props.bot} />
-                )}
+                {!this.state.reloadingChart &&
+                  !checkValue(this.props.bot?.pair) && (
+                    <Charting bot={this.props.bot} />
+                  )}
               </CardBody>
             </Card>
           </Col>

@@ -57,4 +57,3 @@ export function createNewOrderLines(bot, currentPrice) {
   }
 	return totalOrderLines
 }
-
