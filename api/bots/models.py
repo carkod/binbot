@@ -1,375 +1,110 @@
-import threading
-from datetime import datetime
 from time import time
-from api.account.account import Account
-from api.deals.models import Deal
-from api.deals.schema import DealSchema
-from api.orders.models.book_order import Book_Order
-from api.threads import market_update_thread
-from api.tools.handle_error import (
-    NotEnoughFunds,
-    QuantityTooLow,
-    handle_binance_errors,
-    jsonResp,
-    jsonResp_error_message,
-    jsonResp_message,
-)
-from api.tools.round_numbers import supress_notation
 from bson.objectid import ObjectId
-from flask import Response, current_app, request
-from requests import delete
-from api.bots.schemas import BotSchema
+from api.deals.models import DealModel, OrderModel
+from api.tools.enum_definitions import EnumDefinitions
 
 
-class Bot(Account):
-    def __init__(self):
-        self.app = current_app
-        self.default_deal = DealSchema()
-        self.defaults = BotSchema()
-        self.default_so = {"so_size": "0", "price": "0", "price_deviation_so": "0.63"}
+class BotSchemaValidation(Exception):
+    pass
 
-    def _restart_websockets(self):
-        """
-        Restart websockets threads after list of active bots altered
-        """
-        print("Restarting market_updates")
-        # Notify market updates websockets to update
-        for thread in threading.enumerate():
-            if thread.name == "market_updates_thread" and hasattr(thread, "_target"):
-                thread._target.__self__.markets_streams.close()
-                market_update_thread()
-                print("Finished restarting market_updates. Current #threads", threading.enumerate())
-        return
+class SafetyOrderModel:
+    def __init__(
+        self,
+        buy_price,
+        so_size,
+        name="so_1",
+        order_id="",
+        buy_timestamp=0,
+        errors=[],
+        total_comission=0,
+        so_volume_scale=0,
+        created_at=time() * 1000,
+        updated_at=time() * 1000,
+        *args,
+        **kwargs
+    ):
+        self.name: str = name  # should be so_<index>
+        self.order_id: str = order_id
+        self.created_at: float = created_at
+        self.updated_at: float = updated_at
+        self.buy_price: float = buy_price
+        self.buy_timestamp: float = buy_timestamp
+        self.so_size: float = so_size
+        self.errors: list[str] = errors
+        self.total_commission: float = float(total_comission)
+        self.so_volume_scale = so_volume_scale
 
-    def get(self):
-        """
-        Get all bots in the db except archived
-        Args:
-        - archive=false
-        - filter_by: string - last-week, last-month, all
-        """
-        status = request.args.get("status")
-        start_date = request.args.get("start_date")
-        end_date = request.args.get("end_date")
-        no_cooldown = request.args.get("no_cooldown")
-        params = {}
-        
-        bot_schema = BotSchema()
+class BotModel:
+    """
+    Blueprint of the bots collection on MongoDB
+    All validation and database fields new or old handled here
+    """
+    def __init__(
+        self,
+        pair: str,
+        base_order_size: str,
+        _id = None,
+        created_at = time() * 1000,
+        updated_at = time() * 1000,
+        take_profit: float = 3,
+        status: str = EnumDefinitions.statuses[0],
+        name: str = "Default bot",
+        mode: str = "manual",
+        balance_size_to_use: float = 0,
+        balance_to_use: str = "USDT",
+        candlestick_interval: str = "15m",
+        trailling: str = "false",
+        trailling_deviation: float = 0.63,
+        trailling_profit: float = 0, # Trailling activation (first take profit hit),
+        orders: list = [], # Internal
+        stop_loss: float = 0,
+        # Deal and orders are internal, should never be updated by outside data,
+        deal: object = {},
+        errors: list[str] = [],
+        total_commission: float = 0,
+        cooldown: float = 0,
+        # Safety orders,
+        locked_so_funds: float = 0,
+        safety_orders = [],
+        *args,
+        **kwargs
+    ) -> None:
+        self.balance_size_to_use = balance_size_to_use
+        self.balance_to_use = balance_to_use
+        self.base_order_size = base_order_size
+        self.candlestick_interval = candlestick_interval
+        self.cooldown = cooldown
+        self.created_at = created_at
+        self.deal = DealModel(**deal)
+        self.errors = errors
+        self.locked_so_funds = locked_so_funds
+        self.mode = mode
+        self.name = name
+        self._id = _id or ObjectId()
+        self.orders = self.append_order(orders)
+        self.pair = pair
+        self.safety_orders = self.append_so(safety_orders)
+        self.status = status
+        self.stop_loss = stop_loss
+        self.take_profit = take_profit
+        self.total_commission = total_commission
+        self.trailling = trailling
+        self.trailling_deviation = trailling_deviation
+        self.trailling_profit = trailling_profit
+        self.updated_at = updated_at
 
-        if status and status in bot_schema.statuses:
-            params["active"] = status
-        elif status:
-            resp = jsonResp({"message": f"Bots status {status} not allowed", "data": []})
-            return resp
-
-        if start_date:
-            try:
-                float(start_date)
-            except ValueError as e:
-                resp = jsonResp({"message": f"start_date must be a timestamp float", "data": []})
-                return resp
-
-            obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
-            gte_tp_id = ObjectId.from_datetime(obj_start_date)
-            try:
-                params["_id"]["$gte"] = gte_tp_id
-            except KeyError:
-                params["_id"] = {
-                    "$gte": gte_tp_id
-                }
-        
-        if end_date:
-            try:
-                float(end_date)
-            except ValueError as e:
-                resp = jsonResp({"message": f"end_date must be a timestamp float", "data": []})
-                return resp
-
-            obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
-            lte_tp_id = ObjectId.from_datetime(obj_end_date)
-            params["_id"]["$lte"] = lte_tp_id
-
-        # Only retrieve active and cooldown bots
-        # These bots will be removed from signals
-        if status and no_cooldown:
-            current_ts = time() * 1000
-            params = {
-                "$or": [
-                    {"status": status},
-                    {"$where": f"{current_ts} - this.deal.sell_timestamp < (this.cooldown * 1000)"}
-                ]
-            }
-
-        bot = list(
-            self.app.db.bots.find(params).sort(
-                [("_id", -1), ("status", 1), ("pair", 1)]
-            )
-        )
-        if bot:
-            resp = jsonResp({"data": bot})
-        else:
-            resp = jsonResp({"message": "Bots not found", "data": []})
-        return resp
-
-    def get_one(self):
-        findId = request.view_args["id"]
-        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
-        if bot:
-            resp = jsonResp({"message": "Bot found", "data": bot})
-        else:
-            resp = jsonResp({"message": "Bots not found"}, 404)
-        return resp
-
-    def create(self):
-        data = request.get_json()
-        try:
-            result = BotSchema().update(data)
-            botId = str(result.inserted_id)
-            resp = jsonResp(
-                {"message": "Successfully created new bot", "botId": str(botId)}
-            )
-        except Exception as e:
-            resp = jsonResp_error_message(f"Failed to create new bot: {e}")
-        return resp
-
-    def edit(self):
-        data = request.get_json()
-        botId = request.view_args["id"]
-        if botId:
-            data["_id"] = botId
-        try:
-            BotSchema().update(data)
-            resp = jsonResp(
-                {"message": "Successfully updated bot", "botId": botId}, 200
-            )
-        except Exception as e:
-            resp = jsonResp_error_message(f"Failed to update bot: {e}")
-
-        return resp
-
-    def delete(self):
-        botIds = request.args.getlist("id")
-
-        if not botIds or not isinstance(botIds, list):
-            return jsonResp_error_message("At least one bot id is required")
-        
-        delete_action = self.app.db.bots.delete_many({"_id": {"$in": [ObjectId(item) for item in botIds]}})
-        if delete_action:
-            resp = jsonResp_message("Successfully deleted bot")
-            self._restart_websockets()
-        else:
-            resp = jsonResp({"message": "Bot deletion is not available"}, 400)
-        return resp
-
-    def activate(self):
-        findId = request.view_args["botId"]
-        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
-
-        if bot:
-            try:
-                order_errors = Deal(bot).open_deal()
-            except NotEnoughFunds as e:
-                return jsonResp_error_message(e.args[0])
-
-            if isinstance(order_errors, Response):
-                return order_errors
-
-            # If error
-            if len(order_errors) > 0:
-                # If base order fails makes no sense to activate
-                if "base_order_error" in order_errors[0]:
-                    resp = jsonResp(
-                        {
-                            "message": f'Failed to activate bot, {order_errors[0]["base_order_error"]}',
-                            "botId": str(findId),
-                            "error": 1,
-                        }
-                    )
-                else:
-                    resp = jsonResp(
-                        {
-                            "message": f"Failed to activate bot, {','.join(order_errors)}",
-                            "botId": str(findId),
-                            "error": 1,
-                        }
-                    )
-                return resp
-
-            botId = self.app.db.bots.update_one(
-                {"_id": ObjectId(findId)}, {"$set": {"status": "active"}}
-            )
-
-            if botId:
-                resp = jsonResp(
-                    {
-                        "message": "Successfully activated bot and triggered deals with no errors",
-                        "botId": str(findId),
-                    },
-                    200,
-                )
-                self._restart_websockets()
-            else:
-                resp = jsonResp(
-                    {
-                        "message": "Unable to save bot",
-                        "botId": str(findId),
-                    },
-                    200,
-                )
-            return resp
-        else:
-            resp = jsonResp({"message": "Bot not found", "botId": findId}, 400)
-        return resp
-
-    def deactivate(self):
-        """
-        Close all deals, sell pair and deactivate
-        1. Close all deals
-        2. Sell Coins
-        3. Delete bot
-        """
-        findId = request.view_args["id"]
-        bot = self.app.db.bots.find_one({"_id": ObjectId(findId)})
-        resp = jsonResp_error_message(
-            "Not enough balance to close and sell. Please directly delete the bot."
-        )
-        if bot:
-            orders = bot["orders"]
-
-            # Close all active orders
-            if len(orders) > 0:
-                for d in orders:
-                    if "deal_type" in d and (
-                        d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
-                    ):  
-                        order_id = d["order_id"]
-                        res = delete(
-                            url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
-                        )
-                        error_msg = f"Failed to delete opened order {order_id}."
-                        # Handle error and continue
-                        handle_binance_errors(res, message=error_msg)
-
-            # Sell everything
-            pair = bot["pair"]
-            base_asset = self.find_baseAsset(pair)
-            deal_object = Deal(bot)
-            precision = deal_object.price_precision
-            qty_precision = deal_object.qty_precision
-            balance = deal_object.get_one_balance(base_asset)
-            if balance:
-                qty = float(balance)
-                book_order = Book_Order(pair)
-                price = float(book_order.matching_engine(False, qty))
-
-                if price and float(supress_notation(qty, qty_precision)) < 1:
-                    order = {
-                        "pair": pair,
-                        "qty": supress_notation(qty, qty_precision),
-                        "price": supress_notation(price, precision),
-                    }
-                    try:
-                        order_res = self.request(
-                            method="POST", url=self.bb_sell_order_url, json=order
-                        )
-                    except QuantityTooLow:
-                        bot["status"] = "closed"
-                        try:
-                            BotSchema().update(bot)
-                        except Exception as e:
-                            resp = jsonResp_error_message(e)
-                    return resp
-                else:
-                    order = {
-                        "pair": pair,
-                        "qty": supress_notation(price, qty_precision),
-                    }
-                    try:
-                        order_res = self.request(
-                            method="POST", url=self.bb_sell_market_order_url, json=order
-                        )
-                    except QuantityTooLow:
-                        bot["status"] = "closed"
-                        try:
-                            BotSchema().update(bot)
-                        except Exception as e:
-                            resp = jsonResp_error_message(e)
-                        return resp
-
-                # Enforce that deactivation occurs
-                # If it doesn't, redo
-                if "status" not in order_res and order_res["status"] == "NEW":
-                    deactivation_order = {
-                        "order_id": order_res["orderId"],
-                        "deal_type": "deactivate_order",
-                        "pair": order_res["symbol"],
-                        "order_side": order_res["side"],
-                        "order_type": order_res["type"],
-                        "price": order_res["price"],
-                        "qty": order_res["origQty"],
-                        "fills": order_res["fills"],
-                        "time_in_force": order_res["timeInForce"],
-                        "status": order_res["status"],
-                    }
-                    self.app.db.bots.update_one(
-                        {"_id": ObjectId(findId)},
-                        {
-                            "$push": {"orders": deactivation_order, "errors": "Order failed to close. Re-deactivating..."},
-                        },
-                    )
-                    self.deactivate()
-
-                deactivation_order = {
-                    "order_id": order_res["orderId"],
-                    "deal_type": "deactivate_order",
-                    "pair": order_res["symbol"],
-                    "order_side": order_res["side"],
-                    "order_type": order_res["type"],
-                    "price": order_res["price"],
-                    "qty": order_res["origQty"],
-                    "fills": order_res["fills"],
-                    "time_in_force": order_res["timeInForce"],
-                    "status": order_res["status"],
-                }
-                self.app.db.bots.update_one(
-                    {"_id": ObjectId(findId)},
-                    {
-                        "$set": {"status": "completed", "deal.sell_timestamp": time(), "deal.sell_price": order_res["price"]},
-                        "$push": {"orders": deactivation_order, "errors": "Orders updated. Trying to close bot..."},
-                    },
-                )
-
-                self._restart_websockets()
-                return jsonResp_message(
-                    "Active orders closed, sold base asset, deactivated"
-                )
-            else:
-                self.app.db.bots.update_one(
-                    {"_id": ObjectId(findId)}, {"$set": {"status": "error"}}
-                )
-                return jsonResp_error_message("Not enough balance to close and sell")
-
-    def put_archive(self):
-        """
-        Change status to archived
-        """
-        botId = request.view_args["id"]
-        bot = self.app.db.bots.find_one({"_id": ObjectId(botId)})
-        if bot["status"] == "active":
-            return jsonResp(
-                {"message": "Cannot archive an active bot!", "botId": botId}
-            )
-
-        if bot["status"] == "archived":
-            status = "inactive"
-        else:
-            status = "archived"
-
-        archive = self.app.db.bots.update(
-            {"_id": ObjectId(botId)}, {"$set": {"status": status}}
-        )
-        if archive:
-            resp = jsonResp({"message": "Successfully archived bot", "botId": botId})
-        else:
-            resp = jsonResp({"message": "Failed to archive bot"})
-        return resp
+    def append_so(self, so_list):
+        safety_orders = []
+        if len(so_list) > 0:
+            for so in so_list:
+                so_model = SafetyOrderModel(**so)
+                safety_orders.append(so_model)
+        return safety_orders
+    
+    def append_order(self, orders):
+        cls_orders = []
+        if len(orders) > 0:
+            for o in orders:
+                order_model = OrderModel(**o)
+                cls_orders.append(order_model)
+        return cls_orders

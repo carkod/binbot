@@ -46,7 +46,7 @@ class ResearchSignals(BinbotApi):
         for thread in threading.enumerate():
             if hasattr(thread, "tag") and thread.name == "market_updates" and hasattr(thread, "_target"):
                 stop_threads = False
-                print("closeing websockets thread", thread)
+                print("closing websockets thread", thread)
                 thread._target.__self__.markets_streams.close()
 
         pass
@@ -347,23 +347,6 @@ class ResearchSignals(BinbotApi):
             )
 
             ma_candlestick_jump(
-                close_price,
-                open_price,
-                ma_7,
-                ma_100,
-                ma_25,
-                symbol,
-                sd,
-                value,
-                chaikin_diff,
-                reg_equation,
-                self._send_msg,
-                self.run_autotrade,
-                ws,
-                intercept,
-            )
-
-            candlejump_sd(
                 close_price,
                 open_price,
                 ma_7,

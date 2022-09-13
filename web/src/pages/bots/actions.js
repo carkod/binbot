@@ -91,7 +91,7 @@ export function getBotsSucceeded(res) {
  *
  * @param  {object} error The error
  *
- * @return {object}       An action object with a type of BOT_ERROR passing the error
+ * @return {object} An action object with a type of BOT_ERROR passing the error
  */
 export function getBotsFailed(error) {
   return {

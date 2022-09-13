@@ -163,7 +163,7 @@ const botReducer = produce((draft, action) => {
       return draft;
 
     case GET_BOT_SUCCESS: {
-      draft.bot = action.bots;
+      draft.bot = { ...draft.bot, ...action.bots};
       return draft;
     }
 

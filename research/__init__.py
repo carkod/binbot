@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from algorithms.new_tokens import NewTokens
 from algorithms.whale_alert_signals import WhaleAlertSignals
+from qfl_signals import QFL_signals
 from signals import ResearchSignals
 
 
@@ -36,6 +37,11 @@ if __name__ == "__main__":
         name="rs_thread", target=rs.start_stream
     )
     rs_thread.start()
+    qfl = QFL_signals()
+    qfl_thread = threading.Thread(
+        name="qfl_thread", target=qfl.start_stream
+    )
+    qfl_thread.start()
     global stop_threads
     stop_threads = False
     try:

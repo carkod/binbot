@@ -1,3 +1,4 @@
+import produce from "immer";
 import moment from "moment";
 import React from "react";
 import { connect } from "react-redux";
@@ -12,15 +13,11 @@ import {
   CardTitle,
   Col,
   Form,
-  FormFeedback,
-  Input,
-  Label,
   Nav,
   NavItem,
   NavLink,
   Row,
   TabContent,
-  TabPane,
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
@@ -28,12 +25,14 @@ import Candlestick from "../../components/Candlestick";
 import IndicatorsButtons from "../../components/IndicatorsButtons";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import { bot } from "../../state/bots/actions";
+import { defaultSo } from "../../state/constants";
 import {
   checkBalance,
   checkValue,
   intervalOptions,
   roundDecimals,
 } from "../../validations.js";
+import SafetyOrders from "../paper-trading/tabs/SafetyOrders";
 import {
   activateBot,
   createBot,
@@ -177,8 +176,6 @@ class BotForm extends React.Component {
       pair,
       base_order_size,
       take_profit,
-      max_so_count,
-      so_size,
       trailling,
       trailling_deviation,
       stop_loss,
@@ -206,15 +203,6 @@ class BotForm extends React.Component {
       return false;
     } else {
       this.props.setBot({ takeProfitError: false });
-    }
-
-    if (checkValue(max_so_count)) {
-      if (checkBalance(so_size) && checkBalance(so_size)) {
-        this.props.setBot({ soSizeError: true, formIsValid: false });
-        return false;
-      } else {
-        this.props.setBot({ soSizeError: false });
-      }
     }
 
     if (!checkValue(stop_loss)) {
@@ -302,9 +290,9 @@ class BotForm extends React.Component {
         status: this.props.bot.status,
         balance_to_use: this.props.bot.balance_to_use,
         base_order_size: String(this.props.bot.base_order_size),
-        max_so_count: this.props.bot.max_so_count,
         name: this.props.bot.name,
         pair: this.props.bot.pair,
+        safety_orders: this.props.bot.safety_orders,
         take_profit: this.props.bot.take_profit,
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
@@ -425,17 +413,6 @@ class BotForm extends React.Component {
     }
   };
 
-  handleMaxSoChange = (e) => {
-    e.preventDefault();
-    const count = parseInt(this.props.bot.max_so_count);
-    const value = parseInt(e.target.value);
-    if (count !== value) {
-      this.props.setBot({ [e.target.name]: e.target.value }, () =>
-        this.renderSO()
-      );
-    }
-  };
-
   toggleTrailling = () =>
     this.props.setBot({
       trailling: this.state.trailling === "true" ? "false" : "true",
@@ -444,6 +421,38 @@ class BotForm extends React.Component {
   handleToggleIndicator = (value) => {
     this.setState({ toggleIndicators: value });
   };
+
+  handleSoChange = (e) => {
+    if (e.target.name === "so_size" || e.target.name === "buy_price") {
+      const safety_orders = produce(this.props.bot, draft => {
+        draft.safety_orders[e.target.dataset.index][e.target.name] = e.target.value;
+      });
+      this.props.setBot(safety_orders)
+    }
+    return;
+  };
+
+  addSo = () => {
+    const safety_orders = produce(this.props.bot, draft => {
+      if (Object.getPrototypeOf(draft.safety_orders) === Object.prototype) {
+        draft.safety_orders = [defaultSo]
+      } else {
+        let newSo = {...defaultSo}
+        newSo.name = `so_${draft.safety_orders.length + 1}`
+        draft.safety_orders.push(newSo)
+      }
+      
+    });
+    this.props.setBot(safety_orders)
+  }
+
+  removeSo = (e) => {
+    e.preventDefault();
+    const safety_orders = produce(this.props.bot, draft => {
+      draft.safety_orders.splice(e.target.dataset.index, 1)
+    });
+    this.props.setBot(safety_orders);
+  }
 
   render() {
     return (
@@ -587,6 +596,16 @@ class BotForm extends React.Component {
                       <NavItem>
                         <NavLink
                           className={
+                            this.state.activeTab === "safety-orders" ? "active" : ""
+                          }
+                          onClick={() => this.toggle("safety-orders")}
+                        >
+                          Safety orders
+                        </NavLink>
+                      </NavItem>
+                      <NavItem>
+                        <NavLink
+                          className={
                             this.state.activeTab === "stop-loss" ? "active" : ""
                           }
                           onClick={() => this.toggle("stop-loss")}
@@ -629,29 +648,15 @@ class BotForm extends React.Component {
                     {/*
                       Safey orders tab
                     */}
-                    <TabPane tabId="safety-orders">
-                      <Row className="u-margin-bottom">
-                        <Col md="6" sm="12">
-                          <Label htmlFor="max_so_count">
-                            Maximum number of Safety Orders
-                          </Label>
-                          <Input
-                            invalid={this.props.bot.maxSOCountError}
-                            type="text"
-                            name="max_so_count"
-                            onChange={this.handleMaxSoChange}
-                            onBlur={this.handleBlur}
-                            value={this.props.bot.max_so_count}
-                          />
-                          <FormFeedback>
-                            <strong>Safety order size</strong> is required.
-                          </FormFeedback>
-                          <small>
-                            If value = 0, Safety orders will be turned off
-                          </small>
-                        </Col>
-                      </Row>
-                    </TabPane>
+                    <SafetyOrders
+                      safetyOrders={this.props.bot.safety_orders}
+                      asset={this.props.bot.pair}
+                      quoteAsset={this.props.bot.quoteAsset}
+                      soPriceDeviation={this.state.soPriceDeviation}
+                      handleChange={this.handleSoChange}
+                      addSo={this.addSo}
+                      removeSo={this.removeSo}
+                    />
 
                     <StopLoss
                       stop_loss={this.props.bot.stop_loss}

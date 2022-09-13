@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "flask",
       "console": "internalConsole",
-      "justMyCode": false,
+      "justMyCode": true,
       "env": {
         "FLASK_APP": "api/main.py",
         "FLASK_ENV": "development",

@@ -1,3 +1,4 @@
+import produce from "immer";
 import moment from "moment";
 import React from "react";
 import { connect } from "react-redux";
@@ -20,15 +21,10 @@ import {
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
-import Candlestick from "../../components/Candlestick";
-import IndicatorsButtons from "../../components/IndicatorsButtons";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
-import {
-  checkBalance,
-  checkValue,
-  intervalOptions,
-} from "../../validations.js";
-import { getSymbolInfo, getSymbols, loadCandlestick } from "../bots/actions";
+import { defaultSo } from "../../state/constants";
+import { checkBalance, checkValue } from "../../validations.js";
+import { getSymbolInfo, getSymbols } from "../bots/actions";
 import {
   activateTestBot,
   createTestBot,
@@ -39,8 +35,15 @@ import {
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
 import MainTab from "./tabs/Main";
+import SafetyOrders from "./tabs/SafetyOrders";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
+import {
+  updateOrderLines,
+  updateTimescaleMarks,
+} from "../../components/services/charting.service";
+import { TVChartContainer } from "binbot-charts";
+import LogsInfo from "../../components/LogsInfo";
 
 class TestBotForm extends React.Component {
   constructor(props) {
@@ -50,6 +53,11 @@ class TestBotForm extends React.Component {
       bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
+      soPriceDeviation: 0,
+      // Chart state
+      currentChartPrice: 0,
+      currentOrderLines: [],
+      currentTimeMarks: [],
     };
   }
 
@@ -61,7 +69,7 @@ class TestBotForm extends React.Component {
       this.props.getTestBot(this.props.match.params.id);
     }
     if (!checkValue(this.props.match.params?.symbol)) {
-      this.props.setBotState({
+      this.props.getTestBot({
         pair: this.props.match.params.symbol,
       });
     }
@@ -77,18 +85,9 @@ class TestBotForm extends React.Component {
       );
     }
     if (
-      (!checkValue(this.props.bot.pair) &&
-        this.props.bot.pair !== p.bot.pair) ||
-      this.props.bot.candlestick_interval !== p.bot.candlestick_interval
+      !checkValue(this.props.bot.pair) &&
+      this.props.bot.pair !== p.bot.pair
     ) {
-      const interval = !checkValue(this.props.history.location.state)
-        ? this.props.history.location.state.candlestick_interval
-        : this.props.bot.candlestick_interval;
-      this.props.loadCandlestick(
-        this.props.bot.pair,
-        interval,
-        this.props.bot?.deal?.buy_timestamp
-      );
       getQuoteAsset(this.props.bot.pair).then(({ data }) =>
         this.props.setBotState({ quoteAsset: data })
       );
@@ -99,41 +98,36 @@ class TestBotForm extends React.Component {
     }
 
     if (
-      this.props.botActive !== p.botActive &&
-      !checkValue(this.props.match.params.id)
+      Object.keys(this.props.bot.deal).length > 0 &&
+      !checkValue(this.props.bot.base_order_size) &&
+      this.props.bot.deal !== p.bot.deal
     ) {
-      this.props.getBot(this.props.match.params.id);
+      let currentPrice =
+        this.state.currentChartPrice ||
+        parseFloat(this.props.bot.deal.current_price);
+      if (this.props.bot.deal.buy_price) {
+        const buyPrice = parseFloat(this.props.bot.deal.buy_price);
+
+        const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
+
+        if (
+          this.props.bot.status === "completed" &&
+          !checkValue(this.props.bot.deal.sell_price)
+        ) {
+          currentPrice = this.props.bot.deal.sell_price;
+        }
+        this.setState({ bot_profit: profitChange.toFixed(4) });
+      } else {
+        this.setState({ bot_profit: 0 });
+      }
     }
 
-    // Candlestick data updates
     if (
-      !checkValue(this.props.candlestick) &&
-      this.props.candlestick !== p.candlestick &&
-      this.props.candlestick.error !== 1 &&
-      !checkValue(this.props.bot)
+      !checkValue(this.props.bot.orders) &&
+      this.props.bot.orders !== p.bot.orders
     ) {
-      const { trace } = this.props.candlestick;
-      if (trace.length > 0) {
-        if (
-          !checkValue(this.props.bot) &&
-          !checkValue(this.props.bot.deal) &&
-          Object.keys(this.props.bot.deal).length > 0 &&
-          !checkValue(this.props.bot.base_order_size)
-        ) {
-          let currentPrice = parseFloat(this.props.bot.deal.current_price);
-          const buyPrice = parseFloat(this.props.bot.deal.buy_price);
-          const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-          if (
-            this.props.bot.status === "completed" &&
-            !checkValue(this.props.bot.deal.sell_price)
-          ) {
-            currentPrice = this.props.bot.deal.sell_price;
-          }
-          this.setState({ bot_profit: profitChange.toFixed(4) });
-        } else {
-          this.setState({ bot_profit: 0 });
-        }
-      }
+      const currentTimeMarks = updateTimescaleMarks(this.props.bot);
+      this.setState({ currentTimeMarks: currentTimeMarks });
     }
   };
 
@@ -190,10 +184,9 @@ class TestBotForm extends React.Component {
     if (validation) {
       let form = {
         status: this.props.bot.status,
-        balance_size_to_use: this.props.bot.balance_size_to_use, // Centralized
         base_order_size: this.props.bot.base_order_size,
         balance_to_use: this.props.bot.balance_to_use,
-        mode: "manual",
+        mode: "manual", // Always manual in terminal.binbot
         name: this.props.bot.name,
         pair: this.props.bot.pair,
         take_profit: this.props.bot.take_profit,
@@ -202,11 +195,12 @@ class TestBotForm extends React.Component {
         candlestick_interval: this.props.bot.candlestick_interval,
         orders: this.props.bot.orders,
         stop_loss: this.props.bot.stop_loss,
-        cooldown: this.props.bot.cooldown
+        cooldown: this.props.bot.cooldown,
+        safety_orders: this.props.bot.safety_orders,
       };
       if (!checkValue(this.props.match.params.id)) {
         form._id = this.props.match.params.id;
-        this.props.editTestBot(form);
+        this.props.editTestBot(this.props.match.params.id, form);
       } else {
         this.props.createTestBot(form);
       }
@@ -221,16 +215,8 @@ class TestBotForm extends React.Component {
   handlePairChange = (value) => {
     // Get pair base or quote asset and set new pair
     if (!checkValue(value)) {
-      this.props.getSymbolInfo(value[0]);
       this.props.setBotState({ pair: value[0] });
     }
-  };
-
-  handleStrategy = (e) => {
-    // Get pair base or quote asset and set new strategy
-    const { pair } = this.state;
-    this.props.getSymbolInfo(pair);
-    this.props.setBotState({ [e.target.name]: e.target.value });
   };
 
   handleBaseChange = (e) => {
@@ -309,15 +295,22 @@ class TestBotForm extends React.Component {
     });
   };
 
-
-  handleBlur = () => {
-    if (!checkValue(this.props.bot.pair) && !checkValue(this.props.bot.candlestick_interval)) {
-      this.props.loadCandlestick(
-        this.props.bot.pair,
-        this.props.bot.candlestick_interval,
-        this.props.bot?.deal?.buy_timestamp
-      );
+  handleBlur = (e) => {
+    const { name, value } = e.target;
+    if (name === "pair") {
+      this.props.getSymbolInfo(value);
     }
+
+    // Update charts
+    const newOrderLines = updateOrderLines(
+      this.props.bot,
+      this.state.currentChartPrice
+    );
+    this.setState(
+      produce(this.state, (draft) => {
+        draft.currentOrderLines = newOrderLines;
+      })
+    );
   };
 
   handleActivation = (e) => {
@@ -330,7 +323,9 @@ class TestBotForm extends React.Component {
         this.props.history.push(
           `/admin/paper-trading/edit/${this.props.match.params.id}`
         );
+      } else {
       }
+      this.props.history.push(`/admin/paper-trading/edit/${this.state._id}`);
     }
   };
 
@@ -343,6 +338,60 @@ class TestBotForm extends React.Component {
 
   handleToggleIndicator = (value) => {
     this.setState({ toggleIndicators: value });
+  };
+
+  handleSoChange = (e) => {
+    if (e.target.name === "so_size" || e.target.name === "buy_price") {
+      const safety_orders = produce(this.props.bot, (draft) => {
+        draft.safety_orders[e.target.dataset.index][e.target.name] =
+          e.target.value;
+      });
+      this.props.setBotState(safety_orders);
+    }
+    return;
+  };
+
+  addSo = () => {
+    const safety_orders = produce(this.props.bot, (draft) => {
+      if (Object.getPrototypeOf(draft.safety_orders) === Object.prototype) {
+        draft.safety_orders = [defaultSo];
+      } else {
+        let newSo = { ...defaultSo };
+        newSo.name = `so_${draft.safety_orders.length + 1}`;
+        draft.safety_orders.push(newSo);
+      }
+    });
+    this.props.setBotState(safety_orders);
+  };
+
+  removeSo = (e) => {
+    e.preventDefault();
+    const safety_orders = produce(this.props.bot, (draft) => {
+      draft.safety_orders.splice(e.target.dataset.index, 1);
+    });
+    this.props.setBotState(safety_orders);
+  };
+
+  handleInitialPrice = (price) => {
+    if (!this.props.bot.deal.buy_price && this.props.bot.status !== "active") {
+      this.setState(
+        produce(this.state, (draft) => {
+          draft.currentChartPrice = parseFloat(price);
+        })
+      );
+    }
+  };
+
+  updatedPrice = (price) => {
+    if (parseFloat(this.state.currentChartPrice) !== parseFloat(price)) {
+      const newOrderLines = updateOrderLines(this.props.bot, price);
+      this.setState(
+        produce(this.state, (draft) => {
+          draft.currentOrderLines = newOrderLines;
+          draft.currentChartPrice = parseFloat(price);
+        })
+      );
+    }
   };
 
   render() {
@@ -394,52 +443,17 @@ class TestBotForm extends React.Component {
                       )}
                   </Col>
                 </Row>
-                <br />
-                <Row>
-                  <Col>
-                    {intervalOptions.map((item) => (
-                      <Badge
-                        key={item}
-                        onClick={() => {
-                          if (!this.props.bot.pair) {
-                            alert("Please, set Pair first");
-                          }
-                          this.props.setBotState({
-                            candlestick_interval: item,
-                          });
-                        }}
-                        color={
-                          this.props.bot.candlestick_interval === item
-                            ? "primary"
-                            : "secondary"
-                        }
-                        className="btn btn-margin-right"
-                      >
-                        {item}
-                      </Badge>
-                    ))}
-                  </Col>
-                </Row>
-                <br />
-                <Row>
-                  <Col>
-                    <IndicatorsButtons
-                      toggle={this.state.toggleIndicators}
-                      handleChange={this.handleToggleIndicator}
-                    />
-                  </Col>
-                </Row>
               </CardHeader>
               <CardBody>
-                {this.props.candlestick && !checkValue(this.props.bot.pair) ? (
-                  <Candlestick
-                    data={this.props.candlestick}
-                    bot={this.props.bot}
-                    deal={this.props.bot?.deal}
-                    toggleIndicators={this.state.toggleIndicators}
+                {!checkValue(this.props.bot?.pair) && (
+                  <TVChartContainer
+                    symbol={this.props.bot.pair}
+                    interval={this.props.bot.interval}
+                    timescaleMarks={this.state.currentTimeMarks}
+                    orderLines={this.state.currentOrderLines}
+                    onTick={(tick) => this.updatedPrice(tick.close)}
+                    getLatestBar={(bar) => this.handleInitialPrice(bar[3])}
                   />
-                ) : (
-                  ""
                 )}
               </CardBody>
             </Card>
@@ -449,9 +463,16 @@ class TestBotForm extends React.Component {
           {!checkValue(this.props.bot) &&
           this.props.bot.orders.length > 0 &&
           !checkValue(this.props.match.params.id) ? (
-            <Col md="7" sm="12">
-              <BotInfo bot={this.props.bot} />
-            </Col>
+            <>
+              <Col md="7" sm="12">
+                <BotInfo bot={this.props.bot} />
+              </Col>
+              {this.props.bot.errors.length > 0 && (
+                <Col md="4" sm="12">
+                  <LogsInfo info={this.props.bot.errors} />
+                </Col>
+              )}
+            </>
           ) : (
             ""
           )}
@@ -478,6 +499,18 @@ class TestBotForm extends React.Component {
                           onClick={() => this.toggle("main")}
                         >
                           Main
+                        </NavLink>
+                      </NavItem>
+                      <NavItem>
+                        <NavLink
+                          className={
+                            this.state.activeTab === "safety-orders"
+                              ? "active"
+                              : ""
+                          }
+                          onClick={() => this.toggle("safety-orders")}
+                        >
+                          Safety orders
                         </NavLink>
                       </NavItem>
                       <NavItem>
@@ -520,6 +553,17 @@ class TestBotForm extends React.Component {
                       handleBlur={this.handleBlur}
                       addMin={this.addMin}
                       addAll={this.addAll}
+                    />
+
+                    <SafetyOrders
+                      safetyOrders={this.props.bot.safety_orders}
+                      asset={this.props.bot.pair}
+                      quoteAsset={this.props.bot.quoteAsset}
+                      soPriceDeviation={this.state.soPriceDeviation}
+                      handleChange={this.handleSoChange}
+                      handleBlur={this.handleBlur}
+                      addSo={this.addSo}
+                      removeSo={this.removeSo}
                     />
 
                     <StopLoss
@@ -655,6 +699,5 @@ export default connect(mapStateToProps, {
   editTestBot,
   activateTestBot,
   deactivateTestBot,
-  loadCandlestick,
   setBotState,
 })(TestBotForm);
