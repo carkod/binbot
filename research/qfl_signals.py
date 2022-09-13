@@ -3,10 +3,9 @@ import json
 import os
 import re
 import threading
-from unicodedata import decimal
 from telegram_bot import TelegramBot
 from websocket import WebSocketApp
-
+from decimal import Decimal
 
 class QFL_signals():
     def __init__(self):
@@ -14,6 +13,7 @@ class QFL_signals():
         self.exchanges = ["Binance"]
         self.quotes = ["USDT"]
         self.hodloo_uri = "wss://alpha2.hodloo.com/ws"
+        self.hodloo_chart_url = "https://qft.hodloo.com/#/"
 
     def _restart_websockets(self):
         """
@@ -68,50 +68,34 @@ class QFL_signals():
         response = json.loads(payload)
         if response['type'] in ['base-break','panic']:
             exchange_str,pair = response["marketInfo"]["ticker"].split(':')
-            if exchange_str in self.exchanges:
-                pair = pair.replace('-','/')
-                self._send_msg(f"Check QFL Hodloo signal", pair)
-                asset, quote = pair.split('/')
+            is_leveraged_token = bool(re.search('UP/', pair)) or bool(re.search('DOWN/', pair))
+            if exchange_str in self.exchanges and not is_leveraged_token:
+                hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{pair}"
+                asset, quote = pair.split('-')
+                pair = pair.replace('-','')
+                self._send_msg(f"Check QFL Hodloo signal: {hodloo_url}", pair)
                 volume24 = response["marketInfo"]["volume24"]
                 if quote in self.quotes:
-                    is_leveraged_token = bool(re.search('UP/', pair)) or bool(re.search('DOWN/', pair))
-                    if not is_leveraged_token:
-                        alert_price = decimal.Decimal(str(response["marketInfo"]["price"]))
-                        tv_url = "https://www.tradingview.com/chart/?symbol=" + exchange_str + ":" + pair.replace('/','')
-                        hodloo_url = (self.hodloo_url).replace('wss:','https:').replace('/ws','/#/')
-                        hodloo_url = hodloo_url + exchange_str + ":" + pair.replace('/','-')
+                    alert_price = Decimal(str(response["marketInfo"]["price"]))
 
-
-                        if response['type'] == 'base-break':
-                            base_price = decimal.Decimal(str(response["basePrice"]))
-                            message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Base Break ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price} - Base Price: {base_price} - Volume: {volume24}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
-
-
-                            percent_5_alerts = bool(re.search('^https:\/\/(discord|discordapp)\.com\/api\/webhooks'))
-                            percent_10_alerts = bool(re.search('^https:\/\/(discord|discordapp)\.com\/api\/webhooks'))
-                            panic_alerts = bool(re.search('^https:\/\/(discord|discordapp)\.com\/api\/webhooks'))
-                            error_alerts = bool(re.search('^https:\/\/(discord|discordapp)\.com\/api\/webhooks'))
-
-                            
-                            if response["belowBasePct"] == 5 and percent_5_alerts:
-                                print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
-                                self._send_msg(f"QFL signal %5 alerts: {message}", symbol=pair)
-
-                            if response["belowBasePct"] == 10 and percent_10_alerts:
-                                print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
-                                self._send_msg(f"%20 alerts: {message}", symbol=pair)
-						
-                        if response['type'] == 'panic' and panic_alerts:
+                    if response['type'] == 'base-break':
+                        base_price = Decimal(str(response["basePrice"]))
+                        message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Base Break ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price} - Base Price: {base_price} - Volume: {volume24}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
+                        
+                        if response["belowBasePct"] == 5:
                             print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
-                            strength = response["strength"]
-                            velocity = response["velocity"]
-                            message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Panic Alert ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
-                            self._send_msg(f"Panic alert: {message}", symbol=pair)
+                            self._send_msg(f"QFL signal %5 alerts: {message}", symbol=pair)
 
-                        else:
-                            print(f"{datetime.now().replace(microsecond=0)} - {pair} is a leveraged token. Skipping it.")
-                    else:
-                        print(f"{datetime.now().replace(microsecond=0)} - Quote is {quote} hence skipping pair {pair}")
+                        if response["belowBasePct"] == 10:
+                            print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
+                            self._send_msg(f"%20 alerts: {message}", symbol=pair)
+                    
+                    if response['type'] == 'panic':
+                        print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
+                        strength = response["strength"]
+                        velocity = response["velocity"]
+                        message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Panic Alert ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
+                        self._send_msg(f"Panic alert: {message}", symbol=pair)
 
 
     def start_stream(self, ws=None):
