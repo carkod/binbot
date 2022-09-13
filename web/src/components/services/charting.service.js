@@ -59,7 +59,7 @@ export function updateOrderLines(bot, currentPrice) {
         tooltip: [bot.status, " Breakpoint to increase Take profit"],
         quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
         price: takeProfitPrice, // take_profit / trailling_profit
-        color: dealColors.take_profit,
+        color: dealColors.trailling_profit,
         lineStyle: 2,
       });
       totalOrderLines.push({

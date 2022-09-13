@@ -38,8 +38,12 @@ import MainTab from "./tabs/Main";
 import SafetyOrders from "./tabs/SafetyOrders";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
-import { updateOrderLines, updateTimescaleMarks } from "../../components/services/charting.service";
+import {
+  updateOrderLines,
+  updateTimescaleMarks,
+} from "../../components/services/charting.service";
 import { TVChartContainer } from "binbot-charts";
+import LogsInfo from "../../components/LogsInfo";
 
 class TestBotForm extends React.Component {
   constructor(props) {
@@ -98,8 +102,9 @@ class TestBotForm extends React.Component {
       !checkValue(this.props.bot.base_order_size) &&
       this.props.bot.deal !== p.bot.deal
     ) {
- 
-      let currentPrice = this.state.currentChartPrice || parseFloat(this.props.bot.deal.current_price);
+      let currentPrice =
+        this.state.currentChartPrice ||
+        parseFloat(this.props.bot.deal.current_price);
       if (this.props.bot.deal.buy_price) {
         const buyPrice = parseFloat(this.props.bot.deal.buy_price);
 
@@ -117,9 +122,12 @@ class TestBotForm extends React.Component {
       }
     }
 
-    if (!checkValue(this.props.bot.orders) && this.props.bot.orders !== p.bot.orders) {
+    if (
+      !checkValue(this.props.bot.orders) &&
+      this.props.bot.orders !== p.bot.orders
+    ) {
       const currentTimeMarks = updateTimescaleMarks(this.props.bot);
-      this.setState({currentTimeMarks: currentTimeMarks});
+      this.setState({ currentTimeMarks: currentTimeMarks });
     }
   };
 
@@ -315,10 +323,9 @@ class TestBotForm extends React.Component {
         this.props.history.push(
           `/admin/paper-trading/edit/${this.props.match.params.id}`
         );
-      } else {}
-        this.props.history.push(
-          `/admin/paper-trading/edit/${this.state._id}`
-        )      
+      } else {
+      }
+      this.props.history.push(`/admin/paper-trading/edit/${this.state._id}`);
     }
   };
 
@@ -373,7 +380,7 @@ class TestBotForm extends React.Component {
         })
       );
     }
-  }
+  };
 
   updatedPrice = (price) => {
     if (parseFloat(this.state.currentChartPrice) !== parseFloat(price)) {
@@ -385,7 +392,7 @@ class TestBotForm extends React.Component {
         })
       );
     }
-  }
+  };
 
   render() {
     return (
@@ -439,15 +446,15 @@ class TestBotForm extends React.Component {
               </CardHeader>
               <CardBody>
                 {!checkValue(this.props.bot?.pair) && (
-                    <TVChartContainer
-                      symbol={this.props.bot.pair}
-                      interval={this.props.bot.interval}
-                      timescaleMarks={this.state.currentTimeMarks}
-                      orderLines={this.state.currentOrderLines}
-                      onTick={(tick) => this.updatedPrice(tick.close)}
-                      getLatestBar={(bar) => this.handleInitialPrice(bar[3])}
-                    />
-                  )}
+                  <TVChartContainer
+                    symbol={this.props.bot.pair}
+                    interval={this.props.bot.interval}
+                    timescaleMarks={this.state.currentTimeMarks}
+                    orderLines={this.state.currentOrderLines}
+                    onTick={(tick) => this.updatedPrice(tick.close)}
+                    getLatestBar={(bar) => this.handleInitialPrice(bar[3])}
+                  />
+                )}
               </CardBody>
             </Card>
           </Col>
@@ -456,9 +463,16 @@ class TestBotForm extends React.Component {
           {!checkValue(this.props.bot) &&
           this.props.bot.orders.length > 0 &&
           !checkValue(this.props.match.params.id) ? (
-            <Col md="7" sm="12">
-              <BotInfo bot={this.props.bot} />
-            </Col>
+            <>
+              <Col md="7" sm="12">
+                <BotInfo bot={this.props.bot} />
+              </Col>
+              {this.props.bot.errors.length > 0 && (
+                <Col md="4" sm="12">
+                  <LogsInfo info={this.props.bot.errors} />
+                </Col>
+              )}
+            </>
           ) : (
             ""
           )}
