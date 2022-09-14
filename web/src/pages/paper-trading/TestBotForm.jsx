@@ -324,8 +324,8 @@ class TestBotForm extends React.Component {
           `/admin/paper-trading/edit/${this.props.match.params.id}`
         );
       } else {
+        this.props.history.push(`/admin/paper-trading/edit/${this.state._id}`);
       }
-      this.props.history.push(`/admin/paper-trading/edit/${this.state._id}`);
     }
   };
 
