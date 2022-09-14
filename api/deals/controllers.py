@@ -636,6 +636,11 @@ class CreateDealController(Account):
         )
 
         self.active_bot.orders.append(safety_order)
+        for so in self.active_bot.safety_orders:
+            if so.name != f"so_{so_index}":
+                so.status = 1
+                break
+
         new_tp_price = float(safety_order.price) * (
             1 + float(self.active_bot.take_profit) / 100
         )
@@ -656,11 +661,22 @@ class CreateDealController(Account):
 
         self.active_bot.deal.buy_total_qty = buy_total_qty
 
-        
+        # weighted average buy price
+        if self.active_bot.orders and len(self.active_bot.orders) > 0:
+            weighted_avg_buy_price = 0
+            for order in self.active_bot.orders:
+                if order.deal_type == "base_order":
+                    weighted_avg_buy_price += order.qty * order.price
+                if order.deal_type.startswith("so"):
+                    weighted_avg_buy_price += order.qty * order.price
+                
+
+        self.active_bot.deal.avg_buy_price = weighted_avg_buy_price / buy_total_qty
+
         order_id = None
         for order in self.active_bot.orders:
-            if order["deal_type"] == "take_profit":
-                order_id = order["order_id"]
+            if order.deal_type == "take_profit":
+                order_id = order.order_id
                 self.active_bot.orders.remove(order)
                 break
 

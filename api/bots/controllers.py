@@ -41,7 +41,7 @@ class Bot(Account):
                 market_update_thread()
                 print(
                     "Finished restarting market_updates. Current #threads",
-                    threading.enumerate(),
+                    [t for t in threading.enumerate() if t.name == "market_updates_thread"],
                 )
         return
 

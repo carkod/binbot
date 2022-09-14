@@ -12,11 +12,14 @@ export default function SafetyOrders({
   removeSo,
   handleBlur,
 }) {
+
+  const activeSo = safetyOrders.map(x => x.status === 0)
+
   return (
     <TabPane tabId="safety-orders">
       <Row className="u-margin-bottom">
         <Col md="4" sm="12">
-          <Label>Num of safety orders:</Label>
+          <Label>Total safety orders:</Label>
           <p>
             {safetyOrders &&
             Object.getPrototypeOf(safetyOrders) !== Object.prototype
@@ -24,10 +27,19 @@ export default function SafetyOrders({
               : 0}
           </p>
         </Col>
-        <Col md="4" sm="12">
+        <Col md="3" sm="12">
           <Button className="btn" color="primary" onClick={addSo}>
             <i className="fa fa-plus" />
           </Button>
+        </Col>
+        <Col md="3" sm="12">
+          <Label>Active safety orders:</Label>
+          <p>
+            {activeSo &&
+            Object.getPrototypeOf(activeSo) !== Object.prototype
+              ? activeSo.length
+              : 0}
+          </p>
         </Col>
         <Col md="4" sm="12">
           <BotFormTooltip

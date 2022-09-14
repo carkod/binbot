@@ -165,7 +165,7 @@ class MarketUpdates(Account):
             ):
                 for key, deal in enumerate(bot["safety_orders"]):
                     # Index is the ID of the safety order price that matches safety_orders list
-                    if float(deal["buy_price"]) >= float(close_price):
+                    if ("status" not in deal or deal["status"] == 0) and float(deal["buy_price"]) >= float(close_price):
                         deal = CreateDealController(bot, db_collection)
                         deal.so_update_deal(key)
         pass
