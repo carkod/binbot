@@ -193,7 +193,6 @@ class TestBotForm extends React.Component {
         trailling: this.props.bot.trailling,
         trailling_deviation: this.props.bot.trailling_deviation,
         candlestick_interval: this.props.bot.candlestick_interval,
-        orders: this.props.bot.orders,
         stop_loss: this.props.bot.stop_loss,
         cooldown: this.props.bot.cooldown,
         safety_orders: this.props.bot.safety_orders,
@@ -380,6 +379,13 @@ class TestBotForm extends React.Component {
         })
       );
     }
+    const newOrderLines = updateOrderLines(this.props.bot, price);
+    this.setState(
+      produce(this.state, (draft) => {
+        draft.currentOrderLines = newOrderLines;
+        draft.currentChartPrice = parseFloat(price);
+      })
+    );
   };
 
   updatedPrice = (price) => {
@@ -670,7 +676,6 @@ const mapStateToProps = (state, props) => {
   const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
   const { bot, createdBotId } = state.testBotsReducer;
-  const { data: candlestick } = state.candlestickReducer;
   const { loading } = state.loadingReducer;
 
   let lastBalance = null;
@@ -683,7 +688,6 @@ const mapStateToProps = (state, props) => {
     balance_raw: balance_raw,
     symbols: symbols,
     bot: bot,
-    candlestick: candlestick,
     loading: loading,
     createdBotId: createdBotId,
   };

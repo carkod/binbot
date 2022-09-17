@@ -21,15 +21,12 @@ import {
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
-import Candlestick from "../../components/Candlestick";
-import IndicatorsButtons from "../../components/IndicatorsButtons";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import { bot } from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
 import {
   checkBalance,
   checkValue,
-  intervalOptions,
   roundDecimals,
 } from "../../validations.js";
 import SafetyOrders from "../paper-trading/tabs/SafetyOrders";
@@ -41,14 +38,18 @@ import {
   getBot,
   getSymbolInfo,
   getSymbols,
-  loadCandlestick,
   setBot,
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
 import MainTab from "./tabs/Main";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
-
+import { TVChartContainer } from "binbot-charts";
+import LogsInfo from "../../components/LogsInfo";
+import {
+  updateOrderLines,
+  updateTimescaleMarks,
+} from "../../components/services/charting.service.js";
 class BotForm extends React.Component {
   constructor(props) {
     super(props);
@@ -57,6 +58,12 @@ class BotForm extends React.Component {
       bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
+      currentChartPrice: 0,
+      // Chart state
+      soPriceDeviation: 0,
+      currentOrderLines: [],
+      currentTimeMarks: [],
+      interval: "1h" // Fix legacy candlestick_interval
     };
   }
 
@@ -87,16 +94,6 @@ class BotForm extends React.Component {
       this.computeAvailableBalance();
     }
 
-    if (
-      !checkValue(this.props.bot.pair) &&
-      p.bot.candlestick_interval !== this.props.bot.candlestick_interval
-    ) {
-      this.props.loadCandlestick(
-        this.props.bot.pair,
-        this.props.bot.candlestick_interval,
-        this.props.bot?.deal?.buy_timestamp
-      );
-    }
     // If there is a newBotId, it means form was created
     // To make sure of this, check also URL has NO id param
     if (
@@ -106,7 +103,6 @@ class BotForm extends React.Component {
     ) {
       this.props.history.push({
         pathname: `/admin/bots/edit/${this.props.newBotId}`,
-        state: { candlestick_interval: this.props.bot.candlestick_interval },
       });
     }
 
@@ -116,14 +112,6 @@ class BotForm extends React.Component {
       !checkValue(this.props.bot.pair) &&
       this.props.bot.pair !== p.bot.pair
     ) {
-      const interval = !checkValue(this.props.history.location.state)
-        ? this.props.history.location.state.candlestick_interval
-        : this.props.bot.candlestick_interval;
-      this.props.loadCandlestick(
-        this.props.bot.pair,
-        interval,
-        this.props.bot?.deal?.buy_timestamp
-      );
       getQuoteAsset(this.props.bot.pair).then(({ data }) =>
         this.props.setBot({ quoteAsset: data })
       );
@@ -133,33 +121,27 @@ class BotForm extends React.Component {
       });
     }
 
-    // Candlestick data updates
     if (
-      !checkValue(this.props.candlestick) &&
-      this.props.candlestick !== p.candlestick &&
-      !checkValue(this.props.bot)
+      Object.keys(this.props.bot.deal).length > 0 &&
+      !checkValue(this.props.bot.base_order_size) &&
+      this.props.bot.deal !== p.bot.deal
     ) {
-      const { trace } = this.props.candlestick;
-      if (trace.length > 0) {
+      let currentPrice =
+        this.state.currentChartPrice ||
+        parseFloat(this.props.bot.deal.current_price);
+      if (this.props.bot.deal.buy_price) {
+        const buyPrice = parseFloat(this.props.bot.deal.buy_price);
+        const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
+
         if (
-          !checkValue(this.props.bot) &&
-          !checkValue(this.props.bot.deal) &&
-          Object.keys(this.props.bot.deal).length > 0 &&
-          !checkValue(this.props.bot.base_order_size)
+          this.props.bot.status === "completed" &&
+          !checkValue(this.props.bot.deal.sell_price)
         ) {
-          let currentPrice = parseFloat(this.props.bot.deal.current_price);
-          const buyPrice = parseFloat(this.props.bot.deal.buy_price);
-          if (
-            this.props.bot.status === "completed" &&
-            !checkValue(this.props.bot.deal.sell_price)
-          ) {
-            currentPrice = this.props.bot.deal.sell_price;
-          }
-          const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-          this.setState({ bot_profit: profitChange.toFixed(4) });
-        } else {
-          this.setState({ bot_profit: 0 });
+          currentPrice = this.props.bot.deal.sell_price;
         }
+        this.setState({ bot_profit: profitChange.toFixed(4) });
+      } else {
+        this.setState({ bot_profit: 0 });
       }
     }
 
@@ -168,6 +150,14 @@ class BotForm extends React.Component {
       !checkValue(this.props.balances)
     ) {
       this.computeAvailableBalance();
+    }
+
+    if (
+      !checkValue(this.props.bot.orders) &&
+      this.props.bot.orders !== p.bot.orders
+    ) {
+      const currentTimeMarks = updateTimescaleMarks(this.props.bot);
+      this.setState({ currentTimeMarks: currentTimeMarks });
     }
   };
 
@@ -298,7 +288,7 @@ class BotForm extends React.Component {
         trailling_deviation: this.props.bot.trailling_deviation,
         stop_loss: this.props.bot.stop_loss,
         candlestick_interval: this.props.bot.candlestick_interval,
-        cooldown: this.props.bot.cooldown
+        cooldown: this.props.bot.cooldown,
       };
       if (this.state._id === null) {
         this.props.createBot(form);
@@ -391,18 +381,25 @@ class BotForm extends React.Component {
     this.props.setBot({ [e.target.name]: e.target.value });
   };
 
-  handleBlur = () => {
-    if (
-      !checkValue(this.props.bot.pair) &&
-      !checkValue(this.props.bot.candlestick_interval)
-    ) {
-      this.props.loadCandlestick(
-        this.props.bot.pair,
-        this.props.bot.candlestick_interval,
-        this.props.bot?.deal?.buy_timestamp
-      );
-      this.computeAvailableBalance();
+  handleBlur = (e) => {
+    const { name, value } = e.target;
+    if (name === "pair") {
+      this.props.getSymbolInfo(value);
     }
+
+    // Update charts
+    const newOrderLines = updateOrderLines(
+      this.props.bot,
+      this.state.currentChartPrice
+    );
+
+    this.setState(
+      produce(this.state, (draft) => {
+        draft.currentOrderLines = newOrderLines;
+      })
+    );
+
+    this.computeAvailableBalance();
   };
 
   handleActivation = async (e) => {
@@ -410,6 +407,13 @@ class BotForm extends React.Component {
     if (validation) {
       await this.handleSubmit(e);
       this.props.activateBot(this.state._id);
+      if (this.props.match.params.id) {
+        this.props.history.push(
+          `/admin/bot/edit/${this.props.match.params.id}`
+        );
+      } else {
+        this.props.history.push(`/admin/bot/edit/${this.state._id}`);
+      }
     }
   };
 
@@ -424,35 +428,64 @@ class BotForm extends React.Component {
 
   handleSoChange = (e) => {
     if (e.target.name === "so_size" || e.target.name === "buy_price") {
-      const safety_orders = produce(this.props.bot, draft => {
-        draft.safety_orders[e.target.dataset.index][e.target.name] = e.target.value;
+      const safety_orders = produce(this.props.bot, (draft) => {
+        draft.safety_orders[e.target.dataset.index][e.target.name] =
+          e.target.value;
       });
-      this.props.setBot(safety_orders)
+      this.props.setBot(safety_orders);
     }
     return;
   };
 
   addSo = () => {
-    const safety_orders = produce(this.props.bot, draft => {
+    const safety_orders = produce(this.props.bot, (draft) => {
       if (Object.getPrototypeOf(draft.safety_orders) === Object.prototype) {
-        draft.safety_orders = [defaultSo]
+        draft.safety_orders = [defaultSo];
       } else {
-        let newSo = {...defaultSo}
-        newSo.name = `so_${draft.safety_orders.length + 1}`
-        draft.safety_orders.push(newSo)
+        let newSo = { ...defaultSo };
+        newSo.name = `so_${draft.safety_orders.length + 1}`;
+        draft.safety_orders.push(newSo);
       }
-      
     });
-    this.props.setBot(safety_orders)
-  }
+    this.props.setBot(safety_orders);
+  };
 
   removeSo = (e) => {
     e.preventDefault();
-    const safety_orders = produce(this.props.bot, draft => {
-      draft.safety_orders.splice(e.target.dataset.index, 1)
+    const safety_orders = produce(this.props.bot, (draft) => {
+      draft.safety_orders.splice(e.target.dataset.index, 1);
     });
     this.props.setBot(safety_orders);
-  }
+  };
+
+  handleInitialPrice = (price) => {
+    if (!this.props.bot.deal.buy_price && this.props.bot.status !== "active") {
+      this.setState(
+        produce(this.state, (draft) => {
+          draft.currentChartPrice = parseFloat(price);
+        })
+      );
+    }
+    const newOrderLines = updateOrderLines(this.props.bot, price);
+    this.setState(
+      produce(this.state, (draft) => {
+        draft.currentOrderLines = newOrderLines;
+        draft.currentChartPrice = parseFloat(price);
+      })
+    );
+  };
+
+  updatedPrice = (price) => {
+    if (parseFloat(this.state.currentChartPrice) !== parseFloat(price)) {
+      const newOrderLines = updateOrderLines(this.props.bot, price);
+      this.setState(
+        produce(this.state, (draft) => {
+          draft.currentOrderLines = newOrderLines;
+          draft.currentChartPrice = parseFloat(price);
+        })
+      );
+    }
+  };
 
   render() {
     return (
@@ -506,53 +539,17 @@ class BotForm extends React.Component {
                       )}
                   </Col>
                 </Row>
-                <br />
-                <Row>
-                  <Col>
-                    {intervalOptions.map((item) => (
-                      <Badge
-                        key={item}
-                        onClick={() =>
-                          this.props.setBot({ candlestick_interval: item })
-                        }
-                        color={
-                          this.props.bot.candlestick_interval === item
-                            ? "primary"
-                            : "secondary"
-                        }
-                        className="btn btn-margin-right"
-                      >
-                        {item}
-                      </Badge>
-                    ))}
-                  </Col>
-                </Row>
-                <br />
-                <Row>
-                  <Col>
-                    <IndicatorsButtons
-                      toggle={this.state.toggleIndicators}
-                      handleChange={this.handleToggleIndicator}
-                    />
-                  </Col>
-                </Row>
               </CardHeader>
               <CardBody>
-                {this.props.candlestick &&
-                this.props.candlestick.error !== 1 &&
-                !checkValue(this.props.bot.pair) ? (
-                  <Candlestick
-                    data={this.props.candlestick}
-                    bot={this.props.bot}
-                    deal={
-                      this.props.bot && this.props.bot.deal
-                        ? this.props.bot.deal
-                        : null
-                    }
-                    toggleIndicators={this.state.toggleIndicators}
+                {!checkValue(this.props.bot?.pair) && (
+                  <TVChartContainer
+                    symbol={this.props.bot.pair}
+                    interval={this.state.interval}
+                    timescaleMarks={this.state.currentTimeMarks}
+                    orderLines={this.state.currentOrderLines}
+                    onTick={(tick) => this.updatedPrice(tick.close)}
+                    getLatestBar={(bar) => this.handleInitialPrice(bar[3])}
                   />
-                ) : (
-                  ""
                 )}
               </CardBody>
             </Card>
@@ -562,9 +559,16 @@ class BotForm extends React.Component {
           {!checkValue(this.props.bot) &&
           this.props.bot.orders?.length > 0 &&
           !checkValue(this.props.match.params.id) ? (
-            <Col md="7" sm="12">
-              <BotInfo bot={this.props.bot} />
-            </Col>
+            <>
+              <Col md="7" sm="12">
+                <BotInfo bot={this.props.bot} />
+              </Col>
+              {this.props.bot.errors.length > 0 && (
+                <Col md="4" sm="12">
+                  <LogsInfo info={this.props.bot.errors} />
+                </Col>
+              )}
+            </>
           ) : (
             ""
           )}
@@ -596,7 +600,9 @@ class BotForm extends React.Component {
                       <NavItem>
                         <NavLink
                           className={
-                            this.state.activeTab === "safety-orders" ? "active" : ""
+                            this.state.activeTab === "safety-orders"
+                              ? "active"
+                              : ""
                           }
                           onClick={() => this.toggle("safety-orders")}
                         >
@@ -677,17 +683,19 @@ class BotForm extends React.Component {
                   </TabContent>
                   <Row xs="2">
                     <Col>
-                      <ButtonToggle
-                        className="btn-round"
-                        color="primary"
-                        onClick={this.handleActivation}
-                        disabled={checkValue(this.props.bot._id)}
-                      >
-                        {this.props.bot.status === "active" &&
-                        Object.keys(this.props.bot.deal).length > 0
-                          ? "Update deal"
-                          : "Deal"}
-                      </ButtonToggle>
+                      {this.props.bot.status !== "completed" && (
+                        <ButtonToggle
+                          className="btn-round"
+                          color="primary"
+                          onClick={this.handleActivation}
+                          disabled={checkValue(this.props.bot._id)}
+                        >
+                          {this.props.bot.status === "active" &&
+                          Object.keys(this.props.bot.deal).length > 0
+                            ? "Update deal"
+                            : "Deal"}
+                        </ButtonToggle>
+                      )}
                     </Col>
                     <Col>
                       {(this.props.bot.status !== "active" ||
@@ -765,7 +773,6 @@ const mapStateToProps = (state) => {
   let { data: balance } = state.balanceReducer;
   const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
-  const { data: candlestick } = state.candlestickReducer;
   const { botId, botActive, bot } = state.botReducer;
   const { loading } = state.loadingReducer;
 
@@ -779,7 +786,6 @@ const mapStateToProps = (state) => {
     balance_raw: balance_raw,
     symbols: symbols,
     bot: bot,
-    candlestick: candlestick,
     newBotId: botId,
     botActive: botActive,
     loading: loading,
@@ -796,6 +802,5 @@ export default connect(mapStateToProps, {
   editBot,
   activateBot,
   deactivateBot,
-  loadCandlestick,
   setBot,
 })(BotForm);

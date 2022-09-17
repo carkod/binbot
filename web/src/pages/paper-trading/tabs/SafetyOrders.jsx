@@ -13,7 +13,7 @@ export default function SafetyOrders({
   handleBlur,
 }) {
 
-  const activeSo = safetyOrders.map(x => x.status === 0)
+  const activeSo = Object.getPrototypeOf(safetyOrders) === Object.prototype ? [] : safetyOrders.map(x => x.status === 0)
 
   return (
     <TabPane tabId="safety-orders">

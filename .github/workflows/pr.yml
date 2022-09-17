@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       binbot_db:
-        image: mongo:latest
+        image: mongo:5-focal
         options: >-
           --health-cmd mongo
           --health-interval 10s
