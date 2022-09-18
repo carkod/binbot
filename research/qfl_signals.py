@@ -40,7 +40,7 @@ class QFL_signals():
         if not hasattr(self.telegram_bot, "updater"):
             self.telegram_bot.run_bot()
 
-        message = f"- [{os.getenv('ENV')}] <strong>#QFL Hodloo</strong> signal algorithm #{symbol} \n - {msg} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://terminal.binbot.in/admin/bots/new/{symbol}"
+        message = f"- [{os.getenv('ENV')}] <strong>#QFL Hodloo</strong> signal algorithm #{symbol} \n - {msg} \n- <a href='https://www.binance.com/en/trade/{symbol}'>Binance</a>  \n- <a href='http://terminal.binbot.in/admin/bots/new/{symbol}'>Dashboard trade</a>"
 
         self.telegram_bot.send_msg(message)
         return
@@ -79,22 +79,19 @@ class QFL_signals():
 
                 if response['type'] == 'base-break':
                     base_price = Decimal(str(response["basePrice"]))
-                    message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Base Break ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price} - Base Price: {base_price} - Volume: {volume24}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
+                    message = f"\n[ {datetime.now().replace(microsecond=0)} Base Break ]\n\nSymbol: **{pair}**\nAlert Price: {alert_price} - Base Price: {base_price} - Volume: {volume24}\n - <a href='{hodloo_url}'>Hodloo</a>"
                     
                     if response["belowBasePct"] == 5:
-                        print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
                         self._send_msg(f"%5 alerts: {message}", symbol=pair)
 
                     if response["belowBasePct"] == 10:
-                        print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
                         self._send_msg(f"%20 alerts: {message}", symbol=pair)
                 
                 if response['type'] == 'panic':
-                    print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
                     strength = response["strength"]
                     velocity = response["velocity"]
-                    message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Panic Alert ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
-                    self._send_msg(f"Panic alert: {message}", symbol=pair)
+                    message = f'\n[ {datetime.now().replace(microsecond=0)} Panic Alert ]\n\nSymbol: **{pair}**\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n - <a href="{hodloo_url}">Hodloo</a>'
+                    self._send_msg(message, symbol=pair)
 
 
     def start_stream(self, ws=None):
