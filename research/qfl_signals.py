@@ -73,29 +73,28 @@ class QFL_signals():
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{pair}"
                 asset, quote = pair.split('-')
                 pair = pair.replace('-','')
-                self._send_msg(f"Check QFL Hodloo signal: {hodloo_url}", pair)
                 volume24 = response["marketInfo"]["volume24"]
-                if quote in self.quotes:
-                    alert_price = Decimal(str(response["marketInfo"]["price"]))
+                # if quote in self.quotes:
+                alert_price = Decimal(str(response["marketInfo"]["price"]))
 
-                    if response['type'] == 'base-break':
-                        base_price = Decimal(str(response["basePrice"]))
-                        message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Base Break ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price} - Base Price: {base_price} - Volume: {volume24}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
-                        
-                        if response["belowBasePct"] == 5:
-                            print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
-                            self._send_msg(f"QFL signal %5 alerts: {message}", symbol=pair)
-
-                        if response["belowBasePct"] == 10:
-                            print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
-                            self._send_msg(f"%20 alerts: {message}", symbol=pair)
+                if response['type'] == 'base-break':
+                    base_price = Decimal(str(response["basePrice"]))
+                    message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Base Break ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price} - Base Price: {base_price} - Volume: {volume24}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
                     
-                    if response['type'] == 'panic':
+                    if response["belowBasePct"] == 5:
                         print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
-                        strength = response["strength"]
-                        velocity = response["velocity"]
-                        message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Panic Alert ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
-                        self._send_msg(f"Panic alert: {message}", symbol=pair)
+                        self._send_msg(f"%5 alerts: {message}", symbol=pair)
+
+                    if response["belowBasePct"] == 10:
+                        print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
+                        self._send_msg(f"%20 alerts: {message}", symbol=pair)
+                
+                if response['type'] == 'panic':
+                    print(f"{datetime.now().replace(microsecond=0)} - Processing {pair} for Exchange {exchange_str}")
+                    strength = response["strength"]
+                    velocity = response["velocity"]
+                    message = f'\n[ {datetime.now().replace(microsecond=0)} | {exchange_str} | Panic Alert ]\n\nSymbol: *{pair}*\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n[TradingView]({tv_url}) - [Hodloo]({hodloo_url})'
+                    self._send_msg(f"Panic alert: {message}", symbol=pair)
 
 
     def start_stream(self, ws=None):
