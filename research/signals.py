@@ -15,15 +15,14 @@ from apis import BinbotApi
 from autotrade import Autotrade
 from pattern_detection import chaikin_oscillator, linear_regression, stdev
 from telegram_bot import TelegramBot
-from test_autotrade import TestAutotrade
 from utils import handle_binance_errors
 from datetime import datetime
 
-class ResearchSignals(BinbotApi):
+
+class SetupSignals(BinbotApi):
     def __init__(self):
         self.interval = "15m"
         self.markets_streams = None
-        self.last_processed_kline = {}
         self.skipped_fiat_currencies = [
             "DOWN",
             "UP",
@@ -34,8 +33,8 @@ class ResearchSignals(BinbotApi):
         self.active_symbols = []
         self.thread_ids = []
         self.active_test_bots = []
-    
-    def _restart_websockets(self):
+
+    def _restart_websockets(self, thread_name="market_updates"):
         """
         Restart websockets threads after list of active bots altered
         """
@@ -44,12 +43,29 @@ class ResearchSignals(BinbotApi):
         stop_threads = True
         # Notify market updates websockets to update
         for thread in threading.enumerate():
-            if hasattr(thread, "tag") and thread.name == "market_updates" and hasattr(thread, "_target"):
+            print("Currently active threads: ", thread.name)
+            if (
+                hasattr(thread, "tag")
+                and thread_name in thread.name
+                and hasattr(thread, "_target")
+            ):
                 stop_threads = False
-                print("closing websockets thread", thread)
-                thread._target.__self__.markets_streams.close()
+                print("closing websocket")
+                thread._target.__self__.close()
 
         pass
+
+    def _send_msg(self, msg):
+        """
+        Send message with telegram bot
+        To avoid Conflict - duplicate Bot error
+        /t command will still be available in telegram bot
+        """
+        if not hasattr(self.telegram_bot, "updater"):
+            self.telegram_bot.run_bot()
+
+        self.telegram_bot.send_msg(msg)
+        return
 
     def blacklist_coin(self, pair, msg):
         res = requests.post(
@@ -105,14 +121,30 @@ class ResearchSignals(BinbotApi):
         # if autrotrade enabled and it's not an already active bot
         # this avoids running too many useless bots
         # Temporarily restricting to 1 bot for low funds
-        bots_res = requests.get(url=self.bb_bot_url, params={"status": "active", "no_cooldown": "true"})
+        bots_res = requests.get(
+            url=self.bb_bot_url, params={"status": "active", "no_cooldown": "true"}
+        )
         active_bots = handle_binance_errors(bots_res)["data"]
         self.active_symbols = [bot["pair"] for bot in active_bots]
 
-        paper_trading_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active", "no_cooldown": "true"})
+        paper_trading_bots_res = requests.get(
+            url=self.bb_test_bot_url, params={"status": "active", "no_cooldown": "true"}
+        )
         paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
         self.active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]
         pass
+
+    def post_error(self, msg):
+        res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
+        handle_binance_errors(res)
+        return
+
+
+class ResearchSignals(SetupSignals):
+    def __init__(self):
+        print("Started research signals")
+        self.last_processed_kline = {}
+        super().__init__()
 
     def new_tokens(self, projects) -> list:
         check_new_coin = (
@@ -129,18 +161,6 @@ class ResearchSignals(BinbotApi):
         ]
 
         return new_pairs
-
-    def _send_msg(self, msg):
-        """
-        Send message with telegram bot
-        To avoid Conflict - duplicate Bot error
-        /t command will still be available in telegram bot
-        """
-        if not hasattr(self.telegram_bot, "updater"):
-            self.telegram_bot.run_bot()
-
-        self.telegram_bot.send_msg(msg)
-        return
 
     def _run_streams(self, stream, index):
         string_params = "/".join(stream)
@@ -191,7 +211,9 @@ class ResearchSignals(BinbotApi):
         for market in list_markets:
             params.append(f"{market.lower()}@kline_{self.interval}")
 
-        total_threads = math.floor(len(list_markets) / self.max_request) + (1 if len(list_markets) % self.max_request > 0 else 0)
+        total_threads = math.floor(len(list_markets) / self.max_request) + (
+            1 if len(list_markets) % self.max_request > 0 else 0
+        )
         # It's not possible to have websockets with more 950 pairs
         # So set default to max 950
         stream = params[:950]
@@ -200,16 +222,10 @@ class ResearchSignals(BinbotApi):
             for index in range(total_threads - 1):
                 stream = params[(self.max_request + 1) :]
                 if index == 0:
-                    stream = params[:self.max_request]
+                    stream = params[: self.max_request]
                 self._run_streams(stream, index)
         else:
             self._run_streams(stream, 1)
-        
-
-    def post_error(self, msg):
-        res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
-        handle_binance_errors(res)
-        return
 
     def run_autotrade(self, symbol, ws, algorithm, test_only=False, *args, **kwargs):
         """
@@ -235,7 +251,7 @@ class ResearchSignals(BinbotApi):
             print("Update required, restart stream")
             self.start_stream(previous_ws=ws)
             pass
-        
+
         if (
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
@@ -243,16 +259,21 @@ class ResearchSignals(BinbotApi):
             and not test_only
         ):
             autotrade = Autotrade(symbol, self.settings, algorithm)
-            autotrade.run()
+            autotrade.activate_autotrade()
 
         # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
         # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
         # the downfall is that it can increase load for the server if there are multiple bots opened
         # e.g. autotrade bots not updating can be a symptom of this
-        if symbol not in self.active_test_bots and int(self.test_autotrade_settings["test_autotrade"]) == 1:
+        if (
+            symbol not in self.active_test_bots
+            and int(self.test_autotrade_settings["test_autotrade"]) == 1
+        ):
             # Test autotrade runs independently of autotrade = 1
-            test_autotrade = TestAutotrade(symbol, self.test_autotrade_settings, algorithm, args)
-            test_autotrade.run()
+            test_autotrade = Autotrade(
+                symbol, self.test_autotrade_settings, algorithm, args
+            )
+            test_autotrade.activate_test_autotrade()
 
     def on_close(self, *args):
         """
@@ -292,7 +313,13 @@ class ResearchSignals(BinbotApi):
             sleep(3600)
 
         symbol = result["k"]["s"]
-        if symbol and "k" in result and "s" in result["k"] and len(self.active_symbols) == 0 and symbol not in self.last_processed_kline:
+        if (
+            symbol
+            and "k" in result
+            and "s" in result["k"]
+            and len(self.active_symbols) == 0
+            and symbol not in self.last_processed_kline
+        ):
             close_price = float(result["k"]["c"])
             open_price = float(result["k"]["o"])
             ws.symbol = symbol
@@ -319,11 +346,13 @@ class ResearchSignals(BinbotApi):
 
             # Average amplitude
             msg = None
-            print(f"[{datetime.now()}] Signal:{result['k']['s']}")
-            print("Surpassed last ma_7 and ma_100? ", close_price > ma_7[len(ma_7) - 1], close_price > ma_100[len(ma_100) - 1])
-            value, chaikin_diff = chaikin_oscillator(
-                data["trace"][0], data["volumes"]
-            )
+            # print(f"[{datetime.now()}] Signal:{result['k']['s']}")
+            # print(
+            #     "Surpassed last ma_7 and ma_100? ",
+            #     close_price > ma_7[len(ma_7) - 1],
+            #     close_price > ma_100[len(ma_100) - 1],
+            # )
+            value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
             slope, intercept = linear_regression(data["trace"][0])
             sd = stdev(data["trace"][0])
 
@@ -343,7 +372,7 @@ class ResearchSignals(BinbotApi):
                 symbol,
                 ws,
                 intercept,
-                ma_25
+                ma_25,
             )
 
             ma_candlestick_jump(

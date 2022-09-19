@@ -1,50 +1,28 @@
-from datetime import datetime
 import json
 import os
 import re
 import threading
-from telegram_bot import TelegramBot
+import requests
+from signals import SetupSignals
 from websocket import WebSocketApp
 from decimal import Decimal
+from autotrade import Autotrade
+from utils import handle_binance_errors
 
-class QFL_signals():
+
+class QFL_signals(SetupSignals):
+
     def __init__(self):
-        self.telegram_bot = TelegramBot()
         self.exchanges = ["Binance"]
-        self.quotes = ["USDT"]
+        self.quotes = ["USDT", "BUSD", "USD", "BTC", "ETH"]
         self.hodloo_uri = "wss://alpha2.hodloo.com/ws"
         self.hodloo_chart_url = "https://qft.hodloo.com/#/"
 
-    def _restart_websockets(self):
-        """
-        Restart websockets threads after list of active bots altered
-        """
-        print("Starting thread cleanup")
-        global stop_threads
-        stop_threads = True
-        # Notify market updates websockets to update
-        for thread in threading.enumerate():
-            if hasattr(thread, "tag") and thread.name == "qfl_signals" and hasattr(thread, "_target"):
-                stop_threads = False
-                print("closing QFL websockets thread", thread)
-                thread._target.__self__.close()
-
-        pass
-
-    def _send_msg(self, msg, symbol):
-        """
-        Send message with telegram bot
-        To avoid Conflict - duplicate Bot error
-        /t command will still be available in telegram bot
-        """
-        if not hasattr(self.telegram_bot, "updater"):
-            self.telegram_bot.run_bot()
-
+    def custom_telegram_msg(self, msg, symbol):
         message = f"- [{os.getenv('ENV')}] <strong>#QFL Hodloo</strong> signal algorithm #{symbol} \n - {msg} \n- <a href='https://www.binance.com/en/trade/{symbol}'>Binance</a>  \n- <a href='http://terminal.binbot.in/admin/bots/new/{symbol}'>Dashboard trade</a>"
 
-        self.telegram_bot.send_msg(message)
+        self._send_msg(message)
         return
-
 
     def on_close(self, *args):
         """
@@ -66,33 +44,39 @@ class QFL_signals():
 
     def on_message(self, ws, payload):
         response = json.loads(payload)
-        if response['type'] in ['base-break','panic']:
-            exchange_str,pair = response["marketInfo"]["ticker"].split(':')
-            is_leveraged_token = bool(re.search('UP/', pair)) or bool(re.search('DOWN/', pair))
+        if response["type"] in ["base-break", "panic"]:
+            exchange_str, pair = response["marketInfo"]["ticker"].split(":")
+            is_leveraged_token = bool(re.search("UP/", pair)) or bool(
+                re.search("DOWN/", pair)
+            )
             if exchange_str in self.exchanges and not is_leveraged_token:
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{pair}"
-                asset, quote = pair.split('-')
-                pair = pair.replace('-','')
+                asset, quote = pair.split("-")
+                pair = pair.replace("-", "")
                 volume24 = response["marketInfo"]["volume24"]
                 # if quote in self.quotes:
                 alert_price = Decimal(str(response["marketInfo"]["price"]))
 
-                if response['type'] == 'base-break':
+                if response["type"] == "base-break":
                     base_price = Decimal(str(response["basePrice"]))
-                    message = f"\n[ {datetime.now().replace(microsecond=0)} Base Break ]\n\nSymbol: **{pair}**\nAlert Price: {alert_price} - Base Price: {base_price} - Volume: {volume24}\n - <a href='{hodloo_url}'>Hodloo</a>"
-                    
+                    message = f"**{pair}**, Alert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n - <a href='{hodloo_url}'>Hodloo</a>"
+
                     if response["belowBasePct"] == 5:
-                        self._send_msg(f"%5 alerts: {message}", symbol=pair)
+                        self.custom_telegram_msg(
+                            f"Base Break Symbol Below 10%{message}", symbol=pair
+                        )
+                        self.run_autotrade()
 
                     if response["belowBasePct"] == 10:
-                        self._send_msg(f"%20 alerts: {message}", symbol=pair)
-                
-                if response['type'] == 'panic':
+                        self.custom_telegram_msg(
+                            f"Base Break Symbol Below 10% {message}", symbol=pair
+                        )
+
+                if response["type"] == "panic":
                     strength = response["strength"]
                     velocity = response["velocity"]
-                    message = f'\n[ {datetime.now().replace(microsecond=0)} Panic Alert ]\n\nSymbol: **{pair}**\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n - <a href="{hodloo_url}">Hodloo</a>'
-                    self._send_msg(message, symbol=pair)
-
+                    message = f'[Panic] Symbol: **{pair}**\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n - <a href="{hodloo_url}">Hodloo</a>'
+                    self.custom_telegram_msg(message, symbol=pair)
 
     def start_stream(self, ws=None):
         if ws:
@@ -106,10 +90,59 @@ class QFL_signals():
             on_message=self.on_message,
         )
 
-        worker_thread = threading.Thread(   
-            name=f"qfl_signals",
+        worker_thread = threading.Thread(
+            name="qfl_signals_thread",
             target=ws.run_forever,
             kwargs={"ping_interval": 60},
         )
-        worker_thread.tag = "qfl_signals"
+        worker_thread.tag = "qfl_signals_thread"
         worker_thread.start()
+
+    def run_autotrade(self, symbol, ws, algorithm, test_only=False, *args, **kwargs):
+        """
+        Refactored autotrade conditions.
+        Previously part of process_kline_stream
+        1. Checks if we have balance to trade
+        2. Check if we need to update websockets
+        3. Check if autotrade is enabled
+        4. Check if test autotrades
+        """
+        self.load_data()
+        # Check balance to avoid failed autotrades
+        check_balance_res = requests.get(url=self.bb_balance_estimate_url)
+        balances = handle_binance_errors(check_balance_res)
+        if "error" in balances and balances["error"] == 1:
+            print(balances["message"])
+            return
+
+        balance_check = int(balances["data"]["total_fiat"])
+
+        # If dashboard has changed any self.settings
+        # Need to reload websocket
+        if "update_required" in self.settings and self.settings["update_required"]:
+            print("Update required, restart stream")
+            self.start_stream(previous_ws=ws)
+            pass
+
+        if (
+            int(self.settings["autotrade"]) == 1
+            # Temporary restriction for few funds
+            and balance_check > 0
+            and not test_only
+        ):
+            autotrade = Autotrade(symbol, self.settings, algorithm)
+            autotrade.activate_autotrade()
+
+        # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
+        # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
+        # the downfall is that it can increase load for the server if there are multiple bots opened
+        # e.g. autotrade bots not updating can be a symptom of this
+        if (
+            symbol not in self.active_test_bots
+            and int(self.test_autotrade_settings["test_autotrade"]) == 1
+        ):
+            # Test autotrade runs independently of autotrade = 1
+            test_autotrade = Autotrade(
+                symbol, self.test_autotrade_settings, algorithm, args
+            )
+            test_autotrade.activate_test_autotrade()
