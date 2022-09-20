@@ -100,21 +100,31 @@ class Bot(Account):
         # Only retrieve active and cooldown bots
         # These bots will be removed from signals
         if status and no_cooldown:
-            current_ts = time() * 1000
             params = {
                 "$or": [
                     {"status": status},
                     {
-                        "$where": f"{current_ts} - this.deal.sell_timestamp < (this.cooldown * 1000)"
+                        "$where": 
+                        """function () {
+                            if (this.deal !== undefined) {
+                                return new Date().getTime() - this.deal.sell_timestamp < (this.cooldown * 1000)
+                            } else {
+                                return (new Date().getTime() - this.created_at < (this.cooldown * 1000))
+                            }
+                        }"""
                     },
                 ]
             }
 
-        bot = list(
-            self.db_collection.find(params).sort(
-                [("_id", -1), ("status", 1), ("pair", 1)]
+        try:
+            bot = list(
+                self.db_collection.find(params).sort(
+                    [("_id", -1), ("status", 1), ("pair", 1)]
+                )
             )
-        )
+        except Exception as error:
+            resp = jsonResp_error_message(error)
+
         if bot:
             resp = jsonResp({"message": "Sucessfully found bots!", "data": bot})
         else:
@@ -162,7 +172,7 @@ class Bot(Account):
             bot = bot_schema.load(data)
             if "_id" in bot:
                 bot.pop("_id")
-            result = self.db_collection.update_one({"_id": ObjectId(botId)}, {"$set": bot})
+            self.db_collection.update_one({"_id": ObjectId(botId)}, {"$set": bot})
             resp = jsonResp({"message": "Successfully updated bot", "botId": str(botId)})
         except ValidationError as e:
             resp = jsonResp_error_message(f"Failed validation: {e.messages}")
@@ -193,12 +203,12 @@ class Bot(Account):
             try:
                 CreateDealController(bot).open_deal()
             except OpenDealError as error:
-                return jsonResp_error_message(error)
+                return jsonResp_error_message(error.args[0])
             except NotEnoughFunds as e:
                 return jsonResp_error_message(e.args[0])
 
             try:
-                botId = self.db_collection.update_one(
+                self.db_collection.update_one(
                     {"_id": ObjectId(botId)}, {"$set": {"status": "active"}}
                 )
                 resp = jsonResp_message("Successfully activated bot!")

@@ -15,7 +15,11 @@ from api.tools.exceptions import (
     TakeProfitError,
     TraillingProfitError,
 )
-from api.tools.handle_error import QuantityTooLow, handle_binance_errors, jsonResp_error_message
+from api.tools.handle_error import (
+    QuantityTooLow,
+    handle_binance_errors,
+    jsonResp_error_message,
+)
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import current_app as app, Response
 from pymongo import ReturnDocument
@@ -54,7 +58,7 @@ class CreateDealController(Account):
             .as_tuple()
             .exponent
         )
-    
+
     def generate_id(self):
         return uuid.uuid4().hex
 
@@ -123,7 +127,7 @@ class CreateDealController(Account):
             {"$push": {"errors": msg}},
         )
         return msg
-    
+
     def base_order(self):
         """
         Required initial order to trigger bot.
@@ -142,6 +146,14 @@ class CreateDealController(Account):
             self.qty_precision,
         )
         price = float(book_order.matching_engine(False, qty))
+
+        # setup stop_loss_price
+        stop_loss_price = 0
+        if (
+            hasattr(self.active_bot, "stop_loss")
+            and float(self.active_bot.stop_loss) > 0.0
+        ):
+            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
         if not price:
             price = initial_price
@@ -183,6 +195,7 @@ class CreateDealController(Account):
             buy_total_qty=res["origQty"],
             current_price=res["price"],
             take_profit_price=tp_price,
+            stop_loss_price=stop_loss_price,
         )
 
         try:
@@ -220,10 +233,9 @@ class CreateDealController(Account):
             qty = bot.deal.buy_total_qty
         else:
             qty = self.compute_qty(bot.pair)
-            
+
         qty = supress_notation(buy_total_qty, self.qty_precision)
         price = supress_notation(price, self.price_precision)
-
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(bot.pair, price, qty, "SELL")
@@ -253,13 +265,16 @@ class CreateDealController(Account):
                     method="POST", url=self.bb_sell_order_url, payload=tp_order
                 )
             else:
-                tp_order = {"pair": bot.pair, "qty": supress_notation(qty, self.qty_precision)}
+                tp_order = {
+                    "pair": bot.pair,
+                    "qty": supress_notation(qty, self.qty_precision),
+                }
                 res = self.bb_request(
                     method="POST",
                     url=self.bb_sell_market_order_url,
                     payload=tp_order,
                 )
-        
+
         # If error pass it up to parent function, can't continue
         if "error" in res:
             raise TakeProfitError(res["error"])
@@ -313,12 +328,10 @@ class CreateDealController(Account):
             deal_data.take_profit_price = price
             deal_data.trailling_profit = price
 
-
             if self.db_collection.name == "paper_trading":
                 qty = deal_data.buy_total_qty
             else:
                 qty = self.compute_qty(bot.pair)
-
 
             # Dispatch fake order
             if self.db_collection.name == "paper_trading":
@@ -350,13 +363,16 @@ class CreateDealController(Account):
                         method="POST", url=self.bb_sell_order_url, payload=tp_order
                     )
                 else:
-                    tp_order = {"pair": bot.pair, "qty": supress_notation(qty, self.qty_precision)}
+                    tp_order = {
+                        "pair": bot.pair,
+                        "qty": supress_notation(qty, self.qty_precision),
+                    }
                     res = self.bb_request(
                         method="POST",
                         url=self.bb_sell_market_order_url,
                         payload=tp_order,
                     )
-            
+
             # If error pass it up to parent function, can't continue
             if "error" in res:
                 raise TraillingProfitError(res["error"])
@@ -369,13 +385,13 @@ class CreateDealController(Account):
             bot = self.db_collection.update_one(
                 {"_id": self.active_bot._id},
                 {"$set": {"deal": deal, "status": "completed"}},
-                {"$push": {"errors": msg}}
+                {"$push": {"errors": msg}},
             )
         except Exception as error:
             self.update_deal_logs("Failed to close trailling take profit: " + error)
             raise TraillingProfitError(error)
 
-        pass # Completed
+        pass  # Completed
 
     def open_deal(self):
 
@@ -383,6 +399,10 @@ class CreateDealController(Account):
         Mandatory deals section
         - If base order deal is not executed, bot is not activated
         """
+        # Do not reactivate
+        if hasattr(self.active_bot, "deal") and self.active_bot.status == "active":
+            raise OpenDealError("Deal already opened, bot is active")
+
         # If there is already a base order do not execute
         base_order_deal = next(
             (
@@ -431,7 +451,7 @@ class CreateDealController(Account):
 
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
         if deal_data and deal_data.trailling_stop_loss_price > 0:
-        
+
             take_profit = float(deal_data.trailling_profit) * (
                 1 + (float(bot.take_profit) / 100)
             )
@@ -443,7 +463,9 @@ class CreateDealController(Account):
         try:
             deal_schema = DealSchema()
             deal = deal_schema.dump(deal_data)
-            self.db_collection.update_one({"_id": self.active_bot._id}, {"$set": {"deal": deal}})
+            self.db_collection.update_one(
+                {"_id": self.active_bot._id}, {"$set": {"deal": deal}}
+            )
 
         except ValidationError as error:
             msg = f"Open deal error: {error.messages}"
@@ -454,7 +476,7 @@ class CreateDealController(Account):
         except Exception as e:
             raise OpenDealError(e)
 
-        pass
+        return
 
     def close_all(self):
         """
@@ -510,7 +532,6 @@ class CreateDealController(Account):
             handle_binance_errors(res)
 
         return
-
 
     def update_take_profit(self, order_id):
         """
@@ -593,7 +614,9 @@ class CreateDealController(Account):
         - Klines websocket triggers condition price = safety order price
         - Get qty and price (use trade books so it can sell immediately at limit)
         - Update deal.price, deal.qty
-        - Cancel old take profit order
+        - Cancel old take profit order to unlock balance
+        - Create new so
+        - Deactivate so
         - Update DB with new deal data
         - Create new take profit order
         - Update DB with new take profit deal data
@@ -616,7 +639,7 @@ class CreateDealController(Account):
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(
-                order["pair"], order["price"], order["qty"], "BUY"
+                pair, price, qty, "BUY"
             )
         else:
             res = self.bb_request(self.bb_buy_order_url, "POST", paylaod=order)
@@ -669,7 +692,6 @@ class CreateDealController(Account):
                     weighted_avg_buy_price += order.qty * order.price
                 if order.deal_type.startswith("so"):
                     weighted_avg_buy_price += order.qty * order.price
-                
 
         self.active_bot.deal.avg_buy_price = weighted_avg_buy_price / buy_total_qty
 
@@ -680,7 +702,7 @@ class CreateDealController(Account):
                 self.active_bot.orders.remove(order)
                 break
 
-        if order_id:
+        if order_id and self.db_collection.name != "paper_trading":
             # First cancel old order to unlock balance
             try:
                 self.bb_request(
@@ -689,35 +711,39 @@ class CreateDealController(Account):
                 )
                 self.update_deal_logs("Old take profit order cancelled")
             except HTTPError as error:
-                self.update_deal_logs(f"Take profit order not found, no need to cancel, {error}")
-            
-            qty = round_numbers(self.active_bot.deal.buy_total_qty, self.qty_precision)
-            price = supress_notation(new_tp_price, self.price_precision)
+                self.update_deal_logs(
+                    f"Take profit order not found, no need to cancel, {error}"
+                )
+
+        qty = round_numbers(self.active_bot.deal.buy_total_qty, self.qty_precision)
+
+        if self.db_collection.name == "paper_trading":
+            tp_order = self.simulate_order(pair, price, qty, "SELL")
+        else:
             new_tp_order = {
                 "pair": self.active_bot.pair,
-                "qty": qty,
-                "price": price,
+                "qty": supress_notation(qty, self.qty_precision),
+                "price": supress_notation(new_tp_price, self.price_precision),
             }
-            if self.db_collection.name == "paper_trading":
-                tp_order = self.simulate_order(pair, price, qty, "SELL")
-            else:
-                tp_order = self.bb_request(self.bb_sell_order_url, "POST", payload=new_tp_order)
-
-            take_profit_order = OrderModel(
-                timestamp=tp_order["transactTime"],
-                deal_type="take_profit",
-                order_id=tp_order["orderId"],
-                pair=tp_order["symbol"],
-                order_side=tp_order["side"],
-                order_type=tp_order["type"],
-                price=tp_order["price"],
-                qty=tp_order["origQty"],
-                fills=tp_order["fills"],
-                time_in_force=tp_order["timeInForce"],
-                status=tp_order["status"],
+            tp_order = self.bb_request(
+                self.bb_sell_order_url, "POST", payload=new_tp_order
             )
 
-            self.active_bot.orders.append(take_profit_order)
+        take_profit_order = OrderModel(
+            timestamp=tp_order["transactTime"],
+            deal_type="take_profit",
+            order_id=tp_order["orderId"],
+            pair=tp_order["symbol"],
+            order_side=tp_order["side"],
+            order_type=tp_order["type"],
+            price=tp_order["price"],
+            qty=tp_order["origQty"],
+            fills=tp_order["fills"],
+            time_in_force=tp_order["timeInForce"],
+            status=tp_order["status"],
+        )
+
+        self.active_bot.orders.append(take_profit_order)
 
         try:
             bot_schema = BotSchema()
@@ -755,14 +781,14 @@ class CreateDealController(Account):
             qty = bot.deal.buy_total_qty
         else:
             qty = self.compute_qty(bot.pair)
-        
+
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
         if not qty:
-            self.update_deal_logs(f"Cannot execute update stop limit, quantity is {qty}. Deleting bot")
-            params = {
-                "id": self.active_bot._id
-            }
+            self.update_deal_logs(
+                f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
+            )
+            params = {"id": self.active_bot._id}
             self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
             return
 
@@ -776,12 +802,14 @@ class CreateDealController(Account):
         if order_id:
             try:
                 # First cancel old order to unlock balance
-                self.bb_request(f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}", "DELETE")
+                self.bb_request(
+                    f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}",
+                    "DELETE",
+                )
                 self.update_deal_logs("Old take profit order cancelled")
             except HTTPError as error:
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
-
 
         book_order = Book_Order(bot.pair)
         price = float(book_order.matching_engine(True, qty))
@@ -799,7 +827,9 @@ class CreateDealController(Account):
                         "price": supress_notation(price, self.price_precision),
                     }
                     res = self.bb_request(
-                        method="POST", url=self.bb_sell_order_url, payload=stop_limit_order
+                        method="POST",
+                        url=self.bb_sell_order_url,
+                        payload=stop_limit_order,
                     )
                 else:
                     stop_limit_order = {"pair": bot.pair, "qty": qty}
@@ -810,19 +840,24 @@ class CreateDealController(Account):
                     )
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
-                result = self.bb_request(self.bb_bot_url, "DELETE", params={"id": self.active_bot._id})
+                result = self.bb_request(
+                    self.bb_bot_url, "DELETE", params={"id": self.active_bot._id}
+                )
                 print(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:
-                self.update_deal_logs(f"Error trying to open new stop_limit order {error}")
+                self.update_deal_logs(
+                    f"Error trying to open new stop_limit order {error}"
+                )
                 return
 
-
         if res["status"] == "NEW":
-            self.update_deal_logs("Failed to execute stop loss order (status NEW), retrying...")
+            self.update_deal_logs(
+                "Failed to execute stop loss order (status NEW), retrying..."
+            )
             self.execute_stop_loss(price)
 
         stop_loss_order = OrderModel(
-            timestamp=res['transactTime'],
+            timestamp=res["transactTime"],
             deal_type="stop_loss",
             order_id=res["orderId"],
             pair=res["symbol"],
@@ -863,5 +898,3 @@ class CreateDealController(Account):
             self.update_deal_logs(f"Stop loss error: {error}")
             return
         pass
-
-

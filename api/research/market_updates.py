@@ -92,7 +92,8 @@ class MarketUpdates(Account):
             if (
                 "stop_loss" in current_bot
                 and float(current_bot["stop_loss"]) > 0.0
-                and float(current_bot["deal"]["stop_loss"]) > float(close_price)
+                and "stop_loss_price" in current_bot["deal"]
+                and float(current_bot["deal"]["stop_loss_price"]) > float(close_price)
             ):
                 deal = CreateDealController(bot, db_collection)
                 deal.execute_stop_loss(close_price)
@@ -163,9 +164,9 @@ class MarketUpdates(Account):
                 "safety_orders" in bot
                 and len(bot["safety_orders"]) > 0
             ):
-                for key, deal in enumerate(bot["safety_orders"]):
+                for key, so in enumerate(bot["safety_orders"]):
                     # Index is the ID of the safety order price that matches safety_orders list
-                    if ("status" not in deal or deal["status"] == 0) and float(deal["buy_price"]) >= float(close_price):
+                    if ("status" not in so or so["status"] == 0) and float(so["buy_price"]) >= float(close_price):
                         deal = CreateDealController(bot, db_collection)
                         deal.so_update_deal(key)
         pass

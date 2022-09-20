@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Button,
@@ -7,28 +7,38 @@ import {
   CardHeader,
   CardTitle,
   Col,
-  Row
+  Row,
 } from "reactstrap";
 import LightSwitch from "../../components/LightSwitch";
 import SettingsInput from "../../components/SettingsInput";
+import { getBalanceRaw } from "../../state/balances/actions";
 import {
   getTestAutotradeSettings,
   saveTestAutoTradeSettings,
-  setTestAutotradeSetting
+  setTestAutotradeSetting,
 } from "./actions";
 
 export default function TestAutotrade() {
+  const [localState, setLocalState] = useState({
+    balanceToUseUnmatchError: ""
+  });
   const dispatch = useDispatch();
   const settingsProps = useSelector((state) => {
-    return state.settingsReducer?.test_autotrade_settings;
+    return {
+      balance: state.balanceRawReducer?.data,
+      testAutotradeSettings: state.settingsReducer?.test_autotrade_settings,
+    };
   });
   const dispatchSetSettings = (payload) =>
     dispatch(setTestAutotradeSetting(payload));
-  const saveSettings = () => dispatch(saveTestAutoTradeSettings(settingsProps));
+  const saveSettings = () =>
+    dispatch(saveTestAutoTradeSettings(settingsProps.testAutotradeSettings));
 
   useEffect(() => {
-    const getSettings = () => dispatch(getTestAutotradeSettings())
+    const getSettings = () => dispatch(getTestAutotradeSettings());
+    const getBalance = () => dispatch(getBalanceRaw());
     getSettings();
+    getBalance();
   }, [dispatch]);
 
   const handleInput = (e) =>
@@ -48,13 +58,29 @@ export default function TestAutotrade() {
   };
 
   const toggleTrailling = () => {
-    let traillingValue = "true"
-    if (settingsProps.trailling === "true") {
+    let traillingValue = "true";
+    if (settingsProps.testAutotradeSettings.trailling === "true") {
       traillingValue = "false";
     }
     dispatchSetSettings({
       trailling: traillingValue,
     });
+  };
+
+  const handleBalanceToUseBlur = () => {
+    const searchBalance = settingsProps.balance.findIndex(
+      (b) => b.asset === settingsProps.testAutotradeSettings.balance_to_use
+    );
+    if (searchBalance === -1) {
+      setLocalState({
+        balanceToUseUnmatchError:
+          "Balance to use does not match available balance. Autotrade will fail.",
+      });
+    } else {
+      setLocalState({
+        balanceToUseUnmatchError: "",
+      });
+    }
   };
 
   return (
@@ -66,12 +92,15 @@ export default function TestAutotrade() {
         <CardBody>
           <Row>
             <Col md={"12"} sm="12">
-              {settingsProps && (
+              {settingsProps.testAutotradeSettings && (
                 <>
                   <Row>
                     <Col md="3">
                       <SettingsInput
-                        value={settingsProps.candlestick_interval}
+                        value={
+                          settingsProps.testAutotradeSettings
+                            .candlestick_interval
+                        }
                         name={"candlestick_interval"}
                         label={"Candlestick interval"}
                         handleChange={handleInput}
@@ -79,24 +108,30 @@ export default function TestAutotrade() {
                     </Col>
                     <Col md="3">
                       <label htmlFor="trailling">Trailling</label>
-											<br />
+                      <br />
                       <Button
                         name="trailling"
                         color={
-                          settingsProps.trailling === "true"
+                          settingsProps.testAutotradeSettings.trailling ===
+                          "true"
                             ? "success"
                             : "secondary"
                         }
                         onClick={toggleTrailling}
                       >
-                        {settingsProps.trailling === "true" ? "On" : "Off"}
+                        {settingsProps.testAutotradeSettings.trailling ===
+                        "true"
+                          ? "On"
+                          : "Off"}
                       </Button>
                     </Col>
                     <Col md="3">
                       <label htmlFor="test_autotrade">Autotrade?</label>
-											<br />
+                      <br />
                       <LightSwitch
-                        value={settingsProps.test_autotrade}
+                        value={
+                          settingsProps.testAutotradeSettings.test_autotrade
+                        }
                         name="test_autotrade"
                         toggle={toggle}
                       />
@@ -105,20 +140,36 @@ export default function TestAutotrade() {
                       <label htmlFor="telegram_signals">
                         Send messages to telegram?
                       </label>
-											<br />
+                      <br />
                       <LightSwitch
-                        value={settingsProps.telegram_signals}
+                        value={
+                          settingsProps.testAutotradeSettings.telegram_signals
+                        }
                         name="telegram_signals"
                         toggle={toggle}
                       />
                     </Col>
                   </Row>
                   <Row>
-                    {settingsProps.trailling === "true" && (
+                    {settingsProps.testAutotradeSettings.trailling ===
+                      "true" && (
                       <Row>
                         <Col md="3">
                           <SettingsInput
-                            value={settingsProps.take_profit}
+                            value={
+                              settingsProps.testAutotradeSettings.balance_to_use
+                            }
+                            name={"balance_to_use"}
+                            label={"Balance to use"}
+                            handleChange={handleInput}
+                            handleBlur={handleBalanceToUseBlur}
+                            errorMsg={localState.balanceToUseUnmatchError}
+                            type="text"
+                          />
+                          <SettingsInput
+                            value={
+                              settingsProps.testAutotradeSettings.take_profit
+                            }
                             name={"take_profit"}
                             label={"Take profit"}
                             handleChange={handleInput}
@@ -127,7 +178,10 @@ export default function TestAutotrade() {
                         </Col>
                         <Col md="3">
                           <SettingsInput
-                            value={settingsProps.trailling_deviation}
+                            value={
+                              settingsProps.testAutotradeSettings
+                                .trailling_deviation
+                            }
                             name={"trailling_deviation"}
                             label={"Trailling deviation"}
                             handleChange={handleInput}
@@ -136,7 +190,9 @@ export default function TestAutotrade() {
                         </Col>
                         <Col md="3">
                           <SettingsInput
-                            value={settingsProps.stop_loss}
+                            value={
+                              settingsProps.testAutotradeSettings.stop_loss
+                            }
                             name={"stop_loss"}
                             label={"Stop loss"}
                             handleChange={handleInput}

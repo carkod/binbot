@@ -117,7 +117,7 @@ class SetupSignals(BinbotApi):
         self.blacklist_data = blacklist_data["data"]
         self.interval = self.settings["candlestick_interval"]
         self.max_request = int(self.settings["max_request"])
-
+        
         # if autrotrade enabled and it's not an already active bot
         # this avoids running too many useless bots
         # Temporarily restricting to 1 bot for low funds
@@ -172,6 +172,7 @@ class ResearchSignals(SetupSignals):
             on_close=self.on_close,
             on_message=self.on_message,
         )
+        ws.id = f"market_updates_socket_{index}"
         worker_thread = threading.Thread(
             name=f"market_updates_{index}",
             target=ws.run_forever,
@@ -187,16 +188,9 @@ class ResearchSignals(SetupSignals):
         self.load_data()
         raw_symbols = self.ticker_price()
         if not raw_symbols:
-            print("raw_symbols here", raw_symbols)
+            print("No symbols provided by ticket_price", raw_symbols)
+
         black_list = [x["pair"] for x in self.blacklist_data]
-
-        for s in raw_symbols:
-            for pair in self.skipped_fiat_currencies:
-                if pair in s["symbol"]:
-                    self.blacklist_coin(
-                        s["symbol"], "Value too high, can't buy enough coins to earn."
-                    )
-
         markets = set([item["symbol"] for item in raw_symbols])
         subtract_list = set(black_list)
         list_markets = markets - subtract_list
@@ -258,7 +252,7 @@ class ResearchSignals(SetupSignals):
             and balance_check > 0
             and not test_only
         ):
-            autotrade = Autotrade(symbol, self.settings, algorithm)
+            autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
             autotrade.activate_autotrade()
 
         # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
@@ -271,9 +265,9 @@ class ResearchSignals(SetupSignals):
         ):
             # Test autotrade runs independently of autotrade = 1
             test_autotrade = Autotrade(
-                symbol, self.test_autotrade_settings, algorithm, args
+                symbol, self.test_autotrade_settings, algorithm
             )
-            test_autotrade.activate_test_autotrade()
+            test_autotrade.activate_autotrade()
 
     def on_close(self, *args):
         """
@@ -282,8 +276,8 @@ class ResearchSignals(SetupSignals):
         """
         print("Active socket closed")
 
-    def on_open(self, *args, **kwargs):
-        print("Research signals websocket opened")
+    def on_open(self, ws, *args, **kwargs):
+        print(f"Research signals websocket {ws.id} opened")
 
     def on_error(self, ws, error):
         msg = f'Research Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
@@ -346,12 +340,6 @@ class ResearchSignals(SetupSignals):
 
             # Average amplitude
             msg = None
-            # print(f"[{datetime.now()}] Signal:{result['k']['s']}")
-            # print(
-            #     "Surpassed last ma_7 and ma_100? ",
-            #     close_price > ma_7[len(ma_7) - 1],
-            #     close_price > ma_100[len(ma_100) - 1],
-            # )
             value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
             slope, intercept = linear_regression(data["trace"][0])
             sd = stdev(data["trace"][0])
@@ -375,6 +363,7 @@ class ResearchSignals(SetupSignals):
                 ma_25,
             )
 
+            # Temporarily pause
             ma_candlestick_jump(
                 close_price,
                 open_price,
