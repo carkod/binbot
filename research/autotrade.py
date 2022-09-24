@@ -133,7 +133,7 @@ class Autotrade(BinbotApi):
         2. Create bot with given parameters from research_controller
         3. Activate bot
         """
-        print(f"{self.db_collection_name} Autotrade running...")
+        print(f"{self.db_collection_name} Autotrade running with {self.pair}...")
         # Check balance, if no balance set autotrade = 0
         # Use dahsboard add quantity
         res = requests.get(url=self.bb_balance_url)

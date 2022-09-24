@@ -11,7 +11,6 @@ from utils import handle_binance_errors
 
 
 class QFL_signals(SetupSignals):
-
     def __init__(self):
         super().__init__()
         self.exchanges = ["Binance"]
@@ -43,6 +42,21 @@ class QFL_signals(SetupSignals):
         self._restart_websockets()
         self.start_stream(ws)
 
+    def trade_signal(self, asset, ws):
+        # Check if pair works with USDT, is availabee in the binance
+        request_crypto = requests.get(
+            f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance"
+        ).json()
+        try:
+            request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
+        except KeyError:
+            return
+
+        test_symbol = asset + "USDT"
+        print("run_autotrade with ", test_symbol)
+        self.run_autotrade(test_symbol, ws, "hodloo_qfl_signals", True)
+        return
+
     def on_message(self, ws, payload):
         response = json.loads(payload)
         if response["type"] in ["base-break", "panic"]:
@@ -50,22 +64,12 @@ class QFL_signals(SetupSignals):
             is_leveraged_token = bool(re.search("UP/", pair)) or bool(
                 re.search("DOWN/", pair)
             )
-            # testing
+            print("Hodloo signal: ", pair)
             symbol = pair.replace("-", "")
             asset, quote = pair.split("-")
 
-            # Check if pair works with USDT
-            request_crypto = requests.get(f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance").json()
-            try:
-                request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
-            except KeyError:
-                return
+            if not is_leveraged_token:
 
-            test_symbol = asset + "USDT"
-            self.run_autotrade(test_symbol, ws, "hodloo_qfl_signals", True)
-            return
-            # testing ends
-            if exchange_str in self.exchanges and not is_leveraged_token:
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{symbol}"
                 asset, quote = pair.split("-")
                 pair = pair.replace("-", "")
@@ -81,13 +85,13 @@ class QFL_signals(SetupSignals):
                         self.custom_telegram_msg(
                             f"Base Break Symbol Below 10%{message}", symbol=pair
                         )
-                        self.run_autotrade(pair, ws, "hodloo_qfl_signals", True)
+                        self.trade_signal(asset, ws)
 
                     if response["belowBasePct"] == 10:
                         self.custom_telegram_msg(
                             f"Base Break Symbol Below 10% {message}", symbol=pair
                         )
-                        self.run_autotrade(pair, ws, "hodloo_qfl_signals", True)
+                        self.trade_signal(asset, ws)
 
                 if response["type"] == "panic":
                     strength = response["strength"]
@@ -163,3 +167,4 @@ class QFL_signals(SetupSignals):
                 symbol, self.test_autotrade_settings, algorithm, "paper_trading"
             )
             test_autotrade.activate_autotrade()
+        return
