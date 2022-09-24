@@ -1,4 +1,4 @@
-import json
+import math
 from decimal import Decimal
 from json.decoder import JSONDecodeError
 from time import sleep
@@ -13,6 +13,13 @@ class BinanceErrors(Exception):
 class InvalidSymbol(BinanceErrors):
     pass
 
+def round_numbers(value, decimals=6):
+    decimal_points = 10 ** int(decimals)
+    number = float(value)
+    result = math.floor(number * decimal_points) / decimal_points
+    if decimals == 0:
+        result = int(result)
+    return result
 
 def supress_notation(num: float, precision: int = 0):
     """

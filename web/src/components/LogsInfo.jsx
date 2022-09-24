@@ -8,11 +8,11 @@ export default function LogInfo({ info }) {
         <CardTitle tag="h5">Logs</CardTitle>
       </CardHeader>
       <CardBody>
-        {info.map((item) => (
-          <>
+        {info.map((item, i) => (
+          <div key={i}>
             <p>{item}</p>
             <hr />
-          </>
+          </div>
 				))}
       </CardBody>
     </Card>

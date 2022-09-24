@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.9.5
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-dev nginx python-setuptools
 COPY /web/build/ /usr/share/nginx/html
 COPY ./nginx.conf /etc/nginx/sites-enabled/default

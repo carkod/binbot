@@ -34,22 +34,35 @@ export function updateOrderLines(bot, currentPrice) {
    */
   let totalOrderLines = [];
   if (
-    bot.buy_price &&
-    parseFloat(bot.buy_price) > 0 &&
+    bot.deal.buy_price &&
+    parseFloat(bot.deal.buy_price) > 0 &&
     bot.status === "active"
   ) {
-    currentPrice = bot.buy_price;
+    currentPrice = bot.deal.buy_price;
   }
 
   if (bot.base_order_size && currentPrice) {
-    totalOrderLines.push({
-      id: "base_order",
-      text: "Base",
-      tooltip: [bot.status, " Buy Order"],
-      quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-      price: parseFloat(currentPrice),
-      color: dealColors.base_order,
-    });
+    if (bot.deal.avg_buy_price && bot.deal.avg_buy_price > 0) {
+      totalOrderLines.push({
+          id: "avg_buy_price",
+          text: "Avg buy price",
+          tooltip: ["Weighted average price based on safety orders"],
+          quantity: `${(bot.deal.buy_total_qty).toFixed(2)} ${bot.quoteAsset}`,
+          price: bot.deal.avg_buy_price.toFixed(4),
+          color: dealColors.base_order,
+          lineStyle: 2,
+        })
+    } else {
+      totalOrderLines.push({
+        id: "base_order",
+        text: "Base",
+        tooltip: [bot.status, " Buy Order"],
+        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        price: parseFloat(currentPrice),
+        color: dealColors.base_order,
+      });
+    }
+    
     if (bot.take_profit && bot.trailling === "true") {
       const takeProfitPrice =
         currentPrice * (1 + parseFloat(bot.take_profit) / 100);
@@ -85,15 +98,18 @@ export function updateOrderLines(bot, currentPrice) {
     if (bot.safety_orders && bot.safety_orders.length > 0) {
       let safetyOrderLines = [];
       bot.safety_orders.forEach((element) => {
-        safetyOrderLines.push({
-          id: element.name,
-          text: element.name,
-          tooltip: [bot.status, " Buy order when drops here"],
-          quantity: `${element.so_size} ${bot.quoteAsset}`,
-          price: element.buy_price,
-          color: dealColors.safety_order,
-          lineStyle: 2,
-        });
+        if (element.status === undefined || element.status === 0) {
+          safetyOrderLines.push({
+            id: element.name,
+            text: element.name,
+            tooltip: [bot.status, " Buy order when drops here"],
+            quantity: `${element.so_size} ${bot.quoteAsset}`,
+            price: element.buy_price,
+            color: dealColors.safety_order,
+            lineStyle: 2,
+          });
+        }
+        
       });
       totalOrderLines = totalOrderLines.concat(safetyOrderLines);
     }

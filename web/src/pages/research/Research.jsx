@@ -138,18 +138,6 @@ class Research extends React.Component {
     }
   }
 
-  handleBalanceSizeToUseBlur = () => {
-    const searchBalance = this.props.balance_raw.find(b => b["asset"] === this.props.settings.balance_to_use);
-    if (parseFloat(searchBalance.free) < parseFloat(this.props.settings.balance_size_to_use)) {
-      this.setState({
-        minBalanceSizeToUseError: "Not enough balance for bot base orders"
-      });
-    } else {
-      this.setState({
-        minBalanceSizeToUseError: ""
-      });
-    }
-  }
 
   triggerGbpHedge = async (asset) => {
     const res = gbpHedge(asset);

@@ -20,6 +20,7 @@ class SafetyOrderModel:
         so_volume_scale=0,
         created_at=time() * 1000,
         updated_at=time() * 1000,
+        status=0,
         *args,
         **kwargs
     ):
@@ -33,6 +34,7 @@ class SafetyOrderModel:
         self.errors: list[str] = errors
         self.total_commission: float = float(total_comission)
         self.so_volume_scale = so_volume_scale
+        self.status = status
 
 class BotModel:
     """
