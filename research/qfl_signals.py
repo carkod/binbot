@@ -8,7 +8,7 @@ from websocket import WebSocketApp
 from decimal import Decimal
 from autotrade import Autotrade
 from utils import handle_binance_errors
-
+from time import time
 
 class QFL_signals(SetupSignals):
     def __init__(self):
@@ -17,6 +17,7 @@ class QFL_signals(SetupSignals):
         self.quotes = ["USDT", "BUSD", "USD", "BTC", "ETH"]
         self.hodloo_uri = "wss://alpha2.hodloo.com/ws"
         self.hodloo_chart_url = "https://qft.hodloo.com/#/"
+        self.last_processed_asset = {}
 
     def custom_telegram_msg(self, msg, symbol):
         message = f"- [{os.getenv('ENV')}] <strong>#QFL Hodloo</strong> signal algorithm #{symbol} \n - {msg} \n- <a href='https://www.binance.com/en/trade/{symbol}'>Binance</a>  \n- <a href='http://terminal.binbot.in/admin/bots/new/{symbol}'>Dashboard trade</a>"
@@ -68,7 +69,7 @@ class QFL_signals(SetupSignals):
             symbol = pair.replace("-", "")
             asset, quote = pair.split("-")
 
-            if not is_leveraged_token:
+            if not is_leveraged_token and asset not in self.last_processed_asset:
 
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{symbol}"
                 asset, quote = pair.split("-")
@@ -98,6 +99,14 @@ class QFL_signals(SetupSignals):
                     velocity = response["velocity"]
                     message = f'[Panic] Symbol: **{pair}**\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n - <a href="{hodloo_url}">Hodloo</a>'
                     self.custom_telegram_msg(message, symbol=pair)
+
+                # Avoid repeating signals with same coin
+                self.last_processed_asset[asset] = time()
+
+
+            if (float(time()) - float(self.last_processed_asset[asset])) > 6000:
+                del self.last_processed_asset[asset]
+        return
 
     def start_stream(self, ws=None):
         if ws:
