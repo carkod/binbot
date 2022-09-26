@@ -44,14 +44,14 @@ export function updateOrderLines(bot, currentPrice) {
   if (bot.base_order_size && currentPrice) {
     if (bot.deal.avg_buy_price && bot.deal.avg_buy_price > 0) {
       totalOrderLines.push({
-          id: "avg_buy_price",
-          text: "Avg buy price",
-          tooltip: ["Weighted average price based on safety orders"],
-          quantity: `${(bot.deal.buy_total_qty).toFixed(2)} ${bot.quoteAsset}`,
-          price: bot.deal.avg_buy_price.toFixed(4),
-          color: dealColors.base_order,
-          lineStyle: 2,
-        })
+        id: "avg_buy_price",
+        text: "Avg buy price",
+        tooltip: ["Weighted average price based on safety orders"],
+        quantity: `${bot.deal.buy_total_qty.toFixed(2)} ${bot.quoteAsset}`,
+        price: bot.deal.avg_buy_price.toFixed(4),
+        color: dealColors.base_order,
+        lineStyle: 2,
+      });
     } else {
       totalOrderLines.push({
         id: "base_order",
@@ -62,29 +62,50 @@ export function updateOrderLines(bot, currentPrice) {
         color: dealColors.base_order,
       });
     }
-    
+
     if (bot.take_profit && bot.trailling === "true") {
-      const takeProfitPrice =
-        currentPrice * (1 + parseFloat(bot.take_profit) / 100);
-      totalOrderLines.push({
-        id: "trailling_profit",
-        text: `Trailling profit ${bot.take_profit}%`,
-        tooltip: [bot.status, " Breakpoint to increase Take profit"],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        price: takeProfitPrice, // take_profit / trailling_profit
-        color: dealColors.trailling_profit,
-        lineStyle: 2,
-      });
-      totalOrderLines.push({
-        id: "take_profit",
-        text: `Take profit -${bot.trailling_deviation}%`,
-        tooltip: [bot.status, " Sell order when prices drop here"],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        price:
-          takeProfitPrice -
-          takeProfitPrice * parseFloat(bot.trailling_deviation / 100), // take_profit / trailling_profit
-        color: dealColors.take_profit,
-      });
+      // If trailling moved the orderlines
+      if (bot.deal.trailling_stop_loss_price) {
+        totalOrderLines.push({
+          id: "trailling_profit",
+          text: `Trailling profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Breakpoint to increase Take profit"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: bot.deal.take_profit_price, // take_profit / trailling_profit
+          color: dealColors.trailling_profit,
+          lineStyle: 2,
+        });
+        totalOrderLines.push({
+          id: "take_profit",
+          text: `Take profit -${bot.trailling_deviation}%`,
+          tooltip: [bot.status, " Sell order when prices drop here"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: bot.deal.trailling_stop_loss_price,
+          color: dealColors.take_profit,
+        });
+      } else {
+        const takeProfitPrice =
+          currentPrice * (1 + parseFloat(bot.take_profit) / 100);
+        totalOrderLines.push({
+          id: "trailling_profit",
+          text: `Trailling profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Breakpoint to increase Take profit"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: takeProfitPrice, // take_profit / trailling_profit
+          color: dealColors.trailling_profit,
+          lineStyle: 2,
+        });
+        totalOrderLines.push({
+          id: "take_profit",
+          text: `Take profit -${bot.trailling_deviation}%`,
+          tooltip: [bot.status, " Sell order when prices drop here"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price:
+            takeProfitPrice -
+            takeProfitPrice * parseFloat(bot.trailling_deviation / 100), // take_profit / trailling_profit
+          color: dealColors.take_profit,
+        });
+      }
     } else if (bot.take_profit) {
       totalOrderLines.push({
         id: "take_profit",
@@ -109,7 +130,6 @@ export function updateOrderLines(bot, currentPrice) {
             lineStyle: 2,
           });
         }
-        
       });
       totalOrderLines = totalOrderLines.concat(safetyOrderLines);
     }
