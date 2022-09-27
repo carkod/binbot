@@ -112,9 +112,7 @@ class MarketUpdates(Account):
                     print(f'{symbol} Update current_take_profit_price first time! {current_take_profit_price}')
                 else:
                     # Update trailling profit after first time
-                    current_take_profit_price = float(
-                        bot["deal"]["trailling_profit"]
-                    ) * (1 + (float(bot["take_profit"]) / 100))
+                    current_take_profit_price = float(bot["deal"]["trailling_profit"])
 
                 if float(close_price) >= float(current_take_profit_price):
                     new_take_profit = current_take_profit_price * (

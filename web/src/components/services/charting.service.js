@@ -8,8 +8,8 @@ const dealColors = {
 function matchTsToTimescale(ts) {
   /**
    * Internal utility function to match timestamp to timescale
-   * If this is matched, the chart will not show the mark
-   * This time is matched to closest 1am which is how usually
+   * If this is NOT matched, the chart will not show the mark
+   * This time is matched to closest **1am** which is how usually
    * candlestick are pegged to
    */
 
@@ -140,6 +140,7 @@ export function updateOrderLines(bot, currentPrice) {
 export function updateTimescaleMarks(bot) {
   let totalTimescaleMarks = [];
   let color = "blue";
+  let label = "B"
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach((order) => {
       if (order.deal_type === "take_profit") {
@@ -148,12 +149,16 @@ export function updateTimescaleMarks(bot) {
       if (order.deal_type === "trailling_profit") {
         color = dealColors.trailling_profit;
       }
+      if (order.deal_type === "trailling_stop_loss") {
+        color = dealColors.take_profit;
+        label = "S"
+      }
       if (order.deal_type.startsWith("so")) {
         color = dealColors.safety_order;
       }
       const timescaleMark = {
         id: order.order_id,
-        label: "B",
+        label: label,
         tooltip: [order.status, ` ${order.deal_type} ${order.qty}`],
         time: matchTsToTimescale(order.timestamp),
         color: color,

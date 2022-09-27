@@ -110,6 +110,7 @@ export default function MainTab({
             >
               {state.quoteAsset && (
                 <Label check>
+                  {console.log("balance_to_use:", state.balance_to_use, "state.quoteAsset", state.quoteAsset)}
                   <Input
                     type="radio"
                     name="balance_to_use"

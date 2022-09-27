@@ -299,12 +299,12 @@ class CreateDealController(Account):
         try:
             bot_schema = BotSchema()
             bot = bot_schema.dump(self.active_bot)
+            bot.pop("_id")
 
             bot = self.db_collection.find_one_and_update(
                 {"_id": self.active_bot._id},
                 {
-                    "$set": {"deal.take_profit_price": res["price"]},
-                    "$push": {"orders": take_profit_deal},
+                    "$set": {bot},
                 },
                 return_document=ReturnDocument.AFTER,
             )
@@ -318,75 +318,101 @@ class CreateDealController(Account):
         Sell at take_profit price, because prices will not reach trailling
         """
 
-        try:
-            bot = self.active_bot
-            deal_data = self.active_bot.deal
-            deal_buy_price = deal_data.buy_price
-            price = (1 + (float(self.active_bot.take_profit) / 100)) * float(
-                deal_buy_price
-            )
-            deal_data.take_profit_price = price
-            deal_data.trailling_profit = price
+        
+        bot = self.active_bot
+        deal_data = self.active_bot.deal
+        deal_buy_price = self.active_bot.deal.buy_price
+        price = (1 + (float(self.active_bot.take_profit) / 100)) * float(
+            deal_buy_price
+        )
+        
 
-            if self.db_collection.name == "paper_trading":
-                qty = deal_data.buy_total_qty
-            else:
-                qty = self.compute_qty(bot.pair)
+        if self.db_collection.name == "paper_trading":
+            qty = deal_data.buy_total_qty
+        else:
+            qty = self.compute_qty(bot.pair)
 
-            # Dispatch fake order
-            if self.db_collection.name == "paper_trading":
-                res = self.simulate_order(bot.pair, price, qty, "SELL")
-                if price:
-                    res = self.simulate_order(
-                        self.active_bot.pair,
-                        price,
-                        qty,
-                        "SELL",
-                    )
-                else:
-                    price = current_price
-                    res = self.simulate_order(
-                        self.active_bot.pair,
-                        price,
-                        qty,
-                        "SELL",
-                    )
-            # Dispatch real order
+        # Dispatch fake order
+        if self.db_collection.name == "paper_trading":
+            res = self.simulate_order(bot.pair, price, qty, "SELL")
+            if price:
+                res = self.simulate_order(
+                    self.active_bot.pair,
+                    price,
+                    qty,
+                    "SELL",
+                )
             else:
-                if price:
-                    tp_order = {
-                        "pair": bot.pair,
-                        "qty": supress_notation(qty, self.qty_precision),
-                        "price": supress_notation(price, self.price_precision),
-                    }
-                    res = self.bb_request(
-                        method="POST", url=self.bb_sell_order_url, payload=tp_order
-                    )
-                else:
-                    tp_order = {
-                        "pair": bot.pair,
-                        "qty": supress_notation(qty, self.qty_precision),
-                    }
-                    res = self.bb_request(
-                        method="POST",
-                        url=self.bb_sell_market_order_url,
-                        payload=tp_order,
-                    )
+                price = current_price
+                res = self.simulate_order(
+                    self.active_bot.pair,
+                    price,
+                    qty,
+                    "SELL",
+                )
+        # Dispatch real order
+        else:
+            if price:
+                tp_order = {
+                    "pair": bot.pair,
+                    "qty": supress_notation(qty, self.qty_precision),
+                    "price": supress_notation(price, self.price_precision),
+                }
+                res = self.bb_request(
+                    method="POST", url=self.bb_sell_order_url, payload=tp_order
+                )
+            else:
+                tp_order = {
+                    "pair": bot.pair,
+                    "qty": supress_notation(qty, self.qty_precision),
+                }
+                res = self.bb_request(
+                    method="POST",
+                    url=self.bb_sell_market_order_url,
+                    payload=tp_order,
+                )
+
 
             # If error pass it up to parent function, can't continue
             if "error" in res:
                 raise TraillingProfitError(res["error"])
 
-            deal_schema = DealSchema()
-            deal = deal_schema.dump(deal_data)
+            order_data = OrderModel(
+                timestamp=res["transactTime"],
+                order_id=res["orderId"],
+                deal_type="take_profit",
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=res["price"],
+                qty=res["origQty"],
+                fills=res["fills"],
+                time_in_force=res["timeInForce"],
+                status=res["status"],
+            )
 
+            self.active_bot.orders.append(order_data)
+            
+            self.active_bot.deal.take_profit_price = res["price"]
+            self.active_bot.deal.trailling_profit = res["price"]
+            self.active_bot.deal.sell_price = res["price"]
+            self.active_bot.deal.sell_qty = res["origQty"]
+
+        try:
+
+            bot_schema = BotSchema()
+            bot = bot_schema.dump(self.active_bot)
+            bot.pop("_id")
             msg = f"Completed take profit after failing to break trailling"
 
-            bot = self.db_collection.update_one(
+            bot = self.db_collection.find_one_and_update(
                 {"_id": self.active_bot._id},
-                {"$set": {"deal": deal, "status": "completed"}},
-                {"$push": {"errors": msg}},
+                {
+                    "$set": {bot},
+                    "$push": {"errors": msg},
+                },
             )
+
         except Exception as error:
             self.update_deal_logs("Failed to close trailling take profit: " + error)
             raise TraillingProfitError(error)
