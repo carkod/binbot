@@ -81,18 +81,18 @@ class QFL_signals(SetupSignals):
                 if response["type"] == "base-break":
                     base_price = Decimal(str(response["basePrice"]))
                     message = f"**{pair}**, Alert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n - <a href='{hodloo_url}'>Hodloo</a>"
+                    
+                    self.trade_signal(asset, ws)
 
                     if response["belowBasePct"] == 5:
                         self.custom_telegram_msg(
                             f"Base Break Symbol Below 10%{message}", symbol=pair
                         )
-                        self.trade_signal(asset, ws)
 
                     if response["belowBasePct"] == 10:
                         self.custom_telegram_msg(
                             f"Base Break Symbol Below 10% {message}", symbol=pair
                         )
-                        self.trade_signal(asset, ws)
 
                 if response["type"] == "panic":
                     strength = response["strength"]

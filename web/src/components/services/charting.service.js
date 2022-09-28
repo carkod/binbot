@@ -9,8 +9,7 @@ function matchTsToTimescale(ts) {
   /**
    * Internal utility function to match timestamp to timescale
    * If this is NOT matched, the chart will not show the mark
-   * This time is matched to closest **1am** which is how usually
-   * candlestick are pegged to
+   * This time is matched to closest hour (assuming interval hour)
    */
 
   const date = new Date(ts);
@@ -19,9 +18,11 @@ function matchTsToTimescale(ts) {
     date.getMonth(),
     date.getDate(),
     date.getHours(),
-    0,
+    date.getMinutes(),
     0
   );
+  timescaleDate.setMinutes(date.getMinutes() + 30);
+  timescaleDate.setMinutes(0, 0, 0);
   const newTs = timescaleDate.getTime();
   return newTs / 1000;
 }
@@ -53,19 +54,50 @@ export function updateOrderLines(bot, currentPrice) {
         lineStyle: 2,
       });
     } else {
-      totalOrderLines.push({
-        id: "base_order",
-        text: "Base",
-        tooltip: [bot.status, " Buy Order"],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        price: parseFloat(currentPrice),
-        color: dealColors.base_order,
-      });
+      if (bot.deal.buy_price) {
+        totalOrderLines.push({
+          id: "base_order",
+          text: "Base",
+          tooltip: [bot.status, " Buy Order"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: parseFloat(bot.deal.buy_price),
+          color: dealColors.base_order,
+        });
+      } else {
+        totalOrderLines.push({
+          id: "base_order",
+          text: "Base",
+          tooltip: [bot.status, " Buy Order"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: parseFloat(currentPrice),
+          color: dealColors.base_order,
+        });
+      }
     }
 
     if (bot.take_profit && bot.trailling === "true") {
-      // If trailling moved the orderlines
-      if (bot.deal.trailling_stop_loss_price) {
+      // Bot is sold and completed
+      if (bot.status === "completed" && bot.deal.sell_price) {
+        totalOrderLines.push({
+          id: "take_profit",
+          text: `Take profit -${bot.trailling_deviation}%`,
+          tooltip: [bot.status, " Take profit completed"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: bot.deal.sell_price,
+          color: dealColors.take_profit,
+        });
+        totalOrderLines.push({
+          id: "trailling_profit",
+          text: `Trailling profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Breakpoint to increase Take profit"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: bot.deal.sell_price * (1 + parseFloat(bot.take_profit) / 100), // take_profit / trailling_profit
+          color: dealColors.trailling_profit,
+          lineStyle: 2,
+        });
+      } else if (bot.deal.trailling_stop_loss_price) {
+        // If trailling moved the orderlines
+
         totalOrderLines.push({
           id: "trailling_profit",
           text: `Trailling profit ${bot.take_profit}%`,
@@ -140,18 +172,19 @@ export function updateOrderLines(bot, currentPrice) {
 export function updateTimescaleMarks(bot) {
   let totalTimescaleMarks = [];
   let color = "blue";
-  let label = "B"
+  let label = "B";
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach((order) => {
       if (order.deal_type === "take_profit") {
         color = dealColors.take_profit;
+        label = "S";
       }
       if (order.deal_type === "trailling_profit") {
         color = dealColors.trailling_profit;
       }
       if (order.deal_type === "trailling_stop_loss") {
         color = dealColors.take_profit;
-        label = "S"
+        label = "S";
       }
       if (order.deal_type.startsWith("so")) {
         color = dealColors.safety_order;

@@ -36,6 +36,7 @@ export default function MainTab({
             selected={state.pair}
             handleChange={handlePairChange}
             handleBlur={handlePairBlur}
+            disabled={state.status === "completed"}
           />
         </Col>
         <Col md="6" sm="12">
@@ -67,7 +68,7 @@ export default function MainTab({
               onBlur={handleBlur}
               value={state.base_order_size}
               autoComplete="off"
-              disabled={state.status === "active"}
+              disabled={state.status === "active" || state.status === "completed"}
             />
             <InputGroupText>{state.quoteAsset}</InputGroupText>
           </InputGroup>
@@ -110,7 +111,6 @@ export default function MainTab({
             >
               {state.quoteAsset && (
                 <Label check>
-                  {console.log("balance_to_use:", state.balance_to_use, "state.quoteAsset", state.quoteAsset)}
                   <Input
                     type="radio"
                     name="balance_to_use"

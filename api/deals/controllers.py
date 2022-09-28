@@ -295,6 +295,12 @@ class CreateDealController(Account):
 
         self.active_bot.orders.append(order_data)
         self.active_bot.deal.take_profit_price = res["price"]
+        self.active_bot.deal.sell_price = res["price"]
+        self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.status = "completed"
+        msg = f"Completed take profit"
+        self.active_bot.errors.append(msg)
 
         try:
             bot_schema = BotSchema()
@@ -396,6 +402,7 @@ class CreateDealController(Account):
         self.active_bot.deal.trailling_profit = res["price"]
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
         self.active_bot.status = "completed"
         msg = f"Completed take profit after failing to break trailling"
         self.active_bot.errors.append(msg)
@@ -903,6 +910,12 @@ class CreateDealController(Account):
             commission += float(chunk["commission"])
 
         self.active_bot.orders.append(stop_loss_order)
+        self.active_bot.deal.sell_price = res["price"]
+        self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.status = "completed"
+        msg = f"Completed Stop loss"
+        self.active_bot.errors.append(msg)
         self.active_bot.status = "completed"
 
         try:
