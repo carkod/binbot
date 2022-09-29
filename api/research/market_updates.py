@@ -109,7 +109,7 @@ class MarketUpdates(Account):
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
-                    print(f'{symbol} still didn\'t break trailling')
+                    print(f'{symbol} Updated (Didn\'t break trailling)')
                 else:
                     # If current price broke take profit, we start trailling
                     # This is necessary to avoid conflict between trailling take profit and safety orders
