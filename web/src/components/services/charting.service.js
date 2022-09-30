@@ -95,7 +95,10 @@ export function updateOrderLines(bot, currentPrice) {
           color: dealColors.trailling_profit,
           lineStyle: 2,
         });
-      } else if (bot.deal.trailling_stop_loss_price) {
+      } else if (
+        bot.deal.trailling_stop_loss_price &&
+        bot.deal.trailling_stop_loss_price !== 0
+      ) {
         // If trailling moved the orderlines
 
         totalOrderLines.push({
@@ -115,18 +118,20 @@ export function updateOrderLines(bot, currentPrice) {
           price: bot.deal.trailling_stop_loss_price,
           color: dealColors.take_profit,
         });
+      } else if (bot.deal.buy_price && bot.status === "active") {
+        totalOrderLines.push({
+          id: "take_profit",
+          text: `Take profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Sell order when prices drop here"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price:
+            bot.deal.buy_price +
+            bot.deal.buy_price * parseFloat(bot.take_profit / 100), // take_profit / trailling_profit
+          color: dealColors.take_profit,
+        });
       } else {
         const takeProfitPrice =
           currentPrice * (1 + parseFloat(bot.take_profit) / 100);
-        totalOrderLines.push({
-          id: "trailling_profit",
-          text: `Trailling profit ${bot.take_profit}%`,
-          tooltip: [bot.status, " Breakpoint to increase Take profit"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price: takeProfitPrice, // take_profit / trailling_profit
-          color: dealColors.trailling_profit,
-          lineStyle: 2,
-        });
         totalOrderLines.push({
           id: "take_profit",
           text: `Take profit -${bot.trailling_deviation}%`,
@@ -135,6 +140,16 @@ export function updateOrderLines(bot, currentPrice) {
           price:
             takeProfitPrice -
             takeProfitPrice * parseFloat(bot.trailling_deviation / 100), // take_profit / trailling_profit
+          color: dealColors.take_profit,
+        });
+        totalOrderLines.push({
+          id: "take_profit",
+          text: `Take profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Sell order when prices drop here"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price:
+            currentPrice +
+            bot.deal.buy_price * parseFloat(bot.take_profit / 100), // take_profit / trailling_profit
           color: dealColors.take_profit,
         });
       }
