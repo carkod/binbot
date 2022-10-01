@@ -46,7 +46,7 @@
     "prettier": "^2.4.3",
     "react-scripts": "^5.0.1",
     "sass": "^1.54.0",
-    "source-map-explorer": "^2.5.2"
+    "source-map-explorer": "^2.5.3"
   },
   "eslintConfig": {
     "extends": [
