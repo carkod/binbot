@@ -233,7 +233,7 @@ class Bot(Account):
                     200,
                 )
                 return resp
-            
+            return resp
         else:
             return jsonResp_error_message("Bot not found.")
 
