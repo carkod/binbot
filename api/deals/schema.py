@@ -27,3 +27,4 @@ class DealSchema(Schema):
     sell_price: float = fields.Float(dump_default=0)
     sell_qty: float = fields.Float(dump_default=0)
     post_closure_current_price: float = fields.Float(dump_default=0)
+    trailling_stop_loss_price: float = fields.Float(dump_default=0)

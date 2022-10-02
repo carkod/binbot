@@ -14,6 +14,9 @@ class Autotrade(BinbotApi):
         This hits the same endpoints as the UI terminal.binbot dashboard,
         but it's triggered by signals
 
+        There are two types of autotrade: autotrade and test_autotrade. The test_autotrade uses
+        the paper_trading db collection and it doesn't use real quantities.
+
         Args:
         settings: autotrade/test_autotrade settings
         algorithm_name: usually the filename
@@ -251,122 +254,3 @@ class Autotrade(BinbotApi):
 
         print(f"Succesful {self.db_collection_name} autotrade, opened test bot with {self.pair}!")
         pass
-
-
-    def _legacy_activate_autotrade(self):
-        """
-        Run autotrade
-        2. Create bot with given parameters from research_controller
-        3. Activate bot
-        """
-        print("Autotrade running...")
-        # Check balance, if no balance set autotrade = 0
-        # Use dahsboard add quantity
-        res = requests.get(url=self.bb_balance_url)
-        balances = handle_binance_errors(res)
-        qty = 0
-
-        # Get balance that match the pair
-        # Check that we have minimum binance required qty to trade
-        for b in balances["data"]:
-            if self.pair.endswith(b["asset"]):
-                qty = supress_notation(b["free"], self.decimals)
-                if self.min_amount_check(self.pair, qty):
-                    # balance_size_to_use = 0.0 means "Use all balance". float(0) = 0.0
-                    if float(self.default_bot["balance_size_to_use"]) != 0.0:
-                        if b["free"] < float(self.default_bot["balance_size_to_use"]):
-                            # Display warning and continue with full balance
-                            print(f"Error: balance ({qty}) is less than balance_size_to_use ({float(self.default_bot['balance_size_to_use'])}). Autotrade will use all balance")
-                        else:
-                            qty = float(self.default_bot["balance_size_to_use"])
-                
-                    self.default_bot["base_order_size"] = qty
-                    break
-            # If we have GBP we can trade anything
-            # And we have roughly the min BTC equivalent amount
-            if (
-                self.settings["balance_to_use"] == "GBP"
-                and b["asset"] == "GBP"
-                # Trading with less than 40 GBP will not be profitable
-                and float(b["free"]) > 40
-            ):
-                base_asset = self.find_quoteAsset(self.pair)
-                # e.g. XRPBTC
-                if base_asset == "GBP":
-                    self.default_bot["base_order_size"] = b["free"]
-                    break
-                try:
-                    rate = self.ticker_price(f"{base_asset}GBP")
-                except InvalidSymbol:
-                    msg = f"Cannot trade {self.pair} with GBP. Adding to blacklist"
-                    self.handle_error(msg)
-                    self.add_to_blacklist(self.pair, msg)
-                    print(msg)
-                    return
-
-                rate = rate["price"]
-                qty = supress_notation(b["free"], self.decimals)
-                # Round down to 6 numbers to avoid not enough funds
-                base_order_size = (
-                    math.floor((float(qty) / float(rate)) * 10000000) / 10000000
-                )
-                self.default_bot["base_order_size"] = supress_notation(
-                    base_order_size, self.decimals
-                )
-                pass
-
-        if float(self.default_bot["base_order_size"]) == 0:
-            msg = f"No balance matched for {self.pair}"
-            print(msg)
-            return
-
-
-        self.default_bot["trailling_deviation"] = self.settings["trailling_deviation"]
-
-        # Create bot
-        create_bot_res = requests.post(url=self.bb_bot_url, json=self.default_bot)
-        create_bot = handle_binance_errors(create_bot_res)
-
-        if "error" in create_bot and create_bot["error"] == 1:
-            print(
-                f"Autotrade: {create_bot['message']}",
-                f"Pair: {self.pair}.",
-                f"Balance: {b['free']}",
-            )
-            return
-
-        # Activate bot
-        botId = create_bot["botId"]
-        print("Trying to activate bot...")
-        res = requests.get(url=f"{self.bb_activate_bot_url}/{botId}")
-        bot = handle_binance_errors(res)
-
-        if "error" in bot and bot["error"] == 1:
-            print(f"Error activating bot {self.pair} with id {botId}")
-            # Delete inactivatable bot
-            payload = {
-                "id": botId,
-            }
-            delete_res = requests.delete(url=f"{self.bb_bot_url}", params=payload)
-            data = handle_binance_errors(delete_res)
-            print(data)
-            return
-        
-        # Now that we have base_order price activate safety orders
-        res = requests.get(url=f"{self.bb_test_bot_url}/{botId}")
-        test_bot = res.json()["data"]
-        base_order_price = test_bot["deal"]["buy_price"]
-        self.default_5_so(balances, base_order_price, "bots")
-
-        edit_bot_res = requests.put(url=self.bb_bot_url, json=self.default_bot)
-        edit_bot = handle_binance_errors(edit_bot_res)
-
-        if ("error" in edit_bot and edit_bot["error"] == 1):
-            print(
-                f"Test Autotrade: {edit_bot['message']}",
-                f"Pair: {self.pair}.",
-            )
-            return
-
-
-        print(f"Succesful autotrade, opened bot with {self.pair}!")

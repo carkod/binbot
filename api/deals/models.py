@@ -38,7 +38,7 @@ class DealModel:
         current_price=0,
         avg_buy_price=0,
         take_profit_price=0,
-        sell_timestamp=time() * 1000,
+        sell_timestamp=0,
         sell_price=0,
         sell_qty=0,
         trailling_stop_loss_price=0,

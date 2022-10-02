@@ -40,6 +40,7 @@ class TestAutotradeSchema:
             self.take_profit = settings["take_profit"]
             self.balance_to_use = settings["balance_to_use"]
             self.balance_size_to_use = settings["balance_size_to_use"]
+            self.max_active_autotrade_bots = settings["max_active_autotrade_bots"]
         except Exception:
             self.candlestick_interval = "15m"
             self.test_autotrade = 0
@@ -51,6 +52,7 @@ class TestAutotradeSchema:
             self.balance_to_use = "GBP"
             self.balance_size_to_use = 0
             self.telegram_signals = 1
+            self.max_active_autotrade_bots = 20
 
     def validate_model(self, data):
         if "_id" in data:
@@ -69,6 +71,19 @@ class TestAutotradeSchema:
                 self.candlestick_interval = data.get("candlestick_interval")
 
             del data["candlestick_interval"]
+        
+        if "max_active_autotrade_bots" in data:
+            if not isinstance(data.get("max_active_autotrade_bots"), int):
+                try:
+                    self.max_active_autotrade_bots = int(data.get("max_active_autotrade_bots"))
+                except Exception:
+                    raise TypeError(f"max_active_autotrade_bots must be a Integer")
+            elif data.get("max_active_autotrade_bots") is not None:
+                self.max_active_autotrade_bots = data.get("max_active_autotrade_bots")
+
+            del data["max_active_autotrade_bots"]
+        else:
+            self.max_active_autotrade_bots = 20
 
         if "test_autotrade" in data:
             if not isinstance(data.get("test_autotrade"), int) and data.get(

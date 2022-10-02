@@ -200,6 +200,17 @@ class Bot(Account):
         bot = self.db_collection.find_one({"_id": ObjectId(botId)})
 
         if bot:
+
+            # Stop test autotrade from draining too much memory
+            if self.db_collection.name == "paper_trading":
+                settings = self.app.db.research_controller.find_one({"_id": "test_autotrade_settings"})
+                # Mongodb count_documents uses aggregation so it is much slower.
+                active_count = len(list(self.db_collection.find({"status": "active"})))
+                if bot["mode"] == "autotrade" and (active_count + 1) >= settings["max_active_autotrade_bots"]:
+                    return jsonResp_error_message(
+                        "Reached maximum amount of test autotrade bots allowed in settings"
+                    )
+
             try:
                 CreateDealController(bot).open_deal()
             except OpenDealError as error:
@@ -222,8 +233,10 @@ class Bot(Account):
                     200,
                 )
                 return resp
+            return resp
+        else:
+            return jsonResp_error_message("Bot not found.")
 
-        return resp
 
     def deactivate(self):
         """

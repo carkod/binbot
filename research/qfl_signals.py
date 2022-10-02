@@ -20,7 +20,7 @@ class QFL_signals(SetupSignals):
         self.last_processed_asset = {}
 
     def custom_telegram_msg(self, msg, symbol):
-        message = f"- [{os.getenv('ENV')}] <strong>#QFL Hodloo</strong> signal algorithm #{symbol} \n - {msg} \n- <a href='https://www.binance.com/en/trade/{symbol}'>Binance</a>  \n- <a href='http://terminal.binbot.in/admin/bots/new/{symbol}'>Dashboard trade</a>"
+        message = f"- [{os.getenv('ENV')}] <strong>#QFL Hodloo</strong> signal algorithm #{symbol} {msg} \n- <a href='https://www.binance.com/en/trade/{symbol}'>Binance</a>  \n- <a href='http://terminal.binbot.in/admin/bots/new/{symbol}'>Dashboard trade</a>"
 
         self._send_msg(message)
         return
@@ -48,10 +48,9 @@ class QFL_signals(SetupSignals):
         request_crypto = requests.get(
             f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance"
         ).json()
-        try:
-            request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
-        except KeyError:
-            return
+
+        # Cause it to throw error
+        request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
 
         test_symbol = asset + "USDT"
         print("run_autotrade with ", test_symbol)
@@ -65,7 +64,6 @@ class QFL_signals(SetupSignals):
             is_leveraged_token = bool(re.search("UP/", pair)) or bool(
                 re.search("DOWN/", pair)
             )
-            print("Hodloo signal: ", pair)
             symbol = pair.replace("-", "")
             asset, quote = pair.split("-")
 
@@ -80,24 +78,29 @@ class QFL_signals(SetupSignals):
 
                 if response["type"] == "base-break":
                     base_price = Decimal(str(response["basePrice"]))
-                    message = f"**{pair}**, Alert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n - <a href='{hodloo_url}'>Hodloo</a>"
+                    message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a>"
+                    
+                    try:
+                        self.trade_signal(asset, ws)
+                    except KeyError:
+                        return
+
+                    print("Hodloo signal: ", pair)
 
                     if response["belowBasePct"] == 5:
                         self.custom_telegram_msg(
-                            f"Base Break Symbol Below 10%{message}", symbol=pair
+                            f"[Base Break] Below 10%{message}", symbol=pair
                         )
-                        self.trade_signal(asset, ws)
 
                     if response["belowBasePct"] == 10:
                         self.custom_telegram_msg(
-                            f"Base Break Symbol Below 10% {message}", symbol=pair
+                            f"[Base Break] Below 10% {message}", symbol=pair
                         )
-                        self.trade_signal(asset, ws)
 
                 if response["type"] == "panic":
                     strength = response["strength"]
                     velocity = response["velocity"]
-                    message = f'[Panic] Symbol: **{pair}**\nAlert Price: {alert_price}\nVolume: {volume24}\nVelocity: {velocity}\nStrength: {strength}\n - <a href="{hodloo_url}">Hodloo</a>'
+                    message = f'[Panic]\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
                     self.custom_telegram_msg(message, symbol=pair)
 
                 # Avoid repeating signals with same coin

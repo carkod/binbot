@@ -295,6 +295,12 @@ class CreateDealController(Account):
 
         self.active_bot.orders.append(order_data)
         self.active_bot.deal.take_profit_price = res["price"]
+        self.active_bot.deal.sell_price = res["price"]
+        self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.status = "completed"
+        msg = f"Completed take profit"
+        self.active_bot.errors.append(msg)
 
         try:
             bot_schema = BotSchema()
@@ -304,7 +310,7 @@ class CreateDealController(Account):
             bot = self.db_collection.find_one_and_update(
                 {"_id": self.active_bot._id},
                 {
-                    "$set": {bot},
+                    "$set": bot,
                 },
                 return_document=ReturnDocument.AFTER,
             )
@@ -334,7 +340,6 @@ class CreateDealController(Account):
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":
-            res = self.simulate_order(bot.pair, price, qty, "SELL")
             if price:
                 res = self.simulate_order(
                     self.active_bot.pair,
@@ -373,43 +378,47 @@ class CreateDealController(Account):
                 )
 
 
-            # If error pass it up to parent function, can't continue
-            if "error" in res:
-                raise TraillingProfitError(res["error"])
+        # If error pass it up to parent function, can't continue
+        if "error" in res:
+            raise TraillingProfitError(res["error"])
 
-            order_data = OrderModel(
-                timestamp=res["transactTime"],
-                order_id=res["orderId"],
-                deal_type="take_profit",
-                pair=res["symbol"],
-                order_side=res["side"],
-                order_type=res["type"],
-                price=res["price"],
-                qty=res["origQty"],
-                fills=res["fills"],
-                time_in_force=res["timeInForce"],
-                status=res["status"],
-            )
+        order_data = OrderModel(
+            timestamp=res["transactTime"],
+            order_id=res["orderId"],
+            deal_type="take_profit",
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=res["price"],
+            qty=res["origQty"],
+            fills=res["fills"],
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
 
-            self.active_bot.orders.append(order_data)
-            
-            self.active_bot.deal.take_profit_price = res["price"]
-            self.active_bot.deal.trailling_profit = res["price"]
-            self.active_bot.deal.sell_price = res["price"]
-            self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.orders.append(order_data)
+        
+        self.active_bot.deal.take_profit_price = res["price"]
+        self.active_bot.deal.trailling_profit = res["price"]
+        self.active_bot.deal.sell_price = res["price"]
+        self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.status = "completed"
+        msg = f"Completed take profit after failing to break trailling"
+        self.active_bot.errors.append(msg)
 
         try:
 
             bot_schema = BotSchema()
             bot = bot_schema.dump(self.active_bot)
             bot.pop("_id")
-            msg = f"Completed take profit after failing to break trailling"
+            
+            print(msg)
 
             bot = self.db_collection.find_one_and_update(
                 {"_id": self.active_bot._id},
                 {
-                    "$set": {bot},
-                    "$push": {"errors": msg},
+                    "$set": bot,
                 },
             )
 
@@ -901,6 +910,12 @@ class CreateDealController(Account):
             commission += float(chunk["commission"])
 
         self.active_bot.orders.append(stop_loss_order)
+        self.active_bot.deal.sell_price = res["price"]
+        self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.status = "completed"
+        msg = f"Completed Stop loss"
+        self.active_bot.errors.append(msg)
         self.active_bot.status = "completed"
 
         try:

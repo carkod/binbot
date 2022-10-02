@@ -20,7 +20,7 @@ import {
 
 export default function TestAutotrade() {
   const [localState, setLocalState] = useState({
-    balanceToUseUnmatchError: ""
+    balanceToUseUnmatchError: "",
   });
   const dispatch = useDispatch();
   const settingsProps = useSelector((state) => {
@@ -31,8 +31,10 @@ export default function TestAutotrade() {
   });
   const dispatchSetSettings = (payload) =>
     dispatch(setTestAutotradeSetting(payload));
-  const saveSettings = () =>
+  const saveSettings = () => {
     dispatch(saveTestAutoTradeSettings(settingsProps.testAutotradeSettings));
+  }
+    
 
   useEffect(() => {
     const getSettings = () => dispatch(getTestAutotradeSettings());
@@ -107,23 +109,14 @@ export default function TestAutotrade() {
                       />
                     </Col>
                     <Col md="3">
-                      <label htmlFor="trailling">Trailling</label>
-                      <br />
-                      <Button
-                        name="trailling"
-                        color={
-                          settingsProps.testAutotradeSettings.trailling ===
-                          "true"
-                            ? "success"
-                            : "secondary"
+                      <SettingsInput
+                        value={
+                          settingsProps.testAutotradeSettings.max_active_autotrade_bots
                         }
-                        onClick={toggleTrailling}
-                      >
-                        {settingsProps.testAutotradeSettings.trailling ===
-                        "true"
-                          ? "On"
-                          : "Off"}
-                      </Button>
+                        name={"max_active_autotrade_bots"}
+                        label={"Max active autotradea bots"}
+                        handleChange={handleInput}
+                      />
                     </Col>
                     <Col md="3">
                       <label htmlFor="test_autotrade">Autotrade?</label>
@@ -151,9 +144,28 @@ export default function TestAutotrade() {
                     </Col>
                   </Row>
                   <Row>
+                    <Col md="3">
+                      <label htmlFor="trailling">Trailling</label>
+                      <br />
+                      <Button
+                        name="trailling"
+                        color={
+                          settingsProps.testAutotradeSettings.trailling ===
+                          "true"
+                            ? "success"
+                            : "secondary"
+                        }
+                        onClick={toggleTrailling}
+                      >
+                        {settingsProps.testAutotradeSettings.trailling ===
+                        "true"
+                          ? "On"
+                          : "Off"}
+                      </Button>
+                    </Col>
                     {settingsProps.testAutotradeSettings.trailling ===
                       "true" && (
-                      <Row>
+                      <>
                         <Col md="3">
                           <SettingsInput
                             value={
@@ -165,15 +177,6 @@ export default function TestAutotrade() {
                             handleBlur={handleBalanceToUseBlur}
                             errorMsg={localState.balanceToUseUnmatchError}
                             type="text"
-                          />
-                          <SettingsInput
-                            value={
-                              settingsProps.testAutotradeSettings.take_profit
-                            }
-                            name={"take_profit"}
-                            label={"Take profit"}
-                            handleChange={handleInput}
-                            type="number"
                           />
                         </Col>
                         <Col md="3">
@@ -188,6 +191,13 @@ export default function TestAutotrade() {
                             type="number"
                           />
                         </Col>
+                      </>
+                    )}
+                  </Row>
+                  <Row>
+                    {settingsProps.testAutotradeSettings.trailling ===
+                      "true" && (
+                      <>
                         <Col md="3">
                           <SettingsInput
                             value={
@@ -199,7 +209,18 @@ export default function TestAutotrade() {
                             type="number"
                           />
                         </Col>
-                      </Row>
+                        <Col md="3">
+                          <SettingsInput
+                            value={
+                              settingsProps.testAutotradeSettings.take_profit
+                            }
+                            name={"take_profit"}
+                            label={"Take profit"}
+                            handleChange={handleInput}
+                            type="number"
+                          />
+                        </Col>
+                      </>
                     )}
                   </Row>
                   <Row>
