@@ -9,13 +9,16 @@ paper_trading_blueprint = Blueprint("paper-trading", __name__)
 def get():
     return Bot(collection_name="paper_trading").get()
 
+
 @paper_trading_blueprint.route("/paper-trading/<id>", methods=["GET"])
 def get_one(id):
     return Bot(collection_name="paper_trading").get_one()
 
+
 @paper_trading_blueprint.route("/paper-trading", methods=["POST"])
 def create():
     return Bot(collection_name="paper_trading").create()
+
 
 @paper_trading_blueprint.route("/paper-trading/<id>", methods=["PUT"])
 def edit(id):

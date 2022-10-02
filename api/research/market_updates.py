@@ -102,7 +102,7 @@ class MarketUpdates(Account):
             # Take profit trailling
             if bot["trailling"] == "true" and bot["deal"]["buy_price"] != "":
 
-                if ("trailling_profit" not in bot["deal"]) or float(
+                if ("trailling_stop_loss_price" not in bot["deal"] or bot["deal"]["trailling_stop_loss_price"] == 0) or float(
                     bot["deal"]["take_profit_price"]
                 ) <= 0:
                     # If current price didn't break take_profit
@@ -114,7 +114,7 @@ class MarketUpdates(Account):
                     # If current price broke take profit, we start trailling
                     # This is necessary to avoid conflict between trailling take profit and safety orders
                     current_take_profit_price = float(
-                        bot["deal"]["trailling_profit"]
+                        bot["deal"]["trailling_stop_loss_price"]
                     ) * (1 + (float(bot["take_profit"]) / 100))
 
                 if float(close_price) >= float(current_take_profit_price):
@@ -123,9 +123,8 @@ class MarketUpdates(Account):
                     )
                     # Update deal take_profit
                     bot["deal"]["take_profit_price"] = new_take_profit
-                    bot["deal"]["trailling_profit"] = new_take_profit
                     # Update trailling_stop_loss
-                    bot["deal"]["trailling_stop_loss_price"] = float(
+                    bot["deal"][ "trailling_stop_loss_price"] = float(
                         new_take_profit
                     ) - (
                         float(new_take_profit)
@@ -144,8 +143,6 @@ class MarketUpdates(Account):
                                 }
                             },
                         )
-                        # restart scanner
-                        self.start_stream(ws)
 
                 # Sell after hitting trailling stop_loss and if price already broken trailling
                 if "trailling_stop_loss_price" in bot["deal"]:
