@@ -42,6 +42,7 @@ class BotSchema(Schema):
     trailling_deviation: float = fields.Float(required=True)
     trailling_profit: float = fields.Float() # Trailling activation (first take profit hit)
     safety_orders = fields.List(fields.Nested(SafetyOrderSchema))
+    base_strategy = fields.Str(validate=OneOf(["long_buy", "short_buy"]))
     # Deal and orders are internal, should never be updated by outside data
     total_commission: float = fields.Float()
     # Safety orders

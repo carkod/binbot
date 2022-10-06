@@ -65,6 +65,7 @@ class BotModel:
         errors: list[str] = [],
         total_commission: float = 0,
         cooldown: float = 0,
+        base_strategy: str = "long_buy",
         # Safety orders,
         locked_so_funds: float = 0,
         safety_orders = [],
@@ -94,6 +95,7 @@ class BotModel:
         self.trailling_deviation = trailling_deviation
         self.trailling_profit = trailling_profit
         self.updated_at = updated_at
+        self.base_strategy = base_strategy
 
     def append_so(self, so_list):
         safety_orders = []
