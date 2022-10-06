@@ -18,6 +18,7 @@ class QFL_signals(SetupSignals):
         self.hodloo_uri = "wss://alpha2.hodloo.com/ws"
         self.hodloo_chart_url = "https://qft.hodloo.com/#/"
         self.last_processed_asset = {}
+        self.blacklist = []
 
     def custom_telegram_msg(self, msg, symbol):
         message = f"- [{os.getenv('ENV')}] <strong>#QFL Hodloo</strong> signal algorithm #{symbol} {msg} \n- <a href='https://www.binance.com/en/trade/{symbol}'>Binance</a>  \n- <a href='http://terminal.binbot.in/admin/bots/new/{symbol}'>Dashboard trade</a>"
@@ -34,6 +35,9 @@ class QFL_signals(SetupSignals):
 
     def on_open(self, *args, **kwargs):
         print("QFL signals websocket opened")
+        self.load_data()
+        self.blacklist = [item["pair"] for item in self.blacklist_data]
+        
 
     def on_error(self, ws, error):
         msg = f'QFL signals Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
@@ -42,7 +46,7 @@ class QFL_signals(SetupSignals):
         print("Restarting...")
         self._restart_websockets()
         self.start_stream(ws)
-
+    
     def trade_signal(self, asset, ws):
         # Check if pair works with USDT, is availabee in the binance
         request_crypto = requests.get(
@@ -67,7 +71,7 @@ class QFL_signals(SetupSignals):
             symbol = pair.replace("-", "")
             asset, quote = pair.split("-")
 
-            if not is_leveraged_token and asset not in self.last_processed_asset:
+            if not is_leveraged_token and asset not in self.last_processed_asset and symbol not in self.blacklist:
 
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{symbol}"
                 asset, quote = pair.split("-")

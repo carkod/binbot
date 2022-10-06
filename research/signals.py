@@ -33,6 +33,7 @@ class SetupSignals(BinbotApi):
         self.active_symbols = []
         self.thread_ids = []
         self.active_test_bots = []
+        self.blacklist_data = []
 
     def _restart_websockets(self, thread_name="market_updates"):
         """
