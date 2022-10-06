@@ -13,8 +13,7 @@
     "clean": "rm -rf node_modules/ && rm -rf package-lock.json && rm -rf yarn.lock && rm -rf build && rm -rf public/charting_library && rm -rf datafeeds",
     "compile-sass": "sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css",
     "minify-sass": "sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.min.css --output-style compressed",
-    "map-sass": "sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css --source-map true",
-    "analyze": "source-map-explorer build/static/js/main.*"
+    "map-sass": "sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css --source-map true"
   },
   "dependencies": {
     "binbot-charts": "^0.3.0",
@@ -32,7 +31,7 @@
     "react-redux": "^7.2.6",
     "react-redux-toastr": "7.6.5",
     "react-router": "^5.2.1",
-    "react-router-dom": "^5.2.1",
+    "react-router-dom": "^6.4.2",
     "reactstrap": "^9.0.1",
     "redux": "^4.2.0",
     "redux-saga": "^1.1.3",
@@ -45,8 +44,7 @@
     "@testing-library/user-event": "^14.1.1",
     "prettier": "^2.4.3",
     "react-scripts": "^5.0.1",
-    "sass": "^1.54.0",
-    "source-map-explorer": "^2.5.2"
+    "sass": "^1.55.0"
   },
   "eslintConfig": {
     "extends": [
