@@ -34,7 +34,6 @@ class QFL_signals(SetupSignals):
         print("Active socket closed")
 
     def on_open(self, *args, **kwargs):
-        print("QFL signals websocket opened")
         self.load_data()
         self.blacklist = [item["pair"] for item in self.blacklist_data]
         
@@ -43,15 +42,13 @@ class QFL_signals(SetupSignals):
         msg = f'QFL signals Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
         print(msg)
         # API restart 30 secs + 15
-        print("Restarting...")
+        print("Restarting websockets...")
         self._restart_websockets()
         self.start_stream(ws)
     
     def trade_signal(self, asset, ws):
         # Check if pair works with USDT, is availabee in the binance
-        request_crypto = requests.get(
-            f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance"
-        ).json()
+        request_crypto = requests.get(f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance").json()
 
         # Cause it to throw error
         request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
