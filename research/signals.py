@@ -261,9 +261,17 @@ class ResearchSignals(SetupSignals):
         # e.g. autotrade bots not updating can be a symptom of this
         if (
             symbol not in self.active_test_bots
-            and int(self.test_autotrade_settings["test_autotrade"]) == 1
+            and int(self.test_autotrade_settings["test_autotrade"]) == 1 # Test autotrade runs independently of autotrade = 1
         ):
-            # Test autotrade runs independently of autotrade = 1
+            
+            active_bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
+            active_bots = handle_binance_errors(active_bots_res)
+            active_count = len(active_bots["data"])
+
+            if (active_count > self.test_autotrade_settings["max_active_autotrade_bots"]):
+                print("Maximum number of active bots to avoid draining too much memory")
+                return
+
             test_autotrade = Autotrade(
                 symbol, self.test_autotrade_settings, algorithm
             )
@@ -364,22 +372,22 @@ class ResearchSignals(SetupSignals):
             )
 
             # Temporarily pause
-            ma_candlestick_jump(
-                close_price,
-                open_price,
-                ma_7,
-                ma_100,
-                ma_25,
-                symbol,
-                sd,
-                value,
-                chaikin_diff,
-                reg_equation,
-                self._send_msg,
-                self.run_autotrade,
-                ws,
-                intercept,
-            )
+            # ma_candlestick_jump(
+            #     close_price,
+            #     open_price,
+            #     ma_7,
+            #     ma_100,
+            #     ma_25,
+            #     symbol,
+            #     sd,
+            #     value,
+            #     chaikin_diff,
+            #     reg_equation,
+            #     self._send_msg,
+            #     self.run_autotrade,
+            #     ws,
+            #     intercept,
+            # )
 
             self.last_processed_kline[symbol] = time()
 

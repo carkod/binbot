@@ -108,14 +108,15 @@ class TestBotForm extends React.Component {
       if (this.props.bot.deal.buy_price) {
         const buyPrice = parseFloat(this.props.bot.deal.buy_price);
 
-        const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-
         if (
           this.props.bot.status === "completed" &&
           !checkValue(this.props.bot.deal.sell_price)
         ) {
           currentPrice = this.props.bot.deal.sell_price;
         }
+
+        const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
+
         this.setState({ bot_profit: profitChange.toFixed(4) });
       } else {
         this.setState({ bot_profit: 0 });

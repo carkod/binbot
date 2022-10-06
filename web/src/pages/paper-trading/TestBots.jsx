@@ -24,20 +24,39 @@ class TestBots extends React.Component {
     this.endDate = React.createRef();
   }
 
-  componentDidMount = () => {
-    // Default values for date filtering
-    let startDate = new Date(weekAgo());
-    // Temporary fix - get tomorrow's endDate to include today's bot
-    const today = new Date();
-    let endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 1);
-    this.startDate.valueAsDate = startDate;
-    this.endDate.valueAsDate = endDate;
+  handleDateFilters = (e) => {
+    let startDate, endDate;
+    if (e === undefined) {
+      // Default values for date filtering
+      let startDate = new Date(weekAgo());
+      // Temporary fix - get tomorrow's endDate to include today's bot
+      const today = new Date();
+      let endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 1);
+      this.startDate.valueAsDate = startDate;
+      this.endDate.valueAsDate = endDate;
+    }
 
     // Convert to millseconds for endpoint
     startDate = this.startDate.valueAsNumber;
     endDate = this.endDate.valueAsNumber;
-    this.props.getTestBots({ startDate, endDate });
+    
+    if (startDate >= endDate) {
+      this.setState({
+        dateFilterError: "Start date must be earlier than end date",
+      });
+      return;
+    } else {
+      this.props.getTestBots({ startDate, endDate });
+      this.setState({
+        dateFilterError: "",
+      });
+    }
+    
+  }
+
+  componentDidMount = () => {
+    this.handleDateFilters();
   };
 
   handleChange = (e) => {
@@ -54,9 +73,10 @@ class TestBots extends React.Component {
     this.setState({ confirmModal: id });
   };
 
-  confirmDelete = (option) => {
+  confirmDelete = async (option) => {
     if (parseInt(option) === 1) {
-      this.props.deleteTestBot([this.state.confirmModal]);
+      await this.props.deleteTestBot([this.state.confirmModal]);
+      this.handleDateFilters();
     }
     this.setState({ confirmModal: null });
   };
@@ -87,7 +107,7 @@ class TestBots extends React.Component {
         case "delete-selected":
           if (this.state.selectedCards.length > 0) {
             this.props.deleteTestBot(this.state.selectedCards);
-            this.props.getTestBots();
+            this.handleDateFilters();
             this.setState({
               selectedCards: [],
             });
@@ -114,25 +134,6 @@ class TestBots extends React.Component {
           break;
       }
     }
-  };
-
-  handleDateFilters = (e) => {
-    const startDate = this.startDate.valueAsNumber;
-    const endDate = this.endDate.valueAsNumber;
-    if (startDate >= endDate) {
-      this.setState({
-        dateFilterError: "Start date must be earlier than end date",
-      });
-      return;
-    }
-    if (checkValue(startDate) || checkValue(endDate)) {
-      this.props.getTestBots();
-    } else {
-      this.props.getTestBots({ startDate, endDate });
-    }
-    this.setState({
-      dateFilterError: "",
-    });
   };
 
   render() {

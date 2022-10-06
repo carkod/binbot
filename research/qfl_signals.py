@@ -76,17 +76,17 @@ class QFL_signals(SetupSignals):
                 # if quote in self.quotes:
                 alert_price = Decimal(str(response["marketInfo"]["price"]))
 
+                try:
+                    self.trade_signal(asset, ws)
+                except KeyError:
+                    return
+                
+                print("Hodloo signal: ", pair)
+
                 if response["type"] == "base-break":
                     base_price = Decimal(str(response["basePrice"]))
                     message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a>"
                     
-                    try:
-                        self.trade_signal(asset, ws)
-                    except KeyError:
-                        return
-
-                    print("Hodloo signal: ", pair)
-
                     if response["belowBasePct"] == 5:
                         self.custom_telegram_msg(
                             f"[Base Break] Below 10%{message}", symbol=pair
