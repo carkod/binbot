@@ -18,7 +18,6 @@ from api.tools.exceptions import (
 from api.tools.handle_error import (
     QuantityTooLow,
     handle_binance_errors,
-    jsonResp_error_message,
 )
 from api.tools.round_numbers import round_numbers, supress_notation
 from flask import current_app as app, Response
@@ -677,7 +676,7 @@ class CreateDealController(Account):
                 pair, price, qty, "BUY"
             )
         else:
-            res = self.bb_request(self.bb_buy_order_url, "POST", paylaod=order)
+            res = self.bb_request(self.bb_buy_order_url, "POST", payload=order)
 
         safety_order = OrderModel(
             timestamp=res["transactTime"],
@@ -695,16 +694,12 @@ class CreateDealController(Account):
 
         self.active_bot.orders.append(safety_order)
         for so in self.active_bot.safety_orders:
-            if so.name != f"so_{so_index}":
+            if so.name != f"so_{so_index + 1}":
                 so.status = 1
+                so.order_id = res["orderId"]
+                so.buy_timestamp = res["transactTime"]
+                so.so_size = res["origQty"] # update with actual quantity
                 break
-
-        new_tp_price = float(safety_order.price) * (
-            1 + float(self.active_bot.take_profit) / 100
-        )
-
-        # New take profit order
-        self.active_bot.deal.take_profit_price = new_tp_price
 
         commission = 0
         for chunk in safety_order.fills:
@@ -728,7 +723,8 @@ class CreateDealController(Account):
                 if order.deal_type.startswith("so"):
                     weighted_avg_buy_price += order.qty * order.price
 
-        self.active_bot.deal.avg_buy_price = weighted_avg_buy_price / buy_total_qty
+        self.active_bot.deal.original_buy_price = self.active_bot.deal.buy_price
+        self.active_bot.deal.buy_price = weighted_avg_buy_price / buy_total_qty
 
         order_id = None
         for order in self.active_bot.orders:
@@ -750,35 +746,13 @@ class CreateDealController(Account):
                     f"Take profit order not found, no need to cancel, {error}"
                 )
 
-        qty = round_numbers(self.active_bot.deal.buy_total_qty, self.qty_precision)
-
-        if self.db_collection.name == "paper_trading":
-            tp_order = self.simulate_order(pair, price, qty, "SELL")
-        else:
-            new_tp_order = {
-                "pair": self.active_bot.pair,
-                "qty": supress_notation(qty, self.qty_precision),
-                "price": supress_notation(new_tp_price, self.price_precision),
-            }
-            tp_order = self.bb_request(
-                self.bb_sell_order_url, "POST", payload=new_tp_order
-            )
-
-        take_profit_order = OrderModel(
-            timestamp=tp_order["transactTime"],
-            deal_type="take_profit",
-            order_id=tp_order["orderId"],
-            pair=tp_order["symbol"],
-            order_side=tp_order["side"],
-            order_type=tp_order["type"],
-            price=tp_order["price"],
-            qty=tp_order["origQty"],
-            fills=tp_order["fills"],
-            time_in_force=tp_order["timeInForce"],
-            status=tp_order["status"],
+        new_tp_price = float(self.active_bot.deal.buy_price) * (
+            1 + float(self.active_bot.take_profit) / 100
         )
 
-        self.active_bot.orders.append(take_profit_order)
+        # Reset deal take_profit and trailling (even if there is no trailling, setting it 0 would be equal to cancelling)
+        self.active_bot.deal.take_profit_price = new_tp_price
+        self.active_bot.deal.trailling_stop_loss_price = 0
 
         try:
             bot_schema = BotSchema()
@@ -789,7 +763,7 @@ class CreateDealController(Account):
                 {"_id": self.active_bot._id},
                 {"$set": bot},
             )
-            self.update_deal_logs("Updated Safety orders!")
+            self.update_deal_logs(f"Safety order triggered!")
 
         except ValidationError as error:
             self.update_deal_logs(f"Safety orders error: {error.messages}")

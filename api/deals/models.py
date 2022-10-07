@@ -46,6 +46,7 @@ class DealModel:
         trailling_profit=0,
         so_prices=0, # old
         post_closure_current_price=0, # old
+        original_buy_price=0, # historical buy_price after so triggered
         *args,
         **kwargs        
     ):
@@ -63,3 +64,4 @@ class DealModel:
         self.trailling_profit: float = float(trailling_profit)
         self.so_price = so_prices
         self.post_closure_current_price = post_closure_current_price
+        self.original_buy_price = original_buy_price

@@ -80,9 +80,6 @@ class OrderUpdates(BinanceApi):
         # Parse result. Print result for raw result from Binance
         order_id = result["i"]
 
-        # save balance
-        Assets().store_balance()
-
         if result["X"] == "FILLED":
             # Close successful take_profit
             self.app.db.bots.update_one(
@@ -125,15 +122,6 @@ class OrderUpdates(BinanceApi):
                     }
                 }
             )
-
-            if bot:
-                # It is a safety order, now find safety order deal price
-                deal = CreateDealController(bot)
-                deal.update_so()
-                deal.update_take_profit(order_id)
-
-            # Restart market_update websockets to pick up new active bots
-            self.restart_market_updates()
 
         else:
             print(
