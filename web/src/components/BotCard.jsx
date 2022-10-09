@@ -28,6 +28,18 @@ const renderSellTimestamp = (bot) => {
   }
   return ""
 }
+
+const getNetProfit = (bot) => {
+  // current price if bot is active
+  // sell price if bot is completed
+  let finalPrice = bot.deal.current_price;
+  if (bot.status === "completed") {
+    finalPrice = bot.deal.sell_price
+  }
+
+  const netProfit = getProfit(bot.deal.buy_price, finalPrice);
+  return netProfit
+}
 export default function BotCard({
   tabIndex,
   x,
@@ -60,12 +72,12 @@ export default function BotCard({
               {!checkValue(x.deal) && (
                 <Badge
                   color={
-                    getProfit(x.deal.buy_price, x.deal.current_price) > 0
+                    getNetProfit(x) > 0
                       ? "success"
                       : "danger"
                   }
                 >
-                  {getProfit(x.deal.buy_price, x.deal.current_price) + "%"}
+                  {getNetProfit(x) + "%"}
                 </Badge>
               )}
             </CardTitle>
