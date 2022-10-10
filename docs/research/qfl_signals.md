@@ -15,3 +15,5 @@ At the time of writing, the code performs a basic screening of the coin/token:
   - Same with pairs. Even though the main market traded is USDT pairs, e.g. BTCBNB could equally affect the BTCUSDT market, therefore these are also relevant.
   - As a result, we could trade using "foreign" signals. More consistent research would be required to verify that this is not true.
   - Because of these reasons, we need to check crypto-compare (at this moment, this is the best free, not limited, low request weight API that we can use freely) to verify the existence of the pair, so that the autotrade does not break, because the signal doesn't exist. This avoids uncessary errors down the line.
+4. Reduces repeatition by adding a time-bound check (6000 ms at the time of writing, check line)
+5. Only sends signal when base-break
