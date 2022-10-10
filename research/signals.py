@@ -250,7 +250,7 @@ class ResearchSignals(SetupSignals):
         if (
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
-            and balance_check > 0
+            and balance_check > 15 # USDT
             and not test_only
         ):
             autotrade = Autotrade(symbol, self.settings, algorithm, "bots")

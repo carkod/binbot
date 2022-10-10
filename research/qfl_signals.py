@@ -54,8 +54,7 @@ class QFL_signals(SetupSignals):
         request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
 
         test_symbol = asset + "USDT"
-        print("run_autotrade with ", test_symbol)
-        self.run_autotrade(test_symbol, ws, "hodloo_qfl_signals", True)
+        self.run_autotrade(test_symbol, ws, "hodloo_qfl_signals")
         return
 
     def on_message(self, ws, payload):
@@ -67,7 +66,7 @@ class QFL_signals(SetupSignals):
             )
             symbol = pair.replace("-", "")
             asset, quote = pair.split("-")
-
+            print("QFL signals checking blacklist and repeated assets...")
             if not is_leveraged_token and asset not in self.last_processed_asset and symbol not in self.blacklist:
 
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{symbol}"
