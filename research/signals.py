@@ -320,7 +320,7 @@ class ResearchSignals(SetupSignals):
             symbol
             and "k" in result
             and "s" in result["k"]
-            and len(self.active_symbols) == 0
+            and symbol not in self.active_symbols
             and symbol not in self.last_processed_kline
         ):
             close_price = float(result["k"]["c"])

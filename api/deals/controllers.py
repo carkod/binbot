@@ -434,7 +434,7 @@ class CreateDealController(Account):
         - If base order deal is not executed, bot is not activated
         """
         # Do not reactivate
-        if hasattr(self.active_bot, "deal") and self.active_bot.status == "active":
+        if (len(self.active_bot.orders) != 0) and self.active_bot.status == "active":
             raise OpenDealError("Deal already opened, bot is active")
 
         # If there is already a base order do not execute

@@ -143,6 +143,8 @@ class Autotrade(BinbotApi):
         res = requests.get(url=self.bb_balance_url)
         balances = handle_binance_errors(res)
         qty = 0
+        bot_url = self.bb_test_bot_url
+        activate_url = self.bb_activate_bot_url
 
         if self.db_collection_name != "paper_trading":
             # Get balance that match the pair
@@ -197,6 +199,10 @@ class Autotrade(BinbotApi):
                         base_order_size, self.decimals
                     )
                     pass
+            
+            # Dynamic switch to real bot URLs
+            bot_url = self.bb_bot_url
+            activate_url = self.bb_activate_bot_url
 
         # Can't get balance qty, because balance = 0 if real bot is trading
         # Base order set to default 1 to avoid errors
@@ -215,7 +221,7 @@ class Autotrade(BinbotApi):
             self.default_bot["trailling_deviation"] = trailling_deviation
 
         # Create bot
-        create_bot_res = requests.post(url=self.bb_test_bot_url, json=self.default_bot)
+        create_bot_res = requests.post(url=bot_url, json=self.default_bot)
         create_bot = handle_binance_errors(create_bot_res)
 
         if "error" in create_bot and create_bot["error"] == 1:
@@ -227,8 +233,8 @@ class Autotrade(BinbotApi):
 
         # Activate bot
         botId = create_bot["botId"]
-        print("Trying to activate test bot...")
-        res = requests.get(url=f"{self.bb_activate_test_bot_url}/{botId}")
+        print(f"Trying to {self.db_collection_name}...")
+        res = requests.get(url=f"{activate_url}/{botId}")
         bot = handle_binance_errors(res)
 
         if "error" in bot and bot["error"] == 1:
@@ -238,21 +244,21 @@ class Autotrade(BinbotApi):
             payload = {
                 "id": botId,
             }
-            delete_res = requests.delete(url=f"{self.bb_test_bot_url}", params=payload)
+            delete_res = requests.delete(url=bot_url, params=payload)
             data = handle_binance_errors(delete_res)
             print(data)
             return
 
         # Now that we have base_order price activate safety orders
-        res = requests.get(url=f"{self.bb_test_bot_url}/{botId}")
-        test_bot = res.json()["data"]
-        self.default_bot.update(test_bot)
+        res = requests.get(url=f"{bot_url}/{botId}")
+        bot = res.json()["data"]
+        self.default_bot.update(bot)
         self.default_bot.pop("_id")
-        base_order_price = test_bot["deal"]["buy_price"]
+        base_order_price = bot["deal"]["buy_price"]
         self.default_5_so(balances, base_order_price)
 
         edit_bot_res = requests.put(
-            url=f"{self.bb_test_bot_url}/{botId}", json=self.default_bot
+            url=f"{bot_url}/{botId}", json=self.default_bot
         )
         edit_bot = handle_binance_errors(edit_bot_res)
 
@@ -264,6 +270,6 @@ class Autotrade(BinbotApi):
             return
 
         print(
-            f"Succesful {self.db_collection_name} autotrade, opened test bot with {self.pair}!"
+            f"Succesful {self.db_collection_name} autotrade, opened with {self.pair}!"
         )
         pass
