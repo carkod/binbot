@@ -51,11 +51,21 @@ export const ARCHIVE_BOT_ERROR = "ARCHIVE_BOT_ERROR";
 
 export const SET_BOT = "SET_BOT";
 
+// Autotrade settings
+export const GET_SETTINGS = "GET_SETTINGS";
+export const GET_SETTINGS_SUCCESS = "GET_SETTINGS_SUCCESS";
+export const GET_SETTINGS_ERROR = "GET_SETTINGS_ERROR";
+export const SET_SETTINGS_STATE = "SET_SETTINGS_STATE";
+
+export const EDIT_SETTINGS = "EDIT_SETTINGS";
+export const EDIT_SETTINGS_SUCCESS = "EDIT_SETTINGS_SUCCESS";
+export const EDIT_SETTINGS_ERROR = "EDIT_SETTINGS_ERROR";
+
 export function setBot(payload) {
   return {
     type: SET_BOT,
     payload,
-  }
+  };
 }
 
 /**
@@ -66,7 +76,7 @@ export function setBot(payload) {
 export function getBots(params) {
   return {
     type: GET_BOTS,
-    params: params
+    params: params,
   };
 }
 
@@ -170,7 +180,7 @@ export function createBotSucceeded(res) {
   } else {
     addNotification("SUCCESS!", res.message, "success");
   }
-  
+
   return {
     type: CREATE_BOT_SUCCESS,
     botId: res.botId,
@@ -243,27 +253,26 @@ export function editBotFailed(error) {
 
 /**
  * Simple Delete bot
- * @return {objectId} 
+ * @return {objectId}
  */
 export function deleteBot(id) {
   return {
     type: DELETE_BOT,
     data: id,
-    removeId: id
+    removeId: id,
   };
 }
 /**
  * Close deal, sell coins and delete bot
- * @return {objectId} 
+ * @return {objectId}
  */
 export function closeBot(id) {
   return {
     type: CLOSE_BOT,
     data: id,
-    removeId: id
+    removeId: id,
   };
 }
-
 
 /**
  * Dispatched when the repositories are loaded by the request saga
@@ -416,7 +425,7 @@ export function loadCandlestick(pair, interval, start_time) {
     layout: null,
     pair,
     interval,
-    start_time
+    start_time,
   };
 }
 
@@ -457,5 +466,63 @@ export function archiveBotFailed(payload) {
   return {
     type: ARCHIVE_BOT_ERROR,
     id: payload.botId,
+  };
+}
+
+// Autotrade settings
+export function setSettingsState(payload) {
+  return {
+    type: SET_SETTINGS_STATE,
+    payload: payload,
+  };
+}
+
+export function getSettings() {
+  return {
+    type: GET_SETTINGS,
+  };
+}
+
+export function getSettingsSucceeded(payload) {
+  if (payload.error === 1) {
+    addNotification("FAILED!", payload.message, "error");
+  } else {
+    addNotification("SUCCESS!", payload.message, "success");
+  }
+  return {
+    type: GET_SETTINGS_SUCCESS,
+    data: payload.data,
+  };
+}
+
+export function getSettingsFailed() {
+  return {
+    type: GET_SETTINGS_ERROR,
+  };
+}
+
+export function editSettings(payload) {
+  return {
+    type: EDIT_SETTINGS,
+    data: payload,
+  };
+}
+
+export function editSettingsSucceeded(payload) {
+  if (payload.error === 1) {
+    addNotification("FAILED!", payload.message, "error");
+  } else {
+    addNotification("SUCCESS!", payload.message, "success");
+  }
+
+  return {
+    type: EDIT_SETTINGS_SUCCESS,
+    data: payload.settings,
+  };
+}
+
+export function editSettingsFailed() {
+  return {
+    type: EDIT_SETTINGS_ERROR,
   };
 }

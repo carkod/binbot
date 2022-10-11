@@ -409,22 +409,22 @@ class ResearchSignals(SetupSignals):
             )
 
             # Temporarily pause
-            ma_candlestick_jump(
-                close_price,
-                open_price,
-                ma_7,
-                ma_100,
-                ma_25,
-                symbol,
-                sd,
-                value,
-                chaikin_diff,
-                reg_equation,
-                self._send_msg,
-                self.run_autotrade,
-                ws,
-                intercept,
-            )
+            # ma_candlestick_jump(
+            #     close_price,
+            #     open_price,
+            #     ma_7,
+            #     ma_100,
+            #     ma_25,
+            #     symbol,
+            #     sd,
+            #     value,
+            #     chaikin_diff,
+            #     reg_equation,
+            #     self._send_msg,
+            #     self.run_autotrade,
+            #     ws,
+            #     intercept,
+            # )
 
         self.last_processed_kline[symbol] = time()
 

@@ -10,7 +10,8 @@ import {
   symbolReducer,
 } from "./pages/bots/reducer";
 import { testBotsReducer } from "./pages/paper-trading/reducer";
-import { blacklistReducer, settingsReducer } from "./pages/research/reducer";
+import { settingsReducer } from "./pages/bots/reducer";
+import { blacklistReducer } from "./pages/research/reducer";
 import { usersReducer } from "./pages/users/reducer";
 import {
   balanceRawReducer,

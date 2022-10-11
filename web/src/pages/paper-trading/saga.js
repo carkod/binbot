@@ -1,7 +1,7 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
 import request, { buildBackUrl } from "../../request";
-import { getSettingsFailed } from "../research/actions";
+import { getSettingsFailed } from "../bots/actions";
 import {
   activateTestBotFailed,
   activateTestBotSucceeded,
