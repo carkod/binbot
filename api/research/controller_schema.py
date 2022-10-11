@@ -29,6 +29,7 @@ class ControllerSchema:
             self.max_request = settings["max_request"]
             self.system_logs = settings["system_logs"]
             self.update_required = settings["update_required"]
+            self.max_active_autotrade_bots = settings["max_active_autotrade_bots"]
         except Exception:
             self.candlestick_interval = "1h"
             self.autotrade = 0
@@ -42,6 +43,7 @@ class ControllerSchema:
             self.max_request = 950
             self.system_logs = []
             self.update_required = False
+            self.max_active_autotrade_bots = 10
 
     def validate_model(self, data):
         if "_id" in data:
@@ -172,6 +174,17 @@ class ControllerSchema:
                 self.max_request = data.get("max_request")
 
             del data["max_request"]
+        
+        if "max_active_autotrade_bots" in data:
+            if not isinstance(data.get("max_active_autotrade_bots"), int):
+                try:
+                    self.max_active_autotrade_bots = float(data.get("max_active_autotrade_bots"))
+                except Exception:
+                    raise TypeError(f"max_active_autotrade_bots must be a Real number")
+            elif not data.get("max_active_autotrade_bots") is not None:
+                self.max_active_autotrade_bots = data.get("max_active_autotrade_bots")
+
+            del data["max_active_autotrade_bots"]
 
         if "system_logs" in data:
             if not isinstance(data.get("system_logs"), list):

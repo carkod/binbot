@@ -25,7 +25,7 @@ from marshmallow.exceptions import ValidationError
 from marshmallow import EXCLUDE
 
 class Bot(Account):
-    def __init__(self, collection_name="bots"):
+    def __init__(self, collection_name="paper_trading"):
         self.app = current_app
         self.db_collection = self.app.db[collection_name]
 
@@ -202,7 +202,7 @@ class Bot(Account):
         if bot:
 
             try:
-                CreateDealController(bot).open_deal()
+                CreateDealController(bot, db_collection=self.db_collection.name).open_deal()
                 self.db_collection.update_one(
                     {"_id": ObjectId(botId)}, {"$set": {"status": "active"}}
                 )

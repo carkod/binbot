@@ -34,7 +34,6 @@ class QFL_signals(SetupSignals):
         print("Active socket closed")
 
     def on_open(self, *args, **kwargs):
-        print("QFL signals websocket opened")
         self.load_data()
         self.blacklist = [item["pair"] for item in self.blacklist_data]
         
@@ -43,23 +42,19 @@ class QFL_signals(SetupSignals):
         msg = f'QFL signals Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
         print(msg)
         # API restart 30 secs + 15
-        print("Restarting...")
+        print("Restarting websockets...")
         self._restart_websockets()
         self.start_stream(ws)
     
-    def trade_signal(self, asset, ws):
+    def check_asset(self, asset, ws):
         # Check if pair works with USDT, is availabee in the binance
-        request_crypto = requests.get(
-            f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance"
-        ).json()
+        request_crypto = requests.get(f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance").json()
 
         # Cause it to throw error
         request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
 
-        test_symbol = asset + "USDT"
-        print("run_autotrade with ", test_symbol)
-        self.run_autotrade(test_symbol, ws, "hodloo_qfl_signals", True)
-        return
+        symbol = asset + "USDT"
+        return symbol
 
     def on_message(self, ws, payload):
         response = json.loads(payload)
@@ -68,24 +63,21 @@ class QFL_signals(SetupSignals):
             is_leveraged_token = bool(re.search("UP/", pair)) or bool(
                 re.search("DOWN/", pair)
             )
-            symbol = pair.replace("-", "")
             asset, quote = pair.split("-")
-
+            symbol = pair.replace("-","")
             if not is_leveraged_token and asset not in self.last_processed_asset and symbol not in self.blacklist:
 
-                hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{symbol}"
-                asset, quote = pair.split("-")
-                pair = pair.replace("-", "")
+                hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{pair}"
                 volume24 = response["marketInfo"]["volume24"]
-                # if quote in self.quotes:
                 alert_price = Decimal(str(response["marketInfo"]["price"]))
-
+                
                 try:
-                    self.trade_signal(asset, ws)
+                    self.check_asset(asset, ws)
                 except KeyError:
                     return
                 
-                print("Hodloo signal: ", pair)
+                trading_pair = asset + "USDT"
+                print("Hodloo signal: ", symbol)
 
                 if response["type"] == "base-break":
                     base_price = Decimal(str(response["basePrice"]))
@@ -93,19 +85,21 @@ class QFL_signals(SetupSignals):
                     
                     if response["belowBasePct"] == 5:
                         self.custom_telegram_msg(
-                            f"[Base Break] Below 10%{message}", symbol=pair
+                            f"[Base Break] Below 10%{message}", symbol=trading_pair
                         )
+                        self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
 
                     if response["belowBasePct"] == 10:
                         self.custom_telegram_msg(
-                            f"[Base Break] Below 10% {message}", symbol=pair
+                            f"[Base Break] Below 10% {message}", symbol=trading_pair
                         )
+                        self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
 
                 if response["type"] == "panic":
                     strength = response["strength"]
                     velocity = response["velocity"]
                     message = f'[Panic]\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
-                    self.custom_telegram_msg(message, symbol=pair)
+                    self.custom_telegram_msg(message, symbol=trading_pair)
 
                 # Avoid repeating signals with same coin
                 self.last_processed_asset[asset] = time()
@@ -164,9 +158,13 @@ class QFL_signals(SetupSignals):
         if (
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
-            and balance_check > 0
+            and balance_check > 15
             and not test_only
         ):
+            if not self.reached_max_active_autobots("bots"):
+                print("Reached maximum number of active bots set in controller settings")
+                return
+
             autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
             autotrade.activate_autotrade()
 
@@ -178,6 +176,9 @@ class QFL_signals(SetupSignals):
             symbol not in self.active_test_bots
             and int(self.test_autotrade_settings["test_autotrade"]) == 1
         ):
+            if not self.reached_max_active_autobots("paper_trading"):
+                print("Reached maximum number of active bots set in controller settings")
+                return
             # Test autotrade runs independently of autotrade = 1
             test_autotrade = Autotrade(
                 symbol, self.test_autotrade_settings, algorithm, "paper_trading"

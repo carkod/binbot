@@ -114,7 +114,7 @@ export default function TestAutotrade() {
                           settingsProps.testAutotradeSettings.max_active_autotrade_bots
                         }
                         name={"max_active_autotrade_bots"}
-                        label={"Max active autotradea bots"}
+                        label={"Max active autotrade bots"}
                         handleChange={handleInput}
                       />
                     </Col>

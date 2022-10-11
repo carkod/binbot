@@ -43,38 +43,25 @@ export function updateOrderLines(bot, currentPrice) {
   }
 
   if (bot.base_order_size && currentPrice) {
-    if (bot.deal.avg_buy_price && bot.deal.avg_buy_price > 0) {
+    if (bot.deal.original_buy_price && bot.deal.original_buy_price > 0) {
       totalOrderLines.push({
-        id: "avg_buy_price",
-        text: "Avg buy price",
-        tooltip: ["Weighted average price based on safety orders"],
-        quantity: `${bot.deal.buy_total_qty.toFixed(2)} ${bot.quoteAsset}`,
-        price: bot.deal.avg_buy_price.toFixed(4),
+        id: "original_buy_price",
+        text: "Base",
+        tooltip: [bot.status, " Original buy price before SO triggered"],
+        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        price: parseFloat(bot.deal.buy_price),
         color: dealColors.base_order,
-        lineStyle: 2,
       });
-    } else {
-      if (bot.deal.buy_price) {
-        totalOrderLines.push({
-          id: "base_order",
-          text: "Base",
-          tooltip: [bot.status, " Buy Order"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price: parseFloat(bot.deal.buy_price),
-          color: dealColors.base_order,
-        });
-      } else {
-        totalOrderLines.push({
-          id: "base_order",
-          text: "Base",
-          tooltip: [bot.status, " Buy Order"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price: parseFloat(currentPrice),
-          color: dealColors.base_order,
-        });
-      }
     }
 
+    totalOrderLines.push({
+      id: "base_order",
+      text: "Base",
+      tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
+      quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+      price: parseFloat(currentPrice),
+      color: dealColors.base_order,
+    });
     if (bot.take_profit && bot.trailling === "true") {
       // Bot is sold and completed
       if (bot.status === "completed" && bot.deal.sell_price) {

@@ -139,6 +139,42 @@ class SetupSignals(BinbotApi):
         res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
         handle_binance_errors(res)
         return
+    
+    def reached_max_active_autobots(self, db_collection_name):
+        """
+        Check max `max_active_autotrade_bots` in controller settings
+
+        Args:
+        - db_collection_name [string]: Database collection name ["paper_trading", "bots"]
+
+        If total active bots > settings.max_active_autotrade_bots
+        do not open more bots. There are two reasons for this:
+        - In the case of test bots, infininately opening bots will open hundreds of bots
+        which will drain memory and downgrade server performance
+        - In the case of real bots, opening too many bots could drain all funds
+        in bots that are actually not useful or not profitable. Some funds
+        need to be left for Safety orders
+        """
+        if db_collection_name == "paper_trading":
+            if not self.test_autotrade_settings:
+                self.load_data()
+            
+            active_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active"})
+            active_bots = handle_binance_errors(active_bots_res)
+            active_count = len(active_bots["data"])
+            if (active_count > self.test_autotrade_settings["max_active_autotrade_bots"]):
+                return True
+        
+        if db_collection_name == "bots":
+            if not self.settings:
+                self.load_data()
+            active_bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
+            active_bots = handle_binance_errors(active_bots_res)
+            active_count = len(active_bots["data"])
+            if (active_count > self.settings["max_active_autotrade_bots"]):
+                return True
+        
+        return False
 
 
 class ResearchSignals(SetupSignals):
@@ -250,9 +286,13 @@ class ResearchSignals(SetupSignals):
         if (
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
-            and balance_check > 0
+            and balance_check > 15 # USDT
             and not test_only
         ):
+            if self.max_active_autotrade_bots("bots"):
+                print("Maximum number of active bots to avoid draining too much memory")
+                return
+
             autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
             autotrade.activate_autotrade()
 
@@ -265,11 +305,7 @@ class ResearchSignals(SetupSignals):
             and int(self.test_autotrade_settings["test_autotrade"]) == 1 # Test autotrade runs independently of autotrade = 1
         ):
             
-            active_bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
-            active_bots = handle_binance_errors(active_bots_res)
-            active_count = len(active_bots["data"])
-
-            if (active_count > self.test_autotrade_settings["max_active_autotrade_bots"]):
+            if self.max_active_autotrade_bots("paper_trading"):
                 print("Maximum number of active bots to avoid draining too much memory")
                 return
 
@@ -320,7 +356,7 @@ class ResearchSignals(SetupSignals):
             symbol
             and "k" in result
             and "s" in result["k"]
-            and len(self.active_symbols) == 0
+            and symbol not in self.active_symbols
             and symbol not in self.last_processed_kline
         ):
             close_price = float(result["k"]["c"])
@@ -373,24 +409,24 @@ class ResearchSignals(SetupSignals):
             )
 
             # Temporarily pause
-            # ma_candlestick_jump(
-            #     close_price,
-            #     open_price,
-            #     ma_7,
-            #     ma_100,
-            #     ma_25,
-            #     symbol,
-            #     sd,
-            #     value,
-            #     chaikin_diff,
-            #     reg_equation,
-            #     self._send_msg,
-            #     self.run_autotrade,
-            #     ws,
-            #     intercept,
-            # )
+            ma_candlestick_jump(
+                close_price,
+                open_price,
+                ma_7,
+                ma_100,
+                ma_25,
+                symbol,
+                sd,
+                value,
+                chaikin_diff,
+                reg_equation,
+                self._send_msg,
+                self.run_autotrade,
+                ws,
+                intercept,
+            )
 
-            self.last_processed_kline[symbol] = time()
+        self.last_processed_kline[symbol] = time()
 
         # If more than 6 hours passed has passed
         # Then we should resume sending signals for given symbol

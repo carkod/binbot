@@ -136,6 +136,21 @@ export default function MainTab({
         )}
       </Row>
       <Row>
+        <Col md="6">
+          <FormGroup>
+            <Label for="base_strategy">
+              Base strategy
+            </Label>
+            <Input
+              id="base-strategy"
+              name="base_strategy"
+              type="select"
+            >
+              <option value="long_buy">Long buy</option>
+              <option value="short_buy">Short buy</option>
+            </Input>
+          </FormGroup>
+        </Col>
         <Col md="6" sm="12">
           <FormGroup>
             <BotFormTooltip

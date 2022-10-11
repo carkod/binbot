@@ -79,6 +79,16 @@ export const ControllerTab = ({
                       />
                     </Col>
                     <Col md="3">
+                      <SettingsInput
+                        value={
+                          settings.max_active_autotrade_bots
+                        }
+                        name={"max_active_autotrade_bots"}
+                        label={"Max active autotrade bots"}
+                        handleChange={handleInput}
+                      />
+                    </Col>
+                    <Col md="3">
                       <label>Autotrade?</label>
                       <br />
                       <Button
