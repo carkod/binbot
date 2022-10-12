@@ -48,4 +48,3 @@ class BotSchema(Schema):
     # Safety orders
     updated_at = fields.Float()
     _id = fields.Str()
-
