@@ -108,27 +108,7 @@ export default function Autotrade() {
                         handleChange={handleInput}
                       />
                     </Col>
-                    <Col md="3">
-                      <SettingsInput
-                        value={
-                          settingsProps.autotradeSettings.max_active_autotrade_bots
-                        }
-                        name={"max_active_autotrade_bots"}
-                        label={"Max active autotrade bots"}
-                        handleChange={handleInput}
-                      />
-                    </Col>
-                    <Col md="3">
-                      <label htmlFor="test_autotrade">Autotrade?</label>
-                      <br />
-                      <LightSwitch
-                        value={
-                          settingsProps.autotradeSettings.test_autotrade
-                        }
-                        name="test_autotrade"
-                        toggle={toggle}
-                      />
-                    </Col>
+                    
                     <Col md="3">
                       <label htmlFor="telegram_signals">
                         Send messages to telegram?
@@ -141,6 +121,29 @@ export default function Autotrade() {
                         name="telegram_signals"
                         toggle={toggle}
                       />
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col md="3">
+                      <label htmlFor="autotrade">Autotrade?</label>
+                      <br />
+                      <LightSwitch
+                        value={
+                          settingsProps.autotradeSettings.autotrade
+                        }
+                        name="autotrade"
+                        toggle={toggle}
+                      />
+                    </Col>
+                    <Col md="3">
+                      <SettingsInput
+                        value={
+                          settingsProps.autotradeSettings.max_active_autotrade_bots
+                        }
+                        name={"max_active_autotrade_bots"}
+                        label={"Max active autotrade bots"}
+                        handleChange={handleInput}
+                        />
                     </Col>
                   </Row>
                   <Row>

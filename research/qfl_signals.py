@@ -99,7 +99,8 @@ class QFL_signals(SetupSignals):
                     strength = response["strength"]
                     velocity = response["velocity"]
                     message = f'[Panic]\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
-                    self.custom_telegram_msg(message, symbol=trading_pair)
+                    # Enable when testing buy_short
+                    # self.custom_telegram_msg(message, symbol=trading_pair)
 
                 # Avoid repeating signals with same coin
                 self.last_processed_asset[asset] = time()

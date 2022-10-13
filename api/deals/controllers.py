@@ -715,6 +715,8 @@ class CreateDealController(Account):
         self.active_bot.deal.buy_total_qty = buy_total_qty
 
         # weighted average buy price
+        # first store the previous price for the record
+        self.active_bot.deal.original_buy_price = self.active_bot.deal.buy_price
         if self.active_bot.orders and len(self.active_bot.orders) > 0:
             weighted_avg_buy_price = 0
             for order in self.active_bot.orders:
@@ -723,7 +725,6 @@ class CreateDealController(Account):
                 if order.deal_type.startswith("so"):
                     weighted_avg_buy_price += order.qty * order.price
 
-        self.active_bot.deal.original_buy_price = self.active_bot.deal.buy_price
         self.active_bot.deal.buy_price = weighted_avg_buy_price / buy_total_qty
 
         order_id = None
