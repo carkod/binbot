@@ -65,6 +65,7 @@ class QFL_signals(SetupSignals):
             )
             asset, quote = pair.split("-")
             symbol = pair.replace("-","")
+            print(f"First base-break/panic signal. Leveraged token? {is_leveraged_token}, blacklist? {symbol not in self.blacklist}", pair)
             if not is_leveraged_token and asset not in self.last_processed_asset and symbol not in self.blacklist:
 
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{pair}"
@@ -76,37 +77,31 @@ class QFL_signals(SetupSignals):
                 except KeyError:
                     return
                 
+                # Because signals for other market could influence also USDT market
                 trading_pair = asset + "USDT"
-                print("Hodloo signal: ", symbol)
+                print("Received trading pair", trading_pair)
 
                 if response["type"] == "base-break":
+                    print("Hodloo base-break signal: ", symbol)
                     base_price = Decimal(str(response["basePrice"]))
                     message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a>"
-                    
-                    if response["belowBasePct"] == 5:
-                        self.custom_telegram_msg(
-                            f"[Base Break] Below 10%{message}", symbol=trading_pair
-                        )
-                        self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
-
-                    if response["belowBasePct"] == 10:
-                        self.custom_telegram_msg(
-                            f"[Base Break] Below 10% {message}", symbol=trading_pair
-                        )
-                        self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
+                    self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
 
                 if response["type"] == "panic":
                     strength = response["strength"]
                     velocity = response["velocity"]
                     message = f'[Panic]\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
-                    # Enable when testing buy_short
-                    # self.custom_telegram_msg(message, symbol=trading_pair)
+                
+                
+                self.custom_telegram_msg(
+                    f"[Base Break] Below {response['belowBasePct']}%{message}", symbol=trading_pair
+                )
 
                 # Avoid repeating signals with same coin
                 self.last_processed_asset[asset] = time()
 
 
-            if (float(time()) - float(self.last_processed_asset[asset])) > 6000:
+            if asset in self.last_processed_asset and (float(time()) - float(self.last_processed_asset[asset])) > 3600:
                 del self.last_processed_asset[asset]
         return
 
