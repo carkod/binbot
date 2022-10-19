@@ -65,12 +65,13 @@ class QFL_signals(SetupSignals):
             )
             asset, quote = pair.split("-")
             symbol = pair.replace("-","")
-            print(f"First base-break/panic signal. Leveraged token? {is_leveraged_token}, blacklist? {symbol not in self.blacklist}", pair)
             if not is_leveraged_token and asset not in self.last_processed_asset and symbol not in self.blacklist:
 
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{pair}"
                 volume24 = response["marketInfo"]["volume24"]
                 alert_price = Decimal(str(response["marketInfo"]["price"]))
+
+                print(f"Received asset {asset}. Checking existence in Binance")
                 
                 try:
                     self.check_asset(asset, ws)

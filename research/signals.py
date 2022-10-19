@@ -2,20 +2,20 @@ import json
 import random
 import threading
 import math
+import numpy
 from datetime import datetime
 from time import sleep, time
+
 
 import requests
 from websocket import WebSocketApp
 
 from algorithms.candlejump_sd import candlejump_sd
-from algorithms.candlestick_patterns import candlestick_patterns
 from algorithms.ma_candlestick_jump import ma_candlestick_jump
 from apis import BinbotApi
 from autotrade import Autotrade
-from pattern_detection import chaikin_oscillator, linear_regression, stdev
 from telegram_bot import TelegramBot
-from utils import handle_binance_errors
+from utils import handle_binance_errors, round_numbers
 from datetime import datetime
 
 
@@ -118,7 +118,7 @@ class SetupSignals(BinbotApi):
         self.blacklist_data = blacklist_data["data"]
         self.interval = self.settings["candlestick_interval"]
         self.max_request = int(self.settings["max_request"])
-        
+
         # if autrotrade enabled and it's not an already active bot
         # this avoids running too many useless bots
         # Temporarily restricting to 1 bot for low funds
@@ -139,7 +139,7 @@ class SetupSignals(BinbotApi):
         res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
         handle_binance_errors(res)
         return
-    
+
     def reached_max_active_autobots(self, db_collection_name):
         """
         Check max `max_active_autotrade_bots` in controller settings
@@ -158,22 +158,26 @@ class SetupSignals(BinbotApi):
         if db_collection_name == "paper_trading":
             if not self.test_autotrade_settings:
                 self.load_data()
-            
-            active_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active"})
+
+            active_bots_res = requests.get(
+                url=self.bb_test_bot_url, params={"status": "active"}
+            )
             active_bots = handle_binance_errors(active_bots_res)
             active_count = len(active_bots["data"])
-            if (active_count > self.test_autotrade_settings["max_active_autotrade_bots"]):
+            if active_count > self.test_autotrade_settings["max_active_autotrade_bots"]:
                 return True
-        
+
         if db_collection_name == "bots":
             if not self.settings:
                 self.load_data()
-            active_bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
+            active_bots_res = requests.get(
+                url=self.bb_bot_url, params={"status": "active"}
+            )
             active_bots = handle_binance_errors(active_bots_res)
             active_count = len(active_bots["data"])
-            if (active_count > self.settings["max_active_autotrade_bots"]):
+            if active_count > self.settings["max_active_autotrade_bots"]:
                 return True
-        
+
         return False
 
 
@@ -286,10 +290,10 @@ class ResearchSignals(SetupSignals):
         if (
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
-            and balance_check > 15 # USDT
+            and balance_check > 15  # USDT
             and not test_only
         ):
-            if self.max_active_autotrade_bots("bots"):
+            if self.reached_max_active_autobots("bots"):
                 print("Maximum number of active bots to avoid draining too much memory")
                 return
 
@@ -302,16 +306,15 @@ class ResearchSignals(SetupSignals):
         # e.g. autotrade bots not updating can be a symptom of this
         if (
             symbol not in self.active_test_bots
-            and int(self.test_autotrade_settings["test_autotrade"]) == 1 # Test autotrade runs independently of autotrade = 1
+            and int(self.test_autotrade_settings["test_autotrade"])
+            == 1  # Test autotrade runs independently of autotrade = 1
         ):
-            
-            if self.max_active_autotrade_bots("paper_trading"):
+
+            if self.reached_max_active_autobots("paper_trading"):
                 print("Maximum number of active bots to avoid draining too much memory")
                 return
 
-            test_autotrade = Autotrade(
-                symbol, self.test_autotrade_settings, algorithm
-            )
+            test_autotrade = Autotrade(symbol, self.test_autotrade_settings, algorithm)
             test_autotrade.activate_autotrade()
 
     def on_close(self, *args):
@@ -385,28 +388,8 @@ class ResearchSignals(SetupSignals):
 
             # Average amplitude
             msg = None
-            value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
-            slope, intercept = linear_regression(data["trace"][0])
-            sd = stdev(data["trace"][0])
-
-            reg_equation = f"{slope}X + {intercept}"
-
-            # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
-            candlestick_patterns(
-                data["trace"][0],
-                sd,
-                close_price,
-                open_price,
-                value,
-                chaikin_diff,
-                reg_equation,
-                self._send_msg,
-                self.run_autotrade,
-                symbol,
-                ws,
-                intercept,
-                ma_25,
-            )
+            list_prices = numpy.array(data["trace"][0]["close"])
+            sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
 
             # Temporarily pause
             ma_candlestick_jump(
@@ -417,13 +400,9 @@ class ResearchSignals(SetupSignals):
                 ma_25,
                 symbol,
                 sd,
-                value,
-                chaikin_diff,
-                reg_equation,
                 self._send_msg,
                 self.run_autotrade,
                 ws,
-                intercept,
             )
 
         self.last_processed_kline[symbol] = time()
