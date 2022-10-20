@@ -1,5 +1,5 @@
 import json
-
+import threading
 from pymongo import ReturnDocument
 
 from api.account.account import Account
@@ -17,6 +17,27 @@ class MarketUpdates(Account):
         self.markets_streams = None
         self.interval = interval
         self.markets = []
+    
+    def _restart_websockets(self, thread_name="market_updates"):
+        """
+        Restart websockets threads after list of active bots altered
+        """
+        print("Starting thread cleanup")
+        global stop_threads
+        stop_threads = True
+        # Notify market updates websockets to update
+        for thread in threading.enumerate():
+            print("Currently active threads: ", thread.name)
+            if (
+                hasattr(thread, "tag")
+                and thread_name in thread.name
+                and hasattr(thread, "_target")
+            ):
+                stop_threads = False
+                print("closing websocket")
+                thread._target.__self__.close()
+
+        pass
 
     def start_stream(self, ws=None):
         """
@@ -58,6 +79,7 @@ class MarketUpdates(Account):
     def on_error(self, ws, error):
         error_msg = f'market_updates error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
         print(error_msg)
+        self._restart_websockets()
         self.start_stream(ws)
 
     def on_message(self, ws, message):
