@@ -49,7 +49,7 @@ class QFL_signals(SetupSignals):
     def check_asset(self, asset, ws):
         # Check if pair works with USDT, is availabee in the binance
         request_crypto = requests.get(f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance").json()
-
+        print(f'Received asset {asset}. Checking existence in Binance {request_crypto["Data"]["exchanges"]["Binance"]}')
         # Cause it to throw error
         request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
 
@@ -71,11 +71,10 @@ class QFL_signals(SetupSignals):
                 volume24 = response["marketInfo"]["volume24"]
                 alert_price = Decimal(str(response["marketInfo"]["price"]))
 
-                print(f"Received asset {asset}. Checking existence in Binance")
-                
                 try:
                     self.check_asset(asset, ws)
-                except KeyError:
+                except KeyError as error:
+                    print(error)
                     return
                 
                 # Because signals for other market could influence also USDT market
@@ -149,6 +148,7 @@ class QFL_signals(SetupSignals):
         # Need to reload websocket
         if "update_required" in self.settings and self.settings["update_required"]:
             print("Update required, restart stream")
+            self._restart_websockets()
             self.start_stream(previous_ws=ws)
             pass
 

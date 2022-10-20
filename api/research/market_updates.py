@@ -174,9 +174,10 @@ class MarketUpdates(Account):
                         deal = CreateDealController(bot, db_collection)
                         try:
                             deal.trailling_profit(price)
+                            self._restart_websockets()
+                            self.start_stream(ws)
                         except Exception as error:
                             return
-                        self.start_stream(ws)
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
