@@ -73,7 +73,7 @@ export default function BotInfo({ bot }) {
               if (typeof(bot.deal[k]) !== "object") {
                 let dealData = bot.deal[k];
                 if (k === "buy_timestamp" || k === "sell_timestamp") {
-                  dealData = bot.deal[k] === 0 || moment(bot.deal[k]).format("D MMM, hh:mm")
+                  dealData = bot.deal[k] === 0 || moment(bot.deal[k]).format("D MMM, HH:mm")
                 }
                 return <ListGroupItem key={i} className="d-flex justify-content-between align-items-start"><strong>{k}</strong> {dealData}</ListGroupItem>
               } else {
