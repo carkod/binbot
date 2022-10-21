@@ -51,7 +51,6 @@ class QFL_signals(SetupSignals):
         # Check if pair works with USDT, is availabee in the binance
         print(f'Received asset {asset}. Checking existence in Binance...')
         request_crypto = requests.get(f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance").json()
-        print(f'{request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]}')
         # Cause it to throw error
         request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
 

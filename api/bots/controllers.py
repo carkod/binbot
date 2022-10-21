@@ -66,7 +66,7 @@ class Bot(Account):
         params = {}
 
         if status and status in EnumDefinitions.statuses:
-            params["active"] = status
+            params["status"] = status
 
         if start_date:
             try:

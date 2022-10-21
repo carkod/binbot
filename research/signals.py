@@ -297,10 +297,9 @@ class ResearchSignals(SetupSignals):
         ):
             if self.reached_max_active_autobots("bots"):
                 logging.info("Maximum number of active bots to avoid draining too much memory")
-                return
-
-            autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
-            autotrade.activate_autotrade()
+            else:
+                autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
+                autotrade.activate_autotrade()
 
         # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
         # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
@@ -313,11 +312,10 @@ class ResearchSignals(SetupSignals):
         ):
 
             if self.reached_max_active_autobots("paper_trading"):
-                print("Maximum number of active bots to avoid draining too much memory")
-                return
-
-            test_autotrade = Autotrade(symbol, self.test_autotrade_settings, algorithm)
-            test_autotrade.activate_autotrade()
+                logging.info("Maximum number of active bots to avoid draining too much memory")
+            else:
+                test_autotrade = Autotrade(symbol, self.test_autotrade_settings, algorithm)
+                test_autotrade.activate_autotrade()
 
     def on_close(self, *args):
         """
@@ -393,7 +391,7 @@ class ResearchSignals(SetupSignals):
             list_prices = numpy.array(data["trace"][0]["close"])
             sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
 
-            # Temporarily pause
+            
             ma_candlestick_jump(
                 close_price,
                 open_price,
