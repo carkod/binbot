@@ -1,4 +1,5 @@
 import json
+import logging
 import random
 import re
 import string
@@ -31,7 +32,7 @@ class NewTokens:
         Calculate when a coin is new
         - coinTradeTime - less than a day
         """
-        print("Running new tokens check...")
+        logging.info("Running new tokens check...")
         # Random functions to avoid hitting cache
         rand_page_size = random.randint(1, 200)
         letters = string.ascii_letters

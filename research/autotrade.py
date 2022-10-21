@@ -245,7 +245,7 @@ class Autotrade(BinbotApi):
             }
             delete_res = requests.delete(url=bot_url, params=payload)
             data = handle_binance_errors(delete_res)
-            print(data)
+            print("Error trying to delete autotrade activation bot", data)
             return
 
         # Now that we have base_order price activate safety orders

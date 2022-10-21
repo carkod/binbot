@@ -1,5 +1,6 @@
 import json
 import threading
+import logging
 from pymongo import ReturnDocument
 
 from api.account.account import Account
@@ -22,7 +23,7 @@ class MarketUpdates(Account):
         """
         Restart websockets threads after list of active bots altered
         """
-        print("Starting thread cleanup")
+        logging.info("Starting thread cleanup")
         global stop_threads
         stop_threads = True
         # Notify market updates websockets to update

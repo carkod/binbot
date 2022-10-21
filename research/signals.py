@@ -1,4 +1,5 @@
 import json
+import logging
 import random
 import threading
 import math
@@ -82,7 +83,7 @@ class SetupSignals(BinbotApi):
         - Global settings for autotrade
         - Updated blacklist
         """
-        print("Loading controller and blacklist data...")
+        logging.info("Loading controller and blacklist data...")
         settings_res = requests.get(url=f"{self.bb_controller_url}")
         settings_data = handle_binance_errors(settings_res)
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
@@ -183,7 +184,7 @@ class SetupSignals(BinbotApi):
 
 class ResearchSignals(SetupSignals):
     def __init__(self):
-        print("Started research signals")
+        logging.info("Started research signals")
         self.last_processed_kline = {}
         super().__init__()
 
@@ -283,7 +284,8 @@ class ResearchSignals(SetupSignals):
         # If dashboard has changed any self.settings
         # Need to reload websocket
         if "update_required" in self.settings and self.settings["update_required"]:
-            print("Update required, restart stream")
+            logging.info("Update required, restarting stream")
+            self.terminate_websockets()
             self.start_stream(previous_ws=ws)
             pass
 
@@ -294,7 +296,7 @@ class ResearchSignals(SetupSignals):
             and not test_only
         ):
             if self.reached_max_active_autobots("bots"):
-                print("Maximum number of active bots to avoid draining too much memory")
+                logging.info("Maximum number of active bots to avoid draining too much memory")
                 return
 
             autotrade = Autotrade(symbol, self.settings, algorithm, "bots")

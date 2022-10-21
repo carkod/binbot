@@ -3,6 +3,7 @@ import os
 import re
 import threading
 import requests
+import logging
 from signals import SetupSignals
 from websocket import WebSocketApp
 from decimal import Decimal
@@ -31,7 +32,7 @@ class QFL_signals(SetupSignals):
         Library bug not working
         https://github.com/websocket-client/websocket-client/issues/612
         """
-        print("Active socket closed")
+        logging.info("Active socket closed")
 
     def on_open(self, *args, **kwargs):
         self.load_data()
@@ -42,14 +43,15 @@ class QFL_signals(SetupSignals):
         msg = f'QFL signals Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
         print(msg)
         # API restart 30 secs + 15
-        print("Restarting websockets...")
+        logging.info("Restarting websockets...")
         self.terminate_websockets()
         self.start_stream(ws)
     
     def check_asset(self, asset, ws):
         # Check if pair works with USDT, is availabee in the binance
+        print(f'Received asset {asset}. Checking existence in Binance...')
         request_crypto = requests.get(f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance").json()
-        print(f'Received asset {asset}. Checking existence in Binance {request_crypto["Data"]["exchanges"]["Binance"]}')
+        print(f'{request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]}')
         # Cause it to throw error
         request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
 
