@@ -143,7 +143,7 @@ class Autotrade(BinbotApi):
         balances = handle_binance_errors(res)
         qty = 0
         bot_url = self.bb_test_bot_url
-        activate_url = self.bb_activate_bot_url
+        activate_url = self.bb_activate_test_bot_url
 
         if self.db_collection_name != "paper_trading":
             # Get balance that match the pair
