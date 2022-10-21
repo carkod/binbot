@@ -18,7 +18,7 @@ class MarketUpdates(Account):
         self.interval = interval
         self.markets = []
     
-    def _restart_websockets(self, thread_name="market_updates"):
+    def terminate_websockets(self, thread_name="market_updates"):
         """
         Restart websockets threads after list of active bots altered
         """
@@ -79,7 +79,7 @@ class MarketUpdates(Account):
     def on_error(self, ws, error):
         error_msg = f'market_updates error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
         print(error_msg)
-        self._restart_websockets()
+        self.terminate_websockets()
         self.start_stream(ws)
 
     def on_message(self, ws, message):
@@ -174,7 +174,7 @@ class MarketUpdates(Account):
                         deal = CreateDealController(bot, db_collection)
                         try:
                             deal.trailling_profit(price)
-                            self._restart_websockets()
+                            self.terminate_websockets()
                             self.start_stream(ws)
                         except Exception as error:
                             return

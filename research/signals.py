@@ -17,7 +17,7 @@ from autotrade import Autotrade
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors, round_numbers
 from datetime import datetime
-
+from logging import info
 
 class SetupSignals(BinbotApi):
     def __init__(self):
@@ -35,23 +35,23 @@ class SetupSignals(BinbotApi):
         self.active_test_bots = []
         self.blacklist_data = []
 
-    def _restart_websockets(self, thread_name="market_updates"):
+    def terminate_websockets(self, thread_name="market_updates"):
         """
-        Restart websockets threads after list of active bots altered
+        Close websockets through threads
         """
-        print("Starting thread cleanup")
+        info("Starting thread cleanup")
         global stop_threads
         stop_threads = True
         # Notify market updates websockets to update
         for thread in threading.enumerate():
-            print("Currently active threads: ", thread.name)
+            info("Currently active threads: ", thread.name)
             if (
                 hasattr(thread, "tag")
                 and thread_name in thread.name
                 and hasattr(thread, "_target")
             ):
                 stop_threads = False
-                print("closing websocket")
+                info("closing websocket")
                 thread._target.__self__.close()
 
         pass
@@ -333,7 +333,7 @@ class ResearchSignals(SetupSignals):
         # API restart 30 secs + 15
         print("Restarting in 45 seconds...")
         sleep(45)
-        self._restart_websockets()
+        self.terminate_websockets()
         self.start_stream(ws)
 
     def on_message(self, ws, message):

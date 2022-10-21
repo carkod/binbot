@@ -43,7 +43,7 @@ class QFL_signals(SetupSignals):
         print(msg)
         # API restart 30 secs + 15
         print("Restarting websockets...")
-        self._restart_websockets()
+        self.terminate_websockets()
         self.start_stream(ws)
     
     def check_asset(self, asset, ws):
@@ -148,7 +148,7 @@ class QFL_signals(SetupSignals):
         # Need to reload websocket
         if "update_required" in self.settings and self.settings["update_required"]:
             print("Update required, restart stream")
-            self._restart_websockets()
+            self.terminate_websockets()
             self.start_stream(previous_ws=ws)
             pass
 
