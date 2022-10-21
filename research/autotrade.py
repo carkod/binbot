@@ -117,7 +117,6 @@ class Autotrade(BinbotApi):
             ):
                 break
             initial_so = copy.copy(so_size)
-
             self.default_bot["safety_orders"].append(
                 {
                     "name": f"so_{count}",
