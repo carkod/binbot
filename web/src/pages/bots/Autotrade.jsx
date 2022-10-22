@@ -12,11 +12,7 @@ import {
 import LightSwitch from "../../components/LightSwitch";
 import SettingsInput from "../../components/SettingsInput";
 import { getBalanceRaw } from "../../state/balances/actions";
-import {
-  getSettings,
-  editSettings,
-  setSettingsState,
-} from "./actions";
+import { getSettings, editSettings, setSettingsState } from "./actions";
 
 export default function Autotrade() {
   const [localState, setLocalState] = useState({
@@ -29,12 +25,10 @@ export default function Autotrade() {
       autotradeSettings: state.settingsReducer?.settings,
     };
   });
-  const dispatchSetSettings = (payload) =>
-    dispatch(setSettingsState(payload));
+  const dispatchSetSettings = (payload) => dispatch(setSettingsState(payload));
   const saveSettings = () => {
     dispatch(editSettings(settingsProps.autotradeSettings));
-  }
-    
+  };
 
   useEffect(() => {
     const retrieveSettings = () => dispatch(getSettings());
@@ -100,24 +94,21 @@ export default function Autotrade() {
                     <Col md="3">
                       <SettingsInput
                         value={
-                          settingsProps.autotradeSettings
-                            .candlestick_interval
+                          settingsProps.autotradeSettings.candlestick_interval
                         }
                         name={"candlestick_interval"}
                         label={"Candlestick interval"}
                         handleChange={handleInput}
                       />
                     </Col>
-                    
+
                     <Col md="3">
                       <label htmlFor="telegram_signals">
                         Send messages to telegram?
                       </label>
                       <br />
                       <LightSwitch
-                        value={
-                          settingsProps.autotradeSettings.telegram_signals
-                        }
+                        value={settingsProps.autotradeSettings.telegram_signals}
                         name="telegram_signals"
                         toggle={toggle}
                       />
@@ -128,9 +119,7 @@ export default function Autotrade() {
                       <label htmlFor="autotrade">Autotrade?</label>
                       <br />
                       <LightSwitch
-                        value={
-                          settingsProps.autotradeSettings.autotrade
-                        }
+                        value={settingsProps.autotradeSettings.autotrade}
                         name="autotrade"
                         toggle={toggle}
                       />
@@ -138,12 +127,13 @@ export default function Autotrade() {
                     <Col md="3">
                       <SettingsInput
                         value={
-                          settingsProps.autotradeSettings.max_active_autotrade_bots
+                          settingsProps.autotradeSettings
+                            .max_active_autotrade_bots
                         }
                         name={"max_active_autotrade_bots"}
                         label={"Max active autotrade bots"}
                         handleChange={handleInput}
-                        />
+                      />
                     </Col>
                   </Row>
                   <Row>
@@ -153,22 +143,31 @@ export default function Autotrade() {
                       <Button
                         name="trailling"
                         color={
-                          settingsProps.autotradeSettings.trailling ===
-                          "true"
+                          settingsProps.autotradeSettings.trailling === "true"
                             ? "success"
                             : "secondary"
                         }
                         onClick={toggleTrailling}
                       >
-                        {settingsProps.autotradeSettings.trailling ===
-                        "true"
+                        {settingsProps.autotradeSettings.trailling === "true"
                           ? "On"
                           : "Off"}
                       </Button>
                     </Col>
-                    {settingsProps.autotradeSettings.trailling ===
-                      "true" && (
+                    {settingsProps.autotradeSettings.trailling === "true" && (
                       <>
+                        <Col md="3">
+                          <SettingsInput
+                            value={
+                              settingsProps.autotradeSettings.base_order_size
+                            }
+                            name={"base_order_size"}
+                            label={"Base order size (quantity)"}
+                            handleChange={handleInput}
+                            errorMsg={localState.baseOrderSizeError}
+                            type="text"
+                          />
+                        </Col>
                         <Col md="3">
                           <SettingsInput
                             value={
@@ -198,14 +197,11 @@ export default function Autotrade() {
                     )}
                   </Row>
                   <Row>
-                    {settingsProps.autotradeSettings.trailling ===
-                      "true" && (
+                    {settingsProps.autotradeSettings.trailling === "true" && (
                       <>
                         <Col md="3">
                           <SettingsInput
-                            value={
-                              settingsProps.autotradeSettings.stop_loss
-                            }
+                            value={settingsProps.autotradeSettings.stop_loss}
                             name={"stop_loss"}
                             label={"Stop loss"}
                             handleChange={handleInput}
@@ -214,9 +210,7 @@ export default function Autotrade() {
                         </Col>
                         <Col md="3">
                           <SettingsInput
-                            value={
-                              settingsProps.autotradeSettings.take_profit
-                            }
+                            value={settingsProps.autotradeSettings.take_profit}
                             name={"take_profit"}
                             label={"Take profit"}
                             handleChange={handleInput}

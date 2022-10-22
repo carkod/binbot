@@ -49,8 +49,8 @@ class QFL_signals(SetupSignals):
     
     def check_asset(self, asset, ws):
         # Check if pair works with USDT, is availabee in the binance
-        print(f'Received asset {asset}. Checking existence in Binance...')
         request_crypto = requests.get(f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance").json()
+        print(f'Received asset {asset}. Checking existence in Binance...', request_crypto["Data"]["exchanges"])
         # Cause it to throw error
         request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
 
@@ -75,7 +75,6 @@ class QFL_signals(SetupSignals):
                 try:
                     self.check_asset(asset, ws)
                 except KeyError as error:
-                    print(error)
                     return
                 
                 # Because signals for other market could influence also USDT market

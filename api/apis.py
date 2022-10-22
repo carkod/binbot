@@ -122,7 +122,7 @@ class BinbotApi(BinanceApi):
     bb_balance_estimate_url = f"{bb_base_url}/account/balance/estimate"
 
     # research
-    bb_controller_url = f"{bb_base_url}/research/controller"
+    bb_autotrade_settings_url = f"{bb_base_url}/autotrade-settings/bots"
     bb_blacklist_url = f"{bb_base_url}/research/blacklist"
 
     def bb_request(self, url, method="GET", params=None, payload=None):

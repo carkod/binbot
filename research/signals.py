@@ -35,6 +35,8 @@ class SetupSignals(BinbotApi):
         self.thread_ids = []
         self.active_test_bots = []
         self.blacklist_data = []
+        self.test_autotrade_settings = {}
+        self.settings = {}
 
     def terminate_websockets(self, thread_name="market_updates"):
         """
@@ -84,7 +86,7 @@ class SetupSignals(BinbotApi):
         - Updated blacklist
         """
         logging.info("Loading controller and blacklist data...")
-        settings_res = requests.get(url=f"{self.bb_controller_url}")
+        settings_res = requests.get(url=f"{self.bb_autotrade_settings_url}")
         settings_data = handle_binance_errors(settings_res)
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
         blacklist_data = handle_binance_errors(blacklist_res)
@@ -102,12 +104,12 @@ class SetupSignals(BinbotApi):
         ):
             settings_data["data"]["update_required"] = False
             research_controller_res = requests.put(
-                url=self.bb_controller_url, json=settings_data["data"]
+                url=self.bb_autotrade_settings_url, json=settings_data["data"]
             )
             handle_binance_errors(research_controller_res)
 
         # Logic for autotrade
-        research_controller_res = requests.get(url=self.bb_controller_url)
+        research_controller_res = requests.get(url=self.bb_autotrade_settings_url)
         research_controller = handle_binance_errors(research_controller_res)
         self.settings = research_controller["data"]
 
@@ -137,7 +139,7 @@ class SetupSignals(BinbotApi):
         pass
 
     def post_error(self, msg):
-        res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
+        res = requests.put(url=self.bb_autotrade_settings_url, json={"system_logs": msg})
         handle_binance_errors(res)
         return
 
@@ -390,7 +392,6 @@ class ResearchSignals(SetupSignals):
             msg = None
             list_prices = numpy.array(data["trace"][0]["close"])
             sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
-
             
             ma_candlestick_jump(
                 close_price,
@@ -405,7 +406,7 @@ class ResearchSignals(SetupSignals):
                 ws,
             )
 
-        self.last_processed_kline[symbol] = time()
+            self.last_processed_kline[symbol] = time()
 
         # If more than 6 hours passed has passed
         # Then we should resume sending signals for given symbol

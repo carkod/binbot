@@ -58,7 +58,7 @@ class Autotrade(BinbotApi):
             self.settings["system_logs"] = []
             self.settings["system_logs"].append(msg)
 
-        res = requests.put(url=self.bb_controller_url, json=self.settings)
+        res = requests.put(url=self.bb_autotrade_settings_url, json=self.settings)
         result = handle_binance_errors(res)
         return result
 

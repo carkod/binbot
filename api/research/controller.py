@@ -19,29 +19,6 @@ class Controller:
     def __init__(self):
         self.default_blacklist = {"_id": "", "pair": "", "reason": ""}  # pair
 
-    def get_settings(self):
-        settings = ControllerSchema().get()
-
-        if settings:
-            resp = jsonResp(
-                {"message": "Successfully retrieved settings", "data": settings}
-            )
-        else:
-            resp = jsonResp_error_message(
-                "Database error ocurred. Could not retrieve settings."
-            )
-        return resp
-
-    def edit_settings(self):
-        data = request.get_json()
-        controller_schema = ControllerSchema()
-        try:
-            controller_schema.update(data)
-            resp = jsonResp_message("Successfully updated settings")
-        except TypeError as e:
-            resp = jsonResp_error_message(f"Data validation error: {e}")
-        return resp
-
     def get_blacklist(self) -> jsonResp:
         """
         Get list of blacklisted symbols
@@ -102,29 +79,6 @@ class Controller:
         )
         return resp
     
-    def get_test_autotrade_settings(self):
-        settings = TestAutotradeSchema().get()
-
-        if settings:
-            resp = jsonResp(
-                {"message": "Successfully retrieved settings", "data": settings}
-            )
-        else:
-            resp = jsonResp_error_message(
-                "Database error ocurred. Could not retrieve settings."
-            )
-        return resp
-
-    def edit_test_autotrade_settings(self):
-        data = request.get_json()
-        controller_schema = TestAutotradeSchema()
-        try:
-            controller_schema.update(data)
-            resp = jsonResp_message("Successfully updated settings")
-        except TypeError as e:
-            resp = jsonResp_error_message(f"Data validation error: {e}")
-        return resp
-
     def store_profitable_signals(self):
         """
         3commas signals that are profitable
