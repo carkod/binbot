@@ -1,5 +1,6 @@
 import json
-
+import threading
+import logging
 from pymongo import ReturnDocument
 
 from api.account.account import Account
@@ -17,6 +18,27 @@ class MarketUpdates(Account):
         self.markets_streams = None
         self.interval = interval
         self.markets = []
+    
+    def terminate_websockets(self, thread_name="market_updates"):
+        """
+        Restart websockets threads after list of active bots altered
+        """
+        logging.info("Starting thread cleanup")
+        global stop_threads
+        stop_threads = True
+        # Notify market updates websockets to update
+        for thread in threading.enumerate():
+            print("Currently active threads: ", thread.name)
+            if (
+                hasattr(thread, "tag")
+                and thread_name in thread.name
+                and hasattr(thread, "_target")
+            ):
+                stop_threads = False
+                print("closing websocket")
+                thread._target.__self__.close()
+
+        pass
 
     def start_stream(self, ws=None):
         """
@@ -58,6 +80,7 @@ class MarketUpdates(Account):
     def on_error(self, ws, error):
         error_msg = f'market_updates error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
         print(error_msg)
+        self.terminate_websockets()
         self.start_stream(ws)
 
     def on_message(self, ws, message):
@@ -152,9 +175,10 @@ class MarketUpdates(Account):
                         deal = CreateDealController(bot, db_collection)
                         try:
                             deal.trailling_profit(price)
+                            self.terminate_websockets()
+                            self.start_stream(ws)
                         except Exception as error:
                             return
-                        self.start_stream(ws)
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
@@ -164,7 +188,7 @@ class MarketUpdates(Account):
             ):
                 for key, so in enumerate(bot["safety_orders"]):
                     # Index is the ID of the safety order price that matches safety_orders list
-                    if ("status" not in so or so["status"] == 0) and float(so["buy_price"]) >= float(close_price):
+                    if ("status" in so and so["status"] == 0) and float(so["buy_price"]) >= float(close_price):
                         deal = CreateDealController(bot, db_collection)
                         deal.so_update_deal(key)
         pass

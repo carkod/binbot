@@ -121,6 +121,9 @@ class Header extends React.Component {
                 <Link to="/admin/bots/new">
                   <Button className="btn btn-link">New bot</Button>
                 </Link>
+                <Link to="/admin/bots/autotrade">
+                  <Button className="btn btn-link">Autotrade settings</Button>
+                </Link>
               </>
             )}
             {this.props.location.pathname.includes("/admin/paper-trading") && (

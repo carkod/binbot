@@ -1,5 +1,11 @@
-import talib
-import numpy
+# import talib
+# import numpy
+
+
+# patterns don't really work so decomissioned
+
+# Detecting the shape of two or three candles does not determine the entire trend
+# ta-lib does not compile when installed in the dockerfile
 
 # Except morning star and engulfing - these are pattern confirmations
 patterns = {

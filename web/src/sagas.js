@@ -11,8 +11,10 @@ import watchGetBotApi, {
   watchDeactivateBot,
   watchDeleteBotApi,
   watchEditBot,
+  watchEditSettingsApi,
   watchGetBot,
   watchGetCandlestick,
+  watchGetSettingsApi,
 } from "./pages/bots/saga";
 import watchGetTestBotsApi, {
   watchActivateTestBotApi,
@@ -28,9 +30,7 @@ import watchGetTestBotsApi, {
 import {
   watchAddBlacklistApi,
   watchDeleteBlackListApi,
-  watchEditSettingsApi,
   watchGetBlacklistApi,
-  watchGetSettingsApi,
   watchResearchApi,
 } from "./pages/research/saga";
 import watchUsersApi, {

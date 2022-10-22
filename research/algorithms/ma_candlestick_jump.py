@@ -1,6 +1,6 @@
 import os
 
-def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd, value, chaikin_diff, regression, _send_msg, run_autotrade, ws, intercept):
+def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd, _send_msg, run_autotrade, ws):
     """
     Candlesticks are in an upward trending motion for several periods
     This algorithm checks last close prices > MAs to decide whether to trade
@@ -17,9 +17,7 @@ def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd
     """
     if (
         float(close_price) > float(open_price)
-        and chaikin_diff < -3
-        and sd > 0.0000001
-        and float(intercept) > 8
+        and sd > 0.09
         and close_price > ma_7[len(ma_7) - 1]
         and open_price > ma_7[len(ma_7) - 1]
         and close_price > ma_25[len(ma_25) - 1]
@@ -29,14 +27,12 @@ def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd
         and open_price > ma_7[len(ma_7) - 2]
         and close_price > ma_100[len(ma_100) - 1]
         and open_price > ma_100[len(ma_100) - 1]
-        and close_price > ma_25[len(ma_25) - 1]
-        and open_price > ma_25[len(ma_25) - 1]
     ):
 
-        msg = f"- [{os.getenv('ENV')}] Candlesick <strong>#jump algorithm</strong> #{symbol} \n - SD {sd} \n - Chaikin oscillator {value}, diff {'positive' if chaikin_diff >= 0 else 'negative'} \n - Regression line {regression} \n- https://www.binance.com/en/trade/{symbol} \n- Dashboard trade http://terminal.binbot.in/admin/bots/new/{symbol}"
+        msg = f"- [{os.getenv('ENV')}] Candlesick <strong>#jump algorithm</strong> #{symbol} \n - SD {sd} \n- https://www.binance.com/en/trade/{symbol} \n- <a href='http://terminal.binbot.in/admin/bots/new/{symbol}'>Dashboard trade</a>"
         _send_msg(msg)
         print(msg)
 
-        run_autotrade(symbol, ws, "ma_candlestick_jump", False, sd)
+        run_autotrade(symbol, ws, "ma_candlestick_jump", False, **{"sd": sd})
 
     return

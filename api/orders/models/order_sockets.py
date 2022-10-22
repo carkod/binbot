@@ -111,18 +111,6 @@ class OrderUpdates(BinanceApi):
                 },
             )
 
-            # Update Safety orders
-            bot = self.app.db.bots.find_one(
-                {
-                    "orders": {
-                        "$elemMatch": {
-                            "deal_type": "safety_order",
-                            "order_id": order_id,
-                        }
-                    }
-                }
-            )
-
         else:
             print(
                 f"No bot found with order client order id: {order_id}. Order status: {result['X']}"

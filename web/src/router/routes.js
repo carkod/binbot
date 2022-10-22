@@ -1,5 +1,6 @@
 import Login from "../containers/login/Login";
 import Registration from "../containers/registration/Registration";
+import Autotrade from "../pages/bots/Autotrade";
 import BotForm from "../pages/bots/BotForm";
 import Bots from "../pages/bots/Bots";
 import Dashboard from "../pages/dashboard/Dashboard";
@@ -52,6 +53,15 @@ const routes = [
     name: "Edit Bot",
     icon: "nc-icon nc-laptop",
     component: BotForm,
+    layout: "/admin",
+    nav: false,
+    private: true,
+  },
+  {
+    path: "/bots/autotrade",
+    name: "Bots Autotrade",
+    icon: "",
+    component: Autotrade,
     layout: "/admin",
     nav: false,
     private: true,

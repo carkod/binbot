@@ -92,7 +92,7 @@ class ControllerSchema:
                 "trailling"
             ) not in ["true", "false"]:
                 raise TypeError(f"trailling must be a String true or false")
-            elif not data.get("trailling") is not None:
+            elif data.get("trailling") is not None:
                 self.trailling = data.get("trailling")
 
             del data["trailling"]
@@ -103,7 +103,7 @@ class ControllerSchema:
                     self.take_profit = float(data.get("take_profit"))
                 except Exception:
                     raise TypeError(f"take_profit must be a Real number")
-            elif not data.get("take_profit") is not None:
+            elif data.get("take_profit") is not None:
                 self.take_profit = data.get("take_profit")
 
             del data["take_profit"]
@@ -114,7 +114,7 @@ class ControllerSchema:
                     self.stop_loss = float(data.get("stop_loss"))
                 except Exception:
                     raise TypeError(f"stop_loss must be a Real number")
-            elif not data.get("stop_loss") is not None:
+            elif data.get("stop_loss") is not None:
                 self.stop_loss = data.get("stop_loss")
 
             del data["stop_loss"]
@@ -125,7 +125,7 @@ class ControllerSchema:
                     self.trailling_deviation = float(data.get("trailling_deviation"))
                 except Exception:
                     raise TypeError(f"trailling_deviation must be a Real number")
-            elif not data.get("trailling_deviation") is not None:
+            elif data.get("trailling_deviation") is not None:
                 self.trailling_deviation = data.get("trailling_deviation")
 
             del data["trailling_deviation"]
@@ -136,7 +136,7 @@ class ControllerSchema:
                     self.trailling_profit = float(data.get("trailling_profit"))
                 except Exception:
                     raise TypeError(f"trailling_profit must be a String true or false")
-            elif not data.get("trailling_profit") is not None:
+            elif data.get("trailling_profit") is not None:
                 self.trailling_profit = data.get("trailling_profit")
 
             del data["trailling_profit"]
@@ -150,7 +150,7 @@ class ControllerSchema:
                     self.update_required = True
                 else:
                     raise TypeError(f"update_required must be a Python boolean")
-            elif not data.get("update_required") is not None:
+            elif data.get("update_required") is not None:
                 self.update_required = data.get("update_required")
 
             del data["update_required"]
@@ -170,7 +170,7 @@ class ControllerSchema:
                     self.max_request = float(data.get("max_request"))
                 except Exception:
                     raise TypeError(f"max_request must be a Real number")
-            elif not data.get("max_request") is not None:
+            elif data.get("max_request") is not None:
                 self.max_request = data.get("max_request")
 
             del data["max_request"]
@@ -181,7 +181,7 @@ class ControllerSchema:
                     self.max_active_autotrade_bots = float(data.get("max_active_autotrade_bots"))
                 except Exception:
                     raise TypeError(f"max_active_autotrade_bots must be a Real number")
-            elif not data.get("max_active_autotrade_bots") is not None:
+            elif data.get("max_active_autotrade_bots") is not None:
                 self.max_active_autotrade_bots = data.get("max_active_autotrade_bots")
 
             del data["max_active_autotrade_bots"]
@@ -189,7 +189,7 @@ class ControllerSchema:
         if "system_logs" in data:
             if not isinstance(data.get("system_logs"), list):
                 raise TypeError(f"system_logs must be a list")
-            elif not data.get("system_logs") is not None:
+            elif data.get("system_logs") is not None:
                 self.system_logs = data.get("system_logs")
 
             del data["system_logs"]
@@ -210,7 +210,7 @@ class ControllerSchema:
         """Insert logic"""
         validated_data = self.validate_model(data)
         current_app.db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": validated_data}, True
+            {"_id": "settings"}, {"$set": validated_data}
         )
         pass
 

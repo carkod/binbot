@@ -18,6 +18,7 @@ from api.orders.routes import order_blueprint
 from api.research.routes import research_blueprint
 from api.user.routes import user_blueprint
 from api.paper_trading.routes import paper_trading_blueprint
+from api.autotrade.routes import autotrade_settings_blueprint
 
 app = create_app()
 
@@ -35,7 +36,7 @@ app.register_blueprint(order_blueprint, url_prefix="/order")
 app.register_blueprint(charts_blueprint, url_prefix="/charts")
 app.register_blueprint(research_blueprint, url_prefix="/research")
 app.register_blueprint(paper_trading_blueprint)
-
+app.register_blueprint(autotrade_settings_blueprint, url_prefix="/autotrade-settings")
 
 if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()

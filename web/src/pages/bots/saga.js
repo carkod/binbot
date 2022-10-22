@@ -1,6 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
-import request from "../../request";
+import request, { buildBackUrl } from "../../request";
 import {
   activateBotFailed,
   activateBotSucceeded,
@@ -20,17 +20,23 @@ import {
   DELETE_BOT,
   editBotFailed,
   editBotSucceeded,
+  editSettingsFailed,
+  editSettingsSucceeded,
   EDIT_BOT,
+  EDIT_SETTINGS,
   getBotFailed,
   getBotsFailed,
   getBotsSucceeded,
   getBotSucceeded,
+  getSettingsFailed,
+  getSettingsSucceeded,
   getSymbolInfoFailed,
   getSymbolInfoSucceeded,
   getSymbolsFailed,
   getSymbolsSucceeded,
   GET_BOT,
   GET_BOTS,
+  GET_SETTINGS,
   GET_SYMBOLS,
   GET_SYMBOL_INFO,
   loadCandlestickFailed,
@@ -38,6 +44,7 @@ import {
   LOAD_CANDLESTICK,
 } from "./actions";
 
+const baseUrl = buildBackUrl();
 
 /**
  * Bots request/response handler
@@ -251,4 +258,39 @@ export function* archiveBotApi({ id }) {
 
 export function* watchArchiveBot() {
   yield takeLatest(ARCHIVE_BOT, archiveBotApi);
+}
+
+/**
+ * Settings (controller)
+ */
+ export function* getSettingsApi() {
+  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER, baseUrl)
+  try {
+    const res = yield call(request, url);
+    yield put(getSettingsSucceeded(res));
+  } catch (err) {
+    yield put(getSettingsFailed(err));
+  }
+}
+
+export function* watchGetSettingsApi() {
+  yield takeLatest(GET_SETTINGS, getSettingsApi);
+}
+
+
+/**
+ * Edit Settings (controller)
+ */
+ export function* editSettingsApi({ data }) {
+  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER, baseUrl);
+  try {
+    const res = yield call(request, url, "PUT", data);
+    yield put(editSettingsSucceeded(res));
+  } catch (err) {
+    yield put(editSettingsFailed(err));
+  }
+}
+
+export function* watchEditSettingsApi() {
+  yield takeLatest(EDIT_SETTINGS, editSettingsApi);
 }

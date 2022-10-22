@@ -29,7 +29,7 @@ class Bot(Account):
         self.app = current_app
         self.db_collection = self.app.db[collection_name]
 
-    def _restart_websockets(self):
+    def terminate_websockets(self):
         """
         Restart websockets threads after list of active bots altered
         """
@@ -66,7 +66,7 @@ class Bot(Account):
         params = {}
 
         if status and status in EnumDefinitions.statuses:
-            params["active"] = status
+            params["status"] = status
 
         if start_date:
             try:
@@ -207,7 +207,7 @@ class Bot(Account):
                     {"_id": ObjectId(botId)}, {"$set": {"status": "active"}}
                 )
                 resp = jsonResp_message("Successfully activated bot!")
-                self._restart_websockets()
+                self.terminate_websockets()
                 return resp
             except OpenDealError as error:
                 return jsonResp_error_message(error.args[0])
@@ -354,7 +354,7 @@ class Bot(Account):
                     },
                 )
 
-                self._restart_websockets()
+                self.terminate_websockets()
                 return jsonResp_message(
                     "Active orders closed, sold base asset, deactivated"
                 )

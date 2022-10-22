@@ -14,7 +14,7 @@ class ControllerSchema:
 
     """
 
-    def __init__(self, ) -> None:
+    def __init__(self) -> None:
         self.candlestick_interval = settings["candlestick_interval"]
         self.autotrade = settings["autotrade"]
         self.trailling = settings["trailling"]

@@ -49,19 +49,32 @@ export function updateOrderLines(bot, currentPrice) {
         text: "Base",
         tooltip: [bot.status, " Original buy price before SO triggered"],
         quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        price: parseFloat(bot.deal.buy_price),
+        price: parseFloat(bot.deal.original_buy_price),
         color: dealColors.base_order,
       });
     }
 
-    totalOrderLines.push({
-      id: "base_order",
-      text: "Base",
-      tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
-      quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-      price: parseFloat(currentPrice),
-      color: dealColors.base_order,
-    });
+    if (bot.deal.sell_price && bot.deal.sell_price > 0) {
+      // If there is sell_price, it means it's completed
+      totalOrderLines.push({
+        id: "base_order",
+        text: "Base",
+        tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
+        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        price: parseFloat(bot.deal.buy_price),
+        color: dealColors.base_order,
+      });
+    } else {
+      totalOrderLines.push({
+        id: "base_order",
+        text: "Base",
+        tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
+        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        price: parseFloat(currentPrice),
+        color: dealColors.base_order,
+      });
+    }
+    
     if (bot.take_profit && bot.trailling === "true") {
       // Bot is sold and completed
       if (bot.status === "completed" && bot.deal.sell_price) {

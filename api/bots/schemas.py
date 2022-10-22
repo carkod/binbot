@@ -7,7 +7,7 @@ from api.tools.enum_definitions import EnumDefinitions
 
 class SafetyOrderSchema(Schema):
     name: str = fields.Str(required=True, dump_default="so_1") # should be so_<index>
-    status: str = fields.Int(dump_default=0) # 0 = standby, safety order hasn't triggered, 1 = filled safety order triggered
+    status: str = fields.Int(dump_default=0) # 0 = standby, safety order hasn't triggered, 1 = filled safety order triggered, 2 = error
     order_id: str = fields.Str(dump_default="")
     created_at: float = fields.Float(dump_default=time() * 1000)
     updated_at: float = fields.Float(dump_default=time() * 1000)
@@ -48,4 +48,3 @@ class BotSchema(Schema):
     # Safety orders
     updated_at = fields.Float()
     _id = fields.Str()
-

@@ -58,7 +58,7 @@ class Autotrade(BinbotApi):
             self.settings["system_logs"] = []
             self.settings["system_logs"].append(msg)
 
-        res = requests.put(url=self.bb_controller_url, json=self.settings)
+        res = requests.put(url=self.bb_autotrade_settings_url, json=self.settings)
         result = handle_binance_errors(res)
         return result
 
@@ -117,7 +117,6 @@ class Autotrade(BinbotApi):
             ):
                 break
             initial_so = copy.copy(so_size)
-
             self.default_bot["safety_orders"].append(
                 {
                     "name": f"so_{count}",
@@ -131,7 +130,7 @@ class Autotrade(BinbotApi):
             )
         return
 
-    def activate_autotrade(self, trailling_deviation=None):
+    def activate_autotrade(self, **kwargs):
         """
         Run autotrade
         2. Create bot with given parameters from research_controller
@@ -144,7 +143,7 @@ class Autotrade(BinbotApi):
         balances = handle_binance_errors(res)
         qty = 0
         bot_url = self.bb_test_bot_url
-        activate_url = self.bb_activate_bot_url
+        activate_url = self.bb_activate_test_bot_url
 
         if self.db_collection_name != "paper_trading":
             # Get balance that match the pair
@@ -208,17 +207,21 @@ class Autotrade(BinbotApi):
         # Base order set to default 1 to avoid errors
         # and because there is no matching engine endpoint to get market qty
         # So deal base_order should update this to the correct amount
-        self.default_bot["base_order_size"] = "15"  # min USDT order = 15
+        if self.db_collection_name == "bots":
+            self.default_bot["base_order_size"] = self.settings["base_order_size"]
+        else:
+            self.default_bot["base_order_size"] = "15"  # min USDT order = 15
         self.default_bot[
             "balance_to_use"
         ] = "USDT"  # For now we are always using USDT, safest and most coins/tokens
         self.default_bot["stop_loss"] = 0  # Using safety orders instead of stop_loss
+        
+        # set default static trailling_deviation
+        # if sd is provided, dynamic trailling_deviation will be set below once buy_price is given
         self.default_bot["trailling_deviation"] = float(
             self.settings["trailling_deviation"]
         )
 
-        if trailling_deviation:
-            self.default_bot["trailling_deviation"] = trailling_deviation
 
         # Create bot
         create_bot_res = requests.post(url=bot_url, json=self.default_bot)
@@ -246,16 +249,26 @@ class Autotrade(BinbotApi):
             }
             delete_res = requests.delete(url=bot_url, params=payload)
             data = handle_binance_errors(delete_res)
-            print(data)
+            print("Error trying to delete autotrade activation bot", data)
             return
 
-        # Now that we have base_order price activate safety orders
+        # Now that we have base_order price activate safety orders and dynamic trailling_profit
         res = requests.get(url=f"{bot_url}/{botId}")
         bot = res.json()["data"]
         self.default_bot.update(bot)
         self.default_bot.pop("_id")
         base_order_price = bot["deal"]["buy_price"]
-        self.default_5_so(balances, base_order_price)
+
+
+        if "sd" in kwargs:
+            # dynamic take profit trailling_deviation, changes according to standard deviation
+            spread = ((kwargs["sd"] * 2) / self.default_bot["deal"]["buy_price"] * 100)
+            self.default_bot["trailling_deviation"] = float(
+                spread * 100
+            )
+            self.default_5_so(balances, base_order_price, per_deviation=(spread * 1000))
+        else:
+            self.default_5_so(balances, base_order_price)
 
         edit_bot_res = requests.put(
             url=f"{bot_url}/{botId}", json=self.default_bot

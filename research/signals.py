@@ -1,23 +1,24 @@
 import json
+import logging
 import random
 import threading
 import math
+import numpy
 from datetime import datetime
 from time import sleep, time
+
 
 import requests
 from websocket import WebSocketApp
 
 from algorithms.candlejump_sd import candlejump_sd
-from algorithms.candlestick_patterns import candlestick_patterns
 from algorithms.ma_candlestick_jump import ma_candlestick_jump
 from apis import BinbotApi
 from autotrade import Autotrade
-from pattern_detection import chaikin_oscillator, linear_regression, stdev
 from telegram_bot import TelegramBot
-from utils import handle_binance_errors
+from utils import handle_binance_errors, round_numbers
 from datetime import datetime
-
+from logging import info
 
 class SetupSignals(BinbotApi):
     def __init__(self):
@@ -34,24 +35,26 @@ class SetupSignals(BinbotApi):
         self.thread_ids = []
         self.active_test_bots = []
         self.blacklist_data = []
+        self.test_autotrade_settings = {}
+        self.settings = {}
 
-    def _restart_websockets(self, thread_name="market_updates"):
+    def terminate_websockets(self, thread_name="market_updates"):
         """
-        Restart websockets threads after list of active bots altered
+        Close websockets through threads
         """
-        print("Starting thread cleanup")
+        info("Starting thread cleanup")
         global stop_threads
         stop_threads = True
         # Notify market updates websockets to update
         for thread in threading.enumerate():
-            print("Currently active threads: ", thread.name)
+            info("Currently active threads: ", thread.name)
             if (
                 hasattr(thread, "tag")
                 and thread_name in thread.name
                 and hasattr(thread, "_target")
             ):
                 stop_threads = False
-                print("closing websocket")
+                info("closing websocket")
                 thread._target.__self__.close()
 
         pass
@@ -82,8 +85,8 @@ class SetupSignals(BinbotApi):
         - Global settings for autotrade
         - Updated blacklist
         """
-        print("Loading controller and blacklist data...")
-        settings_res = requests.get(url=f"{self.bb_controller_url}")
+        logging.info("Loading controller and blacklist data...")
+        settings_res = requests.get(url=f"{self.bb_autotrade_settings_url}")
         settings_data = handle_binance_errors(settings_res)
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
         blacklist_data = handle_binance_errors(blacklist_res)
@@ -101,12 +104,12 @@ class SetupSignals(BinbotApi):
         ):
             settings_data["data"]["update_required"] = False
             research_controller_res = requests.put(
-                url=self.bb_controller_url, json=settings_data["data"]
+                url=self.bb_autotrade_settings_url, json=settings_data["data"]
             )
             handle_binance_errors(research_controller_res)
 
         # Logic for autotrade
-        research_controller_res = requests.get(url=self.bb_controller_url)
+        research_controller_res = requests.get(url=self.bb_autotrade_settings_url)
         research_controller = handle_binance_errors(research_controller_res)
         self.settings = research_controller["data"]
 
@@ -118,7 +121,7 @@ class SetupSignals(BinbotApi):
         self.blacklist_data = blacklist_data["data"]
         self.interval = self.settings["candlestick_interval"]
         self.max_request = int(self.settings["max_request"])
-        
+
         # if autrotrade enabled and it's not an already active bot
         # this avoids running too many useless bots
         # Temporarily restricting to 1 bot for low funds
@@ -136,10 +139,10 @@ class SetupSignals(BinbotApi):
         pass
 
     def post_error(self, msg):
-        res = requests.put(url=self.bb_controller_url, json={"system_logs": msg})
+        res = requests.put(url=self.bb_autotrade_settings_url, json={"system_logs": msg})
         handle_binance_errors(res)
         return
-    
+
     def reached_max_active_autobots(self, db_collection_name):
         """
         Check max `max_active_autotrade_bots` in controller settings
@@ -158,28 +161,32 @@ class SetupSignals(BinbotApi):
         if db_collection_name == "paper_trading":
             if not self.test_autotrade_settings:
                 self.load_data()
-            
-            active_bots_res = requests.get(url=self.bb_test_bot_url, params={"status": "active"})
+
+            active_bots_res = requests.get(
+                url=self.bb_test_bot_url, params={"status": "active"}
+            )
             active_bots = handle_binance_errors(active_bots_res)
             active_count = len(active_bots["data"])
-            if (active_count > self.test_autotrade_settings["max_active_autotrade_bots"]):
+            if active_count > self.test_autotrade_settings["max_active_autotrade_bots"]:
                 return True
-        
+
         if db_collection_name == "bots":
             if not self.settings:
                 self.load_data()
-            active_bots_res = requests.get(url=self.bb_bot_url, params={"status": "active"})
+            active_bots_res = requests.get(
+                url=self.bb_bot_url, params={"status": "active"}
+            )
             active_bots = handle_binance_errors(active_bots_res)
             active_count = len(active_bots["data"])
-            if (active_count > self.settings["max_active_autotrade_bots"]):
+            if active_count > self.settings["max_active_autotrade_bots"]:
                 return True
-        
+
         return False
 
 
 class ResearchSignals(SetupSignals):
     def __init__(self):
-        print("Started research signals")
+        logging.info("Started research signals")
         self.last_processed_kline = {}
         super().__init__()
 
@@ -279,22 +286,22 @@ class ResearchSignals(SetupSignals):
         # If dashboard has changed any self.settings
         # Need to reload websocket
         if "update_required" in self.settings and self.settings["update_required"]:
-            print("Update required, restart stream")
+            logging.info("Update required, restarting stream")
+            self.terminate_websockets()
             self.start_stream(previous_ws=ws)
             pass
 
         if (
             int(self.settings["autotrade"]) == 1
             # Temporary restriction for few funds
-            and balance_check > 15 # USDT
+            and balance_check > 15  # USDT
             and not test_only
         ):
-            if self.max_active_autotrade_bots("bots"):
-                print("Maximum number of active bots to avoid draining too much memory")
-                return
-
-            autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
-            autotrade.activate_autotrade()
+            if self.reached_max_active_autobots("bots"):
+                logging.info("Maximum number of active bots to avoid draining too much memory")
+            else:
+                autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
+                autotrade.activate_autotrade(**kwargs)
 
         # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
         # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
@@ -302,17 +309,15 @@ class ResearchSignals(SetupSignals):
         # e.g. autotrade bots not updating can be a symptom of this
         if (
             symbol not in self.active_test_bots
-            and int(self.test_autotrade_settings["test_autotrade"]) == 1 # Test autotrade runs independently of autotrade = 1
+            and int(self.test_autotrade_settings["test_autotrade"])
+            == 1  # Test autotrade runs independently of autotrade = 1
         ):
-            
-            if self.max_active_autotrade_bots("paper_trading"):
-                print("Maximum number of active bots to avoid draining too much memory")
-                return
 
-            test_autotrade = Autotrade(
-                symbol, self.test_autotrade_settings, algorithm
-            )
-            test_autotrade.activate_autotrade()
+            if self.reached_max_active_autobots("paper_trading"):
+                logging.info("Maximum number of active bots to avoid draining too much memory")
+            else:
+                test_autotrade = Autotrade(symbol, self.test_autotrade_settings, algorithm)
+                test_autotrade.activate_autotrade(**kwargs)
 
     def on_close(self, *args):
         """
@@ -330,7 +335,7 @@ class ResearchSignals(SetupSignals):
         # API restart 30 secs + 15
         print("Restarting in 45 seconds...")
         sleep(45)
-        self._restart_websockets()
+        self.terminate_websockets()
         self.start_stream(ws)
 
     def on_message(self, ws, message):
@@ -385,30 +390,9 @@ class ResearchSignals(SetupSignals):
 
             # Average amplitude
             msg = None
-            value, chaikin_diff = chaikin_oscillator(data["trace"][0], data["volumes"])
-            slope, intercept = linear_regression(data["trace"][0])
-            sd = stdev(data["trace"][0])
-
-            reg_equation = f"{slope}X + {intercept}"
-
-            # Looking at graphs, sd > 0.006 tend to give at least 3% up and down movement
-            candlestick_patterns(
-                data["trace"][0],
-                sd,
-                close_price,
-                open_price,
-                value,
-                chaikin_diff,
-                reg_equation,
-                self._send_msg,
-                self.run_autotrade,
-                symbol,
-                ws,
-                intercept,
-                ma_25,
-            )
-
-            # Temporarily pause
+            list_prices = numpy.array(data["trace"][0]["close"])
+            sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
+            
             ma_candlestick_jump(
                 close_price,
                 open_price,
@@ -417,19 +401,15 @@ class ResearchSignals(SetupSignals):
                 ma_25,
                 symbol,
                 sd,
-                value,
-                chaikin_diff,
-                reg_equation,
                 self._send_msg,
                 self.run_autotrade,
                 ws,
-                intercept,
             )
 
-        self.last_processed_kline[symbol] = time()
+            self.last_processed_kline[symbol] = time()
 
         # If more than 6 hours passed has passed
         # Then we should resume sending signals for given symbol
-        if (float(time()) - float(self.last_processed_kline[symbol])) > 6000:
+        if symbol in self.last_processed_kline and (float(time()) - float(self.last_processed_kline[symbol])) > 6000:
             del self.last_processed_kline[symbol]
         pass

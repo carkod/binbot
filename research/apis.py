@@ -203,14 +203,14 @@ class BinbotApi(BinanceApi):
     bb_balance_series_url = f"{bb_base_url}/account/balance/series"
 
     # research
-    bb_controller_url = f"{bb_base_url}/research/controller"
+    bb_autotrade_settings_url = f"{bb_base_url}/autotrade-settings/bots"
     bb_blacklist_url = f"{bb_base_url}/research/blacklist"
 
     # paper trading
     bb_test_bot_url = f"{bb_base_url}/paper-trading"
     bb_activate_test_bot_url = f"{bb_base_url}/paper-trading/activate"
     bb_test_bot_active_list = f"{bb_base_url}/paper-trading/active-list"
-    bb_test_autotrade_url = f"{bb_base_url}/research/test-autotrade-settings"
+    bb_test_autotrade_url = f"{bb_base_url}/autotrade-settings/paper-trading"
 
     def _get_24_ticker(self, market):
         url = f"{self.bb_24_ticker_url}/{market}"

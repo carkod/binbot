@@ -25,7 +25,7 @@ if os.getenv("ENV") != "ci":
         func=wa.run_bot,
         timezone="Europe/London",
         trigger="interval",
-        minutes=10,
+        hours=6,
     )
 
     scheduler.start()

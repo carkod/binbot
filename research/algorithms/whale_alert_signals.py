@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 
@@ -29,7 +30,7 @@ class WhaleAlertSignals:
 
     def run_bot(self) -> None:
         """Run the bot."""
-        print("Running Whale alert signals...")
+        logging.info("Running Whale alert signals...")
         transaction = self.get_last_transaction()
         if transaction:
             from_owner = "#" + transaction["from"]["owner"] if transaction["from"]["owner"] == "unknown" else transaction["to"]["owner"]

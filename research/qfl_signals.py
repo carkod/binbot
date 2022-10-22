@@ -3,6 +3,7 @@ import os
 import re
 import threading
 import requests
+import logging
 from signals import SetupSignals
 from websocket import WebSocketApp
 from decimal import Decimal
@@ -31,7 +32,7 @@ class QFL_signals(SetupSignals):
         Library bug not working
         https://github.com/websocket-client/websocket-client/issues/612
         """
-        print("Active socket closed")
+        logging.info("Active socket closed")
 
     def on_open(self, *args, **kwargs):
         self.load_data()
@@ -42,14 +43,14 @@ class QFL_signals(SetupSignals):
         msg = f'QFL signals Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
         print(msg)
         # API restart 30 secs + 15
-        print("Restarting websockets...")
-        self._restart_websockets()
+        logging.info("Restarting websockets...")
+        self.terminate_websockets()
         self.start_stream(ws)
     
     def check_asset(self, asset, ws):
         # Check if pair works with USDT, is availabee in the binance
         request_crypto = requests.get(f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance").json()
-
+        print(f'Received asset {asset}. Checking existence in Binance...', request_crypto["Data"]["exchanges"])
         # Cause it to throw error
         request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
 
@@ -70,42 +71,37 @@ class QFL_signals(SetupSignals):
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{pair}"
                 volume24 = response["marketInfo"]["volume24"]
                 alert_price = Decimal(str(response["marketInfo"]["price"]))
-                
+
                 try:
                     self.check_asset(asset, ws)
-                except KeyError:
+                except KeyError as error:
                     return
                 
+                # Because signals for other market could influence also USDT market
                 trading_pair = asset + "USDT"
-                print("Hodloo signal: ", symbol)
+                print("Received trading pair", trading_pair)
 
                 if response["type"] == "base-break":
+                    print("Hodloo base-break signal: ", symbol)
                     base_price = Decimal(str(response["basePrice"]))
                     message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a>"
-                    
-                    if response["belowBasePct"] == 5:
-                        self.custom_telegram_msg(
-                            f"[Base Break] Below 10%{message}", symbol=trading_pair
-                        )
-                        self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
-
-                    if response["belowBasePct"] == 10:
-                        self.custom_telegram_msg(
-                            f"[Base Break] Below 10% {message}", symbol=trading_pair
-                        )
-                        self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
+                    self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
 
                 if response["type"] == "panic":
                     strength = response["strength"]
                     velocity = response["velocity"]
                     message = f'[Panic]\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
-                    self.custom_telegram_msg(message, symbol=trading_pair)
+                
+                
+                self.custom_telegram_msg(
+                    f"[Base Break] Below {response['belowBasePct']}%{message}", symbol=trading_pair
+                )
 
                 # Avoid repeating signals with same coin
                 self.last_processed_asset[asset] = time()
 
 
-            if (float(time()) - float(self.last_processed_asset[asset])) > 6000:
+            if asset in self.last_processed_asset and (float(time()) - float(self.last_processed_asset[asset])) > 3600:
                 del self.last_processed_asset[asset]
         return
 
@@ -152,6 +148,7 @@ class QFL_signals(SetupSignals):
         # Need to reload websocket
         if "update_required" in self.settings and self.settings["update_required"]:
             print("Update required, restart stream")
+            self.terminate_websockets()
             self.start_stream(previous_ws=ws)
             pass
 
