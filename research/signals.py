@@ -301,7 +301,7 @@ class ResearchSignals(SetupSignals):
                 logging.info("Maximum number of active bots to avoid draining too much memory")
             else:
                 autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
-                autotrade.activate_autotrade()
+                autotrade.activate_autotrade(**kwargs)
 
         # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
         # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
@@ -317,7 +317,7 @@ class ResearchSignals(SetupSignals):
                 logging.info("Maximum number of active bots to avoid draining too much memory")
             else:
                 test_autotrade = Autotrade(symbol, self.test_autotrade_settings, algorithm)
-                test_autotrade.activate_autotrade()
+                test_autotrade.activate_autotrade(**kwargs)
 
     def on_close(self, *args):
         """
@@ -410,6 +410,6 @@ class ResearchSignals(SetupSignals):
 
         # If more than 6 hours passed has passed
         # Then we should resume sending signals for given symbol
-        if (float(time()) - float(self.last_processed_kline[symbol])) > 6000:
+        if symbol in self.last_processed_kline and (float(time()) - float(self.last_processed_kline[symbol])) > 6000:
             del self.last_processed_kline[symbol]
         pass

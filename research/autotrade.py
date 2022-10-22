@@ -130,7 +130,7 @@ class Autotrade(BinbotApi):
             )
         return
 
-    def activate_autotrade(self, trailling_deviation=None):
+    def activate_autotrade(self, **kwargs):
         """
         Run autotrade
         2. Create bot with given parameters from research_controller
@@ -207,17 +207,21 @@ class Autotrade(BinbotApi):
         # Base order set to default 1 to avoid errors
         # and because there is no matching engine endpoint to get market qty
         # So deal base_order should update this to the correct amount
-        self.default_bot["base_order_size"] = "15"  # min USDT order = 15
+        if self.db_collection_name == "bots":
+            self.default_bot["base_order_size"] = self.settings["base_order_size"]
+        else:
+            self.default_bot["base_order_size"] = "15"  # min USDT order = 15
         self.default_bot[
             "balance_to_use"
         ] = "USDT"  # For now we are always using USDT, safest and most coins/tokens
         self.default_bot["stop_loss"] = 0  # Using safety orders instead of stop_loss
+        
+        # set default static trailling_deviation
+        # if sd is provided, dynamic trailling_deviation will be set below once buy_price is given
         self.default_bot["trailling_deviation"] = float(
             self.settings["trailling_deviation"]
         )
 
-        if trailling_deviation:
-            self.default_bot["trailling_deviation"] = trailling_deviation
 
         # Create bot
         create_bot_res = requests.post(url=bot_url, json=self.default_bot)
@@ -248,13 +252,23 @@ class Autotrade(BinbotApi):
             print("Error trying to delete autotrade activation bot", data)
             return
 
-        # Now that we have base_order price activate safety orders
+        # Now that we have base_order price activate safety orders and dynamic trailling_profit
         res = requests.get(url=f"{bot_url}/{botId}")
         bot = res.json()["data"]
         self.default_bot.update(bot)
         self.default_bot.pop("_id")
         base_order_price = bot["deal"]["buy_price"]
-        self.default_5_so(balances, base_order_price)
+
+
+        if "sd" in kwargs:
+            # dynamic take profit trailling_deviation, changes according to standard deviation
+            spread = ((kwargs["sd"] * 2) / self.default_bot["deal"]["buy_price"] * 100)
+            self.default_bot["trailling_deviation"] = float(
+                spread * 100
+            )
+            self.default_5_so(balances, base_order_price, per_deviation=(spread * 1000))
+        else:
+            self.default_5_so(balances, base_order_price)
 
         edit_bot_res = requests.put(
             url=f"{bot_url}/{botId}", json=self.default_bot
