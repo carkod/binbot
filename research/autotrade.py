@@ -262,11 +262,11 @@ class Autotrade(BinbotApi):
 
         if "sd" in kwargs:
             # dynamic take profit trailling_deviation, changes according to standard deviation
-            spread = ((kwargs["sd"] * 2) / self.default_bot["deal"]["buy_price"] * 100)
+            spread = ((kwargs["sd"] * 2) / self.default_bot["deal"]["buy_price"])
             self.default_bot["trailling_deviation"] = float(
                 spread * 100
             )
-            self.default_5_so(balances, base_order_price, per_deviation=(spread * 1000))
+            self.default_5_so(balances, base_order_price, per_deviation=(spread))
         else:
             self.default_5_so(balances, base_order_price)
 
