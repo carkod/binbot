@@ -127,8 +127,8 @@ class MarketUpdates(Account):
 
                 if ("trailling_stop_loss_price" not in bot["deal"] or bot["deal"]["trailling_stop_loss_price"] == 0) or float(
                     bot["deal"]["take_profit_price"]
-                ) <= 0:
-                    # If current price didn't break take_profit
+                ) == 0:
+                    # If current price didn't break take_profit (first time hitting take_profit)
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
@@ -140,8 +140,10 @@ class MarketUpdates(Account):
                         bot["deal"]["trailling_stop_loss_price"]
                     ) * (1 + (float(bot["take_profit"]) / 100))
 
+
+                # Direction 1 (upward): breaking the current trailling
                 if float(close_price) >= float(current_take_profit_price):
-                    new_take_profit = current_take_profit_price * (
+                    new_take_profit = float(close_price) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
                     # Update deal take_profit
@@ -170,15 +172,18 @@ class MarketUpdates(Account):
                 # Sell after hitting trailling stop_loss and if price already broken trailling
                 if "trailling_stop_loss_price" in bot["deal"]:
                     price = bot["deal"]["trailling_stop_loss_price"]
+                    # Direction 2 (downward): breaking the trailling_stop_loss
                     if float(close_price) <= float(price):
                         print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
-                        deal = CreateDealController(bot, db_collection)
                         try:
+                            deal = CreateDealController(bot, db_collection)
                             deal.trailling_profit(price)
-                            self.terminate_websockets()
-                            self.start_stream(ws)
                         except Exception as error:
+                            print(error)
                             return
+                        self.terminate_websockets()
+                        self.start_stream(ws)
+                        return
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
