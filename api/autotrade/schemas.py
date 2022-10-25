@@ -7,7 +7,8 @@ class AutotradeSettingsSchema(Schema):
     _id: str = fields.Str()
     updated_at: float = fields.Float()
     candlestick_interval: str = fields.Str()
-    autotrade: int = fields.Int(required=True)
+    autotrade: int = fields.Int(validate=OneOf([0, 1]))
+    test_autotrade: int = fields.Int(validate=OneOf([0, 1])) # Redundant autotrade variable for legacy compatibility
     trailling: str = fields.Str(required=True, validate=OneOf(["true", "false"]))
     trailling_deviation: float = fields.Float()
     trailling_profit: float = fields.Float()
