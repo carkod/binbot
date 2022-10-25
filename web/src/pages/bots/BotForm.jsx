@@ -407,12 +407,13 @@ class BotForm extends React.Component {
     if (validation) {
       await this.handleSubmit(e);
       this.props.activateBot(this.state._id);
+      debugger
       if (this.props.match.params.id) {
-        this.props.history.push(
+        this.context.history.push(
           `/admin/bot/edit/${this.props.match.params.id}`
         );
       } else {
-        this.props.history.push(`/admin/bot/edit/${this.state._id}`);
+        this.context.history.push(`/admin/bot/edit/${this.state._id}`);
       }
     }
   };

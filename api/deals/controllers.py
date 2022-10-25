@@ -434,16 +434,12 @@ class CreateDealController(Account):
         Mandatory deals section
         - If base order deal is not executed, bot is not activated
         """
-        # Do not reactivate
-        if (len(self.active_bot.orders) != 0) and self.active_bot.status == "active":
-            raise OpenDealError("Deal already opened, bot is active")
-
         # If there is already a base order do not execute
         base_order_deal = next(
             (
                 bo_deal
                 for bo_deal in self.active_bot.orders
-                if len(bo_deal) > 0 and (bo_deal["deal_type"] == "base_order")
+                if bo_deal.deal_type == "base_order"
             ),
             None,
         )
