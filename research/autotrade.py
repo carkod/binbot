@@ -198,16 +198,23 @@ class Autotrade(BinbotApi):
             self.default_bot["base_order_size"] = self.settings["base_order_size"]
         else:
             self.default_bot["base_order_size"] = "15"  # min USDT order = 15
+
         self.default_bot[
             "balance_to_use"
-        ] = "USDT"  # For now we are always using USDT, safest and most coins/tokens
+        ] = "USDT"  # For now we are always using USDT. Safest and most coins/tokens
         self.default_bot["stop_loss"] = 0  # Using safety orders instead of stop_loss
         
         # set default static trailling_deviation
-        # if sd is provided, dynamic trailling_deviation will be set below once buy_price is given
-        self.default_bot["trailling_deviation"] = float(
-            self.settings["trailling_deviation"]
-        )
+        if "sd" in kwargs:
+            # dynamic take profit trailling_deviation, changes according to standard deviation
+            spread = ((kwargs["sd"] * 2) / self.default_bot["deal"]["buy_price"])
+            self.default_bot["trailling_deviation"] = float(
+                spread * 100
+            )
+        else:
+            self.default_bot["trailling_deviation"] = float(
+                self.settings["trailling_deviation"]
+            )
 
 
         # Create bot
