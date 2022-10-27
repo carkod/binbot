@@ -28,7 +28,6 @@ class MarketUpdates(Account):
         stop_threads = True
         # Notify market updates websockets to update
         for thread in threading.enumerate():
-            print("Currently active threads: ", thread.name)
             if (
                 hasattr(thread, "tag")
                 and thread_name in thread.name
@@ -40,16 +39,10 @@ class MarketUpdates(Account):
 
         pass
 
-    def start_stream(self, ws=None):
+    def start_stream(self):
         """
         Start/restart websocket streams
         """
-        # Close websocekts before starting
-        if self.markets_streams:
-            self.markets_streams.close()
-        if ws:
-            ws.close()
-
         self.markets = list(self.app.db.bots.distinct("pair", {"status": "active"}))
         paper_trading_bots = list(self.app.db.paper_trading.distinct("pair", {"status": "active"}))
         self.markets = self.markets + paper_trading_bots
@@ -81,7 +74,7 @@ class MarketUpdates(Account):
         error_msg = f'market_updates error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
         print(error_msg)
         self.terminate_websockets()
-        self.start_stream(ws)
+        self.start_stream()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -182,7 +175,7 @@ class MarketUpdates(Account):
                             print(error)
                             return
                         self.terminate_websockets()
-                        self.start_stream(ws)
+                        self.start_stream()
                         return
 
             # Open safety orders

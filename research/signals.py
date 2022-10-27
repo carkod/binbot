@@ -47,14 +47,13 @@ class SetupSignals(BinbotApi):
         stop_threads = True
         # Notify market updates websockets to update
         for thread in threading.enumerate():
-            info("Currently active threads: ", thread.name)
             if (
                 hasattr(thread, "tag")
                 and thread_name in thread.name
                 and hasattr(thread, "_target")
             ):
                 stop_threads = False
-                info("closing websocket")
+                print(f"Closing websockets {thread._target.__self__} on thread {thread.name}")
                 thread._target.__self__.close()
 
         pass
@@ -216,19 +215,15 @@ class ResearchSignals(SetupSignals):
             on_close=self.on_close,
             on_message=self.on_message,
         )
-        ws.id = f"market_updates_socket_{index}"
+        ws.id = f"signal_updates_socket_{index}"
         worker_thread = threading.Thread(
-            name=f"market_updates_{index}",
-            target=ws.run_forever,
-            kwargs={"ping_interval": 60},
+            name=f"signal_updates{index}",
+            target=ws.run_forever
         )
-        worker_thread.tag = "market_updates"
+        worker_thread.tag = "signal_updates"
         worker_thread.start()
 
-    def start_stream(self, previous_ws=None):
-        if previous_ws:
-            previous_ws.close()
-
+    def start_stream(self):
         self.load_data()
         raw_symbols = self.ticker_price()
         if not raw_symbols:
@@ -287,8 +282,9 @@ class ResearchSignals(SetupSignals):
         # Need to reload websocket
         if "update_required" in self.settings and self.settings["update_required"]:
             logging.info("Update required, restarting stream")
-            self.terminate_websockets()
-            self.start_stream(previous_ws=ws)
+            self.terminate_websockets("signal_updates0")
+            self.terminate_websockets("signal_updates1")
+            self.start_stream()
             pass
 
         if (
@@ -335,8 +331,9 @@ class ResearchSignals(SetupSignals):
         # API restart 30 secs + 15
         print("Restarting in 45 seconds...")
         sleep(45)
-        self.terminate_websockets()
-        self.start_stream(ws)
+        # self.terminate_websockets("signal_updates0")
+        # self.terminate_websockets("signal_updates1")
+        # self.start_stream()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
