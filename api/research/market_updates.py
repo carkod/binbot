@@ -135,7 +135,7 @@ class MarketUpdates(Account):
 
 
                 # Direction 1 (upward): breaking the current trailling
-                if float(close_price) >= float(current_take_profit_price):
+                if float(close_price) >= float(current_take_profit_price) and bot:
                     new_take_profit = float(close_price) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
@@ -148,19 +148,22 @@ class MarketUpdates(Account):
                         float(new_take_profit)
                         * (float(bot["trailling_deviation"]) / 100)
                     )
-                    print(f'{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}')
-                    updated_bot = self.app.db[db_collection].update_one(
-                        {"_id": current_bot["_id"]}, {"$set": {"deal": bot["deal"]}}
-                    )
-                    if not updated_bot:
-                        self.app.db[db_collection].update_one(
-                            {"_id": current_bot["_id"]},
-                            {
-                                "$push": {
-                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
-                                }
-                            },
+                    if bot["deal"][ "trailling_stop_loss_price"] > bot["deal"][ "buy_price"]:
+                        # Selling below buy_price will cause a loss
+                        # instead let it drop until it hits safety order or stop loss
+                        print(f'{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}')
+                        updated_bot = self.app.db[db_collection].update_one(
+                            {"_id": current_bot["_id"]}, {"$set": {"deal": bot["deal"]}}
                         )
+                        if not updated_bot:
+                            self.app.db[db_collection].update_one(
+                                {"_id": current_bot["_id"]},
+                                {
+                                    "$push": {
+                                        "errors": f'Error updating trailling order {current_bot["_id"]}'
+                                    }
+                                },
+                            )
 
                 # Sell after hitting trailling stop_loss and if price already broken trailling
                 if "trailling_stop_loss_price" in bot["deal"]:

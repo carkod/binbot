@@ -46,7 +46,7 @@ export function updateOrderLines(bot, currentPrice) {
     if (bot.deal.original_buy_price && bot.deal.original_buy_price > 0) {
       totalOrderLines.push({
         id: "original_buy_price",
-        text: "Base",
+        text: "Original buy price",
         tooltip: [bot.status, " Original buy price before SO triggered"],
         quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
         price: parseFloat(bot.deal.original_buy_price),
