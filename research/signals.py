@@ -1,5 +1,4 @@
 import json
-import logging
 import random
 import threading
 import math
@@ -84,7 +83,7 @@ class SetupSignals(BinbotApi):
         - Global settings for autotrade
         - Updated blacklist
         """
-        logging.info("Loading controller and blacklist data...")
+        info("Loading controller and blacklist data...")
         settings_res = requests.get(url=f"{self.bb_autotrade_settings_url}")
         settings_data = handle_binance_errors(settings_res)
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")
@@ -185,7 +184,7 @@ class SetupSignals(BinbotApi):
 
 class ResearchSignals(SetupSignals):
     def __init__(self):
-        logging.info("Started research signals")
+        info("Started research signals")
         self.last_processed_kline = {}
         super().__init__()
 
@@ -375,9 +374,9 @@ class ResearchSignals(SetupSignals):
 
             if len(ma_100) == 0:
                 msg = f"Not enough ma_100 data: {symbol}"
-                print(msg)
+                info(msg)
                 if random.randint(0, 20) == 15:
-                    print("Cleaning db of incomplete data...")
+                    info("Cleaning db of incomplete data...")
                     delete_klines_res = requests.delete(
                         url=self.bb_klines, params={"symbol": symbol}
                     )
