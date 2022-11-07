@@ -48,7 +48,7 @@ export default function BotInfo({ bot }) {
                     <th scope="row">{deal.order_id}</th>
                     <td>{deal.deal_type}</td>
                     <td>{deal.price}</td>
-                    <td>{parseInt(deal.qty)}</td>
+                    <td>{parseFloat(deal.qty)}</td>
                     <td>{deal.status}</td>
                     <td>{deal.order_side}</td>
                   </tr>

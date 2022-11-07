@@ -434,16 +434,12 @@ class CreateDealController(Account):
         Mandatory deals section
         - If base order deal is not executed, bot is not activated
         """
-        # Do not reactivate
-        if (len(self.active_bot.orders) != 0) and self.active_bot.status == "active":
-            raise OpenDealError("Deal already opened, bot is active")
-
         # If there is already a base order do not execute
         base_order_deal = next(
             (
                 bo_deal
                 for bo_deal in self.active_bot.orders
-                if len(bo_deal) > 0 and (bo_deal["deal_type"] == "base_order")
+                if bo_deal.deal_type == "base_order"
             ),
             None,
         )
@@ -487,19 +483,25 @@ class CreateDealController(Account):
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
         if deal_data and deal_data.trailling_stop_loss_price > 0:
 
-            take_profit = float(deal_data.trailling_profit) * (
-                1 + (float(bot.take_profit) / 100)
+            take_profit_price = float(deal_data.buy_price) * (
+                1 + (float(self.active_bot.take_profit) / 100)
             )
+            deal_data.take_profit_price = take_profit_price
             # Update trailling_stop_loss
-            deal_data.trailling_stop_loss_price = float(take_profit) - (
-                float(take_profit) * (float(bot.trailling_deviation) / 100)
-            )
+            # an update of the 
+            deal_data.trailling_stop_loss_price = 0
 
         try:
             deal_schema = DealSchema()
             deal = deal_schema.dump(deal_data)
+            self.active_bot.deal = deal
+
+            bot_schema = BotSchema()
+            bot = bot_schema.dump(self.active_bot)
+            bot.pop("_id")
+
             self.db_collection.update_one(
-                {"_id": self.active_bot._id}, {"$set": {"deal": deal}}
+                {"_id": self.active_bot._id}, {"$set": bot}
             )
 
         except ValidationError as error:
@@ -663,7 +665,7 @@ class CreateDealController(Account):
         book_order = Book_Order(pair)
         price = float(book_order.matching_engine(False, so_qty))
         qty = round_numbers(
-            (float(so_qty) / float(price)),
+            float(so_qty),
             self.qty_precision,
         )
         order = {
@@ -710,13 +712,10 @@ class CreateDealController(Account):
         )
 
         self.active_bot.orders.append(safety_order)
-        for so in self.active_bot.safety_orders:
-            if so.name != f"so_{so_index + 1}":
-                so.status = 1
-                so.order_id = res["orderId"]
-                so.buy_timestamp = res["transactTime"]
-                so.so_size = res["origQty"] # update with actual quantity
-                break
+        self.active_bot.safety_orders[so_index].status = 1
+        self.active_bot.safety_orders[so_index].order_id = res["orderId"]
+        self.active_bot.safety_orders[so_index].buy_timestamp = res["transactTime"]
+        self.active_bot.safety_orders[so_index].so_size = res["origQty"] # update with actual quantity
 
         commission = 0
         for chunk in safety_order.fills:
@@ -764,6 +763,8 @@ class CreateDealController(Account):
                     f"Take profit order not found, no need to cancel, {error}"
                 )
 
+        # Because buy_price = avg_buy_price after so executed
+        # we can use this to update take_profit_price
         new_tp_price = float(self.active_bot.deal.buy_price) * (
             1 + float(self.active_bot.take_profit) / 100
         )

@@ -2,6 +2,8 @@ import os
 import threading
 import time
 import atexit
+import logging
+import sys
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -10,6 +12,9 @@ from algorithms.whale_alert_signals import WhaleAlertSignals
 from qfl_signals import QFL_signals
 from signals import ResearchSignals
 
+root = logging.getLogger()
+root.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stdout)
 
 if os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()

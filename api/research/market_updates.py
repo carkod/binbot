@@ -28,7 +28,6 @@ class MarketUpdates(Account):
         stop_threads = True
         # Notify market updates websockets to update
         for thread in threading.enumerate():
-            print("Currently active threads: ", thread.name)
             if (
                 hasattr(thread, "tag")
                 and thread_name in thread.name
@@ -40,16 +39,10 @@ class MarketUpdates(Account):
 
         pass
 
-    def start_stream(self, ws=None):
+    def start_stream(self):
         """
         Start/restart websocket streams
         """
-        # Close websocekts before starting
-        if self.markets_streams:
-            self.markets_streams.close()
-        if ws:
-            ws.close()
-
         self.markets = list(self.app.db.bots.distinct("pair", {"status": "active"}))
         paper_trading_bots = list(self.app.db.paper_trading.distinct("pair", {"status": "active"}))
         self.markets = self.markets + paper_trading_bots
@@ -81,7 +74,7 @@ class MarketUpdates(Account):
         error_msg = f'market_updates error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
         print(error_msg)
         self.terminate_websockets()
-        self.start_stream(ws)
+        self.start_stream()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -127,8 +120,8 @@ class MarketUpdates(Account):
 
                 if ("trailling_stop_loss_price" not in bot["deal"] or bot["deal"]["trailling_stop_loss_price"] == 0) or float(
                     bot["deal"]["take_profit_price"]
-                ) <= 0:
-                    # If current price didn't break take_profit
+                ) == 0:
+                    # If current price didn't break take_profit (first time hitting take_profit)
                     current_take_profit_price = float(bot["deal"]["buy_price"]) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
@@ -140,8 +133,10 @@ class MarketUpdates(Account):
                         bot["deal"]["trailling_stop_loss_price"]
                     ) * (1 + (float(bot["take_profit"]) / 100))
 
-                if float(close_price) >= float(current_take_profit_price):
-                    new_take_profit = current_take_profit_price * (
+
+                # Direction 1 (upward): breaking the current trailling
+                if float(close_price) >= float(current_take_profit_price) and bot:
+                    new_take_profit = float(close_price) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
                     # Update deal take_profit
@@ -153,32 +148,38 @@ class MarketUpdates(Account):
                         float(new_take_profit)
                         * (float(bot["trailling_deviation"]) / 100)
                     )
-                    print(f'{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}')
-                    updated_bot = self.app.db[db_collection].update_one(
-                        {"_id": current_bot["_id"]}, {"$set": {"deal": bot["deal"]}}
-                    )
-                    if not updated_bot:
-                        self.app.db[db_collection].update_one(
-                            {"_id": current_bot["_id"]},
-                            {
-                                "$push": {
-                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
-                                }
-                            },
+                    if bot["deal"][ "trailling_stop_loss_price"] > bot["deal"][ "buy_price"]:
+                        # Selling below buy_price will cause a loss
+                        # instead let it drop until it hits safety order or stop loss
+                        print(f'{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}')
+                        updated_bot = self.app.db[db_collection].update_one(
+                            {"_id": current_bot["_id"]}, {"$set": {"deal": bot["deal"]}}
                         )
+                        if not updated_bot:
+                            self.app.db[db_collection].update_one(
+                                {"_id": current_bot["_id"]},
+                                {
+                                    "$push": {
+                                        "errors": f'Error updating trailling order {current_bot["_id"]}'
+                                    }
+                                },
+                            )
 
                 # Sell after hitting trailling stop_loss and if price already broken trailling
                 if "trailling_stop_loss_price" in bot["deal"]:
                     price = bot["deal"]["trailling_stop_loss_price"]
+                    # Direction 2 (downward): breaking the trailling_stop_loss
                     if float(close_price) <= float(price):
                         print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
-                        deal = CreateDealController(bot, db_collection)
                         try:
+                            deal = CreateDealController(bot, db_collection)
                             deal.trailling_profit(price)
-                            self.terminate_websockets()
-                            self.start_stream(ws)
                         except Exception as error:
+                            print(error)
                             return
+                        self.terminate_websockets()
+                        self.start_stream()
+                        return
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)

@@ -1,6 +1,18 @@
 import os
 
-def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd, _send_msg, run_autotrade, ws):
+
+def ma_candlestick_jump(
+    close_price,
+    open_price,
+    ma_7,
+    ma_100,
+    ma_25,
+    symbol,
+    sd,
+    _send_msg,
+    run_autotrade,
+    ws,
+):
     """
     Candlesticks are in an upward trending motion for several periods
     This algorithm checks last close prices > MAs to decide whether to trade
@@ -29,10 +41,17 @@ def ma_candlestick_jump(close_price, open_price, ma_7, ma_100, ma_25, symbol, sd
         and open_price > ma_100[len(ma_100) - 1]
     ):
 
-        msg = f"- [{os.getenv('ENV')}] Candlesick <strong>#jump algorithm</strong> #{symbol} \n - SD {sd} \n- https://www.binance.com/en/trade/{symbol} \n- <a href='http://terminal.binbot.in/admin/bots/new/{symbol}'>Dashboard trade</a>"
+        msg = (f"""
+- [{os.getenv('ENV')}] Candlesick <strong>#jump algorithm</strong> #{symbol}
+- SD {sd}
+- Percentage volatility: {(sd) / float(close_price)}
+- Percentage volatility x2: {sd * 2 / float(close_price)}
+- https://www.binance.com/en/trade/{symbol}
+- <a href='http://terminal.binbot.in/admin/bots/new/{symbol}'>Dashboard trade</a>
+""")
         _send_msg(msg)
         print(msg)
 
-        run_autotrade(symbol, ws, "ma_candlestick_jump", False, **{"sd": sd})
+        run_autotrade(symbol, ws, "ma_candlestick_jump", False, **{"sd": sd, "current_price": close_price})
 
     return
