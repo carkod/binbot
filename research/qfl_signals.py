@@ -88,7 +88,7 @@ class QFL_signals(SetupSignals):
                 if response["type"] == "panic":
                     strength = response["strength"]
                     velocity = response["velocity"]
-                    message = f'[Panic]\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
+                    message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
                 
                 
                 self.custom_telegram_msg(

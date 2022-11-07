@@ -406,6 +406,7 @@ class CreateDealController(Account):
         self.active_bot.status = "completed"
         msg = f"Completed take profit after failing to break trailling"
         self.active_bot.errors.append(msg)
+        print(msg)
 
         try:
 
@@ -413,8 +414,6 @@ class CreateDealController(Account):
             bot = bot_schema.dump(self.active_bot)
             bot.pop("_id")
             
-            print(msg)
-
             bot = self.db_collection.find_one_and_update(
                 {"_id": self.active_bot._id},
                 {

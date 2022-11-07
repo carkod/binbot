@@ -42,7 +42,8 @@ def ma_candlestick_jump(
     ):
 
         msg = (f"""
-- [{os.getenv('ENV')}] Candlesick <strong>#jump algorithm</strong> #{symbol}
+- [{os.getenv('ENV')}] Candlestick <strong>#jump algorithm</strong> #{symbol}
+- Current price: {close_price}
 - SD {sd}
 - Percentage volatility: {(sd) / float(close_price)}
 - Percentage volatility x2: {sd * 2 / float(close_price)}
