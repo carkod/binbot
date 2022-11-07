@@ -79,12 +79,10 @@ class QFL_signals(SetupSignals):
                 
                 # Because signals for other market could influence also USDT market
                 trading_pair = asset + "USDT"
-                print("Received trading pair", trading_pair)
 
                 if response["type"] == "base-break":
-                    print("Hodloo base-break signal: ", symbol)
                     base_price = Decimal(str(response["basePrice"]))
-                    message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a>"
+                    message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
                     self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
 
                 if response["type"] == "panic":
@@ -94,7 +92,7 @@ class QFL_signals(SetupSignals):
                 
                 
                 self.custom_telegram_msg(
-                    f"[Base Break] {'Below' + response['belowBasePct'] + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
+                    f"[{response['type']}] {'Below' + response['belowBasePct'] + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
                 )
 
                 # Avoid repeating signals with same coin
@@ -135,6 +133,7 @@ class QFL_signals(SetupSignals):
         4. Check if test autotrades
         """
         self.load_data()
+        logging.info("Running qfl_signals autotrade...")
         # Check balance to avoid failed autotrades
         check_balance_res = requests.get(url=self.bb_balance_estimate_url)
         balances = handle_binance_errors(check_balance_res)
