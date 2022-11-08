@@ -85,6 +85,10 @@ class QFL_signals(SetupSignals):
                     message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
                     self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
 
+                    self.custom_telegram_msg(
+                        f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
+                    )
+
                 # Uncomment when short_buy strategy is ready
                 # if response["type"] == "panic":
                 #     strength = response["strength"]
@@ -92,9 +96,7 @@ class QFL_signals(SetupSignals):
                 #     message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
                 
                 
-                self.custom_telegram_msg(
-                    f"[{response['type']}] {'Below' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
-                )
+                
 
                 # Avoid repeating signals with same coin
                 self.last_processed_asset[asset] = time()

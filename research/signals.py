@@ -10,7 +10,6 @@ from time import sleep, time
 import requests
 from websocket import WebSocketApp
 
-from algorithms.candlejump_sd import candlejump_sd
 from algorithms.ma_candlestick_jump import ma_candlestick_jump
 from apis import BinbotApi
 from autotrade import Autotrade
@@ -280,7 +279,7 @@ class ResearchSignals(SetupSignals):
         # If dashboard has changed any self.settings
         # Need to reload websocket
         if "update_required" in self.settings and self.settings["update_required"]:
-            logging.info("Update required, restarting stream")
+            info("Update required, restarting stream")
             self.terminate_websockets("signal_updates0")
             self.terminate_websockets("signal_updates1")
             self.start_stream()
@@ -293,7 +292,7 @@ class ResearchSignals(SetupSignals):
             and not test_only
         ):
             if self.reached_max_active_autobots("bots"):
-                logging.info("Maximum number of active bots to avoid draining too much memory")
+                info("Maximum number of active bots to avoid draining too much memory")
             else:
                 autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
                 autotrade.activate_autotrade(**kwargs)
@@ -309,7 +308,7 @@ class ResearchSignals(SetupSignals):
         ):
 
             if self.reached_max_active_autobots("paper_trading"):
-                logging.info("Maximum number of active bots to avoid draining too much memory")
+                info("Maximum number of active bots to avoid draining too much memory")
             else:
                 test_autotrade = Autotrade(symbol, self.test_autotrade_settings, algorithm)
                 test_autotrade.activate_autotrade(**kwargs)
