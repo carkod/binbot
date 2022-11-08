@@ -39,6 +39,8 @@ def ma_candlestick_jump(
         and open_price > ma_7[len(ma_7) - 2]
         and close_price > ma_100[len(ma_100) - 1]
         and open_price > ma_100[len(ma_100) - 1]
+        # remove high standard deviation
+        and float(sd) / float(close_price) < 0.07
     ):
 
         msg = (f"""

@@ -92,7 +92,7 @@ class QFL_signals(SetupSignals):
                 
                 
                 self.custom_telegram_msg(
-                    f"[{response['type']}] {'Below' + response['belowBasePct'] + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
+                    f"[{response['type']}] {'Below' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
                 )
 
                 # Avoid repeating signals with same coin
