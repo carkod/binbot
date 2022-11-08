@@ -83,6 +83,10 @@ class SetupSignals(BinbotApi):
         - Updated blacklist
         """
         info("Loading controller and blacklist data...")
+        if self.settings and self.test_autotrade_settings:
+            info("Settings and Test autotrade settings already loaded, skipping...")
+            return
+
         settings_res = requests.get(url=f"{self.bb_autotrade_settings_url}")
         settings_data = handle_binance_errors(settings_res)
         blacklist_res = requests.get(url=f"{self.bb_blacklist_url}")

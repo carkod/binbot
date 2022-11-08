@@ -229,13 +229,14 @@ class Autotrade(BinbotApi):
 
         # Activate bot
         botId = create_bot["botId"]
-        print(f"Trying to {self.db_collection_name}...")
+        print(f"Trying to activate {self.db_collection_name}...")
         res = requests.get(url=f"{activate_url}/{botId}")
         bot = handle_binance_errors(res)
 
         if "error" in bot and bot["error"] == 1:
             msg = f"Error activating bot {self.pair} with id {botId}"
             print(msg)
+            print(bot)
             # Delete inactivatable bot
             payload = {
                 "id": botId,

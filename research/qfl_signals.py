@@ -160,12 +160,12 @@ class QFL_signals(SetupSignals):
             and balance_check > 15
             and not test_only
         ):
-            if not self.reached_max_active_autobots("bots"):
+            if self.reached_max_active_autobots("bots"):
                 print("Reached maximum number of active bots set in controller settings")
-                return
+            else:
 
-            autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
-            autotrade.activate_autotrade()
+                autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
+                autotrade.activate_autotrade()
 
         # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
         # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
@@ -175,12 +175,12 @@ class QFL_signals(SetupSignals):
             symbol not in self.active_test_bots
             and int(self.test_autotrade_settings["test_autotrade"]) == 1
         ):
-            if not self.reached_max_active_autobots("paper_trading"):
+            if self.reached_max_active_autobots("paper_trading"):
                 print("Reached maximum number of active bots set in controller settings")
-                return
-            # Test autotrade runs independently of autotrade = 1
-            test_autotrade = Autotrade(
-                symbol, self.test_autotrade_settings, algorithm, "paper_trading"
-            )
-            test_autotrade.activate_autotrade()
+            else:
+                # Test autotrade runs independently of autotrade = 1
+                test_autotrade = Autotrade(
+                    symbol, self.test_autotrade_settings, algorithm, "paper_trading"
+                )
+                test_autotrade.activate_autotrade()
         return
