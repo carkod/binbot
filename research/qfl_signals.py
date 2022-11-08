@@ -41,7 +41,7 @@ class QFL_signals(SetupSignals):
 
     def on_error(self, ws, error):
         msg = f'QFL signals Websocket error: {error}. {"Symbol: " + self.symbol if hasattr(self, "symbol") else ""  }'
-        print(msg)
+        logging.info(msg)
         # API restart 30 secs + 15
         logging.info("Restarting websockets...")
         self.terminate_websockets()
@@ -50,7 +50,7 @@ class QFL_signals(SetupSignals):
     def check_asset(self, asset, ws):
         # Check if pair works with USDT, is availabee in the binance
         request_crypto = requests.get(f"https://min-api.cryptocompare.com/data/v4/all/exchanges?fsym={asset}&e=Binance").json()
-        print(f'Received asset {asset}. Checking existence in Binance...', request_crypto["Data"]["exchanges"])
+        logging.info(f'Checking {asset} existence in Binance...')
         # Cause it to throw error
         request_crypto["Data"]["exchanges"]["Binance"]["pairs"][asset]
 
@@ -85,10 +85,11 @@ class QFL_signals(SetupSignals):
                     message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
                     self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
 
-                if response["type"] == "panic":
-                    strength = response["strength"]
-                    velocity = response["velocity"]
-                    message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
+                # Uncomment when short_buy strategy is ready
+                # if response["type"] == "panic":
+                #     strength = response["strength"]
+                #     velocity = response["velocity"]
+                #     message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
                 
                 
                 self.custom_telegram_msg(
