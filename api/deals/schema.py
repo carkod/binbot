@@ -1,5 +1,3 @@
-from sqlite3 import Timestamp
-from time import time
 from marshmallow import Schema, fields
 
 class OrderSchema(Schema):

@@ -21,6 +21,7 @@ class SafetyOrderModel:
         created_at=time() * 1000,
         updated_at=time() * 1000,
         status=0,
+        short_buy_price=0,
         *args,
         **kwargs
     ):
@@ -35,6 +36,7 @@ class SafetyOrderModel:
         self.total_commission: float = float(total_comission)
         self.so_volume_scale = so_volume_scale
         self.status = status
+        self.short_buy_price = short_buy_price
 
 class BotModel:
     """
