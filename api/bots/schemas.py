@@ -31,7 +31,7 @@ class BotSchema(Schema):
     deal = fields.Nested(DealSchema)
     errors: list[str] = fields.List(fields.Str)
     locked_so_funds: float = fields.Float() # funds locked by Safety orders
-    mode = fields.Str(dump_default="manual")
+    mode = fields.Str(dump_default="manual") # ["manual", "autotrade"]. Manual is triggered by the terminal dashboard, autotrade by research app
     name = fields.Str(dump_default="Default bot")
     orders: list = fields.List(fields.Nested(OrderSchema)) # Internal
     pair = fields.Str(required=True)
@@ -42,9 +42,9 @@ class BotSchema(Schema):
     trailling_deviation: float = fields.Float(required=True)
     trailling_profit: float = fields.Float() # Trailling activation (first take profit hit)
     safety_orders = fields.List(fields.Nested(SafetyOrderSchema))
-    short_buy_price = fields.Float() # > 0 base_order does not execute immediately, executes when this value is hit
+    short_buy_price = fields.Float() # > 0 base_order does not execute immediately, executes short strategy when this value is hit
+    short_sell_price = fields.Float() # autoswitch to short_strategy
     # Deal and orders are internal, should never be updated by outside data
     total_commission: float = fields.Float()
-    # Safety orders
     updated_at = fields.Float()
     _id = fields.Str()

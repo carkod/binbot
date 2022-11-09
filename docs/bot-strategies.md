@@ -22,3 +22,14 @@ Another problem with SOs, is that a lot of balance is kept on hold. If SO deals 
 
 ## Cooldown
 Set time in seconds for a specific bot, to avoid immediately opening another bot right after completing one.
+
+
+## Short strategy
+
+`short_buy_price` and `short_sell_price` represent prices that are part of the short strategy. For more code information go to `/api/bots/schemas.py`
+
+When prices fall too low, because of some kind of dip - a Bitcoin dip, an exchange collapse, or similar sort of event that causes all cryptocurrencies or a few to dip lower than historical prices, this will fall out of the catch of Safety orders. Safety orders are there only to catch bounces, but if a cryptocurrency falls 10% or 20%, then this short strategy will sell at `short_sell_price`, and buy again at `short_buy_price`.
+
+As a result, `short_sell_price` must be lower than any safety orders, or there will be conflict triggering them.
+
+A bot can `open_deal` on `short_buy_price` without a `short_sell_price`. An example scenario are the QFL signals, they sometimes emit **panic** signals which are downtrend charts. In such cases, we want to track the price down to a certain level where we believe it is the bottom, and then `short_buy` at reversal.

@@ -58,6 +58,7 @@ class TestBotForm extends React.Component {
       currentChartPrice: 0,
       currentOrderLines: [],
       currentTimeMarks: [],
+      baseStrategy: 0
     };
   }
 

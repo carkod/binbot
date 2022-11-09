@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   Badge,
   Col,
@@ -25,6 +26,13 @@ export default function MainTab({
   addMin,
   addAll,
 }) {
+  const [baseStrategy, setBaseStategy] = useState(0);
+  useEffect(() => {
+    if (parseFloat(state.short_buy_price) > 0) {
+      setBaseStategy(1);
+    }
+  }, [setBaseStategy, state]);
+
   return (
     <TabPane tabId="main">
       <Row className="u-margin-bottom">
@@ -68,9 +76,13 @@ export default function MainTab({
               onBlur={handleBlur}
               value={state.base_order_size}
               autoComplete="off"
-              disabled={state.status === "active" || state.status === "completed"}
+              disabled={
+                state.status === "active" || state.status === "completed"
+              }
             />
-            <InputGroupText>{state.quoteAsset}</InputGroupText>
+            <InputGroupText>
+              {state.pair.replace(state.quoteAsset, "")}
+            </InputGroupText>
           </InputGroup>
           <FormFeedback valid={!state.baseOrderSizeError}>
             Not enough balance
@@ -138,16 +150,16 @@ export default function MainTab({
       <Row>
         <Col md="6">
           <FormGroup>
-            <Label for="base_strategy">
-              Base strategy
-            </Label>
+            <Label for="base_strategy">Base strategy</Label>
             <Input
               id="base-strategy"
               name="base_strategy"
               type="select"
+              defaultValue={baseStrategy}
+              onBlur={(e) => setBaseStategy(e.target.value)}
             >
-              <option value="long_buy">Long buy</option>
-              <option value="short_buy">Short buy</option>
+              <option value="0">Long buy</option>
+              <option value="1">Short buy</option>
             </Input>
           </FormGroup>
         </Col>
@@ -169,6 +181,52 @@ export default function MainTab({
           </FormGroup>
         </Col>
       </Row>
+      {parseInt(baseStrategy) === 1 && (
+        <Row>
+          <Col md="6" sm="12">
+            <FormGroup>
+              <BotFormTooltip
+                name="short_buy_price"
+                text="Price at which to execute base order"
+              >
+                Short Buy Price
+              </BotFormTooltip>
+              <InputGroup>
+                <Input
+                  type="number"
+                  name="short_buy_price"
+                  onChange={handleChange}
+                  defaultValue={state.short_buy_price}
+                  autoComplete="off"
+                  step="0.01"
+                />
+                <InputGroupText>{state.quoteAsset}</InputGroupText>
+              </InputGroup>
+            </FormGroup>
+          </Col>
+          <Col md="6" sm="12">
+            <FormGroup>
+              <BotFormTooltip
+                name="short_sell_price"
+                text="Price at which to execute base order"
+              >
+                Short Sell Price
+              </BotFormTooltip>
+              <InputGroup>
+                <Input
+                  type="number"
+                  name="short_sell_price"
+                  onChange={handleChange}
+                  defaultValue={state.short_sell_price}
+                  autoComplete="off"
+                  step="0.01"
+                />
+                <InputGroupText>{state.quoteAsset}</InputGroupText>
+              </InputGroup>
+            </FormGroup>
+          </Col>
+        </Row>
+      )}
     </TabPane>
   );
 }
