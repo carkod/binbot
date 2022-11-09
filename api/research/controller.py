@@ -8,6 +8,7 @@ from pymongo.errors import DuplicateKeyError
 from api.research.controller_schema import ControllerSchema
 from api.apis import ThreeCommasApi
 from api.tools.round_numbers import round_numbers
+from pymongo import ASCENDING
 
 class Controller:
     """
@@ -23,7 +24,8 @@ class Controller:
         """
         Get list of blacklisted symbols
         """
-        blacklist = list(current_app.db.blacklist.find())
+        query_result = current_app.db.blacklist.find({ "pair": { "$exists": True } }).sort("pair", ASCENDING)
+        blacklist = list(query_result)
         return jsonResp(
             {"message": "Successfully retrieved blacklist", "data": blacklist}
         )

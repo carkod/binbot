@@ -39,10 +39,13 @@ def ma_candlestick_jump(
         and open_price > ma_7[len(ma_7) - 2]
         and close_price > ma_100[len(ma_100) - 1]
         and open_price > ma_100[len(ma_100) - 1]
+        # remove high standard deviation
+        and float(sd) / float(close_price) < 0.07
     ):
 
         msg = (f"""
-- [{os.getenv('ENV')}] Candlesick <strong>#jump algorithm</strong> #{symbol}
+- [{os.getenv('ENV')}] Candlestick <strong>#jump algorithm</strong> #{symbol}
+- Current price: {close_price}
 - SD {sd}
 - Percentage volatility: {(sd) / float(close_price)}
 - Percentage volatility x2: {sd * 2 / float(close_price)}
