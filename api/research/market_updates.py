@@ -8,7 +8,6 @@ from api.app import create_app
 from api.deals.controllers import CreateDealController
 from websocket import WebSocketApp
 
-
 class MarketUpdates(Account):
     """
     Further explanation in docs/market_updates.md
@@ -91,7 +90,7 @@ class MarketUpdates(Account):
             else:
                 print(f'Error: {json_response["data"]}')
 
-    def process_deals_bot(self, current_bot, close_price, symbol, ws, db_collection):
+    def process_deals_bot(self, current_bot, close_price, symbol, db_collection):
         """
         Processes the deal market websocket price updates
 
@@ -100,13 +99,14 @@ class MarketUpdates(Account):
         """
 
         # Short strategy
-        if "short_buy_price" in current_bot and float(current_bot.short_buy_price) > 0:
-            if float(current_bot.short_buy_price) > close_price:
+        if "short_buy_price" in current_bot and float(current_bot["short_buy_price"]) > 0:
+            if float(current_bot["short_buy_price"]) >= float(close_price):
                 # If hit short_buy_price, resume long strategy by resetting short_buy_price
                 try:
-                    bot = self.app.db[db_collection].update_one(
+                    CreateDealController(current_bot, db_collection=db_collection).open_deal()
+                    self.app.db[db_collection].update_one(
                         {"_id": current_bot["_id"]},
-                        {"$set": {"short_buy_price": 0}},
+                        {"$set": {"short_buy_price": 0, "status": "active"}},
                     )
                 except Exception as error:
                     print(f"Short buy price update error: {error}")
@@ -237,8 +237,10 @@ class MarketUpdates(Account):
             current_test_bot = self.app.db.paper_trading.find_one(
                 {"pair": symbol, "status": "active"}
             )
-
-            self.process_deals_bot(current_bot, close_price, symbol, ws, "bots")
-            self.process_deals_bot(
-                current_test_bot, close_price, symbol, ws, "paper_trading"
-            )
+            if current_bot:
+                self.process_deals_bot(current_bot, close_price, symbol, "bots")
+            if current_test_bot:
+                self.process_deals_bot(
+                    current_test_bot, close_price, symbol, "paper_trading"
+                )
+            return

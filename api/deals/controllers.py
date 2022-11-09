@@ -428,15 +428,16 @@ class CreateDealController(Account):
         pass  # Completed
 
     def open_deal(self):
-
+        
         """
         Mandatory deals section
         - If base order deal is not executed, bot is not activated
         """
         # Check if short strategy
         # This will follow a totally different deal system
-        if "short_buy_price" in self.active_bot and float(self.active_bot.short_buy_price) > 0:
+        if hasattr(self.active_bot, "short_buy_price") and float(self.active_bot.short_buy_price) > 0:
             print("Short buy activated, deal will not open")
+            return
 
         # If there is already a base order do not execute
         base_order_deal = next(

@@ -81,7 +81,7 @@ export default function MainTab({
               }
             />
             <InputGroupText>
-              {state.pair.replace(state.quoteAsset, "")}
+              {state.quoteAsset}
             </InputGroupText>
           </InputGroup>
           <FormFeedback valid={!state.baseOrderSizeError}>
@@ -198,7 +198,7 @@ export default function MainTab({
                   onChange={handleChange}
                   defaultValue={state.short_buy_price}
                   autoComplete="off"
-                  step="0.01"
+                  step="0.00000001"
                 />
                 <InputGroupText>{state.quoteAsset}</InputGroupText>
               </InputGroup>
@@ -208,7 +208,7 @@ export default function MainTab({
             <FormGroup>
               <BotFormTooltip
                 name="short_sell_price"
-                text="Price at which to execute base order"
+                text="Price at which to stop loss sell and later buy again with short_buy_price"
               >
                 Short Sell Price
               </BotFormTooltip>
@@ -219,7 +219,7 @@ export default function MainTab({
                   onChange={handleChange}
                   defaultValue={state.short_sell_price}
                   autoComplete="off"
-                  step="0.01"
+                  step="0.00000001"
                 />
                 <InputGroupText>{state.quoteAsset}</InputGroupText>
               </InputGroup>

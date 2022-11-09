@@ -123,6 +123,16 @@ export default function BotCard({
               </Row>
               <Row>
                 <Col md="7">
+                  <p className="card-category">Strategy</p>
+                </Col>
+                <Col md="5">
+                  <p className="card-category">
+                    {x.short_buy_price > 0 ? "Short" : "Long"}
+                  </p>
+                </Col>
+              </Row>
+              <Row>
+                <Col md="7">
                   <p className="card-category"># Safety Orders</p>
                 </Col>
                 <Col md="5">

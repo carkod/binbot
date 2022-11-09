@@ -21,7 +21,6 @@ class SafetyOrderModel:
         created_at=time() * 1000,
         updated_at=time() * 1000,
         status=0,
-        short_buy_price=0,
         *args,
         **kwargs
     ):
@@ -36,7 +35,6 @@ class SafetyOrderModel:
         self.total_commission: float = float(total_comission)
         self.so_volume_scale = so_volume_scale
         self.status = status
-        self.short_buy_price = short_buy_price
 
 class BotModel:
     """
@@ -71,6 +69,8 @@ class BotModel:
         # Safety orders,
         locked_so_funds: float = 0,
         safety_orders = [],
+        short_buy_price=0,
+        short_sell_price=0,
         *args,
         **kwargs
     ) -> None:
@@ -98,6 +98,8 @@ class BotModel:
         self.trailling_profit = trailling_profit
         self.updated_at = updated_at
         self.base_strategy = base_strategy
+        self.short_buy_price = short_buy_price
+        self.short_sell_price = short_sell_price
 
     def append_so(self, so_list):
         safety_orders = []

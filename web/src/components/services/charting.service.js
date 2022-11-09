@@ -65,14 +65,36 @@ export function updateOrderLines(bot, currentPrice) {
         color: dealColors.base_order,
       });
     } else {
-      totalOrderLines.push({
-        id: "base_order",
-        text: "Base",
-        tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        price: parseFloat(currentPrice),
-        color: dealColors.base_order,
-      });
+      if (bot.short_buy_price > 0) {
+        totalOrderLines.push({
+          id: "short_buy_price",
+          text: "Short buy price",
+          tooltip: [bot.status, `Deal not opened`],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: parseFloat(bot.short_buy_price),
+          color: dealColors.trailling_profit,
+        });
+        if (bot.short_sell_price > 0) {
+          totalOrderLines.push({
+            id: "short_sell_price",
+            text: "Short sell price",
+            tooltip: [bot.status, `Deal closed, to be reopened`],
+            quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+            price: parseFloat(bot.short_sell_price),
+            color: dealColors.trailling_profit,
+          });
+        }
+      } else {
+        totalOrderLines.push({
+          id: "base_order",
+          text: "Base",
+          tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: parseFloat(currentPrice),
+          color: dealColors.base_order,
+        });
+      }
+      
     }
     
     if (bot.take_profit && bot.trailling === "true") {
