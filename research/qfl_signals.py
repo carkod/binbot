@@ -90,12 +90,11 @@ class QFL_signals(SetupSignals):
                     )
 
                 # Uncomment when short_buy strategy is ready
-                # if response["type"] == "panic":
-                #     strength = response["strength"]
-                #     velocity = response["velocity"]
-                #     message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
-                
-                
+                if response["type"] == "panic":
+                    strength = response["strength"]
+                    velocity = response["velocity"]
+                    message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
+                    self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals", test_only=True)
                 
 
                 # Avoid repeating signals with same coin

@@ -69,7 +69,7 @@ class Autotrade(BinbotApi):
         return result
 
     def default_5_so(
-        self, balances, price, per_deviation=5, exp_increase=1.2, total_num_so=5
+        self, balances, price, per_deviation=3, exp_increase=1.2, total_num_so=3
     ):
         """
         See docs/autotrade/default_5_so
@@ -115,7 +115,63 @@ class Autotrade(BinbotApi):
                     "total_commission": 0,
                 }
             )
+            
         return
+
+    def default_5_so_test(
+        self, balances, price, per_deviation=3, exp_increase=1.2, total_num_so=3
+    ):
+        """
+        Test default_3 safety orders with short_sell_price
+        """
+        available_balance = next(
+            (
+                b["free"]
+                for b in balances["data"]
+                if b["asset"] == self.default_bot["balance_to_use"]
+            ),
+            None,
+        )
+        initial_so = 10  # USDT
+
+        if not available_balance:
+            print(f"Not enough {self.default_bot['balance_to_use']} for safety orders")
+            return
+
+        for index in range(total_num_so):
+            count = index + 1
+            threshold = count * (per_deviation / 100)
+
+            if index > 0:
+                price = self.default_bot["safety_orders"][index - 1]["buy_price"]
+
+            buy_price = round_numbers(price - (price * threshold))
+            so_size = round_numbers(initial_so**exp_increase)
+
+            if (
+                self.db_collection_name != "paper_trading"
+                and not self.min_amount_check(self.pair, so_size)
+            ):
+                break
+            initial_so = copy.copy(so_size)
+            if count == total_num_so:
+                self.default_bot["short_buy_price"] = buy_price
+            else:
+                self.default_bot["safety_orders"].append(
+                    {
+                        "name": f"so_{count}",
+                        "status": 0,
+                        "buy_price": float(buy_price),
+                        "so_size": float(so_size),
+                        "so_asset": "USDT",
+                        "errors": [],
+                        "total_commission": 0,
+                    }
+                )
+            return
+            
+
+    
 
     def activate_autotrade(self, **kwargs):
         """
@@ -253,7 +309,10 @@ class Autotrade(BinbotApi):
         self.default_bot.pop("_id")
         base_order_price = bot["deal"]["buy_price"]
 
-        self.default_5_so(balances, base_order_price)
+        if self.db_collection_name == "paper_trading":
+            self.default_5_so_test(balances, base_order_price)
+        else:
+            self.default_5_so(balances, base_order_price)
 
         edit_bot_res = requests.put(
             url=f"{bot_url}/{botId}", json=self.default_bot
