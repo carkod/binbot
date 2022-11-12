@@ -7,13 +7,14 @@ from api.account.account import Account
 from api.bots.models import BotModel
 from api.bots.schemas import BotSchema
 from api.deals.models import DealModel, OrderModel
-from api.deals.schema import DealSchema, OrderSchema
+from api.deals.schema import DealSchema
 from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.exceptions import (
     BaseDealError,
     OpenDealError,
     TakeProfitError,
     TraillingProfitError,
+    ShortStrategyError
 )
 from api.tools.handle_error import (
     NotEnoughFunds,
@@ -433,11 +434,13 @@ class CreateDealController(Account):
         Mandatory deals section
         - If base order deal is not executed, bot is not activated
         """
-        # Check if short strategy
-        # This will follow a totally different deal system
-        if hasattr(self.active_bot, "short_buy_price") and float(self.active_bot.short_buy_price) > 0:
-            print("Short buy activated, deal will not open")
-            return
+        # Short strategy checks
+        if self.active_bot.strategy == "short":
+            if not hasattr(self.active_bot, "short_buy_price") or float(self.active_bot.short_buy_price) == 0:
+                raise ShortStrategyError("Short strategy requires short_buy_price to be set, or it will never trigger")
+            else:
+                print("Short buy activated, deal will not open")
+                return
 
         # If there is already a base order do not execute
         base_order_deal = next(

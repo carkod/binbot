@@ -1,7 +1,6 @@
 from time import time
 from marshmallow import Schema, fields
 from marshmallow.validate import OneOf
-from api.bots.models import BotModel
 from api.deals.schema import DealSchema, OrderSchema
 from api.tools.enum_definitions import EnumDefinitions
 
@@ -42,6 +41,7 @@ class BotSchema(Schema):
     trailling_deviation: float = fields.Float(required=True)
     trailling_profit: float = fields.Float() # Trailling activation (first take profit hit)
     safety_orders = fields.List(fields.Nested(SafetyOrderSchema))
+    strategy = fields.Str(required=True, dump_default="long", validate=OneOf(["long", "short"]))
     short_buy_price = fields.Float() # > 0 base_order does not execute immediately, executes short strategy when this value is hit
     short_sell_price = fields.Float() # autoswitch to short_strategy
     # Deal and orders are internal, should never be updated by outside data

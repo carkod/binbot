@@ -58,7 +58,6 @@ class TestBotForm extends React.Component {
       currentChartPrice: 0,
       currentOrderLines: [],
       currentTimeMarks: [],
-      baseStrategy: 0
     };
   }
 
@@ -198,6 +197,7 @@ class TestBotForm extends React.Component {
         stop_loss: this.props.bot.stop_loss,
         cooldown: this.props.bot.cooldown,
         safety_orders: this.props.bot.safety_orders,
+        strategy: this.props.bot.strategy,
         short_buy_price: this.props.bot.short_buy_price,
         short_sell_price: this.props.bot.short_sell_price
       };

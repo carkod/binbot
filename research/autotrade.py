@@ -44,6 +44,9 @@ class Autotrade(BinbotApi):
             "orders": [],
             "stop_loss": settings["stop_loss"],
             "safety_orders": [],
+            "strategy": "long",
+            "short_buy_price": 0,
+            "short_sell_price": 0,
             "errors": [],
         }
         self.db_collection_name = db_collection_name
@@ -115,11 +118,16 @@ class Autotrade(BinbotApi):
                     "total_commission": 0,
                 }
             )
-            
+
         return
 
     def default_5_so_test(
-        self, balances, price, per_deviation=3, exp_increase=1.2, total_num_so=3
+        self,
+        balances,
+        price,
+        per_deviation=3,
+        exp_increase=1.2,
+        total_num_so=3,
     ):
         """
         Test default_3 safety orders with short_sell_price
@@ -147,15 +155,10 @@ class Autotrade(BinbotApi):
 
             buy_price = round_numbers(price - (price * threshold))
             so_size = round_numbers(initial_so**exp_increase)
-
-            if (
-                self.db_collection_name != "paper_trading"
-                and not self.min_amount_check(self.pair, so_size)
-            ):
-                break
             initial_so = copy.copy(so_size)
+
             if count == total_num_so:
-                self.default_bot["short_buy_price"] = buy_price
+                self.default_bot["short_sell_price"] = buy_price
             else:
                 self.default_bot["safety_orders"].append(
                     {
@@ -168,10 +171,7 @@ class Autotrade(BinbotApi):
                         "total_commission": 0,
                     }
                 )
-            return
-            
-
-    
+        return
 
     def activate_autotrade(self, **kwargs):
         """
@@ -241,7 +241,7 @@ class Autotrade(BinbotApi):
                         base_order_size, self.decimals
                     )
                     pass
-            
+
             # Dynamic switch to real bot URLs
             bot_url = self.bb_bot_url
             activate_url = self.bb_activate_bot_url
@@ -260,17 +260,18 @@ class Autotrade(BinbotApi):
         ] = "USDT"  # For now we are always using USDT. Safest and most coins/tokens
         self.default_bot["stop_loss"] = 0  # Using safety orders instead of stop_loss
         # set default static trailling_deviation
-        
+
         if "sd" in kwargs and "current_price" in kwargs:
             # dynamic take profit trailling_deviation, changes according to standard deviation
-            spread = ((kwargs["sd"] * 2) / kwargs["current_price"])
-            self.default_bot["trailling_deviation"] = float(
-                spread * 100
-            )
+            spread = (kwargs["sd"] * 2) / kwargs["current_price"]
+            self.default_bot["trailling_deviation"] = float(spread * 100)
         else:
             self.default_bot["trailling_deviation"] = float(
                 self.settings["trailling_deviation"]
             )
+        
+        if "strategy" in kwargs:
+            self.default_bot["strategy"] = kwargs["strategy"]
 
         # Create bot
         create_bot_res = requests.post(url=bot_url, json=self.default_bot)
@@ -314,9 +315,7 @@ class Autotrade(BinbotApi):
         else:
             self.default_5_so(balances, base_order_price)
 
-        edit_bot_res = requests.put(
-            url=f"{bot_url}/{botId}", json=self.default_bot
-        )
+        edit_bot_res = requests.put(url=f"{bot_url}/{botId}", json=self.default_bot)
         edit_bot = handle_binance_errors(edit_bot_res)
 
         if "error" in edit_bot and edit_bot["error"] == 1:
