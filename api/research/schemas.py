@@ -13,11 +13,10 @@ class AutotradeSettingsSchema(Schema):
     stop_loss: float = fields.Float()
     take_profit: float = fields.Float()
     balance_to_use: str = fields.Str()
-    balance_size_to_use: str = fields.Str()
+    balance_size_to_use: str = fields.Float()
     max_request: int = fields.Int()
     system_logs: str = fields.List(fields.Str())
     update_required: bool = fields.Boolean()
     telegram_signals: int = fields.Int()
     max_active_autotrade_bots: int = fields.Int()
     base_order_size: str = fields.Str()
-

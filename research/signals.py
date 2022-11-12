@@ -307,7 +307,7 @@ class ResearchSignals(SetupSignals):
         # e.g. autotrade bots not updating can be a symptom of this
         if (
             symbol not in self.active_test_bots
-            and int(self.test_autotrade_settings["test_autotrade"])
+            and int(self.test_autotrade_settings["autotrade"])
             == 1  # Test autotrade runs independently of autotrade = 1
         ):
 

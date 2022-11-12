@@ -62,7 +62,7 @@ content-Type: application/json
     "stop_loss": 3,
     "take_profit": 2.4,
     "telegram_signals": 1,
-    "test_autotrade": 0,
+    "autotrade": 0,
     "trailling": "false",
     "trailling_deviation": 3,
     "trailling_profit": 2.4

@@ -1,9 +1,7 @@
 from flask import current_app
 from api.research.schemas import AutotradeSettingsSchema
-from api.research.test_autotrade_schema import TestAutotradeSchema
 from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
 from flask import current_app, request
-from api.tools.round_numbers import round_numbers
 
 
 class AutotradeSettingsController:

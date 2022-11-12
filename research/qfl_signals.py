@@ -172,7 +172,7 @@ class QFL_signals(SetupSignals):
         # e.g. autotrade bots not updating can be a symptom of this
         if (
             symbol not in self.active_test_bots
-            and int(self.test_autotrade_settings["test_autotrade"]) == 1
+            and int(self.test_autotrade_settings["autotrade"]) == 1
         ):
             if self.reached_max_active_autobots("paper_trading"):
                 print("Reached maximum number of active bots set in controller settings")

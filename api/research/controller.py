@@ -1,11 +1,9 @@
 from datetime import datetime
 from time import sleep
 from api.app import create_app
-from api.research.test_autotrade_schema import TestAutotradeSchema
-from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
+from api.tools.handle_error import jsonResp
 from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
-from api.research.controller_schema import ControllerSchema
 from api.apis import ThreeCommasApi
 from api.tools.round_numbers import round_numbers
 from pymongo import ASCENDING
