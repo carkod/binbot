@@ -214,13 +214,7 @@ class Bot(Account):
             except NotEnoughFunds as e:
                 return jsonResp_error_message(e.args[0])
             except Exception as error:
-                resp = jsonResp(
-                    {
-                        "message": f"Unable to save bot: {error}",
-                        "botId": str(botId),
-                    },
-                    200,
-                )
+                resp = jsonResp_error_message(f"Unable to activate bot: {error}")
                 return resp
         else:
             return jsonResp_error_message("Bot not found.")

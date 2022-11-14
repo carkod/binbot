@@ -46,7 +46,10 @@ export const bot = {
   stopLossError: false,
   safety_orders: [],
   addAllError: "",
-  cooldown: 0
+  cooldown: 0,
+  strategy: "long",
+  short_buy_price: 0,
+  short_sell_price: 0,
 };
 
 export function setFilterByWeek() {

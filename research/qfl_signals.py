@@ -90,12 +90,11 @@ class QFL_signals(SetupSignals):
                     )
 
                 # Uncomment when short_buy strategy is ready
-                # if response["type"] == "panic":
-                #     strength = response["strength"]
-                #     velocity = response["velocity"]
-                #     message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
-                
-                
+                if response["type"] == "panic":
+                    strength = response["strength"]
+                    velocity = response["velocity"]
+                    message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
+                    self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals", test_only=True)
                 
 
                 # Avoid repeating signals with same coin
@@ -173,7 +172,7 @@ class QFL_signals(SetupSignals):
         # e.g. autotrade bots not updating can be a symptom of this
         if (
             symbol not in self.active_test_bots
-            and int(self.test_autotrade_settings["test_autotrade"]) == 1
+            and int(self.test_autotrade_settings["autotrade"]) == 1
         ):
             if self.reached_max_active_autobots("paper_trading"):
                 print("Reached maximum number of active bots set in controller settings")

@@ -119,13 +119,13 @@ export default function TestAutotrade() {
                       />
                     </Col>
                     <Col md="3">
-                      <label htmlFor="test_autotrade">Autotrade?</label>
+                      <label htmlFor="autotrade">Autotrade?</label>
                       <br />
                       <LightSwitch
                         value={
-                          settingsProps.testAutotradeSettings.test_autotrade
+                          settingsProps.testAutotradeSettings.autotrade
                         }
-                        name="test_autotrade"
+                        name="autotrade"
                         toggle={toggle}
                       />
                     </Col>

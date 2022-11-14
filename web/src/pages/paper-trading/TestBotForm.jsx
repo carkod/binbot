@@ -197,6 +197,9 @@ class TestBotForm extends React.Component {
         stop_loss: this.props.bot.stop_loss,
         cooldown: this.props.bot.cooldown,
         safety_orders: this.props.bot.safety_orders,
+        strategy: this.props.bot.strategy,
+        short_buy_price: this.props.bot.short_buy_price,
+        short_sell_price: this.props.bot.short_sell_price
       };
       if (!checkValue(this.props.match.params.id)) {
         form._id = this.props.match.params.id;

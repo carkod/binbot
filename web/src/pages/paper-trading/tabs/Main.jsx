@@ -68,7 +68,9 @@ export default function MainTab({
               onBlur={handleBlur}
               value={state.base_order_size}
               autoComplete="off"
-              disabled={state.status === "active" || state.status === "completed"}
+              disabled={
+                state.status === "active" || state.status === "completed"
+              }
             />
             <InputGroupText>{state.quoteAsset}</InputGroupText>
           </InputGroup>
@@ -138,17 +140,23 @@ export default function MainTab({
       <Row>
         <Col md="6">
           <FormGroup>
-            <Label for="base_strategy">
-              Base strategy
-            </Label>
-            <Input
-              id="base-strategy"
-              name="base_strategy"
-              type="select"
+            <BotFormTooltip
+              name="short_sell_price"
+              text="Price at which to stop loss sell and later buy again with short_buy_price (short strategy autoswitch)"
             >
-              <option value="long_buy">Long buy</option>
-              <option value="short_buy">Short buy</option>
-            </Input>
+              Short Sell Price
+            </BotFormTooltip>
+            <InputGroup>
+              <Input
+                type="number"
+                name="short_sell_price"
+                onChange={handleChange}
+                defaultValue={state.short_sell_price}
+                autoComplete="off"
+                step="0.00000001"
+              />
+              <InputGroupText>{state.quoteAsset}</InputGroupText>
+            </InputGroup>
           </FormGroup>
         </Col>
         <Col md="6" sm="12">
@@ -166,6 +174,44 @@ export default function MainTab({
               value={state.cooldown}
               autoComplete="off"
             />
+          </FormGroup>
+        </Col>
+      </Row>
+      <Row>
+        <Col md="6" sm="12">
+          <FormGroup>
+            <Label for="strategy">Trigger strategy</Label>
+            <Input
+              id="strategy"
+              name="strategy"
+              type="select"
+              defaultValue={state.strategy}
+              onChange={handleChange}
+            >
+              <option value="long">Long</option>
+              <option value="short">Short</option>
+            </Input>
+          </FormGroup>
+        </Col>
+        <Col md="6" sm="12">
+          <FormGroup>
+            <BotFormTooltip
+              name="short_buy_price"
+              text="Price at which to execute base order"
+            >
+              Short Buy Price
+            </BotFormTooltip>
+            <InputGroup>
+              <Input
+                type="number"
+                name="short_buy_price"
+                onChange={handleChange}
+                defaultValue={state.short_buy_price}
+                autoComplete="off"
+                step="0.00000001"
+              />
+              <InputGroupText>{state.quoteAsset}</InputGroupText>
+            </InputGroup>
           </FormGroup>
         </Col>
       </Row>
