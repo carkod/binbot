@@ -2,7 +2,7 @@ from flask import current_app
 from api.research.schemas import AutotradeSettingsSchema
 from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
 from flask import current_app, request
-
+from marshmallow.exceptions import ValidationError
 
 class AutotradeSettingsController:
     """
@@ -37,4 +37,9 @@ class AutotradeSettingsController:
             resp = jsonResp_message("Successfully updated settings")
         except TypeError as e:
             resp = jsonResp_error_message(f"Data validation error: {e}")
+        except ValidationError as error:
+            msg = ""
+            for field, desc in error.args[0].items():
+                msg += field + desc[0]
+            resp = jsonResp_error_message(f"{msg}")
         return resp
