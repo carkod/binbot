@@ -391,6 +391,9 @@ class ResearchSignals(SetupSignals):
             msg = None
             list_prices = numpy.array(data["trace"][0]["close"])
             sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
+
+            # historical lowest for short_buy_price
+            lowest_price = numpy.min(numpy.array(data["trace"][0]["close"]).astype(numpy.float))
             
             ma_candlestick_jump(
                 close_price,
@@ -403,6 +406,7 @@ class ResearchSignals(SetupSignals):
                 self._send_msg,
                 self.run_autotrade,
                 ws,
+                lowest_price
             )
 
             self.last_processed_kline[symbol] = time()

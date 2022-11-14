@@ -10,6 +10,7 @@ from api.tools.handle_error import (
 from flask import request
 from api.app import create_app
 from decimal import Decimal
+from api.tools.handle_error import InvalidSymbol
 
 
 class Account(BinbotApi):
@@ -50,11 +51,9 @@ class Account(BinbotApi):
         params = {"symbol": symbol}
         res = requests.get(url=url, params=params)
         data = handle_binance_errors(res)
-        try:
-            price = data["price"]
-            return price
-        except KeyError:
-            print(symbol)
+        if "code" in data and data["code"] == -1121:
+            raise InvalidSymbol()
+        return data["price"]
 
     def ticker_24(self):
         url = self.ticker24_url

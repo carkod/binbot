@@ -252,9 +252,41 @@ class Assets(Account):
             resp = jsonResp({"data": [], "error": 1})
         return resp
 
-    def balance_estimate(self, fiat="GBP"):
+    def balance_estimate(self, fiat="USDT"):
         """
         Estimated balance in given fiat coin
+        """
+        balances = self.get_raw_balance().json
+        total_fiat = 0
+        rate = 0
+        for b in balances["data"]:
+            # Transform tethers/stablecoins
+            if "USD" in b["asset"] or fiat == b["asset"]:
+                total_fiat += self._check_locked(b)
+            # Transform market assets/alt coins
+            elif b["asset"] == "NFT":
+                continue
+            else:
+                qty = self._check_locked(b)
+                try:
+                    rate = self.get_ticker_price(f'{b["asset"]}{fiat}')
+                except InvalidSymbol:
+                    print(f"Invalid symbol {b['asset'] + fiat}")
+                total_fiat += float(qty) * float(rate)
+
+        balance = {
+            "balances": balances["data"],
+            "total_fiat": total_fiat,
+        }
+        if balance:
+            resp = jsonResp({"data": balance})
+        else:
+            resp = jsonResp({"data": [], "error": 1})
+        return resp
+
+    def balance_estimate_legacy(self, fiat="USDT"):
+        """
+        Old legacy code of balance_estimate
         """
         balances = self.get_raw_balance().json
         total_fiat = 0

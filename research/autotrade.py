@@ -159,6 +159,7 @@ class Autotrade(BinbotApi):
 
             if count == total_num_so:
                 self.default_bot["short_sell_price"] = buy_price
+                print("short_sell_price set!: ", self.default_bot["short_sell_price"])
             else:
                 self.default_bot["safety_orders"].append(
                     {
@@ -171,6 +172,7 @@ class Autotrade(BinbotApi):
                         "total_commission": 0,
                     }
                 )
+        print("Default short_buy_price: ", self.default_bot["short_buy_price"])
         return
 
     def activate_autotrade(self, **kwargs):
@@ -270,6 +272,10 @@ class Autotrade(BinbotApi):
                 self.settings["trailling_deviation"]
             )
         
+        if "lowest_price" in kwargs:
+            self.default_bot["short_buy_price"] = kwargs["lowest_price"]
+            print("short_buy_price set!", self.default_bot["short_buy_price"])
+
         if "strategy" in kwargs:
             self.default_bot["strategy"] = kwargs["strategy"]
 
