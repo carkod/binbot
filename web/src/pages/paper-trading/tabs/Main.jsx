@@ -151,7 +151,7 @@ export default function MainTab({
                 type="number"
                 name="short_sell_price"
                 onChange={handleChange}
-                defaultValue={state.short_sell_price}
+                value={state.short_sell_price}
                 autoComplete="off"
                 step="0.00000001"
               />
@@ -185,7 +185,7 @@ export default function MainTab({
               id="strategy"
               name="strategy"
               type="select"
-              defaultValue={state.strategy}
+              value={state.strategy}
               onChange={handleChange}
             >
               <option value="long">Long</option>
@@ -206,7 +206,7 @@ export default function MainTab({
                 type="number"
                 name="short_buy_price"
                 onChange={handleChange}
-                defaultValue={state.short_buy_price}
+                value={state.short_buy_price}
                 autoComplete="off"
                 step="0.00000001"
               />

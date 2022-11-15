@@ -8,7 +8,7 @@ const BotFormTooltip = ({name, text, children}) => {
   return (
     <>
       <Label htmlFor={name}>
-        <button className='btn-reset' id={`${name}-tooltip`}>{children}</button>
+        <button type="button" className='btn-reset' id={`${name}-tooltip`}>{children}</button>
       </Label>
       <Tooltip isOpen={tooltipOpen} target={`${name}-tooltip`} toggle={toggle}>
         <small>{text}</small>

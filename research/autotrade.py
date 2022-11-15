@@ -158,6 +158,8 @@ class Autotrade(BinbotApi):
             initial_so = copy.copy(so_size)
 
             if count == total_num_so:
+                # Increases price diff between short_sell_price and short_buy_price
+                buy_price = round_numbers(price - (price * 0.05))
                 self.default_bot["short_sell_price"] = buy_price
                 print("short_sell_price set!: ", self.default_bot["short_sell_price"])
             else:
@@ -271,10 +273,7 @@ class Autotrade(BinbotApi):
             self.default_bot["trailling_deviation"] = float(
                 self.settings["trailling_deviation"]
             )
-        
-        if "lowest_price" in kwargs:
-            self.default_bot["short_buy_price"] = kwargs["lowest_price"]
-            print("short_buy_price set!", self.default_bot["short_buy_price"])
+
 
         if "strategy" in kwargs:
             self.default_bot["strategy"] = kwargs["strategy"]
@@ -321,14 +320,20 @@ class Autotrade(BinbotApi):
         else:
             self.default_5_so(balances, base_order_price)
 
+
+        # Set short_buy price, so that it's always bellow short_buy_price
+
+        if "lowest_price" in kwargs:
+            self.default_bot["short_buy_price"] = kwargs["lowest_price"]
+            if kwargs["lowest_price"] >= self.default_bot["short_sell_price"]:
+                self.default_bot["short_buy_price"] = float(self.default_bot["short_sell_price"]) - (float(self.default_bot["short_sell_price"]) * 0.05)
+            print("short_buy_price set!", self.default_bot["short_buy_price"])
+
         edit_bot_res = requests.put(url=f"{bot_url}/{botId}", json=self.default_bot)
         edit_bot = handle_binance_errors(edit_bot_res)
 
         if "error" in edit_bot and edit_bot["error"] == 1:
-            print(
-                f"Test Autotrade: {edit_bot['message']}",
-                f"Pair: {self.pair}.",
-            )
+            print(f"Test Autotrade: {edit_bot['message']}",f"Pair: {self.pair}.")
             return
 
         print(
