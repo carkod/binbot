@@ -84,16 +84,15 @@ export function updateOrderLines(bot, currentPrice) {
             color: dealColors.trailling_profit,
           });
         }
-      } else {
-        totalOrderLines.push({
-          id: "base_order",
-          text: "Base",
-          tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price: parseFloat(currentPrice),
-          color: dealColors.base_order,
-        });
       }
+      totalOrderLines.push({
+        id: "base_order",
+        text: "Base",
+        tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
+        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        price: parseFloat(currentPrice),
+        color: dealColors.base_order,
+      });
       
     }
     

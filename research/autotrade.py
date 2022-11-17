@@ -159,9 +159,9 @@ class Autotrade(BinbotApi):
 
             if count == total_num_so:
                 # Increases price diff between short_sell_price and short_buy_price
-                buy_price = round_numbers(price - (price * 0.05))
-                self.default_bot["short_sell_price"] = buy_price
-                print("short_sell_price set!: ", self.default_bot["short_sell_price"])
+                short_sell_price = round_numbers(price - (price * 0.05))
+                self.default_bot["short_sell_price"] = short_sell_price
+                self.default_bot["short_buy_price"] = round_numbers(short_sell_price - (short_sell_price * threshold))
             else:
                 self.default_bot["safety_orders"].append(
                     {
@@ -259,9 +259,7 @@ class Autotrade(BinbotApi):
         else:
             self.default_bot["base_order_size"] = "15"  # min USDT order = 15
 
-        self.default_bot[
-            "balance_to_use"
-        ] = "USDT"  # For now we are always using USDT. Safest and most coins/tokens
+        self.default_bot["balance_to_use"] = "USDT"  # For now we are always using USDT. Safest and most coins/tokens
         self.default_bot["stop_loss"] = 0  # Using safety orders instead of stop_loss
         # set default static trailling_deviation
 
@@ -273,7 +271,6 @@ class Autotrade(BinbotApi):
             self.default_bot["trailling_deviation"] = float(
                 self.settings["trailling_deviation"]
             )
-
 
         if "strategy" in kwargs:
             self.default_bot["strategy"] = kwargs["strategy"]
