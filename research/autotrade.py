@@ -1,6 +1,7 @@
 import math
 import copy
 import requests
+import logging
 
 from apis import BinbotApi
 from utils import InvalidSymbol, handle_binance_errors, round_numbers, supress_notation
@@ -337,3 +338,62 @@ class Autotrade(BinbotApi):
             f"Succesful {self.db_collection_name} autotrade, opened with {self.pair}!"
         )
         pass
+
+
+def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False, *args, **kwargs):
+    """
+    Refactored autotrade conditions.
+    Previously part of process_kline_stream
+    1. Checks if we have balance to trade
+    2. Check if we need to update websockets
+    3. Check if autotrade is enabled
+    4. Check if test autotrades
+    """
+    logging.info("Running qfl_signals autotrade...")
+    # Check balance to avoid failed autotrades
+    check_balance_res = requests.get(url=self.bb_balance_estimate_url)
+    balances = handle_binance_errors(check_balance_res)
+    if "error" in balances and balances["error"] == 1:
+        print(balances["message"])
+        return
+
+    balance_check = int(balances["data"]["total_fiat"])
+
+    # If dashboard has changed any self.settings
+    # Need to reload websocket
+    if "update_required" in self.settings and self.settings["update_required"]:
+        print("Update required, restart stream")
+        self.terminate_websockets()
+        self.start_stream(previous_ws=ws)
+        pass
+
+    if (
+        int(self.settings["autotrade"]) == 1
+        # Temporary restriction for few funds
+        and balance_check > 15
+        and not test_only
+    ):
+        if self.reached_max_active_autobots("bots"):
+            print("Reached maximum number of active bots set in controller settings")
+        else:
+
+            autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
+            autotrade.activate_autotrade()
+
+    # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
+    # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
+    # the downfall is that it can increase load for the server if there are multiple bots opened
+    # e.g. autotrade bots not updating can be a symptom of this
+    if (
+        symbol not in self.active_test_bots
+        and int(self.test_autotrade_settings["autotrade"]) == 1
+    ):
+        if self.reached_max_active_autobots("paper_trading"):
+            print("Reached maximum number of active bots set in controller settings")
+        else:
+            # Test autotrade runs independently of autotrade = 1
+            test_autotrade = Autotrade(
+                symbol, self.test_autotrade_settings, algorithm, "paper_trading"
+            )
+            test_autotrade.activate_autotrade()
+    return
