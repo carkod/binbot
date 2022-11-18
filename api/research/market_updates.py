@@ -99,34 +99,33 @@ class MarketUpdates(Account):
         """
 
         # Short strategy
-        if "short_buy_price" in current_bot and float(current_bot["short_buy_price"]) > 0:
-            if float(current_bot["short_buy_price"]) >= float(close_price):
-                # If hit short_buy_price, resume long strategy by resetting short_buy_price
-                try:
-                    CreateDealController(current_bot, db_collection=db_collection).open_deal()
-                    self.app.db[db_collection].update_one(
-                        {"_id": current_bot["_id"]},
-                        {"$set": {"short_buy_price": 0, "status": "active", "strategy": "long"}},
-                    )
-                except Exception as error:
-                    print(f"Short buy price update error: {error}")
+        if "strategy" in current_bot and current_bot["strategy"] == "short":
+            if "short_buy_price" in current_bot and float(current_bot["short_buy_price"]) > 0 and float(current_bot["short_buy_price"]) >= float(close_price):
+                    # If hit short_buy_price, resume long strategy by resetting short_buy_price
+                    try:
+                        CreateDealController(current_bot, db_collection=db_collection).open_deal()
+                        self.app.db[db_collection].update_one(
+                            {"_id": current_bot["_id"]},
+                            {"$set": {"short_buy_price": 0, "status": "active", "strategy": "long"}},
+                        )
+                    except Exception as error:
+                        print(f"Short buy price update error: {error}")
 
-                return
-                
-        # Auto switch to short strategy
-        elif "short_sell_price" in current_bot and float(current_bot["short_sell_price"]) > 0:
-            if float(current_bot["short_sell_price"]) <= float(close_price):
-                # If hit short_sell_price, resume long strategy by resetting short_sell_price
-                try:
-                    CreateDealController(current_bot, db_collection=db_collection).open_deal()
-                    self.app.db[db_collection].update_one(
-                        {"_id": current_bot["_id"]},
-                        {"$set": {"short_sell_price": 0, "status": "active", "strategy": "short"}},
-                    )
-                except Exception as error:
-                    print(f"Autoswitch to short strategy error: {error}")
+                    return
+                    
+            # Auto switch to short strategy
+            if "short_sell_price" in current_bot and float(current_bot["short_sell_price"]) > 0 and float(current_bot["short_sell_price"]) <= float(close_price):
+                    # If hit short_sell_price, resume long strategy by resetting short_sell_price
+                    try:
+                        CreateDealController(current_bot, db_collection=db_collection).open_deal()
+                        self.app.db[db_collection].update_one(
+                            {"_id": current_bot["_id"]},
+                            {"$set": {"short_sell_price": 0, "status": "active", "strategy": "short"}},
+                        )
+                    except Exception as error:
+                        print(f"Autoswitch to short strategy error: {error}")
 
-                return
+                    return
         else:
 
             # Long strategy starts

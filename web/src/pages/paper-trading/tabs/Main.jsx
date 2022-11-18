@@ -150,6 +150,7 @@ export default function MainTab({
               <Input
                 type="number"
                 name="short_sell_price"
+                onBlur={handleBlur}
                 onChange={handleChange}
                 value={state.short_sell_price}
                 autoComplete="off"
@@ -187,6 +188,7 @@ export default function MainTab({
               type="select"
               value={state.strategy}
               onChange={handleChange}
+              onBlur={handleBlur}
             >
               <option value="long">Long</option>
               <option value="short">Short</option>
@@ -206,6 +208,7 @@ export default function MainTab({
                 type="number"
                 name="short_buy_price"
                 onChange={handleChange}
+                onBlur={handleBlur}
                 value={state.short_buy_price}
                 autoComplete="off"
                 step="0.00000001"

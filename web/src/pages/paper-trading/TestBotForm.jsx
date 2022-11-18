@@ -130,6 +130,18 @@ class TestBotForm extends React.Component {
       const currentTimeMarks = updateTimescaleMarks(this.props.bot);
       this.setState({ currentTimeMarks: currentTimeMarks });
     }
+
+    if (this.props.bot.trailling !== p.bot.trailling) {
+      const newOrderLines = updateOrderLines(
+        this.props.bot,
+        this.state.currentChartPrice
+      );
+      this.setState(
+        produce(this.state, (draft) => {
+          draft.currentOrderLines = newOrderLines;
+        })
+      );
+    }
   };
 
   requiredinValidation = () => {
@@ -207,6 +219,7 @@ class TestBotForm extends React.Component {
       } else {
         this.props.createTestBot(form);
       }
+      window.location.reload();
     }
   };
 
@@ -411,7 +424,7 @@ class TestBotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <Row>
+                <Row style={{alignItems: "baseline"}}>
                   <Col>
                     <CardTitle tag="h3">
                       {this.props.bot?.pair}{" "}
@@ -439,6 +452,11 @@ class TestBotForm extends React.Component {
                           }
                         >
                           {this.props.bot.status}
+                        </Badge>
+                      )}{" "}
+                      {!checkValue(this.props.bot.strategy) && (
+                        <Badge color="info">
+                          {this.props.bot.strategy}
                         </Badge>
                       )}
                     </CardTitle>

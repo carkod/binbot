@@ -16,7 +16,7 @@
     "map-sass": "sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css --source-map true"
   },
   "dependencies": {
-    "binbot-charts": "^0.3.0",
+    "binbot-charts": "^0.3.1",
     "bootstrap": "5.2.2",
     "history": "^5.0.0",
     "immer": "^9.0.6",
