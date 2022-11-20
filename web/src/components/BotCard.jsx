@@ -127,7 +127,7 @@ export default function BotCard({
                 </Col>
                 <Col md="5">
                   <p className="card-category">
-                    {x.short_buy_price > 0 ? "Short" : "Long"}
+                    {x.strategy}
                   </p>
                 </Col>
               </Row>
