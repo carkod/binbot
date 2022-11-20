@@ -37,7 +37,12 @@ const getNetProfit = (bot) => {
     finalPrice = bot.deal.sell_price
   }
 
-  const netProfit = getProfit(bot.deal.buy_price, finalPrice);
+  let netProfit = getProfit(bot.deal.buy_price, finalPrice);
+
+  if (bot.strategy === "short" || bot.deal.buy_price === 0) {
+    netProfit = 0
+  }
+  
   return netProfit
 }
 export default function BotCard({
