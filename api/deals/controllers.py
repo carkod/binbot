@@ -440,7 +440,7 @@ class CreateDealController(Account):
                 raise ShortStrategyError("Short strategy requires short_buy_price to be set, or it will never trigger")
             else:
                 print("Short buy activated, deal will not open")
-                return
+                pass
 
         # If there is already a base order do not execute
         base_order_deal = next(
@@ -1089,6 +1089,8 @@ class CreateDealController(Account):
         self.active_bot.deal = new_deal
         self.active_bot.short_buy_price = 0
         self.active_bot.strategy = "long"
+        # Necessary to reset orders, to open_deal
+        self.active_bot.orders = []
 
         try:
             self.open_deal()
