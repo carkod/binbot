@@ -191,7 +191,7 @@ class TestBotForm extends React.Component {
     return true;
   };
 
-  handleSubmit = (e) => {
+  handleSubmit = async (e) => {
     e.preventDefault();
     const validation = this.requiredinValidation();
     if (validation) {
@@ -215,9 +215,9 @@ class TestBotForm extends React.Component {
       };
       if (!checkValue(this.props.match.params.id)) {
         form._id = this.props.match.params.id;
-        this.props.editTestBot(this.props.match.params.id, form);
+        await this.props.editTestBot(this.props.match.params.id, form);
       } else {
-        this.props.createTestBot(form);
+        await this.props.createTestBot(form);
       }
       window.location.reload();
     }

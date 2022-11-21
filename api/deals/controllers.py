@@ -439,7 +439,6 @@ class CreateDealController(Account):
             if not hasattr(self.active_bot, "short_buy_price") or float(self.active_bot.short_buy_price) == 0:
                 raise ShortStrategyError("Short strategy requires short_buy_price to be set, or it will never trigger")
             else:
-                print("Short buy activated, deal will not open")
                 pass
 
         # If there is already a base order do not execute
