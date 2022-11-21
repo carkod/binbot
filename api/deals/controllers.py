@@ -945,6 +945,7 @@ class CreateDealController(Account):
         Short strategy sell. Similar to stop loss, but it will keep tracking the price until it short_buys
         - Hard sell (order status="FILLED" immediately) initial amount crypto in deal
         - Close current opened take profit order
+        - Remove old base_order and reset deal for future open_deal
         - Switch strategy to short
         - Wait for short_sell_price to hit
         """
@@ -966,7 +967,8 @@ class CreateDealController(Account):
 
         order_id = None
         for order in bot.orders:
-            if order.deal_type == "take_profit":
+            # With short_sell, Take profit changes and base_order needs to be removed to execute base_order
+            if order.deal_type == "take_profit" or order.deal_type == "base_order":
                 order_id = order.order_id
                 bot.orders.remove(order)
                 break
@@ -1052,6 +1054,11 @@ class CreateDealController(Account):
         self.active_bot.deal.short_sell_price = res["price"]
         self.active_bot.deal.short_sell_qty = res["origQty"]
         self.active_bot.deal.short_sell_timestamp = res["transactTime"]
+
+        # Reset deal to allow new open_deal to populate
+        new_deal = DealModel()
+        self.active_bot.deal = new_deal
+
         msg = f"Completed Short sell position"
         self.active_bot.errors.append(msg)
 
@@ -1081,15 +1088,11 @@ class CreateDealController(Account):
         """
         Short strategy, buy after hitting a certain short_buy_price
 
-        1. Reinitialize deal
-        2. Open deal as usual
+        1. Set parameters for short_buy
+        2. Open new deal as usual
         """
-        new_deal = DealModel()
-        self.active_bot.deal = new_deal
         self.active_bot.short_buy_price = 0
         self.active_bot.strategy = "long"
-        # Necessary to reset orders, to open_deal
-        self.active_bot.orders = []
 
         try:
             self.open_deal()
