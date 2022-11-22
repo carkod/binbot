@@ -4,11 +4,12 @@ import re
 import threading
 import requests
 import logging
+import numpy
 from signals import SetupSignals
 from websocket import WebSocketApp
 from decimal import Decimal
 from autotrade import process_autotrade_restrictions
-from utils import handle_binance_errors
+from utils import round_numbers
 from time import time
 
 class QFL_signals(SetupSignals):
@@ -56,6 +57,20 @@ class QFL_signals(SetupSignals):
 
         symbol = asset + "USDT"
         return symbol
+    
+    def get_stats(self, symbol):
+        """
+        Get standard deviation and lowest price
+        """
+
+        data = self._get_candlestick(symbol, "15m")
+        if "error" in data and data["error"] == 1:
+                return
+
+        list_prices = numpy.array(data["trace"][0]["close"])
+        sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
+        lowest_price = numpy.min(numpy.array(data["trace"][0]["close"]).astype(numpy.float))
+        return sd, lowest_price
 
     def on_message(self, ws, payload):
         response = json.loads(payload)
@@ -83,7 +98,9 @@ class QFL_signals(SetupSignals):
                 if response["type"] == "base-break":
                     base_price = Decimal(str(response["basePrice"]))
                     message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
-                    process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_base-break")
+
+                    sd, lowest_price = self.get_stats(trading_pair)
+                    process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_base-break", **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price})
 
                     self.custom_telegram_msg(
                         f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
@@ -94,7 +111,8 @@ class QFL_signals(SetupSignals):
                     strength = response["strength"]
                     velocity = response["velocity"]
                     message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
-                    process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_panic", test_only=True)
+                    sd, lowest_price = self.get_stats(trading_pair)
+                    process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_panic", test_only=True, **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price})
 
                     self.custom_telegram_msg(
                         f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair

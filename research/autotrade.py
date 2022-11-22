@@ -129,6 +129,7 @@ class Autotrade(BinbotApi):
         per_deviation=3,
         exp_increase=1.2,
         total_num_so=3,
+        trend="upward" # ["upward", "downward"] Upward trend is for candlestick_jumps and similar algorithms. Downward trend is for panic sells in the market
     ):
         """
         Test default_3 safety orders with short_sell_price
@@ -160,9 +161,15 @@ class Autotrade(BinbotApi):
 
             if count == total_num_so:
                 # Increases price diff between short_sell_price and short_buy_price
-                short_sell_price = round_numbers(price - (price * 0.05))
+                short_sell_spread = 0.05
+                short_buy_spread = threshold
+                if trend == "downtrend":
+                    short_sell_spread = 0.02
+                    short_buy_spread = 0.1
+
+                short_sell_price = round_numbers(price - (price * short_sell_spread))
                 self.default_bot["short_sell_price"] = short_sell_price
-                self.default_bot["short_buy_price"] = round_numbers(short_sell_price - (short_sell_price * threshold))
+                self.default_bot["short_buy_price"] = round_numbers(short_sell_price - (short_sell_price * short_buy_spread))
             else:
                 self.default_bot["safety_orders"].append(
                     {
@@ -175,7 +182,6 @@ class Autotrade(BinbotApi):
                         "total_commission": 0,
                     }
                 )
-        print("Default short_buy_price: ", self.default_bot["short_buy_price"])
         return
 
     def activate_autotrade(self, **kwargs):
@@ -378,7 +384,7 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
         else:
 
             autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
-            autotrade.activate_autotrade()
+            autotrade.activate_autotrade(**kwargs)
 
     # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
     # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
@@ -395,5 +401,5 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
             test_autotrade = Autotrade(
                 symbol, self.test_autotrade_settings, algorithm, "paper_trading"
             )
-            test_autotrade.activate_autotrade()
+            test_autotrade.activate_autotrade(**kwargs)
     return
