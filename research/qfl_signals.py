@@ -103,7 +103,7 @@ class QFL_signals(SetupSignals):
                     process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_base-break", **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price})
 
                     self.custom_telegram_msg(
-                        f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
+                        f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message} -\n lowest price: {lowest_price}", symbol=trading_pair
                     )
 
                 # Uncomment when short_buy strategy is ready
@@ -112,10 +112,10 @@ class QFL_signals(SetupSignals):
                     velocity = response["velocity"]
                     message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
                     sd, lowest_price = self.get_stats(trading_pair)
-                    process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_panic", test_only=True, **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price})
+                    process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_panic", test_only=True, **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price, "trend": "downtrend"})
 
                     self.custom_telegram_msg(
-                        f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
+                        f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message} -\n lowest price: {lowest_price}", symbol=trading_pair
                     )
 
                 # Avoid repeating signals with same coin

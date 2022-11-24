@@ -319,11 +319,10 @@ class Autotrade(BinbotApi):
         self.default_bot.pop("_id")
         base_order_price = bot["deal"]["buy_price"]
 
-        if self.db_collection_name == "paper_trading":
-            self.default_5_so_test(balances, base_order_price)
-        else:
-            self.default_5_so(balances, base_order_price)
-
+        trend = "upward"
+        if "trend" in kwargs:
+            trend = kwargs["trend"]
+        self.default_5_so_test(balances, base_order_price, trend=trend)
 
         # Set short_buy price, so that it's always bellow short_buy_price
 
