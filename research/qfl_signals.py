@@ -89,7 +89,7 @@ class QFL_signals(SetupSignals):
 
                 try:
                     self.check_asset(asset, ws)
-                except KeyError as error:
+                except Exception:
                     return
                 
                 # Because signals for other market could influence also USDT market

@@ -33,6 +33,9 @@ class AutotradeSettingsController:
             settings = settings_schema.load(data)
             if "_id" in settings:
                 settings.pop("_id")
+            if settings["update_required"] == False:
+                settings["update_required"] = True
+
             current_app.db.research_controller.update_one({"_id": self.document_id}, {"$set": settings})
             resp = jsonResp_message("Successfully updated settings")
         except TypeError as e:
