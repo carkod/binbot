@@ -34,10 +34,10 @@ import {
   setBotState,
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
-import MainTab from "./tabs/Main";
-import SafetyOrders from "./tabs/SafetyOrders";
-import StopLoss from "./tabs/StopLoss";
-import TakeProfit from "./tabs/TakeProfit";
+import MainTab from "../../components/MainTab";
+import SafetyOrdersTab from "../../components/SafetyOrdersTab";
+import StopLossTab from "../../components/StopLossTab";
+import TakeProfitTab from "../../components/TakeProfitTab";
 import {
   updateOrderLines,
   updateTimescaleMarks,
@@ -130,6 +130,18 @@ class TestBotForm extends React.Component {
       const currentTimeMarks = updateTimescaleMarks(this.props.bot);
       this.setState({ currentTimeMarks: currentTimeMarks });
     }
+
+    if (this.props.bot.trailling !== p.bot.trailling) {
+      const newOrderLines = updateOrderLines(
+        this.props.bot,
+        this.state.currentChartPrice
+      );
+      this.setState(
+        produce(this.state, (draft) => {
+          draft.currentOrderLines = newOrderLines;
+        })
+      );
+    }
   };
 
   requiredinValidation = () => {
@@ -179,7 +191,7 @@ class TestBotForm extends React.Component {
     return true;
   };
 
-  handleSubmit = (e) => {
+  handleSubmit = async (e) => {
     e.preventDefault();
     const validation = this.requiredinValidation();
     if (validation) {
@@ -199,14 +211,15 @@ class TestBotForm extends React.Component {
         safety_orders: this.props.bot.safety_orders,
         strategy: this.props.bot.strategy,
         short_buy_price: this.props.bot.short_buy_price,
-        short_sell_price: this.props.bot.short_sell_price
+        short_sell_price: this.props.bot.short_sell_price,
       };
       if (!checkValue(this.props.match.params.id)) {
         form._id = this.props.match.params.id;
-        this.props.editTestBot(this.props.match.params.id, form);
+        await this.props.editTestBot(this.props.match.params.id, form);
       } else {
-        this.props.createTestBot(form);
+        await this.props.createTestBot(form);
       }
+      window.location.reload();
     }
   };
 
@@ -411,7 +424,7 @@ class TestBotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <Row>
+                <Row style={{ alignItems: "baseline" }}>
                   <Col>
                     <CardTitle tag="h3">
                       {this.props.bot?.pair}{" "}
@@ -440,6 +453,9 @@ class TestBotForm extends React.Component {
                         >
                           {this.props.bot.status}
                         </Badge>
+                      )}{" "}
+                      {!checkValue(this.props.bot.strategy) && (
+                        <Badge color="info">{this.props.bot.strategy}</Badge>
                       )}
                     </CardTitle>
                   </Col>
@@ -555,7 +571,7 @@ class TestBotForm extends React.Component {
                   <TabContent activeTab={this.state.activeTab}>
                     <MainTab
                       symbols={this.props.symbols}
-                      state={this.props.bot}
+                      bot={this.props.bot}
                       handlePairChange={this.handlePairChange}
                       handlePairBlur={this.handleBlur}
                       handleChange={this.handleChange}
@@ -563,9 +579,10 @@ class TestBotForm extends React.Component {
                       handleBlur={this.handleBlur}
                       addMin={this.addMin}
                       addAll={this.addAll}
+                      baseOrderSizeInfoText="Not important, real funds not used"
                     />
 
-                    <SafetyOrders
+                    <SafetyOrdersTab
                       safetyOrders={this.props.bot.safety_orders}
                       asset={this.props.bot.pair}
                       quoteAsset={this.props.bot.quoteAsset}
@@ -576,14 +593,14 @@ class TestBotForm extends React.Component {
                       removeSo={this.removeSo}
                     />
 
-                    <StopLoss
+                    <StopLossTab
                       stop_loss={this.props.bot.stop_loss}
                       stopLossError={this.props.bot.stopLossError}
                       handleChange={this.handleChange}
                       handleBlur={this.handleBlur}
                     />
 
-                    <TakeProfit
+                    <TakeProfitTab
                       takeProfitError={this.props.bot.takeProfitError}
                       take_profit={this.props.bot.take_profit}
                       trailling={this.props.bot.trailling}
@@ -608,13 +625,16 @@ class TestBotForm extends React.Component {
                       </ButtonToggle>
                     </Col>
                     <Col>
-                      <Button
-                        className="btn-round"
-                        color="primary"
-                        type="submit"
-                      >
-                        Save
-                      </Button>
+                      {(this.props.bot.status !== "active" ||
+                        Object.keys(this.props.bot.deal).length === 0) && (
+                        <Button
+                          className="btn-round"
+                          color="primary"
+                          type="submit"
+                        >
+                          Save
+                        </Button>
+                      )}
                     </Col>
                   </Row>
                   {!this.props.bot.formIsValid && (

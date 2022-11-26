@@ -9,6 +9,7 @@ from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_me
 from api.tools.round_numbers import interval_to_millisecs
 from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
+from api.tools.handle_error import InvalidSymbol
 
 
 class KlinesParams(TypedDict):
@@ -188,7 +189,12 @@ class Candlestick(BinbotApi):
                 # Store more data for db to fill up candlestick charts
                 data = self.request(url=self.candlestick_url, params=params)
                 if "msg" in data:
-                    raise Exception(data["msg"])
+                    if json:
+                        return jsonResp_error_message(
+                            f"Failed to update candlestick data: {data['msg']}"
+                        )
+                    else:   
+                        raise InvalidSymbol(data["msg"])
 
                 klines_schema.replace_klines(data)
                 klines = current_app.db.klines.find_one({"_id": params["symbol"]})

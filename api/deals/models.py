@@ -1,5 +1,6 @@
 from time import time
 
+
 class OrderModel:
     def __init__(
         self,
@@ -17,17 +18,18 @@ class OrderModel:
         *args,
         **kwargs
     ):
-        self.order_type=order_type
-        self.time_in_force=time_in_force
-        self.timestamp=timestamp
-        self.order_id=order_id
-        self.order_side=order_side
-        self.pair=pair
-        self.fills=fills
-        self.qty=float(qty)
-        self.status=status
-        self.price=float(price)
-        self.deal_type=deal_type
+        self.order_type = order_type
+        self.time_in_force = time_in_force
+        self.timestamp = timestamp
+        self.order_id = order_id
+        self.order_side = order_side
+        self.pair = pair
+        self.fills = fills
+        self.qty = float(qty)
+        self.status = status
+        self.price = float(price)
+        self.deal_type = deal_type
+
 
 class DealModel:
     def __init__(
@@ -44,11 +46,14 @@ class DealModel:
         trailling_stop_loss_price=0,
         stop_loss_price=0,
         trailling_profit=0,
-        so_prices=0, # old
-        post_closure_current_price=0, # old
-        original_buy_price=0, # historical buy_price after so triggered
+        so_prices=0,  # old
+        post_closure_current_price=0,  # old
+        original_buy_price=0,  # historical buy_price after so triggered
+        short_sell_price=0,
+        short_sell_qty=0,
+        short_sell_timestamp=time() * 1000,
         *args,
-        **kwargs        
+        **kwargs
     ):
         self.avg_buy_price: float = float(avg_buy_price)
         self.buy_price: float = float(buy_price)
@@ -65,3 +70,6 @@ class DealModel:
         self.so_price = so_prices
         self.post_closure_current_price = post_closure_current_price
         self.original_buy_price = original_buy_price
+        short_sell_price = (short_sell_price,)
+        short_sell_qty = (short_sell_qty,)
+        short_sell_timestamp = (short_sell_timestamp,)

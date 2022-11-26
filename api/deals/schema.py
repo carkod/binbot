@@ -11,7 +11,7 @@ class OrderSchema(Schema):
     fills = fields.Str()
     price = fields.Str()
     status = fields.Str()
-    deal_type = fields.Str() # base_order, take_profit, so_{x}
+    deal_type = fields.Str() # [base_order, take_profit, so_{x}, short_sell, short_buy]
 
 class DealSchema(Schema):
     buy_timestamp: float = fields.Float(dump_default=0)
@@ -27,3 +27,6 @@ class DealSchema(Schema):
     sell_qty: float = fields.Float(dump_default=0)
     post_closure_current_price: float = fields.Float(dump_default=0)
     trailling_stop_loss_price: float = fields.Float(dump_default=0)
+    short_sell_price: float = fields.Float(dump_default=0)
+    short_sell_qty: float = fields.Float(dump_default=0)
+    short_sell_timestamp: float = fields.Float(dump_default=0)

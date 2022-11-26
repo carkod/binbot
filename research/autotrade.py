@@ -1,6 +1,7 @@
 import math
 import copy
 import requests
+import logging
 
 from apis import BinbotApi
 from utils import InvalidSymbol, handle_binance_errors, round_numbers, supress_notation
@@ -128,6 +129,7 @@ class Autotrade(BinbotApi):
         per_deviation=3,
         exp_increase=1.2,
         total_num_so=3,
+        trend="upward" # ["upward", "downward"] Upward trend is for candlestick_jumps and similar algorithms. Downward trend is for panic sells in the market
     ):
         """
         Test default_3 safety orders with short_sell_price
@@ -158,7 +160,16 @@ class Autotrade(BinbotApi):
             initial_so = copy.copy(so_size)
 
             if count == total_num_so:
-                self.default_bot["short_sell_price"] = buy_price
+                # Increases price diff between short_sell_price and short_buy_price
+                short_sell_spread = 0.05
+                short_buy_spread = threshold
+                if trend == "downtrend":
+                    short_sell_spread = 0.02
+                    short_buy_spread = 0.1
+
+                short_sell_price = round_numbers(price - (price * short_sell_spread))
+                self.default_bot["short_sell_price"] = short_sell_price
+                self.default_bot["short_buy_price"] = round_numbers(short_sell_price - (short_sell_price * short_buy_spread))
             else:
                 self.default_bot["safety_orders"].append(
                     {
@@ -255,9 +266,7 @@ class Autotrade(BinbotApi):
         else:
             self.default_bot["base_order_size"] = "15"  # min USDT order = 15
 
-        self.default_bot[
-            "balance_to_use"
-        ] = "USDT"  # For now we are always using USDT. Safest and most coins/tokens
+        self.default_bot["balance_to_use"] = "USDT"  # For now we are always using USDT. Safest and most coins/tokens
         self.default_bot["stop_loss"] = 0  # Using safety orders instead of stop_loss
         # set default static trailling_deviation
 
@@ -269,7 +278,7 @@ class Autotrade(BinbotApi):
             self.default_bot["trailling_deviation"] = float(
                 self.settings["trailling_deviation"]
             )
-        
+
         if "strategy" in kwargs:
             self.default_bot["strategy"] = kwargs["strategy"]
 
@@ -310,22 +319,86 @@ class Autotrade(BinbotApi):
         self.default_bot.pop("_id")
         base_order_price = bot["deal"]["buy_price"]
 
-        if self.db_collection_name == "paper_trading":
-            self.default_5_so_test(balances, base_order_price)
-        else:
-            self.default_5_so(balances, base_order_price)
+        trend = "upward"
+        if "trend" in kwargs:
+            trend = kwargs["trend"]
+        self.default_5_so_test(balances, base_order_price, trend=trend)
+
+        # Set short_buy price, so that it's always bellow short_buy_price
+
+        if "lowest_price" in kwargs:
+            self.default_bot["short_buy_price"] = kwargs["lowest_price"]
+            if kwargs["lowest_price"] >= self.default_bot["short_sell_price"]:
+                self.default_bot["short_buy_price"] = float(self.default_bot["short_sell_price"]) - (float(self.default_bot["short_sell_price"]) * 0.05)
+            print("short_buy_price set!", self.default_bot["short_buy_price"])
 
         edit_bot_res = requests.put(url=f"{bot_url}/{botId}", json=self.default_bot)
         edit_bot = handle_binance_errors(edit_bot_res)
 
         if "error" in edit_bot and edit_bot["error"] == 1:
-            print(
-                f"Test Autotrade: {edit_bot['message']}",
-                f"Pair: {self.pair}.",
-            )
+            print(f"Test Autotrade: {edit_bot['message']}",f"Pair: {self.pair}.")
             return
 
         print(
             f"Succesful {self.db_collection_name} autotrade, opened with {self.pair}!"
         )
         pass
+
+
+def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False, *args, **kwargs):
+    """
+    Refactored autotrade conditions.
+    Previously part of process_kline_stream
+    1. Checks if we have balance to trade
+    2. Check if we need to update websockets
+    3. Check if autotrade is enabled
+    4. Check if test autotrades
+    """
+    logging.info("Running qfl_signals autotrade...")
+    # Check balance to avoid failed autotrades
+    check_balance_res = requests.get(url=self.bb_balance_estimate_url)
+    balances = handle_binance_errors(check_balance_res)
+    if "error" in balances and balances["error"] == 1:
+        print(balances["message"])
+        return
+
+    balance_check = int(balances["data"]["total_fiat"])
+
+    # If dashboard has changed any self.settings
+    # Need to reload websocket
+    if "update_required" in self.settings and self.settings["update_required"]:
+        print("Update required, restart stream")
+        self.terminate_websockets()
+        self.start_stream(previous_ws=ws)
+        pass
+
+    if (
+        int(self.settings["autotrade"]) == 1
+        # Temporary restriction for few funds
+        and balance_check > 15
+        and not test_only
+    ):
+        if self.reached_max_active_autobots("bots"):
+            print("Reached maximum number of active bots set in controller settings")
+        else:
+
+            autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
+            autotrade.activate_autotrade(**kwargs)
+
+    # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
+    # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
+    # the downfall is that it can increase load for the server if there are multiple bots opened
+    # e.g. autotrade bots not updating can be a symptom of this
+    if (
+        symbol not in self.active_test_bots
+        and int(self.test_autotrade_settings["autotrade"]) == 1
+    ):
+        if self.reached_max_active_autobots("paper_trading"):
+            print("Reached maximum number of active bots set in controller settings")
+        else:
+            # Test autotrade runs independently of autotrade = 1
+            test_autotrade = Autotrade(
+                symbol, self.test_autotrade_settings, algorithm, "paper_trading"
+            )
+            test_autotrade.activate_autotrade(**kwargs)
+    return

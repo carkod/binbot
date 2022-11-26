@@ -42,6 +42,29 @@ export function updateOrderLines(bot, currentPrice) {
     currentPrice = bot.deal.buy_price;
   }
 
+  // short strategy
+  if (bot.short_buy_price && bot.short_buy_price > 0) {
+    totalOrderLines.push({
+      id: "short_buy_price",
+      text: "Short buy price",
+      tooltip: [` Price: ${bot.short_buy_price}`],
+      quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+      price: parseFloat(bot.short_buy_price),
+      color: dealColors.trailling_profit,
+    });
+  }
+
+  if (bot.short_sell_price && bot.short_sell_price > 0) {
+    totalOrderLines.push({
+      id: "short_sell_price",
+      text: "Short sell price",
+      tooltip: [` Price: ${bot.short_sell_price}`],
+      quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+      price: parseFloat(bot.short_sell_price),
+      color: dealColors.trailling_profit,
+    });
+  }
+
   if (bot.base_order_size && currentPrice) {
     if (bot.deal.original_buy_price && bot.deal.original_buy_price > 0) {
       totalOrderLines.push({
@@ -65,35 +88,14 @@ export function updateOrderLines(bot, currentPrice) {
         color: dealColors.base_order,
       });
     } else {
-      if (bot.short_buy_price > 0) {
-        totalOrderLines.push({
-          id: "short_buy_price",
-          text: "Short buy price",
-          tooltip: [bot.status, `Deal not opened`],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price: parseFloat(bot.short_buy_price),
-          color: dealColors.trailling_profit,
-        });
-        if (bot.short_sell_price > 0) {
-          totalOrderLines.push({
-            id: "short_sell_price",
-            text: "Short sell price",
-            tooltip: [bot.status, `Deal closed, to be reopened`],
-            quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-            price: parseFloat(bot.short_sell_price),
-            color: dealColors.trailling_profit,
-          });
-        }
-      } else {
-        totalOrderLines.push({
-          id: "base_order",
-          text: "Base",
-          tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price: parseFloat(currentPrice),
-          color: dealColors.base_order,
-        });
-      }
+      totalOrderLines.push({
+        id: "base_order",
+        text: "Base",
+        tooltip: [bot.status, `${bot.deal.buy_total_qty > 0 ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)" : ""}`],
+        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        price: parseFloat(currentPrice),
+        color: dealColors.base_order,
+      });
       
     }
     
@@ -165,21 +167,20 @@ export function updateOrderLines(bot, currentPrice) {
           color: dealColors.take_profit,
         });
         totalOrderLines.push({
-          id: "take_profit",
-          text: `Take profit ${bot.take_profit}%`,
-          tooltip: [bot.status, " Sell order when prices drop here"],
+          id: "trailling_profit",
+          text: `Trailling profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Breakpoint to increase Take profit"],
           quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price:
-            currentPrice +
-            bot.deal.buy_price * parseFloat(bot.take_profit / 100), // take_profit / trailling_profit
-          color: dealColors.take_profit,
+          price: takeProfitPrice, // take_profit / trailling_profit
+          color: dealColors.trailling_profit,
+          lineStyle: 2,
         });
       }
     } else if (bot.take_profit) {
       totalOrderLines.push({
         id: "take_profit",
         text: `Take profit ${bot.take_profit}%`,
-        tooltip: [bot.status, " Sell Order"],
+        tooltip: [bot.status, " Sell Order "],
         quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
         price: currentPrice * (1 + parseFloat(bot.take_profit) / 100), // buy_profit * take_profit%
         color: dealColors.take_profit,

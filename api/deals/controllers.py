@@ -439,8 +439,7 @@ class CreateDealController(Account):
             if not hasattr(self.active_bot, "short_buy_price") or float(self.active_bot.short_buy_price) == 0:
                 raise ShortStrategyError("Short strategy requires short_buy_price to be set, or it will never trigger")
             else:
-                print("Short buy activated, deal will not open")
-                return
+                pass
 
         # If there is already a base order do not execute
         base_order_deal = next(
@@ -940,3 +939,188 @@ class CreateDealController(Account):
             self.update_deal_logs(f"Stop loss error: {error}")
             return
         pass
+
+    def execute_short_sell(self):
+        """
+        Short strategy sell. Similar to stop loss, but it will keep tracking the price until it short_buys
+        - Hard sell (order status="FILLED" immediately) initial amount crypto in deal
+        - Close current opened take profit order
+        - Remove old base_order and reset deal for future open_deal
+        - Switch strategy to short
+        - Wait for short_sell_price to hit
+        """
+        bot = self.active_bot
+        if self.db_collection.name == "paper_trading":
+            qty = bot.deal.buy_total_qty
+        else:
+            qty = self.compute_qty(bot.pair)
+
+        # If for some reason, the bot has been closed already (e.g. transacted on Binance)
+        # Inactivate bot
+        if not qty:
+            self.update_deal_logs(
+                f"Cannot execute short sell, quantity is {qty}. Deleting bot"
+            )
+            params = {"id": self.active_bot._id}
+            self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
+            return
+
+        order_id = None
+        for order in bot.orders:
+            # With short_sell, Take profit changes and base_order needs to be removed to execute base_order
+            if order.deal_type == "take_profit" or order.deal_type == "base_order":
+                order_id = order.order_id
+                bot.orders.remove(order)
+                break
+
+        if order_id:
+            try:
+                # First cancel old order to unlock balance
+                self.bb_request(
+                    f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}",
+                    "DELETE",
+                )
+                self.update_deal_logs("Old take profit order cancelled")
+            except HTTPError as error:
+                self.update_deal_logs("Take profit order not found, no need to cancel")
+                pass
+
+        book_order = Book_Order(bot.pair)
+        price = float(book_order.matching_engine(True, qty))
+        if not price:
+            price = float(book_order.matching_engine(True))
+
+        if self.db_collection.name == "paper_trading":
+            res = self.simulate_order(bot.pair, price, qty, "SELL")
+        else:
+            try:
+                if price:
+                    short_sell_order_payload = {
+                        "pair": bot.pair,
+                        "qty": qty,
+                        "price": supress_notation(price, self.price_precision),
+                    }
+                    res = self.bb_request(
+                        method="POST",
+                        url=self.bb_sell_order_url,
+                        payload=short_sell_order_payload,
+                    )
+                else:
+                    short_sell_order_payload = {"pair": bot.pair, "qty": qty}
+                    res = self.bb_request(
+                        method="POST",
+                        url=self.bb_sell_market_order_url,
+                        payload=short_sell_order_payload,
+                    )
+            except QuantityTooLow as error:
+                # Delete incorrectly activated or old bots
+                self.bb_request(
+                    self.bb_bot_url, "DELETE", params={"id": self.active_bot._id}
+                )
+                print(f"Deleted obsolete bot {self.active_bot.pair}")
+            except Exception as error:
+                self.update_deal_logs(
+                    f"Error trying to open new short_sell order {error}"
+                )
+                return
+
+        if res["status"] == "NEW":
+            self.update_deal_logs(
+                "Failed to execute stop loss order (status NEW), retrying..."
+            )
+            self.execute_short_sell(price)
+
+        short_sell_order = OrderModel(
+            timestamp=res["transactTime"],
+            deal_type="short_sell",
+            order_id=res["orderId"],
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=res["price"],
+            qty=res["origQty"],
+            fills=res["fills"],
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
+
+        commission = 0
+        for chunk in res["fills"]:
+            commission += float(chunk["commission"])
+
+        self.active_bot.orders.append(short_sell_order)
+        self.active_bot.short_sell_price = 0 # stops short_sell position
+        self.active_bot.strategy = "short"
+        self.active_bot.deal.short_sell_price = res["price"]
+        self.active_bot.deal.short_sell_qty = res["origQty"]
+        self.active_bot.deal.short_sell_timestamp = res["transactTime"]
+
+        # Reset deal to allow new open_deal to populate
+        new_deal = DealModel()
+        self.active_bot.deal = new_deal
+
+        msg = f"Completed Short sell position"
+        self.active_bot.errors.append(msg)
+
+        try:
+
+            bot_schema = BotSchema()
+            bot = bot_schema.dump(self.active_bot)
+            bot.pop("_id")
+
+            self.db_collection.update_one(
+                {"_id": self.active_bot._id},
+                {"$set": bot},
+            )
+        except ValidationError as error:
+            self.update_deal_logs(f"Short sell error: {error.messages}")
+            return
+        except (TypeError, AttributeError) as error:
+            message = str(";".join(error.args))
+            self.update_deal_logs(f"Short sell error: {message}")
+            return
+        except Exception as error:
+            self.update_deal_logs(f"Short sell error: {error}")
+            return
+        pass
+
+    def execute_short_buy(self):
+        """
+        Short strategy, buy after hitting a certain short_buy_price
+
+        1. Set parameters for short_buy
+        2. Open new deal as usual
+        """
+        self.active_bot.short_buy_price = 0
+        self.active_bot.strategy = "long"
+
+        try:
+            self.open_deal()
+            self.update_deal_logs("Successfully activated bot!")
+
+            bot_schema = BotSchema()
+            bot = bot_schema.dump(self.active_bot)
+            bot.pop("_id")
+
+            self.db_collection.update_one(
+                {"_id": self.active_bot._id},
+                {"$set": bot},
+            )
+        
+        except ValidationError as error:
+            self.update_deal_logs(f"Short buy error: {error.messages}")
+            return
+        except (TypeError, AttributeError) as error:
+            message = str(";".join(error.args))
+            self.update_deal_logs(f"Short buy error: {message}")
+            return
+        except OpenDealError as error:
+            message = str(";".join(error.args))
+            self.update_deal_logs(f"Short buy error: {message}")
+        except NotEnoughFunds as e:
+            message = str(";".join(e.args))
+            self.update_deal_logs(f"Short buy error: {message}")
+        except Exception as error:
+            self.update_deal_logs(f"Short buy error: {error}")
+            return
+        return

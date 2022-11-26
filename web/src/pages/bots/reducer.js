@@ -58,9 +58,9 @@ export const settingsReducerInitial = {
   balance_to_use: "USDT",
   balance_size_to_use: 0,
   trailling: "true",
-  take_profit: "",
-  trailling_deviation: "",
-  stop_loss: "",
+  take_profit: 0,
+  trailling_deviation: 0,
+  stop_loss: 0,
 };
 
 

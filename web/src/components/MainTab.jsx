@@ -10,13 +10,13 @@ import {
   Row,
   TabPane,
 } from "reactstrap";
-import BotFormTooltip from "../../../components/BotFormTooltip";
-import SymbolSearch from "../../../components/SymbolSearch";
-import { checkValue } from "../../../validations";
+import BotFormTooltip from "./BotFormTooltip";
+import SymbolSearch from "./SymbolSearch";
+import { checkValue } from "../validations";
 
 export default function MainTab({
   symbols,
-  state,
+  bot,
   handlePairChange,
   handlePairBlur,
   handleChange,
@@ -24,6 +24,7 @@ export default function MainTab({
   handleBlur,
   addMin,
   addAll,
+  baseOrderSizeInfoText
 }) {
   return (
     <TabPane tabId="main">
@@ -33,10 +34,10 @@ export default function MainTab({
             name="Pair"
             label="Select pair"
             options={symbols}
-            selected={state.pair}
+            selected={bot.pair}
             handleChange={handlePairChange}
             handleBlur={handlePairBlur}
-            disabled={state.status === "completed"}
+            disabled={bot.status === "completed"}
           />
         </Col>
         <Col md="6" sm="12">
@@ -45,7 +46,7 @@ export default function MainTab({
             type="text"
             name="name"
             onChange={handleChange}
-            value={state.name}
+            value={bot.name}
           />
         </Col>
       </Row>
@@ -54,7 +55,7 @@ export default function MainTab({
           <Label htmlFor="base_order_size">
             <BotFormTooltip
               name="base_order_size"
-              text="Not important, real funds not used"
+              text={baseOrderSizeInfoText}
             >
               Base order size
             </BotFormTooltip>
@@ -66,26 +67,26 @@ export default function MainTab({
               name="base_order_size"
               onChange={handleBaseChange}
               onBlur={handleBlur}
-              value={state.base_order_size}
+              value={bot.base_order_size}
               autoComplete="off"
               disabled={
-                state.status === "active" || state.status === "completed"
+                bot.status === "active" || bot.status === "completed"
               }
             />
-            <InputGroupText>{state.quoteAsset}</InputGroupText>
+            <InputGroupText>{bot.quoteAsset}</InputGroupText>
           </InputGroup>
-          <FormFeedback valid={!state.baseOrderSizeError}>
+          <FormFeedback valid={!bot.baseOrderSizeError}>
             Not enough balance
           </FormFeedback>
-          {state.status !== "active" && (
+          {bot.status !== "active" && (
             <>
               <Badge color="secondary" onClick={addMin}>
                 Min{" "}
-                {state.quoteAsset === "BTC"
+                {bot.quoteAsset === "BTC"
                   ? 0.001
-                  : state.quoteAsset === "BNB"
+                  : bot.quoteAsset === "BNB"
                   ? 0.051
-                  : state.quoteAsset === "GBP"
+                  : bot.quoteAsset === "GBP"
                   ? 10
                   : ""}
               </Badge>{" "}
@@ -94,11 +95,11 @@ export default function MainTab({
               </Badge>
             </>
           )}
-          <FormFeedback valid={!checkValue(state.addAllError)}>
-            state.addAllError
+          <FormFeedback valid={!checkValue(bot.addAllError)}>
+            bot.addAllError
           </FormFeedback>
         </Col>
-        {state.status !== "active" && (
+        {bot.status !== "active" && (
           <Col md="6" sm="12">
             <Label htmlFor="balance_to_use">
               Balance to use<span className="u-required">*</span>
@@ -111,23 +112,23 @@ export default function MainTab({
                 fontSize: "1.5rem",
               }}
             >
-              {state.quoteAsset && (
+              {bot.quoteAsset && (
                 <Label check>
                   <Input
                     type="radio"
                     name="balance_to_use"
-                    checked={state.balance_to_use === state.quoteAsset}
-                    value={state.quoteAsset}
+                    checked={bot.balance_to_use === bot.quoteAsset}
+                    value={bot.quoteAsset}
                     onChange={handleChange}
                   />{" "}
-                  {state.quoteAsset}
+                  {bot.quoteAsset}
                 </Label>
               )}
               <Label check>
                 <Input
                   type="radio"
                   name="balance_to_use"
-                  checked={state.balance_to_use === "GBP"}
+                  checked={bot.balance_to_use === "GBP"}
                   value={"GBP"}
                   onChange={handleChange}
                 />{" "}
@@ -150,12 +151,13 @@ export default function MainTab({
               <Input
                 type="number"
                 name="short_sell_price"
+                onBlur={handleBlur}
                 onChange={handleChange}
-                defaultValue={state.short_sell_price}
+                value={bot.short_sell_price}
                 autoComplete="off"
                 step="0.00000001"
               />
-              <InputGroupText>{state.quoteAsset}</InputGroupText>
+              <InputGroupText>{bot.quoteAsset}</InputGroupText>
             </InputGroup>
           </FormGroup>
         </Col>
@@ -171,7 +173,7 @@ export default function MainTab({
               type="number"
               name="cooldown"
               onChange={handleChange}
-              value={state.cooldown}
+              value={bot.cooldown}
               autoComplete="off"
             />
           </FormGroup>
@@ -185,8 +187,9 @@ export default function MainTab({
               id="strategy"
               name="strategy"
               type="select"
-              defaultValue={state.strategy}
+              value={bot.strategy}
               onChange={handleChange}
+              onBlur={handleBlur}
             >
               <option value="long">Long</option>
               <option value="short">Short</option>
@@ -206,11 +209,12 @@ export default function MainTab({
                 type="number"
                 name="short_buy_price"
                 onChange={handleChange}
-                defaultValue={state.short_buy_price}
+                onBlur={handleBlur}
+                value={bot.short_buy_price}
                 autoComplete="off"
                 step="0.00000001"
               />
-              <InputGroupText>{state.quoteAsset}</InputGroupText>
+              <InputGroupText>{bot.quoteAsset}</InputGroupText>
             </InputGroup>
           </FormGroup>
         </Col>

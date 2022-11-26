@@ -4,11 +4,12 @@ import re
 import threading
 import requests
 import logging
+import numpy
 from signals import SetupSignals
 from websocket import WebSocketApp
 from decimal import Decimal
-from autotrade import Autotrade
-from utils import handle_binance_errors
+from autotrade import process_autotrade_restrictions
+from utils import round_numbers
 from time import time
 
 class QFL_signals(SetupSignals):
@@ -56,6 +57,20 @@ class QFL_signals(SetupSignals):
 
         symbol = asset + "USDT"
         return symbol
+    
+    def get_stats(self, symbol):
+        """
+        Get standard deviation and lowest price
+        """
+
+        data = self._get_candlestick(symbol, "15m")
+        if "error" in data and data["error"] == 1:
+                return
+
+        list_prices = numpy.array(data["trace"][0]["close"])
+        sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
+        lowest_price = numpy.min(numpy.array(data["trace"][0]["close"]).astype(numpy.float))
+        return sd, lowest_price
 
     def on_message(self, ws, payload):
         response = json.loads(payload)
@@ -74,7 +89,7 @@ class QFL_signals(SetupSignals):
 
                 try:
                     self.check_asset(asset, ws)
-                except KeyError as error:
+                except Exception:
                     return
                 
                 # Because signals for other market could influence also USDT market
@@ -83,10 +98,12 @@ class QFL_signals(SetupSignals):
                 if response["type"] == "base-break":
                     base_price = Decimal(str(response["basePrice"]))
                     message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
-                    self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals")
+
+                    sd, lowest_price = self.get_stats(trading_pair)
+                    process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_base-break", **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price})
 
                     self.custom_telegram_msg(
-                        f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message}", symbol=trading_pair
+                        f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message} -\n lowest price: {lowest_price}", symbol=trading_pair
                     )
 
                 # Uncomment when short_buy strategy is ready
@@ -94,8 +111,12 @@ class QFL_signals(SetupSignals):
                     strength = response["strength"]
                     velocity = response["velocity"]
                     message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
-                    self.run_autotrade(trading_pair, ws, "hodloo_qfl_signals", test_only=True)
-                
+                    sd, lowest_price = self.get_stats(trading_pair)
+                    process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_panic", test_only=True, **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price, "trend": "downtrend"})
+
+                    self.custom_telegram_msg(
+                        f"[{response['type']}] {'Below ' + str(response['belowBasePct']) + '%' + message if 'belowBasePct' in response else message} -\n lowest price: {lowest_price}", symbol=trading_pair
+                    )
 
                 # Avoid repeating signals with same coin
                 self.last_processed_asset[asset] = time()
@@ -125,61 +146,3 @@ class QFL_signals(SetupSignals):
         worker_thread.tag = "qfl_signals_thread"
         worker_thread.start()
 
-    def run_autotrade(self, symbol, ws, algorithm, test_only=False, *args, **kwargs):
-        """
-        Refactored autotrade conditions.
-        Previously part of process_kline_stream
-        1. Checks if we have balance to trade
-        2. Check if we need to update websockets
-        3. Check if autotrade is enabled
-        4. Check if test autotrades
-        """
-        self.load_data()
-        logging.info("Running qfl_signals autotrade...")
-        # Check balance to avoid failed autotrades
-        check_balance_res = requests.get(url=self.bb_balance_estimate_url)
-        balances = handle_binance_errors(check_balance_res)
-        if "error" in balances and balances["error"] == 1:
-            print(balances["message"])
-            return
-
-        balance_check = int(balances["data"]["total_fiat"])
-
-        # If dashboard has changed any self.settings
-        # Need to reload websocket
-        if "update_required" in self.settings and self.settings["update_required"]:
-            print("Update required, restart stream")
-            self.terminate_websockets()
-            self.start_stream(previous_ws=ws)
-            pass
-
-        if (
-            int(self.settings["autotrade"]) == 1
-            # Temporary restriction for few funds
-            and balance_check > 15
-            and not test_only
-        ):
-            if self.reached_max_active_autobots("bots"):
-                print("Reached maximum number of active bots set in controller settings")
-            else:
-
-                autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
-                autotrade.activate_autotrade()
-
-        # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
-        # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
-        # the downfall is that it can increase load for the server if there are multiple bots opened
-        # e.g. autotrade bots not updating can be a symptom of this
-        if (
-            symbol not in self.active_test_bots
-            and int(self.test_autotrade_settings["autotrade"]) == 1
-        ):
-            if self.reached_max_active_autobots("paper_trading"):
-                print("Reached maximum number of active bots set in controller settings")
-            else:
-                # Test autotrade runs independently of autotrade = 1
-                test_autotrade = Autotrade(
-                    symbol, self.test_autotrade_settings, algorithm, "paper_trading"
-                )
-                test_autotrade.activate_autotrade()
-        return

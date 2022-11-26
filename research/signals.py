@@ -12,7 +12,7 @@ from websocket import WebSocketApp
 
 from algorithms.ma_candlestick_jump import ma_candlestick_jump
 from apis import BinbotApi
-from autotrade import Autotrade
+from autotrade import process_autotrade_restrictions
 from telegram_bot import TelegramBot
 from utils import handle_binance_errors, round_numbers
 from datetime import datetime
@@ -262,61 +262,6 @@ class ResearchSignals(SetupSignals):
         else:
             self._run_streams(stream, 1)
 
-    def run_autotrade(self, symbol, ws, algorithm, test_only=False, *args, **kwargs):
-        """
-        Refactored autotrade conditions.
-        Previously part of process_kline_stream
-        1. Checks if we have balance to trade
-        2. Check if we need to update websockets
-        3. Check if autotrade is enabled
-        4. Check if test autotrades
-        """
-        # Check balance to avoid failed autotrades
-        check_balance_res = requests.get(url=self.bb_balance_estimate_url)
-        balances = handle_binance_errors(check_balance_res)
-        if "error" in balances and balances["error"] == 1:
-            print(balances["message"])
-            return
-
-        balance_check = int(balances["data"]["total_fiat"])
-
-        # If dashboard has changed any self.settings
-        # Need to reload websocket
-        if "update_required" in self.settings and self.settings["update_required"]:
-            info("Update required, restarting stream")
-            self.terminate_websockets("signal_updates0")
-            self.terminate_websockets("signal_updates1")
-            self.start_stream()
-            pass
-
-        if (
-            int(self.settings["autotrade"]) == 1
-            # Temporary restriction for few funds
-            and balance_check > 15  # USDT
-            and not test_only
-        ):
-            if self.reached_max_active_autobots("bots"):
-                info("Maximum number of active bots to avoid draining too much memory")
-            else:
-                autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
-                autotrade.activate_autotrade(**kwargs)
-
-        # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
-        # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
-        # the downfall is that it can increase load for the server if there are multiple bots opened
-        # e.g. autotrade bots not updating can be a symptom of this
-        if (
-            symbol not in self.active_test_bots
-            and int(self.test_autotrade_settings["autotrade"])
-            == 1  # Test autotrade runs independently of autotrade = 1
-        ):
-
-            if self.reached_max_active_autobots("paper_trading"):
-                info("Maximum number of active bots to avoid draining too much memory")
-            else:
-                test_autotrade = Autotrade(symbol, self.test_autotrade_settings, algorithm)
-                test_autotrade.activate_autotrade(**kwargs)
-
     def on_close(self, *args):
         """
         Library bug not working
@@ -333,9 +278,6 @@ class ResearchSignals(SetupSignals):
         # API restart 30 secs + 15
         print("Restarting in 45 seconds...")
         sleep(45)
-        # self.terminate_websockets("signal_updates0")
-        # self.terminate_websockets("signal_updates1")
-        # self.start_stream()
 
     def on_message(self, ws, message):
         json_response = json.loads(message)
@@ -391,8 +333,12 @@ class ResearchSignals(SetupSignals):
             msg = None
             list_prices = numpy.array(data["trace"][0]["close"])
             sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
+
+            # historical lowest for short_buy_price
+            lowest_price = numpy.min(numpy.array(data["trace"][0]["close"]).astype(numpy.float))
             
             ma_candlestick_jump(
+                self,
                 close_price,
                 open_price,
                 ma_7,
@@ -401,8 +347,9 @@ class ResearchSignals(SetupSignals):
                 symbol,
                 sd,
                 self._send_msg,
-                self.run_autotrade,
+                process_autotrade_restrictions,
                 ws,
+                lowest_price
             )
 
             self.last_processed_kline[symbol] = time()

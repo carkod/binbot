@@ -37,7 +37,12 @@ const getNetProfit = (bot) => {
     finalPrice = bot.deal.sell_price
   }
 
-  const netProfit = getProfit(bot.deal.buy_price, finalPrice);
+  let netProfit = getProfit(bot.deal.buy_price, finalPrice);
+
+  if (bot.strategy === "short" || bot.deal.buy_price === 0) {
+    netProfit = 0
+  }
+  
   return netProfit
 }
 export default function BotCard({
@@ -127,7 +132,7 @@ export default function BotCard({
                 </Col>
                 <Col md="5">
                   <p className="card-category">
-                    {x.short_buy_price > 0 ? "Short" : "Long"}
+                    {x.strategy}
                   </p>
                 </Col>
               </Row>
@@ -146,7 +151,7 @@ export default function BotCard({
                 </Col>
                 <Col md="5">
                   <p className="card-category">
-                    {!checkValue(x.deal) && x.deal.buy_price}
+                    {!checkValue(x.deal) && x.deal.buy_price.toFixed(6)}
                   </p>
                 </Col>
               </Row>
