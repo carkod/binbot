@@ -34,7 +34,7 @@ import {
   setBotState,
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
-import MainTab from "./tabs/Main";
+import MainTab from "../../components/MainTab";
 import SafetyOrders from "./tabs/SafetyOrders";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
@@ -573,7 +573,7 @@ class TestBotForm extends React.Component {
                   <TabContent activeTab={this.state.activeTab}>
                     <MainTab
                       symbols={this.props.symbols}
-                      state={this.props.bot}
+                      bot={this.props.bot}
                       handlePairChange={this.handlePairChange}
                       handlePairBlur={this.handleBlur}
                       handleChange={this.handleChange}
@@ -581,6 +581,7 @@ class TestBotForm extends React.Component {
                       handleBlur={this.handleBlur}
                       addMin={this.addMin}
                       addAll={this.addAll}
+                      baseOrderSizeInfoText="Not important, real funds not used"
                     />
 
                     <SafetyOrders

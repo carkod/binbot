@@ -41,7 +41,7 @@ import {
   setBot,
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
-import MainTab from "./tabs/Main";
+import MainTab from "../../components/MainTab";
 import StopLoss from "./tabs/StopLoss";
 import TakeProfit from "./tabs/TakeProfit";
 import { TVChartContainer } from "binbot-charts";
@@ -486,7 +486,7 @@ class BotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <Row>
+                <Row style={{alignItems: "baseline"}}>
                   <Col>
                     <CardTitle tag="h3">
                       {this.props.bot?.pair}{" "}
@@ -641,6 +641,7 @@ class BotForm extends React.Component {
                       handleBlur={this.handleBlur}
                       addMin={this.addMin}
                       addAll={this.addAll}
+                      baseOrderSizeInfoText="Must be filled in to calculate the other parameters"
                     />
 
                     {/*

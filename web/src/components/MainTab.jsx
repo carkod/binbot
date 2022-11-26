@@ -10,9 +10,9 @@ import {
   Row,
   TabPane,
 } from "reactstrap";
-import BotFormTooltip from "../../../components/BotFormTooltip";
-import SymbolSearch from "../../../components/SymbolSearch";
-import { checkValue } from "../../../validations";
+import BotFormTooltip from "./BotFormTooltip";
+import SymbolSearch from "./SymbolSearch";
+import { checkValue } from "../validations";
 
 export default function MainTab({
   symbols,
@@ -24,6 +24,7 @@ export default function MainTab({
   handleBlur,
   addMin,
   addAll,
+  baseOrderSizeInfoText
 }) {
   return (
     <TabPane tabId="main">
@@ -36,6 +37,7 @@ export default function MainTab({
             selected={bot.pair}
             handleChange={handlePairChange}
             handleBlur={handlePairBlur}
+            disabled={bot.status === "completed"}
           />
         </Col>
         <Col md="6" sm="12">
@@ -51,7 +53,13 @@ export default function MainTab({
       <Row className="u-margin-bottom">
         <Col md="6" sm="12">
           <Label htmlFor="base_order_size">
-            Base order size<span className="u-required">*</span>
+            <BotFormTooltip
+              name="base_order_size"
+              text={baseOrderSizeInfoText}
+            >
+              Base order size
+            </BotFormTooltip>
+            <span className="u-required">*</span>
           </Label>
           <InputGroup>
             <Input
@@ -61,7 +69,9 @@ export default function MainTab({
               onBlur={handleBlur}
               value={bot.base_order_size}
               autoComplete="off"
-              disabled={bot.status === "active"}
+              disabled={
+                bot.status === "active" || bot.status === "completed"
+              }
             />
             <InputGroupText>{bot.quoteAsset}</InputGroupText>
           </InputGroup>
@@ -129,6 +139,28 @@ export default function MainTab({
         )}
       </Row>
       <Row>
+        <Col md="6">
+          <FormGroup>
+            <BotFormTooltip
+              name="short_sell_price"
+              text="Price at which to stop loss sell and later buy again with short_buy_price (short strategy autoswitch)"
+            >
+              Short Sell Price
+            </BotFormTooltip>
+            <InputGroup>
+              <Input
+                type="number"
+                name="short_sell_price"
+                onBlur={handleBlur}
+                onChange={handleChange}
+                value={bot.short_sell_price}
+                autoComplete="off"
+                step="0.00000001"
+              />
+              <InputGroupText>{bot.quoteAsset}</InputGroupText>
+            </InputGroup>
+          </FormGroup>
+        </Col>
         <Col md="6" sm="12">
           <FormGroup>
             <BotFormTooltip
@@ -144,6 +176,46 @@ export default function MainTab({
               value={bot.cooldown}
               autoComplete="off"
             />
+          </FormGroup>
+        </Col>
+      </Row>
+      <Row>
+        <Col md="6" sm="12">
+          <FormGroup>
+            <Label for="strategy">Trigger strategy</Label>
+            <Input
+              id="strategy"
+              name="strategy"
+              type="select"
+              value={bot.strategy}
+              onChange={handleChange}
+              onBlur={handleBlur}
+            >
+              <option value="long">Long</option>
+              <option value="short">Short</option>
+            </Input>
+          </FormGroup>
+        </Col>
+        <Col md="6" sm="12">
+          <FormGroup>
+            <BotFormTooltip
+              name="short_buy_price"
+              text="Price at which to execute base order"
+            >
+              Short Buy Price
+            </BotFormTooltip>
+            <InputGroup>
+              <Input
+                type="number"
+                name="short_buy_price"
+                onChange={handleChange}
+                onBlur={handleBlur}
+                value={bot.short_buy_price}
+                autoComplete="off"
+                step="0.00000001"
+              />
+              <InputGroupText>{bot.quoteAsset}</InputGroupText>
+            </InputGroup>
           </FormGroup>
         </Col>
       </Row>
