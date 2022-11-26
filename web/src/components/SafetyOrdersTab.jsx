@@ -1,8 +1,8 @@
 import { Button, Col, Input, Label, Row, TabPane } from "reactstrap";
-import BotFormTooltip from "../../../components/BotFormTooltip";
-import SafetyOrderFields from "../../../components/SafetyOrderFields";
+import BotFormTooltip from "./BotFormTooltip";
+import SafetyOrderFields from "./SafetyOrderFields";
 
-export default function SafetyOrders({
+export default function SafetyOrdersTab({
   safetyOrders,
   asset,
   quoteAsset,

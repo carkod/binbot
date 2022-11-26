@@ -9,7 +9,7 @@ import {
   TabPane,
 } from "reactstrap";
 
-export default function StopLoss({
+export default function StopLossTab({
   stopLossError,
   handleChange,
   handleBlur,

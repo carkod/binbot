@@ -24,12 +24,8 @@ import BotInfo from "../../components/BotInfo";
 import { getBalance, getBalanceRaw } from "../../state/balances/actions";
 import { bot } from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
-import {
-  checkBalance,
-  checkValue,
-  roundDecimals,
-} from "../../validations.js";
-import SafetyOrders from "../paper-trading/tabs/SafetyOrders";
+import { checkBalance, checkValue, roundDecimals } from "../../validations.js";
+import SafetyOrdersTab from "../../components/SafetyOrdersTab";
 import {
   activateBot,
   createBot,
@@ -42,8 +38,8 @@ import {
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
 import MainTab from "../../components/MainTab";
-import StopLoss from "./tabs/StopLoss";
-import TakeProfit from "./tabs/TakeProfit";
+import StopLossTab from "../../components/StopLossTab";
+import TakeProfitTab from "../../components/TakeProfitTab";
 import { TVChartContainer } from "binbot-charts";
 import LogsInfo from "../../components/LogsInfo";
 import {
@@ -63,7 +59,7 @@ class BotForm extends React.Component {
       soPriceDeviation: 0,
       currentOrderLines: [],
       currentTimeMarks: [],
-      interval: "1h" // Fix legacy candlestick_interval
+      interval: "1h", // Fix legacy candlestick_interval
     };
   }
 
@@ -486,7 +482,7 @@ class BotForm extends React.Component {
           <Col md="12">
             <Card style={{ minHeight: "650px" }}>
               <CardHeader>
-                <Row style={{alignItems: "baseline"}}>
+                <Row style={{ alignItems: "baseline" }}>
                   <Col>
                     <CardTitle tag="h3">
                       {this.props.bot?.pair}{" "}
@@ -647,7 +643,7 @@ class BotForm extends React.Component {
                     {/*
                       Safey orders tab
                     */}
-                    <SafetyOrders
+                    <SafetyOrdersTab
                       safetyOrders={this.props.bot.safety_orders}
                       asset={this.props.bot.pair}
                       quoteAsset={this.props.bot.quoteAsset}
@@ -657,14 +653,14 @@ class BotForm extends React.Component {
                       removeSo={this.removeSo}
                     />
 
-                    <StopLoss
+                    <StopLossTab
                       stop_loss={this.props.bot.stop_loss}
                       stopLossError={this.props.bot.stopLossError}
                       handleChange={this.handleChange}
                       handleBlur={this.handleBlur}
                     />
 
-                    <TakeProfit
+                    <TakeProfitTab
                       takeProfitError={this.props.bot.takeProfitError}
                       take_profit={this.props.bot.take_profit}
                       trailling={this.props.bot.trailling}
