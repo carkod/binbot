@@ -122,17 +122,21 @@ class Autotrade(BinbotApi):
 
         return
 
-    def default_5_so_test(
+    def handle_price_drops(
         self,
         balances,
         price,
         per_deviation=3,
         exp_increase=1.2,
         total_num_so=3,
-        trend="upward" # ["upward", "downward"] Upward trend is for candlestick_jumps and similar algorithms. Downward trend is for panic sells in the market
+        trend="upward", # ["upward", "downward"] Upward trend is for candlestick_jumps and similar algorithms. Downward trend is for panic sells in the market
+        lowest_price=0
     ):
         """
-        Test default_3 safety orders with short_sell_price
+        Sets the values for safety orders, short sell prices to hedge from drops in price.
+
+        Safety orders here are designed to use qfl for price bounces: prices drop a bit but then overall the trend is bullish
+        However short sell uses the short strategy: it sells the asset completely, to buy again after a dip.
         """
         available_balance = next(
             (
@@ -147,6 +151,16 @@ class Autotrade(BinbotApi):
         if not available_balance:
             print(f"Not enough {self.default_bot['balance_to_use']} for safety orders")
             return
+
+        if trend == "downtrend":
+            down_short_sell_price = round_numbers(price - (price * 0.05))
+            down_short_buy_price = round_numbers(down_short_sell_price - (down_short_sell_price * short_buy_spread))
+            self.default_bot["short_sell_price"] = down_short_sell_price
+
+            if lowest_price > 0 and lowest_price <= down_short_buy_price:
+                self.default_bot["short_buy_price"] = lowest_price
+            else:
+                self.default_bot["short_buy_price"] = down_short_buy_price
 
         for index in range(total_num_so):
             count = index + 1
@@ -163,9 +177,6 @@ class Autotrade(BinbotApi):
                 # Increases price diff between short_sell_price and short_buy_price
                 short_sell_spread = 0.05
                 short_buy_spread = threshold
-                if trend == "downtrend":
-                    short_sell_spread = 0.02
-                    short_buy_spread = 0.1
 
                 short_sell_price = round_numbers(price - (price * short_sell_spread))
                 self.default_bot["short_sell_price"] = short_sell_price
@@ -320,17 +331,16 @@ class Autotrade(BinbotApi):
         base_order_price = bot["deal"]["buy_price"]
 
         trend = "upward"
+        lowest_price = 0
         if "trend" in kwargs:
             trend = kwargs["trend"]
-        self.default_5_so_test(balances, base_order_price, trend=trend)
-
-        # Set short_buy price, so that it's always bellow short_buy_price
 
         if "lowest_price" in kwargs:
-            self.default_bot["short_buy_price"] = kwargs["lowest_price"]
-            if kwargs["lowest_price"] >= self.default_bot["short_sell_price"]:
-                self.default_bot["short_buy_price"] = float(self.default_bot["short_sell_price"]) - (float(self.default_bot["short_sell_price"]) * 0.05)
-            print("short_buy_price set!", self.default_bot["short_buy_price"])
+            lowest_price = kwargs["lowest_price"]
+
+        self.handle_price_drops(balances, base_order_price, trend=trend, lowest_price=lowest_price)
+
+        # Set short_buy price, so that it's always bellow short_buy_price
 
         edit_bot_res = requests.put(url=f"{bot_url}/{botId}", json=self.default_bot)
         edit_bot = handle_binance_errors(edit_bot_res)
