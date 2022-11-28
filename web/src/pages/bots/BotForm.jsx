@@ -515,6 +515,9 @@ class BotForm extends React.Component {
                         >
                           {this.props.bot.status}
                         </Badge>
+                      )}{" "}
+                      {!checkValue(this.props.bot.strategy) && (
+                        <Badge color="info">{this.props.bot.strategy}</Badge>
                       )}
                     </CardTitle>
                   </Col>

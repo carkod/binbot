@@ -372,7 +372,7 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
         print(balances["message"])
         return
 
-    balance_check = int(balances["data"]["total_fiat"])
+    balance_check = float(next((item["free"] for item in balances["data"]["balances"] if item["asset"] == self.settings["balance_to_use"]), 0))
 
     # If dashboard has changed any self.settings
     # Need to reload websocket
