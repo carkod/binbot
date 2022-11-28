@@ -5,7 +5,7 @@
   "homepage": "http://terminal.binbot.in/",
   "scripts": {
     "start": "yarn build-charting && react-scripts start",
-    "build-charting": "cp -r node_modules/binbot-charts/dist/charting_library/ public",
+    "build-charting": "cp -r node_modules/binbot-charts/dist/charting_library/ public/charting_library",
     "build": "rm -rf build/ && yarn build-charting && react-scripts build --",
     "test": "react-scripts test",
     "eject": "react-scripts eject",

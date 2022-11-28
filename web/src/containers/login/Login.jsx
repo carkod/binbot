@@ -17,6 +17,9 @@ class Login extends Component {
   componentDidUpdate = (p, s) => {
     if (this.props.accessToken !== p.accessToken) {
       this.setState({ redirect: true })
+      if (this.props.accessToken) {
+        window.location.reload()
+      }
     }
   }
 

@@ -284,6 +284,9 @@ class BotForm extends React.Component {
         stop_loss: this.props.bot.stop_loss,
         candlestick_interval: this.props.bot.candlestick_interval,
         cooldown: this.props.bot.cooldown,
+        strategy: this.props.bot.strategy,
+        short_buy_price: this.props.bot.short_buy_price,
+        short_sell_price: this.props.bot.short_sell_price
       };
       if (this.state._id === null) {
         this.props.createBot(form);
