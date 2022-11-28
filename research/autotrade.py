@@ -72,56 +72,6 @@ class Autotrade(BinbotApi):
         result = handle_binance_errors(res)
         return result
 
-    def default_5_so(
-        self, balances, price, per_deviation=3, exp_increase=1.2, total_num_so=3
-    ):
-        """
-        See docs/autotrade/default_5_so
-        """
-        available_balance = next(
-            (
-                b["free"]
-                for b in balances["data"]
-                if b["asset"] == self.default_bot["balance_to_use"]
-            ),
-            None,
-        )
-        initial_so = 10  # USDT
-
-        if not available_balance:
-            print(f"Not enough {self.default_bot['balance_to_use']} for safety orders")
-            return
-
-        for index in range(total_num_so):
-            count = index + 1
-            threshold = count * (per_deviation / 100)
-
-            if index > 0:
-                price = self.default_bot["safety_orders"][index - 1]["buy_price"]
-
-            buy_price = round_numbers(price - (price * threshold))
-            so_size = round_numbers(initial_so**exp_increase)
-
-            if (
-                self.db_collection_name != "paper_trading"
-                and not self.min_amount_check(self.pair, so_size)
-            ):
-                break
-            initial_so = copy.copy(so_size)
-            self.default_bot["safety_orders"].append(
-                {
-                    "name": f"so_{count}",
-                    "status": 0,
-                    "buy_price": float(buy_price),
-                    "so_size": float(so_size),
-                    "so_asset": "USDT",
-                    "errors": [],
-                    "total_commission": 0,
-                }
-            )
-
-        return
-
     def handle_price_drops(
         self,
         balances,
@@ -365,6 +315,33 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
     4. Check if test autotrades
     """
     logging.info("Running qfl_signals autotrade...")
+
+    # If dashboard has changed any self.settings
+    # Need to reload websocket
+    if "update_required" in self.settings and self.settings["update_required"]:
+        print("Update required, restart stream")
+        self.terminate_websockets()
+        self.start_stream(previous_ws=ws)
+        pass
+    
+    # Wrap in try and except to avoid bugs stopping real bot trades
+    try:
+        if (
+            symbol not in self.active_test_bots
+            and int(self.test_autotrade_settings["autotrade"]) == 1
+        ):
+            if self.reached_max_active_autobots("paper_trading"):
+                print("Reached maximum number of active bots set in controller settings")
+            else:
+                # Test autotrade runs independently of autotrade = 1
+                test_autotrade = Autotrade(
+                    symbol, self.test_autotrade_settings, algorithm, "paper_trading"
+                )
+                test_autotrade.activate_autotrade(**kwargs)
+    except Exception as error:
+        print(error)
+        pass
+
     # Check balance to avoid failed autotrades
     check_balance_res = requests.get(url=self.bb_balance_estimate_url)
     balances = handle_binance_errors(check_balance_res)
@@ -374,18 +351,12 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
 
     balance_check = float(next((item["free"] for item in balances["data"]["balances"] if item["asset"] == self.settings["balance_to_use"]), 0))
 
-    # If dashboard has changed any self.settings
-    # Need to reload websocket
-    if "update_required" in self.settings and self.settings["update_required"]:
-        print("Update required, restart stream")
-        self.terminate_websockets()
-        self.start_stream(previous_ws=ws)
-        pass
+    if balance_check > 15:
+        print("Not enough funds to autotrade.")
+        return
 
     if (
         int(self.settings["autotrade"]) == 1
-        # Temporary restriction for few funds
-        and balance_check > 15
         and not test_only
     ):
         if self.reached_max_active_autobots("bots"):
@@ -395,20 +366,5 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
             autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
             autotrade.activate_autotrade(**kwargs)
 
-    # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
-    # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
-    # the downfall is that it can increase load for the server if there are multiple bots opened
-    # e.g. autotrade bots not updating can be a symptom of this
-    if (
-        symbol not in self.active_test_bots
-        and int(self.test_autotrade_settings["autotrade"]) == 1
-    ):
-        if self.reached_max_active_autobots("paper_trading"):
-            print("Reached maximum number of active bots set in controller settings")
-        else:
-            # Test autotrade runs independently of autotrade = 1
-            test_autotrade = Autotrade(
-                symbol, self.test_autotrade_settings, algorithm, "paper_trading"
-            )
-            test_autotrade.activate_autotrade(**kwargs)
+    
     return
