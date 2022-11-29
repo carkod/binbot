@@ -14,27 +14,30 @@ services:
     volumes:
       - ./mongo_data:/data/db
 
-  # api:
-  #   build: .
-  #   restart: on-failure
-  #   container_name: binbot
-  #   depends_on:
-  #     - db
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - 8007:80
-  #     - 8008:8006
+  api:
+    build: .
+    restart: on-failure
+    image: binbot_api
+    container_name: binbot
+    command: "nginx -g 'daemon off;'"
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - 8007:80
+      - 8008:8006
 
-  # research:
-  #   build: .
-  #   restart: on-failure
-  #   container_name: binbot_research
-  #   depends_on:
-  #     - db
-  #     - api
-  #   env_file:
-  #     - .env
+  research:
+    build: .
+    image: binbot_research
+    restart: on-failure
+    container_name: binbot_research
+    depends_on:
+      - db
+      - api
+    env_file:
+      - .env
 
 volumes:
   mongo_data:
