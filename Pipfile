@@ -4,6 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = false
 
 [packages]
+hypercorn = "==0.14.3"
 flask = "2.2.2"
 flask_cors = "*"
 pymongo = "4.2.0"

@@ -50,28 +50,13 @@
       }
     },
     {
-      "name": "Python: Production",
+      "name": "Python: Module",
       "type": "python",
       "request": "launch",
-      "program": "~/.local/share/virtualenvs/binbot-oJjq0rqg/bin/gunicorn",
-      "gevent": true,
-      "console": "integratedTerminal",
-      "args": [
-        "api.main:app",
-        "--bind=0.0.0.0:8006",
-        "--threads",
-        "12",
-        "-t",
-        "90",
-        "--access-logfile",
-        "- ",
-        "--error-logfile",
-        "- ",
-        "--capture-output",
-        "--log-level",
-        "debug"
-      ],
-      "postDebugTask": "killdebugger"
+      "module": "hypercorn",
+      "console": "internalConsole",
+      "justMyCode": true,
+      "args": ["api.main:app","-b", "0.0.0.0:8006", "-w 3"],
     }
   ]
 }
