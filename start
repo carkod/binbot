@@ -1,3 +1,2 @@
 #!/bin/bash
-python -m hypercorn -b 0.0.0.0:8006 -k asyncio -w 3 --access-logfile "/var/log/nginx/web-access.log" --error-logfile "/var/log/nginx/web-error.log" api.main:app
-nginx -g 'daemon off;'
+hypercorn -b 0.0.0.0:8006 -w 3 api.main:app

@@ -13,7 +13,8 @@ RUN chmod +x start
 RUN pip3 install pipenv hypercorn --no-cache-dir --upgrade
 RUN pipenv install --system --deploy --ignore-pipfile --clear
 COPY api api
-CMD ["./start"]
+ENTRYPOINT sh -c "hypercorn -b 0.0.0.0:8006 -w 3 api.main:app"
+RUN sh -c "service nginx start"
 
 STOPSIGNAL SIGTERM
 EXPOSE 80 8006

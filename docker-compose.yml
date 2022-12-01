@@ -2,7 +2,7 @@ version: "3.7"
 services:
   db:
     image: mongo:latest
-    container_name: binbot_db
+    container_name: binbot_db2
     restart: on-failure
     env_file: .env
     environment:
@@ -16,6 +16,7 @@ services:
 
   api:
     build: .
+    image: binbot_api
     restart: on-failure
     container_name: binbot
     depends_on:
@@ -26,15 +27,16 @@ services:
       - 8007:80
       - 8008:8006
 
-  research:
-    build: .
-    restart: on-failure
-    container_name: binbot_research
-    depends_on:
-      - db
-      - api
-    env_file:
-      - .env
+  # research:
+  #   build: ./research/dockerfile
+  #   image: binbot_research
+  #   restart: on-failure
+  #   container_name: binbot_research
+  #   depends_on:
+  #     - db
+  #     - api
+  #   env_file:
+  #     - .env
 
 volumes:
   mongo_data:
