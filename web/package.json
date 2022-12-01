@@ -42,7 +42,7 @@
     "@testing-library/jest-dom": "^5.15.1",
     "@testing-library/react": "^12.1.1",
     "@testing-library/user-event": "^14.1.1",
-    "prettier": "^2.4.3",
+    "prettier": "^2.8.0",
     "react-scripts": "^5.0.1",
     "sass": "^1.55.0"
   },
