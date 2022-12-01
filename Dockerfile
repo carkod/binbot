@@ -1,6 +1,11 @@
+FROM node:lts as build-stage
+WORKDIR /app
+COPY /web/ /app/
+RUN yarn install && yarn build
+
 FROM python:3.9.5
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-dev nginx python-setuptools
-COPY /web/build/ /usr/share/nginx/html
+COPY --from=build-stage /app/build /usr/share/nginx/html
 COPY ./nginx.conf /etc/nginx/sites-enabled/default
 COPY Pipfile Pipfile.lock start ./
 RUN rm -rf .env.local
