@@ -48,15 +48,15 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
         hour=1,
         minute=0
     )
-    controller = Controller()
-    scheduler.add_job(
-        func=controller.store_profitable_signals,
-        trigger="cron",
-        timezone="Europe/London",
-        hour=2,
-        minute=0,
-    )
-    scheduler.start()
+    # controller = Controller()
+    # scheduler.add_job(
+    #     func=controller.store_profitable_signals,
+    #     trigger="cron",
+    #     timezone="Europe/London",
+    #     hour=2,
+    #     minute=0,
+    # )
+    # scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))
 
 if os.getenv("ENV") != "ci":

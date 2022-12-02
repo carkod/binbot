@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     services:
       binbot_db:
-        image: mongo:5-focal
+        image: mongo
         options: >-
-          --health-cmd mongo
+          --health-cmd mongosh
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -35,21 +35,11 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-      - name: Build Web
-        working-directory: ./web
-        run: |
-          yarn install
-          yarn run build \
       - name: Build image
         run: docker build --tag binbot .
       - name: Test app
         run: |
-          docker run -d --network host binbot && \
-          sleep 5 && \
-          curl --head --fail --retry-delay 5 --retry 3 --retry-connrefused http://localhost
-      - name: Test api
-        run: |
-          docker run --name binbot_api -p 8006:8006 \
+          docker run --network host --name binbot \
           -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
           -e MONGO_PORT=${{ env.MONGO_PORT }} \
           -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
@@ -57,8 +47,19 @@ jobs:
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e PYTHONUNBUFFERED=TRUE \
           -e ENV=ci -d binbot
-          sleep 10
-          curl --head --fail --retry-delay 30 --retry 5 --retry-connrefused http://localhost:8006
+          curl --head --fail --retry-delay 5 --retry 3 --retry-connrefused http://localhost
+      - name: Test api
+        run: |
+          docker run --name binbot_api -p 8008:8006 \
+          -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
+          -e MONGO_PORT=${{ env.MONGO_PORT }} \
+          -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
+          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
+          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
+          -e PYTHONUNBUFFERED=TRUE \
+          -e ENV=ci -d binbot
+          sleep 5 && \
+          curl --head --fail --retry-delay 30 --retry 5 --retry-connrefused http://localhost:8008
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |

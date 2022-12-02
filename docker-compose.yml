@@ -2,7 +2,7 @@ version: "3.7"
 services:
   db:
     image: mongo:latest
-    container_name: binbot_db2
+    container_name: binbot_db
     restart: on-failure
     env_file: .env
     environment:

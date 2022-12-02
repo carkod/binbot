@@ -1,5 +1,4 @@
 import json
-from json.decoder import JSONDecodeError
 from time import sleep
 import os
 from bson.objectid import ObjectId
@@ -120,7 +119,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         response.json()
     except Exception as e:
         print("Request error: ", e)
-        print("Response error: ", response)
+        print("Response error: ", response, response.url, response.body)
     
     if response.status_code == 404:
         raise HTTPError()

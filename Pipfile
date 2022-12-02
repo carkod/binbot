@@ -4,7 +4,6 @@ url = "https://pypi.org/simple"
 verify_ssl = false
 
 [packages]
-hypercorn = "==0.14.3"
 flask = "2.2.2"
 flask_cors = "*"
 pymongo = "==4.3.3"
@@ -25,6 +24,7 @@ marshmallow = "3.19.0"
 requests-html = "0.10.0"
 whale-alert = "0.0.4"
 py3cw = "0.0.39"
+numpy = "1.23.5"
 
 [dev-packages]
 autopep8 = "==2.0.0"

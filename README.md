@@ -1,3 +1,4 @@
+[![Test Production](https://github.com/carkod/binbot/actions/workflows/pr.yml/badge.svg)](https://github.com/carkod/binbot/actions/workflows/pr.yml)
 ## Requirements
 
 - Docker and docker-compose

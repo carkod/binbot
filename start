@@ -1,2 +1,0 @@
-#!/bin/bash
-hypercorn -b 0.0.0.0:8006 -w 3 api.main:app

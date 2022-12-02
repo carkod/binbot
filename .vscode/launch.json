@@ -48,15 +48,6 @@
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/*"
       }
-    },
-    {
-      "name": "Python: Module",
-      "type": "python",
-      "request": "launch",
-      "module": "hypercorn",
-      "console": "internalConsole",
-      "justMyCode": true,
-      "args": ["api.main:app","-b", "0.0.0.0:8006", "-w 3"],
     }
   ]
 }
