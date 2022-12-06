@@ -1,0 +1,38 @@
+{
+  "settings":{
+      "http":{
+         "header_read_timeout":180,
+         "body_read_timeout":180,
+         "send_timeout":180,
+         "idle_timeout":180,
+         "max_body_size":83886080
+      }
+  },
+  "listeners": {
+    "*:8006": {
+      "pass": "applications/api"
+    },
+    "*:80": {
+      "pass": "routes"
+    }
+  },
+  "routes": [
+    {
+      "action": {
+        "share": "/usr/share/nginx/html/$uri",
+        "fallback": {
+          "share": "/usr/share/nginx/html/index.html"
+        }
+      }
+    }
+  ],
+  "applications": {
+    "api": {
+      "type": "python 3.10",
+      "path": "/",
+      "module": "api.main",
+      "callable": "app",
+      "processes": 5
+    }
+  }
+}

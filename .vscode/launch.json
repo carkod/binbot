@@ -48,30 +48,6 @@
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/*"
       }
-    },
-    {
-      "name": "Python: Production",
-      "type": "python",
-      "request": "launch",
-      "program": "~/.local/share/virtualenvs/binbot-oJjq0rqg/bin/gunicorn",
-      "gevent": true,
-      "console": "integratedTerminal",
-      "args": [
-        "api.main:app",
-        "--bind=0.0.0.0:8006",
-        "--threads",
-        "12",
-        "-t",
-        "90",
-        "--access-logfile",
-        "- ",
-        "--error-logfile",
-        "- ",
-        "--capture-output",
-        "--log-level",
-        "debug"
-      ],
-      "postDebugTask": "killdebugger"
     }
   ]
 }

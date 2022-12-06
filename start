@@ -1,4 +1,0 @@
-#!/bin/bash
-# Websockets, which use multithreads do not support multiple workers
-gunicorn -b 0.0.0.0:8006 --threads 16 --access-logfile "/var/log/nginx/web-access.log" --error-logfile "/var/log/nginx/web-error.log" --timeout 60 --log-level debug -e GEVENT_RESOLVER=ares --capture-output -D api.main:app
-nginx -g 'daemon off;'

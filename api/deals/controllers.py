@@ -875,8 +875,8 @@ class CreateDealController(Account):
                     )
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
-                result = self.bb_request(
-                    self.bb_bot_url, "DELETE", params={"id": self.active_bot._id}
+                self.bb_request(
+                    f"{self.bb_bot_url}/{self.active_bot._id}", "DELETE"
                 )
                 print(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:

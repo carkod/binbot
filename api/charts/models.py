@@ -188,13 +188,13 @@ class Candlestick(BinbotApi):
 
                 # Store more data for db to fill up candlestick charts
                 data = self.request(url=self.candlestick_url, params=params)
-                if "msg" in data:
+                if data["code"] == -1121:
                     if json:
                         return jsonResp_error_message(
                             f"Failed to update candlestick data: {data['msg']}"
                         )
                     else:   
-                        raise InvalidSymbol(data["msg"])
+                        raise InvalidSymbol()
 
                 klines_schema.replace_klines(data)
                 klines = current_app.db.klines.find_one({"_id": params["symbol"]})
@@ -383,12 +383,14 @@ class Candlestick(BinbotApi):
                 "endTime": end_time,
             }
 
-
-        df, dates = self.get_klines(
-            binance=binance,
-            json=False,
-            params=params
-        )
+        try:
+            df, dates = self.get_klines(
+                binance=binance,
+                json=False,
+                params=params
+            )
+        except InvalidSymbol:
+            return jsonResp_error_message(f"{symbol} doesn't exist")
 
         if df.empty or len(dates) == 0:
             return jsonResp_error_message(f"There is not enough data for symbol {symbol}")

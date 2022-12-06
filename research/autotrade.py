@@ -72,67 +72,21 @@ class Autotrade(BinbotApi):
         result = handle_binance_errors(res)
         return result
 
-    def default_5_so(
-        self, balances, price, per_deviation=3, exp_increase=1.2, total_num_so=3
-    ):
-        """
-        See docs/autotrade/default_5_so
-        """
-        available_balance = next(
-            (
-                b["free"]
-                for b in balances["data"]
-                if b["asset"] == self.default_bot["balance_to_use"]
-            ),
-            None,
-        )
-        initial_so = 10  # USDT
-
-        if not available_balance:
-            print(f"Not enough {self.default_bot['balance_to_use']} for safety orders")
-            return
-
-        for index in range(total_num_so):
-            count = index + 1
-            threshold = count * (per_deviation / 100)
-
-            if index > 0:
-                price = self.default_bot["safety_orders"][index - 1]["buy_price"]
-
-            buy_price = round_numbers(price - (price * threshold))
-            so_size = round_numbers(initial_so**exp_increase)
-
-            if (
-                self.db_collection_name != "paper_trading"
-                and not self.min_amount_check(self.pair, so_size)
-            ):
-                break
-            initial_so = copy.copy(so_size)
-            self.default_bot["safety_orders"].append(
-                {
-                    "name": f"so_{count}",
-                    "status": 0,
-                    "buy_price": float(buy_price),
-                    "so_size": float(so_size),
-                    "so_asset": "USDT",
-                    "errors": [],
-                    "total_commission": 0,
-                }
-            )
-
-        return
-
-    def default_5_so_test(
+    def handle_price_drops(
         self,
         balances,
         price,
         per_deviation=3,
         exp_increase=1.2,
         total_num_so=3,
-        trend="upward" # ["upward", "downward"] Upward trend is for candlestick_jumps and similar algorithms. Downward trend is for panic sells in the market
+        trend="upward", # ["upward", "downward"] Upward trend is for candlestick_jumps and similar algorithms. Downward trend is for panic sells in the market
+        lowest_price=0
     ):
         """
-        Test default_3 safety orders with short_sell_price
+        Sets the values for safety orders, short sell prices to hedge from drops in price.
+
+        Safety orders here are designed to use qfl for price bounces: prices drop a bit but then overall the trend is bullish
+        However short sell uses the short strategy: it sells the asset completely, to buy again after a dip.
         """
         available_balance = next(
             (
@@ -147,6 +101,16 @@ class Autotrade(BinbotApi):
         if not available_balance:
             print(f"Not enough {self.default_bot['balance_to_use']} for safety orders")
             return
+
+        if trend == "downtrend":
+            down_short_sell_price = round_numbers(price - (price * 0.05))
+            down_short_buy_price = round_numbers(down_short_sell_price - (down_short_sell_price * short_buy_spread))
+            self.default_bot["short_sell_price"] = down_short_sell_price
+
+            if lowest_price > 0 and lowest_price <= down_short_buy_price:
+                self.default_bot["short_buy_price"] = lowest_price
+            else:
+                self.default_bot["short_buy_price"] = down_short_buy_price
 
         for index in range(total_num_so):
             count = index + 1
@@ -163,9 +127,6 @@ class Autotrade(BinbotApi):
                 # Increases price diff between short_sell_price and short_buy_price
                 short_sell_spread = 0.05
                 short_buy_spread = threshold
-                if trend == "downtrend":
-                    short_sell_spread = 0.02
-                    short_buy_spread = 0.1
 
                 short_sell_price = round_numbers(price - (price * short_sell_spread))
                 self.default_bot["short_sell_price"] = short_sell_price
@@ -245,9 +206,12 @@ class Autotrade(BinbotApi):
                     rate = rate["price"]
                     qty = supress_notation(b["free"], self.decimals)
                     # Round down to 6 numbers to avoid not enough funds
-                    base_order_size = (
-                        math.floor((float(qty) / float(rate)) * 10000000) / 10000000
-                    )
+                    try:
+                        base_order_size = (
+                            math.floor((float(qty) / float(rate)) * 10000000) / 10000000
+                        )
+                    except Exception as error:
+                        print(error)
                     self.default_bot.base_order_size = supress_notation(
                         base_order_size, self.decimals
                     )
@@ -320,17 +284,16 @@ class Autotrade(BinbotApi):
         base_order_price = bot["deal"]["buy_price"]
 
         trend = "upward"
+        lowest_price = 0
         if "trend" in kwargs:
             trend = kwargs["trend"]
-        self.default_5_so_test(balances, base_order_price, trend=trend)
-
-        # Set short_buy price, so that it's always bellow short_buy_price
 
         if "lowest_price" in kwargs:
-            self.default_bot["short_buy_price"] = kwargs["lowest_price"]
-            if kwargs["lowest_price"] >= self.default_bot["short_sell_price"]:
-                self.default_bot["short_buy_price"] = float(self.default_bot["short_sell_price"]) - (float(self.default_bot["short_sell_price"]) * 0.05)
-            print("short_buy_price set!", self.default_bot["short_buy_price"])
+            lowest_price = kwargs["lowest_price"]
+
+        self.handle_price_drops(balances, base_order_price, trend=trend, lowest_price=lowest_price)
+
+        # Set short_buy price, so that it's always bellow short_buy_price
 
         edit_bot_res = requests.put(url=f"{bot_url}/{botId}", json=self.default_bot)
         edit_bot = handle_binance_errors(edit_bot_res)
@@ -355,14 +318,6 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
     4. Check if test autotrades
     """
     logging.info("Running qfl_signals autotrade...")
-    # Check balance to avoid failed autotrades
-    check_balance_res = requests.get(url=self.bb_balance_estimate_url)
-    balances = handle_binance_errors(check_balance_res)
-    if "error" in balances and balances["error"] == 1:
-        print(balances["message"])
-        return
-
-    balance_check = int(balances["data"]["total_fiat"])
 
     # If dashboard has changed any self.settings
     # Need to reload websocket
@@ -371,11 +326,40 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
         self.terminate_websockets()
         self.start_stream(previous_ws=ws)
         pass
+    
+    # Wrap in try and except to avoid bugs stopping real bot trades
+    try:
+        if (
+            symbol not in self.active_test_bots
+            and int(self.test_autotrade_settings["autotrade"]) == 1
+        ):
+            if self.reached_max_active_autobots("paper_trading"):
+                print("Reached maximum number of active bots set in controller settings")
+            else:
+                # Test autotrade runs independently of autotrade = 1
+                test_autotrade = Autotrade(
+                    symbol, self.test_autotrade_settings, algorithm, "paper_trading"
+                )
+                test_autotrade.activate_autotrade(**kwargs)
+    except Exception as error:
+        print(error)
+        pass
+
+    # Check balance to avoid failed autotrades
+    check_balance_res = requests.get(url=self.bb_balance_estimate_url)
+    balances = handle_binance_errors(check_balance_res)
+    if "error" in balances and balances["error"] == 1:
+        print(balances["message"])
+        return
+
+    balance_check = float(next((item["free"] for item in balances["data"]["balances"] if item["asset"] == self.settings["balance_to_use"]), 0))
+
+    if balance_check < 15:
+        print("Not enough funds to autotrade.")
+        return
 
     if (
         int(self.settings["autotrade"]) == 1
-        # Temporary restriction for few funds
-        and balance_check > 15
         and not test_only
     ):
         if self.reached_max_active_autobots("bots"):
@@ -385,20 +369,5 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
             autotrade = Autotrade(symbol, self.settings, algorithm, "bots")
             autotrade.activate_autotrade(**kwargs)
 
-    # Execute test_autrade after autotrade to avoid test_autotrade bugs stopping autotrade
-    # test_autotrade may execute same bots as autotrade, for the sake of A/B testing
-    # the downfall is that it can increase load for the server if there are multiple bots opened
-    # e.g. autotrade bots not updating can be a symptom of this
-    if (
-        symbol not in self.active_test_bots
-        and int(self.test_autotrade_settings["autotrade"]) == 1
-    ):
-        if self.reached_max_active_autobots("paper_trading"):
-            print("Reached maximum number of active bots set in controller settings")
-        else:
-            # Test autotrade runs independently of autotrade = 1
-            test_autotrade = Autotrade(
-                symbol, self.test_autotrade_settings, algorithm, "paper_trading"
-            )
-            test_autotrade.activate_autotrade(**kwargs)
+    
     return

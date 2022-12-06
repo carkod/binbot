@@ -12,10 +12,7 @@ auth = HTTPTokenAuth(scheme="Bearer")
 def verify_token(token):
     # Research app exception
     # Authorize local requests
-    if (
-        request.environ["SERVER_NAME"] == "0.0.0.0"
-        or request.environ["SERVER_NAME"] == "127.0.0.1"
-    ):
+    if request.headers.environ["SERVER_NAME"] in ["localhost", "127.0.0.1"]:
         return True
     user = current_app.db.users.find_one({"access_token": token})
     if user:
