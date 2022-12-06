@@ -96,8 +96,8 @@ class QFL_signals(SetupSignals):
                 trading_pair = asset + "USDT"
 
                 if response["type"] == "base-break":
-                    base_price = Decimal(str(response["basePrice"]))
-                    message = f"\nAlert Price: {alert_price}, Base Price: {base_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
+                    strength = response["strength"]
+                    message = f"\nAlert Price: {alert_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
 
                     sd, lowest_price = self.get_stats(trading_pair)
                     process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_base-break", **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price})
@@ -109,8 +109,7 @@ class QFL_signals(SetupSignals):
                 # Uncomment when short_buy strategy is ready
                 if response["type"] == "panic":
                     strength = response["strength"]
-                    velocity = response["velocity"]
-                    message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Velocity: {velocity}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
+                    message = f'\nAlert Price: {alert_price}, Volume: {volume24}, Strength: {strength}\n- <a href="{hodloo_url}">Hodloo</a>'
                     sd, lowest_price = self.get_stats(trading_pair)
                     process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_panic", test_only=True, **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price, "trend": "downtrend"})
 

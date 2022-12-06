@@ -1,3 +1,5 @@
+import logging
+
 from math import ceil
 from time import time
 from typing import TypedDict
@@ -98,7 +100,7 @@ class Candlestick(BinbotApi):
         returns
         df [Pandas dataframe]
         """
-        print("Requesting and Cleaning db of incomplete data...")
+        logging.info("Requesting and Cleaning db of incomplete data...")
         data = self.request(url=self.candlestick_url, params=params)
         klines_schema = KlinesSchema(params["symbol"], params["interval"], params["limit"])
         klines = klines_schema.replace_klines(data)
@@ -112,7 +114,7 @@ class Candlestick(BinbotApi):
         @params
         - df [Pandas dataframe]
         """
-        print(f"Checking gaps in the kline data for {params['symbol']}")
+        logging.info(f"Checking gaps in the kline data for {params['symbol']}")
         kline_df = df.copy(deep=True)
         df["gaps_check"] = df[0].diff()[1:]
         df = df.dropna()
@@ -188,6 +190,7 @@ class Candlestick(BinbotApi):
 
                 # Store more data for db to fill up candlestick charts
                 data = self.request(url=self.candlestick_url, params=params)
+                print("Storing data response: ", data, self.candlestick_url, symbol)
                 if data["code"] == -1121:
                     if json:
                         return jsonResp_error_message(
@@ -391,6 +394,8 @@ class Candlestick(BinbotApi):
             )
         except InvalidSymbol:
             return jsonResp_error_message(f"{symbol} doesn't exist")
+        except Exception as error:
+            return jsonResp_error_message(f"Error getting klines for {symbol}: {error}")
 
         if df.empty or len(dates) == 0:
             return jsonResp_error_message(f"There is not enough data for symbol {symbol}")

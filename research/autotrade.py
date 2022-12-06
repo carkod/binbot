@@ -354,7 +354,7 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
 
     balance_check = float(next((item["free"] for item in balances["data"]["balances"] if item["asset"] == self.settings["balance_to_use"]), 0))
 
-    if balance_check < 15:
+    if balance_check < float(self.settings['base_order_size']):
         print("Not enough funds to autotrade.")
         return
 
