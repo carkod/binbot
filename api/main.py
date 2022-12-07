@@ -1,6 +1,6 @@
 import atexit
 import os
-import asyncio
+import threading
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from api.account.assets import Assets
@@ -20,8 +20,19 @@ from api.user.routes import user_blueprint
 from api.paper_trading.routes import paper_trading_blueprint
 from api.autotrade.routes import autotrade_settings_blueprint
 
-app = create_app()
 
+class MonitorThread(threading.Thread):
+
+    def run(self):
+        while 1:
+            market_updates = MarketUpdates()
+            market_updates.start_stream()
+    
+if os.getenv("ENV") != "ci":
+    MonitorThread().start()
+
+
+app = create_app()
 
 @app.route("/")
 def index():
@@ -48,25 +59,7 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
         hour=1,
         minute=0
     )
-    # controller = Controller()
-    # scheduler.add_job(
-    #     func=controller.store_profitable_signals,
-    #     trigger="cron",
-    #     timezone="Europe/London",
-    #     hour=2,
-    #     minute=0,
-    # )
-    # scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))
 
-if os.getenv("ENV") != "ci":
-    async def main():
-        order_updates = OrderUpdates()
-        market_updates = MarketUpdates()
-        await asyncio.gather(
-            order_updates.run_stream(),
-            market_updates.start_stream()
-        )
-
-    if __name__ == "__main__":
-        asyncio.run(main())
+if __name__ == "__main__":
+     app.run(debug=os.environ["DEBUG"])

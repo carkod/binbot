@@ -85,7 +85,7 @@ class QFL_signals(SetupSignals):
 
                 hodloo_url = f"{self.hodloo_chart_url + exchange_str}:{pair}"
                 volume24 = response["marketInfo"]["volume24"]
-                alert_price = Decimal(str(response["marketInfo"]["price"]))
+                alert_price = float(response["marketInfo"]["price"])
 
                 try:
                     self.check_asset(asset, ws)
@@ -97,7 +97,7 @@ class QFL_signals(SetupSignals):
 
                 if response["type"] == "base-break":
                     strength = response["strength"]
-                    message = f"\nAlert Price: {alert_price}, Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
+                    message = f"\nAlert Price: {alert_price}\n- Base Price:{response['basePrice']} \n- Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
 
                     sd, lowest_price = self.get_stats(trading_pair)
                     process_autotrade_restrictions(self, trading_pair, ws, "hodloo_qfl_signals_base-break", **{"sd": sd, "current_price": alert_price, "lowest_price": lowest_price})
