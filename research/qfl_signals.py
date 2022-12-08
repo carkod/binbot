@@ -96,7 +96,6 @@ class QFL_signals(SetupSignals):
                 trading_pair = asset + "USDT"
 
                 if response["type"] == "base-break":
-                    strength = response["strength"]
                     message = f"\nAlert Price: {alert_price}\n- Base Price:{response['basePrice']} \n- Volume: {volume24}\n- <a href='{hodloo_url}'>Hodloo</a> \n- Running autotrade"
 
                     sd, lowest_price = self.get_stats(trading_pair)
