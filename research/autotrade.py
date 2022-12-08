@@ -76,11 +76,12 @@ class Autotrade(BinbotApi):
         self,
         balances,
         price,
-        per_deviation=3,
+        per_deviation=1.2,
         exp_increase=1.2,
         total_num_so=3,
         trend="upward", # ["upward", "downward"] Upward trend is for candlestick_jumps and similar algorithms. Downward trend is for panic sells in the market
-        lowest_price=0
+        lowest_price=0,
+        sd=0
     ):
         """
         Sets the values for safety orders, short sell prices to hedge from drops in price.
@@ -127,10 +128,18 @@ class Autotrade(BinbotApi):
                 # Increases price diff between short_sell_price and short_buy_price
                 short_sell_spread = 0.05
                 short_buy_spread = threshold
+                short_sell_price = round_numbers(price - (price * threshold))
+                short_buy_price = round_numbers(short_sell_price - (short_sell_price * threshold))
 
-                short_sell_price = round_numbers(price - (price * short_sell_spread))
+                if sd >= 0 and lowest_price > 0:
+                    sd_buy_price = round_numbers(short_sell_price - (sd * 2))
+                    if lowest_price < sd_buy_price or sd == 0:
+                        short_buy_price = lowest_price
+                    else:
+                        short_buy_price = sd_buy_price
+
                 self.default_bot["short_sell_price"] = short_sell_price
-                self.default_bot["short_buy_price"] = round_numbers(short_sell_price - (short_sell_price * short_buy_spread))
+                self.default_bot["short_buy_price"] = short_buy_price
             else:
                 self.default_bot["safety_orders"].append(
                     {
@@ -285,13 +294,17 @@ class Autotrade(BinbotApi):
 
         trend = "upward"
         lowest_price = 0
+        sd = 0
         if "trend" in kwargs:
             trend = kwargs["trend"]
 
         if "lowest_price" in kwargs:
             lowest_price = kwargs["lowest_price"]
+        
+        if "sd" in kwargs:
+            sd = kwargs["sd"]
 
-        self.handle_price_drops(balances, base_order_price, trend=trend, lowest_price=lowest_price)
+        self.handle_price_drops(balances, base_order_price, trend=trend, lowest_price=lowest_price, sd=sd)
 
         # Set short_buy price, so that it's always bellow short_buy_price
 
@@ -354,7 +367,7 @@ def process_autotrade_restrictions(self, symbol, ws, algorithm, test_only=False,
 
     balance_check = float(next((item["free"] for item in balances["data"]["balances"] if item["asset"] == self.settings["balance_to_use"]), 0))
 
-    if balance_check < 15:
+    if balance_check < float(self.settings['base_order_size']):
         print("Not enough funds to autotrade.")
         return
 

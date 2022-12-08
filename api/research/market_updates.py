@@ -108,7 +108,7 @@ class MarketUpdates(Account):
 
             self.terminate_websockets()
             self.start_stream()
-                    
+
         # Long strategy starts
         if current_bot and "deal" in current_bot:
             # Update Current price only for active bots
