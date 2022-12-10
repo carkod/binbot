@@ -1,12 +1,15 @@
 import json
 import threading
 import logging
-from pymongo import ReturnDocument
+import numpy
 
+from pymongo import ReturnDocument
 from api.account.account import Account
 from api.app import create_app
 from api.deals.controllers import CreateDealController
 from websocket import WebSocketApp
+from api.tools.round_numbers import round_numbers
+
 
 class MarketUpdates(Account):
     """
@@ -89,6 +92,13 @@ class MarketUpdates(Account):
                 self.process_deals(json_response["data"], ws)
             else:
                 print(f'Error: {json_response["data"]}')
+        
+    def update_take_profit(self, close_price, symbol, bot):
+        data = self._get_candlestick(symbol, self.interval, stats=True)
+        list_prices = numpy.array(data["trace"][0]["close"])
+        sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
+        return
+
 
     def process_deals_bot(self, current_bot, close_price, symbol, db_collection):
         """
@@ -143,6 +153,8 @@ class MarketUpdates(Account):
 
             # Take profit trailling
             if bot["trailling"] == "true" and bot["deal"]["buy_price"] != "":
+
+                # self.update_take_profit(close_price, symbol, current_bot)
 
                 if (
                     "trailling_stop_loss_price" not in bot["deal"]
