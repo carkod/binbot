@@ -113,6 +113,9 @@ class Autotrade(BinbotApi):
             else:
                 self.default_bot["short_buy_price"] = down_short_buy_price
 
+            # most likely goes down, so no safety orders
+            return
+
         for index in range(total_num_so):
             count = index + 1
             threshold = count * (per_deviation / 100)

@@ -32,6 +32,18 @@ SO_3: 15.84^1.2 = 27.52 USDT, when price drops to @17,147 (-5% drop)
 3. Set buy price (-5% drop) and quantity (exponential 1.2 increase)
 
 
+
+## handle_price_drops
+This is an improved version of `default_5_so`. Arguments:
+
+- per_deviation. Percentage deviation is the mathemtical component in the threshold that spreads prices to protect the investment. This is the independent variable that causes the dependeant variable to change (threshold)
+- total_num_so. Total number of Safety orders, this is dependant on existing funds, set as 3 as the reasonable trade off between balance funds and protection.
+- exp_increase. Mathematical algorithmic approximation of trade.
+- trend. `upward` or `downward` trends help apply different strategies depending on estimated direction of prices.
+
+By default, it uses safety orders as a safety net for bounces. So if prices goes up and then down and then up again, this will reduce average cost, and if it goes up after the bounce, the increased price will be leveraged by the increased possession of that crypto/token.
+
+If trend is `downward`, safety orders will be **skipped**. Mainly because a signal, such as panic signal from hoodloo, will likely signal a downward trend, so wasting money in buying back following QFL's system will not work, the prices will keep dropping, the total value of the portfolio could be highly affected after a 5-10% drop, and time is wasted as well, better buy another crypto/coin meanwhile and short this one.
 ### Dynamic price_deviation
 
 An update to include a dynamic price deviation was tested, it did not work well with candlestick_jump algorithm, because sudden movement in the markets do not change the volatility completely, therefore yielding a standard deviation which is quite low compared to the spread of the price.
@@ -55,3 +67,7 @@ if "sd" in kwargs:
 However it is a good strategy for trailling profit.
 
 Further research is required to do dynamic SOs
+
+
+### Trends
+Trends in autotrade can be two values only: `downtrend` or `uptrend` (any value)
