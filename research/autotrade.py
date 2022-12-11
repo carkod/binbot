@@ -104,8 +104,9 @@ class Autotrade(BinbotApi):
             return
 
         if trend == "downtrend":
+            down_short_buy_spread = total_num_so * (per_deviation / 100)
             down_short_sell_price = round_numbers(price - (price * 0.05))
-            down_short_buy_price = round_numbers(down_short_sell_price - (down_short_sell_price * short_buy_spread))
+            down_short_buy_price = round_numbers(down_short_sell_price - (down_short_sell_price * down_short_buy_spread))
             self.default_bot["short_sell_price"] = down_short_sell_price
 
             if lowest_price > 0 and lowest_price <= down_short_buy_price:

@@ -1,17 +1,22 @@
 import logging
-
+from dataclasses import dataclass, field
 from math import ceil
 from time import time
 
 import pandas as pd
-from pymongo import ReturnDocument
-from api.apis import BinbotApi
-from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
-from api.tools.round_numbers import interval_to_millisecs
 from flask import current_app, request
-from pymongo.errors import DuplicateKeyError
-from api.tools.handle_error import InvalidSymbol
-from dataclasses import dataclass, field
+from pymongo import ReturnDocument
+
+from api.apis import BinbotApi
+from api.tools.handle_error import (
+    InvalidSymbol,
+    jsonResp,
+    jsonResp_error_message,
+    jsonResp_message
+)
+from api.tools.round_numbers import interval_to_millisecs
+
+
 @dataclass
 class KlinesParams:
     """
@@ -24,10 +29,10 @@ class KlinesParams:
 
     """
     symbol: str
-    interval: str = field(default="1h")
+    interval: str = field(default="15m")
     limit: int = field(default=600)
-    startTime: float = field(default=0)
-    endTime: str = field(default=0)
+    startTime: str = field(default=None)
+    endTime: str = field(default=None)
 
 
 class KlinesSchema:
@@ -102,7 +107,7 @@ class Candlestick(BinbotApi):
     https://plotly.com/javascript/candlestick-charts/
     """
 
-    def delete_and_create_klines(self, params):
+    def delete_and_create_klines(self, params: KlinesParams):
         """
         Args:
         params
@@ -111,20 +116,20 @@ class Candlestick(BinbotApi):
         df [Pandas dataframe]
         """
         logging.info("Requesting and Cleaning db of incomplete data...")
-        data = self.request(url=self.candlestick_url, params=params)
-        klines_schema = KlinesSchema(params["symbol"], params["interval"], params["limit"])
+        data = self.request(url=self.candlestick_url, params=vars(params))
+        klines_schema = KlinesSchema(params.symbol, params.interval, params.limit)
         klines = klines_schema.replace_klines(data)
-        kline_df = pd.DataFrame(klines[params["interval"]])
+        kline_df = pd.DataFrame(klines[params.interval])
         return kline_df
 
-    def check_gaps(self, df, params):
+    def check_gaps(self, df, params: KlinesParams):
         """
         Checks gaps in the candlestick time series, using the dates difference between dates (index = 0)
         If there are gaps, request data from Binance API (high weight, use cautiously)
         @params
         - df [Pandas dataframe]
         """
-        logging.info(f"Checking gaps in the kline data for {params['symbol']}")
+        logging.info(f"Checking gaps in the kline data for {params.symbol}")
         kline_df = df.copy(deep=True)
         df["gaps_check"] = df[0].diff()[1:]
         df = df.dropna()
@@ -161,55 +166,41 @@ class Candlestick(BinbotApi):
         """
 
         # Do we require more candlesticks for charts data?
+        query = {"_id": params.symbol, params.interval: {"$exists": True}}
         if params.startTime:
-            klines = current_app.db.klines.find_one(
-                {"_id": params.symbol, "data.0.0": {"$lte": params.startTime}}
-            )
-        else:
-            klines = current_app.db.klines.find_one(
-                {"_id": params.symbol}
-            )
+            query["data.0.0"] = {"$lte": params.startTime}
 
-        klines_schema = KlinesSchema(params.symbol, params["interval"])
+        try:
+            klines = current_app.db.klines.find_one(query)
+        except Exception as error:
+            print(error)
+            klines = None
+            pass
+
+        klines_schema = KlinesSchema(params.symbol, params.interval)
         if not klines:
-            try:
-                if params.startTime:
-                    # Delete any remnants of this data
-                    klines_schema.delete_klines()
-                    # Calculate diff start_time and end_time
-                    # Divide by interval time to get limit
-                    diff_time = (time() * 1000) - int(params.startTime)
-                    # where 15m = 900,000 milliseconds
-                    params["limit"] = ceil(
-                        diff_time / interval_to_millisecs(params["interval"])
-                    )
+            if params.startTime:
+                # Calculate diff start_time and end_time
+                # Divide by interval time to get limit
+                diff_time = (time() * 1000) - int(params.startTime)
+                # where 15m = 900,000 milliseconds
+                params.limit = ceil(
+                    diff_time / interval_to_millisecs(params.interval)
+                )
 
-                # Store more data for db to fill up candlestick charts
-                data = self.request(url=self.candlestick_url, params=params)
-                print("Storing data response: ", data, self.candlestick_url, params["symbol"])
-                if data["code"] == -1121:
-                    raise InvalidSymbol()
+            # Store more data for db to fill up candlestick charts
+            data = self.request(url=self.candlestick_url, params=vars(params))
+            if "code" in data and data["code"] == -1121:
+                raise InvalidSymbol()
 
-                klines_schema.replace_klines(data)
-                klines = current_app.db.klines.find_one({"_id": params["symbol"]})
-            except DuplicateKeyError:
-                resp = jsonResp_error_message(f"Duplicate key {params['symbol']}")
-                return resp
-            except Exception as e:
-                return jsonResp_error_message(f"Error creating klines: {e}")
+            klines_schema.replace_klines(data)
+            klines = current_app.db.klines.find_one({"_id": params.symbol})
 
-        if klines:
-            try:
-                df = pd.DataFrame(klines[params["interval"]])
-                df = self.check_gaps(df, params)
-            except Exception as e:
-                print("Error converting to dataframe, deleting and creating new klines", e)
-                df = self.delete_and_create_klines(params)
-
-            dates = df[0].tolist()
         else:
-            df = pd.DataFrame([])
-            dates = []
+            df = pd.DataFrame(klines[params.interval])
+            df = self.check_gaps(df, params)
+            dates = df[0].tolist()
+
         return df, dates
 
 

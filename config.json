@@ -32,7 +32,7 @@
       "path": "/",
       "module": "api.main",
       "callable": "app",
-      "processes": 8
+      "processes": 5
     }
   }
 }

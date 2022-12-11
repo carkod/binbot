@@ -38,6 +38,7 @@ class DealModel:
         buy_total_qty=0,
         buy_timestamp=time() * 1000,
         current_price=0,
+        sd=0,
         avg_buy_price=0,
         take_profit_price=0,
         sell_timestamp=0,
@@ -60,6 +61,7 @@ class DealModel:
         self.buy_timestamp: float = buy_timestamp
         self.buy_total_qty: float = buy_total_qty
         self.current_price: float = float(current_price)
+        self.sd: float = float(sd)
         self.sell_price: float = float(sell_price)
         self.sell_qty: float = float(sell_qty)
         self.sell_timestamp: float = sell_timestamp
