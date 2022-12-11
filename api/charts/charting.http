@@ -1,8 +1,5 @@
 ###
 GET http://localhost:5000/charts/change/BNBBTC/1d  HTTP/1.1
 
-### Example for candlesticks
-GET http://localhost:5000/charts/candlestick?binance=true&symbol=BTCUSDT&interval=15m&start_time=1643960868952&end_time=1645578353667 HTTP/1.1
-
 ### Example Binance API klines
 GET https://api.binance.com/api/v3/klines?symbol=REQBTC&interval=15m&startTime=1643960868952&endTime=1645578353667 HTTP/1.1

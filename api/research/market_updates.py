@@ -9,7 +9,7 @@ from api.app import create_app
 from api.deals.controllers import CreateDealController
 from websocket import WebSocketApp
 from api.tools.round_numbers import round_numbers
-
+from api.charts.models import KlinesParams, Candlestick
 
 class MarketUpdates(Account):
     """
@@ -94,7 +94,8 @@ class MarketUpdates(Account):
                 print(f'Error: {json_response["data"]}')
         
     def update_take_profit(self, close_price, symbol, bot):
-        data = self._get_candlestick(symbol, self.interval, stats=True)
+        params = KlinesParams(symbol=symbol, interval=self.interval)
+        df, data = Candlestick().get_klines(params=params)
         list_prices = numpy.array(data["trace"][0]["close"])
         sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
         return
@@ -154,7 +155,7 @@ class MarketUpdates(Account):
             # Take profit trailling
             if bot["trailling"] == "true" and bot["deal"]["buy_price"] != "":
 
-                # self.update_take_profit(close_price, symbol, current_bot)
+                self.update_take_profit(close_price, symbol, current_bot)
 
                 if (
                     "trailling_stop_loss_price" not in bot["deal"]

@@ -1,23 +1,11 @@
 from flask import Blueprint
+
 from api.charts.models import Candlestick
 
 charts_blueprint = Blueprint("charts", __name__)
 
 
-@charts_blueprint.route("/klines")
-def get_klines():
-    """
-    Query params
-    pair=string
-    interval (optional)
-    limit=int (optional)
-    start_time=int (optional)
-    end_time=int (optional)
-    """
-    return Candlestick().get_klines()
-
-
-@charts_blueprint.route("/klines", methods=["PUT"])
+@charts_blueprint.route("/candlestick", methods=["PUT"])
 def update_klines():
     """
     json
@@ -32,7 +20,7 @@ def update_klines():
     return Candlestick().update_klines()
 
 
-@charts_blueprint.route("/klines", methods=["DELETE"])
+@charts_blueprint.route("/candlestick", methods=["DELETE"])
 def delete_klines():
     """
     Query params

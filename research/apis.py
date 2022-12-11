@@ -179,7 +179,6 @@ class BinbotApi(BinanceApi):
 
     bb_base_url = os.getenv("FLASK_DOMAIN")
     bb_candlestick_url = f"{bb_base_url}/charts/candlestick"
-    bb_klines = f"{bb_base_url}/charts/klines"
     bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
     bb_symbols_raw = f"{bb_base_url}/account/symbols"
     bb_bot_url = f"{bb_base_url}/bot"

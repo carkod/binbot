@@ -2,7 +2,6 @@ import logging
 
 from math import ceil
 from time import time
-from typing import TypedDict
 
 import pandas as pd
 from pymongo import ReturnDocument
@@ -12,12 +11,23 @@ from api.tools.round_numbers import interval_to_millisecs
 from flask import current_app, request
 from pymongo.errors import DuplicateKeyError
 from api.tools.handle_error import InvalidSymbol
+from dataclasses import dataclass, field
+@dataclass
+class KlinesParams:
+    """
+    Types for Binance endpoint preparation.
+    Symbol is the only optional field, because the defaults are handled here at Binbot
+    even if they are required by Binance endpoints.
 
+    Most of the time, the response data should come from DB. But if new intervals or new limits are required,
+    then it must poll directly from Binance endpoints.
 
-class KlinesParams(TypedDict):
+    """
     symbol: str
-    interval: str
-    limit: int
+    interval: str = field(default="1h")
+    limit: int = field(default=600)
+    startTime: float = field(default=0)
+    endTime: str = field(default=0)
 
 
 class KlinesSchema:
@@ -139,50 +149,36 @@ class Candlestick(BinbotApi):
         
         return kline_df
 
-    def get_klines(self, binance=False, json=True, params: KlinesParams = None):
+    def get_klines(self, params: KlinesParams):
         """
-        Servers 2 purposes:
-        - Endpoint, json=True. @input params as request.args
-        - Method returning dataframe and list of dates. @input params arg
+        Serves parsed klines data from Binance endpoint.
+        This function exists to load balance stored data in MongoDB versus polling directly from Binance endpoints.
+        If there is up to date data in the MongoDB, it should retrieve it from DB
+        If data is not up to date (data contains gaps), it should retrieve from endpoints.
+
+
+        - params: KlinesParams. It must provide a symbol at least.
         """
-        symbol = request.args.get("symbol")
-        interval = request.args.get("interval", "15m")
-        # 200 limit + 100 Moving Average = 300
-        limit = request.args.get("limit", 600)
-        start_time = request.args.get("start_time")
-        end_time = request.args.get("end_time")
-
-        if not symbol:
-            return jsonResp_error_message("Symbol parameter is required")
-
-        if not params:
-            params: KlinesParams = {
-                "symbol": symbol,
-                "interval": interval,
-                "limit": limit,
-                "startTime": start_time,
-                "endTime": end_time,
-            }
 
         # Do we require more candlesticks for charts data?
-        if params["startTime"]:
+        if params.startTime:
             klines = current_app.db.klines.find_one(
-                {"_id": params["symbol"], "data.0.0": {"$lte": params["startTime"]}}
+                {"_id": params.symbol, "data.0.0": {"$lte": params.startTime}}
             )
         else:
             klines = current_app.db.klines.find_one(
-                {"_id": params["symbol"]}
+                {"_id": params.symbol}
             )
 
-        klines_schema = KlinesSchema(params["symbol"], params["interval"])
+        klines_schema = KlinesSchema(params.symbol, params["interval"])
         if not klines:
             try:
-                if params["startTime"]:
+                if params.startTime:
                     # Delete any remnants of this data
                     klines_schema.delete_klines()
                     # Calculate diff start_time and end_time
                     # Divide by interval time to get limit
-                    diff_time = (time() * 1000) - int(params["startTime"])
+                    diff_time = (time() * 1000) - int(params.startTime)
                     # where 15m = 900,000 milliseconds
                     params["limit"] = ceil(
                         diff_time / interval_to_millisecs(params["interval"])
@@ -190,14 +186,9 @@ class Candlestick(BinbotApi):
 
                 # Store more data for db to fill up candlestick charts
                 data = self.request(url=self.candlestick_url, params=params)
-                print("Storing data response: ", data, self.candlestick_url, symbol)
+                print("Storing data response: ", data, self.candlestick_url, params["symbol"])
                 if data["code"] == -1121:
-                    if json:
-                        return jsonResp_error_message(
-                            f"Failed to update candlestick data: {data['msg']}"
-                        )
-                    else:   
-                        raise InvalidSymbol()
+                    raise InvalidSymbol()
 
                 klines_schema.replace_klines(data)
                 klines = current_app.db.klines.find_one({"_id": params["symbol"]})
@@ -207,28 +198,20 @@ class Candlestick(BinbotApi):
             except Exception as e:
                 return jsonResp_error_message(f"Error creating klines: {e}")
 
-        if not json:
-            if klines:
-                try:
-                    df = pd.DataFrame(klines[params["interval"]])
-                    df = self.check_gaps(df, params)
-                except Exception as e:
-                    print("Error converting to dataframe, deleting and creating new klines", e)
-                    df = self.delete_and_create_klines(params)
+        if klines:
+            try:
+                df = pd.DataFrame(klines[params["interval"]])
+                df = self.check_gaps(df, params)
+            except Exception as e:
+                print("Error converting to dataframe, deleting and creating new klines", e)
+                df = self.delete_and_create_klines(params)
 
-                dates = df[0].tolist()
-            else:
-                df = pd.DataFrame([])
-                dates = []
-            return df, dates
+            dates = df[0].tolist()
+        else:
+            df = pd.DataFrame([])
+            dates = []
+        return df, dates
 
-        resp = jsonResp(
-            {
-                "message": "Successfully retrieved candlesticks",
-                "data": str(klines[params["interval"]]),
-            }
-        )
-        return resp
 
     def update_klines(self):
 
@@ -369,7 +352,6 @@ class Candlestick(BinbotApi):
         stats = request.args.get("stats", False)
         # 200 limit + 100 Moving Average = 300
         limit = request.args.get("limit", 300)
-        binance = request.args.get("binance", False)
         start_time = request.args.get("start_time", type=int)
         end_time = request.args.get("end_time", type=int)
 
@@ -378,19 +360,17 @@ class Candlestick(BinbotApi):
         if not interval:
             return jsonResp_error_message("Provide a candlestick interval")
 
-        params = {
-                "limit": limit,
-                "symbol": symbol,
-                "interval": interval,
-                "startTime": start_time,  # starTime and endTime must be camel cased for the API
-                "endTime": end_time,
-            }
+        params = KlinesParams(
+           limit = limit,
+           symbol = symbol,
+           interval = interval,
+           startTime = start_time,  # starTime and endTime must be camel cased for the API
+           endTime = end_time
+        )
 
         try:
             df, dates = self.get_klines(
-                binance=binance,
-                json=False,
-                params=params
+                params=params,
             )
         except InvalidSymbol:
             return jsonResp_error_message(f"{symbol} doesn't exist")
