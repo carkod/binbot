@@ -323,7 +323,7 @@ class ResearchSignals(SetupSignals):
                 if random.randint(0, 20) == 15:
                     info("Cleaning db of incomplete data...")
                     delete_klines_res = requests.delete(
-                        url=self.bb_klines, params={"symbol": symbol}
+                        url=self.bb_candlestick_url, params={"symbol": symbol}
                     )
                     result = handle_binance_errors(delete_klines_res)
                     self.last_processed_kline[symbol] = time()

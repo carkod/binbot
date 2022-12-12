@@ -115,11 +115,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-    try:
-        response.json()
-    except Exception as e:
-        print("Request error: ", e)
-        print("Response error: ", response, response.url, response.body)
+    content = response.json()
     
     if response.status_code == 404:
         raise HTTPError()
@@ -138,8 +134,6 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     ):
         print("Request weight limit prevention pause, waiting 1 min")
         sleep(120)
-
-    content = response.json()
 
     if content and "code" in content:
         if content["code"] == -1013:

@@ -17,6 +17,7 @@ class DealSchema(Schema):
     buy_timestamp: float = fields.Float(dump_default=0)
     buy_total_qty: float = fields.Float(dump_default=0)
     current_price: float = fields.Float(dump_default=0)
+    sd: float = fields.Float(dump_default=0)
     buy_price: float = fields.Float(required=True, dump_default=0) # base currency quantity e.g. 3000 USDT in BTCUSDT
     avg_buy_price: float = fields.Float(dump_default=0) # depricated - replaced with buy_price
     original_buy_price: float = fields.Float(dump_default=0) # historical buy_price after so executed. avg_buy_price = buy_price

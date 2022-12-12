@@ -1,6 +1,7 @@
 import json
 import threading
 import logging
+import requests
 import numpy
 
 from pymongo import ReturnDocument
@@ -8,8 +9,8 @@ from api.account.account import Account
 from api.app import create_app
 from api.deals.controllers import CreateDealController
 from websocket import WebSocketApp
+from api.tools.handle_error import handle_binance_errors
 from api.tools.round_numbers import round_numbers
-
 
 class MarketUpdates(Account):
     """
@@ -93,11 +94,26 @@ class MarketUpdates(Account):
             else:
                 print(f'Error: {json_response["data"]}')
         
-    def update_take_profit(self, close_price, symbol, bot):
-        data = self._get_candlestick(symbol, self.interval, stats=True)
+    def update_take_profit(self, market, interval, bot):
+        
+        params = {
+            "symbol": market,
+            "interval": interval,
+        }
+        res = requests.get(url=self.bb_candlestick_url, params=params)
+        data = handle_binance_errors(res)
         list_prices = numpy.array(data["trace"][0]["close"])
         sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
-        return
+
+        take_profit = bot["deal"]["take_profit_price"]
+        if sd >= 0:
+            new_trailling_stop_loss_price = float(take_profit) - (float(take_profit)* (float(sd / 100)))
+            if new_trailling_stop_loss_price > float(bot["deal"]["buy_price"]):
+                bot["deal"]["trailling_stop_loss_price"] = new_trailling_stop_loss_price
+            else:
+                return bot
+
+        return bot
 
 
     def process_deals_bot(self, current_bot, close_price, symbol, db_collection):
@@ -154,7 +170,11 @@ class MarketUpdates(Account):
             # Take profit trailling
             if bot["trailling"] == "true" and bot["deal"]["buy_price"] != "":
 
-                # self.update_take_profit(close_price, symbol, current_bot)
+
+                # Temporary testing condition
+                if db_collection == "paper_trading":
+                    if bot["mode"] == "autotrade":
+                        bot = self.update_take_profit(symbol, self.interval, bot)
 
                 if (
                     "trailling_stop_loss_price" not in bot["deal"]

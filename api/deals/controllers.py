@@ -670,7 +670,7 @@ class CreateDealController(Account):
         pair = self.active_bot.pair
         so_qty = self.active_bot.safety_orders[so_index].so_size
         book_order = Book_Order(pair)
-        price = float(book_order.matching_engine(False, so_qty))
+        price = book_order.matching_engine(False, so_qty)
         qty = round_numbers(
             float(so_qty),
             self.qty_precision,

@@ -6,7 +6,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from api.account.assets import Assets
 from api.app import create_app
 from api.orders.models.order_sockets import OrderUpdates
-from api.research.controller import Controller
 from api.research.market_updates import MarketUpdates
 from api.tools.handle_error import jsonResp
 
@@ -19,17 +18,6 @@ from api.research.routes import research_blueprint
 from api.user.routes import user_blueprint
 from api.paper_trading.routes import paper_trading_blueprint
 from api.autotrade.routes import autotrade_settings_blueprint
-
-
-class MonitorThread(threading.Thread):
-
-    def run(self):
-        while 1:
-            market_updates = MarketUpdates()
-            market_updates.start_stream()
-    
-if os.getenv("ENV") != "ci":
-    MonitorThread().start()
 
 
 app = create_app()
@@ -61,5 +49,19 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
     )
     atexit.register(lambda: scheduler.shutdown(wait=False))
 
-if __name__ == "__main__":
-     app.run(debug=os.environ["DEBUG"])
+
+if os.getenv("ENV") != "ci":
+    order_updates = OrderUpdates()
+    # start a worker process to move the received stream_data from the stream_buffer to a print function
+    worker_thread = threading.Thread(
+        name="order_updates_thread", target=order_updates.run_stream
+    )
+    worker_thread.start()
+
+    # Research market updates
+    market_updates = MarketUpdates()
+    market_updates_thread = threading.Thread(
+        name="market_updates_thread", target=market_updates.start_stream
+    )
+    market_updates_thread.start()
+    pass
