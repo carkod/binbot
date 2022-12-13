@@ -7,10 +7,8 @@ import numpy
 from pymongo import ReturnDocument
 from api.account.account import Account
 from api.app import create_app
-from api.deals.controllers import CreateDealController
+from websockets.controllers.klines import Klines
 from websocket import WebSocketApp
-from api.tools.handle_error import handle_binance_errors
-from api.tools.round_numbers import round_numbers
 
 class MarketUpdates(Account):
     """
@@ -107,7 +105,7 @@ class MarketUpdates(Account):
         if "short_buy_price" in current_bot and float(current_bot["short_buy_price"]) > 0 and float(current_bot["short_buy_price"]) >= float(close_price):
             # If hit short_buy_price, resume long strategy by resetting short_buy_price
             try:
-                CreateDealController(current_bot, db_collection=db_collection).execute_short_buy()
+                Klines(current_bot, db_collection=db_collection).execute_short_buy()
             except Exception as error:
                 print(f"Short buy price update error: {error}")
 
@@ -128,7 +126,7 @@ class MarketUpdates(Account):
             if "short_sell_price" in current_bot and 0 < float(current_bot["short_sell_price"]) >= float(close_price):
                 # If hit short_sell_price, resume long strategy by resetting short_sell_price
                 try:
-                    CreateDealController(current_bot, db_collection=db_collection).execute_short_sell()
+                    Klines(current_bot, db_collection=db_collection).execute_short_sell()
                 except Exception as error:
                     print(f"Autoswitch to short strategy error: {error}")
 
@@ -142,7 +140,7 @@ class MarketUpdates(Account):
                 and float(current_bot["deal"]["stop_loss_price"])
                 > float(close_price)
             ):
-                deal = CreateDealController(bot, db_collection)
+                deal = Klines(bot, db_collection)
                 deal.execute_stop_loss(close_price)
                 return
 
@@ -152,7 +150,7 @@ class MarketUpdates(Account):
                 # Temporary testing condition
                 if db_collection == "paper_trading":
                     if bot["mode"] == "autotrade":
-                        deal = CreateDealController(bot, db_collection)
+                        deal = Klines(bot, db_collection)
                         # Returns bot, to keep modifying in subsequent checks
                         bot = deal.dynamic_take_profit(symbol, self.interval, close_price)
 
@@ -220,7 +218,7 @@ class MarketUpdates(Account):
                             f"Hit trailling_stop_loss_price {price}. Selling {symbol}"
                         )
                         try:
-                            deal = CreateDealController(bot, db_collection)
+                            deal = Klines(bot, db_collection)
                             deal.trailling_profit(price)
                         except Exception as error:
                             print(error)
@@ -237,7 +235,7 @@ class MarketUpdates(Account):
                     if ("status" in so and so["status"] == 0) and float(
                         so["buy_price"]
                     ) >= float(close_price):
-                        deal = CreateDealController(bot, db_collection)
+                        deal = Klines(bot, db_collection)
                         deal.so_update_deal(key)
         pass
 

@@ -5,7 +5,7 @@ import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from api.account.assets import Assets
 from api.app import create_app
-from api.orders.models.order_sockets import OrderUpdates
+from websockets.order_sockets import OrderUpdates
 from api.research.market_updates import MarketUpdates
 from api.tools.handle_error import jsonResp
 
@@ -51,19 +51,3 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))
 
-
-if os.getenv("ENV") != "ci":
-    order_updates = OrderUpdates()
-    # start a worker process to move the received stream_data from the stream_buffer to a print function
-    worker_thread = threading.Thread(
-        name="order_updates_thread", target=order_updates.run_stream
-    )
-    worker_thread.start()
-
-    # Research market updates
-    market_updates = MarketUpdates()
-    market_updates_thread = threading.Thread(
-        name="market_updates_thread", target=market_updates.start_stream
-    )
-    market_updates_thread.start()
-    pass
