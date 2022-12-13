@@ -72,6 +72,6 @@ class DealModel:
         self.so_price = so_prices
         self.post_closure_current_price = post_closure_current_price
         self.original_buy_price = original_buy_price
-        short_sell_price = (short_sell_price,)
-        short_sell_qty = (short_sell_qty,)
-        short_sell_timestamp = (short_sell_timestamp,)
+        short_sell_price = short_sell_price
+        short_sell_qty = short_sell_qty
+        short_sell_timestamp = short_sell_timestamp

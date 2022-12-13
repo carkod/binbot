@@ -1,9 +1,16 @@
+import uuid
 from decimal import Decimal
 from time import time
-import uuid
 
+import numpy
 import requests
+from flask import Response
+from marshmallow.exceptions import ValidationError
+from pymongo import ReturnDocument
+from requests.exceptions import HTTPError
+
 from api.account.account import Account
+from api.app import create_app
 from api.bots.models import BotModel
 from api.bots.schemas import BotSchema
 from api.deals.models import DealModel, OrderModel
@@ -12,21 +19,13 @@ from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.exceptions import (
     BaseDealError,
     OpenDealError,
+    ShortStrategyError,
     TakeProfitError,
-    TraillingProfitError,
-    ShortStrategyError
+    TraillingProfitError
 )
-from api.tools.handle_error import (
-    NotEnoughFunds,
-    QuantityTooLow,
-    handle_binance_errors,
-)
+from api.tools.handle_error import (NotEnoughFunds, QuantityTooLow,
+                                    handle_binance_errors)
 from api.tools.round_numbers import round_numbers, supress_notation
-from flask import current_app as app, Response
-from pymongo import ReturnDocument
-from api.app import create_app
-from marshmallow.exceptions import ValidationError
-from requests.exceptions import HTTPError
 
 
 class CreateDealController(Account):
@@ -1054,6 +1053,8 @@ class CreateDealController(Account):
         self.active_bot.deal.short_sell_price = res["price"]
         self.active_bot.deal.short_sell_qty = res["origQty"]
         self.active_bot.deal.short_sell_timestamp = res["transactTime"]
+        # reset trailling_stop_loss_price after short is triggered
+        self.active_bot.deal.trailling_stop_loss_price = 0
 
         # Reset deal to allow new open_deal to populate
         new_deal = DealModel()
@@ -1124,3 +1125,26 @@ class CreateDealController(Account):
             self.update_deal_logs(f"Short buy error: {error}")
             return
         return
+    
+    def dynamic_take_profit(self, symbol, interval, close_price):
+        
+        params = {
+            "symbol": symbol,
+            "interval": interval,
+        }
+        res = requests.get(url=self.bb_candlestick_url, params=params)
+        data = handle_binance_errors(res)
+        list_prices = numpy.array(data["trace"][0]["close"])
+        sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
+
+        take_profit = self.active_bot.deal.take_profit_price
+        if sd >= 0:
+            self.active_bot.deal.sd = sd
+            if float(close_price) > self.active_bot.deal.buy_price:
+                new_trailling_stop_loss_price = float(take_profit) - (float(take_profit) * (float(sd / 100)))
+                if new_trailling_stop_loss_price > float(self.active_bot.deal.buy_price):
+                    self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss_price
+
+        bot_schema = BotSchema()
+        bot = bot_schema.dump(self.active_bot)
+        return bot

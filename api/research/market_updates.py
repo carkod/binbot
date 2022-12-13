@@ -94,27 +94,6 @@ class MarketUpdates(Account):
             else:
                 print(f'Error: {json_response["data"]}')
         
-    def update_take_profit(self, market, interval, bot):
-        
-        params = {
-            "symbol": market,
-            "interval": interval,
-        }
-        res = requests.get(url=self.bb_candlestick_url, params=params)
-        data = handle_binance_errors(res)
-        list_prices = numpy.array(data["trace"][0]["close"])
-        sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
-
-        take_profit = bot["deal"]["take_profit_price"]
-        if sd >= 0:
-            new_trailling_stop_loss_price = float(take_profit) - (float(take_profit)* (float(sd / 100)))
-            if new_trailling_stop_loss_price > float(bot["deal"]["buy_price"]):
-                bot["deal"]["trailling_stop_loss_price"] = new_trailling_stop_loss_price
-            else:
-                return bot
-
-        return bot
-
 
     def process_deals_bot(self, current_bot, close_price, symbol, db_collection):
         """
@@ -174,7 +153,9 @@ class MarketUpdates(Account):
                 # Temporary testing condition
                 if db_collection == "paper_trading":
                     if bot["mode"] == "autotrade":
-                        bot = self.update_take_profit(symbol, self.interval, bot)
+                        deal = CreateDealController(bot, db_collection)
+                        # Returns bot, to keep modifying in subsequent checks
+                        bot = deal.dynamic_take_profit(symbol, self.interval, close_price)
 
                 if (
                     "trailling_stop_loss_price" not in bot["deal"]
