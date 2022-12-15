@@ -143,7 +143,10 @@ class Autotrade(BinbotApi):
                         short_buy_price = sd_buy_price
 
                 self.default_bot["short_sell_price"] = short_sell_price
-                self.default_bot["short_buy_price"] = short_buy_price
+                # Due to bug causing recursive limit, temporarily deactivate all short_buys
+                # short_sell_price effectively becomes stop_loss
+                self.default_bot["short_buy_price"] = 0
+                # self.default_bot["short_buy_price"] = short_buy_price
             else:
                 self.default_bot["safety_orders"].append(
                     {
