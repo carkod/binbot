@@ -1,16 +1,16 @@
 import os
-from flask import Flask
+from fastapi import FastAPI
 from flask_cors import CORS
 from pymongo import MongoClient
 
 
 def create_app():
-    app = Flask(__name__)
+    app = FastAPI()
 
     # Schema
     # db = MongoEngine(app)
     # Enable CORS for all routes
-    CORS(app, expose_headers="Authorization")
+    # CORS(app, expose_headers="Authorization")
     mongo = MongoClient(
         host=os.getenv("MONGO_HOSTNAME"),
         port=int(os.getenv("MONGO_PORT")),

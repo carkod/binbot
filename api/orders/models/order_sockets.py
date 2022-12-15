@@ -43,7 +43,7 @@ class OrderUpdates(BinanceApi):
         print("Finished restarting market_updates")
         return
 
-    def run_stream(self):
+    async def run_stream(self):
         if not self.active_ws or not self.listen_key:
             self.listen_key = self.get_listenkey()["listenKey"]
 

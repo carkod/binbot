@@ -486,7 +486,8 @@ class CreateDealController(Account):
             )
 
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
-        if deal_data and deal_data.trailling_stop_loss_price > 0:
+        # if we don't do this, the trailling stop loss will trigger
+        if deal_data and (deal_data.trailling_stop_loss_price > 0 or deal_data.trailling_stop_loss_price < deal_data.buy_price):
 
             take_profit_price = float(deal_data.buy_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
@@ -495,7 +496,7 @@ class CreateDealController(Account):
             # Update trailling_stop_loss
             # an update of the
             deal_data.trailling_stop_loss_price = 0
-
+        
         try:
             deal_schema = DealSchema()
             deal = deal_schema.dump(deal_data)

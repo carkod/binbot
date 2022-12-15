@@ -2,19 +2,14 @@
   "version": "0.0.2",
   "configurations": [
     {
-      "name": "Python: Flask",
+      "name": "Python: FastAPI",
       "type": "python",
       "request": "launch",
-      "module": "flask",
-      "console": "internalConsole",
-      "justMyCode": true,
-      "env": {
-        "FLASK_APP": "api/main.py",
-        "FLASK_ENV": "development",
-        "FLASK_DEBUG": "1"
-      },
-      "args": ["run", "--no-reload"],
+      "module": "uvicorn",
+      "args": ["api.main:app"],
       "jinja": true,
+      "justMyCode": true,
+      "console": "internalConsole"
     },
     {
       "type": "chrome",
@@ -29,7 +24,7 @@
         "${workspaceFolder}/web/**/*.js",
         "${workspaceFolder}/web/src/node_modules/**"
       ]
-   },
+    },
     {
       "name": "Python: Research",
       "type": "python",
