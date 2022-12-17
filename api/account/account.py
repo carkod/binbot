@@ -7,15 +7,14 @@ from api.tools.handle_error import (
     jsonResp_message,
     jsonResp_error_message,
 )
-from flask import request
-from api.app import create_app
+from flask import request, current_app
 from decimal import Decimal
 from api.tools.handle_error import InvalidSymbol
 
 
 class Account(BinbotApi):
     def __init__(self):
-        self.app = create_app()
+        self.app = current_app
         pass
 
     def _exchange_info(self, symbol=None):

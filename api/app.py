@@ -2,9 +2,14 @@ import os
 from fastapi import FastAPI
 from flask_cors import CORS
 from pymongo import MongoClient
+from api.research.market_updates import MarketUpdates
+import asyncio
+from starlette.concurrency import run_in_threadpool
+
 
 
 def create_app():
+    print("Starting app...")
     app = FastAPI()
 
     # Schema
@@ -19,5 +24,16 @@ def create_app():
         password=os.getenv("MONGO_AUTH_PASSWORD"),
     )
     app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
+
+    @app.get("/")
+    async def index():
+        mu = MarketUpdates(app=app)
+        await mu.start_stream()
+        return {"status": "Online"}
+
     
     return app
+
+
+
+

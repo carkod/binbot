@@ -6,7 +6,6 @@ import numpy
 
 from pymongo import ReturnDocument
 from api.account.account import Account
-from api.app import create_app
 from api.deals.controllers import CreateDealController
 from websocket import WebSocketApp
 from api.tools.handle_error import handle_binance_errors
@@ -17,8 +16,8 @@ class MarketUpdates(Account):
     Further explanation in docs/market_updates.md
     """
 
-    def __init__(self, interval="5m"):
-        self.app = create_app()
+    def __init__(self, app, interval="5m"):
+        self.app = app
         self.markets_streams = None
         self.interval = interval
         self.markets = []
@@ -43,7 +42,7 @@ class MarketUpdates(Account):
 
         pass
 
-    def start_stream(self):
+    async def start_stream(self):
         """
         Start/restart websocket streams
         """
@@ -68,7 +67,7 @@ class MarketUpdates(Account):
         # This is required to allow the websocket to be closed anywhere in the app
         self.markets_streams = ws
         # Run the websocket with ping intervals to avoid disconnection
-        ws.run_forever(ping_interval=70)
+        await ws.run_forever(ping_interval=70)
 
     def close_stream(self, ws, close_status_code, close_msg):
         print("Active socket closed", close_status_code, close_msg)
