@@ -6,7 +6,7 @@
       "type": "python",
       "request": "launch",
       "module": "uvicorn",
-      "args": ["api.main:app"],
+      "args": ["api.main:app", "--port", "8006"],
       "jinja": true,
       "justMyCode": true,
       "console": "internalConsole"

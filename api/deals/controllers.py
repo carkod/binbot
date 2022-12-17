@@ -4,13 +4,12 @@ from time import time
 
 import numpy
 import requests
-from flask import Response
+from flask import Response, current_app
 from marshmallow.exceptions import ValidationError
 from pymongo import ReturnDocument
 from requests.exceptions import HTTPError
 
 from api.account.account import Account
-from api.app import create_app
 from api.bots.models import BotModel
 from api.bots.schemas import BotSchema
 from api.deals.models import DealModel, OrderModel
@@ -43,7 +42,7 @@ class CreateDealController(Account):
     def __init__(self, bot, db_collection="paper_trading"):
         # Inherit from parent class
         self.active_bot = BotModel(**bot)
-        self.app = create_app()
+        self.app = current_app
         self.db_collection = self.app.db[db_collection]
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot.pair)
         # PRICE_FILTER decimals

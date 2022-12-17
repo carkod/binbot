@@ -1,14 +1,13 @@
 import json
 from time import sleep
 import os
-from bson.objectid import ObjectId
 from flask import Response as FlaskResponse
 from pymongo import ReturnDocument
 from requests import Response, put
 from requests.exceptions import HTTPError, Timeout
 from bson import json_util
-from api.app import create_app
-
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
 class BinanceErrors(Exception):
     pass
@@ -36,6 +35,13 @@ def post_error(msg):
     handle_binance_errors(res)
     return
 
+def json_response(data, status=200):
+    return JSONResponse(
+        status_code=status,
+        content={"data": jsonable_encoder(data)},
+        media_type="application/json",
+    )
+
 
 def jsonResp(data, status=200):
     return FlaskResponse(
@@ -54,28 +60,6 @@ def jsonResp_error_message(message):
     body = {"message": message, "error": 1}
     return jsonResp(body)
 
-
-def bot_errors(error, bot, status="error"):
-    """
-    params status refer to bot-status.md
-    """
-    if isinstance(error, Response):
-        try:
-            error = error.json()["msg"]
-        except KeyError:
-            error = error.json()["message"]
-    else:
-        error = error
-
-    bot["errors"].append(error)
-    app = create_app()
-    bot = app.db.bots.find_one_and_update(
-        {"_id": ObjectId(bot["_id"])},
-        {"$set": {"status": status, "errors": bot["errors"]}},
-        return_document=ReturnDocument.AFTER
-    )
-
-    return bot
 
 
 def handle_error(req):
