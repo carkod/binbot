@@ -1,13 +1,12 @@
 import json
-from time import sleep
 import os
-from flask import Response as FlaskResponse
-from pymongo import ReturnDocument
-from requests import Response, put
-from requests.exceptions import HTTPError, Timeout
-from bson import json_util
+from time import sleep
+
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from requests import Response, put
+from requests.exceptions import HTTPError, Timeout
+
 
 class BinanceErrors(Exception):
     pass
@@ -20,6 +19,7 @@ class InvalidSymbol(BinanceErrors):
 class NotEnoughFunds(BinanceErrors):
     pass
 
+
 class QuantityTooLow(BinanceErrors):
     """
     Raised when LOT_SIZE filter error triggers
@@ -27,13 +27,16 @@ class QuantityTooLow(BinanceErrors):
     unless purposedly triggered to check quantity
     e.g. BTC = 0.0001 amounts are usually so small that it's hard to see if it's nothing or a considerable amount compared to others
     """
+
     pass
+
 
 def post_error(msg):
     url = f'{os.getenv("FLASK_DOMAIN")}/research/controller'
     res = put(url=url, json={"system_logs": msg})
     handle_binance_errors(res)
     return
+
 
 def json_response(data, status=200):
     return JSONResponse(
@@ -43,23 +46,14 @@ def json_response(data, status=200):
     )
 
 
-def jsonResp(data, status=200):
-    return FlaskResponse(
-        json.dumps(data, default=json_util.default),
-        mimetype="application/json",
-        status=status,
-    )
+def json_response_message(message):
+    body = {"message": message, "error": 0}
+    return json_response(body)
 
 
-def jsonResp_message(message):
-    message = {"message": message, "error": 0}
-    return jsonResp(message)
-
-
-def jsonResp_error_message(message):
+def json_response_error(message):
     body = {"message": message, "error": 1}
-    return jsonResp(body)
-
+    return json_response(body)
 
 
 def handle_error(req):
@@ -72,26 +66,26 @@ def handle_error(req):
 
                 response = req.json()
                 if response["code"] == -2010:
-                    return jsonResp({"message": "Not enough funds", "error": 1}, 200)
+                    return json_response_error("Not enough funds")
 
                 # Uknown orders ignored, they are used as a trial an error endpoint to close orders (close deals)
                 if response["code"] == -2011:
                     return
 
-                return jsonResp_message(json.loads(req.content))
+                return json_response_message(json.loads(req.content))
 
     except HTTPError as err:
         if err:
             print(req.json())
-            return jsonResp_message(req.json())
+            return json_response_message(req.json())
         else:
             return err
     except Timeout:
         # Maybe set up for a retry, or continue in a retry loop
-        return jsonResp_message("handle_error: Timeout", 408)
+        return json_response_message("handle_error: Timeout", 408)
 
 
-def handle_binance_errors(response: Response, bot=None, message=None):
+def handle_binance_errors(response: Response):
     """
     Handles:
     - HTTP codes, not authorized, rate limits...
@@ -100,7 +94,7 @@ def handle_binance_errors(response: Response, bot=None, message=None):
 
     """
     content = response.json()
-    
+
     if response.status_code == 404:
         raise HTTPError()
     # Show error message for bad requests
@@ -124,7 +118,11 @@ def handle_binance_errors(response: Response, bot=None, message=None):
             raise QuantityTooLow()
         if content["code"] == 200:
             return content
-        if content["code"] == -2010 or content["code"] == -1013 or content["code"] == -2015:
+        if (
+            content["code"] == -2010
+            or content["code"] == -1013
+            or content["code"] == -2015
+        ):
             # Not enough funds. Ignore, send to bot errors
             # Need to be dealt with at higher levels
             raise NotEnoughFunds(content["msg"])

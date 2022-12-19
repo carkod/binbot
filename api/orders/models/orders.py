@@ -1,6 +1,6 @@
 from api.account.account import Account
 from api.tools.enum_definitions import EnumDefinitions
-from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
+from api.tools.handle_error import json_response, json_response_error, json_response_message
 from api.tools.round_numbers import round_numbers
 from flask import current_app, request
 
@@ -44,48 +44,19 @@ class Orders(Account):
             .limit(limit)
         )
         if orders:
-            resp = jsonResp({"data": orders, "pages": self.pages})
+            resp = json_response({"data": orders, "pages": self.pages})
         else:
-            resp = jsonResp({"message": "Orders not found!"})
+            resp = json_response({"message": "Orders not found!"})
         return resp
 
-    def poll_historical_orders(self):
-        global poll_percentage
-        symbols = self.get_exchange_info()["symbols"]
-        symbols_count = len(symbols)
-
-        # Empty collection first
-        current_app.db.orders.remove()
-        with current_app.app_context():
-            for i in range(symbols_count):
-
-                params = [
-                    ("symbol", symbols[i]["symbol"]),
-                ]
-                data = self.signed_request(url=self.order_url, params=params)
-
-                # Check that we have no empty orders
-                if data and (len(data) > 0) and current_app:
-                    for o in data:
-                        # Save in the DB
-                        current_app.db.orders.save(
-                            o, {"$currentDate": {"createdAt": "true"}}
-                        )
-                        if i == (symbols_count - 1):
-                            poll_percentage = 0
-                        else:
-                            poll_percentage = round_numbers(
-                                (i / symbols_count) * 100, 0
-                            )
-                print(f"Polling historical orders: {poll_percentage}")
 
     def get_open_orders(self):
         data = self.signed_request(url=self.order_url)
 
         if data and len(data) > 0:
-            resp = jsonResp({"message": "Open orders found!", "data": data})
+            resp = json_response({"message": "Open orders found!", "data": data})
         else:
-            resp = jsonResp_error_message("No open orders found!")
+            resp = json_response_error("No open orders found!")
         return resp
 
     def delete_order(self):
@@ -96,9 +67,9 @@ class Orders(Account):
         symbol = request.view_args["symbol"]
         orderId = request.view_args["orderid"]
         if not symbol:
-            resp = jsonResp_error_message("Missing symbol parameter")
+            resp = json_response_error("Missing symbol parameter")
         if not orderId:
-            resp = jsonResp_error_message("Missing orderid parameter")
+            resp = json_response_error("Missing orderid parameter")
 
         payload = {
             "symbol": symbol,
@@ -106,9 +77,9 @@ class Orders(Account):
         }
         try:
             data = self.signed_request(url=f'{self.order_url}', method="DELETE", payload=payload)
-            resp = jsonResp({"message": "Order deleted!", "data": data})
+            resp = json_response({"message": "Order deleted!", "data": data})
         except Exception as e:
-            resp = jsonResp_error_message(e)
+            resp = json_response_error(e)
 
         return resp
 
@@ -127,7 +98,7 @@ class Orders(Account):
         data = self.signed_request(url=self.order_url, method="DELETE", params=params)
 
         if data and len(data) > 0:
-            resp = jsonResp({"message": "Orders deleted", "data": data})
+            resp = json_response({"message": "Orders deleted", "data": data})
         else:
-            resp = jsonResp_message("No open orders found!")
+            resp = json_response_message("No open orders found!")
         return resp

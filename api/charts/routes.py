@@ -1,12 +1,12 @@
-from flask import Blueprint
+from fastapi import APIRouter
 
-from api.charts.models import Candlestick
+from api.charts.models import Candlestick, CandlestickItem
 
-charts_blueprint = Blueprint("charts", __name__)
+charts_blueprint = APIRouter()
 
 
-@charts_blueprint.route("/candlestick", methods=["PUT"])
-def update_klines():
+@charts_blueprint.put("/candlestick", summary="Update klines stored in the DB")
+def update_klines(item: CandlestickItem):
     """
     json
     {
@@ -17,11 +17,11 @@ def update_klines():
         "offset": int (optional) default: 0
     }
     """
-    return Candlestick().update_klines()
+    return Candlestick().update_klines(item)
 
 
-@charts_blueprint.route("/candlestick", methods=["DELETE"])
-def delete_klines():
+@charts_blueprint.delete("/candlestick", summary="Delete Klines stored in the DB")
+def delete_klines(symbol: CandlestickItem):
     """
     Query params
 
@@ -30,7 +30,7 @@ def delete_klines():
     return Candlestick().delete_klines()
 
 
-@charts_blueprint.route("/candlestick")
+@charts_blueprint.get("/candlestick", summary="Retrieved klines stored in DB")
 def get():
     """
     @json:

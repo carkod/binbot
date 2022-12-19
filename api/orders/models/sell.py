@@ -3,7 +3,7 @@ import json
 from requests import HTTPError
 from api.apis import BinanceApi
 from api.tools.enum_definitions import EnumDefinitions
-from api.tools.handle_error import handle_error, jsonResp_error_message
+from api.tools.handle_error import handle_error, json_response_error
 from flask import request
 
 
@@ -44,7 +44,7 @@ class SellOrder(BinanceApi):
         try:
             data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         except HTTPError as e:
-            return jsonResp_error_message(e)
+            return json_response_error(e)
         return data
 
     def post_take_profit_limit(self):
