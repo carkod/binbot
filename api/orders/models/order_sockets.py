@@ -2,9 +2,7 @@ import json
 import threading
 import requests
 from api.account.account import Account
-from api.account.assets import Assets
 from api.apis import BinanceApi
-from api.app import create_app
 from api.deals.controllers import CreateDealController
 from api.threads import market_update_thread
 from api.tools.handle_error import handle_error
@@ -12,13 +10,13 @@ from websocket import WebSocketApp
 
 
 class OrderUpdates(BinanceApi):
-    def __init__(self):
+    def __init__(self, app):
         self.active_ws = None
         self.listenkey = None
 
         # Websockets do not get responses and requests
         # Therefore there is no context
-        self.app = create_app()
+        self.app = app
 
     def get_listenkey(self):
         # Get data for a single crypto e.g. BTT in BNB market
@@ -54,7 +52,7 @@ class OrderUpdates(BinanceApi):
             on_close=self.close_stream,
             on_message=self.on_message,
         )
-        ws.run_forever(ping_interval=70)
+        await ws.run_forever(ping_interval=70)
 
     def close_stream(self, ws, close_status_code, close_msg):
         print("Active socket closed", close_status_code, close_msg)

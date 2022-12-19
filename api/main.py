@@ -46,6 +46,3 @@ app = create_app()
 #     )
 #     scheduler.start()
 #     atexit.register(lambda: scheduler.shutdown(wait=False))
-
-if __name__ == "__main__":
-    asyncio.run(sockets(app))
