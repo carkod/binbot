@@ -3,7 +3,7 @@ from api.tools.enum_definitions import EnumDefinitions
 from flask import request
 from api.tools.round_numbers import supress_notation
 from api.account.account import Account
-from api.tools.handle_error import jsonResp_error_message
+from api.tools.handle_error import json_response_error
 from requests.exceptions import HTTPError
 
 class BuyOrder(Account):
@@ -40,7 +40,7 @@ class BuyOrder(Account):
         try:
             data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         except HTTPError as e:
-            return jsonResp_error_message(e)
+            return json_response_error(e)
         return data
 
     def post_order_market(self):

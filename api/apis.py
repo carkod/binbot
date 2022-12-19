@@ -4,7 +4,7 @@ import os
 from urllib.parse import urlencode
 from time import time
 from requests import get, request
-from api.tools.handle_error import handle_binance_errors, jsonResp, jsonResp_error_message
+from api.tools.handle_error import handle_binance_errors, json_response, json_response_error
 from py3cw.request import Py3CW
 
 class BinanceApi:
@@ -36,7 +36,6 @@ class BinanceApi:
     user_data_stream = f"{BASE}/api/v3/userDataStream"
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
 
-    user_data_stream = f"{BASE}/api/v3/userDataStream"
     streams_url = f"{WS_BASE}"
 
     withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
@@ -134,31 +133,6 @@ class BinbotApi(BinanceApi):
         data = handle_binance_errors(res)
         return data
 
-
-class CoinBaseApi:
-    """
-    Currency and Cryptocurrency conversion service
-    """
-
-    BASE = "https://api.coinbase.com/v2"
-    EXG_URL = f"{BASE}/prices"
-
-    def get_conversion(self, time, base="BTC", quote="GBP"):
-
-        params = {
-            "apikey": os.environ["COINAPI_KEY"],
-            "date": time.strftime("%Y-%m-%d"),
-        }
-        url = f"{self.EXG_URL}/{base}-{quote}/spot"
-        data = get(url, params).json()
-        try:
-            data["data"]["amount"]
-        except KeyError as e:
-            print(e)
-        rate = float(data["data"]["amount"])
-        return rate
-
-
 class ThreeCommasApiError:
     """3commas.io API error"""
 
@@ -186,9 +160,9 @@ class ThreeCommasApi:
         )
         if error:
             error = ThreeCommasApiError(error)
-            return jsonResp_error_message(error)
+            return json_response_error(error)
         else:
-            return jsonResp({"message": "Sucessfully retrieved preset bots!", "data": data["bots"]})
+            return json_response({"message": "Sucessfully retrieved preset bots!", "data": data["bots"]})
 
     def get_all_marketplace_item(self):
         p3cw = Py3CW(

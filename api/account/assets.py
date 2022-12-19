@@ -4,29 +4,23 @@ from api.account.schemas import BalanceSchema
 from api.tools.round_numbers import round_numbers, supress_notation
 from decimal import Decimal
 
-from flask import current_app, request
-from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
+from fastapi import Request
+from api.tools.handle_error import json_response, json_response_error, json_response_message
 from api.account.account import Account
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
-from api.apis import CoinBaseApi
-from api.app import create_app
 from api.tools.handle_error import InvalidSymbol
 from api.orders.models.book_order import Book_Order
 
 
 class Assets(Account):
     def __init__(self):
-        self.app = current_app
         self.usd_balance = 0
-        self.coinbase_api = CoinBaseApi()
 
     def get_raw_balance(self, asset=None):
         """
         Unrestricted balance
         """
-        if request:
-            asset = request.args.get("asset")
         data = self.signed_request(url=self.account_url)
         df = pd.DataFrame(data["balances"])
         df["free"] = pd.to_numeric(df["free"])
@@ -41,7 +35,7 @@ class Assets(Account):
             ].to_dict("records")
         # filter out empty
         # Return response
-        resp = jsonResp({"data": balances})
+        resp = json_response({"data": balances})
         return resp
 
     def get_binbot_balance(self):
@@ -93,7 +87,7 @@ class Assets(Account):
 
         # filter out empty
         # Return response
-        resp = jsonResp(balances)
+        resp = json_response(balances)
         return resp
 
     def get_balances_btc(self):
@@ -143,15 +137,11 @@ class Assets(Account):
 
         # filter out empty
         # Return response
-        resp = jsonResp(data)
+        resp = json_response(data)
         return resp
 
-    def get_pnl(self):
+    def get_pnl(self, days=7):
         current_time = datetime.now()
-        days = 7
-        if "days" in request.args:
-            days = int(request.args["days"])
-
         start = current_time - timedelta(days=days)
         dummy_id = ObjectId.from_datetime(start)
         data = list(
@@ -163,7 +153,7 @@ class Assets(Account):
                 }
             )
         )
-        resp = jsonResp({"data": data})
+        resp = json_response({"data": data})
         return resp
 
     def _check_locked(self, b):
@@ -180,7 +170,7 @@ class Assets(Account):
         Store current balance in Db
         """
         # Store balance works outside of context as cronjob
-        app = create_app()
+        app = Request.app
         bin_balance = self.get_raw_balance().json
         current_time = datetime.utcnow()
         total_usdt = 0
@@ -221,15 +211,11 @@ class Assets(Account):
 
         print("Successfully stored balance!")
 
-    def get_value(self):
-        try:
-            interval = request.view_args["interval"]
-        except KeyError:
+    def get_value(self, interval=None, limit: int=100, offset: int=0):
+        
+        if not interval:
             interval = None
             filter = None
-
-        limit = request.args.get("limit", 100)
-        offset = request.args.get("offset", 0)
 
         # last 24 hours
         if interval == "1d":
@@ -247,9 +233,9 @@ class Assets(Account):
             .skip(offset)
         )
         if balance:
-            resp = jsonResp({"data": balance})
+            resp = json_response({"data": balance})
         else:
-            resp = jsonResp({"data": [], "error": 1})
+            resp = json_response({"data": [], "error": 1})
         return resp
 
     def balance_estimate(self, fiat="USDT"):
@@ -279,9 +265,9 @@ class Assets(Account):
             "total_fiat": total_fiat,
         }
         if balance:
-            resp = jsonResp({"data": balance})
+            resp = json_response({"data": balance})
         else:
-            resp = jsonResp({"data": [], "error": 1})
+            resp = json_response({"data": [], "error": 1})
         return resp
 
     def balance_estimate_legacy(self, fiat="USDT"):
@@ -329,9 +315,9 @@ class Assets(Account):
             "total_fiat": total_fiat,
         }
         if balance:
-            resp = jsonResp({"data": balance})
+            resp = json_response({"data": balance})
         else:
-            resp = jsonResp({"data": [], "error": 1})
+            resp = json_response({"data": [], "error": 1})
         return resp
 
     def balance_series(self, fiat="GBP", start_time=None, end_time=None, limit=5):
@@ -358,21 +344,10 @@ class Assets(Account):
             balances.append(balance)
 
         if balance:
-            resp = jsonResp({"data": balances})
+            resp = json_response({"data": balances})
         else:
-            resp = jsonResp({"data": [], "error": 1})
+            resp = json_response({"data": [], "error": 1})
         return resp
-
-    def currency_conversion(self):
-        base = request.args.get("base")
-        quote = request.args.get("quote")
-        qty = request.args.get("qty")
-
-        # Get conversion from coinbase
-        time = datetime.now()
-        rate = self.coinbase_api.get_conversion(time, base, quote)
-        total = float(rate) * float(qty)
-        return jsonResp({"data": total})
 
     def store_balance_snapshot(self):
         """
@@ -423,7 +398,7 @@ class Assets(Account):
         try:
             asset = request.view_args["asset"].upper()
         except KeyError:
-            return jsonResp_error_message("Parameter asset is required. E.g. BNB, BTC")
+            return json_response_error("Parameter asset is required. E.g. BNB, BTC")
 
         new_pair = f"{asset}GBP"
 
@@ -431,15 +406,15 @@ class Assets(Account):
             self.find_quoteAsset(f"{asset}GBP")
         except HTTPError as e:
             if e["code"] == -1121:
-                return jsonResp_error_message(f"{asset} cannot be traded with GBP")
+                return json_response_error(f"{asset} cannot be traded with GBP")
 
         balances = self.get_raw_balance(asset).json
         try:
             qty = float(balances["data"][0]["free"])
             if not qty or float(qty) == 0.00:
-                return jsonResp_error_message(f"Not enough {asset} balance to buy GBP")
+                return json_response_error(f"Not enough {asset} balance to buy GBP")
         except KeyError:
-            return jsonResp_error_message(f"Not enough {asset} balance to buy GBP")
+            return json_response_error(f"Not enough {asset} balance to buy GBP")
 
         book_order = Book_Order(new_pair)
         price = float(book_order.matching_engine(False, qty))
@@ -480,6 +455,6 @@ class Assets(Account):
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
-            return jsonResp_error_message(res["error"])
+            return json_response_error(res["error"])
 
-        return jsonResp_message("Successfully bought GBP!")
+        return json_response_message("Successfully bought GBP!")

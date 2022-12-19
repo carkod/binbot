@@ -1,34 +1,51 @@
-import os
-from fastapi import FastAPI
-from flask_cors import CORS
-from pymongo import MongoClient
-from api.research.market_updates import MarketUpdates
-from api.orders.models.order_sockets import OrderUpdates
 import asyncio
-from api.streaming.klines import KlinesStreaming
-from binance import AsyncClient, BinanceSocketManager
+import os
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pymongo import MongoClient
+
+from api.account.routes import router as account_blueprint
+from api.autotrade.routes import autotrade_settings_blueprint
+from api.bots.routes import bot_blueprint
+from api.charts.routes import charts_blueprint
+from api.orders.routes import order_blueprint
+from api.paper_trading.routes import paper_trading_blueprint
+from api.research.routes import research_blueprint
+from api.user.routes import user_blueprint
+from api.streaming.streaming_controller import StreamingController
 
 
-async def streaming_klines(app):
-    mu = MarketUpdates(app=app)
-    await mu.start_stream()
-    return {"status": "Started streaming klines"}
+def start_streaming(app):
+    """
+    Replacement for old restart_sockets and terminate_websockets
 
-async def streaming_orders(app):
-    mu = OrderUpdates(app=app)
-    await mu.run_stream()
-    return {"status": "Started streaming orders"}
-
+    If for whatever reason (errors, exceptions, failed bots) streaming stopped,
+    we want to resume streaming to avoid asset loss
+    """
+    try:
+        mu = StreamingController(app=app)
+        loop = asyncio.get_event_loop()
+        loop.create_task(mu.get_klines("5m"), name="klines")
+        loop.create_task(mu.get_user_data(), name="user_data")
+    except Exception as error:
+        print(f"Streaming error: {error}")
+        start_streaming()
 
 
 def create_app():
-    print("Starting app...")
     app = FastAPI()
 
-    # Schema
-    # db = MongoEngine(app)
     # Enable CORS for all routes
-    # CORS(app, expose_headers="Authorization")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Database
     mongo = MongoClient(
         host=os.getenv("MONGO_HOSTNAME"),
         port=int(os.getenv("MONGO_PORT")),
@@ -38,14 +55,22 @@ def create_app():
     )
     app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
 
-    @app.get("/")
+    # Routes
+    @app.get("/", description="Index endpoint for testing that the API app works")
     def index():
         return {"status": "Online"}
 
+    app.include_router(user_blueprint)
+    app.include_router(account_blueprint, prefix="/account")
+    app.include_router(bot_blueprint)
+    app.include_router(paper_trading_blueprint)
+    app.include_router(order_blueprint, prefix="/order")
+    app.include_router(charts_blueprint, prefix="/charts")
+    app.include_router(research_blueprint, prefix="/research")
+    app.include_router(autotrade_settings_blueprint, prefix="/autotrade-settings")
 
-    mu = KlinesStreaming(app=app)
-    loop = asyncio.get_event_loop()
-    loop.create_task(mu.get_klines("5m"), name="klines")
-    loop.create_task(mu.get_user_data(), name="user_data")
+    # Streaming
+    # can only start when endpoints are ready
+    start_streaming(app)
 
     return app

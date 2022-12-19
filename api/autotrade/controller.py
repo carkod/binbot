@@ -1,6 +1,6 @@
 from flask import current_app
 from api.research.schemas import AutotradeSettingsSchema
-from api.tools.handle_error import jsonResp, jsonResp_error_message, jsonResp_message
+from api.tools.handle_error import json_response, json_response_error, json_response_message
 from flask import current_app, request
 from marshmallow.exceptions import ValidationError
 
@@ -18,11 +18,11 @@ class AutotradeSettingsController:
     def get_settings(self):
         try:
             settings = current_app.db.research_controller.find_one({"_id": self.document_id})
-            resp = jsonResp(
+            resp = json_response(
                 {"message": "Successfully retrieved settings", "data": settings}
             )
         except Exception as error:
-            resp = jsonResp_error_message(f"Error getting settings: {error}")
+            resp = json_response_error(f"Error getting settings: {error}")
 
         return resp
 
@@ -37,12 +37,12 @@ class AutotradeSettingsController:
                 settings["update_required"] = True
 
             current_app.db.research_controller.update_one({"_id": self.document_id}, {"$set": settings})
-            resp = jsonResp_message("Successfully updated settings")
+            resp = json_response_message("Successfully updated settings")
         except TypeError as e:
-            resp = jsonResp_error_message(f"Data validation error: {e}")
+            resp = json_response_error(f"Data validation error: {e}")
         except ValidationError as error:
             msg = ""
             for field, desc in error.args[0].items():
                 msg += field + desc[0]
-            resp = jsonResp_error_message(f"{msg}")
+            resp = json_response_error(f"{msg}")
         return resp

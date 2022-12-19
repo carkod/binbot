@@ -21,7 +21,7 @@ class SafetyOrderSchema(Schema):
     total_commission: float = fields.Float(dump_default=0)
 
 class BotSchema(Schema):
-    balance_size_to_use: float= fields.Float()
+    balance_size_to_use: float = fields.Float()
     balance_to_use: str = fields.Str(required=True)
     base_order_size: str = fields.Str(required=True) # Min Binance 0.0001 BNB
     candlestick_interval: str = fields.Str(required=True)

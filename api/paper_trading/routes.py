@@ -1,41 +1,41 @@
-from flask import Blueprint
+from fastapi import APIRouter
+
 from api.bots.controllers import Bot
-from api.auth import auth
 
-paper_trading_blueprint = Blueprint("paper-trading", __name__)
+paper_trading_blueprint = APIRouter()
 
 
-@paper_trading_blueprint.route("/paper-trading", methods=["GET"])
+@paper_trading_blueprint.get("/paper-trading")
 def get():
     return Bot(collection_name="paper_trading").get()
 
 
-@paper_trading_blueprint.route("/paper-trading/<id>", methods=["GET"])
+@paper_trading_blueprint.get("/paper-trading/<id>")
 def get_one(id):
     return Bot(collection_name="paper_trading").get_one()
 
 
-@paper_trading_blueprint.route("/paper-trading", methods=["POST"])
+@paper_trading_blueprint.post("/paper-trading")
 def create():
     return Bot(collection_name="paper_trading").create()
 
 
-@paper_trading_blueprint.route("/paper-trading/<id>", methods=["PUT"])
+@paper_trading_blueprint.put("/paper-trading/<id>")
 def edit(id):
     return Bot(collection_name="paper_trading").edit()
 
 
-@paper_trading_blueprint.route("/paper-trading", methods=["DELETE"])
+@paper_trading_blueprint.delete("/paper-trading")
 def delete():
     return Bot(collection_name="paper_trading").delete()
 
 
-@paper_trading_blueprint.route("/paper-trading/activate/<botId>", methods=["GET"])
+@paper_trading_blueprint.get("/paper-trading/activate/<botId>")
 def activate(botId):
     return Bot(collection_name="paper_trading").activate()
 
 
-@paper_trading_blueprint.route("/paper-trading/deactivate/<id>", methods=["DELETE"])
+@paper_trading_blueprint.delete("/paper-trading/deactivate/<id>")
 def deactivate(id):
     """
     Deactivation means closing all deals and selling to GBP

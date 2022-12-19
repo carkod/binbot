@@ -2,7 +2,7 @@ from flask import request, current_app as app
 from passlib.hash import pbkdf2_sha256
 from jose import jwt
 import os
-from api.tools.handle_error import jsonResp_error_message, jsonResp_message, jsonResp
+from api.tools.handle_error import json_response_error, json_response_message, json_response
 from bson.objectid import ObjectId
 from api.auth import encodeAccessToken
 from datetime import datetime
@@ -23,9 +23,9 @@ class User:
     def get(self):
         users = list(app.db.users.find())
         if users:
-            resp = jsonResp({"message": "Users found", "data": users})
+            resp = json_response({"message": "Users found", "data": users})
         else:
-            resp = jsonResp_message("No users found")
+            resp = json_response_message("No users found")
 
         return resp
 
@@ -34,9 +34,9 @@ class User:
         user = app.db.users.find_one({"_id": ObjectId(findId)})
 
         if user:
-            resp = jsonResp({"message": "User found", "data": user})
+            resp = json_response({"message": "User found", "data": user})
         else:
-            resp = jsonResp({"message": "User not found", "error": 1}, 401)
+            resp = json_response({"message": "User not found", "error": 1}, 401)
         return resp
 
     def login(self):
@@ -55,7 +55,7 @@ class User:
                 },
             )
 
-            resp = jsonResp(
+            resp = json_response(
                 {
                     "_id": user["_id"],
                     "email": user["email"],
@@ -65,7 +65,7 @@ class User:
                 200,
             )
         else:
-            resp = jsonResp({"message": "Credentials are incorrect", "error": 1})
+            resp = json_response({"message": "Credentials are incorrect", "error": 1})
         return resp
 
     def logout(self):
@@ -81,7 +81,7 @@ class User:
         except Exception as error:
             raise Exception(error)
 
-        resp = jsonResp_message("User logged out")
+        resp = json_response_message("User logged out")
 
         return resp
 
@@ -90,9 +90,9 @@ class User:
             data = request.json
         except TypeError as e:
             print(e)
-            return jsonResp_error_message("Json data is malformed")
+            return json_response_error("Json data is malformed")
         if ("email" not in data) or ("password" not in data):
-            return jsonResp_message("Email and password are required")
+            return json_response_message("Email and password are required")
 
         user_data = {
             "email": data["email"].lower(),
@@ -110,14 +110,14 @@ class User:
         existing_email = app.db.users.find_one({"email": self.defaults["email"]})
 
         if existing_email:
-            resp = jsonResp_error_message(
+            resp = json_response_error(
                 "There's already an account with this email address"
             )
 
         else:
             inserted_doc = app.db.users.insert_one(self.defaults)
             item = app.db.users.find_one({"_id": inserted_doc.inserted_id})
-            resp = jsonResp(
+            resp = json_response(
                 {"data": item, "message": "Successfully created a new user!"}
             )
 
@@ -127,9 +127,9 @@ class User:
         try:
             data = request.get_json()
         except TypeError:
-            return jsonResp_error_message("Json data is malformed")
+            return json_response_error("Json data is malformed")
         if "email" not in data or "password" not in data:
-            return jsonResp_message("Email and password are required")
+            return json_response_message("Email and password are required")
 
         user_data = {
             "email": data["email"].lower(),
@@ -148,15 +148,15 @@ class User:
         edit_result = app.db.users.update_one({"email": user["email"]}, {"$set": user})
 
         if edit_result:
-            return jsonResp_message("User successfully updated!")
+            return json_response_message("User successfully updated!")
         else:
-            return jsonResp_error_message("User update failed")
+            return json_response_error("User update failed")
 
     def delete(self):
         findId = request.view_args["id"]
         count = app.db.users.delete_one({"_id": ObjectId(findId)}).deleted_count
         if count > 0:
-            resp = jsonResp({"message": "Successfully deleted user"})
+            resp = json_response({"message": "Successfully deleted user"})
         else:
-            resp = jsonResp({"message": "Not found user, cannot delete"})
+            resp = json_response({"message": "Not found user, cannot delete"})
         return resp

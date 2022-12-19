@@ -1,11 +1,10 @@
 import requests
 from api.apis import BinbotApi
 from api.tools.handle_error import (
-    handle_error,
     handle_binance_errors,
-    jsonResp,
-    jsonResp_message,
-    jsonResp_error_message,
+    json_response,
+    json_response_message,
+    json_response_error,
 )
 from flask import request, current_app
 from decimal import Decimal
@@ -40,9 +39,9 @@ class Account(BinbotApi):
         if symbol:
             params = {"symbol": symbol}
         res = requests.get(url=url, params=params)
-        handle_error(res)
+        handle_binance_errors(res)
         data = res.json()
-        resp = jsonResp({"data": data})
+        resp = json_response({"data": data})
         return resp
 
     def get_ticker_price(self, symbol: str):
@@ -59,9 +58,8 @@ class Account(BinbotApi):
         symbol = request.view_args["symbol"]
         params = {"symbol": symbol}
         res = requests.get(url=url, params=params)
-        handle_error(res)
-        data = res.json()
-        resp = jsonResp({"data": data})
+        data = handle_binance_errors(res)
+        resp = json_response({"data": data})
         return resp
 
     def find_quoteAsset(self, symbol):
@@ -84,11 +82,11 @@ class Account(BinbotApi):
 
     def find_base_asset_json(self, symbol):
         data = self.find_baseAsset(symbol)
-        return jsonResp({"data": data})
+        return json_response({"data": data})
 
     def find_quote_asset_json(self, symbol):
         data = self.find_quoteAsset(symbol)
-        return jsonResp({"data": data})
+        return json_response({"data": data})
 
     def find_market(self, quote):
         """API Weight 10"""
@@ -113,18 +111,18 @@ class Account(BinbotApi):
         pair = request.view_args["pair"]
         symbols = self._exchange_info(pair)
         if not symbols:
-            return jsonResp_error_message("Symbol not found!")
+            return json_response_error("Symbol not found!")
         symbol = symbols["symbols"][0]
         if symbol:
-            return jsonResp({"data": symbol})
+            return json_response({"data": symbol})
         else:
-            return jsonResp_message("Pair not found")
+            return json_response_message("Pair not found")
 
     def get_symbols(self):
         symbols = self._ticker_price()
         symbols_list = [x["symbol"] for x in symbols]
         symbols_list.sort()
-        return jsonResp({"data": symbols_list})
+        return json_response({"data": symbols_list})
 
     def get_no_cannibal_symbols(self):
         """
@@ -135,7 +133,7 @@ class Account(BinbotApi):
         active_symbols = list(self.app.db.bots.find({"status": "active"}))
 
         no_cannibal_list = [x for x in symbols_list if x not in active_symbols]
-        return jsonResp({"data": no_cannibal_list, "count": len(no_cannibal_list)})
+        return json_response({"data": no_cannibal_list, "count": len(no_cannibal_list)})
 
     def get_quote_asset_precision(self, symbol, quote=True):
         """

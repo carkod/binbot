@@ -1,10 +1,14 @@
 import os
+import asyncio
 from binance import AsyncClient, BinanceSocketManager
 
-class KlinesStreaming:
+class StreamingController:
 
     def __init__(self, app):
         self.app = app
+        # Start streaming service globally
+        # This will allow access for the entire FastApi scope
+        asyncio.Event.connection_open = True
 
     async def setup_client(self):
         client = await AsyncClient.create(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
@@ -33,21 +37,20 @@ class KlinesStreaming:
 
         async with klines as k:
             try:
-                while True:
+                while asyncio.Event.connection_open:
                     res = await k.recv()
                     print(res)
             except Exception as error:
-                print(error)
+                print(f"get_klines sockets error: {error}")
     
     async def get_user_data(self):
         socket = await self.setup_client()
         user_data = socket.user_socket()
         async with user_data as ud:
             try:
-                while True:
+                while asyncio.Event.connection_open:
                     res = await ud.recv()
                     print(res)
             except Exception as error:
-                print(error)
+                print(f"get_user_data sockets error: {error}")
     
-        
