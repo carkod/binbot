@@ -25,6 +25,7 @@ whale-alert = "==0.0.4"
 py3cw = "==0.0.39"
 numpy = "==1.23.5"
 apscheduler = "==3.6.3"
+python-binance = "*"
 
 [dev-packages]
 autopep8 = "==2.0.0"
