@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from requests import Response, put
 from requests.exceptions import HTTPError
 
+
 class BinanceErrors(Exception):
     pass
 
