@@ -1,33 +1,41 @@
-from marshmallow import Schema, fields
+from pydantic import BaseModel, Field, validator
+from typing import ClassVar, Literal
+from api.tools.enum_definitions import EnumDefinitions
+class OrderSchema(BaseModel):
+    order_type: str | None = None
+    time_in_force: str | None = None
+    timestamp: float = 0
+    pair: str | None = None
+    qty: str | None = None
+    order_side: str | None = None
+    order_id: str | None = None
+    fills: str | None = None
+    price: float | None = None
+    status: str | None = None
+    deal_type: str | None = None # [base_order, take_profit, so_{x}, short_sell, short_buy]
 
-class OrderSchema(Schema):
-    order_type = fields.Str()
-    time_in_force = fields.Str()
-    timestamp = fields.Float()
-    pair = fields.Str()
-    qty = fields.Str()
-    order_side = fields.Str()
-    order_id = fields.Str()
-    fills = fields.Str()
-    price = fields.Str()
-    status = fields.Str()
-    deal_type = fields.Str() # [base_order, take_profit, so_{x}, short_sell, short_buy]
+class DealSchema(BaseModel):
+    buy_price: float = 0 # base currency quantity e.g. 3000 USDT in BTCUSDT
+    buy_timestamp: float = 0
+    buy_total_qty: float = 0
+    current_price: float = 0
+    sd: float = 0
+    avg_buy_price: float = 0 # depricated - replaced with buy_price
+    original_buy_price: float = 0 # historical buy_price after so executed. avg_buy_price = buy_price
+    take_profit_price: float = 0 # quote currency quantity e.g. 0.00003 BTC in BTCUSDT (sell price)
+    so_prices: float = 0
+    sell_timestamp: float = 0
+    sell_price: float = 0
+    sell_qty: float = 0
+    post_closure_current_price: float = 0
+    trailling_stop_loss_price: float = 0
+    short_sell_price: float = 0
+    short_sell_qty: float = 0
+    short_sell_timestamp: float = 0
 
-class DealSchema(Schema):
-    buy_timestamp: float = fields.Float(dump_default=0)
-    buy_total_qty: float = fields.Float(dump_default=0)
-    current_price: float = fields.Float(dump_default=0)
-    sd: float = fields.Float(dump_default=0)
-    buy_price: float = fields.Float(required=True, dump_default=0) # base currency quantity e.g. 3000 USDT in BTCUSDT
-    avg_buy_price: float = fields.Float(dump_default=0) # depricated - replaced with buy_price
-    original_buy_price: float = fields.Float(dump_default=0) # historical buy_price after so executed. avg_buy_price = buy_price
-    take_profit_price: float = fields.Float(dump_default=0) # quote currency quantity e.g. 0.00003 BTC in BTCUSDT (sell price)
-    so_prices: float = fields.Float(dump_default=0)
-    sell_timestamp: float = fields.Float(dump_default=0)
-    sell_price: float = fields.Float(dump_default=0)
-    sell_qty: float = fields.Float(dump_default=0)
-    post_closure_current_price: float = fields.Float(dump_default=0)
-    trailling_stop_loss_price: float = fields.Float(dump_default=0)
-    short_sell_price: float = fields.Float(dump_default=0)
-    short_sell_qty: float = fields.Float(dump_default=0)
-    short_sell_timestamp: float = fields.Float(dump_default=0)
+
+    @validator("buy_price", "current_price", "avg_buy_price", "original_buy_price", "take_profit_price", "sell_price", "short_sell_price")
+    def check_prices(cls, v):
+        if v < 0:
+            raise ValueError("Price must be a positive number")
+        return v

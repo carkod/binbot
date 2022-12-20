@@ -4,6 +4,7 @@ import os
 
 import uvicorn
 from apscheduler.schedulers.background import BackgroundScheduler
+from fastapi import Request
 
 from api.app import create_app
 

@@ -1,11 +1,10 @@
 from time import time
 from bson.objectid import ObjectId
 from api.deals.models import DealModel, OrderModel
-from api.tools.enum_definitions import EnumDefinitions
+from api.tools.enum_definitions import BinbotEnums
+from typing import Literal
+from pydantic import BaseModel
 
-
-class BotSchemaValidation(Exception):
-    pass
 
 class SafetyOrderModel:
     def __init__(
@@ -49,7 +48,7 @@ class BotModel:
         created_at = time() * 1000,
         updated_at = time() * 1000,
         take_profit: float = 3,
-        status: str = EnumDefinitions.statuses[0],
+        status: str = BinbotEnums.statuses[0],
         name: str = "Default bot",
         mode: str = "manual",
         balance_size_to_use: float = 0,

@@ -7,7 +7,8 @@ from fastapi.responses import JSONResponse
 from requests import Response, put
 from requests.exceptions import HTTPError, Timeout
 from bson.objectid import ObjectId
-
+from bson import json_util
+from pydantic import BaseModel
 
 class BinanceErrors(Exception):
     pass
@@ -39,10 +40,12 @@ def post_error(msg):
     return
 
 
-def json_response(data, status=200):
+def json_response(content, status=200):
+    if "data" in content:
+        content["data"] = json.loads(json_util.dumps(content["data"]))
     return JSONResponse(
         status_code=status,
-        content={"data": jsonable_encoder(data)},
+        content=content,
         media_type="application/json",
     )
 
@@ -154,3 +157,8 @@ class PyObjectId(ObjectId):
     @classmethod
     def __modify_schema__(cls, field_schema):
         field_schema.update(type="string")
+
+class StandardResponse(BaseModel):
+    data: None
+    message: str
+    error: int = 0
