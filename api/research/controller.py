@@ -36,7 +36,7 @@ class Controller:
         self.default_blacklist.update(data)
         self.default_blacklist["_id"] = data["pair"]
         try:
-            blacklist = current_app.db.blacklist.insert_one(self.default_blacklist)
+            blacklist = self.app.db.blacklist.insert_one(self.default_blacklist)
         except DuplicateKeyError:
             return json_response({"message": "Pair already exists in blacklist", "error": 1})
 
@@ -52,7 +52,7 @@ class Controller:
     def delete_blacklist_item(self):
         pair = request.view_args["pair"]
 
-        blacklist = current_app.db.blacklist.delete_one({"_id": pair})
+        blacklist = self.app.db.blacklist.delete_one({"_id": pair})
 
         if blacklist.acknowledged:
             resp = json_response({"message": "Successfully updated blacklist"})
@@ -67,12 +67,12 @@ class Controller:
             return json_response({"message": "Missing required field 'pair'.", "error": 1})
 
         self.default_blacklist.update(data)
-        blacklist = current_app.db.blacklist.update_one(
+        blacklist = self.app.db.blacklist.update_one(
             {"_id": data["pair"]}, {"$set": self.default_blacklist}
         )
 
         if not blacklist:
-            current_app.db.blacklist.insert(self.default_blacklist)
+            self.app.db.blacklist.insert(self.default_blacklist)
 
         resp = json_response(
             {"message": "Successfully updated blacklist", "blacklist": blacklist}
@@ -141,7 +141,7 @@ class Controller:
         per week
         """
         query = {}
-        signals = list(current_app.db.three_commas_signals.find(query))
+        signals = list(self.app.db.three_commas_signals.find(query))
 
         return json_response({"message": "Successfully retrieved profitable 3commas signals", "data": signals})
 
