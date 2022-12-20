@@ -1,6 +1,21 @@
 from marshmallow import Schema, fields
 from marshmallow.validate import OneOf
+from pydantic import BaseModel, EmailStr, Field
+from api.tools.handle_error import PyObjectId
 
+class BlacklistSchema(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    pair: str
+    reason: str
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "pair": "BNBBTC",
+                "reason": "Overtraded",
+            }
+        }
+    
 
 class AutotradeSettingsSchema(Schema):
     _id: str = fields.Str()

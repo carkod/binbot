@@ -6,6 +6,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from requests import Response, put
 from requests.exceptions import HTTPError, Timeout
+from bson.objectid import ObjectId
 
 
 class BinanceErrors(Exception):
@@ -137,3 +138,19 @@ def handle_binance_errors(response: Response):
             raise InvalidSymbol("Binance error, invalid symbol")
     else:
         return content
+
+
+class PyObjectId(ObjectId):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not ObjectId.is_valid(v):
+            raise ValueError("Invalid objectid")
+        return ObjectId(v)
+
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.update(type="string")
