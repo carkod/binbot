@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from requests import Response, put
 from requests.exceptions import HTTPError
-from fastapi import Response as StarletteResponse
+
 
 class BinanceErrors(Exception):
     pass
@@ -43,10 +43,10 @@ def post_error(msg):
 def json_response(content, status=200):
     content = json.loads(json_util.dumps(content))
     response = JSONResponse(
-            status_code=status,
-            content=content,
-            media_type="application/json",
-        )
+        status_code=status,
+        content=content,
+        media_type="application/json",
+    )
     return response
 
 
