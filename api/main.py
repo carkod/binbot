@@ -45,8 +45,10 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
         trigger="cron",
         timezone="Europe/London",
         hour=1,
-        minute=0
+        minute=0,
+        id='store_balance'
     )
+    scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))
 
 

@@ -1,9 +1,16 @@
+import uuid
 from decimal import Decimal
 from time import time
-import uuid
 
+import numpy
 import requests
+from flask import Response
+from marshmallow.exceptions import ValidationError
+from pymongo import ReturnDocument
+from requests.exceptions import HTTPError
+
 from api.account.account import Account
+from api.app import create_app
 from api.bots.models import BotModel
 from api.bots.schemas import BotSchema
 from api.deals.models import DealModel, OrderModel
@@ -12,21 +19,12 @@ from api.orders.models.book_order import Book_Order, handle_error
 from api.tools.exceptions import (
     BaseDealError,
     OpenDealError,
+    ShortStrategyError,
     TakeProfitError,
     TraillingProfitError,
-    ShortStrategyError
 )
-from api.tools.handle_error import (
-    NotEnoughFunds,
-    QuantityTooLow,
-    handle_binance_errors,
-)
+from api.tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_errors
 from api.tools.round_numbers import round_numbers, supress_notation
-from flask import current_app as app, Response
-from pymongo import ReturnDocument
-from api.app import create_app
-from marshmallow.exceptions import ValidationError
-from requests.exceptions import HTTPError
 
 
 class CreateDealController(Account):
@@ -325,14 +323,10 @@ class CreateDealController(Account):
         Sell at take_profit price, because prices will not reach trailling
         """
 
-        
         bot = self.active_bot
         deal_data = self.active_bot.deal
         deal_buy_price = self.active_bot.deal.buy_price
-        price = (1 + (float(self.active_bot.take_profit) / 100)) * float(
-            deal_buy_price
-        )
-        
+        price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
 
         if self.db_collection.name == "paper_trading":
             qty = deal_data.buy_total_qty
@@ -378,7 +372,6 @@ class CreateDealController(Account):
                     payload=tp_order,
                 )
 
-
         # If error pass it up to parent function, can't continue
         if "error" in res:
             raise TraillingProfitError(res["error"])
@@ -398,7 +391,7 @@ class CreateDealController(Account):
         )
 
         self.active_bot.orders.append(order_data)
-        
+
         self.active_bot.deal.take_profit_price = res["price"]
         self.active_bot.deal.trailling_profit = res["price"]
         self.active_bot.deal.sell_price = res["price"]
@@ -414,7 +407,7 @@ class CreateDealController(Account):
             bot_schema = BotSchema()
             bot = bot_schema.dump(self.active_bot)
             bot.pop("_id")
-            
+
             bot = self.db_collection.find_one_and_update(
                 {"_id": self.active_bot._id},
                 {
@@ -429,15 +422,20 @@ class CreateDealController(Account):
         pass  # Completed
 
     def open_deal(self):
-        
+
         """
         Mandatory deals section
         - If base order deal is not executed, bot is not activated
         """
         # Short strategy checks
         if self.active_bot.strategy == "short":
-            if not hasattr(self.active_bot, "short_buy_price") or float(self.active_bot.short_buy_price) == 0:
-                raise ShortStrategyError("Short strategy requires short_buy_price to be set, or it will never trigger")
+            if (
+                not hasattr(self.active_bot, "short_buy_price")
+                or float(self.active_bot.short_buy_price) == 0
+            ):
+                raise ShortStrategyError(
+                    "Short strategy requires short_buy_price to be set, or it will never trigger"
+                )
             else:
                 pass
 
@@ -488,16 +486,17 @@ class CreateDealController(Account):
             )
 
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
-        if deal_data and deal_data.trailling_stop_loss_price > 0:
+        # if we don't do this, the trailling stop loss will trigger
+        if deal_data and (deal_data.trailling_stop_loss_price > 0 or deal_data.trailling_stop_loss_price < deal_data.buy_price):
 
             take_profit_price = float(deal_data.buy_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )
             deal_data.take_profit_price = take_profit_price
             # Update trailling_stop_loss
-            # an update of the 
+            # an update of the
             deal_data.trailling_stop_loss_price = 0
-
+        
         try:
             deal_schema = DealSchema()
             deal = deal_schema.dump(deal_data)
@@ -507,9 +506,7 @@ class CreateDealController(Account):
             bot = bot_schema.dump(self.active_bot)
             bot.pop("_id")
 
-            self.db_collection.update_one(
-                {"_id": self.active_bot._id}, {"$set": bot}
-            )
+            self.db_collection.update_one({"_id": self.active_bot._id}, {"$set": bot})
 
         except ValidationError as error:
             msg = f"Open deal error: {error.messages}"
@@ -682,9 +679,7 @@ class CreateDealController(Account):
         }
 
         if self.db_collection.name == "paper_trading":
-            res = self.simulate_order(
-                pair, price, qty, "BUY"
-            )
+            res = self.simulate_order(pair, price, qty, "BUY")
         else:
             try:
                 res = self.bb_request(self.bb_buy_order_url, "POST", payload=order)
@@ -722,7 +717,9 @@ class CreateDealController(Account):
         self.active_bot.safety_orders[so_index].status = 1
         self.active_bot.safety_orders[so_index].order_id = res["orderId"]
         self.active_bot.safety_orders[so_index].buy_timestamp = res["transactTime"]
-        self.active_bot.safety_orders[so_index].so_size = res["origQty"] # update with actual quantity
+        self.active_bot.safety_orders[so_index].so_size = res[
+            "origQty"
+        ]  # update with actual quantity
 
         commission = 0
         for chunk in safety_order.fills:
@@ -875,9 +872,7 @@ class CreateDealController(Account):
                     )
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
-                self.bb_request(
-                    f"{self.bb_bot_url}/{self.active_bot._id}", "DELETE"
-                )
+                self.bb_request(f"{self.bb_bot_url}/{self.active_bot._id}", "DELETE")
                 print(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:
                 self.update_deal_logs(
@@ -1049,11 +1044,16 @@ class CreateDealController(Account):
             commission += float(chunk["commission"])
 
         self.active_bot.orders.append(short_sell_order)
-        self.active_bot.short_sell_price = 0 # stops short_sell position
+        self.active_bot.short_sell_price = 0  # stops short_sell position
         self.active_bot.strategy = "short"
         self.active_bot.deal.short_sell_price = res["price"]
         self.active_bot.deal.short_sell_qty = res["origQty"]
         self.active_bot.deal.short_sell_timestamp = res["transactTime"]
+        # reset trailling_stop_loss_price after short is triggered
+        self.active_bot.deal.trailling_stop_loss_price = 0
+        self.active_bot.deal.take_profit_price = float(
+            self.active_bot.deal.buy_price
+        ) * (1 + (float(self.active_bot.take_profit) / 100))
 
         # Reset deal to allow new open_deal to populate
         new_deal = DealModel()
@@ -1106,7 +1106,7 @@ class CreateDealController(Account):
                 {"_id": self.active_bot._id},
                 {"$set": bot},
             )
-        
+
         except ValidationError as error:
             self.update_deal_logs(f"Short buy error: {error.messages}")
             return
@@ -1124,3 +1124,32 @@ class CreateDealController(Account):
             self.update_deal_logs(f"Short buy error: {error}")
             return
         return
+
+    def dynamic_take_profit(self, symbol, interval, close_price):
+
+        params = {
+            "symbol": symbol,
+            "interval": interval,
+        }
+        res = requests.get(url=self.bb_candlestick_url, params=params)
+        data = handle_binance_errors(res)
+        list_prices = numpy.array(data["trace"][0]["close"])
+        sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
+
+        take_profit = self.active_bot.deal.take_profit_price
+        if sd >= 0:
+            self.active_bot.deal.sd = sd
+            if float(close_price) > self.active_bot.deal.buy_price:
+                new_trailling_stop_loss_price = float(take_profit) - (
+                    float(take_profit) * (float(sd / 100))
+                )
+                if new_trailling_stop_loss_price > float(
+                    self.active_bot.deal.buy_price
+                ):
+                    self.active_bot.deal.trailling_stop_loss_price = (
+                        new_trailling_stop_loss_price
+                    )
+
+        bot_schema = BotSchema()
+        bot = bot_schema.dump(self.active_bot)
+        return bot
