@@ -20,8 +20,6 @@ from api.tools.handle_error import (
     json_response_message,
 )
 from api.tools.round_numbers import supress_notation
-from api.db import setup_db
-from fastapi.exceptions import RequestValidationError
 
 
 class Bot(Account):
