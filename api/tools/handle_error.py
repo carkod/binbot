@@ -73,7 +73,8 @@ def handle_binance_errors(response: Response):
         raise HTTPError()
     # Show error message for bad requests
     if response.status_code >= 400:
-        return response.json()
+        error = response.json()
+        raise BinanceErrors(error["msg"])
 
     if response.status_code == 418 or response.status_code == 429:
         print("Request weight limit hit, ban will come soon, waiting 1 hour")

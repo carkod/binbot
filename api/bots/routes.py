@@ -35,9 +35,9 @@ def delete(ids: list):
     return Bot(collection_name="bots").delete(ids)
 
 
-@bot_blueprint.get("/bot/activate/{botId}", tags=["bots"])
-def activate(botId):
-    return Bot(collection_name="bots").activate(botId)
+@bot_blueprint.get("/bot/activate/{id}", tags=["bots"])
+def activate(id):
+    return Bot(collection_name="bots").activate(id)
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", tags=["bots"])

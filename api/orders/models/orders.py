@@ -59,13 +59,11 @@ class Orders(Account):
             resp = json_response_error("No open orders found!")
         return resp
 
-    def delete_order(self):
+    def delete_order(self, symbol: str, orderId: str):
         """
         Cancels single order by symbol
         - Optimal for open orders table
         """
-        symbol = request.view_args["symbol"]
-        orderId = request.view_args["orderid"]
         if not symbol:
             resp = json_response_error("Missing symbol parameter")
         if not orderId:

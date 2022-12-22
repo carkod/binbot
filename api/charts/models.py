@@ -3,7 +3,6 @@ from math import ceil
 from time import time
 
 import pandas as pd
-from fastapi import Request
 from pydantic import BaseModel
 from pymongo import ReturnDocument
 
@@ -13,37 +12,49 @@ from api.tools.handle_error import (
     json_response,
     json_response_error,
     json_response_message,
+    BinanceErrors
 )
 from api.tools.round_numbers import interval_to_millisecs
+from api.db import setup_db
+from fastapi.encoders import jsonable_encoder
 
 
-class CandlestickItem(BaseModel):
+
+class CandlestickItemRequest(BaseModel):
     data: list[list]
     symbol: str
     interval: str  # See EnumDefitions
-    limit: int | None = None
-    offset: int | None = None
+    limit: int = 600
+    offset: int = 0
+
+
+class CandlestickParams(BaseModel):
+    symbol: str
+    interval: str  # See EnumDefitions
+    limit: int = 600
+    startTime: float | None = (
+        None  # starTime and endTime must be camel cased for the API
+    )
+    endTime: float | None = None
 
 
 class KlinesSchema:
-    def __init__(self, pair, interval=None, limit=300) -> None:
+    def __init__(self, pair, interval=None, limit=500) -> None:
         self._id = pair  # pair
         self.interval = interval
         self.limit = limit
-        self.app = Request.app
+        self.db = setup_db()
 
     def create(self, data):
         try:
-            result = self.app.db.klines.insert_one(
-                {"_id": self._id, self.interval: data}
-            )
+            result = self.db.klines.insert_one({"_id": self._id, self.interval: data})
             return result
         except Exception as e:
             return e
 
     def replace_klines(self, data):
         try:
-            result = self.app.db.klines.find_one_and_update(
+            result = self.db.klines.find_one_and_update(
                 {"_id": self._id},
                 {"$set": {self.interval: data}},
                 upsert=True,
@@ -60,21 +71,21 @@ class KlinesSchema:
         """
         new_data = data  # This is not existent data but stream data from API
         try:
-            kline = self.app.db.klines.find_one({"_id": self._id})
+            kline = self.db.klines.find_one({"_id": self._id})
             curr_ts = kline[self.interval][len(kline[self.interval]) - 1][0]
             if curr_ts == timestamp:
                 # If found timestamp match - update
-                self.app.db.klines.update_one(
+                self.db.klines.update_one(
                     {"_id": self._id},
                     {"$pop": {self.interval: 1}},
                 )
-                update_kline = self.app.db.klines.update_one(
+                update_kline = self.db.klines.update_one(
                     {"_id": self._id},
                     {"$push": {self.interval: new_data}},
                 )
             else:
                 # If no timestamp match - push
-                update_kline = self.app.db.klines.update_one(
+                update_kline = self.db.klines.update_one(
                     {"_id": self._id},
                     {
                         "$push": {
@@ -90,8 +101,8 @@ class KlinesSchema:
             return e
 
     def delete_klines(self):
-        result = self.app.db.klines.update_one({"_id": self._id})
-        return result
+        result = self.db.klines.delete_one({"symbol": self._id})
+        return result.acknowledged
 
 
 class Candlestick(BinbotApi):
@@ -99,8 +110,10 @@ class Candlestick(BinbotApi):
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
     """
+    def __init__(self) -> None:
+        self.db = setup_db()
 
-    def delete_and_create_klines(self, params: CandlestickItem):
+    def delete_and_create_klines(self, params: CandlestickParams):
         """
         Args:
         params
@@ -115,7 +128,7 @@ class Candlestick(BinbotApi):
         kline_df = pd.DataFrame(klines[params.interval])
         return kline_df
 
-    def check_gaps(self, df, params: CandlestickItem):
+    def check_gaps(self, df, params: CandlestickParams):
         """
         Checks gaps in the candlestick time series, using the dates difference between dates (index = 0)
         If there are gaps, request data from Binance API (high weight, use cautiously)
@@ -164,14 +177,14 @@ class Candlestick(BinbotApi):
             query["data.0.0"] = {"$lte": params.startTime}
 
         try:
-            klines = self.app.db.klines.find_one(query)
+            klines = self.db.klines.find_one(query)
         except Exception as error:
             print(error)
             klines = None
             pass
 
         klines_schema = KlinesSchema(params.symbol, params.interval)
-        if not klines:
+        if not klines or not isinstance(klines[params.interval], list):
             if params.startTime:
                 # Calculate diff start_time and end_time
                 # Divide by interval time to get limit
@@ -180,12 +193,9 @@ class Candlestick(BinbotApi):
                 params.limit = ceil(diff_time / interval_to_millisecs(params.interval))
 
             # Store more data for db to fill up candlestick charts
-            data = self.request(url=self.candlestick_url, params=vars(params))
-            if "code" in data and data["code"] == -1121:
-                raise InvalidSymbol()
-
+            data = self.request(url=self.candlestick_url, params=jsonable_encoder(params))
             klines_schema.replace_klines(data)
-            klines = self.app.db.klines.find_one({"_id": params.symbol})
+            self.get_klines(params)
 
         else:
             df = pd.DataFrame(klines[params.interval])
@@ -223,7 +233,7 @@ class Candlestick(BinbotApi):
         else:
             return json_response_error(f"Failed to update candlestick data: {result}")
 
-    def delete_klines(self, symbol):
+    def delete_klines(self, symbol: str):
         try:
             KlinesSchema(symbol).delete_klines()
             return json_response_message("Successfully deleted klines")
@@ -306,39 +316,21 @@ class Candlestick(BinbotApi):
 
         return ma_100, ma_25, ma_7
 
-    def get(self):
+    def get(self, symbol, interval="15m", limit=500, start_time: float | None=None, end_time: float | None=None, stats = False):
         """
         Get candlestick graph data
         Index 0: trace
         Index 1: ma_100
         Index 2: ma_25
         Index 3: ma_7
-
-        Returns: json
-        {
-            "pair": string,
-            "interval": string,
-            "stats": boolean, Additional statistics such as MA, amplitude, volume, candle spreads
-            "binance": boolean, whether to directly pull data from binance or from DB
-            "limit": int,
-            "start_time": int
-            "end_time": int
-        }
         """
-        symbol = request.args.get("symbol")
-        interval = request.args.get("interval")
-        stats = request.args.get("stats", False)
-        # 200 limit + 100 Moving Average = 300
-        limit = request.args.get("limit", 300)
-        start_time = request.args.get("start_time", type=int)
-        end_time = request.args.get("end_time", type=int)
 
         if not symbol:
             return json_response_error("Symbol is required")
         if not interval:
             return json_response_error("Provide a candlestick interval")
 
-        params = CandlestickItem(
+        params = CandlestickParams(
             limit=limit,
             symbol=symbol,
             interval=interval,
