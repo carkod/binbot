@@ -2,7 +2,7 @@ from api.account.account import Account
 from api.tools.enum_definitions import EnumDefinitions
 from api.tools.handle_error import json_response, json_response_error, json_response_message
 from api.tools.round_numbers import round_numbers
-from flask import current_app, request
+from api.db import setup_db
 
 poll_percentage = 0
 
@@ -14,20 +14,11 @@ class Orders(Account):
         # Required by API for Limit orders
         self.timeInForce = EnumDefinitions.time_in_force[0]
         # Instance of app for cron jobs
+        self.db = setup_db()
 
-    def get_all_orders(self):
+    def get_all_orders(self, status: str|None = None, limit:int=50, offset: int=0, startTime: float | None = None):
         # here we want to get the value of user (i.e. ?user=some-value)
-        limit = 50 if not request.args.get("limit") else int(request.args.get("limit"))
-        offset = (
-            0 if not request.args.get("offset") else int(request.args.get("offset"))
-        )
-        self.pages = current_app.db.orders.count()
-        status = request.args.get("status", None)
-        startTime = (
-            int(request.args.get("start-time", None))
-            if request.args.get("start-time")
-            else None
-        )
+        self.pages = self.db.orders.count()
 
         # Filters
         args = {}
@@ -38,7 +29,7 @@ class Orders(Account):
             args["time"] = {"$gte": startTime}
 
         orders = list(
-            current_app.db.orders.find(args)
+            self.db.orders.find(args)
             .sort([("updateTime", -1)])
             .skip(offset)
             .limit(limit)
@@ -81,15 +72,11 @@ class Orders(Account):
 
         return resp
 
-    def delete_all_orders(self):
+    def delete_all_orders(self, symbol):
         """
         Delete All orders by symbol
         - Optimal for open orders table
         """
-        symbol = request.args["symbol"]
-        # query params -> args
-        # path params -> view_args
-        symbol = request.args["symbol"]
         params = [
             ("symbol", symbol),
         ]

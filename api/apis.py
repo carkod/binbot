@@ -50,7 +50,7 @@ class BinanceApi:
         data = self.request(url=self.server_time_url)
         return data["serverTime"]
 
-    def signed_request(self, url, method="GET", payload={}):
+    def signed_request(self, url, method="GET", payload={}, params={}):
         """
         USER_DATA, TRADE signed requests
         """
@@ -71,7 +71,7 @@ class BinanceApi:
             hashlib.sha256,
         ).hexdigest()
         url = f"{url}?{query_string}&signature={signature}"
-        data = self.request(method, url=url, headers=headers)
+        data = self.request(method, url=url, headers=headers, params=params)
         return data
 
     def request(self, method="GET", **args):
