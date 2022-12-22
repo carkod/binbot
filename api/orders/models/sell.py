@@ -3,7 +3,7 @@ import json
 from requests import HTTPError
 from api.apis import BinanceApi
 from api.tools.enum_definitions import EnumDefinitions
-from api.tools.handle_error import handle_error, json_response_error
+from api.tools.handle_error import json_response_error
 from flask import request
 
 
