@@ -2,90 +2,69 @@ from fastapi import APIRouter
 
 from api.account.account import Account
 from api.account.assets import Assets
-from api.auth import auth
+from api.account.schemas import BalanceResponse
 
-router = APIRouter()
-
-
-@router.get("/btc-balance")
-def get_balances_btc():
-    return Assets().get_balances_btc()
+account_blueprint = APIRouter()
 
 
-@router.get("/balance")
-def get_balance():
-    return Assets().get_value()
-
-
-@router.get("/balance/raw")
+@account_blueprint.get("/balance/raw", response_model=BalanceResponse, tags=["account"])
 def raw_balance():
     return Assets().get_raw_balance()
 
 
-@router.get("/symbols")
+@account_blueprint.get("/symbols", tags=["account"])
 def get_symbols():
     return Account().get_symbols()
 
 
-@router.get("/symbols/no-cannibal")
+@account_blueprint.get("/symbols/no-cannibal", tags=["account"])
 def get_no_cannibal_symbols():
     return Account().get_no_cannibal_symbols()
 
 
-@router.get("/symbol/<pair>")
+@account_blueprint.get("/symbol/{pair}", tags=["account"])
+@account_blueprint.get("/symbol", tags=["account"])
 def get_symbol_info(pair):
-    return Account().get_symbol_info()
+    return Account().get_symbol_info(pair)
 
 
-@router.get("/find-quote/<pair>")
+@account_blueprint.get("/find-quote/{pair}", tags=["account"])
 def find_quote_asset(pair):
     return Account().find_quote_asset_json(pair)
 
 
-@router.get("/find-base/<pair>")
+@account_blueprint.get("/find-base/{pair}", tags=["account"])
 def find_base_asset(pair):
     return Account().find_base_asset_json(pair)
 
 
-@router.get("/ticker/{symbol}")
-def ticker(symbol=None):
-    return Account().ticker()
+@account_blueprint.get("/ticker/{pair}", tags=["account"])
+@account_blueprint.get("/ticker", tags=["account"])
+def ticker(pair: str | None = None):
+    return Account().ticker(pair)
 
 
-@router.get("/ticker24/{symbol}")
-def ticker_24(symbol):
-    return Account().ticker_24()
+@account_blueprint.get("/ticker24/{pair}", tags=["account"])
+@account_blueprint.get("/ticker24", tags=["account"])
+def ticker_24(pair=None):
+    return Account().ticker_24(pair)
 
 
-@router.get("/balance/estimate")
-@auth.login_required
-def balance_estimated():
+@account_blueprint.get("/balance/estimate", tags=["account"])
+async def balance_estimated():
     return Assets().balance_estimate()
 
 
-@router.get("/balance/series")
-@auth.login_required
+@account_blueprint.get("/balance/series", tags=["account"])
 def balance_series():
     return Assets().balance_series()
 
 
-@router.get("/pnl")
-@auth.login_required
+@account_blueprint.get("/pnl", tags=["account"])
 def get_pnl():
     return Assets().get_pnl()
 
 
-@router.get("/store-balance")
-def store_balance():
-    return Assets().store_balance()
-
-
-@router.get("/conversion")
-def currency_conversion():
-    return Assets().currency_conversion()
-
-
-@router.get("/hedge-gbp/<asset>")
-@auth.login_required
-def buy_gbp_balance(asset):
-    return Assets().buy_gbp_balance()
+@account_blueprint.get("/store-balance", tags=["account"])
+async def store_balance():
+    return await Assets().store_balance()

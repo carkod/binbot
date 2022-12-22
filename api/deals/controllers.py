@@ -14,7 +14,7 @@ from api.bots.models import BotModel
 from api.bots.schemas import BotSchema
 from api.deals.models import DealModel, OrderModel
 from api.deals.schema import DealSchema
-from api.orders.models.book_order import Book_Order, handle_error
+from api.orders.models.book_order import Book_Order
 from api.tools.exceptions import (
     BaseDealError,
     OpenDealError,
@@ -538,8 +538,7 @@ class CreateDealController(Account):
                         url=f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}"
                     )
 
-                    if isinstance(handle_error(res), Response):
-                        return handle_error(res)
+                    handle_binance_errors(res)
 
         # Sell everything
         pair = self.active_bot.pair

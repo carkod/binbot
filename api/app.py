@@ -1,22 +1,24 @@
 import asyncio
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pymongo import MongoClient
+from fastapi.responses import JSONResponse
 
-from api.account.routes import router as account_blueprint
+from api.account.routes import account_blueprint
 from api.autotrade.routes import autotrade_settings_blueprint
 from api.bots.routes import bot_blueprint
 from api.charts.routes import charts_blueprint
 from api.orders.routes import order_blueprint
 from api.paper_trading.routes import paper_trading_blueprint
 from api.research.routes import research_blueprint
-from api.user.routes import user_blueprint
 from api.streaming.streaming_controller import StreamingController
+from api.user.routes import user_blueprint
 
 
-def start_streaming(app):
+def start_streaming(app) -> None:
     """
     Replacement for old restart_sockets and terminate_websockets
 
@@ -30,8 +32,7 @@ def start_streaming(app):
         loop.create_task(mu.get_user_data(), name="user_data")
     except Exception as error:
         print(f"Streaming error: {error}")
-        start_streaming()
-
+        start_streaming(app)
 
 def create_app():
     app = FastAPI()
@@ -44,16 +45,6 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Database
-    mongo = MongoClient(
-        host=os.getenv("MONGO_HOSTNAME"),
-        port=int(os.getenv("MONGO_PORT")),
-        authSource="admin",
-        username=os.getenv("MONGO_AUTH_USERNAME"),
-        password=os.getenv("MONGO_AUTH_PASSWORD"),
-    )
-    app.db = mongo[os.getenv("MONGO_APP_DATABASE")]
 
     # Routes
     @app.get("/", description="Index endpoint for testing that the API app works")
@@ -69,8 +60,16 @@ def create_app():
     app.include_router(research_blueprint, prefix="/research")
     app.include_router(autotrade_settings_blueprint, prefix="/autotrade-settings")
 
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=jsonable_encoder({"message": exc.errors(), "data": exc.body, "error": 1}),
+        )
+
+
     # Streaming
     # can only start when endpoints are ready
-    start_streaming(app)
+    # start_streaming(app)
 
     return app
