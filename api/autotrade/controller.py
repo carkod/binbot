@@ -1,17 +1,23 @@
-from api.db import setup_db
-from api.research.schemas import AutotradeSettingsSchema
-from api.tools.handle_error import json_response, json_response_error, json_response_message
+from typing import Literal
+
 from pydantic import ValidationError
+
+from api.db import setup_db
+from api.tools.handle_error import (
+    json_response,
+    json_response_error,
+    json_response_message,
+)
+
 
 class AutotradeSettingsController:
     """
     Autotrade settings
-
-    Args:
-    - document_id [string]: OneOf["test_autotrade_settings", "settings"]
     """
 
-    def __init__(self, document_id="settings"):
+    def __init__(
+        self, document_id: Literal["test_autotrade_settings", "settings"] = "settings"
+    ):
         self.document_id = document_id
         self.db = setup_db().research_controller
 
@@ -28,8 +34,7 @@ class AutotradeSettingsController:
 
     def edit_settings(self, data):
         try:
-            settings_schema = AutotradeSettingsSchema()
-            settings = data.to_dict()
+            settings = data.dict()
             if "_id" in settings:
                 settings.pop("_id")
             if "update_required" in settings and settings["update_required"] == False:
@@ -38,7 +43,7 @@ class AutotradeSettingsController:
             self.db.update_one({"_id": self.document_id}, {"$set": settings})
             resp = json_response_message("Successfully updated settings")
         except TypeError as e:
-            
+
             resp = json_response_error(f"Data validation error: {e}")
         except ValidationError as error:
             msg = ""

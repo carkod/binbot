@@ -136,7 +136,7 @@ class Assets(Account):
             else:
                 try:
                     qty = self._check_locked(b)
-                    rate = self.get_ticker_price(f'{b["asset"]}USDT')
+                    rate: float = self.get_ticker_price(f'{b["asset"]}USDT')
                     total_usdt += float(qty) * float(rate)
                 except InvalidSymbol:
                     print(InvalidSymbol(b["asset"]))

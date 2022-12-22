@@ -28,24 +28,23 @@ class Account(BinbotApi):
         return exchange_info
 
     def _ticker_price(self):
-        url = self.ticker_price
-        r = requests.get(url=url)
-        return r.json()
+        r = requests.get(url=self.ticker_price_url)
+        data = handle_binance_errors(r)
+        return data
 
     def ticker(self, symbol: str):
         params = {}
         if symbol:
             params = {"symbol": symbol}
-        res = requests.get(url=self.ticker_price, params=params)
+        res = requests.get(url=self.ticker_price_url, params=params)
         handle_binance_errors(res)
         data = res.json()
         resp = json_response({"data": data})
         return resp
 
     def get_ticker_price(self, symbol: str):
-        url = self.ticker_price
         params = {"symbol": symbol}
-        res = requests.get(url=url, params=params)
+        res = requests.get(url=self.ticker_price_url, params=params)
         data = handle_binance_errors(res)
         return data["price"]
 
