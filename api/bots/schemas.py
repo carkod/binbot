@@ -5,7 +5,7 @@ from bson.objectid import ObjectId
 from pydantic import BaseModel, Field, validator
 
 from api.deals.schema import DealSchema, OrderSchema
-from api.tools.enum_definitions import EnumDefinitions, BinbotEnums
+from api.tools.enum_definitions import BinbotEnums
 from api.tools.handle_error import PyObjectId
 
 

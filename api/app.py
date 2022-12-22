@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.account.routes import router as account_blueprint
+from api.account.routes import account_blueprint
 from api.autotrade.routes import autotrade_settings_blueprint
 from api.bots.routes import bot_blueprint
 from api.charts.routes import charts_blueprint

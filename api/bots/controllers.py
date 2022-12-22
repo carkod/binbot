@@ -1,15 +1,16 @@
 import asyncio
-import requests
 from datetime import datetime
 from time import time
 
+import requests
 from bson.objectid import ObjectId
+from fastapi.exceptions import RequestValidationError
+
 from api.account.account import Account
-from api.bots.schemas import BotSchema
+from api.db import setup_db
 from api.deals.controllers import CreateDealController
 from api.orders.models.book_order import Book_Order
-from api.threads import market_update_thread
-from api.tools.enum_definitions import EnumDefinitions, BinbotEnums
+from api.tools.enum_definitions import BinbotEnums
 from api.tools.exceptions import OpenDealError
 from api.tools.handle_error import (
     NotEnoughFunds,
@@ -19,8 +20,6 @@ from api.tools.handle_error import (
     json_response_message,
 )
 from api.tools.round_numbers import supress_notation
-from api.db import setup_db
-from fastapi.exceptions import RequestValidationError
 
 
 class Bot(Account):

@@ -2,13 +2,13 @@ import json
 import os
 from time import sleep
 
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
-from requests import Response, put
-from requests.exceptions import HTTPError, Timeout
-from bson.objectid import ObjectId
 from bson import json_util
+from bson.objectid import ObjectId
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from requests import Response, put
+from requests.exceptions import HTTPError
+from fastapi import Response as StarletteResponse
 
 class BinanceErrors(Exception):
     pass
@@ -41,13 +41,13 @@ def post_error(msg):
 
 
 def json_response(content, status=200):
-    if "data" in content:
-        content["data"] = json.loads(json_util.dumps(content["data"]))
-    return JSONResponse(
-        status_code=status,
-        content=content,
-        media_type="application/json",
-    )
+    content = json.loads(json_util.dumps(content))
+    response = JSONResponse(
+            status_code=status,
+            content=content,
+            media_type="application/json",
+        )
+    return response
 
 
 def json_response_message(message):
@@ -60,35 +60,6 @@ def json_response_error(message):
     return json_response(body)
 
 
-def handle_error(req):
-    try:
-        req.raise_for_status()
-
-        if isinstance(json.loads(req.content), dict):
-            # Binance code errors
-            if "code" in json.loads(req.content).keys():
-
-                response = req.json()
-                if response["code"] == -2010:
-                    return json_response_error("Not enough funds")
-
-                # Uknown orders ignored, they are used as a trial an error endpoint to close orders (close deals)
-                if response["code"] == -2011:
-                    return
-
-                return json_response_message(json.loads(req.content))
-
-    except HTTPError as err:
-        if err:
-            print(req.json())
-            return json_response_message(req.json())
-        else:
-            return err
-    except Timeout:
-        # Maybe set up for a retry, or continue in a retry loop
-        return json_response_message("handle_error: Timeout", 408)
-
-
 def handle_binance_errors(response: Response):
     """
     Handles:
@@ -97,7 +68,7 @@ def handle_binance_errors(response: Response):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-    content = response.json()
+    content: dict[str, object] = response.json()
 
     if response.status_code == 404:
         raise HTTPError()
@@ -138,7 +109,7 @@ def handle_binance_errors(response: Response):
             sleep(60)
 
         if content["code"] == -1121:
-            raise InvalidSymbol("Binance error, invalid symbol")
+            raise InvalidSymbol(f'Binance error: {content["msg"]}')
     else:
         return content
 
@@ -158,7 +129,7 @@ class PyObjectId(ObjectId):
     def __modify_schema__(cls, field_schema):
         field_schema.update(type="string")
 
+
 class StandardResponse(BaseModel):
-    data: None
     message: str
     error: int = 0

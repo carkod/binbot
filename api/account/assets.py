@@ -1,20 +1,21 @@
-import pandas as pd
-from requests.models import HTTPError
-from api.account.schemas import BalanceSchema
-from api.tools.round_numbers import round_numbers, supress_notation
+import json
+from datetime import datetime, timedelta
 from decimal import Decimal
 
-from fastapi import Request
-from api.tools.handle_error import json_response, json_response_error, json_response_message
-from api.account.account import Account
-from datetime import datetime, timedelta
+import pandas as pd
 from bson.objectid import ObjectId
-from api.tools.handle_error import InvalidSymbol
+
+from api.account.account import Account
+from api.account.schemas import BalanceSchema
+from api.db import setup_db
 from api.orders.models.book_order import Book_Order
+from api.tools.handle_error import InvalidSymbol, json_response
+from api.tools.round_numbers import round_numbers
 
 
 class Assets(Account):
     def __init__(self):
+        self.db = setup_db()
         self.usd_balance = 0
 
     def get_raw_balance(self, asset=None):
@@ -46,7 +47,7 @@ class Assets(Account):
         """
         # Get a list of safety orders
         so_list = list(
-            self.app.db.bots.aggregate(
+            self.db.bots.aggregate(
                 [
                     {
                         "$addFields": {
@@ -90,62 +91,12 @@ class Assets(Account):
         resp = json_response(balances)
         return resp
 
-    def get_balances_btc(self):
-        data = self.request_data()["balances"]
-        df = pd.DataFrame(data)
-        df["free"] = pd.to_numeric(df["free"])
-        df["asset"] = df["asset"].astype(str)
-        df.drop("locked", axis=1, inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        # Get table with > 0
-        balances = df[df["free"] > 0.000000].to_dict("records")
-        data = {"total_btc": 0, "balances": []}
-        for b in balances:
-            symbol = self.find_market(b["asset"])
-            market = self.find_quoteAsset(symbol)
-            rate = 0
-            if b["asset"] != "BTC":
-                rate = self.get_ticker_price(symbol)
-
-                if "locked" in b:
-                    qty = b["free"] + b["locked"]
-                else:
-                    qty = b["free"]
-
-                btc_value = float(qty) * float(rate)
-
-                # Non-btc markets
-                if market != "BTC" and b["asset"] != "USDT":
-                    x_rate = self.get_ticker_price(market + "BTC")
-                    x_value = float(qty) * float(rate)
-                    btc_value = float(x_value) * float(x_rate)
-
-                # Only tether coins for hedging
-                if b["asset"] == "USDT":
-                    rate = self.get_ticker_price("BTCUSDT")
-                    btc_value = float(qty) / float(rate)
-
-            else:
-                if "locked" in b:
-                    btc_value = b["free"] + b["locked"]
-                else:
-                    btc_value = b["free"]
-
-            data["total_btc"] += btc_value
-            assets = {"asset": b["asset"], "btc_value": btc_value}
-            data["balances"].append(assets)
-
-        # filter out empty
-        # Return response
-        resp = json_response(data)
-        return resp
-
     def get_pnl(self, days=7):
         current_time = datetime.now()
         start = current_time - timedelta(days=days)
         dummy_id = ObjectId.from_datetime(start)
         data = list(
-            self.app.db.balances.find(
+            self.db.balances.find(
                 {
                     "_id": {
                         "$gte": dummy_id,
@@ -164,17 +115,17 @@ class Assets(Account):
             qty = b["free"]
         return qty
 
-    def store_balance(self):
+    async def store_balance(self) -> None:
         """
         Alternative PnL data that runs as a cronjob everyday once at 1200
         Store current balance in Db
         """
         # Store balance works outside of context as cronjob
-        app = Request.app
-        bin_balance = self.get_raw_balance().json
+        balances_response = self.get_raw_balance()
+        bin_balance = json.loads(balances_response.body)
         current_time = datetime.utcnow()
         total_usdt = 0
-        rate = 0
+        rate: float = 0
         for b in bin_balance["data"]:
             # Only tether coins for hedging
             if b["asset"] == "NFT":
@@ -195,54 +146,28 @@ class Assets(Account):
         total_balance = {
             "time": current_time.strftime("%Y-%m-%d"),
             "balances": bin_balance["data"],
-            "estimated_total_usdt": round_numbers(total_usdt)
+            "estimated_total_usdt": round_numbers(total_usdt),
         }
 
         try:
-            balance_schema = BalanceSchema()
-            balances = balance_schema.validate_model(total_balance)
-            app.db.balances.update_one(
+            balance_schema = BalanceSchema(**total_balance)
+            balances = balance_schema.dict()
+            self.db.balances.update_one(
                 {"time": current_time.strftime("%Y-%m-%d")},
                 {"$set": balances},
-                upsert=True
+                upsert=True,
             )
         except Exception as error:
             print(f"Failed to store balance: {error}")
 
         print("Successfully stored balance!")
 
-    def get_value(self, interval=None, limit: int=100, offset: int=0):
-        
-        if not interval:
-            interval = None
-            filter = None
-
-        # last 24 hours
-        if interval == "1d":
-            filter = {
-                "updatedTime": {
-                    "$lt": datetime.now().timestamp(),
-                    "$gte": (datetime.now() - timedelta(days=1)).timestamp(),
-                }
-            }
-
-        balance = list(
-            self.app.db.balances.find(filter)
-            .sort([("_id", -1)])
-            .limit(limit)
-            .skip(offset)
-        )
-        if balance:
-            resp = json_response({"data": balance})
-        else:
-            resp = json_response({"data": [], "error": 1})
-        return resp
-
     def balance_estimate(self, fiat="USDT"):
         """
         Estimated balance in given fiat coin
         """
-        balances = self.get_raw_balance().json
+        balances_response = self.get_raw_balance()
+        balances = json.loads(balances_response.body)
         total_fiat = 0
         rate = 0
         for b in balances["data"]:
@@ -259,56 +184,6 @@ class Assets(Account):
                 except InvalidSymbol:
                     print(f"Invalid symbol {b['asset'] + fiat}")
                 total_fiat += float(qty) * float(rate)
-
-        balance = {
-            "balances": balances["data"],
-            "total_fiat": total_fiat,
-        }
-        if balance:
-            resp = json_response({"data": balance})
-        else:
-            resp = json_response({"data": [], "error": 1})
-        return resp
-
-    def balance_estimate_legacy(self, fiat="USDT"):
-        """
-        Old legacy code of balance_estimate
-        """
-        balances = self.get_raw_balance().json
-        total_fiat = 0
-        rate = 0
-        for b in balances["data"]:
-            # Transform tethers/stablecoins
-            if "USD" in b["asset"]:
-                qty = self._check_locked(b)
-                rate = self.get_ticker_price(f'{fiat}{b["asset"]}')
-                total_fiat += float(qty) * float(rate)
-            # Transform market assets/alt coins
-            elif b["asset"] in ["BTC", "BNB", "ETH", "XRP"]:
-                qty = self._check_locked(b)
-                rate = self.get_ticker_price(f'{b["asset"]}{fiat}')
-                total_fiat += float(qty) * float(rate)
-            elif fiat == b["asset"]:
-                total_fiat += self._check_locked(b)
-            else:
-                # BTC and ALT markets
-                symbol = self.find_market(b["asset"])
-                if not symbol:
-                    continue
-
-                # Fix binance incorrect market data for MBLBTC
-                # Binance does not list MBLBTC, but the API does provide ticker_price
-                # But this ticker price does not make sense, it's even lower than BNB value
-                # Therefore replace with BNB market price data
-                if symbol == "MBLBTC":
-                    symbol = "MBLBNB"
-
-                market = self.find_quoteAsset(symbol)
-                rate = self.get_ticker_price(symbol)
-                qty = self._check_locked(b)
-                total = float(qty) * float(rate)
-                fiat_rate = self.get_ticker_price(f"{market}{fiat}")
-                total_fiat += float(total) * float(fiat_rate)
 
         balance = {
             "balances": balances["data"],
@@ -355,7 +230,7 @@ class Assets(Account):
         use Binance new snapshot endpoint to store
         Because this is a cronjob, it doesn't have application context
         """
-        app = create_app()
+        db = setup_db()
         print("Store account snapshot starting...")
         current_time = datetime.utcnow()
         data = self.signed_request(self.account_snapshot_url, payload={"type": "SPOT"})
@@ -370,7 +245,7 @@ class Assets(Account):
         total_btc = spot_data["data"]["totalAssetOfBtc"]
         fiat_rate = self.get_ticker_price("BTCGBP")
         total_usdt = float(total_btc) * float(fiat_rate)
-        balanceId = app.db.balances.insert_one(
+        balanceId = db.balances.insert_one(
             {
                 "_id": spot_data["updateTime"],
                 "time": datetime.fromtimestamp(
@@ -385,76 +260,3 @@ class Assets(Account):
             print(f"{current_time} Balance stored!")
         else:
             print(f"{current_time} Unable to store balance! Error: {balanceId}")
-
-    def buy_gbp_balance(self):
-        """
-        To buy GBP e.g.:
-        - BNBGBP market sell BNB with GBP
-
-        Sell whatever is in the balance e.g. Sell all BNB
-        Always triggered after order completion
-        @returns json object
-        """
-        try:
-            asset = request.view_args["asset"].upper()
-        except KeyError:
-            return json_response_error("Parameter asset is required. E.g. BNB, BTC")
-
-        new_pair = f"{asset}GBP"
-
-        try:
-            self.find_quoteAsset(f"{asset}GBP")
-        except HTTPError as e:
-            if e["code"] == -1121:
-                return json_response_error(f"{asset} cannot be traded with GBP")
-
-        balances = self.get_raw_balance(asset).json
-        try:
-            qty = float(balances["data"][0]["free"])
-            if not qty or float(qty) == 0.00:
-                return json_response_error(f"Not enough {asset} balance to buy GBP")
-        except KeyError:
-            return json_response_error(f"Not enough {asset} balance to buy GBP")
-
-        book_order = Book_Order(new_pair)
-        price = float(book_order.matching_engine(False, qty))
-        # Precision for balance conversion, not for the deal
-        qty_precision = -(
-            Decimal(str(self.lot_size_by_symbol(new_pair, "stepSize")))
-            .as_tuple()
-            .exponent
-        )
-        price_precision = -(
-            Decimal(str(self.price_filter_by_symbol(new_pair, "tickSize")))
-            .as_tuple()
-            .exponent
-        )
-        qty = round_numbers(
-            float(qty),
-            qty_precision,
-        )
-
-        if price:
-            order = {
-                "pair": new_pair,
-                "qty": qty,
-                "price": supress_notation(price, price_precision),
-            }
-            res = self.bb_request(
-                method="POST", url=self.bb_buy_order_url, payload=order
-            )
-        else:
-            # Matching engine failed - market order
-            order = {
-                "pair": new_pair,
-                "qty": qty,
-            }
-            res = self.bb_request(
-                method="POST", url=self.bb_sell_market_order_url, payload=order
-            )
-
-        # If error pass it up to parent function, can't continue
-        if "error" in res:
-            return json_response_error(res["error"])
-
-        return json_response_message("Successfully bought GBP!")

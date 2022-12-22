@@ -2,8 +2,6 @@ from time import time
 from bson.objectid import ObjectId
 from api.deals.models import DealModel, OrderModel
 from api.tools.enum_definitions import BinbotEnums
-from typing import Literal
-from pydantic import BaseModel
 
 
 class SafetyOrderModel:
