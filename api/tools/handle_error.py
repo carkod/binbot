@@ -42,17 +42,10 @@ def post_error(msg):
 def json_response(content, status=200):
     content = json.loads(json_util.dumps(content))
     response = JSONResponse(
-<<<<<<< HEAD
         status_code=status,
         content=content,
         media_type="application/json",
     )
-=======
-            status_code=status,
-            content=content,
-            media_type="application/json",
-        )
->>>>>>> 3935887 (Account endpoints conversion to FastApi)
     return response
 
 
