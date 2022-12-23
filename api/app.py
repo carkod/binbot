@@ -18,7 +18,7 @@ from api.streaming.streaming_controller import StreamingController
 from api.user.routes import user_blueprint
 
 
-def start_streaming(app) -> None:
+def start_streaming() -> None:
     """
     Replacement for old restart_sockets and terminate_websockets
 
@@ -26,13 +26,13 @@ def start_streaming(app) -> None:
     we want to resume streaming to avoid asset loss
     """
     try:
-        mu = StreamingController(app=app)
+        mu = StreamingController()
         loop = asyncio.get_event_loop()
         loop.create_task(mu.get_klines("5m"), name="klines")
         loop.create_task(mu.get_user_data(), name="user_data")
     except Exception as error:
         print(f"Streaming error: {error}")
-        start_streaming(app)
+        start_streaming()
 
 def create_app():
     app = FastAPI()
@@ -70,6 +70,6 @@ def create_app():
 
     # Streaming
     # can only start when endpoints are ready
-    # start_streaming(app)
+    start_streaming()
 
     return app

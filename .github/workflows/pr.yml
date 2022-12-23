@@ -108,5 +108,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
+        run: pip3 install coverage httpx pytest
       - name: Run tests
-        run: python3 -m unittest api/tests/test_*
+        run: coverage run -m pytest -v api/tests && coverage report -m
