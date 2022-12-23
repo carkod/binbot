@@ -4,16 +4,15 @@ from time import time
 
 import numpy
 import requests
-from flask import Response, current_app
-from marshmallow.exceptions import ValidationError
 from pymongo import ReturnDocument
 from requests.exceptions import HTTPError
+from pydantic import ValidationError
 
 from api.account.account import Account
 from api.bots.models import BotModel
 from api.bots.schemas import BotSchema
 from api.deals.models import DealModel, OrderModel
-from api.deals.schema import DealSchema
+from api.deals.schema import DealSchema, OrderSchema
 from api.orders.models.book_order import Book_Order
 from api.tools.exceptions import (
     BaseDealError,
@@ -24,7 +23,7 @@ from api.tools.exceptions import (
 )
 from api.tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_errors
 from api.tools.round_numbers import round_numbers, supress_notation
-
+from api.db import setup_db
 
 class CreateDealController(Account):
     """
@@ -42,8 +41,8 @@ class CreateDealController(Account):
     def __init__(self, bot, db_collection="paper_trading"):
         # Inherit from parent class
         self.active_bot = BotModel(**bot)
-        self.app = current_app
-        self.db_collection = self.app.db[db_collection]
+        self.db = setup_db()
+        self.db_collection = self.db[db_collection]
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot.pair)
         # PRICE_FILTER decimals
         self.price_precision = -(
@@ -170,7 +169,7 @@ class CreateDealController(Account):
                 method="POST", url=self.bb_buy_order_url, payload=order
             )
 
-        order_data = OrderModel(
+        order_data = OrderSchema(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
             deal_type="base_order",
@@ -187,7 +186,7 @@ class CreateDealController(Account):
         self.active_bot.orders.append(order_data)
         tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
 
-        self.active_bot.deal = DealModel(
+        self.active_bot.deal = DealSchema(
             buy_timestamp=res["transactTime"],
             buy_price=res["price"],
             buy_total_qty=res["origQty"],
@@ -197,8 +196,7 @@ class CreateDealController(Account):
         )
 
         try:
-            bot_schema = BotSchema()
-            bot = bot_schema.dump(self.active_bot)
+            bot = BotSchema(**self.active_bot)
             bot.pop("_id")
 
             bot = self.db_collection.find_one_and_update(
@@ -301,8 +299,7 @@ class CreateDealController(Account):
         self.active_bot.errors.append(msg)
 
         try:
-            bot_schema = BotSchema()
-            bot = bot_schema.dump(self.active_bot)
+            bot = BotSchema(self.active_bot)
             bot.pop("_id")
 
             bot = self.db_collection.find_one_and_update(
@@ -486,7 +483,10 @@ class CreateDealController(Account):
 
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
         # if we don't do this, the trailling stop loss will trigger
-        if deal_data and (deal_data.trailling_stop_loss_price > 0 or deal_data.trailling_stop_loss_price < deal_data.buy_price):
+        if deal_data and (
+            deal_data.trailling_stop_loss_price > 0
+            or deal_data.trailling_stop_loss_price < deal_data.buy_price
+        ):
 
             take_profit_price = float(deal_data.buy_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
@@ -495,7 +495,7 @@ class CreateDealController(Account):
             # Update trailling_stop_loss
             # an update of the
             deal_data.trailling_stop_loss_price = 0
-        
+
         try:
             deal_schema = DealSchema()
             deal = deal_schema.dump(deal_data)
@@ -634,7 +634,7 @@ class CreateDealController(Account):
                 # Append now new take_profit deal
                 new_deals.append(take_profit_order)
                 self.active_bot.orders = new_deals
-                self.app.db.bots.update_one(
+                self.db.bots.update_one(
                     {"_id": self.active_bot._id},
                     {
                         "$push": {

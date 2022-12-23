@@ -26,6 +26,9 @@ autopep8 = "==2.0.0"
 isort = "==5.9.2"
 black = "*"
 mypy = "*"
+pytest = "*"
+httpx = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.10.8"
