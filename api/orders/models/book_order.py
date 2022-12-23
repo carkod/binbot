@@ -77,7 +77,7 @@ class Book_Order(BinanceApi):
 
     def ticker_price(self):
         params = [("symbol", self.symbol)]
-        res = requests.get(url=self.ticker_price, params=params)
-        handle_error(res)
-        price = res.json()["price"]
+        res = requests.get(url=self.ticker_price_url, params=params)
+        data = handle_binance_errors(res)
+        price = data["price"]
         return price

@@ -99,11 +99,11 @@ class BinanceApi:
         exchange_info = get(url=self.exchangeinfo_url, params=params).json()
         return exchange_info
 
-    def _get_raw_klines(self, pair, limit="200", interval="1h"):
+    def _get_raw_klines(self, pair, limit=500, interval="15m"):
         params = {"symbol": pair, "interval": interval, "limit": limit}
         res = get(url=self.candlestick_url, params=params)
-        handle_binance_errors(res)
-        return res.json()
+        data = handle_binance_errors(res)
+        return data
 
     def ticker_price(self, symbol=None):
         """

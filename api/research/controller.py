@@ -1,4 +1,4 @@
-from fastapi import Request
+from api.db import setup_db
 from datetime import datetime
 from time import sleep
 from api.tools.handle_error import json_response
@@ -16,27 +16,26 @@ class Controller:
 
     def __init__(self):
         self.default_blacklist = {"_id": "", "pair": "", "reason": ""}  # pair
-        self.app = Request.app
+        self.db = setup_db()
 
     def get_blacklist(self) -> json_response:
         """
         Get list of blacklisted symbols
         """
-        query_result = self.app.db.blacklist.find({ "pair": { "$exists": True } }).sort("pair", ASCENDING)
+        query_result = self.db.blacklist.find({ "pair": { "$exists": True } }).sort("pair", ASCENDING)
         blacklist = list(query_result)
         return json_response(
             {"message": "Successfully retrieved blacklist", "data": blacklist}
         )
 
-    def create_blacklist_item(self):
-        data = request.json
+    def create_blacklist_item(self, data):
         if "pair" not in data:
             return json_response({"message": "Missing required field 'pair'.", "error": 1})
 
         self.default_blacklist.update(data)
         self.default_blacklist["_id"] = data["pair"]
         try:
-            blacklist = self.app.db.blacklist.insert_one(self.default_blacklist)
+            blacklist = self.db.blacklist.insert_one(self.default_blacklist)
         except DuplicateKeyError:
             return json_response({"message": "Pair already exists in blacklist", "error": 1})
 
@@ -49,10 +48,9 @@ class Controller:
 
         return resp
 
-    def delete_blacklist_item(self):
-        pair = request.view_args["pair"]
+    def delete_blacklist_item(self, pair):
 
-        blacklist = self.app.db.blacklist.delete_one({"_id": pair})
+        blacklist = self.db.blacklist.delete_one({"_id": pair})
 
         if blacklist.acknowledged:
             resp = json_response({"message": "Successfully updated blacklist"})
@@ -61,18 +59,17 @@ class Controller:
 
         return resp
 
-    def edit_blacklist(self):
-        data = request.json
+    def edit_blacklist(self, data):
         if "pair" not in data:
             return json_response({"message": "Missing required field 'pair'.", "error": 1})
 
         self.default_blacklist.update(data)
-        blacklist = self.app.db.blacklist.update_one(
+        blacklist = self.db.blacklist.update_one(
             {"_id": data["pair"]}, {"$set": self.default_blacklist}
         )
 
         if not blacklist:
-            self.app.db.blacklist.insert(self.default_blacklist)
+            self.db.blacklist.insert(self.default_blacklist)
 
         resp = json_response(
             {"message": "Successfully updated blacklist", "blacklist": blacklist}
@@ -87,7 +84,6 @@ class Controller:
         Uses the average of min and max to compute AYP
         """
         print("Storing profitable signals from 3commas.io...")
-        app = create_app()
         consolidated_signals = []
         api = ThreeCommasApi()
         items = api.get_all_marketplace_item()
@@ -128,8 +124,8 @@ class Controller:
             })
 
         try:
-            app.db.three_commas_signals.delete_many({})    
-            app.db.three_commas_signals.insert_many(consolidated_signals)
+            self.db.three_commas_signals.delete_many({})    
+            self.db.three_commas_signals.insert_many(consolidated_signals)
         except Exception as err:
             print(err)
 
@@ -141,7 +137,7 @@ class Controller:
         per week
         """
         query = {}
-        signals = list(self.app.db.three_commas_signals.find(query))
+        signals = list(self.db.three_commas_signals.find(query))
 
         return json_response({"message": "Successfully retrieved profitable 3commas signals", "data": signals})
 

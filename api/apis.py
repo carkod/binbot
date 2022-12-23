@@ -25,7 +25,7 @@ class BinanceApi:
     server_time_url = f"{BASE}/api/v3/time"
     account_url = f"{BASE}/api/v3/account"
     exchangeinfo_url = f"{BASE}/api/v3/exchangeInfo"
-    ticker_price = f"{BASE}/api/v3/ticker/price"
+    ticker_price_url = f"{BASE}/api/v3/ticker/price"
     ticker24_url = f"{BASE}/api/v3/ticker/24hr"
     candlestick_url = f"{BASE}/api/v3/klines"
     order_url = f"{BASE}/api/v3/order"

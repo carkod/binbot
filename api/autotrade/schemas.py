@@ -1,25 +1,27 @@
 from time import time
-from marshmallow import Schema, fields
-from marshmallow.validate import OneOf
+from api.tools.handle_error import StandardResponse, PyObjectId
+from pydantic import BaseModel, Field
+from typing import Literal
 
+class AutotradeSettingsSchema(BaseModel):
+    _id: PyObjectId = Field(default_factory=PyObjectId)
+    updated_at: float = time() * 1000
+    candlestick_interval: str = "15m"
+    autotrade: Literal[0, 1] = 0
+    test_autotrade: Literal[0, 1] = 0
+    trailling: Literal["true", "false"] = "true"
+    trailling_deviation: float = 3
+    trailling_profit: float = 2.4
+    stop_loss: float = 0
+    take_profit: float = 2.3
+    balance_to_use: str = "USDT"
+    balance_size_to_use: str = "100"
+    max_request: int = 950
+    system_logs: list[str] = []
+    update_required: bool = False
+    telegram_signals: int = 1
+    max_active_autotrade_bots: int = 1
+    base_order_size: str = "15" # Assuming 10 USDT is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
 
-class AutotradeSettingsSchema(Schema):
-    _id: str = fields.Str()
-    updated_at: float = fields.Float()
-    candlestick_interval: str = fields.Str()
-    autotrade: int = fields.Int(validate=OneOf([0, 1]))
-    test_autotrade: int = fields.Int(validate=OneOf([0, 1])) # Redundant autotrade variable for legacy compatibility
-    trailling: str = fields.Str(required=True, validate=OneOf(["true", "false"]))
-    trailling_deviation: float = fields.Float()
-    trailling_profit: float = fields.Float()
-    stop_loss: float = fields.Float()
-    take_profit: float = fields.Float()
-    balance_to_use: str = fields.Str()
-    balance_size_to_use: str = fields.Str()
-    max_request: int = fields.Int()
-    system_logs: str = fields.List(fields.Str())
-    update_required: bool = fields.Boolean()
-    telegram_signals: int = fields.Int()
-    max_active_autotrade_bots: int = fields.Int()
-    base_order_size: str = fields.Str()
-
+class AutotradeSettingsResponse(StandardResponse):
+    data: AutotradeSettingsSchema

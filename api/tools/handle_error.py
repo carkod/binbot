@@ -8,7 +8,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from requests import Response, put
 from requests.exceptions import HTTPError
-from fastapi import Response as StarletteResponse
 
 class BinanceErrors(Exception):
     pass
@@ -43,10 +42,10 @@ def post_error(msg):
 def json_response(content, status=200):
     content = json.loads(json_util.dumps(content))
     response = JSONResponse(
-            status_code=status,
-            content=content,
-            media_type="application/json",
-        )
+        status_code=status,
+        content=content,
+        media_type="application/json",
+    )
     return response
 
 
@@ -74,7 +73,8 @@ def handle_binance_errors(response: Response):
         raise HTTPError()
     # Show error message for bad requests
     if response.status_code >= 400:
-        return response.json()
+        error = response.json()
+        raise BinanceErrors(error["msg"])
 
     if response.status_code == 418 or response.status_code == 429:
         print("Request weight limit hit, ban will come soon, waiting 1 hour")
