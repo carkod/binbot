@@ -1,8 +1,8 @@
 import pandas as pd
 import requests
-from api.apis import BinanceApi
-from api.tools.enum_definitions import EnumDefinitions
-from api.tools.handle_error import handle_binance_errors
+from apis import BinanceApi
+from tools.enum_definitions import EnumDefinitions
+from tools.handle_error import handle_binance_errors
 
 
 class Book_Order(BinanceApi):

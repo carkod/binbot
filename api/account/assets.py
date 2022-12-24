@@ -5,12 +5,12 @@ from decimal import Decimal
 import pandas as pd
 from bson.objectid import ObjectId
 
-from api.account.account import Account
-from api.account.schemas import BalanceSchema
-from api.db import setup_db
-from api.orders.models.book_order import Book_Order
-from api.tools.handle_error import InvalidSymbol, json_response
-from api.tools.round_numbers import round_numbers
+from account.account import Account
+from account.schemas import BalanceSchema
+from db import setup_db
+from orders.models.book_order import Book_Order
+from tools.handle_error import InvalidSymbol, json_response
+from tools.round_numbers import round_numbers
 
 
 class Assets(Account):

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from api.autotrade.controller import AutotradeSettingsController
-from api.autotrade.schemas import AutotradeSettingsResponse, AutotradeSettingsSchema
+from autotrade.controller import AutotradeSettingsController
+from autotrade.schemas import AutotradeSettingsResponse, AutotradeSettingsSchema
 
 autotrade_settings_blueprint = APIRouter()
 

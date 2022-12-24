@@ -1,6 +1,5 @@
-from pydantic import BaseModel, Field, validator
-from typing import ClassVar, Literal
-from api.tools.enum_definitions import EnumDefinitions
+from pydantic import BaseModel, validator
+from typing import Any
 class OrderSchema(BaseModel):
     order_type: str | None = None
     time_in_force: str | None = None
@@ -9,7 +8,7 @@ class OrderSchema(BaseModel):
     qty: str | None = None
     order_side: str | None = None
     order_id: str | None = None
-    fills: str | None = None
+    fills: Any = None
     price: float | None = None
     status: str | None = None
     deal_type: str | None = None # [base_order, take_profit, so_{x}, short_sell, short_buy]

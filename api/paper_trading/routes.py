@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from api.bots.controllers import Bot
-from api.bots.schemas import BotSchema
+from bots.controllers import Bot
+from bots.schemas import BotSchema
 
 
 paper_trading_blueprint = APIRouter()

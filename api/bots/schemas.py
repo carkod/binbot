@@ -4,9 +4,9 @@ from typing import Literal
 from bson.objectid import ObjectId
 from pydantic import BaseModel, Field, validator
 
-from api.deals.schema import DealSchema, OrderSchema
-from api.tools.enum_definitions import BinbotEnums
-from api.tools.handle_error import PyObjectId
+from deals.schema import DealSchema, OrderSchema
+from tools.enum_definitions import BinbotEnums
+from tools.handle_error import PyObjectId
 
 
 class SafetyOrderSchema(BaseModel):
@@ -64,10 +64,10 @@ class BotSchema(BaseModel):
 
     @validator("stop_loss", "take_profit", "trailling_deviation", "trailling_profit")
     def check_percentage(cls, v):
-        if 0 < float(v) < 100:
+        if 0 <= float(v) < 100:
             return v
         else:
-            raise ValueError(f'{v} must be a percentage')
+            raise ValueError(f'{v} must be a positive number')
     
     @validator("status")
     def check_statuses(cls, v: str):

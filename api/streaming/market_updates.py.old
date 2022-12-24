@@ -5,11 +5,11 @@ import requests
 import numpy
 
 from pymongo import ReturnDocument
-from api.account.account import Account
-from api.deals.controllers import CreateDealController
+from account.account import Account
+from deals.controllers import CreateDealController
 from websocket import WebSocketApp
-from api.tools.handle_error import handle_binance_errors
-from api.tools.round_numbers import round_numbers
+from tools.handle_error import handle_binance_errors
+from tools.round_numbers import round_numbers
 
 class MarketUpdates(Account):
     """

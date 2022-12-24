@@ -6,20 +6,20 @@ import requests
 from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 
-from api.account.account import Account
-from api.db import setup_db
-from api.deals.controllers import CreateDealController
-from api.orders.models.book_order import Book_Order
-from api.tools.enum_definitions import BinbotEnums
-from api.tools.exceptions import OpenDealError
-from api.tools.handle_error import (
+from account.account import Account
+from db import setup_db
+from deals.controllers import CreateDealController
+from orders.models.book_order import Book_Order
+from tools.enum_definitions import BinbotEnums
+from tools.exceptions import OpenDealError
+from tools.handle_error import (
     NotEnoughFunds,
     QuantityTooLow,
     handle_binance_errors,
     json_response,
     json_response_message,
 )
-from api.tools.round_numbers import supress_notation
+from tools.round_numbers import supress_notation
 
 
 class Bot(Account):

@@ -1,9 +1,9 @@
 import json
 
 from requests import HTTPError
-from api.apis import BinanceApi
-from api.tools.enum_definitions import EnumDefinitions
-from api.tools.handle_error import json_response_error
+from apis import BinanceApi
+from tools.enum_definitions import EnumDefinitions
+from tools.handle_error import json_response_error
 from flask import request
 
 

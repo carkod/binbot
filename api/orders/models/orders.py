@@ -1,8 +1,8 @@
-from api.account.account import Account
-from api.tools.enum_definitions import EnumDefinitions
-from api.tools.handle_error import json_response, json_response_error, json_response_message
-from api.tools.round_numbers import round_numbers
-from api.db import setup_db
+from account.account import Account
+from tools.enum_definitions import EnumDefinitions
+from tools.handle_error import json_response, json_response_error, json_response_message
+from tools.round_numbers import round_numbers
+from db import setup_db
 
 poll_percentage = 0
 

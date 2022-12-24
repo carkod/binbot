@@ -1,9 +1,9 @@
 import os
 import asyncio
 from binance import AsyncClient, BinanceSocketManager
-from api.db import setup_db
+from db import setup_db
 from pymongo import ReturnDocument
-from api.deals.controllers import CreateDealController
+from deals.controllers import CreateDealController
 
 
 class TerminateStreaming(Exception):
@@ -12,6 +12,7 @@ class TerminateStreaming(Exception):
 class StreamingController:
 
     def __init__(self):
+        print("Starting streaming controller")
         self.db = setup_db()
         # Start streaming service globally
         # This will allow access for the entire FastApi scope
@@ -224,6 +225,7 @@ class StreamingController:
                 print(f"get_klines sockets error: {error}")
     
     async def get_user_data(self):
+        print("Streaming user data")
         socket = await self.setup_client()
         user_data = socket.user_socket()
         async with user_data as ud:

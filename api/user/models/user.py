@@ -3,16 +3,16 @@ import os
 from passlib.hash import pbkdf2_sha256
 from jose import jwt
 
-from api.tools.handle_error import (
+from tools.handle_error import (
     json_response_error,
     json_response_message,
     json_response,
 )
 from bson.objectid import ObjectId
-from api.auth import encodeAccessToken
+from auth import encodeAccessToken
 from datetime import datetime
-from api.db import setup_db
-from api.user.schemas import UserSchema
+from db import setup_db
+from user.schemas import UserSchema
 from fastapi.encoders import jsonable_encoder
 
 class User:

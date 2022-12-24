@@ -6,16 +6,16 @@ import pandas as pd
 from pydantic import BaseModel
 from pymongo import ReturnDocument
 
-from api.apis import BinbotApi
-from api.tools.handle_error import (
+from apis import BinbotApi
+from tools.handle_error import (
     InvalidSymbol,
     json_response,
     json_response_error,
     json_response_message,
     BinanceErrors
 )
-from api.tools.round_numbers import interval_to_millisecs
-from api.db import setup_db
+from tools.round_numbers import interval_to_millisecs
+from db import setup_db
 from fastapi.encoders import jsonable_encoder
 
 
