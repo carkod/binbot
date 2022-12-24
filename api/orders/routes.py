@@ -1,6 +1,6 @@
-from api.orders.models.buy import BuyOrder
-from api.orders.models.orders import Orders
-from api.orders.models.sell import SellOrder
+from orders.models.buy import BuyOrder
+from orders.models.orders import Orders
+from orders.models.sell import SellOrder
 from fastapi import APIRouter
 
 order_blueprint = APIRouter()

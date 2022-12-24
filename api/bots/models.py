@@ -1,7 +1,7 @@
 from time import time
 from bson.objectid import ObjectId
-from api.deals.models import DealModel, OrderModel
-from api.tools.enum_definitions import BinbotEnums
+from deals.models import DealModel, OrderModel
+from tools.enum_definitions import BinbotEnums
 
 
 class SafetyOrderModel:

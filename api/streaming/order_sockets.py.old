@@ -1,11 +1,11 @@
 import json
 import threading
 import requests
-from api.account.account import Account
-from api.apis import BinanceApi
-from api.deals.controllers import CreateDealController
-from api.threads import market_update_thread
-from api.tools.handle_error import handle_error
+from account.account import Account
+from apis import BinanceApi
+from deals.controllers import CreateDealController
+from threads import market_update_thread
+from tools.handle_error import handle_error
 from websocket import WebSocketApp
 
 

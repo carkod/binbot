@@ -1,9 +1,9 @@
-from api.apis import BinanceApi
-from api.tools.enum_definitions import EnumDefinitions
+from apis import BinanceApi
+from tools.enum_definitions import EnumDefinitions
 from flask import request
-from api.tools.round_numbers import supress_notation
-from api.account.account import Account
-from api.tools.handle_error import json_response_error
+from tools.round_numbers import supress_notation
+from account.account import Account
+from tools.handle_error import json_response_error
 from requests.exceptions import HTTPError
 
 class BuyOrder(Account):

@@ -6,10 +6,10 @@ from urllib.parse import urlparse
 
 import pandas as pd
 import requests
-from api.account import Account
-from api.apis import BinanceApi
-from api.tools import EnumDefinitions
-from api.tools.handle_error import handle_binance_errors
+from account import Account
+from apis import BinanceApi
+from tools import EnumDefinitions
+from tools.handle_error import handle_binance_errors
 
 
 class BuyOrder(BinanceApi):

@@ -4,7 +4,7 @@ import os
 from urllib.parse import urlencode
 from time import time
 from requests import get, request
-from api.tools.handle_error import handle_binance_errors, json_response, json_response_error
+from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from py3cw.request import Py3CW
 
 class BinanceApi:
@@ -106,10 +106,8 @@ class BinbotApi(BinanceApi):
 
     # Trade operations
     bb_buy_order_url = f"{bb_base_url}/order/buy"
-    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
     bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
     bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
     bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
     bb_opened_orders_url = f"{bb_base_url}/order/open"
     bb_close_order_url = f"{bb_base_url}/order/close"

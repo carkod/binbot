@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-from api.account.account import Account
-from api.account.assets import Assets
-from api.account.schemas import BalanceResponse
+from account.account import Account
+from account.assets import Assets
+from account.schemas import BalanceResponse
 
 account_blueprint = APIRouter()
 

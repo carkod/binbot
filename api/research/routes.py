@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-from api.apis import ThreeCommasApi
-from api.research.controller import Controller
-from api.research.schemas import BlacklistSchema, BlacklistResponse
+from apis import ThreeCommasApi
+from research.controller import Controller
+from research.schemas import BlacklistSchema, BlacklistResponse
 
 research_blueprint = APIRouter()
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from api.charts.models import Candlestick, CandlestickItemRequest
+from charts.models import Candlestick, CandlestickItemRequest
 
 charts_blueprint = APIRouter()
 

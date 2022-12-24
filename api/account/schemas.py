@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
-from api.tools.handle_error import StandardResponse
+from tools.handle_error import StandardResponse
 
 
 class BalanceSchema(BaseModel):

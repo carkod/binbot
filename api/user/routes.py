@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-from api.auth import auth
-from api.user.models.user import User
-from api.user.schemas import UserSchema, LoginRequest, UserResponse
+from auth import auth
+from user.models.user import User
+from user.schemas import UserSchema, LoginRequest, UserResponse
 
 user_blueprint = APIRouter()
 

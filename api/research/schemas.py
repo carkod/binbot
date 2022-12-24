@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from api.tools.handle_error import PyObjectId, StandardResponse
+from tools.handle_error import PyObjectId, StandardResponse
 
 class BlacklistSchema(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
