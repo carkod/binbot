@@ -1,7 +1,7 @@
-from fastapi import APIRouter
-
+from fastapi import APIRouter, Query
 from bots.controllers import Bot
 from bots.schemas import BotSchema
+from typing import List
 
 
 paper_trading_blueprint = APIRouter()
@@ -12,7 +12,7 @@ def get(
     status: str | None = None,
     start_date: float | None = None,
     end_date: float | None = None,
-    no_cooldown: int | None = None,
+    no_cooldown: bool = True,
 ):
     return Bot(collection_name="paper_trading").get(status, start_date, end_date, no_cooldown)
 
@@ -33,8 +33,11 @@ def edit(id, data):
 
 
 @paper_trading_blueprint.delete("/paper-trading", tags=["paper trading"])
-def delete(ids: list):
-    return Bot(collection_name="paper_trading").delete(ids)
+def delete(id: List[str] = Query(...)):
+    """
+    Receives a list of `id=a1b2c3&id=b2c3d4`
+    """
+    return Bot(collection_name="paper_trading").delete(id)
 
 
 @paper_trading_blueprint.get("/paper-trading/activate/{id}", tags=["paper trading"])

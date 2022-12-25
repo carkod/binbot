@@ -1,4 +1,5 @@
 import asyncio
+
 from streaming.streaming_controller import StreamingController
 
 # if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
@@ -14,6 +15,7 @@ from streaming.streaming_controller import StreamingController
 #     )
 #     scheduler.start()
 #     atexit.register(lambda: scheduler.shutdown(wait=False))
+
 
 async def main():
     mu = StreamingController()

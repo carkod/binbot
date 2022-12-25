@@ -6,9 +6,23 @@ from pydantic import BaseModel, Field, validator
 
 from deals.schema import DealSchema, OrderSchema
 from tools.enum_definitions import BinbotEnums
-from tools.handle_error import PyObjectId
 
+class PyObjectId(ObjectId):
 
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not ObjectId.is_valid(v):
+            raise ValueError('Invalid objectid')
+        return ObjectId(v)
+
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.update(type='string')
+  
 class SafetyOrderSchema(BaseModel):
     name: str = "so_1"  # should be so_<index>
     status: Literal[
@@ -29,6 +43,7 @@ class SafetyOrderSchema(BaseModel):
 
 
 class BotSchema(BaseModel):
+    id: str | PyObjectId = Field(..., alias="_id")
     pair: str
     balance_size_to_use: float = 0
     balance_to_use: str = "1"
@@ -55,7 +70,6 @@ class BotSchema(BaseModel):
     # Deal and orders are internal, should never be updated by outside data
     total_commission: float = 0
     updated_at: float = 0
-    _id: PyObjectId = Field(default_factory=PyObjectId)
 
     @validator("pair", "base_order_size", "candlestick_interval")
     def check_names_not_empty(cls, v):
@@ -67,7 +81,7 @@ class BotSchema(BaseModel):
         if 0 <= float(v) < 100:
             return v
         else:
-            raise ValueError(f'{v} must be a positive number')
+            raise ValueError(f'{v} must be a percentage')
     
     @validator("status")
     def check_statuses(cls, v: str):
@@ -88,6 +102,7 @@ class BotSchema(BaseModel):
         return v
 
     class Config:
+        arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
         schema_extra = {
             "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Binance and",

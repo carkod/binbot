@@ -35,6 +35,6 @@ class DealSchema(BaseModel):
 
     @validator("buy_price", "current_price", "avg_buy_price", "original_buy_price", "take_profit_price", "sell_price", "short_sell_price")
     def check_prices(cls, v):
-        if v < 0:
+        if float(v) < 0:
             raise ValueError("Price must be a positive number")
         return v
