@@ -9,7 +9,6 @@ from requests.exceptions import HTTPError
 from pydantic import ValidationError
 
 from account.account import Account
-from bots.models import BotModel
 from bots.schemas import BotSchema
 from deals.models import DealModel, OrderModel
 from deals.schema import DealSchema, OrderSchema
@@ -21,10 +20,9 @@ from tools.exceptions import (
     TakeProfitError,
     TraillingProfitError,
 )
-from tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_errors
+from tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_errors, encode_json
 from tools.round_numbers import round_numbers, supress_notation
 from db import setup_db
-from fastapi.encoders import jsonable_encoder
 
 
 class CreateDealController(Account):
@@ -42,7 +40,7 @@ class CreateDealController(Account):
 
     def __init__(self, bot, db_collection="paper_trading"):
         # Inherit from parent class
-        self.active_bot = BotModel(**bot)
+        self.active_bot = BotSchema.parse_obj(bot)
         self.db = setup_db()
         self.db_collection = self.db[db_collection]
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot.pair)
@@ -123,7 +121,7 @@ class CreateDealController(Account):
 
     def update_deal_logs(self, msg):
         self.db_collection.update_one(
-            {"_id": self.active_bot._id},
+            {"_id": self.active_bot.id},
             {"$push": {"errors": msg}},
         )
         return msg
@@ -198,26 +196,18 @@ class CreateDealController(Account):
             stop_loss_price=stop_loss_price,
         )
 
-        try:
-            bot = BotSchema(**self.active_bot)
-            bot.pop("_id")
+        bot = encode_json(self.active_bot)
+        bot.pop("_id")
 
-            bot = self.db_collection.find_one_and_update(
-                {"_id": self.active_bot._id},
-                {"$set": bot},
-                return_document=ReturnDocument.AFTER,
-            )
-        except ValidationError as error:
-            raise BaseDealError(error.messages)
-        except (TypeError, AttributeError) as error:
-            message = str(";".join(error.args))
-            raise BaseDealError(message)
-        except Exception as error:
-            raise BaseDealError(error)
+        bot = self.db_collection.find_one_and_update(
+            {"_id": self.active_bot.id},
+            {"$set": bot},
+            return_document=ReturnDocument.AFTER,
+        )
 
         return bot
 
-    def take_profit_order(self, deal_data):
+    def take_profit_order(self, deal_data) -> BotSchema:
         """
         take profit order (Binance take_profit)
         - We only have stop_price, because there are no book bids/asks in t0
@@ -302,11 +292,12 @@ class CreateDealController(Account):
         self.active_bot.errors.append(msg)
 
         try:
-            bot = BotSchema(self.active_bot)
-            bot.pop("_id")
+            bot = encode_json(self.active_bot)
+            if "_id" in bot:
+                bot.pop("_id")
 
             bot = self.db_collection.find_one_and_update(
-                {"_id": self.active_bot._id},
+                {"_id": self.active_bot.id},
                 {
                     "$set": bot,
                 },
@@ -317,7 +308,7 @@ class CreateDealController(Account):
 
         return bot
 
-    def trailling_profit(self, current_price):
+    def trailling_profit(self, current_price) -> BotSchema:
         """
         Sell at take_profit price, because prices will not reach trailling
         """
@@ -392,33 +383,33 @@ class CreateDealController(Account):
         self.active_bot.orders.append(order_data)
 
         self.active_bot.deal.take_profit_price = res["price"]
-        self.active_bot.deal.trailling_profit = res["price"]
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
         self.active_bot.status = "completed"
-        msg = f"Completed take profit after failing to break trailling"
+        msg = f"Completed take profit after failing to break trailling {self.active_bot.pair}"
         self.active_bot.errors.append(msg)
         print(msg)
 
         try:
 
-            bot_schema = BotSchema()
-            bot = bot_schema.dump(self.active_bot)
-            bot.pop("_id")
+            bot = encode_json(self.active_bot)
+            if "_id" in bot:
+                bot.pop("_id")
 
             bot = self.db_collection.find_one_and_update(
-                {"_id": self.active_bot._id},
+                {"_id": self.active_bot.id},
                 {
                     "$set": bot,
                 },
+                return_document=ReturnDocument.AFTER,
             )
 
         except Exception as error:
-            self.update_deal_logs("Failed to close trailling take profit: " + error)
+            self.update_deal_logs(f"Failed to close trailling take profit: {error}")
             raise TraillingProfitError(error)
 
-        pass  # Completed
+        return bot
 
     def open_deal(self):
 
@@ -451,8 +442,8 @@ class CreateDealController(Account):
         if not base_order_deal:
             bot = self.base_order()
         else:
-            bot = self.db_collection.find_one({"_id": self.active_bot._id})
-            self.active_bot = BotSchema(**bot)
+            bot = self.db_collection.find_one({"_id": self.active_bot.id})
+            self.active_bot = BotSchema.parse_obj(bot)
 
         """
         Optional deals section
@@ -499,21 +490,11 @@ class CreateDealController(Account):
             # an update of the
             self.active_bot.deal.trailling_stop_loss_price = 0
 
-        try:
-            id = self.active_bot._id
-            bot = jsonable_encoder(self.active_bot.pop("_id"))
+        bot = encode_json(self.active_bot)
+        if "_id" in bot:
+            bot.pop("_id")
 
-            self.db_collection.update_one({"_id": id}, {"$set": self.active_bot})
-
-        except ValidationError as error:
-            msg = f"Open deal error: {error.messages}"
-            raise OpenDealError(msg)
-        except AttributeError as error:
-            msg = f"Open deal error: {error.messages}"
-            raise OpenDealError(msg)
-        except Exception as e:
-            raise OpenDealError(e)
-
+        self.db_collection.update_one({"_id": self.active_bot.id}, {"$set": bot})
         return
 
     def close_all(self):
@@ -604,10 +585,9 @@ class CreateDealController(Account):
                     "price": supress_notation(new_tp_price, self.price_precision),
                 }
                 res = requests.post(url=self.bb_sell_order_url, json=new_tp_order)
-                handle_binance_errors(res)
 
                 # New take profit order successfully created
-                order = res.json()
+                order = handle_binance_errors(res)
 
                 # Replace take_profit order
                 take_profit_order = {
@@ -632,7 +612,7 @@ class CreateDealController(Account):
                 new_deals.append(take_profit_order)
                 self.active_bot.orders = new_deals
                 self.db.bots.update_one(
-                    {"_id": self.active_bot._id},
+                    {"_id": self.active_bot.id},
                     {
                         "$push": {
                             "orders": take_profit_order,
@@ -684,12 +664,13 @@ class CreateDealController(Account):
                 # Send error message to the bot logs
                 self.active_bot.safety_orders[so_index].status = 2
                 self.active_bot.errors.append("Not enough funds to execute SO")
-                bot_schema = BotSchema()
-                bot = bot_schema.dump(self.active_bot)
-                bot.pop("_id")
+                
+                bot = encode_json(self.active_bot)
+                if "_id" in bot:
+                    bot.pop("_id")
 
                 self.db_collection.update_one(
-                    {"_id": self.active_bot._id},
+                    {"_id": self.active_bot.id},
                     {"$set": bot},
                 )
                 return
@@ -736,9 +717,9 @@ class CreateDealController(Account):
             weighted_avg_buy_price = 0
             for order in self.active_bot.orders:
                 if order.deal_type == "base_order":
-                    weighted_avg_buy_price += order.qty * order.price
+                    weighted_avg_buy_price += float(order.qty) * float(order.price)
                 if order.deal_type.startswith("so"):
-                    weighted_avg_buy_price += order.qty * order.price
+                    weighted_avg_buy_price += float(order.qty) * float(order.price)
 
         self.active_bot.deal.buy_price = weighted_avg_buy_price / buy_total_qty
 
@@ -753,7 +734,7 @@ class CreateDealController(Account):
             # First cancel old order to unlock balance
             try:
                 self.bb_request(
-                    f"{self.bb_close_order_url}/{self.active_bot['pair']}/{order_id}",
+                    f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}",
                     "DELETE",
                 )
                 self.update_deal_logs("Old take profit order cancelled")
@@ -773,18 +754,18 @@ class CreateDealController(Account):
         self.active_bot.deal.trailling_stop_loss_price = 0
 
         try:
-            bot_schema = BotSchema()
-            bot = bot_schema.dump(self.active_bot)
+            bot = encode_json(self.active_bot)
             bot.pop("_id")
 
             self.db_collection.update_one(
-                {"_id": self.active_bot._id},
+                {"_id": self.active_bot.id},
                 {"$set": bot},
             )
-            self.update_deal_logs(f"Safety order triggered!")
+            self.update_deal_logs("Safety order triggered!")
+            print("Safety order triggered!")
 
         except ValidationError as error:
-            self.update_deal_logs(f"Safety orders error: {error.messages}")
+            self.update_deal_logs(f"Safety orders error: {error}")
             return
         except (TypeError, AttributeError) as error:
             message = str(";".join(error.args))
@@ -815,7 +796,7 @@ class CreateDealController(Account):
             self.update_deal_logs(
                 f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
             )
-            params = {"id": self.active_bot._id}
+            params = {"id": self.active_bot.id}
             self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
             return
 
@@ -867,7 +848,7 @@ class CreateDealController(Account):
                     )
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
-                self.bb_request(f"{self.bb_bot_url}/{self.active_bot._id}", "DELETE")
+                self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
                 print(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:
                 self.update_deal_logs(
@@ -910,16 +891,15 @@ class CreateDealController(Account):
 
         try:
 
-            bot_schema = BotSchema()
-            bot = bot_schema.dump(self.active_bot)
+            bot = encode_json(self.active_bot)
             bot.pop("_id")
 
             self.db_collection.update_one(
-                {"_id": self.active_bot._id},
+                {"_id": self.active_bot.id},
                 {"$set": bot},
             )
         except ValidationError as error:
-            self.update_deal_logs(f"Stop loss error: {error.messages}")
+            self.update_deal_logs(f"Stop loss error: {error}")
             return
         except (TypeError, AttributeError) as error:
             message = str(";".join(error.args))
@@ -951,7 +931,7 @@ class CreateDealController(Account):
             self.update_deal_logs(
                 f"Cannot execute short sell, quantity is {qty}. Deleting bot"
             )
-            params = {"id": self.active_bot._id}
+            params = {"id": self.active_bot.id}
             self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
             return
 
@@ -1005,7 +985,7 @@ class CreateDealController(Account):
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(
-                    self.bb_bot_url, "DELETE", params={"id": self.active_bot._id}
+                    self.bb_bot_url, "DELETE", params={"id": self.active_bot.id}
                 )
                 print(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:
@@ -1059,16 +1039,15 @@ class CreateDealController(Account):
 
         try:
 
-            bot_schema = BotSchema()
-            bot = bot_schema.dump(self.active_bot)
+            bot = encode_json(self.active_bot)
             bot.pop("_id")
 
             self.db_collection.update_one(
-                {"_id": self.active_bot._id},
+                {"_id": self.active_bot.id},
                 {"$set": bot},
             )
         except ValidationError as error:
-            self.update_deal_logs(f"Short sell error: {error.messages}")
+            self.update_deal_logs(f"Short sell error: {error}")
             return
         except (TypeError, AttributeError) as error:
             message = str(";".join(error.args))
@@ -1093,16 +1072,17 @@ class CreateDealController(Account):
             self.open_deal()
             self.update_deal_logs("Successfully activated bot!")
 
-            bot = jsonable_encoder(self.active_bot)
-            bot.pop("_id")
+            bot = encode_json(self.active_bot)
+            if "_id" in bot:
+                bot.pop("_id")
 
             self.db_collection.update_one(
-                {"_id": self.active_bot._id},
+                {"_id": self.active_bot.id},
                 {"$set": bot},
             )
 
         except ValidationError as error:
-            self.update_deal_logs(f"Short buy error: {error.messages}")
+            self.update_deal_logs(f"Short buy error: {error}")
             return
         except (TypeError, AttributeError) as error:
             message = str(";".join(error.args))
@@ -1144,6 +1124,5 @@ class CreateDealController(Account):
                         new_trailling_stop_loss_price
                     )
 
-        bot_schema = BotSchema()
-        bot = bot_schema.dump(self.active_bot)
+        bot = encode_json(self.active_bot)
         return bot

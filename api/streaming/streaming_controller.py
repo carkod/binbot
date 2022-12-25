@@ -46,11 +46,7 @@ class StreamingController:
         # Short strategy
         if "short_buy_price" in current_bot and float(current_bot["short_buy_price"]) > 0 and float(current_bot["short_buy_price"]) >= float(close_price):
             # If hit short_buy_price, resume long strategy by resetting short_buy_price
-            try:
-                CreateDealController(current_bot, db_collection=db_collection).execute_short_buy()
-            except Exception as error:
-                print(f"Short buy price update error: {error}")
-
+            CreateDealController(current_bot, db_collection=db_collection).execute_short_buy()
             raise TerminateStreaming()
 
         # Long strategy starts
@@ -164,7 +160,7 @@ class StreamingController:
                         except Exception as error:
                             print(error)
                             return
-                        raise TerminateStreaming()
+                        # raise TerminateStreaming("Terminate streaming")
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)

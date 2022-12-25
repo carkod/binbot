@@ -20,6 +20,8 @@ from tools.handle_error import (
     json_response_message,
 )
 from tools.round_numbers import supress_notation
+from typing import List
+from fastapi import Query
 
 
 class Bot(Account):
@@ -151,7 +153,7 @@ class Bot(Account):
             resp = json_response_message(f"Failed to create new bot: {e}")
         return resp
 
-    def delete(self, bot_ids: list):
+    def delete(self, bot_ids: List[str] = Query(...)):
 
         if not bot_ids or not isinstance(bot_ids, list):
             return json_response_message("At least one bot id is required")

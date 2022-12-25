@@ -1,6 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from bots.controllers import Bot
 from bots.schemas import BotSchema
+from typing import List
 
 bot_blueprint = APIRouter()
 
@@ -10,7 +11,7 @@ def get(
     status: str | None = None,
     start_date: float | None = None,
     end_date: float | None = None,
-    no_cooldown: int | None = None,
+    no_cooldown: bool = True,
 ):
     return Bot(collection_name="bots").get(status, start_date, end_date, no_cooldown)
 
@@ -31,8 +32,8 @@ def edit(id, bot_item: BotSchema):
 
 
 @bot_blueprint.delete("/bot", tags=["bots"])
-def delete(ids: list):
-    return Bot(collection_name="bots").delete(ids)
+def delete(id: List[str] = Query(...)):
+    return Bot(collection_name="bots").delete(id)
 
 
 @bot_blueprint.get("/bot/activate/{id}", tags=["bots"])

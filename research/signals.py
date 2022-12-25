@@ -127,13 +127,13 @@ class SetupSignals(BinbotApi):
         # this avoids running too many useless bots
         # Temporarily restricting to 1 bot for low funds
         bots_res = requests.get(
-            url=self.bb_bot_url, params={"status": "active", "no_cooldown": "true"}
+            url=self.bb_bot_url, params={"status": "active", "no_cooldown": True}
         )
         active_bots = handle_binance_errors(bots_res)["data"]
         self.active_symbols = [bot["pair"] for bot in active_bots]
 
         paper_trading_bots_res = requests.get(
-            url=self.bb_test_bot_url, params={"status": "active", "no_cooldown": "true"}
+            url=self.bb_test_bot_url, params={"status": "active", "no_cooldown": True}
         )
         paper_trading_bots = handle_binance_errors(paper_trading_bots_res)
         self.active_test_bots = [item["pair"] for item in paper_trading_bots["data"]]

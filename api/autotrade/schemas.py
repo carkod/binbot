@@ -1,10 +1,10 @@
 from time import time
-from tools.handle_error import StandardResponse, PyObjectId
+from tools.handle_error import StandardResponse
 from pydantic import BaseModel, Field
 from typing import Literal
 
 class AutotradeSettingsSchema(BaseModel):
-    _id: PyObjectId = Field(default_factory=PyObjectId)
+    _id: str
     updated_at: float = time() * 1000
     candlestick_interval: str = "15m"
     autotrade: Literal[0, 1] = 0

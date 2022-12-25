@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from requests import Response, put
 from requests.exceptions import HTTPError
+from fastapi.encoders import jsonable_encoder
+from copy import deepcopy
 
 class BinanceErrors(Exception):
     pass
@@ -18,6 +20,9 @@ class InvalidSymbol(BinanceErrors):
 
 
 class NotEnoughFunds(BinanceErrors):
+    pass
+
+class BinbotErrors(Exception):
     pass
 
 
@@ -40,7 +45,7 @@ def post_error(msg):
 
 
 def json_response(content, status=200):
-    content = json.loads(json_util.dumps(content))
+    content = json.loads(json_util.dumps(content)) # Objectid serialization
     response = JSONResponse(
         status_code=status,
         content=content,
@@ -74,7 +79,10 @@ def handle_binance_errors(response: Response):
     # Show error message for bad requests
     if response.status_code >= 400:
         error = response.json()
-        raise BinanceErrors(error["msg"])
+        if "msg" in error:
+            raise BinanceErrors(error["msg"])
+        if "error" in error:
+            raise BinbotErrors(error["message"])
 
     if response.status_code == 418 or response.status_code == 429:
         print("Request weight limit hit, ban will come soon, waiting 1 hour")
@@ -88,6 +96,11 @@ def handle_binance_errors(response: Response):
         print("Request weight limit prevention pause, waiting 1 min")
         sleep(120)
 
+    # Binbot errors
+    if content and "error" in content:
+        raise BinanceErrors(content["message"])
+
+    # Binance errors
     if content and "code" in content:
         if content["code"] == -1013:
             raise QuantityTooLow()
@@ -114,20 +127,20 @@ def handle_binance_errors(response: Response):
         return content
 
 
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid objectid")
-        return ObjectId(v)
-
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type="string")
+def encode_json(raw):
+    """
+    Wrapper for jsonable_encoder to encode ObjectId
+    """
+    if hasattr(raw, "_id"):
+        # Objectid serialization
+        id = str(raw._id)
+        content = deepcopy(raw)
+        del content._id
+        content = jsonable_encoder(content)
+        content["_id"]= id
+    else:
+        content = jsonable_encoder(raw) 
+    return content
 
 
 class StandardResponse(BaseModel):

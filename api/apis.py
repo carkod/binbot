@@ -108,11 +108,8 @@ class BinbotApi(BinanceApi):
     bb_buy_order_url = f"{bb_base_url}/order/buy"
     bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
     bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
     bb_opened_orders_url = f"{bb_base_url}/order/open"
     bb_close_order_url = f"{bb_base_url}/order/close"
-    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
-    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
     # balances
     bb_balance_url = f"{bb_base_url}/account/balance/raw"
