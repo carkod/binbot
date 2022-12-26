@@ -71,44 +71,24 @@ jobs:
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker push carloswufei/binbot
 
-  push_research_to_registry:
-    name: Binbot research docker image
-    runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo:latest
-        ports:
-          - 27018:27017
-      api:
-        image: carloswufei/binbot
-        ports:
-          - 8006:8006
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
-      - name: Build image
-        run: |
-          cd research
-          docker build -t binbot_research .
-      - name: Tag image
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        run: |
-          docker tag binbot_research carloswufei/binbot_research:latest
-      - name: Push to Docker Hub
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        run: |
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push carloswufei/binbot_research:latest
-  
   python_tests:
     name: Python code tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
-      - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
+      # Setup Python (faster than using Python container)
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10.8"
+      - name: Install pipenv
+        run: |
+          python3 -m pip install --upgrade pipenv wheel
       - name: Install dependencies
-        run: pip3 install coverage httpx pytest
+        run: |
+          pipenv install --system --deploy --ignore-pipfile --clear
+        working-directory: api
       - name: Run tests
-        run: coverage run -m pytest -v api/tests && coverage report -m
+        run: pipenv run pytest -v
+        working-directory: api

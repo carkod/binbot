@@ -1,24 +1,22 @@
 import datetime
 import os
 
-from flask import current_app, request
-from flask_httpauth import HTTPTokenAuth
 from jose import jwt
 
-auth = HTTPTokenAuth(scheme="Bearer")
+# auth = HTTPTokenAuth(scheme="Bearer")
 
 
-@auth.verify_token
-def verify_token(token):
-    # Research app exception
-    # Authorize local requests
-    if request.headers.environ["SERVER_NAME"] in ["localhost", "127.0.0.1"]:
-        return True
-    user = current_app.db.users.find_one({"access_token": token})
-    if user:
-        return True
-    else:
-        return False
+# @auth.verify_token
+# def verify_token(token):
+#     # Research app exception
+#     # Authorize local requests
+#     if request.headers.environ["SERVER_NAME"] in ["localhost", "127.0.0.1"]:
+#         return True
+#     user = current_app.db.users.find_one({"access_token": token})
+#     if user:
+#         return True
+#     else:
+#         return False
 
 
 def encodeAccessToken(user_id, email):
