@@ -1,14 +1,13 @@
 import requests
-from api.apis import BinbotApi
-from api.tools.handle_error import (
+from apis import BinbotApi
+from tools.handle_error import (
     handle_binance_errors,
     json_response,
     json_response_message,
     json_response_error,
 )
 from decimal import Decimal
-from api.db import setup_db
-
+from db import setup_db
 
 
 class Account(BinbotApi):

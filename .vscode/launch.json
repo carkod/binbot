@@ -2,15 +2,23 @@
   "version": "0.0.2",
   "configurations": [
     {
-      "name": "Python: FastAPI",
+      "name": "Python: streaming",
       "type": "python",
       "request": "launch",
-      "module": "uvicorn",
-      "args": ["api.main:app", "--port", "8006"],
-      "jinja": true,
-      "justMyCode": true,
-      "console": "internalConsole"
+      "program": "${workspaceFolder}/api/market_updates.py",
+      "console": "internalConsole",
+      "justMyCode": true
     },
+    {
+      "name": "Python: api",
+      "type": "python",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/api",
+      "program": "main.py",
+      "console": "internalConsole",
+      "justMyCode": true
+    },
+
     {
       "type": "chrome",
       "request": "launch",

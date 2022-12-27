@@ -4,7 +4,7 @@ import os
 from urllib.parse import urlencode
 from time import time
 from requests import get, request
-from api.tools.handle_error import handle_binance_errors, json_response, json_response_error
+from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from py3cw.request import Py3CW
 
 class BinanceApi:
@@ -50,7 +50,7 @@ class BinanceApi:
         data = self.request(url=self.server_time_url)
         return data["serverTime"]
 
-    def signed_request(self, url, method="GET", payload={}):
+    def signed_request(self, url, method="GET", payload={}, params={}):
         """
         USER_DATA, TRADE signed requests
         """
@@ -71,7 +71,7 @@ class BinanceApi:
             hashlib.sha256,
         ).hexdigest()
         url = f"{url}?{query_string}&signature={signature}"
-        data = self.request(method, url=url, headers=headers)
+        data = self.request(method, url=url, headers=headers, params=params)
         return data
 
     def request(self, method="GET", **args):
@@ -106,15 +106,10 @@ class BinbotApi(BinanceApi):
 
     # Trade operations
     bb_buy_order_url = f"{bb_base_url}/order/buy"
-    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
     bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
     bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
-    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
     bb_opened_orders_url = f"{bb_base_url}/order/open"
     bb_close_order_url = f"{bb_base_url}/order/close"
-    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
-    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
     # balances
     bb_balance_url = f"{bb_base_url}/account/balance/raw"

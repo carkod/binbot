@@ -1,10 +1,10 @@
-from api.db import setup_db
+from db import setup_db
 from datetime import datetime
 from time import sleep
-from api.tools.handle_error import json_response
+from tools.handle_error import json_response
 from pymongo.errors import DuplicateKeyError
-from api.apis import ThreeCommasApi
-from api.tools.round_numbers import round_numbers
+from apis import ThreeCommasApi
+from tools.round_numbers import round_numbers
 from pymongo import ASCENDING
 
 class Controller:

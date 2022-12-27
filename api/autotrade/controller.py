@@ -2,8 +2,8 @@ from typing import Literal
 
 from pydantic import ValidationError
 
-from api.db import setup_db
-from api.tools.handle_error import (
+from db import setup_db
+from tools.handle_error import (
     json_response,
     json_response_error,
     json_response_message,
