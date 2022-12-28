@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, validator
 
 from deals.schema import DealSchema, OrderSchema
 from tools.enum_definitions import BinbotEnums
+from tools.handle_error import StandardResponse
 
 class PyObjectId(ObjectId):
 
@@ -43,7 +44,7 @@ class SafetyOrderSchema(BaseModel):
 
 
 class BotSchema(BaseModel):
-    id: str | PyObjectId = Field(..., alias="_id")
+    id: str | PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     pair: str
     balance_size_to_use: float = 0
     balance_to_use: str = "1"
@@ -131,3 +132,7 @@ class BotSchema(BaseModel):
                 "total_commission": 0,
             },
         }
+
+
+class BotListResponse(StandardResponse):
+    data: list[BotSchema]

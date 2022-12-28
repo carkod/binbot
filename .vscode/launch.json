@@ -10,15 +10,16 @@
       "justMyCode": true
     },
     {
-      "name": "Python: api",
+      "name": "Python: FastAPI",
       "type": "python",
       "request": "launch",
+      "module": "uvicorn",
       "cwd": "${workspaceFolder}/api",
-      "program": "main.py",
-      "console": "internalConsole",
-      "justMyCode": true
+      "args": ["main:app", "--port", "8008", "--workers", "3"],
+      "jinja": true,
+      "justMyCode": true,
+      "console": "internalConsole"
     },
-
     {
       "type": "chrome",
       "request": "launch",

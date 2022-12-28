@@ -54,7 +54,7 @@ export function removeToken() {
 export function buildBackUrl() {
   let base = window.location.hostname.split(".")
   if (base.includes("localhost")) {
-    base = ["localhost:5000"]
+    base = ["localhost:8008"]
   } else {
     base.unshift("api")
   }

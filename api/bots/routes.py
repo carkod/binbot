@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Query
 from bots.controllers import Bot
-from bots.schemas import BotSchema
+from bots.schemas import BotSchema, BotListResponse
 from typing import List
 
 bot_blueprint = APIRouter()
 
 
-@bot_blueprint.get("/bot", response_model=list[BotSchema], tags=["bots"])
+@bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
 def get(
     status: str | None = None,
     start_date: float | None = None,
@@ -27,7 +27,7 @@ def create(bot_item: BotSchema):
 
 
 @bot_blueprint.put("/bot/{id}", tags=["bots"])
-def edit(id, bot_item: BotSchema):
+def edit(id: str, bot_item: BotSchema):
     return Bot(collection_name="bots").edit(id, bot_item)
 
 
@@ -37,12 +37,12 @@ def delete(id: List[str] = Query(...)):
 
 
 @bot_blueprint.get("/bot/activate/{id}", tags=["bots"])
-def activate(id):
+def activate(id: str):
     return Bot(collection_name="bots").activate(id)
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", tags=["bots"])
-def deactivate(id):
+def deactivate(id: str):
     """
     Deactivation means closing all deals and selling to GBP
     Otherwise losses will be incurred
@@ -51,5 +51,5 @@ def deactivate(id):
 
 
 @bot_blueprint.put("/bot/archive/{id}", tags=["bots"])
-def archive(id):
+def archive(id: str):
     return Bot(collection_name="bots").put_archive(id)

@@ -112,8 +112,10 @@ class Bot(Account):
             bot = data.dict()
 
             if "_id" in bot:
+                # ObjectId(...) is not required here BotSchema provides a PyObjectId factory function
+                # which creates a Object Id
                 result = self.db_collection.update_one(
-                    {"_id": ObjectId(bot["_id"])}, bot
+                    {"_id": bot["_id"]}, bot
                 )
                 resp = json_response(
                     {
@@ -176,9 +178,6 @@ class Bot(Account):
                 CreateDealController(
                     bot, db_collection=self.db_collection.name
                 ).open_deal()
-                self.db_collection.update_one(
-                    {"_id": ObjectId(botId)}, {"$set": {"status": "active"}}
-                )
                 resp = json_response_message("Successfully activated bot!")
                 asyncio.Event.connection_open = False  # type: ignore
                 return resp
