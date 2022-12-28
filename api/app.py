@@ -27,8 +27,12 @@ def create_app():
     )
 
     # Routes
-    @app.get("/", description="Index endpoint for testing that the API app works")
-    def index():
+    @app.head("/") # Fix issue with curl returning method not allowed (https://github.com/tiangolo/fastapi/issues/1773)
+    @app.get("/")
+    def root():
+        """
+        Check app works
+        """
         return {"status": "Online"}
 
     app.include_router(user_blueprint)
@@ -46,5 +50,6 @@ def create_app():
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=jsonable_encoder({"message": exc.errors(), "data": exc.body, "error": 1}),
         )
+
 
     return app

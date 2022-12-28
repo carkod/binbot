@@ -13,7 +13,9 @@ class StreamingController:
 
     def __init__(self):
         print("Starting streaming controller")
-        self.db = setup_db()
+        # For some reason, db connections internally only work with
+        # db:27017 instead of localhost=:2018
+        self.db = setup_db("db", 27017)
         # Start streaming service globally
         # This will allow access for the entire FastApi scope
         asyncio.Event.connection_open = True

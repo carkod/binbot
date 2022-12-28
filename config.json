@@ -33,6 +33,12 @@
       "module": "main",
       "callable": "app",
       "processes": 3
+    },
+    "streaming": {
+      "type": "python 3.10",
+      "path": "/api",
+      "module": "market_updates",
+      "processes": 2
     }
   }
 }

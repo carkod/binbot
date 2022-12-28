@@ -19,26 +19,16 @@ services:
     image: binbot_api
     restart: on-failure
     container_name: binbot
-    command: "python3 market_updates.py"
     depends_on:
+      - db
+    links:
       - db
     env_file:
       - .env
     ports:
       - 8007:80
       - 8008:8006
-    
 
-  # research:
-  #   build: ./research/dockerfile
-  #   image: binbot_research
-  #   restart: on-failure
-  #   container_name: binbot_research
-  #   depends_on:
-  #     - db
-  #     - api
-  #   env_file:
-  #     - .env
 
 volumes:
   mongo_data:
