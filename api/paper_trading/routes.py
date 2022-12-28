@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from bots.controllers import Bot
 from bots.schemas import BotSchema
 from typing import List
@@ -23,12 +23,12 @@ def get_one(id: str):
 
 
 @paper_trading_blueprint.post("/paper-trading", tags=["paper trading"])
-def create():
-    return Bot(collection_name="paper_trading").create(id)
+def create(bot_item: BotSchema):
+    return Bot(collection_name="paper_trading").create(bot_item)
 
 
 @paper_trading_blueprint.put("/paper-trading/{id}", tags=["paper trading"])
-def edit(id, data):
+def edit(id: str, data: BotSchema):
     return Bot(collection_name="paper_trading").edit(id, data)
 
 
@@ -41,12 +41,12 @@ def delete(id: List[str] = Query(...)):
 
 
 @paper_trading_blueprint.get("/paper-trading/activate/{id}", tags=["paper trading"])
-def activate(id):
+def activate(id: str):
     return Bot(collection_name="paper_trading").activate(id)
 
 
 @paper_trading_blueprint.delete("/paper-trading/deactivate/{id}", tags=["paper trading"])
-def deactivate(id):
+def deactivate(id: str):
     """
     Deactivation means closing all deals and selling to GBP
     Otherwise losses will be incurred

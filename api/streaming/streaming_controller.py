@@ -1,10 +1,9 @@
 import os
 import asyncio
 from binance import AsyncClient, BinanceSocketManager
-from db import setup_db
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
-
+from pymongo import MongoClient
 
 class TerminateStreaming(Exception):
     pass
@@ -13,10 +12,28 @@ class StreamingController:
 
     def __init__(self):
         print("Starting streaming controller")
-        self.db = setup_db()
+        # For some reason, db connections internally only work with
+        # db:27017 instead of localhost=:2018
+        self.streaming_db = self.setup_db()
         # Start streaming service globally
         # This will allow access for the entire FastApi scope
         asyncio.Event.connection_open = True
+
+    def setup_db(self):
+        host="binbot_db"
+        port=27017
+        if os.environ["ENV"] == "development":
+            host="binbot_db"
+            port=27018
+        mongo = MongoClient(
+            host=host,
+            port=port,
+            authSource="admin",
+            username=os.getenv("MONGO_AUTH_USERNAME"),
+            password=os.getenv("MONGO_AUTH_PASSWORD"),
+        )
+        
+        return mongo[os.getenv("MONGO_APP_DATABASE")]
 
     async def setup_client(self):
         client = await AsyncClient.create(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
@@ -24,9 +41,9 @@ class StreamingController:
         return socket
 
     def combine_stream_names(self, interval):
-        markets = list(self.db.bots.distinct("pair", {"status": "active"}))
+        markets = list(self.streaming_db.bots.distinct("pair", {"status": "active"}))
         paper_trading_bots = list(
-            self.db.paper_trading.distinct("pair", {"status": "active"})
+            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
         )
         markets = markets + paper_trading_bots
         params = []
@@ -53,7 +70,7 @@ class StreamingController:
         if current_bot and "deal" in current_bot:
             # Update Current price only for active bots
             # This is to keep historical profit intact
-            bot = self.db[db_collection].find_one_and_update(
+            bot = self.streaming_db[db_collection].find_one_and_update(
                 {"_id": current_bot["_id"]},
                 {"$set": {"deal.current_price": close_price}},
                 return_document=ReturnDocument.AFTER,
@@ -132,12 +149,12 @@ class StreamingController:
                             * (float(bot["trailling_deviation"]) / 100)
                         )
 
-                    updated_bot = self.db[db_collection].update_one(
+                    updated_bot = self.streaming_db[db_collection].update_one(
                         {"_id": current_bot["_id"]},
                         {"$set": {"deal": bot["deal"]}},
                     )
                     if not updated_bot:
-                        self.db[db_collection].update_one(
+                        self.streaming_db[db_collection].update_one(
                             {"_id": current_bot["_id"]},
                             {
                                 "$push": {
@@ -182,10 +199,10 @@ class StreamingController:
         if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
-            current_bot = self.db.bots.find_one(
+            current_bot = self.streaming_db.bots.find_one(
                 {"pair": symbol, "status": "active"}
             )
-            current_test_bot = self.db.paper_trading.find_one(
+            current_test_bot = self.streaming_db.paper_trading.find_one(
                 {"pair": symbol, "status": "active"}
             )
             if current_bot:

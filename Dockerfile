@@ -13,6 +13,7 @@ RUN pipenv install --system --deploy --ignore-pipfile --clear
 RUN apt autoremove --purge -y && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/*.list
 COPY ./config.json /docker-entrypoint.d/config.json
 RUN chown -R unit:unit /api/ /docker-entrypoint.d/config.json
+# CMD ["python3", "market_updates.py"]
 
 STOPSIGNAL SIGTERM
 EXPOSE 80 8006

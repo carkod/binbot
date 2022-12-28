@@ -490,6 +490,8 @@ class CreateDealController(Account):
             # an update of the
             self.active_bot.deal.trailling_stop_loss_price = 0
 
+
+        self.active_bot.status = "active"
         bot = encode_json(self.active_bot)
         if "_id" in bot:
             bot.pop("_id")
@@ -1108,7 +1110,7 @@ class CreateDealController(Account):
         res = requests.get(url=self.bb_candlestick_url, params=params)
         data = handle_binance_errors(res)
         list_prices = numpy.array(data["trace"][0]["close"])
-        sd = round_numbers((numpy.std(list_prices.astype(numpy.float))), 2)
+        sd = round_numbers((numpy.std(list_prices.astype(numpy.single))), 2)
 
         take_profit = self.active_bot.deal.take_profit_price
         if sd >= 0:
