@@ -1,4 +1,4 @@
-from api.tools.enum_definitions import EnumDefinitions
+from tools.enum_definitions import EnumDefinitions
 from flask import current_app
 from copy import deepcopy
 

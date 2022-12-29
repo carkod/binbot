@@ -1,78 +1,50 @@
-import threading
+import asyncio
 from datetime import datetime
 from time import time
 
-from api.account.account import Account
-from api.bots.schemas import BotSchema, SafetyOrderSchema
-from api.deals.controllers import CreateDealController
-from api.orders.models.book_order import Book_Order
-from api.threads import market_update_thread
-from api.tools.enum_definitions import EnumDefinitions
-from api.tools.exceptions import OpenDealError
-from api.tools.handle_error import (
+import requests
+from bson.objectid import ObjectId
+from fastapi.exceptions import RequestValidationError
+
+from account.account import Account
+from db import setup_db
+from deals.controllers import CreateDealController
+from orders.models.book_order import Book_Order
+from tools.enum_definitions import BinbotEnums
+from tools.exceptions import OpenDealError
+from tools.handle_error import (
     NotEnoughFunds,
     QuantityTooLow,
     handle_binance_errors,
-    jsonResp,
-    jsonResp_error_message,
-    jsonResp_message,
+    json_response,
+    json_response_message,
 )
-from api.tools.round_numbers import supress_notation
-from bson.objectid import ObjectId
-from flask import Response, current_app, request
-from requests import delete
-from marshmallow.exceptions import ValidationError
-from marshmallow import EXCLUDE
+from tools.round_numbers import supress_notation
+from typing import List
+from fastapi import Query
+
 
 class Bot(Account):
     def __init__(self, collection_name="paper_trading"):
-        self.app = current_app
-        self.db_collection = self.app.db[collection_name]
+        self.db_collection = setup_db()[collection_name]
 
-    def terminate_websockets(self):
-        """
-        Restart websockets threads after list of active bots altered
-        """
-        print("Restarting market_updates")
-        # Notify market updates websockets to update
-        for thread in threading.enumerate():
-            if thread.name == "market_updates_thread" and hasattr(thread, "_target"):
-                thread._target.__self__.markets_streams.close()
-                market_update_thread()
-                print(
-                    "Finished restarting market_updates. Current #threads",
-                    [t for t in threading.enumerate() if t.name == "market_updates_thread"],
-                )
-        return
-
-    def post_dump(self, schema, data):
-        """
-        Deserialize to store in DB
-        """
-
-        return schema.load(data)
-
-    def get(self):
+    def get(self, status, start_date, end_date, no_cooldown):
         """
         Get all bots in the db except archived
         Args:
         - archive=false
         - filter_by: string - last-week, last-month, all
         """
-        status = request.args.get("status")
-        start_date = request.args.get("start_date")
-        end_date = request.args.get("end_date")
-        no_cooldown = request.args.get("no_cooldown")
         params = {}
 
-        if status and status in EnumDefinitions.statuses:
+        if status and status in BinbotEnums.statuses:
             params["status"] = status
 
         if start_date:
             try:
                 float(start_date)
             except ValueError as error:
-                resp = jsonResp(
+                resp = json_response(
                     {"message": f"start_date must be a timestamp float", "data": []}
                 )
                 return resp
@@ -88,7 +60,7 @@ class Bot(Account):
             try:
                 float(end_date)
             except ValueError as e:
-                resp = jsonResp(
+                resp = json_response(
                     {"message": f"end_date must be a timestamp float", "data": []}
                 )
                 return resp
@@ -104,8 +76,7 @@ class Bot(Account):
                 "$or": [
                     {"status": status},
                     {
-                        "$where": 
-                        """function () {
+                        "$where": """function () {
                             if (this.deal !== undefined) {
                                 return new Date().getTime() - this.deal.sell_timestamp < (this.cooldown * 1000)
                             } else {
@@ -122,114 +93,113 @@ class Bot(Account):
                     [("_id", -1), ("status", 1), ("pair", 1)]
                 )
             )
+            resp = json_response({"message": "Sucessfully found bots!", "data": bot})
         except Exception as error:
-            resp = jsonResp_error_message(error)
+            resp = json_response_message(error)
 
-        if bot:
-            resp = jsonResp({"message": "Sucessfully found bots!", "data": bot})
-        else:
-            resp = jsonResp({"message": "Bots not found", "data": []})
         return resp
 
-    def get_one(self):
-        findId = request.view_args["id"]
+    def get_one(self, findId):
         bot = self.db_collection.find_one({"_id": ObjectId(findId)})
         if bot:
-            resp = jsonResp({"message": "Bot found", "data": bot})
+            resp = json_response({"message": "Bot found", "data": bot})
         else:
-            resp = jsonResp({"message": "Bots not found"}, 404)
+            resp = json_response({"message": "Bots not found"}, 404)
         return resp
 
-    def create(self):
-        data = request.get_json()
+    def create(self, data):
         try:
-            bot_schema = BotSchema(unknown=EXCLUDE)
-            bot = bot_schema.load(data)
+            bot = data.dict()
+
             if "_id" in bot:
-                result = self.db_collection.update_one({"_id": ObjectId(bot["_id"])}, bot)
-                resp = jsonResp(
-                    {"message": "This bot already exists, successfully updated bot", "botId": str(result.updated_id)}
+                # ObjectId(...) is not required here BotSchema provides a PyObjectId factory function
+                # which creates a Object Id
+                result = self.db_collection.update_one(
+                    {"_id": bot["_id"]}, bot
+                )
+                resp = json_response(
+                    {
+                        "message": "This bot already exists, successfully updated bot",
+                        "botId": str(result.updated_id),
+                    }
                 )
             else:
                 result = self.db_collection.insert_one(bot)
-                resp = jsonResp(
-                    {"message": "Successfully created new bot", "botId": str(result.inserted_id)}
+                resp = json_response(
+                    {
+                        "message": "Successfully created new bot",
+                        "botId": str(result.inserted_id),
+                    }
                 )
-        except ValidationError as e:
-            resp = jsonResp_error_message(f"Failed validation: {e.messages}")
+        except RequestValidationError as error:
+            resp = json_response_message(f"Failed to create new bot: {error}")
         except Exception as e:
-            resp = jsonResp_error_message(f"Failed to create new bot: {e}")
+            resp = json_response_message(f"Failed to create new bot: {e}")
         return resp
 
-    def edit(self):
-        data = request.get_json()
-        if "id" not in request.view_args:
-            return jsonResp_error_message("id is required to update bot")
+    def edit(self, botId, data):
+        if not botId:
+            return json_response_message("id is required to update bot")
 
-        botId = request.view_args["id"]
         try:
-            bot_schema = BotSchema()
-            bot = bot_schema.load(data)
+            bot = data.dict()
             if "_id" in bot:
                 bot.pop("_id")
             self.db_collection.update_one({"_id": ObjectId(botId)}, {"$set": bot})
-            resp = jsonResp({"message": "Successfully updated bot", "botId": str(botId)})
-        except ValidationError as e:
-            resp = jsonResp_error_message(f"Failed validation: {e.messages}")
+            resp = json_response(
+                {"message": "Successfully updated bot", "botId": str(botId)}
+            )
+        except RequestValidationError as e:
+            resp = json_response_message(f"Failed validation: {e}")
         except Exception as e:
-            resp = jsonResp_error_message(f"Failed to create new bot: {e}")
+            resp = json_response_message(f"Failed to create new bot: {e}")
         return resp
 
-    def delete(self):
-        botIds = request.args.getlist("id")
+    def delete(self, bot_ids: List[str] = Query(...)):
 
-        if not botIds or not isinstance(botIds, list):
-            return jsonResp_error_message("At least one bot id is required")
+        if not bot_ids or not isinstance(bot_ids, list):
+            return json_response_message("At least one bot id is required")
 
         delete_action = self.db_collection.delete_many(
-            {"_id": {"$in": [ObjectId(item) for item in botIds]}}
+            {"_id": {"$in": [ObjectId(item) for item in bot_ids]}}
         )
         if delete_action:
-            resp = jsonResp_message("Successfully deleted bot")
+            resp = json_response_message("Successfully deleted bot")
         else:
-            resp = jsonResp({"message": "Bot deletion is not available"}, 400)
+            resp = json_response({"message": "Bot deletion is not available"}, 400)
         return resp
 
-    def activate(self):
-        botId = request.view_args["botId"]
+    def activate(self, botId):
         bot = self.db_collection.find_one({"_id": ObjectId(botId)})
 
         if bot:
 
             try:
-                CreateDealController(bot, db_collection=self.db_collection.name).open_deal()
-                self.db_collection.update_one(
-                    {"_id": ObjectId(botId)}, {"$set": {"status": "active"}}
-                )
-                resp = jsonResp_message("Successfully activated bot!")
-                self.terminate_websockets()
+                CreateDealController(
+                    bot, db_collection=self.db_collection.name
+                ).open_deal()
+                resp = json_response_message("Successfully activated bot!")
+                asyncio.Event.connection_open = False  # type: ignore
                 return resp
             except OpenDealError as error:
-                return jsonResp_error_message(error.args[0])
+                return json_response_message(error.args[0])
             except NotEnoughFunds as e:
-                return jsonResp_error_message(e.args[0])
+                return json_response_message(e.args[0])
             except Exception as error:
-                resp = jsonResp_error_message(f"Unable to activate bot: {error}")
+                resp = json_response_message(f"Unable to activate bot: {error}")
                 return resp
         else:
-            return jsonResp_error_message("Bot not found.")
+            return json_response_message("Bot not found.")
 
-
-    def deactivate(self):
+    def deactivate(self, findId):
         """
         Close all deals, sell pair and deactivate
         1. Close all deals
         2. Sell Coins
         3. Delete bot
         """
-        findId = request.view_args["id"]
         bot = self.db_collection.find_one({"_id": ObjectId(findId)})
-        resp = jsonResp_error_message(
+        resp = json_response_message(
             "Not enough balance to close and sell. Please directly delete the bot."
         )
         if bot:
@@ -242,12 +212,12 @@ class Bot(Account):
                         d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
                     ):
                         order_id = d["order_id"]
-                        res = delete(
+                        res = requests.delete(
                             url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
                         )
                         error_msg = f"Failed to delete opened order {order_id}."
                         # Handle error and continue
-                        handle_binance_errors(res, message=error_msg)
+                        handle_binance_errors(res)
 
             # Sell everything
             pair = bot["pair"]
@@ -276,7 +246,7 @@ class Bot(Account):
                         try:
                             self.bot_schema.update(bot)
                         except Exception as e:
-                            resp = jsonResp_error_message(e)
+                            resp = json_response_message(e)
                     return resp
                 else:
                     order = {
@@ -292,7 +262,7 @@ class Bot(Account):
                         try:
                             self.bot_schema.update(bot)
                         except Exception as e:
-                            resp = jsonResp_error_message(e)
+                            resp = json_response_message(e)
                         return resp
 
                 # Enforce that deactivation occurs
@@ -348,24 +318,23 @@ class Bot(Account):
                     },
                 )
 
-                self.terminate_websockets()
-                return jsonResp_message(
+                asyncio.Event.connection_open = False
+                return json_response_message(
                     "Active orders closed, sold base asset, deactivated"
                 )
             else:
                 self.db_collection.update_one(
                     {"_id": ObjectId(findId)}, {"$set": {"status": "error"}}
                 )
-                return jsonResp_error_message("Not enough balance to close and sell")
+                return json_response_message("Not enough balance to close and sell")
 
-    def put_archive(self):
+    def put_archive(self, botId):
         """
         Change status to archived
         """
-        botId = request.view_args["id"]
         bot = self.db_collection.find_one({"_id": ObjectId(botId)})
         if bot["status"] == "active":
-            return jsonResp(
+            return json_response(
                 {"message": "Cannot archive an active bot!", "botId": botId}
             )
 
@@ -378,7 +347,9 @@ class Bot(Account):
             {"_id": ObjectId(botId)}, {"$set": {"status": status}}
         )
         if archive:
-            resp = jsonResp({"message": "Successfully archived bot", "botId": botId})
+            resp = json_response(
+                {"message": "Successfully archived bot", "botId": botId}
+            )
         else:
-            resp = jsonResp({"message": "Failed to archive bot"})
+            resp = json_response({"message": "Failed to archive bot"})
         return resp

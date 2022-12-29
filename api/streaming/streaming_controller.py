@@ -1,100 +1,57 @@
-import json
-import threading
-import logging
-import requests
-import numpy
-
+import os
+import asyncio
+from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
-from api.account.account import Account
-from api.app import create_app
-from api.deals.controllers import CreateDealController
-from websocket import WebSocketApp
-from api.tools.handle_error import handle_binance_errors
-from api.tools.round_numbers import round_numbers
+from deals.controllers import CreateDealController
+from pymongo import MongoClient
 
-class MarketUpdates(Account):
-    """
-    Further explanation in docs/market_updates.md
-    """
+class TerminateStreaming(Exception):
+    pass
 
-    def __init__(self, interval="5m"):
-        self.app = create_app()
-        self.markets_streams = None
-        self.interval = interval
-        self.markets = []
+class StreamingController:
 
-    def terminate_websockets(self, thread_name="market_updates"):
-        """
-        Restart websockets threads after list of active bots altered
-        """
-        logging.info("Starting thread cleanup")
-        global stop_threads
-        stop_threads = True
-        # Notify market updates websockets to update
-        for thread in threading.enumerate():
-            if (
-                hasattr(thread, "tag")
-                and thread_name in thread.name
-                and hasattr(thread, "_target")
-            ):
-                stop_threads = False
-                print("closing websocket")
-                thread._target.__self__.close()
+    def __init__(self):
+        print("Starting streaming controller")
+        # For some reason, db connections internally only work with
+        # db:27017 instead of localhost=:2018
+        self.streaming_db = self.setup_db()
+        # Start streaming service globally
+        # This will allow access for the entire FastApi scope
+        asyncio.Event.connection_open = True
 
-        pass
-
-    def start_stream(self):
-        """
-        Start/restart websocket streams
-        """
-        self.markets = list(self.app.db.bots.distinct("pair", {"status": "active"}))
-        paper_trading_bots = list(
-            self.app.db.paper_trading.distinct("pair", {"status": "active"})
+    def setup_db(self):
+        host="binbot_db"
+        port=27017
+        if os.environ["ENV"] == "development":
+            host="binbot_db"
+            port=27018
+        mongo = MongoClient(
+            host=host,
+            port=port,
+            authSource="admin",
+            username=os.getenv("MONGO_AUTH_USERNAME"),
+            password=os.getenv("MONGO_AUTH_PASSWORD"),
         )
-        self.markets = self.markets + paper_trading_bots
-        params = []
-        for market in self.markets:
-            params.append(f"{market.lower()}@kline_{self.interval}")
-
-        string_params = "/".join(params)
-        url = f"{self.WS_BASE}{string_params}"
-        ws = WebSocketApp(
-            url,
-            on_open=self.on_open,
-            on_error=self.on_error,
-            on_close=self.close_stream,
-            on_message=self.on_message,
-        )
-        # This is required to allow the websocket to be closed anywhere in the app
-        self.markets_streams = ws
-        # Run the websocket with ping intervals to avoid disconnection
-        ws.run_forever(ping_interval=70)
-
-    def close_stream(self, ws, close_status_code, close_msg):
-        print("Active socket closed", close_status_code, close_msg)
-
-    def on_open(self, *args, **kwargs):
-        print("Market data updates socket opened")
-
-    def on_error(self, ws, error):
-        error_msg = f'market_updates error: {error}. Symbol: {ws.symbol if hasattr(ws, "symbol") else ""}'
-        print(error_msg)
-        self.terminate_websockets()
-        self.start_stream()
-
-    def on_message(self, ws, message):
-        json_response = json.loads(message)
-
-        if "result" in json_response:
-            print(f'Subscriptions: {json_response["result"]}')
-
-        if "data" in json_response:
-            if "e" in json_response["data"] and json_response["data"]["e"] == "kline":
-                self.process_deals(json_response["data"], ws)
-            else:
-                print(f'Error: {json_response["data"]}')
         
+        return mongo[os.getenv("MONGO_APP_DATABASE")]
 
+    async def setup_client(self):
+        client = await AsyncClient.create(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
+        socket = BinanceSocketManager(client)
+        return socket
+
+    def combine_stream_names(self, interval):
+        markets = list(self.streaming_db.bots.distinct("pair", {"status": "active"}))
+        paper_trading_bots = list(
+            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
+        )
+        markets = markets + paper_trading_bots
+        params = []
+        for market in markets:
+            params.append(f"{market.lower()}@kline_{interval}")
+
+        return params
+    
     def process_deals_bot(self, current_bot, close_price, symbol, db_collection):
         """
         Processes the deal market websocket price updates
@@ -106,19 +63,14 @@ class MarketUpdates(Account):
         # Short strategy
         if "short_buy_price" in current_bot and float(current_bot["short_buy_price"]) > 0 and float(current_bot["short_buy_price"]) >= float(close_price):
             # If hit short_buy_price, resume long strategy by resetting short_buy_price
-            try:
-                CreateDealController(current_bot, db_collection=db_collection).execute_short_buy()
-            except Exception as error:
-                print(f"Short buy price update error: {error}")
-
-            self.terminate_websockets()
-            self.start_stream()
+            CreateDealController(current_bot, db_collection=db_collection).execute_short_buy()
+            raise TerminateStreaming()
 
         # Long strategy starts
         if current_bot and "deal" in current_bot:
             # Update Current price only for active bots
             # This is to keep historical profit intact
-            bot = self.app.db[db_collection].find_one_and_update(
+            bot = self.streaming_db[db_collection].find_one_and_update(
                 {"_id": current_bot["_id"]},
                 {"$set": {"deal.current_price": close_price}},
                 return_document=ReturnDocument.AFTER,
@@ -154,7 +106,7 @@ class MarketUpdates(Account):
                     if bot["mode"] == "autotrade":
                         deal = CreateDealController(bot, db_collection)
                         # Returns bot, to keep modifying in subsequent checks
-                        bot = deal.dynamic_take_profit(symbol, self.interval, close_price)
+                        bot = deal.dynamic_take_profit(symbol, current_bot["candlestick_interval"], close_price)
 
                 if (
                     "trailling_stop_loss_price" not in bot["deal"]
@@ -197,12 +149,12 @@ class MarketUpdates(Account):
                             * (float(bot["trailling_deviation"]) / 100)
                         )
 
-                    updated_bot = self.app.db[db_collection].update_one(
+                    updated_bot = self.streaming_db[db_collection].update_one(
                         {"_id": current_bot["_id"]},
                         {"$set": {"deal": bot["deal"]}},
                     )
                     if not updated_bot:
-                        self.app.db[db_collection].update_one(
+                        self.streaming_db[db_collection].update_one(
                             {"_id": current_bot["_id"]},
                             {
                                 "$push": {
@@ -225,9 +177,7 @@ class MarketUpdates(Account):
                         except Exception as error:
                             print(error)
                             return
-                        self.terminate_websockets()
-                        self.start_stream()
-                        return
+                        # raise TerminateStreaming("Terminate streaming")
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
@@ -241,7 +191,7 @@ class MarketUpdates(Account):
                         deal.so_update_deal(key)
         pass
 
-    def process_deals(self, result, ws):
+    def process_deals(self, result):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
@@ -249,11 +199,10 @@ class MarketUpdates(Account):
         if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
-            ws.symbol = symbol
-            current_bot = self.app.db.bots.find_one(
+            current_bot = self.streaming_db.bots.find_one(
                 {"pair": symbol, "status": "active"}
             )
-            current_test_bot = self.app.db.paper_trading.find_one(
+            current_test_bot = self.streaming_db.paper_trading.find_one(
                 {"pair": symbol, "status": "active"}
             )
             if current_bot:
@@ -263,3 +212,39 @@ class MarketUpdates(Account):
                     current_test_bot, close_price, symbol, "paper_trading"
                 )
             return
+
+    
+    async def get_klines(self, interval):
+        socket = await self.setup_client()
+        params = self.combine_stream_names(interval)
+        klines = socket.multiplex_socket(params)
+
+        async with klines as k:
+            try:
+                while asyncio.Event.connection_open:
+                    res = await k.recv()
+                    
+                    if "result" in res:
+                        print(f'Subscriptions: {res["result"]}')
+
+                    if "data" in res:
+                        if "e" in res["data"] and res["data"]["e"] == "kline":
+                            self.process_deals(res["data"])
+                        else:
+                            print(f'Error: {res["data"]}')
+                    
+
+            except Exception as error:
+                print(f"get_klines sockets error: {error}")
+    
+    async def get_user_data(self):
+        print("Streaming user data")
+        socket = await self.setup_client()
+        user_data = socket.user_socket()
+        async with user_data as ud:
+            try:
+                while asyncio.Event.connection_open:
+                    res = await ud.recv()
+                    print(res)
+            except Exception as error:
+                print(f"get_user_data sockets error: {error}")

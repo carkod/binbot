@@ -1,14 +1,15 @@
 import json
-from time import sleep
 import os
-from bson.objectid import ObjectId
-from flask import Response as FlaskResponse
-from pymongo import ReturnDocument
-from requests import Response, put
-from requests.exceptions import HTTPError, Timeout
-from bson import json_util
-from api.app import create_app
+from time import sleep
 
+from bson import json_util
+from bson.objectid import ObjectId
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from requests import Response, put
+from requests.exceptions import HTTPError
+from fastapi.encoders import jsonable_encoder
+from copy import deepcopy
 
 class BinanceErrors(Exception):
     pass
@@ -21,6 +22,10 @@ class InvalidSymbol(BinanceErrors):
 class NotEnoughFunds(BinanceErrors):
     pass
 
+class BinbotErrors(Exception):
+    pass
+
+
 class QuantityTooLow(BinanceErrors):
     """
     Raised when LOT_SIZE filter error triggers
@@ -28,7 +33,9 @@ class QuantityTooLow(BinanceErrors):
     unless purposedly triggered to check quantity
     e.g. BTC = 0.0001 amounts are usually so small that it's hard to see if it's nothing or a considerable amount compared to others
     """
+
     pass
+
 
 def post_error(msg):
     url = f'{os.getenv("FLASK_DOMAIN")}/research/controller'
@@ -37,77 +44,27 @@ def post_error(msg):
     return
 
 
-def jsonResp(data, status=200):
-    return FlaskResponse(
-        json.dumps(data, default=json_util.default),
-        mimetype="application/json",
-        status=status,
+def json_response(content, status=200):
+    content = json.loads(json_util.dumps(content)) # Objectid serialization
+    response = JSONResponse(
+        status_code=status,
+        content=content,
+        media_type="application/json",
     )
+    return response
 
 
-def jsonResp_message(message):
-    message = {"message": message, "error": 0}
-    return jsonResp(message)
+def json_response_message(message):
+    body = {"message": message, "error": 0}
+    return json_response(body)
 
 
-def jsonResp_error_message(message):
+def json_response_error(message):
     body = {"message": message, "error": 1}
-    return jsonResp(body)
+    return json_response(body)
 
 
-def bot_errors(error, bot, status="error"):
-    """
-    params status refer to bot-status.md
-    """
-    if isinstance(error, Response):
-        try:
-            error = error.json()["msg"]
-        except KeyError:
-            error = error.json()["message"]
-    else:
-        error = error
-
-    bot["errors"].append(error)
-    app = create_app()
-    bot = app.db.bots.find_one_and_update(
-        {"_id": ObjectId(bot["_id"])},
-        {"$set": {"status": status, "errors": bot["errors"]}},
-        return_document=ReturnDocument.AFTER
-    )
-
-    return bot
-
-
-def handle_error(req):
-    try:
-        req.raise_for_status()
-
-        if isinstance(json.loads(req.content), dict):
-            # Binance code errors
-            if "code" in json.loads(req.content).keys():
-
-                response = req.json()
-                if response["code"] == -2010:
-                    return jsonResp({"message": "Not enough funds", "error": 1}, 200)
-
-                # Uknown orders ignored, they are used as a trial an error endpoint to close orders (close deals)
-                if response["code"] == -2011:
-                    return
-
-                return jsonResp_message(json.loads(req.content))
-
-    except HTTPError as err:
-        if err:
-            print(req.json())
-            return jsonResp_message(req.json())
-        else:
-            return err
-    except Timeout:
-        # Maybe set up for a retry, or continue in a retry loop
-        return jsonResp_message("handle_error: Timeout", 408)
-
-
-def handle_binance_errors(response: Response, bot=None, message=None):
+def handle_binance_errors(response: Response):
     """
     Handles:
     - HTTP codes, not authorized, rate limits...
@@ -115,13 +72,17 @@ def handle_binance_errors(response: Response, bot=None, message=None):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-    content = response.json()
-    
+    content: dict[str, object] = response.json()
+
     if response.status_code == 404:
         raise HTTPError()
     # Show error message for bad requests
     if response.status_code >= 400:
-        return response.json()
+        error = response.json()
+        if "msg" in error:
+            raise BinanceErrors(error["msg"])
+        if "error" in error:
+            raise BinbotErrors(error["message"])
 
     if response.status_code == 418 or response.status_code == 429:
         print("Request weight limit hit, ban will come soon, waiting 1 hour")
@@ -135,12 +96,21 @@ def handle_binance_errors(response: Response, bot=None, message=None):
         print("Request weight limit prevention pause, waiting 1 min")
         sleep(120)
 
+    # Binbot errors
+    if content and "error" in content:
+        raise BinanceErrors(content["message"])
+
+    # Binance errors
     if content and "code" in content:
         if content["code"] == -1013:
             raise QuantityTooLow()
         if content["code"] == 200:
             return content
-        if content["code"] == -2010 or content["code"] == -1013 or content["code"] == -2015:
+        if (
+            content["code"] == -2010
+            or content["code"] == -1013
+            or content["code"] == -2015
+        ):
             # Not enough funds. Ignore, send to bot errors
             # Need to be dealt with at higher levels
             raise NotEnoughFunds(content["msg"])
@@ -152,6 +122,27 @@ def handle_binance_errors(response: Response, bot=None, message=None):
             sleep(60)
 
         if content["code"] == -1121:
-            raise InvalidSymbol("Binance error, invalid symbol")
+            raise InvalidSymbol(f'Binance error: {content["msg"]}')
     else:
         return content
+
+
+def encode_json(raw):
+    """
+    Wrapper for jsonable_encoder to encode ObjectId
+    """
+    if hasattr(raw, "_id"):
+        # Objectid serialization
+        id = str(raw._id)
+        content = deepcopy(raw)
+        del content._id
+        content = jsonable_encoder(content)
+        content["_id"]= id
+    else:
+        content = jsonable_encoder(raw) 
+    return content
+
+
+class StandardResponse(BaseModel):
+    message: str
+    error: int = 0

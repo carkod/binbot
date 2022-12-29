@@ -4,7 +4,7 @@ import os
 from urllib.parse import urlencode
 from time import time
 from requests import get, request
-from api.tools.handle_error import handle_binance_errors, jsonResp, jsonResp_error_message
+from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from py3cw.request import Py3CW
 
 class BinanceApi:
@@ -25,7 +25,7 @@ class BinanceApi:
     server_time_url = f"{BASE}/api/v3/time"
     account_url = f"{BASE}/api/v3/account"
     exchangeinfo_url = f"{BASE}/api/v3/exchangeInfo"
-    ticker_price = f"{BASE}/api/v3/ticker/price"
+    ticker_price_url = f"{BASE}/api/v3/ticker/price"
     ticker24_url = f"{BASE}/api/v3/ticker/24hr"
     candlestick_url = f"{BASE}/api/v3/klines"
     order_url = f"{BASE}/api/v3/order"
@@ -36,7 +36,6 @@ class BinanceApi:
     user_data_stream = f"{BASE}/api/v3/userDataStream"
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
 
-    user_data_stream = f"{BASE}/api/v3/userDataStream"
     streams_url = f"{WS_BASE}"
 
     withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
@@ -51,7 +50,7 @@ class BinanceApi:
         data = self.request(url=self.server_time_url)
         return data["serverTime"]
 
-    def signed_request(self, url, method="GET", payload={}):
+    def signed_request(self, url, method="GET", payload={}, params={}):
         """
         USER_DATA, TRADE signed requests
         """
@@ -72,7 +71,7 @@ class BinanceApi:
             hashlib.sha256,
         ).hexdigest()
         url = f"{url}?{query_string}&signature={signature}"
-        data = self.request(method, url=url, headers=headers)
+        data = self.request(method, url=url, headers=headers, params=params)
         return data
 
     def request(self, method="GET", **args):
@@ -107,15 +106,10 @@ class BinbotApi(BinanceApi):
 
     # Trade operations
     bb_buy_order_url = f"{bb_base_url}/order/buy"
-    bb_tp_buy_order_url = f"{bb_base_url}/order/buy/take-profit"
     bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
     bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_tp_sell_order_url = f"{bb_base_url}/order/sell/take-profit"
-    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
     bb_opened_orders_url = f"{bb_base_url}/order/open"
     bb_close_order_url = f"{bb_base_url}/order/close"
-    bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
-    bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
 
     # balances
     bb_balance_url = f"{bb_base_url}/account/balance/raw"
@@ -133,31 +127,6 @@ class BinbotApi(BinanceApi):
         res = request(method, url=url, params=params, json=payload)
         data = handle_binance_errors(res)
         return data
-
-
-class CoinBaseApi:
-    """
-    Currency and Cryptocurrency conversion service
-    """
-
-    BASE = "https://api.coinbase.com/v2"
-    EXG_URL = f"{BASE}/prices"
-
-    def get_conversion(self, time, base="BTC", quote="GBP"):
-
-        params = {
-            "apikey": os.environ["COINAPI_KEY"],
-            "date": time.strftime("%Y-%m-%d"),
-        }
-        url = f"{self.EXG_URL}/{base}-{quote}/spot"
-        data = get(url, params).json()
-        try:
-            data["data"]["amount"]
-        except KeyError as e:
-            print(e)
-        rate = float(data["data"]["amount"])
-        return rate
-
 
 class ThreeCommasApiError:
     """3commas.io API error"""
@@ -186,9 +155,9 @@ class ThreeCommasApi:
         )
         if error:
             error = ThreeCommasApiError(error)
-            return jsonResp_error_message(error)
+            return json_response_error(error)
         else:
-            return jsonResp({"message": "Sucessfully retrieved preset bots!", "data": data["bots"]})
+            return json_response({"message": "Sucessfully retrieved preset bots!", "data": data["bots"]})
 
     def get_all_marketplace_item(self):
         p3cw = Py3CW(

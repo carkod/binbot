@@ -1,45 +1,62 @@
-from flask import Blueprint
-from api.user.models.user import User
-from api.auth import auth
+from fastapi import APIRouter
+from user.models.user import User
+from user.schemas import LoginRequest, UserResponse, UserSchema
 
-user_blueprint = Blueprint("user", __name__)
+user_blueprint = APIRouter()
 
 
-@user_blueprint.route("/user", methods=["GET"])
-@auth.login_required
+@user_blueprint.get("/user", response_model=UserResponse, tags=["users"])
 def get():
+    """
+    Get all users
+    """
     return User().get()
 
 
-@user_blueprint.route("/user/<id>", methods=["GET"])
-@auth.login_required
-def get_one(id):
-    return User().get_one()
+@user_blueprint.get("/user/{email}", response_model=UserResponse, tags=["users"])
+def get_one(email):
+    """
+    Get user by email
+    """
+    return User().get_one(email)
 
 
-@user_blueprint.route("/user/login", methods=["POST"])
-def login():
-    return User().login()
+@user_blueprint.post("/user/login", tags=["users"])
+def login(data: LoginRequest):
+    """
+    Get an access_token to keep the user in session
+    """
+    return User().login(data)
 
 
-@user_blueprint.route("/user/logout", methods=["GET"])
+@user_blueprint.get("/user/logout", tags=["users"])
 def logout():
+    """
+    Remove access_token
+    """
     return User().logout()
 
 
-@user_blueprint.route("/user/register", methods=["POST"])
-@auth.login_required
-def add():
-    return User().add()
+@user_blueprint.post("/user/register", tags=["users"])
+def add(data: UserSchema):
+    """
+    Create/register a new user
+    """
+    return User().add(data)
 
 
-@user_blueprint.route("/user/<id>", methods=["PUT"])
-@auth.login_required
-def edit(id):
-    return User().edit()
+@user_blueprint.put("/user", tags=["users"])
+def edit(user: UserSchema):
+    """
+    Modify details of a user that already exists.
+    If the user does not exist, it will return a JSON error message
+    """
+    return User().edit(user)
 
 
-@user_blueprint.route("/user/<id>", methods=["DELETE"])
-@auth.login_required
-def delete(id):
-    return User().delete()
+@user_blueprint.delete("/user/{email}", tags=["users"])
+def delete(email: str):
+    """
+    Delete a user by email
+    """
+    return User().delete(email)

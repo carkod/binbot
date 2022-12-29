@@ -2,19 +2,23 @@
   "version": "0.0.2",
   "configurations": [
     {
-      "name": "Python: Flask",
+      "name": "Python: streaming",
       "type": "python",
       "request": "launch",
-      "module": "flask",
+      "program": "${workspaceFolder}/api/market_updates.py",
       "console": "internalConsole",
-      "justMyCode": true,
-      "env": {
-        "FLASK_APP": "api/main.py",
-        "FLASK_ENV": "development",
-        "FLASK_DEBUG": "1"
-      },
-      "args": ["run", "--no-reload"],
+      "justMyCode": true
+    },
+    {
+      "name": "Python: FastAPI",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "cwd": "${workspaceFolder}/api",
+      "args": ["main:app", "--port", "8008", "--workers", "3"],
       "jinja": true,
+      "justMyCode": true,
+      "console": "internalConsole"
     },
     {
       "type": "chrome",
@@ -29,7 +33,7 @@
         "${workspaceFolder}/web/**/*.js",
         "${workspaceFolder}/web/src/node_modules/**"
       ]
-   },
+    },
     {
       "name": "Python: Research",
       "type": "python",

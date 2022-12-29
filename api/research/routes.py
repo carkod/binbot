@@ -1,38 +1,44 @@
-from flask import Blueprint
-from api.apis import ThreeCommasApi
-from api.research.controller import Controller
-from api.auth import auth
+from fastapi import APIRouter
 
-research_blueprint = Blueprint("research", __name__)
+from apis import ThreeCommasApi
+from research.controller import Controller
+from research.schemas import BlacklistSchema, BlacklistResponse
 
-
-@research_blueprint.route("/blacklist", methods=["POST"])
-def post_blacklist():
-    return Controller().create_blacklist_item()
+research_blueprint = APIRouter()
 
 
-@research_blueprint.route("/blacklist/<pair>", methods=["DELETE"])
-def delete_blacklist_item(pair):
-    return Controller().delete_blacklist_item()
+@research_blueprint.post("/blacklist", tags=["blacklist and research"])
+def post_blacklist(blacklist_item: BlacklistSchema):
+    """
+    Create a new Blacklist pair item.
+    """
+    return Controller().create_blacklist_item(blacklist_item)
 
 
-@research_blueprint.route("/blacklist", methods=["PUT"])
-def put_blacklist():
-    return Controller().edit_blacklist()
+@research_blueprint.delete("/blacklist/{pair}", tags=["blacklist and research"])
+def delete_blacklist_item(pair: str):
+    """
+    Given symbol/pair, delete an already blacklisted item
+    """
+    return Controller().delete_blacklist_item(pair)
 
 
-@research_blueprint.route("/blacklist", methods=["GET"])
+@research_blueprint.put("/blacklist", tags=["blacklist and research"])
+def put_blacklist(blacklist_item: BlacklistSchema):
+    """
+    Modify a blacklisted item
+    """
+    return Controller().edit_blacklist(blacklist_item)
+
+
+@research_blueprint.get("/blacklist", response_model=BlacklistResponse, tags=["blacklist and research"])
 def get_blacklisted():
+    """
+    Get all symbols/pairs blacklisted
+    """
     return Controller().get_blacklist()
 
 
-@research_blueprint.route("/3commas-presets", methods=["GET"])
-@auth.login_required
+@research_blueprint.get("/3commas-presets", tags=["blacklist and research"])
 def three_commas_presets():
     return ThreeCommasApi().get_marketplace_presets()
-
-
-@research_blueprint.route("/3commas-items", methods=["GET"])
-@auth.login_required
-def three_commas_items():
-    return Controller().get_profitable_signals()

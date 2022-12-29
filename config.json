@@ -29,8 +29,8 @@
   "applications": {
     "api": {
       "type": "python 3.10",
-      "path": "/",
-      "module": "api.main",
+      "path": "/api",
+      "module": "main",
       "callable": "app",
       "processes": 3
     }

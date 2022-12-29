@@ -1,5 +1,7 @@
 class EnumDefinitions:
-    statuses = ["inactive", "active", "completed", "error", "archived"]
+    """
+    Enums established by Binance API
+    """
     symbol_status = (
         "PRE_TRADING",
         "TRADING",
@@ -10,15 +12,15 @@ class EnumDefinitions:
         "BREAK",
     )
     symbol_type = "SPOT"
-    order_status = (
+    order_status = [
         "NEW",
         "PARTIALLY_FILLED",
         "FILLED",
         "CANCELED",
         "REJECTED",
         "EXPIRED",
-    )
-    order_types = (
+    ]
+    order_types = [
         "LIMIT",
         "MARKET",
         "STOP_LOSS",
@@ -26,8 +28,8 @@ class EnumDefinitions:
         "TAKE_PROFIT",
         "TAKE_PROFIT_LIMIT",
         "LIMIT_MAKER",
-    )
-    order_side = ("BUY", "SELL")
+    ]
+    order_side = ["BUY", "SELL"]
     time_in_force = ("GTC", "IOC", "FOK")
     chart_intervals = (
         "1m",
@@ -48,3 +50,9 @@ class EnumDefinitions:
     )
     rate_limit_intervals = ("SECOND", "MINUTE", "DAY")
     order_book_limits = ("5", "10", "20", "50", "100", "500", "1000", "5000")
+
+
+class BinbotEnums:
+    statuses = ("inactive", "active", "completed", "error", "archived")
+    mode = ("manual", "autotrade")
+    strategy = ("long", "short")

@@ -1,52 +1,50 @@
-from flask import request, current_app as app
+import os
+
 from passlib.hash import pbkdf2_sha256
 from jose import jwt
-import os
-from api.tools.handle_error import jsonResp_error_message, jsonResp_message, jsonResp
-from bson.objectid import ObjectId
-from api.auth import encodeAccessToken
-from datetime import datetime
 
+from tools.handle_error import (
+    json_response_error,
+    json_response_message,
+    json_response,
+)
+from bson.objectid import ObjectId
+from auth import encodeAccessToken
+from datetime import datetime
+from db import setup_db
+from user.schemas import UserSchema
+from fastapi.encoders import jsonable_encoder
 
 class User:
     def __init__(self):
-        self.defaults = {
-            "email": "",
-            "password": "",
-            "username": "",
-            "description": "",
-            "access_token": "",
-            "last_login": "",
-            "created_at": "",
-        }
+        self.defaults = UserSchema()
+        self.db = setup_db()
 
     def get(self):
-        users = list(app.db.users.find())
+        users = list(self.db.users.find())
         if users:
-            resp = jsonResp({"message": "Users found", "data": users})
+            resp = json_response({"message": "Users found", "data": users})
         else:
-            resp = jsonResp_message("No users found")
+            resp = json_response_message("No users found")
 
         return resp
 
-    def get_one(self):
-        findId = request.view_args["id"]
-        user = app.db.users.find_one({"_id": ObjectId(findId)})
+    def get_one(self, email):
+        user = self.db.users.find_one({"email": email})
 
         if user:
-            resp = jsonResp({"message": "User found", "data": user})
+            resp = json_response({"message": "User found", "data": user})
         else:
-            resp = jsonResp({"message": "User not found", "error": 1}, 401)
+            resp = json_response({"message": "User not found", "error": 1}, 401)
         return resp
 
-    def login(self):
-        data = request.get_json()
-        email = data["email"].lower()
-        user = app.db.users.find_one({"email": email})
+    def login(self, data):
+        email = data.email.lower()
+        user = self.db.users.find_one({"email": email})
         if user:
-            access_token = encodeAccessToken(user["password"], user["email"])
-            app.db.users.update_one(
-                {"_id": user["_id"]},
+            access_token = encodeAccessToken(self.defaults.password, self.defaults.email)
+            self.db.users.update_one(
+                {"email": self.defaults.email},
                 {
                     "$set": {
                         "access_token": access_token,
@@ -55,17 +53,16 @@ class User:
                 },
             )
 
-            resp = jsonResp(
+            resp = json_response(
                 {
-                    "_id": user["_id"],
-                    "email": user["email"],
+                    "email": self.defaults.email,
                     "access_token": access_token,
                     "error": 0,
                 },
                 200,
             )
         else:
-            resp = jsonResp({"message": "Credentials are incorrect", "error": 1})
+            resp = json_response({"message": "Credentials are incorrect", "error": 1})
         return resp
 
     def logout(self):
@@ -73,90 +70,65 @@ class User:
             tokenData = jwt.decode(
                 request.headers.get("AccessToken"), os.environ["SECRET_KEY"]
             )
-            app.db.users.update(
+            self.db.users.update(
                 {"id": tokenData["userid"]}, {"$unset": {"access_token": None}}
             )
             # Note: At some point I need to implement Token Revoking/Blacklisting
             # General info here: https://flask-jwt-extended.readthedocs.io/en/latest/blacklist_and_token_revoking.html
+            return json_response_message("User logged out")
+
         except Exception as error:
-            raise Exception(error)
+            return json_response_error(f"User logged out error: {error}")
 
-        resp = jsonResp_message("User logged out")
+    def add(self, data):
+        if (not data.email) or (not data.password):
+            return json_response_message("Email and password are required")
 
-        return resp
-
-    def add(self):
-        try:
-            data = request.json
-        except TypeError as e:
-            print(e)
-            return jsonResp_error_message("Json data is malformed")
-        if ("email" not in data) or ("password" not in data):
-            return jsonResp_message("Email and password are required")
-
-        user_data = {
-            "email": data["email"].lower(),
-            "password": data["password"],
-            "username": data["username"],
-            "description": data["description"],
-        }
         # Merge the posted data with the default user attributes
-        self.defaults.update(user_data)
+        self.defaults = self.defaults.copy(update=data.dict(exclude_unset=True))
         # Encrypt the password
-        self.defaults["password"] = pbkdf2_sha256.encrypt(
-            user_data["password"], rounds=20000, salt_size=16
+        self.defaults.password = pbkdf2_sha256.encrypt(
+             self.defaults.password, rounds=20000, salt_size=16
         )
         # Make sure there isn"t already a user with this email address
-        existing_email = app.db.users.find_one({"email": self.defaults["email"]})
+        existing_email = self.db.users.find_one({"email": jsonable_encoder(self.defaults.email)})
 
         if existing_email:
-            resp = jsonResp_error_message(
+            resp = json_response_error(
                 "There's already an account with this email address"
             )
 
         else:
-            inserted_doc = app.db.users.insert_one(self.defaults)
-            item = app.db.users.find_one({"_id": inserted_doc.inserted_id})
-            resp = jsonResp(
+            inserted_doc = self.db.users.insert_one(jsonable_encoder(self.defaults))
+            item = self.db.users.find_one({"_id": inserted_doc.inserted_id})
+            resp = json_response(
                 {"data": item, "message": "Successfully created a new user!"}
             )
 
         return resp
 
-    def edit(self):
-        try:
-            data = request.get_json()
-        except TypeError:
-            return jsonResp_error_message("Json data is malformed")
+    def edit(self, data):
         if "email" not in data or "password" not in data:
-            return jsonResp_message("Email and password are required")
+            return json_response_message("Email and password are required")
 
-        user_data = {
-            "email": data["email"].lower(),
-            "password": data["password"],
-            "username": data["username"],
-            "description": data["description"],
-        }
         # Merge the posted data with the default user attributes
-        self.defaults.update(user_data)
-        user = self.defaults
+        self.defaults = self.defaults.copy(update=data.dict(exclude_unset=True))
         # Encrypt the password
-        user["password"] = pbkdf2_sha256.encrypt(
-            user["password"], rounds=20000, salt_size=16
+        self.defaults.password = pbkdf2_sha256.encrypt(
+            self.defaults.password, rounds=20000, salt_size=16
         )
 
-        edit_result = app.db.users.update_one({"email": user["email"]}, {"$set": user})
+        edit_result = self.db.users.update_one({"email": self.defaults.email}, {"$set": jsonable_encoder(self.defaults)})
 
         if edit_result:
-            return jsonResp_message("User successfully updated!")
+            return json_response_message("User successfully updated!")
         else:
-            return jsonResp_error_message("User update failed")
+            return json_response_error("User update failed")
 
-    def delete(self):
-        findId = request.view_args["id"]
-        count = app.db.users.delete_one({"_id": ObjectId(findId)}).deleted_count
+    def delete(self, email):
+        count = self.db.users.delete_one({"email": ObjectId(email)}).deleted_count
         if count > 0:
-            resp = jsonResp({"message": "Successfully deleted user"})
+            resp = json_response({"message": "Successfully deleted user"})
         else:
-            resp = jsonResp({"message": "Not found user, cannot delete"})
+            resp = json_response({"message": "Not found user, cannot delete"})
         return resp

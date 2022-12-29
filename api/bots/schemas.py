@@ -1,50 +1,138 @@
 from time import time
-from marshmallow import Schema, fields
-from marshmallow.validate import OneOf
-from api.deals.schema import DealSchema, OrderSchema
-from api.tools.enum_definitions import EnumDefinitions
+from typing import Literal
 
-class SafetyOrderSchema(Schema):
-    name: str = fields.Str(required=True, dump_default="so_1") # should be so_<index>
-    status: str = fields.Int(dump_default=0) # 0 = standby, safety order hasn't triggered, 1 = filled safety order triggered, 2 = error
-    order_id: str = fields.Str(dump_default="")
-    created_at: float = fields.Float(dump_default=time() * 1000)
-    updated_at: float = fields.Float(dump_default=time() * 1000)
-    buy_price: float = fields.Float(required=True, dump_default=0) # base currency quantity e.g. 3000 USDT in BTCUSDT
-    buy_timestamp: float = fields.Float(dump_default=0)
-    so_size: float = fields.Float(required=True, dump_default=0) # quote currency quantity e.g. 0.00003 BTC in BTCUSDT 
-    max_active_so: float = fields.Float(dump_default=0)
-    so_volume_scale: float = fields.Float(dump_default=0)
-    so_step_scale: float = fields.Float(dump_default=0)
-    so_asset: str = fields.Str(dump_default="USDT")
-    errors: list[str] = fields.List(fields.Str(), dump_default=[])
-    total_commission: float = fields.Float(dump_default=0)
+from bson.objectid import ObjectId
+from pydantic import BaseModel, Field, validator
 
-class BotSchema(Schema):
-    balance_size_to_use: float= fields.Float()
-    balance_to_use: str = fields.Str(required=True)
-    base_order_size: str = fields.Str(required=True) # Min Binance 0.0001 BNB
-    candlestick_interval: str = fields.Str(required=True)
-    cooldown: int = fields.Int() # cooldown period before opening next bot with same pair
-    created_at = fields.Float()
-    deal = fields.Nested(DealSchema)
-    errors: list[str] = fields.List(fields.Str)
-    locked_so_funds: float = fields.Float() # funds locked by Safety orders
-    mode = fields.Str(dump_default="manual") # ["manual", "autotrade"]. Manual is triggered by the terminal dashboard, autotrade by research app
-    name = fields.Str(dump_default="Default bot")
-    orders: list = fields.List(fields.Nested(OrderSchema)) # Internal
-    pair = fields.Str(required=True)
-    status = fields.Str(required=True, dump_default="inactive", validate=OneOf(EnumDefinitions.statuses))
-    stop_loss: float = fields.Float()
-    take_profit: float = fields.Float(required=True)
-    trailling: str = fields.Str(required=True)
-    trailling_deviation: float = fields.Float(required=True)
-    trailling_profit: float = fields.Float() # Trailling activation (first take profit hit)
-    safety_orders = fields.List(fields.Nested(SafetyOrderSchema))
-    strategy = fields.Str(required=True, dump_default="long", validate=OneOf(["long", "short"]))
-    short_buy_price = fields.Float() # > 0 base_order does not execute immediately, executes short strategy when this value is hit
-    short_sell_price = fields.Float() # autoswitch to short_strategy
+from deals.schema import DealSchema, OrderSchema
+from tools.enum_definitions import BinbotEnums
+from tools.handle_error import StandardResponse
+
+class PyObjectId(ObjectId):
+
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not ObjectId.is_valid(v):
+            raise ValueError('Invalid objectid')
+        return ObjectId(v)
+
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.update(type='string')
+  
+class SafetyOrderSchema(BaseModel):
+    name: str = "so_1"  # should be so_<index>
+    status: Literal[
+        0, 1, 2
+    ] = 0  # 0 = standby, safety order hasn't triggered, 1 = filled safety order triggered, 2 = error
+    order_id: str | None = None
+    created_at: float = time() * 1000
+    updated_at: float = time() * 1000
+    buy_price: float = 0  # base currency quantity e.g. 3000 USDT in BTCUSDT
+    buy_timestamp: float = 0
+    so_size: float = 0  # quote currency quantity e.g. 0.00003 BTC in BTCUSDT
+    max_active_so: float = 0
+    so_volume_scale: float = 0
+    so_step_scale: float = 0
+    so_asset: str = "USDT"
+    errors: list[str] = []
+    total_commission: float = 0
+
+
+class BotSchema(BaseModel):
+    id: str | PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    pair: str
+    balance_size_to_use: float = 0
+    balance_to_use: str = "1"
+    base_order_size: str = "15"  # Min Binance 0.0001 BNB
+    candlestick_interval: str = "5m"
+    cooldown: int = 0  # cooldown period before opening next bot with same pair
+    created_at: float = 0
+    deal: DealSchema = Field(default_factory=DealSchema)
+    errors: list[str] = []
+    locked_so_funds: float = 0  # funds locked by Safety orders
+    mode: str = "manual"  # Manual is triggered by the terminal dashboard, autotrade by research app
+    name: str = "Default bot"
+    orders: list[OrderSchema] = []  # Internal
+    status: str = "inactive"
+    stop_loss: float = 0
+    take_profit: float = 0
+    trailling: str = "true"
+    trailling_deviation: float = 0
+    trailling_profit: float = 0  # Trailling activation (first take profit hit)
+    safety_orders: list[SafetyOrderSchema] = []
+    strategy: str = "long"
+    short_buy_price: float = 0  # > 0 base_order does not execute immediately, executes short strategy when this value is hit
+    short_sell_price: float = 0  # autoswitch to short_strategy
     # Deal and orders are internal, should never be updated by outside data
-    total_commission: float = fields.Float()
-    updated_at = fields.Float()
-    _id = fields.Str()
+    total_commission: float = 0
+    updated_at: float = 0
+
+    @validator("pair", "base_order_size", "candlestick_interval")
+    def check_names_not_empty(cls, v):
+        assert v != "", "Empty pair field."
+        return v
+
+    @validator("stop_loss", "take_profit", "trailling_deviation", "trailling_profit")
+    def check_percentage(cls, v):
+        if 0 <= float(v) < 100:
+            return v
+        else:
+            raise ValueError(f'{v} must be a percentage')
+    
+    @validator("status")
+    def check_statuses(cls, v: str):
+        if v not in BinbotEnums.statuses:
+            raise ValueError(f'Status must be one of {", ".join(BinbotEnums.statuses)}')
+        return v
+    
+    @validator("mode")
+    def check_mode(cls, v: str):
+        if v not in BinbotEnums.mode:
+            raise ValueError(f'Status must be one of {", ".join(BinbotEnums.mode)}')
+        return v
+    
+    @validator("strategy")
+    def check_strategy(cls, v: str):
+        if v not in BinbotEnums.strategy:
+            raise ValueError(f'Status must be one of {", ".join(BinbotEnums.strategy)}')
+        return v
+
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+        schema_extra = {
+            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Binance and",
+            "example": {
+                "pair": "BNBUSDT",
+                "balance_size_to_use": 0,
+                "balance_to_use": 0,
+                "base_order_size": 15,
+                "candlestick_interval": "5m",
+                "cooldown": 0,
+                "errors": [],
+                "locked_so_funds": 0,
+                "mode": "manual",  # Manual is triggered by the terminal dashboard, autotrade by research app,
+                "name": "Default bot",
+                "orders": [],
+                "status": "inactive",
+                "stop_loss": 0,
+                "take_profit": 2.3,
+                "trailling": "true",
+                "trailling_deviation": 0.63,
+                "trailling_profit": 2.3,
+                "safety_orders": [],
+                "strategy": "long",
+                "short_buy_price": 0,
+                "short_sell_price": 0,
+                "total_commission": 0,
+            },
+        }
+
+
+class BotListResponse(StandardResponse):
+    data: list[BotSchema]
