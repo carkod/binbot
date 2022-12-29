@@ -3,6 +3,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from streaming.streaming_controller import StreamingController
 
 from account.routes import account_blueprint
 from autotrade.routes import autotrade_settings_blueprint
@@ -50,6 +51,5 @@ def create_app():
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=jsonable_encoder({"message": exc.errors(), "data": exc.body, "error": 1}),
         )
-
 
     return app

@@ -1,0 +1,9 @@
+FROM ubuntu:latest
+RUN apt-get update && apt-get install -y --no-install-recommends python3-pip build-essential python3-dev python-setuptools
+COPY api api
+WORKDIR api
+RUN pip3 install pipenv --no-cache-dir --upgrade
+RUN pipenv install --system --deploy --ignore-pipfile --clear
+ENTRYPOINT ["python3", "-u", "market_updates.py"]
+
+STOPSIGNAL SIGTERM

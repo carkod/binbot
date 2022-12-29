@@ -11,15 +11,15 @@ env:
   MONGO_AUTH_PASSWORD: rootPassXXX
   MONGO_APP_DATABASE: binbot
   MONGO_AUTH_DATABASE: admin
-  MONGO_HOSTNAME: binbot_db
-  MONGO_PORT: 27018
+  MONGO_HOSTNAME: db
+  MONGO_PORT: 27017
 
 jobs:
   push_to_registry:
     name: Test and deploy binbot
     runs-on: ubuntu-latest
     services:
-      binbot_db:
+      db:
         image: mongo
         options: >-
           --health-cmd mongosh
@@ -30,7 +30,7 @@ jobs:
           MONGO_INITDB_ROOT_USERNAME: ${{ env.MONGO_AUTH_USERNAME }}
           MONGO_INITDB_ROOT_PASSWORD: ${{ env.MONGO_AUTH_PASSWORD }}
         ports:
-          - 27018:27017
+          - 27017:27017
 
     steps:
       - name: Check out the repo
@@ -58,6 +58,7 @@ jobs:
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e PYTHONUNBUFFERED=TRUE \
           -e ENV=ci -d binbot
+          docker logs binbot
           sleep 5 && \
           curl --head --fail --retry-delay 30 --retry 5 --retry-connrefused http://localhost:8008
       - name: Tag image
@@ -70,6 +71,37 @@ jobs:
         run: |
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker push carloswufei/binbot
+  
+  deploy_streaming:
+    name: Deploy streaming
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Build image
+        run: docker build --tag binbot_streaming -f Dockerfile.streaming .
+      - name: Test run script
+        run: |
+          docker run --network host --name binbot_streaming \
+          -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
+          -e MONGO_PORT=${{ env.MONGO_PORT }} \
+          -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
+          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
+          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
+          -e PYTHONUNBUFFERED=TRUE \
+          -e ENV=ci -d binbot_streaming
+          docker logs binbot_streaming
+      - name: Tag image
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: |
+          docker commit binbot_streaming carloswufei/binbot_streaming &
+          docker tag binbot_streaming carloswufei/binbot_streaming
+      - name: Push to Docker Hub
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push carloswufei/binbot_streaming
+
 
   python_tests:
     name: Python code tests

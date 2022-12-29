@@ -1,5 +1,6 @@
 import os
 import asyncio
+import logging
 from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
@@ -11,7 +12,6 @@ class TerminateStreaming(Exception):
 class StreamingController:
 
     def __init__(self):
-        print("Starting streaming controller")
         # For some reason, db connections internally only work with
         # db:27017 instead of localhost=:2018
         self.streaming_db = self.setup_db()
@@ -20,14 +20,9 @@ class StreamingController:
         asyncio.Event.connection_open = True
 
     def setup_db(self):
-        host="binbot_db"
-        port=27017
-        if os.environ["ENV"] == "development":
-            host="binbot_db"
-            port=27018
         mongo = MongoClient(
-            host=host,
-            port=port,
+            host="db",
+            port=27017,
             authSource="admin",
             username=os.getenv("MONGO_AUTH_USERNAME"),
             password=os.getenv("MONGO_AUTH_PASSWORD"),
@@ -64,7 +59,7 @@ class StreamingController:
         if "short_buy_price" in current_bot and float(current_bot["short_buy_price"]) > 0 and float(current_bot["short_buy_price"]) >= float(close_price):
             # If hit short_buy_price, resume long strategy by resetting short_buy_price
             CreateDealController(current_bot, db_collection=db_collection).execute_short_buy()
-            raise TerminateStreaming()
+            raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         # Long strategy starts
         if current_bot and "deal" in current_bot:
@@ -215,9 +210,11 @@ class StreamingController:
 
     
     async def get_klines(self, interval):
+        print("Starting streaming klines")
         socket = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = socket.multiplex_socket(params)
+        logging.info("Starting klines streaming")
 
         async with klines as k:
             try:
