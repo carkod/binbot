@@ -16,6 +16,7 @@ class StreamingController:
         # For some reason, db connections internally only work with
         # db:27017 instead of localhost=:2018
         self.streaming_db = setup_db()
+        self.settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
         # Start streaming service globally
         # This will allow access for the entire FastApi scope
         asyncio.Event.connection_open = True
@@ -181,6 +182,10 @@ class StreamingController:
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
+        if self.settings["update_required"]:
+            self.streaming_db.research_controller.find_one({"_id": "settings"}, {"update_required": False})
+            raise TerminateStreaming("Market_updates websockets update required")
+
         if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
@@ -204,25 +209,19 @@ class StreamingController:
         socket = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = socket.multiplex_socket(params)
-        logging.info("Starting klines streaming")
 
         async with klines as k:
-            try:
-                while asyncio.Event.connection_open:
-                    res = await k.recv()
-                    
-                    if "result" in res:
-                        print(f'Subscriptions: {res["result"]}')
+            while asyncio.Event.connection_open:
+                res = await k.recv()
+                
+                if "result" in res:
+                    print(f'Subscriptions: {res["result"]}')
 
-                    if "data" in res:
-                        if "e" in res["data"] and res["data"]["e"] == "kline":
-                            self.process_deals(res["data"])
-                        else:
-                            print(f'Error: {res["data"]}')
-                    
-
-            except Exception as error:
-                print(f"get_klines sockets error: {error}")
+                if "data" in res:
+                    if "e" in res["data"] and res["data"]["e"] == "kline":
+                        self.process_deals(res["data"])
+                    else:
+                        print(f'Error: {res["data"]}')
     
     async def get_user_data(self):
         print("Streaming user data")

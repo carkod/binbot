@@ -131,6 +131,9 @@ class CreateDealController(Account):
         Required initial order to trigger bot.
         Other orders require this to execute,
         therefore should fail if not successful
+
+        1. Initial base purchase
+        2. Set take_profit
         """
 
         pair = self.active_bot.pair
@@ -207,27 +210,27 @@ class CreateDealController(Account):
 
         return bot
 
-    def take_profit_order(self, deal_data) -> BotSchema:
+    def take_profit_order(self) -> BotSchema:
         """
         take profit order (Binance take_profit)
         - We only have stop_price, because there are no book bids/asks in t0
         - take_profit order can ONLY be executed once base order is filled (on Binance)
         """
 
-        deal_buy_price = deal_data.buy_price
-        buy_total_qty = deal_data.buy_total_qty
-        price = (1 + (float(bot.take_profit) / 100)) * float(deal_buy_price)
+        deal_buy_price = self.active_bot.buy_price
+        buy_total_qty = self.active_bot.buy_total_qty
+        price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
 
         if self.db_collection.name == "paper_trading":
-            qty = bot.deal.buy_total_qty
+            qty = self.active_bot.deal.buy_total_qty
         else:
-            qty = self.compute_qty(bot.pair)
+            qty = self.compute_qty(self.active_bot.pair)
 
         qty = supress_notation(buy_total_qty, self.qty_precision)
         price = supress_notation(price, self.price_precision)
 
         if self.db_collection.name == "paper_trading":
-            res = self.simulate_order(bot.pair, price, qty, "SELL")
+            res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
             if price:
                 res = self.simulate_order(
                     self.active_bot.pair,
@@ -236,7 +239,7 @@ class CreateDealController(Account):
                     "SELL",
                 )
             else:
-                price = (1 + (float(bot.take_profit) / 100)) * float(deal_buy_price)
+                price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
                 res = self.simulate_order(
                     self.active_bot.pair,
                     price,
@@ -244,25 +247,14 @@ class CreateDealController(Account):
                     "SELL",
                 )
         else:
-            if price:
-                tp_order = {
-                    "pair": bot.pair,
-                    "qty": supress_notation(qty, self.qty_precision),
-                    "price": supress_notation(price, self.price_precision),
-                }
-                res = self.bb_request(
-                    method="POST", url=self.bb_sell_order_url, payload=tp_order
-                )
-            else:
-                tp_order = {
-                    "pair": bot.pair,
-                    "qty": supress_notation(qty, self.qty_precision),
-                }
-                res = self.bb_request(
-                    method="POST",
-                    url=self.bb_sell_market_order_url,
-                    payload=tp_order,
-                )
+            tp_order = {
+                "pair": self.active_bot.pair,
+                "qty": supress_notation(qty, self.qty_precision),
+                "price": supress_notation(price, self.price_precision),
+            }
+            res = self.bb_request(
+                method="POST", url=self.bb_sell_order_url, payload=tp_order
+            )
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
@@ -308,12 +300,11 @@ class CreateDealController(Account):
 
         return bot
 
-    def trailling_profit(self, current_price) -> BotSchema:
+    def trailling_profit(self) -> BotSchema:
         """
         Sell at take_profit price, because prices will not reach trailling
         """
 
-        bot = self.active_bot
         deal_data = self.active_bot.deal
         deal_buy_price = self.active_bot.deal.buy_price
         price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
@@ -321,46 +312,29 @@ class CreateDealController(Account):
         if self.db_collection.name == "paper_trading":
             qty = deal_data.buy_total_qty
         else:
-            qty = self.compute_qty(bot.pair)
+            qty = self.compute_qty(self.active_bot.pair)
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":
-            if price:
-                res = self.simulate_order(
-                    self.active_bot.pair,
-                    price,
-                    qty,
-                    "SELL",
-                )
-            else:
-                price = current_price
-                res = self.simulate_order(
-                    self.active_bot.pair,
-                    price,
-                    qty,
-                    "SELL",
-                )
+            res = self.simulate_order(
+                self.active_bot.pair,
+                price,
+                qty,
+                "SELL",
+            )
+
         # Dispatch real order
         else:
-            if price:
-                tp_order = {
-                    "pair": bot.pair,
-                    "qty": supress_notation(qty, self.qty_precision),
-                    "price": supress_notation(price, self.price_precision),
-                }
-                res = self.bb_request(
-                    method="POST", url=self.bb_sell_order_url, payload=tp_order
-                )
-            else:
-                tp_order = {
-                    "pair": bot.pair,
-                    "qty": supress_notation(qty, self.qty_precision),
-                }
-                res = self.bb_request(
-                    method="POST",
-                    url=self.bb_sell_market_order_url,
-                    payload=tp_order,
-                )
+
+            tp_order = {
+                "pair": self.active_bot.pair,
+                "qty": supress_notation(qty, self.qty_precision),
+                "price": supress_notation(price, self.price_precision),
+            }
+
+            res = self.bb_request(
+                method="POST", url=self.bb_sell_order_url, payload=tp_order
+            )
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
@@ -449,23 +423,23 @@ class CreateDealController(Account):
         Optional deals section
         """
 
-        # Below take profit order goes first, because stream does not return a value
-        # If there is already a take profit do not execute
-        # If there is no base order can't execute
-        check_bo = False
-        check_tp = True
-        if hasattr(self.active_bot, "orders") and len(self.active_bot.orders) > 0:
-            for order in self.active_bot.orders:
-                if order.deal_type == "base_order":
-                    check_bo = True
-                if order.deal_type == "take_profit":
-                    check_tp = False
+        # # Below take profit order goes first, because stream does not return a value
+        # # If there is already a take profit do not execute
+        # # If there is no base order can't execute
+        # check_bo = False
+        # check_tp = True
+        # if hasattr(self.active_bot, "orders") and len(self.active_bot.orders) > 0:
+        #     for order in self.active_bot.orders:
+        #         if order.deal_type == "base_order":
+        #             check_bo = True
+        #         if order.deal_type == "take_profit":
+        #             check_tp = False
 
-        if check_bo and check_tp:
-            if self.active_bot.trailling == "true":
-                self.active_bot = self.trailling_profit(self.active_bot.deal)
-            else:
-                self.active_bot = self.take_profit_order(self.active_bot.deal)
+        # if check_bo and check_tp:
+        #     if self.active_bot.trailling == "true":
+        #         self.active_bot = self.trailling_profit()
+        #     else:
+        #         self.active_bot = self.take_profit_order()
 
         # Update stop loss regarless of base order
         if hasattr(self.active_bot, "stop_loss") and float(self.active_bot.stop_loss) > 0:

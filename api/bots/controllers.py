@@ -18,15 +18,17 @@ from tools.handle_error import (
     handle_binance_errors,
     json_response,
     json_response_message,
+    json_response_error
 )
 from tools.round_numbers import supress_notation
 from typing import List
 from fastapi import Query
-
+from bots.schemas import BotSchema
 
 class Bot(Account):
     def __init__(self, collection_name="paper_trading"):
-        self.db_collection = setup_db()[collection_name]
+        self.db = setup_db()
+        self.db_collection = self.db[collection_name]
 
     def get(self, status, start_date, end_date, no_cooldown):
         """
@@ -131,10 +133,11 @@ class Bot(Account):
                         "botId": str(result.inserted_id),
                     }
                 )
+                self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": True}})
         except RequestValidationError as error:
-            resp = json_response_message(f"Failed to create new bot: {error}")
+            resp = json_response_error(f"Failed to create new bot: {error}")
         except Exception as e:
-            resp = json_response_message(f"Failed to create new bot: {e}")
+            resp = json_response_error(f"Failed to create new bot: {e}")
         return resp
 
     def edit(self, botId, data):
@@ -149,29 +152,29 @@ class Bot(Account):
             resp = json_response(
                 {"message": "Successfully updated bot", "botId": str(botId)}
             )
+            self.db.research_controller.find_one({"_id": "settings"}, {"$set": {"update_required": True}})
         except RequestValidationError as e:
-            resp = json_response_message(f"Failed validation: {e}")
+            resp = json_response_error(f"Failed validation: {e}")
         except Exception as e:
-            resp = json_response_message(f"Failed to create new bot: {e}")
+            resp = json_response_error(f"Failed to create new bot: {e}")
         return resp
 
     def delete(self, bot_ids: List[str] = Query(...)):
 
         if not bot_ids or not isinstance(bot_ids, list):
-            return json_response_message("At least one bot id is required")
+            return json_response_error("At least one bot id is required")
 
         delete_action = self.db_collection.delete_many(
             {"_id": {"$in": [ObjectId(item) for item in bot_ids]}}
         )
         if delete_action:
-            resp = json_response_message("Successfully deleted bot")
+            resp = json_response_error("Successfully deleted bot")
         else:
             resp = json_response({"message": "Bot deletion is not available"}, 400)
         return resp
 
-    def activate(self, botId):
+    def activate(self, botId: str):
         bot = self.db_collection.find_one({"_id": ObjectId(botId)})
-
         if bot:
 
             try:
@@ -182,14 +185,15 @@ class Bot(Account):
                 asyncio.Event.connection_open = False  # type: ignore
                 return resp
             except OpenDealError as error:
-                return json_response_message(error.args[0])
+                print(error)
+                return json_response_error(error.args[0])
             except NotEnoughFunds as e:
-                return json_response_message(e.args[0])
+                return json_response_error(e.args[0])
             except Exception as error:
-                resp = json_response_message(f"Unable to activate bot: {error}")
+                resp = json_response_error(f"Unable to activate bot: {error}")
                 return resp
         else:
-            return json_response_message("Bot not found.")
+            return json_response_error("Bot not found.")
 
     def deactivate(self, findId):
         """
@@ -222,10 +226,10 @@ class Bot(Account):
             # Sell everything
             pair = bot["pair"]
             base_asset = self.find_baseAsset(pair)
-            deal_object = Deal(bot)
-            precision = deal_object.price_precision
-            qty_precision = deal_object.qty_precision
-            balance = deal_object.get_one_balance(base_asset)
+            bot = BotSchema.parse_obj(bot)
+            precision = self.price_precision
+            qty_precision = self.qty_precision
+            balance = self.get_one_balance(base_asset)
             if balance:
                 qty = float(balance)
                 book_order = Book_Order(pair)
@@ -237,17 +241,10 @@ class Bot(Account):
                         "qty": supress_notation(qty, qty_precision),
                         "price": supress_notation(price, precision),
                     }
-                    try:
-                        order_res = self.request(
-                            method="POST", url=self.bb_sell_order_url, json=order
-                        )
-                    except QuantityTooLow:
-                        bot["status"] = "closed"
-                        try:
-                            self.bot_schema.update(bot)
-                        except Exception as e:
-                            resp = json_response_message(e)
-                    return resp
+                    order_res = self.request(
+                        method="POST", url=self.bb_sell_order_url, json=order
+                    )
+                    
                 else:
                     order = {
                         "pair": pair,

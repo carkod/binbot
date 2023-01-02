@@ -3,7 +3,7 @@ import atexit
 import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from streaming.streaming_controller import StreamingController
+from streaming.streaming_controller import StreamingController, TerminateStreaming
 
 from account.assets import Assets
 
@@ -25,10 +25,16 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
 
 async def main():
     mu = StreamingController()
-    await asyncio.gather(
-        mu.get_klines("5m"),
-        mu.get_user_data(),
-    )
+    try:
+        await asyncio.gather(
+            mu.get_klines("5m"),
+            mu.get_user_data(),
+        )
+    except TerminateStreaming:
+        asyncio.run(main())
+    except Exception as error:
+        print(error)
+        asyncio.run(main())
 
 if __name__ == "__main__":
     asyncio.run(main())
