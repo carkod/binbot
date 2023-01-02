@@ -104,7 +104,7 @@ const testBotsReducer = produce((draft, action) => {
 
     case DELETE_TEST_BOT_SUCCESS:
       let bots = draft.bots.filter(
-        (x) => !x._id.$oid.includes(draft.removeId)
+        (x) => !x.id.$oid.includes(draft.removeId)
       );
       draft.bots = bots;
       draft.totalProfit = computeTotalProfit(bots);
@@ -144,7 +144,7 @@ const testBotsReducer = produce((draft, action) => {
       return newState;
     }
     case DEACTIVATE_TEST_BOT_SUCCESS: {
-      const findidx = draft.data.findIndex((x) => x._id.$oid === action.id);
+      const findidx = draft.data.findIndex((x) => x.id.$oid === action.id);
       draft.data[findidx].status = "inactive";
       const newState = {
         data: draft.data,

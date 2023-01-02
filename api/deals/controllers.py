@@ -7,6 +7,7 @@ import requests
 from pymongo import ReturnDocument
 from requests.exceptions import HTTPError
 from pydantic import ValidationError
+from bson import ObjectId
 
 from account.account import Account
 from bots.schemas import BotSchema
@@ -121,7 +122,7 @@ class CreateDealController(Account):
 
     def update_deal_logs(self, msg):
         self.db_collection.update_one(
-            {"_id": self.active_bot.id},
+            {"id": self.active_bot.id},
             {"$push": {"errors": msg}},
         )
         return msg
@@ -199,16 +200,19 @@ class CreateDealController(Account):
             stop_loss_price=stop_loss_price,
         )
 
-        bot = encode_json(self.active_bot)
-        bot.pop("_id")
+        # Activate bot
+        self.active_bot.status = "active"
 
-        bot = self.db_collection.find_one_and_update(
-            {"_id": self.active_bot.id},
+        bot = encode_json(self.active_bot)
+        bot.pop("_id") # _id is what causes conflict not id
+
+        document = self.db_collection.find_one_and_update(
+            {"_id": ObjectId(self.active_bot.id)},
             {"$set": bot},
             return_document=ReturnDocument.AFTER,
         )
 
-        return bot
+        return document
 
     def take_profit_order(self) -> BotSchema:
         """
@@ -289,7 +293,7 @@ class CreateDealController(Account):
                 bot.pop("_id")
 
             bot = self.db_collection.find_one_and_update(
-                {"_id": self.active_bot.id},
+                {"id": self.active_bot.id},
                 {
                     "$set": bot,
                 },
@@ -372,7 +376,7 @@ class CreateDealController(Account):
                 bot.pop("_id")
 
             bot = self.db_collection.find_one_and_update(
-                {"_id": self.active_bot.id},
+                {"id": self.active_bot.id},
                 {
                     "$set": bot,
                 },
@@ -416,31 +420,14 @@ class CreateDealController(Account):
         if not base_order_deal:
             bot = self.base_order()
         else:
-            bot = self.db_collection.find_one({"_id": self.active_bot.id})
+            bot = self.db_collection.find_one({"id": self.active_bot.id})
             self.active_bot = BotSchema.parse_obj(bot)
 
         """
         Optional deals section
+
+        The following functionality is triggered according to the options set in the bot
         """
-
-        # # Below take profit order goes first, because stream does not return a value
-        # # If there is already a take profit do not execute
-        # # If there is no base order can't execute
-        # check_bo = False
-        # check_tp = True
-        # if hasattr(self.active_bot, "orders") and len(self.active_bot.orders) > 0:
-        #     for order in self.active_bot.orders:
-        #         if order.deal_type == "base_order":
-        #             check_bo = True
-        #         if order.deal_type == "take_profit":
-        #             check_tp = False
-
-        # if check_bo and check_tp:
-        #     if self.active_bot.trailling == "true":
-        #         self.active_bot = self.trailling_profit()
-        #     else:
-        #         self.active_bot = self.take_profit_order()
-
         # Update stop loss regarless of base order
         if hasattr(self.active_bot, "stop_loss") and float(self.active_bot.stop_loss) > 0:
             buy_price = float(self.active_bot.deal.buy_price)
@@ -588,7 +575,7 @@ class CreateDealController(Account):
                 new_deals.append(take_profit_order)
                 self.active_bot.orders = new_deals
                 self.db.bots.update_one(
-                    {"_id": self.active_bot.id},
+                    {"id": self.active_bot.id},
                     {
                         "$push": {
                             "orders": take_profit_order,
@@ -646,7 +633,7 @@ class CreateDealController(Account):
                     bot.pop("_id")
 
                 self.db_collection.update_one(
-                    {"_id": self.active_bot.id},
+                    {"id": self.active_bot.id},
                     {"$set": bot},
                 )
                 return
@@ -734,7 +721,7 @@ class CreateDealController(Account):
             bot.pop("_id")
 
             self.db_collection.update_one(
-                {"_id": self.active_bot.id},
+                {"id": self.active_bot.id},
                 {"$set": bot},
             )
             self.update_deal_logs("Safety order triggered!")
@@ -871,7 +858,7 @@ class CreateDealController(Account):
             bot.pop("_id")
 
             self.db_collection.update_one(
-                {"_id": self.active_bot.id},
+                {"id": self.active_bot.id},
                 {"$set": bot},
             )
         except ValidationError as error:
@@ -1019,7 +1006,7 @@ class CreateDealController(Account):
             bot.pop("_id")
 
             self.db_collection.update_one(
-                {"_id": self.active_bot.id},
+                {"id": self.active_bot.id},
                 {"$set": bot},
             )
         except ValidationError as error:
@@ -1053,7 +1040,7 @@ class CreateDealController(Account):
                 bot.pop("_id")
 
             self.db_collection.update_one(
-                {"_id": self.active_bot.id},
+                {"id": self.active_bot.id},
                 {"$set": bot},
             )
 

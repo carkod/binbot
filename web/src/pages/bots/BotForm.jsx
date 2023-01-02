@@ -50,7 +50,7 @@ class BotForm extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      _id: props.match.params.id ? props.match.params.id : null,
+      id: props.match.params.id ? props.match.params.id : null,
       bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
@@ -288,10 +288,10 @@ class BotForm extends React.Component {
         short_buy_price: this.props.bot.short_buy_price,
         short_sell_price: this.props.bot.short_sell_price
       };
-      if (this.state._id === null) {
+      if (this.state.id === null) {
         this.props.createBot(form);
       } else {
-        this.props.editBot(this.state._id, form);
+        this.props.editBot(this.state.id, form);
       }
     }
   };
@@ -404,7 +404,7 @@ class BotForm extends React.Component {
     const validation = this.requiredinValidation();
     if (validation) {
       await this.handleSubmit(e);
-      this.props.activateBot(this.state._id);
+      this.props.activateBot(this.state.id);
     }
   };
 
@@ -683,7 +683,7 @@ class BotForm extends React.Component {
                           className="btn-round"
                           color="primary"
                           onClick={this.handleActivation}
-                          disabled={checkValue(this.props.bot._id)}
+                          disabled={checkValue(this.props.bot.id)}
                         >
                           {this.props.bot.status === "active" &&
                           Object.keys(this.props.bot.deal).length > 0

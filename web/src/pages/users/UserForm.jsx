@@ -18,12 +18,12 @@ const UserForm = ({ currentUser, handleSubmit }) => {
       
       mounted.current = true;
     } else {
-      if (!checkValue(currentUser) && currentUser._id.$oid !== id) {
+      if (!checkValue(currentUser) && currentUser.id.$oid !== id) {
         setEmail(currentUser.email);
         setUsername(currentUser.username);
         setPassword(currentUser.password);
         setAbout(currentUser.about);
-        setId(currentUser._id.$oid)
+        setId(currentUser.id.$oid)
       }
     }
   }, [currentUser, id]);
@@ -42,7 +42,7 @@ const UserForm = ({ currentUser, handleSubmit }) => {
     e.preventDefault();
     validateFields();
     const submitForm = {
-      _id: currentUser?._id.$oid,
+      id: currentUser?.id.$oid,
       email: email,
       password: password,
       username: username || "",

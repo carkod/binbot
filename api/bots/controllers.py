@@ -54,9 +54,9 @@ class Bot(Account):
             obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
             gte_tp_id = ObjectId.from_datetime(obj_start_date)
             try:
-                params["_id"]["$gte"] = gte_tp_id
+                params["id"]["$gte"] = gte_tp_id
             except KeyError:
-                params["_id"] = {"$gte": gte_tp_id}
+                params["id"] = {"$gte": gte_tp_id}
 
         if end_date:
             try:
@@ -69,7 +69,7 @@ class Bot(Account):
 
             obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
-            params["_id"]["$lte"] = lte_tp_id
+            params["id"]["$lte"] = lte_tp_id
 
         # Only retrieve active and cooldown bots
         # These bots will be removed from signals
@@ -92,7 +92,7 @@ class Bot(Account):
         try:
             bot = list(
                 self.db_collection.find(params).sort(
-                    [("_id", -1), ("status", 1), ("pair", 1)]
+                    [("id", -1), ("status", 1), ("pair", 1)]
                 )
             )
             resp = json_response({"message": "Sucessfully found bots!", "data": bot})
@@ -102,7 +102,7 @@ class Bot(Account):
         return resp
 
     def get_one(self, findId):
-        bot = self.db_collection.find_one({"_id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"id": ObjectId(findId)})
         if bot:
             resp = json_response({"message": "Bot found", "data": bot})
         else:
@@ -113,27 +113,19 @@ class Bot(Account):
         try:
             bot = data.dict()
 
-            if "_id" in bot:
-                # ObjectId(...) is not required here BotSchema provides a PyObjectId factory function
-                # which creates a Object Id
-                result = self.db_collection.update_one(
-                    {"_id": bot["_id"]}, bot
-                )
-                resp = json_response(
-                    {
-                        "message": "This bot already exists, successfully updated bot",
-                        "botId": str(result.updated_id),
-                    }
-                )
-            else:
-                result = self.db_collection.insert_one(bot)
-                resp = json_response(
-                    {
-                        "message": "Successfully created new bot",
-                        "botId": str(result.inserted_id),
-                    }
-                )
-                self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": True}})
+            # ObjectId(...) is not required here BotSchema provides a PyObjectId factory function
+            # which creates a Object Id
+            self.db_collection.update_one(
+                {"id": data.id}, {"$set": bot}, upsert=True
+            )
+            resp = json_response(
+                {
+                    "message": "This bot already exists, successfully updated bot",
+                    "botId": str(data.id),
+                }
+            )
+
+            self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
         except RequestValidationError as error:
             resp = json_response_error(f"Failed to create new bot: {error}")
         except Exception as e:
@@ -146,13 +138,13 @@ class Bot(Account):
 
         try:
             bot = data.dict()
-            if "_id" in bot:
-                bot.pop("_id")
-            self.db_collection.update_one({"_id": ObjectId(botId)}, {"$set": bot})
+            if "id" in bot:
+                bot.pop("id")
+            self.db_collection.update_one({"id": ObjectId(botId)}, {"$set": bot})
             resp = json_response(
                 {"message": "Successfully updated bot", "botId": str(botId)}
             )
-            self.db.research_controller.find_one({"_id": "settings"}, {"$set": {"update_required": True}})
+            self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
         except RequestValidationError as e:
             resp = json_response_error(f"Failed validation: {e}")
         except Exception as e:
@@ -164,17 +156,18 @@ class Bot(Account):
         if not bot_ids or not isinstance(bot_ids, list):
             return json_response_error("At least one bot id is required")
 
-        delete_action = self.db_collection.delete_many(
-            {"_id": {"$in": [ObjectId(item) for item in bot_ids]}}
-        )
-        if delete_action:
-            resp = json_response_error("Successfully deleted bot")
-        else:
-            resp = json_response({"message": "Bot deletion is not available"}, 400)
+        try:
+            self.db_collection.delete_many(
+                {"id": {"$in": [ObjectId(item) for item in bot_ids]}}
+            )
+            resp = json_response_message("Successfully deleted bot(s)")
+        except Exception as error:
+            resp = json_response_error(f"Failed to delete bot(s) {error}")
+            
         return resp
 
     def activate(self, botId: str):
-        bot = self.db_collection.find_one({"_id": ObjectId(botId)})
+        bot = self.db_collection.find_one({"id": ObjectId(botId)})
         if bot:
 
             try:
@@ -202,7 +195,7 @@ class Bot(Account):
         2. Sell Coins
         3. Delete bot
         """
-        bot = self.db_collection.find_one({"_id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"id": ObjectId(findId)})
         resp = json_response_message(
             "Not enough balance to close and sell. Please directly delete the bot."
         )
@@ -278,7 +271,7 @@ class Bot(Account):
                         "status": order_res["status"],
                     }
                     self.db_collection.update_one(
-                        {"_id": ObjectId(findId)},
+                        {"id": ObjectId(findId)},
                         {
                             "$push": {
                                 "orders": deactivation_order,
@@ -301,7 +294,7 @@ class Bot(Account):
                     "status": order_res["status"],
                 }
                 self.db_collection.update_one(
-                    {"_id": ObjectId(findId)},
+                    {"id": ObjectId(findId)},
                     {
                         "$set": {
                             "status": "completed",
@@ -321,7 +314,7 @@ class Bot(Account):
                 )
             else:
                 self.db_collection.update_one(
-                    {"_id": ObjectId(findId)}, {"$set": {"status": "error"}}
+                    {"id": ObjectId(findId)}, {"$set": {"status": "error"}}
                 )
                 return json_response_message("Not enough balance to close and sell")
 
@@ -329,7 +322,7 @@ class Bot(Account):
         """
         Change status to archived
         """
-        bot = self.db_collection.find_one({"_id": ObjectId(botId)})
+        bot = self.db_collection.find_one({"id": ObjectId(botId)})
         if bot["status"] == "active":
             return json_response(
                 {"message": "Cannot archive an active bot!", "botId": botId}
@@ -341,7 +334,7 @@ class Bot(Account):
             status = "archived"
 
         archive = self.db_collection.update(
-            {"_id": ObjectId(botId)}, {"$set": {"status": status}}
+            {"id": ObjectId(botId)}, {"$set": {"status": status}}
         )
         if archive:
             resp = json_response(
