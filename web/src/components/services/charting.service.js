@@ -203,6 +203,19 @@ export function updateOrderLines(bot, currentPrice) {
       });
       totalOrderLines = totalOrderLines.concat(safetyOrderLines);
     }
+
+    if (bot.stop_loss && bot.stop_loss > 0) {
+      // Stop loss
+    const stopLossPrice = currentPrice - (currentPrice * (bot.stop_loss / 100));
+    totalOrderLines.push({
+      id: "stop_loss",
+      text: `Stop Loss ${bot.stop_loss}%`,
+      tooltip: [bot.status, " Sell Order "],
+      quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+      price: stopLossPrice, // buy_profit * take_profit%
+      color: "red",
+    })
+    }
   }
   return totalOrderLines;
 }
