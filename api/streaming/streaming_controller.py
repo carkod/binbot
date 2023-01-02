@@ -5,6 +5,7 @@ from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
 from pymongo import MongoClient
+from db import setup_db
 
 class TerminateStreaming(Exception):
     pass
@@ -14,21 +15,10 @@ class StreamingController:
     def __init__(self):
         # For some reason, db connections internally only work with
         # db:27017 instead of localhost=:2018
-        self.streaming_db = self.setup_db()
+        self.streaming_db = setup_db()
         # Start streaming service globally
         # This will allow access for the entire FastApi scope
         asyncio.Event.connection_open = True
-
-    def setup_db(self):
-        mongo = MongoClient(
-            host="db",
-            port=27017,
-            authSource="admin",
-            username=os.getenv("MONGO_AUTH_USERNAME"),
-            password=os.getenv("MONGO_AUTH_PASSWORD"),
-        )
-        
-        return mongo[os.getenv("MONGO_APP_DATABASE")]
 
     async def setup_client(self):
         client = await AsyncClient.create(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])

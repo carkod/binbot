@@ -1,11 +1,11 @@
 import os
 from pymongo import MongoClient
 
-def setup_db(host=os.getenv("MONGO_HOSTNAME"), port=int(os.getenv("MONGO_PORT"))):
+def setup_db():
     # Database
     mongo = MongoClient(
-        host=host,
-        port=port,
+        host=os.getenv("MONGO_HOSTNAME"),
+        port=int(os.getenv("MONGO_PORT")),
         authSource="admin",
         username=os.getenv("MONGO_AUTH_USERNAME"),
         password=os.getenv("MONGO_AUTH_PASSWORD"),

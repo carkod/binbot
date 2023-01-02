@@ -38,7 +38,7 @@
       "name": "Python: Research",
       "type": "python",
       "request": "launch",
-      "program": "research/__init__.py",
+      "program": "binbot-research/__init__.py",
       "console": "internalConsole"
     },
     {
