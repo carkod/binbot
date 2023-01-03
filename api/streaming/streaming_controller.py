@@ -16,7 +16,9 @@ class StreamingController:
         # For some reason, db connections internally only work with
         # db:27017 instead of localhost=:2018
         self.streaming_db = setup_db()
+        self.klines = None
         self.settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
+        self.test_settings = self.streaming_db.research_controller.find_one({"_id": "test_autotrade_settings"})
         # Start streaming service globally
         # This will allow access for the entire FastApi scope
         asyncio.Event.connection_open = True
@@ -159,7 +161,7 @@ class StreamingController:
                         )
                         try:
                             deal = CreateDealController(bot, db_collection)
-                            deal.trailling_profit(price)
+                            deal.trailling_profit()
                         except Exception as error:
                             print(error)
                             return
@@ -183,8 +185,18 @@ class StreamingController:
         when price and symbol match existent deal
         """
         if self.settings["update_required"]:
-            self.streaming_db.research_controller.find_one({"_id": "settings"}, {"update_required": False})
-            raise TerminateStreaming("Market_updates websockets update required")
+            self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
+            if self.klines:
+                self.klines.stop_socket()
+                self.get_klines("5m")
+            # raise TerminateStreaming("Market_updates websockets update required")
+        # if self.test_settings["update_required"]:
+        #     self.streaming_db.research_controller.update_one({"_id": "test_autotrade_settings"}, {"$set": {"update_required": False}})
+        #     if self.klines:
+        #         self.klines.stop_socket()
+        #         self.get_klines("5m")
+            # raise TerminateStreaming("Market_updates websockets update required")
+            
 
         if "k" in result:
             close_price = result["k"]["c"]
@@ -208,9 +220,9 @@ class StreamingController:
         print("Starting streaming klines")
         socket = await self.setup_client()
         params = self.combine_stream_names(interval)
-        klines = socket.multiplex_socket(params)
+        self.klines = socket.multiplex_socket(params)
 
-        async with klines as k:
+        async with self.klines as k:
             while asyncio.Event.connection_open:
                 res = await k.recv()
                 
