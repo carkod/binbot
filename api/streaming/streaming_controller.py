@@ -3,7 +3,7 @@ import asyncio
 from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
-from pymongo import MongoClient
+from db import setup_db
 
 class TerminateStreaming(Exception):
     pass
@@ -11,29 +11,15 @@ class TerminateStreaming(Exception):
 class StreamingController:
 
     def __init__(self):
-        print("Starting streaming controller")
         # For some reason, db connections internally only work with
         # db:27017 instead of localhost=:2018
-        self.streaming_db = self.setup_db()
+        self.streaming_db = setup_db()
+        self.socket = None
+        self.settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
+        self.test_settings = self.streaming_db.research_controller.find_one({"_id": "test_autotrade_settings"})
         # Start streaming service globally
         # This will allow access for the entire FastApi scope
         asyncio.Event.connection_open = True
-
-    def setup_db(self):
-        host="binbot_db"
-        port=27017
-        if os.environ["ENV"] == "development":
-            host="binbot_db"
-            port=27018
-        mongo = MongoClient(
-            host=host,
-            port=port,
-            authSource="admin",
-            username=os.getenv("MONGO_AUTH_USERNAME"),
-            password=os.getenv("MONGO_AUTH_PASSWORD"),
-        )
-        
-        return mongo[os.getenv("MONGO_APP_DATABASE")]
 
     async def setup_client(self):
         client = await AsyncClient.create(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
@@ -64,14 +50,14 @@ class StreamingController:
         if "short_buy_price" in current_bot and float(current_bot["short_buy_price"]) > 0 and float(current_bot["short_buy_price"]) >= float(close_price):
             # If hit short_buy_price, resume long strategy by resetting short_buy_price
             CreateDealController(current_bot, db_collection=db_collection).execute_short_buy()
-            raise TerminateStreaming()
+            raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         # Long strategy starts
         if current_bot and "deal" in current_bot:
             # Update Current price only for active bots
             # This is to keep historical profit intact
             bot = self.streaming_db[db_collection].find_one_and_update(
-                {"_id": current_bot["_id"]},
+                {"id": current_bot["id"]},
                 {"$set": {"deal.current_price": close_price}},
                 return_document=ReturnDocument.AFTER,
             )
@@ -88,10 +74,10 @@ class StreamingController:
 
             # Stop loss
             if (
-                "stop_loss" in current_bot
-                and float(current_bot["stop_loss"]) > 0.0
-                and "stop_loss_price" in current_bot["deal"]
-                and float(current_bot["deal"]["stop_loss_price"])
+                "stop_loss" in bot
+                and float(bot["stop_loss"]) > 0
+                and "stop_loss_price" in bot["deal"]
+                and float(bot["deal"]["stop_loss_price"])
                 > float(close_price)
             ):
                 deal = CreateDealController(bot, db_collection)
@@ -99,7 +85,7 @@ class StreamingController:
                 return
 
             # Take profit trailling
-            if bot["trailling"] == "true" and bot["deal"]["buy_price"] != "":
+            if bot["trailling"] == "true" and float(bot["deal"]["buy_price"]) > 0:
 
                 # Temporary testing condition
                 if db_collection == "paper_trading":
@@ -149,19 +135,19 @@ class StreamingController:
                             * (float(bot["trailling_deviation"]) / 100)
                         )
 
-                    updated_bot = self.streaming_db[db_collection].update_one(
-                        {"_id": current_bot["_id"]},
-                        {"$set": {"deal": bot["deal"]}},
+                updated_bot = self.streaming_db[db_collection].update_one(
+                    {"id": current_bot["id"]},
+                    {"$set": {"deal": bot["deal"]}},
+                )
+                if not updated_bot:
+                    self.streaming_db[db_collection].update_one(
+                        {"id": current_bot["id"]},
+                        {
+                            "$push": {
+                                "errors": f'Error updating trailling order {current_bot["_id"]}'
+                            }
+                        },
                     )
-                    if not updated_bot:
-                        self.streaming_db[db_collection].update_one(
-                            {"_id": current_bot["_id"]},
-                            {
-                                "$push": {
-                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
-                                }
-                            },
-                        )
 
                 # Sell after hitting trailling stop_loss and if price already broken trailling
                 if "trailling_stop_loss_price" in bot["deal"]:
@@ -173,7 +159,7 @@ class StreamingController:
                         )
                         try:
                             deal = CreateDealController(bot, db_collection)
-                            deal.trailling_profit(price)
+                            deal.trailling_profit()
                         except Exception as error:
                             print(error)
                             return
@@ -196,6 +182,19 @@ class StreamingController:
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
+        if self.settings["update_required"]:
+            self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
+            if self.socket:
+                self.socket.stop_socket()
+                self.get_klines("5m")
+            # raise TerminateStreaming("Market_updates websockets update required")
+        # if self.test_settings["update_required"]:
+        #     self.streaming_db.research_controller.update_one({"_id": "test_autotrade_settings"}, {"$set": {"update_required": False}})
+        #     if self.klines:
+        #         self.klines.stop_socket()
+        #         self.get_klines("5m")
+            # raise TerminateStreaming("Market_updates websockets update required")
+
         if "k" in result:
             close_price = result["k"]["c"]
             symbol = result["k"]["s"]
@@ -215,27 +214,23 @@ class StreamingController:
 
     
     async def get_klines(self, interval):
-        socket = await self.setup_client()
+        print("Starting streaming klines")
+        self.socket = await self.setup_client()
         params = self.combine_stream_names(interval)
-        klines = socket.multiplex_socket(params)
+        klines = self.socket.multiplex_socket(params)
 
         async with klines as k:
-            try:
-                while asyncio.Event.connection_open:
-                    res = await k.recv()
-                    
-                    if "result" in res:
-                        print(f'Subscriptions: {res["result"]}')
+            while asyncio.Event.connection_open:
+                res = await k.recv()
+                
+                if "result" in res:
+                    print(f'Subscriptions: {res["result"]}')
 
-                    if "data" in res:
-                        if "e" in res["data"] and res["data"]["e"] == "kline":
-                            self.process_deals(res["data"])
-                        else:
-                            print(f'Error: {res["data"]}')
-                    
-
-            except Exception as error:
-                print(f"get_klines sockets error: {error}")
+                if "data" in res:
+                    if "e" in res["data"] and res["data"]["e"] == "kline":
+                        self.process_deals(res["data"])
+                    else:
+                        print(f'Error: {res["data"]}')
     
     async def get_user_data(self):
         print("Streaming user data")

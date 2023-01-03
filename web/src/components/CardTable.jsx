@@ -204,7 +204,7 @@ function CardTable({
           <tbody>
             {data &&
               data.map((x) => (
-                <tr key={x._id.$oid}>
+                <tr key={x.id.$oid}>
                   <td>
                     {new Date(x.updateTime).toLocaleDateString("en-gb", {
                       year: "numeric",

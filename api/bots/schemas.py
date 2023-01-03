@@ -18,7 +18,7 @@ class PyObjectId(ObjectId):
     def validate(cls, v):
         if not ObjectId.is_valid(v):
             raise ValueError('Invalid objectid')
-        return ObjectId(v)
+        return str(ObjectId(v))
 
     @classmethod
     def __modify_schema__(cls, field_schema):
@@ -53,6 +53,7 @@ class BotSchema(BaseModel):
     cooldown: int = 0  # cooldown period before opening next bot with same pair
     created_at: float = 0
     deal: DealSchema = Field(default_factory=DealSchema)
+    dynamic_trailling: bool = False
     errors: list[str] = []
     locked_so_funds: float = 0  # funds locked by Safety orders
     mode: str = "manual"  # Manual is triggered by the terminal dashboard, autotrade by research app

@@ -33,11 +33,21 @@ def edit(id: str, bot_item: BotSchema):
 
 @bot_blueprint.delete("/bot", tags=["bots"])
 def delete(id: List[str] = Query(...)):
+    """
+    Delete bots, given a list of ids
+    """
     return Bot(collection_name="bots").delete(id)
 
 
 @bot_blueprint.get("/bot/activate/{id}", tags=["bots"])
 def activate(id: str):
+    """
+    Activate bot
+
+    - Creates deal
+    - If changes were made, it will override DB data
+    - Because botId is received from endpoint, it will be a str not a PyObjectId
+    """
     return Bot(collection_name="bots").activate(id)
 
 

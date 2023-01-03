@@ -182,7 +182,7 @@ class Candlestick(BinbotApi):
             print(error)
             klines = None
             pass
-
+        
         klines_schema = KlinesSchema(params.symbol, params.interval)
         if not klines or not isinstance(klines[params.interval], list):
             if params.startTime:
@@ -195,14 +195,14 @@ class Candlestick(BinbotApi):
             # Store more data for db to fill up candlestick charts
             data = self.request(url=self.candlestick_url, params=jsonable_encoder(params))
             klines_schema.replace_klines(data)
-            self.get_klines(params)
-
+            df, dates = self.get_klines(params)
+            return df, dates
         else:
             df = pd.DataFrame(klines[params.interval])
             df = self.check_gaps(df, params)
             dates = df[0].tolist()
-
         return df, dates
+        
 
     def update_klines(self, item):
 

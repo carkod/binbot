@@ -89,8 +89,8 @@ export const ControllerTab = ({
                         >
                           <option value={""}> </option>
                           {blacklistData.map((x, i) => (
-                            <option key={i} value={x._id}>
-                              {x._id} ({x.reason})
+                            <option key={i} value={x.id}>
+                              {x.id} ({x.reason})
                             </option>
                           ))}
                         </Input>

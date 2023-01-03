@@ -6,7 +6,7 @@
 /.env
 .vscode/settings.json
 .venv/
-
+binbot-research/
 ##
 #
 # PYTHON APPS
@@ -17,7 +17,6 @@
 *.pyc
 api/main/config/*.cfg
 .mypy_cache
-env
 mongo_data
 mongo_data.old
 mongo_db

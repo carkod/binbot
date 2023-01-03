@@ -31,6 +31,7 @@ class DealSchema(BaseModel):
     short_sell_price: float = 0
     short_sell_qty: float = 0
     short_sell_timestamp: float = 0
+    stop_loss_price: float = 0
 
 
     @validator("buy_price", "current_price", "avg_buy_price", "original_buy_price", "take_profit_price", "sell_price", "short_sell_price")

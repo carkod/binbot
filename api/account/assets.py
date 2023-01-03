@@ -115,7 +115,7 @@ class Assets(Account):
             qty = b["free"]
         return qty
 
-    async def store_balance(self) -> None:
+    def store_balance(self) -> None:
         """
         Alternative PnL data that runs as a cronjob everyday once at 1200
         Store current balance in Db

@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 COPY --from=build-stage /app/build /usr/share/nginx/html
 COPY api api
 WORKDIR api
-RUN pip3 install uvicorn pipenv --no-cache-dir --upgrade
+RUN pip3 install pipenv --upgrade
 RUN pipenv install --system --deploy --ignore-pipfile --clear
 RUN apt autoremove --purge -y && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/*.list
 COPY ./config.json /docker-entrypoint.d/config.json

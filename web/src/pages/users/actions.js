@@ -60,7 +60,7 @@ export function editUser(payload) {
   return {
     type: EDIT_USER,
     data: payload,
-    id: payload._id
+    id: payload.id
   };
 }
 

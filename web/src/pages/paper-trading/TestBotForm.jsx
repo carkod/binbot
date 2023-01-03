@@ -49,7 +49,7 @@ class TestBotForm extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      _id: props.match.params.id ? props.match.params.id : null,
+      id: props.match.params.id ? props.match.params.id : null,
       bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
@@ -214,7 +214,7 @@ class TestBotForm extends React.Component {
         short_sell_price: this.props.bot.short_sell_price,
       };
       if (!checkValue(this.props.match.params.id)) {
-        form._id = this.props.match.params.id;
+        form.id = this.props.match.params.id;
         await this.props.editTestBot(this.props.match.params.id, form);
       } else {
         await this.props.createTestBot(form);
@@ -333,14 +333,14 @@ class TestBotForm extends React.Component {
     const validation = this.requiredinValidation();
     if (validation) {
       this.handleSubmit(e);
-      this.props.activateTestBot(this.state._id);
+      this.props.activateTestBot(this.state.id);
       this.props.getTestBot(this.props.match.params.id);
       if (this.props.match.params.id) {
         this.props.history.push(
           `/admin/paper-trading/edit/${this.props.match.params.id}`
         );
       } else {
-        this.props.history.push(`/admin/paper-trading/edit/${this.state._id}`);
+        this.props.history.push(`/admin/paper-trading/edit/${this.state.id}`);
       }
     }
   };
@@ -616,7 +616,7 @@ class TestBotForm extends React.Component {
                         className="btn-round"
                         color="primary"
                         onClick={this.handleActivation}
-                        disabled={checkValue(this.props.bot?._id)}
+                        disabled={checkValue(this.props.bot?.id)}
                       >
                         {this.props.bot.status === "active" &&
                         Object.keys(this.props.bot.deal).length > 0

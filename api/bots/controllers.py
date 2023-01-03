@@ -18,15 +18,17 @@ from tools.handle_error import (
     handle_binance_errors,
     json_response,
     json_response_message,
+    json_response_error
 )
 from tools.round_numbers import supress_notation
 from typing import List
 from fastapi import Query
-
+from bots.schemas import BotSchema
 
 class Bot(Account):
     def __init__(self, collection_name="paper_trading"):
-        self.db_collection = setup_db()[collection_name]
+        self.db = setup_db()
+        self.db_collection = self.db[collection_name]
 
     def get(self, status, start_date, end_date, no_cooldown):
         """
@@ -52,9 +54,9 @@ class Bot(Account):
             obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
             gte_tp_id = ObjectId.from_datetime(obj_start_date)
             try:
-                params["_id"]["$gte"] = gte_tp_id
+                params["id"]["$gte"] = gte_tp_id
             except KeyError:
-                params["_id"] = {"$gte": gte_tp_id}
+                params["id"] = {"$gte": gte_tp_id}
 
         if end_date:
             try:
@@ -67,7 +69,7 @@ class Bot(Account):
 
             obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
-            params["_id"]["$lte"] = lte_tp_id
+            params["id"]["$lte"] = lte_tp_id
 
         # Only retrieve active and cooldown bots
         # These bots will be removed from signals
@@ -90,7 +92,7 @@ class Bot(Account):
         try:
             bot = list(
                 self.db_collection.find(params).sort(
-                    [("_id", -1), ("status", 1), ("pair", 1)]
+                    [("id", -1), ("status", 1), ("pair", 1)]
                 )
             )
             resp = json_response({"message": "Sucessfully found bots!", "data": bot})
@@ -100,7 +102,7 @@ class Bot(Account):
         return resp
 
     def get_one(self, findId):
-        bot = self.db_collection.find_one({"_id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"id": ObjectId(findId)})
         if bot:
             resp = json_response({"message": "Bot found", "data": bot})
         else:
@@ -111,30 +113,23 @@ class Bot(Account):
         try:
             bot = data.dict()
 
-            if "_id" in bot:
-                # ObjectId(...) is not required here BotSchema provides a PyObjectId factory function
-                # which creates a Object Id
-                result = self.db_collection.update_one(
-                    {"_id": bot["_id"]}, bot
-                )
-                resp = json_response(
-                    {
-                        "message": "This bot already exists, successfully updated bot",
-                        "botId": str(result.updated_id),
-                    }
-                )
-            else:
-                result = self.db_collection.insert_one(bot)
-                resp = json_response(
-                    {
-                        "message": "Successfully created new bot",
-                        "botId": str(result.inserted_id),
-                    }
-                )
+            # ObjectId(...) is not required here BotSchema provides a PyObjectId factory function
+            # which creates a Object Id
+            self.db_collection.update_one(
+                {"id": data.id}, {"$set": bot}, upsert=True
+            )
+            resp = json_response(
+                {
+                    "message": "This bot already exists, successfully updated bot",
+                    "botId": str(data.id),
+                }
+            )
+
+            self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
         except RequestValidationError as error:
-            resp = json_response_message(f"Failed to create new bot: {error}")
+            resp = json_response_error(f"Failed to create new bot: {error}")
         except Exception as e:
-            resp = json_response_message(f"Failed to create new bot: {e}")
+            resp = json_response_error(f"Failed to create new bot: {e}")
         return resp
 
     def edit(self, botId, data):
@@ -143,35 +138,36 @@ class Bot(Account):
 
         try:
             bot = data.dict()
-            if "_id" in bot:
-                bot.pop("_id")
-            self.db_collection.update_one({"_id": ObjectId(botId)}, {"$set": bot})
+            if "id" in bot:
+                bot.pop("id")
+            self.db_collection.update_one({"id": ObjectId(botId)}, {"$set": bot})
             resp = json_response(
                 {"message": "Successfully updated bot", "botId": str(botId)}
             )
+            self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
         except RequestValidationError as e:
-            resp = json_response_message(f"Failed validation: {e}")
+            resp = json_response_error(f"Failed validation: {e}")
         except Exception as e:
-            resp = json_response_message(f"Failed to create new bot: {e}")
+            resp = json_response_error(f"Failed to create new bot: {e}")
         return resp
 
     def delete(self, bot_ids: List[str] = Query(...)):
 
         if not bot_ids or not isinstance(bot_ids, list):
-            return json_response_message("At least one bot id is required")
+            return json_response_error("At least one bot id is required")
 
-        delete_action = self.db_collection.delete_many(
-            {"_id": {"$in": [ObjectId(item) for item in bot_ids]}}
-        )
-        if delete_action:
-            resp = json_response_message("Successfully deleted bot")
-        else:
-            resp = json_response({"message": "Bot deletion is not available"}, 400)
+        try:
+            self.db_collection.delete_many(
+                {"id": {"$in": [ObjectId(item) for item in bot_ids]}}
+            )
+            resp = json_response_message("Successfully deleted bot(s)")
+        except Exception as error:
+            resp = json_response_error(f"Failed to delete bot(s) {error}")
+            
         return resp
 
-    def activate(self, botId):
-        bot = self.db_collection.find_one({"_id": ObjectId(botId)})
-
+    def activate(self, botId: str):
+        bot = self.db_collection.find_one({"id": ObjectId(botId)})
         if bot:
 
             try:
@@ -182,14 +178,15 @@ class Bot(Account):
                 asyncio.Event.connection_open = False  # type: ignore
                 return resp
             except OpenDealError as error:
-                return json_response_message(error.args[0])
+                print(error)
+                return json_response_error(error.args[0])
             except NotEnoughFunds as e:
-                return json_response_message(e.args[0])
+                return json_response_error(e.args[0])
             except Exception as error:
-                resp = json_response_message(f"Unable to activate bot: {error}")
+                resp = json_response_error(f"Unable to activate bot: {error}")
                 return resp
         else:
-            return json_response_message("Bot not found.")
+            return json_response_error("Bot not found.")
 
     def deactivate(self, findId):
         """
@@ -198,7 +195,7 @@ class Bot(Account):
         2. Sell Coins
         3. Delete bot
         """
-        bot = self.db_collection.find_one({"_id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"id": ObjectId(findId)})
         resp = json_response_message(
             "Not enough balance to close and sell. Please directly delete the bot."
         )
@@ -222,10 +219,10 @@ class Bot(Account):
             # Sell everything
             pair = bot["pair"]
             base_asset = self.find_baseAsset(pair)
-            deal_object = Deal(bot)
-            precision = deal_object.price_precision
-            qty_precision = deal_object.qty_precision
-            balance = deal_object.get_one_balance(base_asset)
+            bot = BotSchema.parse_obj(bot)
+            precision = self.price_precision
+            qty_precision = self.qty_precision
+            balance = self.get_one_balance(base_asset)
             if balance:
                 qty = float(balance)
                 book_order = Book_Order(pair)
@@ -237,17 +234,10 @@ class Bot(Account):
                         "qty": supress_notation(qty, qty_precision),
                         "price": supress_notation(price, precision),
                     }
-                    try:
-                        order_res = self.request(
-                            method="POST", url=self.bb_sell_order_url, json=order
-                        )
-                    except QuantityTooLow:
-                        bot["status"] = "closed"
-                        try:
-                            self.bot_schema.update(bot)
-                        except Exception as e:
-                            resp = json_response_message(e)
-                    return resp
+                    order_res = self.request(
+                        method="POST", url=self.bb_sell_order_url, json=order
+                    )
+                    
                 else:
                     order = {
                         "pair": pair,
@@ -281,7 +271,7 @@ class Bot(Account):
                         "status": order_res["status"],
                     }
                     self.db_collection.update_one(
-                        {"_id": ObjectId(findId)},
+                        {"id": ObjectId(findId)},
                         {
                             "$push": {
                                 "orders": deactivation_order,
@@ -304,7 +294,7 @@ class Bot(Account):
                     "status": order_res["status"],
                 }
                 self.db_collection.update_one(
-                    {"_id": ObjectId(findId)},
+                    {"id": ObjectId(findId)},
                     {
                         "$set": {
                             "status": "completed",
@@ -324,7 +314,7 @@ class Bot(Account):
                 )
             else:
                 self.db_collection.update_one(
-                    {"_id": ObjectId(findId)}, {"$set": {"status": "error"}}
+                    {"id": ObjectId(findId)}, {"$set": {"status": "error"}}
                 )
                 return json_response_message("Not enough balance to close and sell")
 
@@ -332,7 +322,7 @@ class Bot(Account):
         """
         Change status to archived
         """
-        bot = self.db_collection.find_one({"_id": ObjectId(botId)})
+        bot = self.db_collection.find_one({"id": ObjectId(botId)})
         if bot["status"] == "active":
             return json_response(
                 {"message": "Cannot archive an active bot!", "botId": botId}
@@ -344,7 +334,7 @@ class Bot(Account):
             status = "archived"
 
         archive = self.db_collection.update(
-            {"_id": ObjectId(botId)}, {"$set": {"status": status}}
+            {"id": ObjectId(botId)}, {"$set": {"status": status}}
         )
         if archive:
             resp = json_response(

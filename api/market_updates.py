@@ -3,9 +3,10 @@ import atexit
 import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from streaming.streaming_controller import StreamingController
+from streaming.streaming_controller import StreamingController, TerminateStreaming
 
-from api.account.assets import Assets
+from account.assets import Assets
+
 
 if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()
@@ -31,4 +32,9 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as error:
+        print(error)
+        asyncio.run(main())
+

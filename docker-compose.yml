@@ -1,6 +1,6 @@
-version: "3.7"
+version: "3.8"
 services:
-  binbot_db:
+  db:
     image: mongo:latest
     container_name: binbot_db
     restart: on-failure
@@ -19,17 +19,26 @@ services:
   #   image: binbot_api
   #   restart: on-failure
   #   container_name: binbot
-  #   command: "python3 market_updates.py"
   #   depends_on:
-  #     - binbot_db
-  #   links:
-  #     - binbot_db
+  #     - db
   #   env_file:
   #     - .env
   #   ports:
   #     - 8007:80
   #     - 8008:8006
 
+  # streaming:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.streaming
+  #   image: binbot_streaming
+  #   env_file:
+  #     - .env
+  #   restart: on-failure
+  #   container_name: binbot_streaming
+  #   depends_on:
+  #     - api
+  #     - db
 
 volumes:
   mongo_data:

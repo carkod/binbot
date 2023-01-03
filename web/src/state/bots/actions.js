@@ -10,7 +10,7 @@ import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../constants";
 
 // The initial state of the App
 export const bot = {
-  _id: null,
+  id: null,
   status: "inactive",
   balance_available: "0",
   balance_available_asset: "",

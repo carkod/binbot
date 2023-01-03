@@ -15,7 +15,7 @@
       "request": "launch",
       "module": "uvicorn",
       "cwd": "${workspaceFolder}/api",
-      "args": ["main:app", "--port", "8008", "--workers", "3"],
+      "args": ["main:app", "--port", "8008", "--workers", "2"],
       "jinja": true,
       "justMyCode": true,
       "console": "internalConsole"
@@ -38,7 +38,7 @@
       "name": "Python: Research",
       "type": "python",
       "request": "launch",
-      "program": "research/__init__.py",
+      "program": "binbot-research/__init__.py",
       "console": "internalConsole"
     },
     {

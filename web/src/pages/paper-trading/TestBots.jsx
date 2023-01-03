@@ -123,7 +123,7 @@ class TestBots extends React.Component {
           const selectAll = produce(this.state, (draft) => {
             let selectedCards = [];
             this.props.bots.forEach((element) => {
-              selectedCards.push(element._id.$oid);
+              selectedCards.push(element.id.$oid);
             });
             draft.selectedCards = selectedCards;
             return draft;
