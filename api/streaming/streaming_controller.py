@@ -135,35 +135,33 @@ class StreamingController:
                             * (float(bot["trailling_deviation"]) / 100)
                         )
 
-                updated_bot = self.streaming_db[db_collection].update_one(
-                    {"id": current_bot["id"]},
-                    {"$set": {"deal": bot["deal"]}},
-                )
-                if not updated_bot:
-                    self.streaming_db[db_collection].update_one(
+                    updated_bot = self.streaming_db[db_collection].update_one(
                         {"id": current_bot["id"]},
-                        {
-                            "$push": {
-                                "errors": f'Error updating trailling order {current_bot["_id"]}'
-                            }
-                        },
+                        {"$set": {"deal": bot["deal"]}},
                     )
+                    if not updated_bot:
+                        self.streaming_db[db_collection].update_one(
+                            {"id": current_bot["id"]},
+                            {
+                                "$push": {
+                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
+                                }
+                            },
+                        )
 
                 # Sell after hitting trailling stop_loss and if price already broken trailling
-                if "trailling_stop_loss_price" in bot["deal"]:
-                    price = bot["deal"]["trailling_stop_loss_price"]
-                    # Direction 2 (downward): breaking the trailling_stop_loss
-                    if float(close_price) <= float(price):
-                        print(
-                            f"Hit trailling_stop_loss_price {price}. Selling {symbol}"
-                        )
-                        try:
-                            deal = CreateDealController(bot, db_collection)
-                            deal.trailling_profit()
-                        except Exception as error:
-                            print(error)
-                            return
-                        # raise TerminateStreaming("Terminate streaming")
+                price = bot["deal"]["trailling_stop_loss_price"]
+                # Direction 2 (downward): breaking the trailling_stop_loss
+                if float(price) > 0 and float(close_price) <= float(price):
+                    print(
+                        f"Hit trailling_stop_loss_price {price}. Selling {symbol}"
+                    )
+                    try:
+                        deal = CreateDealController(bot, db_collection)
+                        deal.trailling_profit()
+                    except Exception as error:
+                        print(error)
+                        return
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
@@ -186,14 +184,7 @@ class StreamingController:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
             if self.socket:
                 self.socket.stop_socket()
-                self.get_klines("5m")
-            # raise TerminateStreaming("Market_updates websockets update required")
-        # if self.test_settings["update_required"]:
-        #     self.streaming_db.research_controller.update_one({"_id": "test_autotrade_settings"}, {"$set": {"update_required": False}})
-        #     if self.klines:
-        #         self.klines.stop_socket()
-        #         self.get_klines("5m")
-            # raise TerminateStreaming("Market_updates websockets update required")
+                self.get_klines("15m")
 
         if "k" in result:
             close_price = result["k"]["c"]

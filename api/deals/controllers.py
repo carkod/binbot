@@ -374,6 +374,9 @@ class CreateDealController(Account):
             bot = encode_json(self.active_bot)
             if "_id" in bot:
                 bot.pop("_id")
+            
+            if not isinstance(self.active_bot.id, ObjectId):
+                self.active_bot.id = ObjectId(self.active_bot.id)
 
             bot = self.db_collection.find_one_and_update(
                 {"id": self.active_bot.id},
@@ -747,11 +750,10 @@ class CreateDealController(Account):
         - Close current opened take profit order
         - Deactivate bot
         """
-        bot = self.active_bot
         if self.db_collection.name == "paper_trading":
-            qty = bot.deal.buy_total_qty
+            qty = self.active_bot.deal.buy_total_qty
         else:
-            qty = self.compute_qty(bot.pair)
+            qty = self.compute_qty(self.active_bot.pair)
 
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
@@ -764,10 +766,10 @@ class CreateDealController(Account):
             return
 
         order_id = None
-        for order in bot.orders:
+        for order in self.active_bot.orders:
             if order.deal_type == "take_profit":
                 order_id = order.order_id
-                bot.orders.remove(order)
+                self.active_bot.orders.remove(order)
                 break
 
         if order_id:
@@ -782,13 +784,13 @@ class CreateDealController(Account):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
-        book_order = Book_Order(bot.pair)
+        book_order = Book_Order(self.active_bot.pair)
         price = float(book_order.matching_engine(True, qty))
         if not price:
             price = float(book_order.matching_engine(True))
 
         if self.db_collection.name == "paper_trading":
-            res = self.simulate_order(bot.pair, price, qty, "SELL")
+            res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
         else:
             try:
                 if price:
@@ -857,10 +859,14 @@ class CreateDealController(Account):
             bot = encode_json(self.active_bot)
             bot.pop("_id")
 
+            if not isinstance(bot["id"], ObjectId):
+                self.active_bot.id = ObjectId(self.active_bot.id)
+
             self.db_collection.update_one(
                 {"id": self.active_bot.id},
                 {"$set": bot},
             )
+
         except ValidationError as error:
             self.update_deal_logs(f"Stop loss error: {error}")
             return

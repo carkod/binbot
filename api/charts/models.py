@@ -182,7 +182,7 @@ class Candlestick(BinbotApi):
             print(error)
             klines = None
             pass
-        
+
         klines_schema = KlinesSchema(params.symbol, params.interval)
         if not klines or not isinstance(klines[params.interval], list):
             if params.startTime:

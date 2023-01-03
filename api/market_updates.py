@@ -26,7 +26,7 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
 async def main():
     mu = StreamingController()
     await asyncio.gather(
-        mu.get_klines("5m"),
+        mu.get_klines("15m"),
         mu.get_user_data(),
     )
 

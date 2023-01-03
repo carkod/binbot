@@ -49,7 +49,7 @@ class BotSchema(BaseModel):
     balance_size_to_use: float = 0
     balance_to_use: str = "1"
     base_order_size: str = "15"  # Min Binance 0.0001 BNB
-    candlestick_interval: str = "5m"
+    candlestick_interval: str = "15m"
     cooldown: int = 0  # cooldown period before opening next bot with same pair
     created_at: float = 0
     deal: DealSchema = Field(default_factory=DealSchema)
@@ -113,7 +113,7 @@ class BotSchema(BaseModel):
                 "balance_size_to_use": 0,
                 "balance_to_use": 0,
                 "base_order_size": 15,
-                "candlestick_interval": "5m",
+                "candlestick_interval": "15m",
                 "cooldown": 0,
                 "errors": [],
                 "locked_so_funds": 0,
