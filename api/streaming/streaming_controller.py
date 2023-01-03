@@ -1,10 +1,8 @@
 import os
 import asyncio
-import logging
 from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
-from pymongo import MongoClient
 from db import setup_db
 
 class TerminateStreaming(Exception):
@@ -16,7 +14,7 @@ class StreamingController:
         # For some reason, db connections internally only work with
         # db:27017 instead of localhost=:2018
         self.streaming_db = setup_db()
-        self.klines = None
+        self.socket = None
         self.settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
         self.test_settings = self.streaming_db.research_controller.find_one({"_id": "test_autotrade_settings"})
         # Start streaming service globally
@@ -59,7 +57,7 @@ class StreamingController:
             # Update Current price only for active bots
             # This is to keep historical profit intact
             bot = self.streaming_db[db_collection].find_one_and_update(
-                {"_id": current_bot["_id"]},
+                {"id": current_bot["id"]},
                 {"$set": {"deal.current_price": close_price}},
                 return_document=ReturnDocument.AFTER,
             )
@@ -76,10 +74,10 @@ class StreamingController:
 
             # Stop loss
             if (
-                "stop_loss" in current_bot
-                and float(current_bot["stop_loss"]) > 0.0
-                and "stop_loss_price" in current_bot["deal"]
-                and float(current_bot["deal"]["stop_loss_price"])
+                "stop_loss" in bot
+                and float(bot["stop_loss"]) > 0
+                and "stop_loss_price" in bot["deal"]
+                and float(bot["deal"]["stop_loss_price"])
                 > float(close_price)
             ):
                 deal = CreateDealController(bot, db_collection)
@@ -87,7 +85,7 @@ class StreamingController:
                 return
 
             # Take profit trailling
-            if bot["trailling"] == "true" and bot["deal"]["buy_price"] != "":
+            if bot["trailling"] == "true" and float(bot["deal"]["buy_price"]) > 0:
 
                 # Temporary testing condition
                 if db_collection == "paper_trading":
@@ -137,19 +135,19 @@ class StreamingController:
                             * (float(bot["trailling_deviation"]) / 100)
                         )
 
-                    updated_bot = self.streaming_db[db_collection].update_one(
-                        {"_id": current_bot["_id"]},
-                        {"$set": {"deal": bot["deal"]}},
+                updated_bot = self.streaming_db[db_collection].update_one(
+                    {"id": current_bot["id"]},
+                    {"$set": {"deal": bot["deal"]}},
+                )
+                if not updated_bot:
+                    self.streaming_db[db_collection].update_one(
+                        {"id": current_bot["id"]},
+                        {
+                            "$push": {
+                                "errors": f'Error updating trailling order {current_bot["_id"]}'
+                            }
+                        },
                     )
-                    if not updated_bot:
-                        self.streaming_db[db_collection].update_one(
-                            {"_id": current_bot["_id"]},
-                            {
-                                "$push": {
-                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
-                                }
-                            },
-                        )
 
                 # Sell after hitting trailling stop_loss and if price already broken trailling
                 if "trailling_stop_loss_price" in bot["deal"]:
@@ -186,8 +184,8 @@ class StreamingController:
         """
         if self.settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
-            if self.klines:
-                self.klines.stop_socket()
+            if self.socket:
+                self.socket.stop_socket()
                 self.get_klines("5m")
             # raise TerminateStreaming("Market_updates websockets update required")
         # if self.test_settings["update_required"]:
@@ -196,7 +194,6 @@ class StreamingController:
         #         self.klines.stop_socket()
         #         self.get_klines("5m")
             # raise TerminateStreaming("Market_updates websockets update required")
-            
 
         if "k" in result:
             close_price = result["k"]["c"]
@@ -218,11 +215,11 @@ class StreamingController:
     
     async def get_klines(self, interval):
         print("Starting streaming klines")
-        socket = await self.setup_client()
+        self.socket = await self.setup_client()
         params = self.combine_stream_names(interval)
-        self.klines = socket.multiplex_socket(params)
+        klines = self.socket.multiplex_socket(params)
 
-        async with self.klines as k:
+        async with klines as k:
             while asyncio.Event.connection_open:
                 res = await k.recv()
                 
