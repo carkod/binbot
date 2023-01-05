@@ -16,9 +16,12 @@ class PyObjectId(ObjectId):
 
     @classmethod
     def validate(cls, v):
-        if not ObjectId.is_valid(v):
+        if isinstance(v, str):
+            return ObjectId(v)
+        elif not ObjectId.is_valid(v):
             raise ValueError('Invalid objectid')
-        return str(ObjectId(v))
+        elif ObjectId.is_valid(v):
+            return v
 
     @classmethod
     def __modify_schema__(cls, field_schema):
@@ -44,7 +47,7 @@ class SafetyOrderSchema(BaseModel):
 
 
 class BotSchema(BaseModel):
-    id: str | PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str | PyObjectId
     pair: str
     balance_size_to_use: float = 0
     balance_to_use: str = "1"

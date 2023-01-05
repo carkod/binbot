@@ -134,6 +134,10 @@ class StreamingController:
                             float(new_take_profit)
                             * (float(bot["trailling_deviation"]) / 100)
                         )
+                    else:
+                        # Protect against drops by selling at buy price + 0.75% commission
+                        bot["deal"]["trailling_stop_loss_price"] = (float(bot["deal"]["buy_price"]) * 1.075)
+
 
                     updated_bot = self.streaming_db[db_collection].update_one(
                         {"id": current_bot["id"]},
@@ -183,7 +187,7 @@ class StreamingController:
         if self.settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
             if self.socket:
-                self.socket.stop_socket()
+                self.socket._stop_socket()
                 self.get_klines("15m")
 
         if "k" in result:

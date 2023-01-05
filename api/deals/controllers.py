@@ -721,7 +721,8 @@ class CreateDealController(Account):
 
         try:
             bot = encode_json(self.active_bot)
-            bot.pop("_id")
+            if "_id" in bot:
+                bot.pop("_id")
 
             self.db_collection.update_one(
                 {"id": self.active_bot.id},
@@ -857,10 +858,8 @@ class CreateDealController(Account):
         try:
 
             bot = encode_json(self.active_bot)
-            bot.pop("_id")
-
-            if not isinstance(bot["id"], ObjectId):
-                self.active_bot.id = ObjectId(self.active_bot.id)
+            if "_id" in bot:
+                bot.pop("_id")
 
             self.db_collection.update_one(
                 {"id": self.active_bot.id},
@@ -1009,7 +1008,8 @@ class CreateDealController(Account):
         try:
 
             bot = encode_json(self.active_bot)
-            bot.pop("_id")
+            if "_id" in bot:
+                bot.pop("_id")
 
             self.db_collection.update_one(
                 {"id": self.active_bot.id},
@@ -1082,9 +1082,9 @@ class CreateDealController(Account):
         take_profit = self.active_bot.deal.take_profit_price
         if sd >= 0:
             self.active_bot.deal.sd = sd
-            if float(close_price) > self.active_bot.deal.buy_price:
+            if (sd * 2) > 1.8 and float(close_price) > self.active_bot.deal.buy_price:
                 new_trailling_stop_loss_price = float(take_profit) - (
-                    float(take_profit) * (float(sd / 100))
+                    float(take_profit) * (float(sd * 2) / 100)
                 )
                 if new_trailling_stop_loss_price > float(
                     self.active_bot.deal.buy_price
