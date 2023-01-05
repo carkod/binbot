@@ -1,13 +1,13 @@
 import React from "react";
 import { connect } from "react-redux";
 import { Card, CardBody, CardFooter, CardTitle, Col, Row } from "reactstrap";
-import { checkValue, listCssColors, roundDecimals } from "../../validations";
 import { AssetsTable } from "../../components/AssetsTable";
+import { loading } from "../../containers/spinner/actions";
+import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
+import { checkValue, listCssColors, roundDecimals } from "../../validations";
 import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
-import { loading } from "../../containers/spinner/actions";
-import { getBalance, getEstimate, getBalanceRaw } from "../../state/balances/actions";
 class Dashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -27,8 +27,7 @@ class Dashboard extends React.Component {
   }
 
   componentDidMount = () => {
-    this.props.getBalance();
-    this.props.getBalanceRaw()
+    this.props.getBalanceRaw();
     this.props.getEstimate();
   };
 
@@ -99,7 +98,7 @@ class Dashboard extends React.Component {
 
     this.setState({
       lineChartData: [trace],
-      lineChartLegend: [assetsLegend]
+      lineChartLegend: [assetsLegend],
     });
   };
 
@@ -196,109 +195,103 @@ class Dashboard extends React.Component {
       <>
         <div className="content">
           {!load ? (
-              <>
-                <Row>
-                  <Col lg="4" md="6" sm="6">
-                    <Card className="card-stats">
-                      <CardBody>
-                        <Row>
-                          <Col md="12">
-                            <div className="stats">
-                              <p className="card-category">Total Balance</p>
-                              {!checkValue(balanceEstimate) && (
-                                <CardTitle tag="h3" className={`card-title`}>
-                                  {`${roundDecimals(
-                                    balanceEstimate,
-                                    2
-                                  )} £`}
-                                </CardTitle>
-                              )}
-                            </div>
-                          </Col>
-                        </Row>
-                      </CardBody>
-                    </Card>
-                  </Col>
-                  <Col lg="4" md="6" sm="6">
-                    <Card className="card-stats">
-                      <CardBody>
-                        <Row>
-                          <Col md="4" xs="5">
-                            <div className="icon-big text-center icon-warning">
-                              <i className="nc-icon nc-money-coins text-success" />
-                            </div>
-                          </Col>
-                          <Col md="8" xs="7">
-                            <div className="numbers">
-                              <p className="card-category">Profit &amp; Loss</p>
-                              <CardTitle
-                                tag="div"
-                                className={
-                                  this.state.revenue > 0
-                                    ? "text-success"
-                                    : "text-danger"
-                                }
-                              >
-                                <p>
-                                  {this.state.percentageRevenue > 0 &&
-                                    `${this.state.percentageRevenue.toFixed(
-                                      2
-                                    )}%`}
-                                </p>
-                                <p>
-                                  {this.state.revenue &&
-                                    `$${this.state.revenue}`
-                                  }
-                                </p>
-                              </CardTitle>
-                              <p />
-                            </div>
-                          </Col>
-                        </Row>
-                      </CardBody>
-                      <CardFooter>
-                        <hr />
-                        <i className="fas fa-sync" /> Yesterday
-                      </CardFooter>
-                    </Card>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md="4">
-                  {!checkValue(this.props.assetList) && this.props.assetList.length > 0 && (
-                    <AssetsTable
-                      data={this.props.assetList}
-                      headers={["Symbol", "Free", "Locked"]}
-                    />
-                  )}
-                  </Col>
-                  <Col md="8">
-                    {this.state.lineChartData && (
-                      <PortfolioBenchmarkChart
-                        data={this.state.lineChartData}
-                        legend={this.state.lineChartLegend}
-                      />
-                    )}
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md="12">
-                    {this.state.netWorth && (
-                      <NetWorthChart data={this.state.netWorth} />
-                    )}
-                    {this.state.dailyPnL && (
-                      <ProfitLossBars data={this.state.dailyPnL} />
-                    )}
-                  </Col>
-                </Row>
-              </>
-            ) : (
+            <>
               <Row>
-                <Col md="12">
-                  <h1>No balance data available</h1>
+                <Col lg="4" md="6" sm="6">
+                  <Card className="card-stats">
+                    <CardBody>
+                      <Row>
+                        <Col md="12">
+                          <div className="stats">
+                            <p className="card-category">Total Balance</p>
+                            {!checkValue(balanceEstimate) && (
+                              <CardTitle tag="h3" className={`card-title`}>
+                                {`${roundDecimals(balanceEstimate, 2)} £`}
+                              </CardTitle>
+                            )}
+                          </div>
+                        </Col>
+                      </Row>
+                    </CardBody>
+                  </Card>
+                </Col>
+                <Col lg="4" md="6" sm="6">
+                  <Card className="card-stats">
+                    <CardBody>
+                      <Row>
+                        <Col md="4" xs="5">
+                          <div className="icon-big text-center icon-warning">
+                            <i className="nc-icon nc-money-coins text-success" />
+                          </div>
+                        </Col>
+                        <Col md="8" xs="7">
+                          <div className="numbers">
+                            <p className="card-category">Profit &amp; Loss</p>
+                            <CardTitle
+                              tag="div"
+                              className={
+                                this.state.revenue > 0
+                                  ? "text-success"
+                                  : "text-danger"
+                              }
+                            >
+                              <p>
+                                {this.state.percentageRevenue > 0 &&
+                                  `${this.state.percentageRevenue.toFixed(2)}%`}
+                              </p>
+                              <p>
+                                {this.state.revenue && `$${this.state.revenue}`}
+                              </p>
+                            </CardTitle>
+                            <p />
+                          </div>
+                        </Col>
+                      </Row>
+                    </CardBody>
+                    <CardFooter>
+                      <hr />
+                      <i className="fas fa-sync" /> Yesterday
+                    </CardFooter>
+                  </Card>
                 </Col>
               </Row>
-            )}
+              <Row>
+                <Col md="4">
+                  {!checkValue(this.props.assetList) &&
+                    this.props.assetList.length > 0 && (
+                      <AssetsTable
+                        data={this.props.assetList}
+                        headers={["Symbol", "Free", "Locked"]}
+                      />
+                    )}
+                </Col>
+                <Col md="8">
+                  {this.state.lineChartData && (
+                    <PortfolioBenchmarkChart
+                      data={this.state.lineChartData}
+                      legend={this.state.lineChartLegend}
+                    />
+                  )}
+                </Col>
+              </Row>
+              <Row>
+                <Col md="12">
+                  {this.state.netWorth && (
+                    <NetWorthChart data={this.state.netWorth} />
+                  )}
+                  {this.state.dailyPnL && (
+                    <ProfitLossBars data={this.state.dailyPnL} />
+                  )}
+                </Col>
+              </Row>
+            </>
+          ) : (
+            <Row>
+              <Col md="12">
+                <h1>No balance data available</h1>
+              </Col>
+            </Row>
+          )}
         </div>
       </>
     );
@@ -307,20 +300,17 @@ class Dashboard extends React.Component {
 
 const mapStateToProps = (s) => {
   const { loading } = s.loadingReducer;
-  const { data: balances } = s.balanceReducer;
   const { data: balanceEstimate } = s.estimateReducer;
   const { data: balance_raw } = s.balanceRawReducer;
   return {
-    balances: balances,
     loading: loading,
     assetList: balance_raw,
-    balanceEstimate: balanceEstimate?.total_fiat
+    balanceEstimate: balanceEstimate?.total_fiat,
   };
 };
 
 export default connect(mapStateToProps, {
-  getBalance,
   loading,
   getEstimate,
-  getBalanceRaw
+  getBalanceRaw,
 })(Dashboard);

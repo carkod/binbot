@@ -39,7 +39,6 @@ import watchUsersApi, {
   watchEditUserApi,
 } from "./pages/users/saga";
 import {
-  watchGetBalanceApi,
   watchGetEstimate,
   watchRawBalance,
 } from "./state/balances/saga";
@@ -58,7 +57,6 @@ export default function* rootSaga() {
     watchActivateBot(),
     watchDeactivateBot(),
     watchResearchApi(),
-    watchGetBalanceApi(),
     watchRawBalance(),
     watchDeleteBotApi(),
     watchArchiveBot(),

@@ -15,14 +15,12 @@ import { blacklistReducer } from "./pages/research/reducer";
 import { usersReducer } from "./pages/users/reducer";
 import {
   balanceRawReducer,
-  balanceReducer,
   estimateReducer,
 } from "./state/balances/reducer";
 
 const rootReducer = combineReducers({
   registrationReducer,
   loginReducer,
-  balanceReducer,
   balanceRawReducer,
   botReducer,
   symbolInfoReducer,

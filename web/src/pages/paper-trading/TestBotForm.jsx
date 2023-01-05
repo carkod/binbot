@@ -1,3 +1,4 @@
+import { TVChartContainer } from "binbot-charts";
 import produce from "immer";
 import moment from "moment";
 import React from "react";
@@ -21,7 +22,16 @@ import {
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
-import { getBalance, getBalanceRaw } from "../../state/balances/actions";
+import LogsInfo from "../../components/LogsInfo";
+import MainTab from "../../components/MainTab";
+import SafetyOrdersTab from "../../components/SafetyOrdersTab";
+import {
+  updateOrderLines,
+  updateTimescaleMarks,
+} from "../../components/services/charting.service";
+import StopLossTab from "../../components/StopLossTab";
+import TakeProfitTab from "../../components/TakeProfitTab";
+import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
 import { defaultSo } from "../../state/constants";
 import { checkBalance, checkValue } from "../../validations.js";
 import { getSymbolInfo, getSymbols } from "../bots/actions";
@@ -34,16 +44,6 @@ import {
   setBotState,
 } from "./actions";
 import { convertGBP, getQuoteAsset } from "./requests";
-import MainTab from "../../components/MainTab";
-import SafetyOrdersTab from "../../components/SafetyOrdersTab";
-import StopLossTab from "../../components/StopLossTab";
-import TakeProfitTab from "../../components/TakeProfitTab";
-import {
-  updateOrderLines,
-  updateTimescaleMarks,
-} from "../../components/services/charting.service";
-import { TVChartContainer } from "binbot-charts";
-import LogsInfo from "../../components/LogsInfo";
 
 class TestBotForm extends React.Component {
   constructor(props) {
@@ -63,8 +63,8 @@ class TestBotForm extends React.Component {
 
   componentDidMount = () => {
     this.props.getBalanceRaw();
-    this.props.getBalance();
     this.props.getSymbols();
+    this.props.getEstimate();
     if (!checkValue(this.props.match.params.id)) {
       this.props.getTestBot(this.props.match.params.id);
     }
@@ -679,9 +679,9 @@ class TestBotForm extends React.Component {
               </Card>
             </Col>
             <Col md="5" sm="12">
-              {this.props.lastBalance && this.props.balance_raw ? (
+              {this.props.balance_estimate && this.props.balance_raw ? (
                 <BalanceAnalysis
-                  balance={this.props.lastBalance}
+                  balance={this.props.balance_estimate}
                   balance_raw={this.props.balance_raw}
                 />
               ) : (
@@ -696,19 +696,14 @@ class TestBotForm extends React.Component {
 }
 
 const mapStateToProps = (state, props) => {
-  let { data: balance } = state.balanceReducer;
   const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
   const { bot, createdBotId } = state.testBotsReducer;
   const { loading } = state.loadingReducer;
-
-  let lastBalance = null;
-  if (!checkValue(balance) && balance.length > 0) {
-    lastBalance = balance[0];
-  }
+  const { data: balanceEstimate } = state.estimateReducer;
 
   return {
-    lastBalance: lastBalance,
+    balance_estimate: balanceEstimate,
     balance_raw: balance_raw,
     symbols: symbols,
     bot: bot,
@@ -718,7 +713,7 @@ const mapStateToProps = (state, props) => {
 };
 
 export default connect(mapStateToProps, {
-  getBalance,
+  getEstimate,
   getBalanceRaw,
   getSymbols,
   getSymbolInfo,
