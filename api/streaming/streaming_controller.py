@@ -15,6 +15,7 @@ class StreamingController:
         # db:27017 instead of localhost=:2018
         self.streaming_db = setup_db()
         self.socket = None
+        self.conn_key = None
         self.settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
         self.test_settings = self.streaming_db.research_controller.find_one({"_id": "test_autotrade_settings"})
         # Start streaming service globally
@@ -186,9 +187,7 @@ class StreamingController:
         """
         if self.settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
-            if self.socket:
-                self.socket._stop_socket()
-                self.get_klines("15m")
+            raise Exception("Restarting websockets...")
 
         if "k" in result:
             close_price = result["k"]["c"]
@@ -213,6 +212,7 @@ class StreamingController:
         self.socket = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = self.socket.multiplex_socket(params)
+        self.conn_key = klines
 
         async with klines as k:
             while asyncio.Event.connection_open:

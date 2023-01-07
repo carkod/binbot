@@ -61,33 +61,6 @@ class OrderController(Account):
         except HTTPError as e:
             return json_response_error(e)
         return data
-    
-
-
-    def get_all_orders(self, status: str|None = None, limit:int=50, offset: int=0, startTime: float | None = None):
-        # here we want to get the value of user (i.e. ?user=some-value)
-        self.pages = self.db.orders.count()
-
-        # Filters
-        args = {}
-        if status:
-            args["status"] = status
-
-        if startTime:
-            args["time"] = {"$gte": startTime}
-
-        orders = list(
-            self.db.orders.find(args)
-            .sort([("updateTime", -1)])
-            .skip(offset)
-            .limit(limit)
-        )
-        if orders:
-            resp = json_response({"data": orders, "pages": self.pages})
-        else:
-            resp = json_response({"message": "Orders not found!"})
-        return resp
-
 
     def get_open_orders(self):
         data = self.signed_request(url=self.order_url)

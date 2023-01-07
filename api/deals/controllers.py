@@ -7,15 +7,13 @@ import requests
 from pymongo import ReturnDocument
 from requests.exceptions import HTTPError
 from pydantic import ValidationError
-from bson import ObjectId
 
 from account.account import Account
 from bots.schemas import BotSchema
-from deals.models import DealModel, OrderModel
+from deals.models import DealModel, BinanceOrderModel
 from deals.schema import DealSchema, OrderSchema
 from orders.models.book_order import Book_Order
 from tools.exceptions import (
-    BaseDealError,
     OpenDealError,
     ShortStrategyError,
     TakeProfitError,
@@ -153,7 +151,7 @@ class CreateDealController(Account):
         stop_loss_price = 0
         if (
             hasattr(self.active_bot, "stop_loss")
-            and float(self.active_bot.stop_loss) > 0.0
+            and float(self.active_bot.stop_loss) > 0
         ):
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
@@ -208,7 +206,7 @@ class CreateDealController(Account):
             bot.pop("_id") # _id is what causes conflict not id
 
         document = self.db_collection.find_one_and_update(
-            {"_id": ObjectId(self.active_bot.id)},
+            {"id": self.active_bot.id},
             {"$set": bot},
             return_document=ReturnDocument.AFTER,
         )
@@ -265,7 +263,7 @@ class CreateDealController(Account):
         if "error" in res:
             raise TakeProfitError(res["error"])
 
-        order_data = OrderModel(
+        order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
             deal_type="take_profit",
@@ -345,7 +343,7 @@ class CreateDealController(Account):
         if "error" in res:
             raise TraillingProfitError(res["error"])
 
-        order_data = OrderModel(
+        order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
             deal_type="take_profit",
@@ -375,9 +373,6 @@ class CreateDealController(Account):
             bot = encode_json(self.active_bot)
             if "_id" in bot:
                 bot.pop("_id")
-            
-            if not isinstance(self.active_bot.id, ObjectId):
-                self.active_bot.id = ObjectId(self.active_bot.id)
 
             bot = self.db_collection.find_one_and_update(
                 {"id": self.active_bot.id},
@@ -461,7 +456,7 @@ class CreateDealController(Account):
         if "_id" in bot:
             bot.pop("_id")
 
-        self.db_collection.update_one({"_id": self.active_bot.id}, {"$set": bot})
+        self.db_collection.update_one({"id": self.active_bot.id}, {"$set": bot})
         return
 
     def close_all(self):
@@ -642,7 +637,7 @@ class CreateDealController(Account):
                 )
                 return
 
-        safety_order = OrderModel(
+        safety_order = BinanceOrderModel(
             timestamp=res["transactTime"],
             order_type=res["type"],
             order_id=res["orderId"],
@@ -829,7 +824,7 @@ class CreateDealController(Account):
             )
             self.execute_stop_loss(price)
 
-        stop_loss_order = OrderModel(
+        stop_loss_order = BinanceOrderModel(
             timestamp=res["transactTime"],
             deal_type="stop_loss",
             order_id=res["orderId"],
@@ -900,7 +895,7 @@ class CreateDealController(Account):
             self.update_deal_logs(
                 f"Cannot execute short sell, quantity is {qty}. Deleting bot"
             )
-            params = {"id": self.active_bot.id}
+            params = {"id": str(self.active_bot.id)}
             self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
             return
 
@@ -954,7 +949,7 @@ class CreateDealController(Account):
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(
-                    self.bb_bot_url, "DELETE", params={"id": self.active_bot.id}
+                    self.bb_bot_url, "DELETE", params={"id": str(self.active_bot.id)}
                 )
                 print(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:
@@ -967,9 +962,9 @@ class CreateDealController(Account):
             self.update_deal_logs(
                 "Failed to execute stop loss order (status NEW), retrying..."
             )
-            self.execute_short_sell(price)
+            self.execute_short_sell()
 
-        short_sell_order = OrderModel(
+        short_sell_order = BinanceOrderModel(
             timestamp=res["transactTime"],
             deal_type="short_sell",
             order_id=res["orderId"],

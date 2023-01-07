@@ -31,7 +31,7 @@ class Bot(Account):
         self.db_collection = self.db[collection_name]
     
     def _update_required(self):
-        self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
+        self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": True}})
         return
 
     def get(self, status, start_date, end_date, no_cooldown):
@@ -58,9 +58,9 @@ class Bot(Account):
             obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
             gte_tp_id = ObjectId.from_datetime(obj_start_date)
             try:
-                params["id"]["$gte"] = gte_tp_id
+                params["_id"]["$gte"] = gte_tp_id
             except KeyError:
-                params["id"] = {"$gte": gte_tp_id}
+                params["_id"] = {"$gte": gte_tp_id}
 
         if end_date:
             try:
@@ -73,7 +73,7 @@ class Bot(Account):
 
             obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
-            params["id"]["$lte"] = lte_tp_id
+            params["_id"]["$lte"] = lte_tp_id
 
         # Only retrieve active and cooldown bots
         # These bots will be removed from signals
@@ -96,7 +96,7 @@ class Bot(Account):
         try:
             bot = list(
                 self.db_collection.find(params).sort(
-                    [("id", -1), ("status", 1), ("pair", 1)]
+                    [("_id", -1), ("status", 1), ("pair", 1)]
                 )
             )
             resp = json_response({"message": "Sucessfully found bots!", "data": bot})
@@ -128,7 +128,7 @@ class Bot(Account):
                 }
             )
 
-            self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
+            self._update_required()
         except RequestValidationError as error:
             resp = json_response_error(f"Failed to create new bot: {error}")
         except Exception as e:
@@ -147,7 +147,7 @@ class Bot(Account):
             resp = json_response(
                 {"message": "Successfully updated bot", "botId": str(botId)}
             )
-            self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
+            self._update_required()
         except RequestValidationError as e:
             resp = json_response_error(f"Failed validation: {e}")
         except Exception as e:
@@ -337,13 +337,15 @@ class Bot(Account):
         else:
             status = "archived"
 
-        archive = self.db_collection.update(
-            {"id": ObjectId(botId)}, {"$set": {"status": status}}
-        )
-        if archive:
+        try:
+            self.db_collection.update_one(
+                {"id": ObjectId(botId)}, {"$set": {"status": status}}
+            )
             resp = json_response(
                 {"message": "Successfully archived bot", "botId": botId}
             )
-        else:
-            resp = json_response({"message": "Failed to archive bot"})
+            return resp
+        except Exception as error:
+            resp = json_response({"message": f"Failed to archive bot {error}"})
+            
         return resp
