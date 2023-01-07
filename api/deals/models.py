@@ -1,5 +1,19 @@
 from time import time
+from pydantic import BaseModel, validator
+from typing import Any
 
+class BinanceOrderModel(BaseModel):
+    order_type: str
+    time_in_force: str
+    timestamp: str
+    order_id: str
+    order_side: str
+    pair: str
+    fills: str
+    qty: str
+    status: str
+    price: str
+    deal_type: str
 
 class OrderModel:
     def __init__(

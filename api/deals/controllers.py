@@ -204,7 +204,8 @@ class CreateDealController(Account):
         self.active_bot.status = "active"
 
         bot = encode_json(self.active_bot)
-        bot.pop("_id") # _id is what causes conflict not id
+        if "_id" in bot:
+            bot.pop("_id") # _id is what causes conflict not id
 
         document = self.db_collection.find_one_and_update(
             {"_id": ObjectId(self.active_bot.id)},

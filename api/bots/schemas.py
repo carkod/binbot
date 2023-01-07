@@ -1,5 +1,5 @@
 from time import time
-from typing import Literal
+from typing import Literal, Optional
 
 from bson.objectid import ObjectId
 from pydantic import BaseModel, Field, validator
@@ -47,7 +47,7 @@ class SafetyOrderSchema(BaseModel):
 
 
 class BotSchema(BaseModel):
-    id: str | PyObjectId
+    id: str | PyObjectId = Field(default_factory=ObjectId)
     pair: str
     balance_size_to_use: float = 0
     balance_to_use: str = "1"

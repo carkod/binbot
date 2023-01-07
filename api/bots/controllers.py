@@ -29,6 +29,10 @@ class Bot(Account):
     def __init__(self, collection_name="paper_trading"):
         self.db = setup_db()
         self.db_collection = self.db[collection_name]
+    
+    def _update_required(self):
+        self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
+        return
 
     def get(self, status, start_date, end_date, no_cooldown):
         """
@@ -110,18 +114,17 @@ class Bot(Account):
         return resp
 
     def create(self, data):
+        """
+        Always creates new document
+        """
         try:
             bot = data.dict()
-
-            # ObjectId(...) is not required here BotSchema provides a PyObjectId factory function
-            # which creates a Object Id
-            self.db_collection.update_one(
-                {"id": data.id}, {"$set": bot}, upsert=True
-            )
+            # bot["id"] = ObjectId()
+            self.db_collection.insert_one(bot)
             resp = json_response(
                 {
-                    "message": "This bot already exists, successfully updated bot",
-                    "botId": str(data.id),
+                    "message": "Successfully created bot!",
+                    "botId": str(bot["id"]),
                 }
             )
 
@@ -175,7 +178,8 @@ class Bot(Account):
                     bot, db_collection=self.db_collection.name
                 ).open_deal()
                 resp = json_response_message("Successfully activated bot!")
-                asyncio.Event.connection_open = False  # type: ignore
+                self._update_required()
+                # asyncio.Event.connection_open = False  # type: ignore
                 return resp
             except OpenDealError as error:
                 print(error)

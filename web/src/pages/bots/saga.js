@@ -52,8 +52,8 @@ const baseUrl = buildBackUrl();
 export function* getBotsApi(payload) {
   let requestURL = `${process.env.REACT_APP_GET_BOTS}`;
   if (payload.params) {
-    const { startDate, endDate } = payload.params;
-    const params = `${startDate ? "start_date=" + startDate + "&" : ""}${endDate ? "end_date=" + endDate : ""}`;
+    const { startDate, endDate, status="active" } = payload.params;
+    const params = `${startDate ? "start_date=" + startDate + "&" : ""}${endDate ? "end_date=" + endDate : ""}&status=${status}`;
     requestURL += `?${params}`
   }
 
