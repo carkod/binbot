@@ -8,12 +8,24 @@ from tools.handle_error import (
 )
 from decimal import Decimal
 from db import setup_db
-
-
+from requests_cache import CachedSession, MongoCache
+from pymongo import MongoClient
+import os
 class Account(BinbotApi):
     def __init__(self):
-        self.db = setup_db().bot
+        self.db = setup_db()
         pass
+
+    def setup_mongocache(self):
+        mongo = MongoClient(
+            host=os.getenv("MONGO_HOSTNAME"),
+            port=int(os.getenv("MONGO_PORT")),
+            authSource="admin",
+            username=os.getenv("MONGO_AUTH_USERNAME"),
+            password=os.getenv("MONGO_AUTH_PASSWORD"),
+        )
+        mongo_cache = MongoCache(connection=mongo)
+        return mongo_cache
 
     def _exchange_info(self, symbol=None):
         """
@@ -22,7 +34,11 @@ class Account(BinbotApi):
         params = {}
         if symbol:
             params["symbol"] = symbol
-        exchange_info_res = requests.get(url=f"{self.exchangeinfo_url}", params=params)
+
+        mongo_cache = self.setup_mongocache()
+        # set up a cache that expires in 86400'' (24hrs)
+        session = CachedSession('http_cache', backend=mongo_cache, expire_after=86400)
+        exchange_info_res = session.get(url=f"{self.exchangeinfo_url}", params=params)
         exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info
 
@@ -123,7 +139,7 @@ class Account(BinbotApi):
         """
         symbols = self._ticker_price()
         symbols_list = [x["symbol"] for x in symbols]
-        active_symbols = list(self.db.find({"status": "active"}))
+        active_symbols = list(self.db.bot.find({"status": "active"}))
 
         no_cannibal_list = [x for x in symbols_list if x not in active_symbols]
         return json_response({"data": no_cannibal_list, "count": len(no_cannibal_list)})

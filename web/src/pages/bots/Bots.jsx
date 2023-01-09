@@ -108,7 +108,7 @@ class Bots extends React.Component {
           const selectAll = produce(this.state, (draft) => {
             let selectedCards = [];
             this.props.bots.forEach((element) => {
-              selectedCards.push(element.id.$oid);
+              selectedCards.push(element.id);
             });
             draft.selectedCards = selectedCards;
             return draft;
@@ -212,7 +212,7 @@ class Bots extends React.Component {
           <Row>
             {!checkValue(bots)
               ? bots.map((x, i) => (
-                  <Col key={x.id.$oid} sm="6" md="4" lg="3">
+                  <Col key={x.id} sm="6" md="4" lg="3">
                     <BotCard
                       tabIndex={i}
                       x={x}

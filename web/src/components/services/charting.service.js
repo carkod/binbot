@@ -121,10 +121,9 @@ export function updateOrderLines(bot, currentPrice) {
         });
       } else if (
         bot.deal.trailling_stop_loss_price &&
-        bot.deal.trailling_stop_loss_price !== 0
+        bot.deal.trailling_stop_loss_price > 0
       ) {
         // If trailling moved the orderlines
-
         totalOrderLines.push({
           id: "trailling_profit",
           text: `Trailling profit ${bot.take_profit}%`,
@@ -205,16 +204,22 @@ export function updateOrderLines(bot, currentPrice) {
     }
 
     if (bot.stop_loss && bot.stop_loss > 0) {
+      let stopLossPrice = 0;
+      if (bot.deal.buy_price) {
+        stopLossPrice = bot.deal.buy_price - (bot.deal.buy_price * (bot.stop_loss / 100));
+      } else {
+        stopLossPrice = currentPrice - (currentPrice * (bot.stop_loss / 100));
+      }
       // Stop loss
-    const stopLossPrice = currentPrice - (currentPrice * (bot.stop_loss / 100));
-    totalOrderLines.push({
-      id: "stop_loss",
-      text: `Stop Loss ${bot.stop_loss}%`,
-      tooltip: [bot.status, " Sell Order "],
-      quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-      price: stopLossPrice, // buy_profit * take_profit%
-      color: "red",
-    })
+     
+      totalOrderLines.push({
+        id: "stop_loss",
+        text: `Stop Loss ${bot.stop_loss}%`,
+        tooltip: [bot.status, " Sell Order "],
+        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        price: stopLossPrice, // buy_profit * take_profit%
+        color: "red",
+      })
     }
   }
   return totalOrderLines;

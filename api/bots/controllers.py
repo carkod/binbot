@@ -106,7 +106,7 @@ class Bot(Account):
         return resp
 
     def get_one(self, findId):
-        bot = self.db_collection.find_one({"id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"id": findId})
         if bot:
             resp = json_response({"message": "Bot found", "data": bot})
         else:
@@ -119,7 +119,6 @@ class Bot(Account):
         """
         try:
             bot = data.dict()
-            # bot["id"] = ObjectId()
             self.db_collection.insert_one(bot)
             resp = json_response(
                 {

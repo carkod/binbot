@@ -97,7 +97,7 @@ const botReducer = produce((draft, action) => {
 
     case DELETE_BOT_SUCCESS:
       let bots = draft.bots.filter(
-        (x) => !x.id.$oid.includes(draft.removeId)
+        (x) => !x.id.includes(draft.removeId)
       );
       draft.bots = bots;
       draft.totalProfit = computeTotalProfit(bots);
@@ -139,7 +139,7 @@ const botReducer = produce((draft, action) => {
       return newState;
     }
     case DEACTIVATE_BOT_SUCCESS: {
-      const findidx = draft.data.findIndex((x) => x.id.$oid === action.id);
+      const findidx = draft.data.findIndex((x) => x.id === action.id);
       draft.data[findidx].status = "inactive";
       const newState = {
         data: draft.data,
@@ -163,7 +163,7 @@ const botReducer = produce((draft, action) => {
       };
     }
     case ARCHIVE_BOT_SUCCESS: {
-      const findidx = draft.data.findIndex((x) => x.id.$oid === action.id);
+      const findidx = draft.data.findIndex((x) => x.id === action.id);
       if (draft.data[findidx].status === "archived") {
         draft.data[findidx].status = "inactive";
       } else {
