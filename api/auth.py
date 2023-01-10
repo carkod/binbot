@@ -19,17 +19,6 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: str | None = None
 
-# @auth.verify_token
-# def verify_token(token):
-#     # Research app exception
-#     # Authorize local requests
-#     if request.headers.environ["SERVER_NAME"] in ["localhost", "127.0.0.1"]:
-#         return True
-#     user = current_app.db.users.find_one({"access_token": token})
-#     if user:
-#         return True
-#     else:
-#         return False
 
 credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
