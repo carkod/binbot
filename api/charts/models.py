@@ -11,8 +11,7 @@ from tools.handle_error import (
     InvalidSymbol,
     json_response,
     json_response_error,
-    json_response_message,
-    BinanceErrors
+    json_response_message
 )
 from tools.round_numbers import interval_to_millisecs
 from db import setup_db

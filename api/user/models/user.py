@@ -9,7 +9,7 @@ from tools.handle_error import (
     json_response,
 )
 from bson.objectid import ObjectId
-from auth import encodeAccessToken
+from auth import enconde_access_token
 from datetime import datetime
 from db import setup_db
 from user.schemas import UserSchema
@@ -39,24 +39,18 @@ class User:
         return resp
 
     def login(self, data):
-        email = data.email.lower()
+        """
+        Provided email and password, returns token to login
+        """
+        email = data.username.lower()
         user = self.db.users.find_one({"email": email})
         if user:
-            access_token = encodeAccessToken(self.defaults.password, self.defaults.email)
-            self.db.users.update_one(
-                {"email": self.defaults.email},
-                {
-                    "$set": {
-                        "access_token": access_token,
-                        "last_login": datetime.now(),
-                    }
-                },
-            )
-
+            access_token = enconde_access_token(self.defaults.password, self.defaults.email)
             resp = json_response(
                 {
                     "email": self.defaults.email,
                     "access_token": access_token,
+                    "token_type": "bearer",
                     "error": 0,
                 },
                 200,

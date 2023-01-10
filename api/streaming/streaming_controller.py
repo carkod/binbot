@@ -4,7 +4,6 @@ from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
 from db import setup_db
-import logging
 class TerminateStreaming(Exception):
     pass
 

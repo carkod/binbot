@@ -1,15 +1,19 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from user.models.user import User
 from user.schemas import LoginRequest, UserResponse, UserSchema
+from fastapi.security import OAuth2PasswordRequestForm
+from auth import oauth2_scheme, Token, decode_access_token
 
 user_blueprint = APIRouter()
 
 
+
 @user_blueprint.get("/user", response_model=UserResponse, tags=["users"])
-def get():
+def get(token: str = Depends(oauth2_scheme)):
     """
     Get all users
     """
+    decode_access_token(token)
     return User().get()
 
 
@@ -21,8 +25,8 @@ def get_one(email):
     return User().get_one(email)
 
 
-@user_blueprint.post("/user/login", tags=["users"])
-def login(data: LoginRequest):
+@user_blueprint.post("/user/login", tags=["users"], response_model=Token)
+def login(data: OAuth2PasswordRequestForm = Depends()):
     """
     Get an access_token to keep the user in session
     """
