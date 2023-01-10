@@ -29,6 +29,10 @@ class Bot(Account):
     def __init__(self, collection_name="paper_trading"):
         self.db = setup_db()
         self.db_collection = self.db[collection_name]
+    
+    def _update_required(self):
+        self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": True}})
+        return
 
     def get(self, status, start_date, end_date, no_cooldown):
         """
@@ -54,9 +58,9 @@ class Bot(Account):
             obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
             gte_tp_id = ObjectId.from_datetime(obj_start_date)
             try:
-                params["id"]["$gte"] = gte_tp_id
+                params["_id"]["$gte"] = gte_tp_id
             except KeyError:
-                params["id"] = {"$gte": gte_tp_id}
+                params["_id"] = {"$gte": gte_tp_id}
 
         if end_date:
             try:
@@ -69,7 +73,7 @@ class Bot(Account):
 
             obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
-            params["id"]["$lte"] = lte_tp_id
+            params["_id"]["$lte"] = lte_tp_id
 
         # Only retrieve active and cooldown bots
         # These bots will be removed from signals
@@ -92,7 +96,7 @@ class Bot(Account):
         try:
             bot = list(
                 self.db_collection.find(params).sort(
-                    [("id", -1), ("status", 1), ("pair", 1)]
+                    [("_id", -1), ("status", 1), ("pair", 1)]
                 )
             )
             resp = json_response({"message": "Sucessfully found bots!", "data": bot})
@@ -102,7 +106,7 @@ class Bot(Account):
         return resp
 
     def get_one(self, findId):
-        bot = self.db_collection.find_one({"id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"id": findId})
         if bot:
             resp = json_response({"message": "Bot found", "data": bot})
         else:
@@ -110,22 +114,20 @@ class Bot(Account):
         return resp
 
     def create(self, data):
+        """
+        Always creates new document
+        """
         try:
             bot = data.dict()
-
-            # ObjectId(...) is not required here BotSchema provides a PyObjectId factory function
-            # which creates a Object Id
-            self.db_collection.update_one(
-                {"id": data.id}, {"$set": bot}, upsert=True
-            )
+            self.db_collection.insert_one(bot)
             resp = json_response(
                 {
-                    "message": "This bot already exists, successfully updated bot",
-                    "botId": str(data.id),
+                    "message": "Successfully created bot!",
+                    "botId": str(bot["id"]),
                 }
             )
 
-            self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
+            self._update_required()
         except RequestValidationError as error:
             resp = json_response_error(f"Failed to create new bot: {error}")
         except Exception as e:
@@ -144,7 +146,7 @@ class Bot(Account):
             resp = json_response(
                 {"message": "Successfully updated bot", "botId": str(botId)}
             )
-            self.db.research_controller.update_one({"id": "settings"}, {"$set": {"update_required": True}})
+            self._update_required()
         except RequestValidationError as e:
             resp = json_response_error(f"Failed validation: {e}")
         except Exception as e:
@@ -175,7 +177,8 @@ class Bot(Account):
                     bot, db_collection=self.db_collection.name
                 ).open_deal()
                 resp = json_response_message("Successfully activated bot!")
-                asyncio.Event.connection_open = False  # type: ignore
+                self._update_required()
+                # asyncio.Event.connection_open = False  # type: ignore
                 return resp
             except OpenDealError as error:
                 print(error)
@@ -333,13 +336,15 @@ class Bot(Account):
         else:
             status = "archived"
 
-        archive = self.db_collection.update(
-            {"id": ObjectId(botId)}, {"$set": {"status": status}}
-        )
-        if archive:
+        try:
+            self.db_collection.update_one(
+                {"id": ObjectId(botId)}, {"$set": {"status": status}}
+            )
             resp = json_response(
                 {"message": "Successfully archived bot", "botId": botId}
             )
-        else:
-            resp = json_response({"message": "Failed to archive bot"})
+            return resp
+        except Exception as error:
+            resp = json_response({"message": f"Failed to archive bot {error}"})
+            
         return resp

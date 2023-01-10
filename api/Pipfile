@@ -18,7 +18,7 @@ py3cw = "==0.0.39"
 numpy = "==1.23.5"
 apscheduler = "==3.6.3"
 python-binance = "*"
-
+requests-cache = "==0.9.7"
 
 [dev-packages]
 autopep8 = "==2.0.0"

@@ -63,7 +63,7 @@ const usersReducer = produce((draft, action) => {
       return draft;
     }
     case EDIT_USER_SUCCESS: {
-      const findIndex = action.users.findIndex(x => x.id.$oid === action.id);
+      const findIndex = action.users.findIndex(x => x.id === action.id);
       draft.users[findIndex] = action.data;
       return draft;
     }
@@ -82,7 +82,7 @@ const usersReducer = produce((draft, action) => {
     }
 
     case DELETE_USER_SUCCESS: {
-      const users = draft.users.filter((x) => x.id.$oid !== draft.deleteUserId);
+      const users = draft.users.filter((x) => x.id !== draft.deleteUserId);
       draft.users = users
       draft.deleteUserId = null;
       return draft;

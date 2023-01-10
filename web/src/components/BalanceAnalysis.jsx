@@ -2,8 +2,7 @@ import React from "react";
 import { Card, CardBody, CardHeader, CardTitle, Col, Row } from "reactstrap";
 
 export default function BalanceAnalysis({
-  balance,
-  balance_raw
+  balance
 }) {
   return (
     <Card>
@@ -13,16 +12,16 @@ export default function BalanceAnalysis({
       <CardBody>
         <Row className="u-margin-bottom">
           <Col md="8" sm="12">
-            Total balance in GBP<br />
+            Total balance in USDT<br />
             (estimated)
           </Col>
           <Col md="4" sm="12">
             <div className="u-primary-color">
               <strong>{`${
-                parseFloat(balance.estimated_total_gbp) > 0
-                  ? balance.estimated_total_gbp.toFixed(2)
+                parseFloat(balance?.total_fiat) > 0
+                  ? balance.total_fiat.toFixed(2)
                   : 0
-              } Pounds`}</strong>
+              } USDT`}</strong>
             </div>
           </Col>
         </Row>
@@ -33,7 +32,7 @@ export default function BalanceAnalysis({
           </Col>
           <Col md="4" sm="12">
             {
-              balance_raw.map((e, i) => (
+              balance.balances.map((e, i) => (
                 <div key={i} className="u-primary-color">
                   <strong>{`${e.free} ${e.asset}`}</strong>
                 </div>

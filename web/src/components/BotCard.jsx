@@ -58,7 +58,7 @@ export default function BotCard({
     <Card
       tabIndex={tabIndex}
       className={
-        selectedCards.includes(x.id.$oid)
+        selectedCards.includes(x.id)
           ? "is-selected card-stats"
           : "card-stats"
       }
@@ -250,7 +250,7 @@ export default function BotCard({
             variant="info"
             title="Edit this bot"
             onClick={() =>
-              history.push(`${history.location.pathname}/edit/${x.id.$oid}`)
+              history.push(`${history.location.pathname}/edit/${x.id}`)
             }
           >
             <i className="fas fa-edit u-disable-events" />
@@ -259,7 +259,7 @@ export default function BotCard({
             variant="success"
             title="Select this bot"
             data-index={tabIndex}
-            data-id={x.id.$oid}
+            data-id={x.id}
             onClick={handleSelection}
           >
             <i className="fa fa-check u-disable-events" aria-hidden="true" />
@@ -269,13 +269,13 @@ export default function BotCard({
               variant="secondary"
               title="Archive bot"
               onClick={() => {
-                archiveBot(x.id.$oid);
+                archiveBot(x.id);
               }}
             >
               <i className="fas fa-folder u-disable-events" />
             </Button>
           )}
-          <Button variant="danger" onClick={() => handleDelete(x.id.$oid)}>
+          <Button variant="danger" onClick={() => handleDelete(x.id)}>
             <i className="fas fa-trash u-disable-events" />
           </Button>
         </div>

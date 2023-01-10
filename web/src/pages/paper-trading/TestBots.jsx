@@ -52,7 +52,6 @@ class TestBots extends React.Component {
         dateFilterError: "",
       });
     }
-    
   }
 
   componentDidMount = () => {
@@ -123,13 +122,19 @@ class TestBots extends React.Component {
           const selectAll = produce(this.state, (draft) => {
             let selectedCards = [];
             this.props.bots.forEach((element) => {
-              selectedCards.push(element.id.$oid);
+              selectedCards.push(element.id);
             });
             draft.selectedCards = selectedCards;
             return draft;
           });
           this.setState(selectAll);
           break;
+        case "show-completed":
+          const startDate = this.startDate.valueAsNumber;
+          const endDate = this.endDate.valueAsNumber;
+          const status = "completed";
+          this.props.getTestBots({ startDate, endDate, status });
+          break
         default:
           break;
       }
@@ -165,6 +170,7 @@ class TestBots extends React.Component {
                   <option value="delete-selected">Delete selected</option>
                   <option value="unselect-all">Unselect all</option>
                   <option value="select-all">Select all</option>
+                  <option value="show-completed">Show completed only</option>
                 </Input>
               </Col>
               <Col sm={2}>

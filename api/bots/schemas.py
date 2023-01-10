@@ -1,5 +1,5 @@
 from time import time
-from typing import Literal
+from typing import Literal, Optional
 
 from bson.objectid import ObjectId
 from pydantic import BaseModel, Field, validator
@@ -16,9 +16,12 @@ class PyObjectId(ObjectId):
 
     @classmethod
     def validate(cls, v):
-        if not ObjectId.is_valid(v):
+        if isinstance(v, str):
+            return ObjectId(v)
+        elif not ObjectId.is_valid(v):
             raise ValueError('Invalid objectid')
-        return str(ObjectId(v))
+        elif ObjectId.is_valid(v):
+            return v
 
     @classmethod
     def __modify_schema__(cls, field_schema):
@@ -44,12 +47,12 @@ class SafetyOrderSchema(BaseModel):
 
 
 class BotSchema(BaseModel):
-    id: str | PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str | PyObjectId = Field(default_factory=ObjectId)
     pair: str
     balance_size_to_use: float = 0
     balance_to_use: str = "1"
     base_order_size: str = "15"  # Min Binance 0.0001 BNB
-    candlestick_interval: str = "5m"
+    candlestick_interval: str = "15m"
     cooldown: int = 0  # cooldown period before opening next bot with same pair
     created_at: float = 0
     deal: DealSchema = Field(default_factory=DealSchema)
@@ -113,7 +116,7 @@ class BotSchema(BaseModel):
                 "balance_size_to_use": 0,
                 "balance_to_use": 0,
                 "base_order_size": 15,
-                "candlestick_interval": "5m",
+                "candlestick_interval": "15m",
                 "cooldown": 0,
                 "errors": [],
                 "locked_so_funds": 0,

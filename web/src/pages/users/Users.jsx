@@ -48,7 +48,7 @@ class Users extends React.Component {
 
   editUser = (id) => {
     this.setState({
-      currentUser: this.props.users.find((x) => x.id.$oid === id),
+      currentUser: this.props.users.find((x) => x.id === id),
     });
   };
 
@@ -70,7 +70,7 @@ class Users extends React.Component {
                   <ul className="list-unstyled team-members">
                     {this.props.users &&
                       this.props.users.map((x, i) => (
-                        <li key={x.id.$oid}>
+                        <li key={x.id}>
                           <Row>
                             <Col>{x.email}</Col>
                             {!checkValue(x.last_login) && (
@@ -80,13 +80,13 @@ class Users extends React.Component {
                             <Col>
                               <Button
                                 color="primary"
-                                onClick={() => this.editUser(x.id.$oid)}
+                                onClick={() => this.editUser(x.id)}
                               >
                                 Edit
                               </Button>{" "}
                               <Button
                                 color="primary"
-                                onClick={() => this.deleteUser(x.id.$oid)}
+                                onClick={() => this.deleteUser(x.id)}
                               >
                                 Delete
                               </Button>

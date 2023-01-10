@@ -21,7 +21,7 @@ import {
 } from "reactstrap";
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
-import { getBalance, getBalanceRaw } from "../../state/balances/actions";
+import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
 import { bot } from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
 import { checkBalance, checkValue, roundDecimals } from "../../validations.js";
@@ -65,8 +65,8 @@ class BotForm extends React.Component {
 
   componentDidMount = () => {
     this.props.getBalanceRaw();
-    this.props.getBalance();
     this.props.getSymbols();
+    this.props.getEstimate();
     if (!checkValue(this.props.match.params.id)) {
       this.props.setBot({ formIsValid: true });
       this.props.getBot(this.props.match.params.id);
@@ -750,10 +750,9 @@ class BotForm extends React.Component {
               </Card>
             </Col>
             <Col md="5" sm="12">
-              {this.props.lastBalance && this.props.balance_raw && (
+              {this.props.balance_estimate && (
                 <BalanceAnalysis
-                  balance={this.props.lastBalance}
-                  balance_raw={this.props.balance_raw}
+                  balance={this.props.balance_estimate}
                 />
               )}
             </Col>
@@ -765,19 +764,14 @@ class BotForm extends React.Component {
 }
 
 const mapStateToProps = (state) => {
-  let { data: balance } = state.balanceReducer;
   const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
   const { botId, botActive, bot } = state.botReducer;
   const { loading } = state.loadingReducer;
-
-  let lastBalance = null;
-  if (!checkValue(balance) && balance.length > 0) {
-    lastBalance = balance[0];
-  }
+  const { data: balanceEstimate } = state.estimateReducer;
 
   return {
-    lastBalance: lastBalance,
+    balance_estimate: balanceEstimate,
     balance_raw: balance_raw,
     symbols: symbols,
     bot: bot,
@@ -788,7 +782,7 @@ const mapStateToProps = (state) => {
 };
 
 export default connect(mapStateToProps, {
-  getBalance,
+  getEstimate,
   getBalanceRaw,
   getSymbols,
   getSymbolInfo,

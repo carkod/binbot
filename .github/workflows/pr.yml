@@ -119,7 +119,7 @@ jobs:
           python3 -m pip install --upgrade pipenv wheel
       - name: Install dependencies
         run: |
-          pipenv install --system --deploy --ignore-pipfile --clear
+          pipenv install --dev --system --deploy --ignore-pipfile --clear
         working-directory: api
       - name: Run tests
         run: pipenv run pytest -v

@@ -7,6 +7,7 @@
 .vscode/settings.json
 .venv/
 binbot-research/
+
 ##
 #
 # PYTHON APPS
@@ -22,6 +23,7 @@ mongo_data.old
 mongo_db
 db.dump
 __pycache__
+.pytest_cache
 
 # Fix vscode linting bug
 .envFile

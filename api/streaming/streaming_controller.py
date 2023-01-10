@@ -15,6 +15,7 @@ class StreamingController:
         # db:27017 instead of localhost=:2018
         self.streaming_db = setup_db()
         self.socket = None
+        self.conn_key = None
         self.settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
         self.test_settings = self.streaming_db.research_controller.find_one({"_id": "test_autotrade_settings"})
         # Start streaming service globally
@@ -134,36 +135,38 @@ class StreamingController:
                             float(new_take_profit)
                             * (float(bot["trailling_deviation"]) / 100)
                         )
+                    else:
+                        # Protect against drops by selling at buy price + 0.75% commission
+                        bot["deal"]["trailling_stop_loss_price"] = (float(bot["deal"]["buy_price"]) * 1.075)
 
-                updated_bot = self.streaming_db[db_collection].update_one(
-                    {"id": current_bot["id"]},
-                    {"$set": {"deal": bot["deal"]}},
-                )
-                if not updated_bot:
-                    self.streaming_db[db_collection].update_one(
+
+                    updated_bot = self.streaming_db[db_collection].update_one(
                         {"id": current_bot["id"]},
-                        {
-                            "$push": {
-                                "errors": f'Error updating trailling order {current_bot["_id"]}'
-                            }
-                        },
+                        {"$set": {"deal": bot["deal"]}},
                     )
+                    if not updated_bot:
+                        self.streaming_db[db_collection].update_one(
+                            {"id": current_bot["id"]},
+                            {
+                                "$push": {
+                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
+                                }
+                            },
+                        )
 
                 # Sell after hitting trailling stop_loss and if price already broken trailling
-                if "trailling_stop_loss_price" in bot["deal"]:
-                    price = bot["deal"]["trailling_stop_loss_price"]
-                    # Direction 2 (downward): breaking the trailling_stop_loss
-                    if float(close_price) <= float(price):
-                        print(
-                            f"Hit trailling_stop_loss_price {price}. Selling {symbol}"
-                        )
-                        try:
-                            deal = CreateDealController(bot, db_collection)
-                            deal.trailling_profit()
-                        except Exception as error:
-                            print(error)
-                            return
-                        # raise TerminateStreaming("Terminate streaming")
+                price = bot["deal"]["trailling_stop_loss_price"]
+                # Direction 2 (downward): breaking the trailling_stop_loss
+                if float(price) > 0 and float(close_price) <= float(price):
+                    print(
+                        f"Hit trailling_stop_loss_price {price}. Selling {symbol}"
+                    )
+                    try:
+                        deal = CreateDealController(bot, db_collection)
+                        deal.trailling_profit()
+                    except Exception as error:
+                        print(error)
+                        return
 
             # Open safety orders
             # When bot = None, when bot doesn't exist (unclosed websocket)
@@ -184,16 +187,7 @@ class StreamingController:
         """
         if self.settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
-            if self.socket:
-                self.socket.stop_socket()
-                self.get_klines("5m")
-            # raise TerminateStreaming("Market_updates websockets update required")
-        # if self.test_settings["update_required"]:
-        #     self.streaming_db.research_controller.update_one({"_id": "test_autotrade_settings"}, {"$set": {"update_required": False}})
-        #     if self.klines:
-        #         self.klines.stop_socket()
-        #         self.get_klines("5m")
-            # raise TerminateStreaming("Market_updates websockets update required")
+            raise Exception("Restarting websockets...")
 
         if "k" in result:
             close_price = result["k"]["c"]
@@ -215,12 +209,15 @@ class StreamingController:
     
     async def get_klines(self, interval):
         print("Starting streaming klines")
+        if self.settings["update_required"]:
+            self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
         self.socket = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = self.socket.multiplex_socket(params)
+        self.conn_key = klines
 
         async with klines as k:
-            while asyncio.Event.connection_open:
+            while True:
                 res = await k.recv()
                 
                 if "result" in res:
