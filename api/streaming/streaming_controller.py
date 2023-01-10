@@ -185,6 +185,7 @@ class StreamingController:
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
+        print(f'Processing deals... require restart? {self.settings["update_required"]}')
         if self.settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
             raise Exception("Restarting websockets...")
