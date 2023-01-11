@@ -1078,7 +1078,7 @@ class CreateDealController(Account):
         take_profit = self.active_bot.deal.take_profit_price
         if sd >= 0:
             self.active_bot.deal.sd = sd
-            if (sd * 2) > 1.8 and float(close_price) > self.active_bot.deal.buy_price:
+            if (sd * 2) > 1.8:
                 new_trailling_stop_loss_price = float(take_profit) - (
                     float(take_profit) * (float(sd * 2) / 100)
                 )
@@ -1088,6 +1088,7 @@ class CreateDealController(Account):
                     self.active_bot.deal.trailling_stop_loss_price = (
                         new_trailling_stop_loss_price
                     )
+                    print(f"Updated trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
 
         bot = encode_json(self.active_bot)
         return bot

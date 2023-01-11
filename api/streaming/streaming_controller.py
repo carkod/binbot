@@ -135,9 +135,11 @@ class StreamingController:
                             float(new_take_profit)
                             * (float(bot["trailling_deviation"]) / 100)
                         )
+                        print(f'Updated trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
                     else:
                         # Protect against drops by selling at buy price + 0.75% commission
                         bot["deal"]["trailling_stop_loss_price"] = (float(bot["deal"]["buy_price"]) * 1.075)
+                        print(f'Updated trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
 
 
                     updated_bot = self.streaming_db[db_collection].update_one(
