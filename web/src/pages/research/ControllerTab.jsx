@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Alert,
   Button,
   Card,
   CardBody,
@@ -15,31 +14,17 @@ import {
 } from "reactstrap";
 import { useImmer } from "use-immer";
 import SymbolSearch from "../../components/SymbolSearch";
-import { checkValue } from "../../validations";
 
 export const ControllerTab = ({
   blacklistData,
   symbols,
-  handleBlacklist,
+  addToBlacklist,
+  removeFromBlacklist,
   triggerGbpHedge,
 }) => {
   const [addBlacklist, setAddBlacklist] = useImmer({ reason: "", pair: "" });
   const [removeBlacklist, setRemoveBlacklist] = useState("");
-  const [error, setError] = useImmer(false);
   const [gbpHedge, setGbpHedge] = useState("");
-
-  const onAction = (action, state) => {
-    // Validation
-    if (
-      (action === "add" && checkValue(addBlacklist.pair)) ||
-      (action === "remove" && checkValue(removeBlacklist))
-    ) {
-      setError(true);
-    } else {
-      handleBlacklist(action, state);
-    }
-    setError(false);
-  };
 
   return (
     <>
@@ -81,23 +66,19 @@ export const ControllerTab = ({
                           name="blacklist"
                           id="blacklisted"
                           defaultValue={""}
-                          onChange={(e) =>
-                            setRemoveBlacklist(
-                              (draft) => (draft = e.target.value)
-                            )
-                          }
+                          onChange={(e) => setRemoveBlacklist(e.target.value)}
                         >
                           <option value={""}> </option>
                           {blacklistData.map((x, i) => (
-                            <option key={i} value={x.id}>
-                              {x.id} ({x.reason})
+                            <option key={i} value={x._id}>
+                              {x.pair} ({x.reason})
                             </option>
                           ))}
                         </Input>
                       </FormGroup>
                       <Button
                         color="primary"
-                        onClick={() => onAction("delete", removeBlacklist)}
+                        onClick={() => removeFromBlacklist(removeBlacklist)}
                       >
                         Delete
                       </Button>
@@ -135,13 +116,12 @@ export const ControllerTab = ({
                     </FormGroup>
                     <Button
                       color="primary"
-                      onClick={() => onAction("add", addBlacklist)}
+                      onClick={() => addToBlacklist(addBlacklist)}
                     >
                       Add
                     </Button>{" "}
                   </Col>
                 </Row>
-                {error && <Alert color="danger">Missing required field</Alert>}
               </>
             </Col>
           </Row>
