@@ -12,7 +12,7 @@ function matchTsToTimescale(ts) {
    * This time is matched to closest hour (assuming interval hour)
    */
 
-  const date = new Date(ts);
+  const date = new Date(parseFloat(ts));
   let timescaleDate = new Date(
     date.getFullYear(),
     date.getMonth(),
@@ -96,10 +96,9 @@ export function updateOrderLines(bot, currentPrice) {
         price: parseFloat(currentPrice),
         color: dealColors.base_order,
       });
-      
     }
     
-    if (bot.take_profit && bot.trailling === "true") {
+    if (bot.take_profit && bot.trailling === "true" && bot.deal.trailling_stop_loss_price > 0) {
       // Bot is sold and completed
       if (bot.status === "completed" && bot.deal.sell_price) {
         totalOrderLines.push({
@@ -119,10 +118,18 @@ export function updateOrderLines(bot, currentPrice) {
           color: dealColors.trailling_profit,
           lineStyle: 2,
         });
-      } else if (
-        bot.deal.trailling_stop_loss_price &&
-        bot.deal.trailling_stop_loss_price > 0
-      ) {
+      } else if (bot.deal.buy_price && bot.status === "active") {
+        totalOrderLines.push({
+          id: "take_profit",
+          text: `Take profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Sell order when prices drop here"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price:
+            bot.deal.buy_price +
+            bot.deal.buy_price * parseFloat(bot.take_profit / 100), // take_profit / trailling_profit
+          color: dealColors.take_profit,
+        });
+      } else {
         // If trailling moved the orderlines
         totalOrderLines.push({
           id: "trailling_profit",
@@ -141,49 +148,49 @@ export function updateOrderLines(bot, currentPrice) {
           price: bot.deal.trailling_stop_loss_price,
           color: dealColors.take_profit,
         });
-      } else if (bot.deal.buy_price && bot.status === "active") {
+        // const takeProfitPrice =
+        //   currentPrice * (1 + parseFloat(bot.take_profit) / 100);
+        // totalOrderLines.push({
+        //   id: "take_profit",
+        //   text: `Take profit -${bot.trailling_deviation}%`,
+        //   tooltip: [bot.status, " Sell order when prices drop here"],
+        //   quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        //   price:
+        //     takeProfitPrice -
+        //     takeProfitPrice * parseFloat(bot.trailling_deviation / 100), // take_profit / trailling_profit
+        //   color: dealColors.take_profit,
+        // });
+        // totalOrderLines.push({
+        //   id: "trailling_profit",
+        //   text: `Trailling profit ${bot.take_profit}%`,
+        //   tooltip: [bot.status, " Breakpoint to increase Take profit"],
+        //   quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        //   price: takeProfitPrice, // take_profit / trailling_profit
+        //   color: dealColors.trailling_profit,
+        //   lineStyle: 2,
+        // });
+      }
+    } else if (bot.take_profit) {
+      // No trailling, just normal take_profit
+      if (bot.status === "completed" && bot.deal.buy_price) {
         totalOrderLines.push({
           id: "take_profit",
           text: `Take profit ${bot.take_profit}%`,
-          tooltip: [bot.status, " Sell order when prices drop here"],
+          tooltip: [bot.status, " Sell Order "],
           quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price:
-            bot.deal.buy_price +
-            bot.deal.buy_price * parseFloat(bot.take_profit / 100), // take_profit / trailling_profit
+          price: bot.deal.buy_price * (1 + parseFloat(bot.take_profit) / 100), // buy_profit * take_profit%
           color: dealColors.take_profit,
         });
       } else {
-        const takeProfitPrice =
-          currentPrice * (1 + parseFloat(bot.take_profit) / 100);
         totalOrderLines.push({
           id: "take_profit",
-          text: `Take profit -${bot.trailling_deviation}%`,
-          tooltip: [bot.status, " Sell order when prices drop here"],
+          text: `Take profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Sell Order "],
           quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price:
-            takeProfitPrice -
-            takeProfitPrice * parseFloat(bot.trailling_deviation / 100), // take_profit / trailling_profit
+          price: currentPrice * (1 + parseFloat(bot.take_profit) / 100), // buy_profit * take_profit%
           color: dealColors.take_profit,
         });
-        totalOrderLines.push({
-          id: "trailling_profit",
-          text: `Trailling profit ${bot.take_profit}%`,
-          tooltip: [bot.status, " Breakpoint to increase Take profit"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price: takeProfitPrice, // take_profit / trailling_profit
-          color: dealColors.trailling_profit,
-          lineStyle: 2,
-        });
       }
-    } else if (bot.take_profit) {
-      totalOrderLines.push({
-        id: "take_profit",
-        text: `Take profit ${bot.take_profit}%`,
-        tooltip: [bot.status, " Sell Order "],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        price: currentPrice * (1 + parseFloat(bot.take_profit) / 100), // buy_profit * take_profit%
-        color: dealColors.take_profit,
-      });
     }
     if (bot.safety_orders && bot.safety_orders.length > 0) {
       let safetyOrderLines = [];
@@ -254,7 +261,7 @@ export function updateTimescaleMarks(bot) {
       };
       // Avoid object not extensible error
       // Since tradingview library requires this, it can be an exception to immutable state
-      totalTimescaleMarks.push(Object.create(timescaleMark));
+      totalTimescaleMarks.push(timescaleMark);
     });
   }
   return totalTimescaleMarks;

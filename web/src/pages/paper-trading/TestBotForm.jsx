@@ -408,10 +408,12 @@ class TestBotForm extends React.Component {
   updatedPrice = (price) => {
     if (parseFloat(this.state.currentChartPrice) !== parseFloat(price)) {
       const newOrderLines = updateOrderLines(this.props.bot, price);
+      const newTimemarks = updateTimescaleMarks(this.props.bot);
       this.setState(
         produce(this.state, (draft) => {
           draft.currentOrderLines = newOrderLines;
           draft.currentChartPrice = parseFloat(price);
+          draft.currentTimeMarks = newTimemarks;
         })
       );
     }
