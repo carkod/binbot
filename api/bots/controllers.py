@@ -163,6 +163,7 @@ class Bot(Account):
                 {"id": {"$in": [id for id in bot_ids]}}
             )
             resp = json_response_message("Successfully deleted bot(s)")
+            self._update_required()
         except Exception as error:
             resp = json_response_error(f"Failed to delete bot(s) {error}")
             
