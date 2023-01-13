@@ -48,15 +48,13 @@ const blacklistReducer = produce((draft, action) => {
     case ADD_BLACKLIST_ERROR:
       return;
     case DELETE_BLACKLIST:
-      if (!checkValue(action.pair)) {
-        return {
-          data: draft.data.filter((x) => x !== action.pair),
-        };
-      } else {
-        return draft.data;
-      }
+      draft.deletePair = action.pair
+      return draft
     case DELETE_BLACKLIST_SUCCESS:
-      return action.payload;
+      if (!checkValue(action.pair)) {
+        draft.data = draft.data.filter((x) => x.pair !== action.pair)
+      }
+      return draft
     case DELETE_BLACKLIST_ERROR:
       return;
     default:

@@ -120,6 +120,7 @@ export function deleteBlackListSucceeded(payload) {
   }
   return {
     type: DELETE_BLACKLIST_SUCCESS,
+    pair: payload.data
   }
 }
 

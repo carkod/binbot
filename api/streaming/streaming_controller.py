@@ -135,9 +135,11 @@ class StreamingController:
                             float(new_take_profit)
                             * (float(bot["trailling_deviation"]) / 100)
                         )
+                        print(f'Updated trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
                     else:
                         # Protect against drops by selling at buy price + 0.75% commission
                         bot["deal"]["trailling_stop_loss_price"] = (float(bot["deal"]["buy_price"]) * 1.075)
+                        print(f'Updated trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
 
 
                     updated_bot = self.streaming_db[db_collection].update_one(
@@ -185,6 +187,7 @@ class StreamingController:
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
+        print(f'Processing deals... require restart? {self.settings["update_required"]}')
         if self.settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
             raise Exception("Restarting websockets...")
@@ -211,6 +214,7 @@ class StreamingController:
         print("Starting streaming klines")
         if self.settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
+            raise Exception("Restarting streaming...")
         self.socket = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = self.socket.multiplex_socket(params)

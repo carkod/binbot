@@ -76,17 +76,6 @@ class Research extends React.Component {
     this.setState({ candlestick_interval: e.target.value });
   };
 
-  handleBlacklist = (action, data) => {
-    if (action === "add") {
-      this.props.addBlackList(data);
-    }
-    if (action === "delete") {
-      this.props.deleteBlackList(data);
-    }
-    this.props.getBlacklist();
-  };
-
-
   triggerGbpHedge = async (asset) => {
     const res = gbpHedge(asset);
     if (res.error === 1) {
@@ -117,7 +106,8 @@ class Research extends React.Component {
               <ControllerTab
                 blacklistData={this.state.blacklistData}
                 symbols={this.props.symbols}
-                handleBlacklist={this.handleBlacklist}
+                addToBlacklist={(data) => this.props.addBlackList(data)}
+                removeFromBlacklist={(data) => this.props.deleteBlackList(data)}
                 triggerGbpHedge={this.triggerGbpHedge}
               /> 
             </TabPane>

@@ -160,16 +160,17 @@ class Bot(Account):
 
         try:
             self.db_collection.delete_many(
-                {"id": {"$in": [ObjectId(item) for item in bot_ids]}}
+                {"id": {"$in": [id for id in bot_ids]}}
             )
             resp = json_response_message("Successfully deleted bot(s)")
+            self._update_required()
         except Exception as error:
             resp = json_response_error(f"Failed to delete bot(s) {error}")
             
         return resp
 
     def activate(self, botId: str):
-        bot = self.db_collection.find_one({"id": ObjectId(botId)})
+        bot = self.db_collection.find_one({"id": botId})
         if bot:
 
             try:
@@ -198,7 +199,7 @@ class Bot(Account):
         2. Sell Coins
         3. Delete bot
         """
-        bot = self.db_collection.find_one({"id": ObjectId(findId)})
+        bot = self.db_collection.find_one({"id": findId })
         resp = json_response_message(
             "Not enough balance to close and sell. Please directly delete the bot."
         )
@@ -325,7 +326,7 @@ class Bot(Account):
         """
         Change status to archived
         """
-        bot = self.db_collection.find_one({"id": ObjectId(botId)})
+        bot = self.db_collection.find_one({"id": botId })
         if bot["status"] == "active":
             return json_response(
                 {"message": "Cannot archive an active bot!", "botId": botId}

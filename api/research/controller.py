@@ -1,7 +1,7 @@
 from db import setup_db
 from datetime import datetime
 from time import sleep
-from tools.handle_error import json_response
+from tools.handle_error import json_response, json_response_error
 from pymongo.errors import DuplicateKeyError
 from apis import ThreeCommasApi
 from tools.round_numbers import round_numbers
@@ -29,33 +29,28 @@ class Controller:
         )
 
     def create_blacklist_item(self, data):
-        if "pair" not in data:
-            return json_response({"message": "Missing required field 'pair'.", "error": 1})
 
-        self.default_blacklist.update(data)
-        self.default_blacklist["_id"] = data["pair"]
         try:
-            blacklist = self.db.blacklist.insert_one(self.default_blacklist)
+            data.dict()
+            data["_id"] = data["pair"]
+            self.db.blacklist.insert_one(self.default_blacklist)
+            return json_response(
+                {"message": "Successfully updated blacklist"}
+            )
         except DuplicateKeyError:
             return json_response({"message": "Pair already exists in blacklist", "error": 1})
-
-        if blacklist:
-            resp = json_response(
-                {"message": "Successfully updated blacklist", "data": str(blacklist)}
-            )
-        else:
-            resp = json_response({"message": "Failed to update blacklist", "error": 1})
-
-        return resp
+        except Exception as error:
+            print(error)
+            return json_response_error(f"Failed to add pair to black list: {error}")
 
     def delete_blacklist_item(self, pair):
 
         blacklist = self.db.blacklist.delete_one({"_id": pair})
 
         if blacklist.acknowledged:
-            resp = json_response({"message": "Successfully updated blacklist"})
+            resp = json_response({"message": "Successfully deleted item from blacklist", "data": str(pair)})
         else:
-            resp = json_response({"message": "Item does not exist", "error": 1})
+            resp = json_response_error("Item does not exist")
 
         return resp
 
