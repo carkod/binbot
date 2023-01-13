@@ -316,6 +316,9 @@ class CreateDealController(Account):
             qty = deal_data.buy_total_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
+            # Already sold?
+            if not qty:
+                print(f"Bot already closed? There is no {self.active_bot.pair} quantity in the balance. Please delete the bot.")
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":

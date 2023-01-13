@@ -148,27 +148,6 @@ export function updateOrderLines(bot, currentPrice) {
           price: bot.deal.trailling_stop_loss_price,
           color: dealColors.take_profit,
         });
-        // const takeProfitPrice =
-        //   currentPrice * (1 + parseFloat(bot.take_profit) / 100);
-        // totalOrderLines.push({
-        //   id: "take_profit",
-        //   text: `Take profit -${bot.trailling_deviation}%`,
-        //   tooltip: [bot.status, " Sell order when prices drop here"],
-        //   quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        //   price:
-        //     takeProfitPrice -
-        //     takeProfitPrice * parseFloat(bot.trailling_deviation / 100), // take_profit / trailling_profit
-        //   color: dealColors.take_profit,
-        // });
-        // totalOrderLines.push({
-        //   id: "trailling_profit",
-        //   text: `Trailling profit ${bot.take_profit}%`,
-        //   tooltip: [bot.status, " Breakpoint to increase Take profit"],
-        //   quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        //   price: takeProfitPrice, // take_profit / trailling_profit
-        //   color: dealColors.trailling_profit,
-        //   lineStyle: 2,
-        // });
       }
     } else if (bot.take_profit) {
       // No trailling, just normal take_profit
