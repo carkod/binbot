@@ -793,24 +793,16 @@ class CreateDealController(Account):
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
         else:
             try:
-                if price:
-                    stop_limit_order = {
-                        "pair": bot.pair,
-                        "qty": qty,
-                        "price": supress_notation(price, self.price_precision),
-                    }
-                    res = self.bb_request(
-                        method="POST",
-                        url=self.bb_sell_order_url,
-                        payload=stop_limit_order,
-                    )
-                else:
-                    stop_limit_order = {"pair": bot.pair, "qty": qty}
-                    res = self.bb_request(
-                        method="POST",
-                        url=self.bb_sell_market_order_url,
-                        payload=stop_limit_order,
-                    )
+                stop_limit_order = {
+                    "pair": self.active_bot.pair,
+                    "qty": qty,
+                    "price": supress_notation(price, self.price_precision),
+                }
+                res = self.bb_request(
+                    method="POST",
+                    url=self.bb_sell_order_url,
+                    payload=stop_limit_order,
+                )
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
