@@ -47,7 +47,7 @@ class SafetyOrderSchema(BaseModel):
 
 
 class BotSchema(BaseModel):
-    id: str | PyObjectId = Field(default=str(ObjectId()))
+    id: str = Field(default_factory=ObjectId)
     pair: str
     balance_size_to_use: float = 0
     balance_to_use: str = "1"
