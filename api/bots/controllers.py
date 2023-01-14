@@ -67,7 +67,7 @@ class Bot(Account):
                 float(end_date)
             except ValueError as e:
                 resp = json_response(
-                    {"message": f"end_date must be a timestamp float", "data": []}
+                    {"message": f"end_date must be a timestamp float: {e}", "data": []}
                 )
                 return resp
 

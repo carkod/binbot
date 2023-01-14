@@ -29,11 +29,6 @@ class StreamingController:
         socket = BinanceSocketManager(client)
         return socket
     
-    async def watch_bots_change_stream(self):
-        async with self.streaming_db.bots.watch([{'$match': {'operationType': 'insert'}}]) as stream:
-            for change in stream:
-                print(change)
-
     def combine_stream_names(self, interval):
         if self.settings["autotrade"] == 1:
             self.list_bots = list(self.streaming_db.bots.distinct("pair", {"status": "active"}))
@@ -45,6 +40,9 @@ class StreamingController:
 
         markets = self.list_bots + self.list_paper_trading_bots
         params = []
+        if len(markets) == 0:
+            # Listen to dummy stream to always trigger streaming
+            markets.append("BNBBTC")
         for market in markets:
             params.append(f"{market.lower()}@kline_{interval}")
 
@@ -146,11 +144,11 @@ class StreamingController:
                             float(new_take_profit)
                             * (float(bot["trailling_deviation"]) / 100)
                         )
-                        print(f'Updated trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
+                        print(f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
                     else:
                         # Protect against drops by selling at buy price + 0.75% commission
                         bot["deal"]["trailling_stop_loss_price"] = (float(bot["deal"]["buy_price"]) * 1.075)
-                        print(f'Updated trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
+                        print(f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
 
 
                     updated_bot = self.streaming_db[db_collection].update_one(
@@ -198,8 +196,10 @@ class StreamingController:
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        print(f'Processing deals... require restart? {self.settings["update_required"]}')
-        if self.settings["update_required"]:
+        # Re-retrieve settings in the middle of streaming
+        local_settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
+        print(f'Processing deals... require restart? {local_settings["update_required"]}')
+        if local_settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
             raise Exception("Restarting websockets...")
 
@@ -229,7 +229,6 @@ class StreamingController:
         self.socket = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = self.socket.multiplex_socket(params)
-        self.watch_bots_change_stream()
         self.conn_key = klines
 
         async with klines as k:
@@ -251,7 +250,7 @@ class StreamingController:
         user_data = socket.user_socket()
         async with user_data as ud:
             try:
-                while asyncio.Event.connection_open:
+                while True:
                     res = await ud.recv()
                     print(res)
             except Exception as error:
