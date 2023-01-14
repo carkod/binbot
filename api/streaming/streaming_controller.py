@@ -4,7 +4,7 @@ from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
 from db import setup_db
-
+from pymongo.collection import Collection
 class TerminateStreaming(Exception):
     pass
 
@@ -16,6 +16,8 @@ class StreamingController:
         self.streaming_db = setup_db()
         self.socket = None
         self.conn_key = None
+        self.list_bots = []
+        self.list_paper_trading_bots = []
         self.settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
         self.test_settings = self.streaming_db.research_controller.find_one({"_id": "test_autotrade_settings"})
         # Start streaming service globally
@@ -26,13 +28,22 @@ class StreamingController:
         client = await AsyncClient.create(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
         socket = BinanceSocketManager(client)
         return socket
+    
+    async def watch_bots_change_stream(self):
+        async with self.streaming_db.bots.watch([{'$match': {'operationType': 'insert'}}]) as stream:
+            for change in stream:
+                print(change)
 
     def combine_stream_names(self, interval):
-        markets = list(self.streaming_db.bots.distinct("pair", {"status": "active"}))
-        paper_trading_bots = list(
-            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
-        )
-        markets = markets + paper_trading_bots
+        if self.settings["autotrade"] == 1:
+            self.list_bots = list(self.streaming_db.bots.distinct("pair", {"status": "active"}))
+
+        if self.test_settings["autotrade"] == 1:
+            self.list_paper_trading_bots = list(
+                self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
+            )
+
+        markets = self.list_bots + self.list_paper_trading_bots
         params = []
         for market in markets:
             params.append(f"{market.lower()}@kline_{interval}")
@@ -218,6 +229,7 @@ class StreamingController:
         self.socket = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = self.socket.multiplex_socket(params)
+        self.watch_bots_change_stream()
         self.conn_key = klines
 
         async with klines as k:

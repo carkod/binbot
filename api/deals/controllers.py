@@ -1076,22 +1076,29 @@ class CreateDealController(Account):
         res = requests.get(url=self.bb_candlestick_url, params=params)
         data = handle_binance_errors(res)
         list_prices = numpy.array(data["trace"][0]["close"])
-        sd = round_numbers((numpy.std(list_prices.astype(numpy.single))), 2)
+        series_sd = round_numbers((numpy.std(list_prices.astype(numpy.single))), 2)
+        sd = series_sd / float(close_price)
 
         take_profit = self.active_bot.deal.take_profit_price
         if sd >= 0:
             self.active_bot.deal.sd = sd
-            if (sd * 2) > 1.8:
-                new_trailling_stop_loss_price = float(take_profit) - (
-                    float(take_profit) * (float(sd * 2) / 100)
+            # Too little sd and the bot won't trail, instead it'll sell immediately
+            # Too much sd and the bot will never sell and overlap with other positions
+            if sd < 0.018:
+                sd = 0.018
+            elif sd > 0.088:
+                sd = 0.088
+
+            new_trailling_stop_loss_price = float(take_profit) - (
+                float(take_profit) * (float(sd * 2) / 100)
+            )
+            if new_trailling_stop_loss_price > float(
+                self.active_bot.deal.buy_price
+            ):
+                self.active_bot.deal.trailling_stop_loss_price = (
+                    new_trailling_stop_loss_price
                 )
-                if new_trailling_stop_loss_price > float(
-                    self.active_bot.deal.buy_price
-                ):
-                    self.active_bot.deal.trailling_stop_loss_price = (
-                        new_trailling_stop_loss_price
-                    )
-                    print(f"Updated trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
+                print(f"Updated trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
 
         bot = encode_json(self.active_bot)
         return bot
