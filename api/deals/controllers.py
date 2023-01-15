@@ -1076,13 +1076,16 @@ class CreateDealController(Account):
             self.active_bot.deal.sd = sd
             # Too little sd and the bot won't trail, instead it'll sell immediately
             # Too much sd and the bot will never sell and overlap with other positions
-            if sd < 0.018:
-                sd = 0.018
-            elif sd > 0.088:
-                sd = 0.088
+            volatility = (sd) / float(close_price)
+            if volatility < 0.018:
+                volatility = 0.018
+            elif volatility > 0.088:
+                volatility = 0.088
 
+            # sd is multiplied by 2 to increase the difference between take_profit and trailling_stop_loss
+            # this avoids closing too early
             new_trailling_stop_loss_price = float(take_profit) - (
-                float(take_profit) * (float(sd * 2) / 100)
+                float(take_profit) * volatility
             )
             if new_trailling_stop_loss_price > float(
                 self.active_bot.deal.buy_price

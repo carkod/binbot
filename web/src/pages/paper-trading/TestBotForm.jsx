@@ -123,14 +123,6 @@ class TestBotForm extends React.Component {
       }
     }
 
-    if (
-      !checkValue(this.props.bot.orders) &&
-      this.props.bot.orders !== p.bot.orders
-    ) {
-      const currentTimeMarks = updateTimescaleMarks(this.props.bot);
-      this.setState({ currentTimeMarks: currentTimeMarks });
-    }
-
     if (this.props.bot.trailling !== p.bot.trailling) {
       const newOrderLines = updateOrderLines(
         this.props.bot,
@@ -397,10 +389,12 @@ class TestBotForm extends React.Component {
       );
     }
     const newOrderLines = updateOrderLines(this.props.bot, price);
+    const timescaleMarks = updateTimescaleMarks(this.props.bot);
     this.setState(
       produce(this.state, (draft) => {
         draft.currentOrderLines = newOrderLines;
         draft.currentChartPrice = parseFloat(price);
+        draft.timescaleMarks = timescaleMarks
       })
     );
   };
@@ -408,12 +402,10 @@ class TestBotForm extends React.Component {
   updatedPrice = (price) => {
     if (parseFloat(this.state.currentChartPrice) !== parseFloat(price)) {
       const newOrderLines = updateOrderLines(this.props.bot, price);
-      const newTimemarks = updateTimescaleMarks(this.props.bot);
       this.setState(
         produce(this.state, (draft) => {
           draft.currentOrderLines = newOrderLines;
           draft.currentChartPrice = parseFloat(price);
-          draft.currentTimeMarks = newTimemarks;
         })
       );
     }
@@ -477,7 +469,7 @@ class TestBotForm extends React.Component {
                   <TVChartContainer
                     symbol={this.props.bot.pair}
                     interval={this.props.bot.interval}
-                    timescaleMarks={this.state.currentTimeMarks}
+                    timescaleMarks={updateTimescaleMarks(this.props.bot)}
                     orderLines={this.state.currentOrderLines}
                     onTick={(tick) => this.updatedPrice(tick.close)}
                     getLatestBar={(bar) => this.handleInitialPrice(bar[3])}
