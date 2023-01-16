@@ -223,9 +223,6 @@ class StreamingController:
     
     async def get_klines(self, interval):
         print("Starting streaming klines")
-        if self.settings["update_required"]:
-            self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
-            raise Exception("Restarting streaming...")
         self.socket = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = self.socket.multiplex_socket(params)

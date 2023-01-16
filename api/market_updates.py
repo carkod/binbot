@@ -1,9 +1,10 @@
 import asyncio
 import atexit
 import os
+import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from streaming.streaming_controller import StreamingController, TerminateStreaming
+from streaming.streaming_controller import StreamingController
 
 from account.assets import Assets
 
@@ -36,4 +37,6 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as error:
         print(error)
+        print("Waiting 5 seconds before restarting sockets")
+        time.sleep(5)
         asyncio.run(main())
