@@ -127,6 +127,7 @@ class Bot(Account):
                     "botId": str(bot["id"]),
                 }
             )
+            self._update_required()
 
         except RequestValidationError as error:
             resp = json_response_error(f"Failed to create new bot: {error}")

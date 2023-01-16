@@ -4,7 +4,7 @@ from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
 from db import setup_db
-from pymongo.collection import Collection
+import logging
 class TerminateStreaming(Exception):
     pass
 
@@ -15,6 +15,7 @@ class StreamingController:
         # db:27017 instead of localhost=:2018
         self.streaming_db = setup_db()
         self.socket = None
+        self.client = None
         self.conn_key = None
         self.list_bots = []
         self.list_paper_trading_bots = []
@@ -27,7 +28,7 @@ class StreamingController:
     async def setup_client(self):
         client = await AsyncClient.create(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
         socket = BinanceSocketManager(client)
-        return socket
+        return socket, client
     
     def combine_stream_names(self, interval):
         if self.settings["autotrade"] == 1:
@@ -198,10 +199,12 @@ class StreamingController:
         """
         # Re-retrieve settings in the middle of streaming
         local_settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
-        print(f'Processing deals... require restart? {local_settings["update_required"]}')
         if local_settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
-            raise Exception("Restarting websockets...")
+            if self.client:
+                print("Closing client connection")
+                self.client.close_connection()
+            raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
             close_price = result["k"]["c"]
@@ -223,7 +226,7 @@ class StreamingController:
     
     async def get_klines(self, interval):
         print("Starting streaming klines")
-        self.socket = await self.setup_client()
+        self.socket, self.client = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = self.socket.multiplex_socket(params)
         self.conn_key = klines
@@ -243,7 +246,7 @@ class StreamingController:
     
     async def get_user_data(self):
         print("Streaming user data")
-        socket = await self.setup_client()
+        socket, client = await self.setup_client()
         user_data = socket.user_socket()
         async with user_data as ud:
             try:
@@ -252,3 +255,4 @@ class StreamingController:
                     print(res)
             except Exception as error:
                 print(f"get_user_data sockets error: {error}")
+                client.close_connection()
