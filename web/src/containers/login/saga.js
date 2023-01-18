@@ -1,5 +1,5 @@
 import { call, put, takeLatest } from "redux-saga/effects";
-import request from "../../request";
+import { requestForm } from "../../request";
 import { LOGIN, loginFailed, loginSucceeded } from "./actions";
 
 /**
@@ -7,9 +7,14 @@ import { LOGIN, loginFailed, loginSucceeded } from "./actions";
  */
 export function* postLogin(body) {
   const { data } = body;
-  const requestURL = process.env.REACT_APP_LOGIN;
+  const requestURL = `${process.env.REACT_APP_LOGIN}`;
+
+  const formData = new FormData();
+  formData.append("username", data.email)
+  formData.append("password", data.password)
+
   try {
-    const res = yield call(request, requestURL, "POST", data);
+    const res = yield call(requestForm, requestURL, "POST", formData);
     yield put(loginSucceeded(res));
   } catch (err) {
     yield put(loginFailed(err));

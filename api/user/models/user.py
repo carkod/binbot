@@ -43,12 +43,13 @@ class User:
         Provided email and password, returns token to login
         """
         email = data.username.lower()
+        password = data.password
         user = self.db.users.find_one({"email": email})
         if user:
-            access_token = enconde_access_token(self.defaults.password, self.defaults.email)
+            access_token = enconde_access_token(password, email)
             resp = json_response(
                 {
-                    "email": self.defaults.email,
+                    "email": email,
                     "access_token": access_token,
                     "token_type": "bearer",
                     "error": 0,

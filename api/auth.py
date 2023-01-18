@@ -45,7 +45,7 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 def enconde_access_token(password: str, email: str):
-    expires_delta = timedelta(minutes=os.getenv["ACCESS_TOKEN_EXPIRE_MINUTES"])
+    expires_delta = timedelta(minutes=int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"]))
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:

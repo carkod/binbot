@@ -7,12 +7,11 @@ const tokenName = "binbot-token";
  * @return {object|undefined} Returns either the response, or throws an error
  */
 function checkStatus(response) {
-
   if (response.status === 401) {
     // Remove token as server is rejecting it
     removeToken();
-    alert("User not authenticated")
-    window.location = "/login"
+    alert("User not authenticated");
+    window.location = "/login";
   }
 
   if (response.status >= 200 && response.status < 300) {
@@ -25,7 +24,7 @@ function checkStatus(response) {
 
   // throw error if error = 1
   if (response.json()["error"]) {
-    throw new Error(response.json()["message"])
+    throw new Error(response.json()["message"]);
   }
 
   let error = new Error(response.statusText);
@@ -33,13 +32,12 @@ function checkStatus(response) {
   throw error;
 }
 
-
 export function getToken() {
   const token = localStorage.getItem(tokenName);
   if (token === "undefined" || token === "null" || token === "") {
     return null;
   }
-  return JSON.parse(token);;
+  return JSON.parse(token);
 }
 
 export function setToken(token) {
@@ -52,14 +50,14 @@ export function removeToken() {
 }
 
 export function buildBackUrl() {
-  let base = window.location.hostname.split(".")
+  let base = window.location.hostname.split(".");
   if (base.includes("localhost")) {
-    base = ["localhost:8008"]
+    base = ["localhost:8008"];
   } else {
-    base.unshift("api")
+    base.unshift("api");
   }
   base = `${window.location.protocol}//${base.join(".")}`;
-  return base
+  return base;
 }
 
 /**
@@ -70,23 +68,48 @@ export function buildBackUrl() {
  *
  * @return {object}           The response data
  */
-export default async function request(url, verb = "GET", json = undefined) {
+export default async function request(
+  url,
+  verb = "GET",
+  json = undefined
+) {
 
   const headers = new Headers({
     "content-type": "application/json",
     accept: "application/json",
     Authorization: `Bearer ${getToken()}`,
-  });
+  })
 
   let options = {
     method: verb,
-    mode: 'cors',
+    mode: "cors",
     cache: "no-cache",
     headers: headers,
   };
   if (json) {
-    options.body = JSON.stringify(json)
+    options.body = JSON.stringify(json);
   }
+
+  const baseUrl = buildBackUrl();
+  url = url instanceof URL ? url : baseUrl + url;
+  const response = await fetch(url, options);
+  const content = await checkStatus(response);
+  return content;
+}
+
+
+export async function requestForm(
+  url,
+  verb,
+  formData
+) {
+
+  let options = {
+    method: verb,
+    mode: "cors",
+    cache: "no-cache",
+    body: formData,
+  };
 
   const baseUrl = buildBackUrl();
   url = url instanceof URL ? url : baseUrl + url;
