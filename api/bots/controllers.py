@@ -67,7 +67,7 @@ class Bot(Account):
                 float(end_date)
             except ValueError as e:
                 resp = json_response(
-                    {"message": f"end_date must be a timestamp float", "data": []}
+                    {"message": f"end_date must be a timestamp float: {e}", "data": []}
                 )
                 return resp
 
@@ -119,6 +119,7 @@ class Bot(Account):
         """
         try:
             bot = data.dict()
+            bot["id"] = str(ObjectId())
             self.db_collection.insert_one(bot)
             resp = json_response(
                 {
@@ -126,8 +127,8 @@ class Bot(Account):
                     "botId": str(bot["id"]),
                 }
             )
-
             self._update_required()
+
         except RequestValidationError as error:
             resp = json_response_error(f"Failed to create new bot: {error}")
         except Exception as e:
@@ -142,7 +143,7 @@ class Bot(Account):
             bot = data.dict()
             if "id" in bot:
                 bot.pop("id")
-            self.db_collection.update_one({"id": ObjectId(botId)}, {"$set": bot})
+            self.db_collection.update_one({"id": botId}, {"$set": bot})
             resp = json_response(
                 {"message": "Successfully updated bot", "botId": str(botId)}
             )
@@ -177,10 +178,7 @@ class Bot(Account):
                 CreateDealController(
                     bot, db_collection=self.db_collection.name
                 ).open_deal()
-                resp = json_response_message("Successfully activated bot!")
-                self._update_required()
-                # asyncio.Event.connection_open = False  # type: ignore
-                return resp
+                return json_response_message("Successfully activated bot!")
             except OpenDealError as error:
                 print(error)
                 return json_response_error(error.args[0])
@@ -217,6 +215,7 @@ class Bot(Account):
                             url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
                         )
                         error_msg = f"Failed to delete opened order {order_id}."
+                        print(error_msg)
                         # Handle error and continue
                         handle_binance_errors(res)
 
@@ -275,7 +274,7 @@ class Bot(Account):
                         "status": order_res["status"],
                     }
                     self.db_collection.update_one(
-                        {"id": ObjectId(findId)},
+                        {"id": findId},
                         {
                             "$push": {
                                 "orders": deactivation_order,
@@ -298,7 +297,7 @@ class Bot(Account):
                     "status": order_res["status"],
                 }
                 self.db_collection.update_one(
-                    {"id": ObjectId(findId)},
+                    {"id": findId},
                     {
                         "$set": {
                             "status": "completed",
@@ -318,7 +317,7 @@ class Bot(Account):
                 )
             else:
                 self.db_collection.update_one(
-                    {"id": ObjectId(findId)}, {"$set": {"status": "error"}}
+                    {"id": findId}, {"$set": {"status": "error"}}
                 )
                 return json_response_message("Not enough balance to close and sell")
 
@@ -339,7 +338,7 @@ class Bot(Account):
 
         try:
             self.db_collection.update_one(
-                {"id": ObjectId(botId)}, {"$set": {"status": status}}
+                {"id": botId}, {"$set": {"status": status}}
             )
             resp = json_response(
                 {"message": "Successfully archived bot", "botId": botId}

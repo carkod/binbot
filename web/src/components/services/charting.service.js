@@ -13,17 +13,10 @@ function matchTsToTimescale(ts) {
    */
 
   const date = new Date(parseFloat(ts));
-  let timescaleDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    date.getHours(),
-    date.getMinutes(),
-    0
-  );
-  timescaleDate.setMinutes(date.getMinutes() + 30);
-  timescaleDate.setMinutes(0, 0, 0);
-  const newTs = timescaleDate.getTime();
+  date.setMinutes(0);
+  date.setSeconds(0)
+  date.setMilliseconds(0);
+  const newTs = date.getTime();
   return newTs / 1000;
 }
 
@@ -104,7 +97,7 @@ export function updateOrderLines(bot, currentPrice) {
         totalOrderLines.push({
           id: "take_profit",
           text: `Take profit -${bot.trailling_deviation}%`,
-          tooltip: [bot.status, " Take profit completed"],
+          tooltip: [bot.status, " Sell when prices drop to here"],
           quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
           price: bot.deal.sell_price,
           color: dealColors.take_profit,
@@ -118,15 +111,21 @@ export function updateOrderLines(bot, currentPrice) {
           color: dealColors.trailling_profit,
           lineStyle: 2,
         });
-      } else if (bot.deal.buy_price && bot.status === "active") {
+      } else if (bot.deal.buy_price && bot.deal.take_profit_price && bot.status === "active") {
+        totalOrderLines.push({
+          id: "trailling_stop_loss",
+          text: `Take profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Trace upward profit"],
+          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          price: bot.deal.take_profit_price, // take_profit / trailling_profit
+          color: dealColors.trailling_profit,
+        });
         totalOrderLines.push({
           id: "take_profit",
-          text: `Take profit ${bot.take_profit}%`,
+          text: `Trailling profit ${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price:
-            bot.deal.buy_price +
-            bot.deal.buy_price * parseFloat(bot.take_profit / 100), // take_profit / trailling_profit
+          price: bot.deal.trailling_stop_loss_price, // take_profit / trailling_profit
           color: dealColors.take_profit,
         });
       } else {
@@ -148,27 +147,6 @@ export function updateOrderLines(bot, currentPrice) {
           price: bot.deal.trailling_stop_loss_price,
           color: dealColors.take_profit,
         });
-        // const takeProfitPrice =
-        //   currentPrice * (1 + parseFloat(bot.take_profit) / 100);
-        // totalOrderLines.push({
-        //   id: "take_profit",
-        //   text: `Take profit -${bot.trailling_deviation}%`,
-        //   tooltip: [bot.status, " Sell order when prices drop here"],
-        //   quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        //   price:
-        //     takeProfitPrice -
-        //     takeProfitPrice * parseFloat(bot.trailling_deviation / 100), // take_profit / trailling_profit
-        //   color: dealColors.take_profit,
-        // });
-        // totalOrderLines.push({
-        //   id: "trailling_profit",
-        //   text: `Trailling profit ${bot.take_profit}%`,
-        //   tooltip: [bot.status, " Breakpoint to increase Take profit"],
-        //   quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        //   price: takeProfitPrice, // take_profit / trailling_profit
-        //   color: dealColors.trailling_profit,
-        //   lineStyle: 2,
-        // });
       }
     } else if (bot.take_profit) {
       // No trailling, just normal take_profit
@@ -259,6 +237,8 @@ export function updateTimescaleMarks(bot) {
         time: matchTsToTimescale(order.timestamp),
         color: color,
       };
+
+      
       // Avoid object not extensible error
       // Since tradingview library requires this, it can be an exception to immutable state
       totalTimescaleMarks.push(timescaleMark);

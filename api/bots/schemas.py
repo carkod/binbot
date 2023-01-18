@@ -7,8 +7,9 @@ from pydantic import BaseModel, Field, validator
 from deals.schema import DealSchema, OrderSchema
 from tools.enum_definitions import BinbotEnums
 from tools.handle_error import StandardResponse
+from uuid import UUID, uuid4
 
-class PyObjectId(ObjectId):
+class PyObjectId:
 
     @classmethod
     def __get_validators__(cls):
@@ -16,12 +17,9 @@ class PyObjectId(ObjectId):
 
     @classmethod
     def validate(cls, v):
-        if isinstance(v, str):
-            return ObjectId(v)
-        elif not ObjectId.is_valid(v):
-            raise ValueError('Invalid objectid')
-        elif ObjectId.is_valid(v):
-            return v
+        if not isinstance(v, str):
+            raise ValueError('Invalid string')
+        return str(v)
 
     @classmethod
     def __modify_schema__(cls, field_schema):
@@ -47,7 +45,7 @@ class SafetyOrderSchema(BaseModel):
 
 
 class BotSchema(BaseModel):
-    id: str | PyObjectId = Field(default=str(ObjectId()))
+    id: str = ""
     pair: str
     balance_size_to_use: float = 0
     balance_to_use: str = "1"

@@ -48,6 +48,9 @@ export default function TakeProfit ({
           >
             {trailling === "true" ? "On" : "Off"}
           </Button>
+          <div>
+            <small>{"Trailling won't trigger until trailling_stop_loss > base"}</small>
+          </div>
         </Col>
       </Row>
       <Row className="u-margin-bottom">

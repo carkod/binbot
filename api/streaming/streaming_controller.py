@@ -4,7 +4,7 @@ from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
 from db import setup_db
-
+import logging
 class TerminateStreaming(Exception):
     pass
 
@@ -15,7 +15,10 @@ class StreamingController:
         # db:27017 instead of localhost=:2018
         self.streaming_db = setup_db()
         self.socket = None
+        self.client = None
         self.conn_key = None
+        self.list_bots = []
+        self.list_paper_trading_bots = []
         self.settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
         self.test_settings = self.streaming_db.research_controller.find_one({"_id": "test_autotrade_settings"})
         # Start streaming service globally
@@ -25,15 +28,22 @@ class StreamingController:
     async def setup_client(self):
         client = await AsyncClient.create(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
         socket = BinanceSocketManager(client)
-        return socket
-
+        return socket, client
+    
     def combine_stream_names(self, interval):
-        markets = list(self.streaming_db.bots.distinct("pair", {"status": "active"}))
-        paper_trading_bots = list(
-            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
-        )
-        markets = markets + paper_trading_bots
+        if self.settings["autotrade"] == 1:
+            self.list_bots = list(self.streaming_db.bots.distinct("pair", {"status": "active"}))
+
+        if self.test_settings["autotrade"] == 1:
+            self.list_paper_trading_bots = list(
+                self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
+            )
+
+        markets = self.list_bots + self.list_paper_trading_bots
         params = []
+        if len(markets) == 0:
+            # Listen to dummy stream to always trigger streaming
+            markets.append("BNBBTC")
         for market in markets:
             params.append(f"{market.lower()}@kline_{interval}")
 
@@ -135,11 +145,11 @@ class StreamingController:
                             float(new_take_profit)
                             * (float(bot["trailling_deviation"]) / 100)
                         )
-                        print(f'Updated trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
+                        print(f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
                     else:
                         # Protect against drops by selling at buy price + 0.75% commission
                         bot["deal"]["trailling_stop_loss_price"] = (float(bot["deal"]["buy_price"]) * 1.075)
-                        print(f'Updated trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
+                        print(f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
 
 
                     updated_bot = self.streaming_db[db_collection].update_one(
@@ -187,10 +197,14 @@ class StreamingController:
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        print(f'Processing deals... require restart? {self.settings["update_required"]}')
-        if self.settings["update_required"]:
+        # Re-retrieve settings in the middle of streaming
+        local_settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
+        if local_settings["update_required"]:
             self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
-            raise Exception("Restarting websockets...")
+            if self.client:
+                print("Closing client connection")
+                self.client.close_connection()
+            raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
             close_price = result["k"]["c"]
@@ -212,10 +226,7 @@ class StreamingController:
     
     async def get_klines(self, interval):
         print("Starting streaming klines")
-        if self.settings["update_required"]:
-            self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
-            raise Exception("Restarting streaming...")
-        self.socket = await self.setup_client()
+        self.socket, self.client = await self.setup_client()
         params = self.combine_stream_names(interval)
         klines = self.socket.multiplex_socket(params)
         self.conn_key = klines
@@ -235,12 +246,13 @@ class StreamingController:
     
     async def get_user_data(self):
         print("Streaming user data")
-        socket = await self.setup_client()
+        socket, client = await self.setup_client()
         user_data = socket.user_socket()
         async with user_data as ud:
             try:
-                while asyncio.Event.connection_open:
+                while True:
                     res = await ud.recv()
                     print(res)
             except Exception as error:
                 print(f"get_user_data sockets error: {error}")
+                client.close_connection()

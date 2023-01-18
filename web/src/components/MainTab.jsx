@@ -38,6 +38,7 @@ export default function MainTab({
             handleChange={handlePairChange}
             handleBlur={handlePairBlur}
             disabled={bot.status === "completed"}
+            required={true}
           />
         </Col>
         <Col md="6" sm="12">

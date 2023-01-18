@@ -2,13 +2,13 @@ import moment from "moment";
 import PropTypes from "prop-types";
 import { useHistory } from "react-router-dom";
 import {
-	Badge,
-	Card,
-	CardBody,
-	CardFooter,
-	CardTitle,
-	Col,
-	Row
+  Badge,
+  Card,
+  CardBody,
+  CardFooter,
+  CardTitle,
+  Col,
+  Row,
 } from "reactstrap";
 import { botDuration, getProfit } from "../state/bots/actions";
 import { checkValue, roundDecimals } from "../validations";
@@ -21,30 +21,32 @@ const renderSellTimestamp = (bot) => {
       sell_timestamp = bot.deal.sell_timestamp;
       return (
         <>
-          {botDuration(bot.deal.buy_timestamp, sell_timestamp)}
+          {sell_timestamp === 0
+            ? botDuration(bot.deal.buy_timestamp, new Date().getTime())
+            : botDuration(bot.deal.buy_timestamp, sell_timestamp)}
         </>
-      )
+      );
     }
   }
-  return ""
-}
+  return "";
+};
 
 const getNetProfit = (bot) => {
   // current price if bot is active
   // sell price if bot is completed
   let finalPrice = bot.deal.current_price;
   if (bot.status === "completed") {
-    finalPrice = bot.deal.sell_price
+    finalPrice = bot.deal.sell_price;
   }
 
   let netProfit = getProfit(bot.deal.buy_price, finalPrice);
 
   if (bot.strategy === "short" || bot.deal.buy_price === 0) {
-    netProfit = 0
+    netProfit = 0;
   }
-  
-  return netProfit
-}
+
+  return netProfit;
+};
 export default function BotCard({
   tabIndex,
   x,
@@ -58,9 +60,7 @@ export default function BotCard({
     <Card
       tabIndex={tabIndex}
       className={
-        selectedCards.includes(x.id)
-          ? "is-selected card-stats"
-          : "card-stats"
+        selectedCards.includes(x.id) ? "is-selected card-stats" : "card-stats"
       }
     >
       <CardBody>
@@ -75,13 +75,7 @@ export default function BotCard({
           <Col md="5" xs="12">
             <CardTitle tag="h5" className="card-title u-uppercase">
               {!checkValue(x.deal) && (
-                <Badge
-                  color={
-                    getNetProfit(x) > 0
-                      ? "success"
-                      : "danger"
-                  }
-                >
+                <Badge color={getNetProfit(x) > 0 ? "success" : "danger"}>
                   {getNetProfit(x) + "%"}
                 </Badge>
               )}
@@ -131,9 +125,7 @@ export default function BotCard({
                   <p className="card-category">Strategy</p>
                 </Col>
                 <Col md="5">
-                  <p className="card-category">
-                    {x.strategy}
-                  </p>
+                  <p className="card-category">{x.strategy}</p>
                 </Col>
               </Row>
               <Row>
@@ -232,9 +224,7 @@ export default function BotCard({
                   <p className="card-category">Duration</p>
                 </Col>
                 <Col md="5">
-                  <p className="card-category">
-                    {renderSellTimestamp(x)}
-                  </p>
+                  <p className="card-category">{renderSellTimestamp(x)}</p>
                 </Col>
               </Row>
             ) : (

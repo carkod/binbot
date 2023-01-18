@@ -316,6 +316,9 @@ class CreateDealController(Account):
             qty = deal_data.buy_total_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
+            # Already sold?
+            if not qty:
+                print(f"Bot already closed? There is no {self.active_bot.pair} quantity in the balance. Please delete the bot.")
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":
@@ -790,24 +793,16 @@ class CreateDealController(Account):
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
         else:
             try:
-                if price:
-                    stop_limit_order = {
-                        "pair": bot.pair,
-                        "qty": qty,
-                        "price": supress_notation(price, self.price_precision),
-                    }
-                    res = self.bb_request(
-                        method="POST",
-                        url=self.bb_sell_order_url,
-                        payload=stop_limit_order,
-                    )
-                else:
-                    stop_limit_order = {"pair": bot.pair, "qty": qty}
-                    res = self.bb_request(
-                        method="POST",
-                        url=self.bb_sell_market_order_url,
-                        payload=stop_limit_order,
-                    )
+                stop_limit_order = {
+                    "pair": self.active_bot.pair,
+                    "qty": qty,
+                    "price": supress_notation(price, self.price_precision),
+                }
+                res = self.bb_request(
+                    method="POST",
+                    url=self.bb_sell_order_url,
+                    payload=stop_limit_order,
+                )
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
@@ -1073,22 +1068,32 @@ class CreateDealController(Account):
         res = requests.get(url=self.bb_candlestick_url, params=params)
         data = handle_binance_errors(res)
         list_prices = numpy.array(data["trace"][0]["close"])
-        sd = round_numbers((numpy.std(list_prices.astype(numpy.single))), 2)
+        series_sd = round_numbers((numpy.std(list_prices.astype(numpy.single))), 2)
+        sd = series_sd / float(close_price)
 
         take_profit = self.active_bot.deal.take_profit_price
         if sd >= 0:
             self.active_bot.deal.sd = sd
-            if (sd * 2) > 1.8:
-                new_trailling_stop_loss_price = float(take_profit) - (
-                    float(take_profit) * (float(sd * 2) / 100)
+            # Too little sd and the bot won't trail, instead it'll sell immediately
+            # Too much sd and the bot will never sell and overlap with other positions
+            volatility = (sd) / float(close_price)
+            if volatility < 0.018:
+                volatility = 0.018
+            elif volatility > 0.088:
+                volatility = 0.088
+
+            # sd is multiplied by 2 to increase the difference between take_profit and trailling_stop_loss
+            # this avoids closing too early
+            new_trailling_stop_loss_price = float(take_profit) - (
+                float(take_profit) * volatility
+            )
+            if new_trailling_stop_loss_price > float(
+                self.active_bot.deal.buy_price
+            ):
+                self.active_bot.deal.trailling_stop_loss_price = (
+                    new_trailling_stop_loss_price
                 )
-                if new_trailling_stop_loss_price > float(
-                    self.active_bot.deal.buy_price
-                ):
-                    self.active_bot.deal.trailling_stop_loss_price = (
-                        new_trailling_stop_loss_price
-                    )
-                    print(f"Updated trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
+                print(f"Updated trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
 
         bot = encode_json(self.active_bot)
         return bot
