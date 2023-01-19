@@ -269,4 +269,5 @@ class Assets(Account):
         data = self.ticker_24()
         gainers_losers_list = [item for item in data if item["symbol"].endswith(market_asset)]
         gainers_losers_list.sort(reverse=True, key=lambda item: float(item["priceChangePercent"]))
-        return gainers_losers_list
+
+        return json_response({"message": "Successfully retrieved gainers and losers data", "data": gainers_losers_list})
