@@ -30,6 +30,13 @@ class Account(BinbotApi):
     def _exchange_info(self, symbol=None):
         """
         This must be a separate method because classes use it with inheritance
+
+        This request is used in many places to retrieve data about symbols, precisions etc.
+        It is a high weight endpoint, thus Binance could ban our IP
+        However it is not real-time updated data, so cache is used to avoid hitting endpoint
+        too many times and still be able to re-request data everywhere.
+
+        In addition, it uses MongoDB, with a separate database called "mongo_cache"
         """
         params = {}
         if symbol:
@@ -47,15 +54,16 @@ class Account(BinbotApi):
         data = handle_binance_errors(r)
         return data
 
-    def ticker(self, symbol: str):
+    def ticker(self, symbol: str | None = None, json: bool = True):
         params = {}
         if symbol:
             params = {"symbol": symbol}
         res = requests.get(url=self.ticker_price_url, params=params)
-        handle_binance_errors(res)
-        data = res.json()
-        resp = json_response({"data": data})
-        return resp
+        data = handle_binance_errors(res)
+        if json:
+            return json_response({"data": data})
+        else:
+            return data
 
     def get_ticker_price(self, symbol: str):
         params = {"symbol": symbol}
@@ -63,12 +71,24 @@ class Account(BinbotApi):
         data = handle_binance_errors(res)
         return data["price"]
 
-    def ticker_24(self, symbol):
+    def ticker_24(self, type: str = "FULL", symbol: str | None = None):
+        """
+        Weight 40 without symbol
+        https://github.com/carkod/binbot/issues/438
+
+        Using cache
+        """
         url = self.ticker24_url
-        params = {}
+        params = {
+            "type": type
+        }
         if symbol:
             params["symbol"] = symbol
-        res = requests.get(url=url, params=params)
+        
+        mongo_cache = self.setup_mongocache()
+        # expire_after = 15m because candlesticks are 15m
+        session = CachedSession('ticker_24_cache', backend=mongo_cache, expire_after=15)
+        res = session.get(url=url, params=params)
         data = handle_binance_errors(res)
         return data
 
@@ -99,7 +119,6 @@ class Account(BinbotApi):
         return json_response({"data": data})
 
     def find_market(self, quote):
-        """API Weight 10"""
         symbols = self._exchange_info()
         market = [
             symbol["symbol"]

@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from account.account import Account
 from account.assets import Assets
-from account.schemas import BalanceResponse
+from account.schemas import BalanceResponse, GainersLosersResponse
 
 account_blueprint = APIRouter()
 
@@ -47,7 +47,7 @@ def ticker(pair: str | None = None):
 @account_blueprint.get("/ticker24/{pair}", tags=["account"])
 @account_blueprint.get("/ticker24", tags=["account"])
 def ticker_24(pair=None):
-    return Account().ticker_24(pair)
+    return Account().ticker_24(symbol=pair)
 
 
 @account_blueprint.get("/balance/estimate", tags=["account"])
@@ -66,5 +66,10 @@ def get_pnl():
 
 
 @account_blueprint.get("/store-balance", tags=["account"])
-async def store_balance():
-    return await Assets().store_balance()
+def store_balance():
+    return Assets().store_balance()
+
+
+@account_blueprint.get("/gainers-losers", response_model=GainersLosersResponse, tags=["account"])
+async def retrieve_gainers_losers():
+    return await Assets().retrieve_gainers_losers()
