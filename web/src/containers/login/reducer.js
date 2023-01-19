@@ -14,9 +14,8 @@ function loginReducer(state = initialState, action) {
   switch (action.type) {
     case LOGIN: {
       const newState = {
-        email: action.data.email,
         password: action.data.password,
-        username: action.data.username
+        username: action.data.email
       }
       return newState;
     }
@@ -24,7 +23,6 @@ function loginReducer(state = initialState, action) {
       const newState = {
         access_token: action.data.access_token,
         email: action.data.email,
-        username: action.data.username
       }
       return newState;
     }

@@ -19,6 +19,7 @@ numpy = "==1.23.5"
 apscheduler = "==3.6.3"
 python-binance = "*"
 requests-cache = "==0.9.7"
+python-multipart = "*"
 
 [dev-packages]
 autopep8 = "==2.0.0"
