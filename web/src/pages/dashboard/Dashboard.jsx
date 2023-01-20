@@ -1,13 +1,14 @@
 import React from "react";
 import { connect } from "react-redux";
 import { Card, CardBody, CardFooter, CardTitle, Col, Row } from "reactstrap";
-import { AssetsTable } from "../../components/AssetsTable";
+import GainersLosers from "../../components/GainersLosers";
 import { loading } from "../../containers/spinner/actions";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
 import { checkValue, listCssColors, roundDecimals } from "../../validations";
 import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
+import { getGainersLosers } from "./saga";
 class Dashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -29,6 +30,7 @@ class Dashboard extends React.Component {
   componentDidMount = () => {
     this.props.getBalanceRaw();
     this.props.getEstimate();
+    this.props.getGainersLosers();
   };
 
   componentDidUpdate = (p, s) => {
@@ -256,16 +258,12 @@ class Dashboard extends React.Component {
                 </Col>
               </Row>
               <Row>
-                <Col md="4">
-                  {!checkValue(this.props.assetList) &&
-                    this.props.assetList.length > 0 && (
-                      <AssetsTable
-                        data={this.props.assetList}
-                        headers={["Symbol", "Free", "Locked"]}
-                      />
-                    )}
+                <Col lg="6" md="12">
+                  {this.props.gainersLosersData.length > 0 && 
+                    <GainersLosers data={this.props.gainersLosersData} />
+                  }
                 </Col>
-                <Col md="8">
+                <Col lg="6" md="12">
                   {this.state.lineChartData && (
                     <PortfolioBenchmarkChart
                       data={this.state.lineChartData}
@@ -302,10 +300,12 @@ const mapStateToProps = (s) => {
   const { loading } = s.loadingReducer;
   const { data: balanceEstimate } = s.estimateReducer;
   const { data: balance_raw } = s.balanceRawReducer;
+  const { data: gainersLosersData } = s.gainersLosersReducer;
   return {
     loading: loading,
     assetList: balance_raw,
     balanceEstimate: balanceEstimate?.total_fiat,
+    gainersLosersData: gainersLosersData
   };
 };
 
@@ -313,4 +313,5 @@ export default connect(mapStateToProps, {
   loading,
   getEstimate,
   getBalanceRaw,
+  getGainersLosers,
 })(Dashboard);

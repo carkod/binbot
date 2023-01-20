@@ -9,7 +9,7 @@ from account.account import Account
 from account.schemas import BalanceSchema
 from db import setup_db
 from orders.models.book_order import Book_Order
-from tools.handle_error import InvalidSymbol, json_response
+from tools.handle_error import InvalidSymbol, json_response, json_response_message
 from tools.round_numbers import round_numbers
 
 
@@ -115,7 +115,7 @@ class Assets(Account):
             qty = b["free"]
         return qty
 
-    def store_balance(self) -> None:
+    async def store_balance(self) -> dict:
         """
         Alternative PnL data that runs as a cronjob everyday once at 1200
         Store current balance in Db
@@ -161,6 +161,7 @@ class Assets(Account):
             print(f"Failed to store balance: {error}")
 
         print("Successfully stored balance!")
+        return json_response_message("Successfully stored balance!")
 
     def balance_estimate(self, fiat="USDT"):
         """
@@ -260,3 +261,13 @@ class Assets(Account):
             print(f"{current_time} Balance stored!")
         else:
             print(f"{current_time} Unable to store balance! Error: {balanceId}")
+    
+    async def retrieve_gainers_losers(self, market_asset="USDT"):
+        """
+        Create and return a ranking with gainers vs losers data
+        """
+        data = self.ticker_24()
+        gainers_losers_list = [item for item in data if item["symbol"].endswith(market_asset)]
+        gainers_losers_list.sort(reverse=True, key=lambda item: float(item["priceChangePercent"]))
+
+        return json_response({"message": "Successfully retrieved gainers and losers data", "data": gainers_losers_list})

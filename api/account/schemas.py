@@ -24,3 +24,29 @@ class BinanceBalanceResponse(BaseModel):
     asset: str
     free: float
     locked: float
+
+class Binance24Ticker(BaseModel):
+    symbol: str
+    priceChange: str
+    priceChangePercent: str
+    weightedAvgPrice: str
+    prevClosePrice: str
+    lastPrice: str
+    lastQty: str
+    bidPrice: str
+    bidQty: str
+    askPrice: str
+    askQty: str
+    openPrice: str
+    highPrice: str
+    lowPrice: str
+    volume: str
+    quoteVolume: str
+    openTime: int
+    closeTime: int
+    firstId: int
+    lastId: int
+    count: int
+
+class GainersLosersResponse(StandardResponse):
+    data: list[Binance24Ticker]

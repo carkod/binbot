@@ -27,6 +27,11 @@
   justify-content: space-between;
 }
 
+.u-flex-left {
+  display: flex;
+  margin-right: $margin-base-horizontal;
+}
+
 .u-margin-bottom {
   margin-bottom: 2em;
 }
@@ -88,4 +93,12 @@
 
 .u-disable-events {
   pointer-events: none;
+}
+
+.u-float-right {
+  float: right;
+}
+
+.u-float-left {
+  float: left;
 }

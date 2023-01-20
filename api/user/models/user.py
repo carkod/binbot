@@ -10,7 +10,6 @@ from tools.handle_error import (
 )
 from bson.objectid import ObjectId
 from auth import enconde_access_token
-from datetime import datetime
 from db import setup_db
 from user.schemas import UserSchema
 from fastapi.encoders import jsonable_encoder
