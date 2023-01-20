@@ -74,25 +74,33 @@ export default async function request(
   json = undefined
 ) {
 
-  const headers = new Headers({
-    "content-type": "application/json",
-    accept: "application/json",
-    Authorization: `Bearer ${getToken()}`,
-  })
+  let response = await fetch(url);
 
-  let options = {
-    method: verb,
-    mode: "cors",
-    cache: "no-cache",
-    headers: headers,
-  };
-  if (json) {
-    options.body = JSON.stringify(json);
+  if (!url.includes("https://api.binance.com")) {
+    const baseUrl = buildBackUrl();
+    url = url instanceof URL ? url : baseUrl + url;
+
+    const headers = new Headers({
+      "content-type": "application/json",
+      accept: "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    })
+
+    let options = {
+      method: verb,
+      mode: "cors",
+      cache: "no-cache",
+      headers: headers,
+    };
+    
+    if (json) {
+      options.body = JSON.stringify(json);
+    }
+    
+    response = await fetch(url, options);
+  
   }
-
-  const baseUrl = buildBackUrl();
-  url = url instanceof URL ? url : baseUrl + url;
-  const response = await fetch(url, options);
+  
   const content = await checkStatus(response);
   return content;
 }

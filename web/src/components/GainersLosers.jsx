@@ -84,13 +84,13 @@ export default function GainersLosers({ data }) {
           <Col>
             <GainersLosersCard
               data={gainersData}
-              title="Today's gainers"
+              title="Today's gainers in USDT market"
             />
           </Col>
           <Col>
             <GainersLosersCard
               data={losersData}
-              title="Today's losers"
+              title="Today's losers in USDT market"
             />
           </Col>
         </Row>
