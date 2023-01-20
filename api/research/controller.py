@@ -15,10 +15,9 @@ class Controller:
     """
 
     def __init__(self):
-        self.default_blacklist = {"_id": "", "pair": "", "reason": ""}  # pair
         self.db = setup_db()
 
-    def get_blacklist(self) -> json_response:
+    def get_blacklist(self):
         """
         Get list of blacklisted symbols
         """
@@ -31,9 +30,9 @@ class Controller:
     def create_blacklist_item(self, data):
 
         try:
-            data.dict()
-            data["_id"] = data["pair"]
-            self.db.blacklist.insert_one(self.default_blacklist)
+            blacklist_item = data.dict()
+            blacklist_item["_id"] = data.pair
+            self.db.blacklist.insert_one(blacklist_item)
             return json_response(
                 {"message": "Successfully updated blacklist"}
             )
@@ -58,13 +57,12 @@ class Controller:
         if "pair" not in data:
             return json_response({"message": "Missing required field 'pair'.", "error": 1})
 
-        self.default_blacklist.update(data)
         blacklist = self.db.blacklist.update_one(
-            {"_id": data["pair"]}, {"$set": self.default_blacklist}
+            {"_id": data["pair"]}, {"$set": data}
         )
 
         if not blacklist:
-            self.db.blacklist.insert(self.default_blacklist)
+            resp = json_response_error("Blacklist item does not exist")
 
         resp = json_response(
             {"message": "Successfully updated blacklist", "blacklist": blacklist}
