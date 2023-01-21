@@ -26,9 +26,6 @@ class StreamingController:
         self.test_settings = self.streaming_db.research_controller.find_one(
             {"_id": "test_autotrade_settings"}
         )
-        # Start streaming service globally
-        # This will allow access for the entire FastApi scope
-        asyncio.Event.connection_open = True
 
     async def setup_client(self):
         client = await AsyncClient.create(
@@ -58,7 +55,7 @@ class StreamingController:
 
         return params
 
-    def process_deals_bot(
+    def execute_strategies(
         self, current_bot, close_price, open_price, symbol, db_collection
     ):
         """
@@ -118,14 +115,12 @@ class StreamingController:
             # Take profit trailling
             if bot["trailling"] == "true" and float(bot["deal"]["buy_price"]) > 0:
 
-                # Temporary testing condition
-                if db_collection == "paper_trading":
-                    if bot["mode"] == "autotrade":
-                        deal = CreateDealController(bot, db_collection)
-                        # Returns bot, to keep modifying in subsequent checks
-                        bot = deal.dynamic_take_profit(
-                            symbol, current_bot["candlestick_interval"], close_price
-                        )
+                if bot["mode"] == "autotrade":
+                    deal = CreateDealController(bot, db_collection)
+                    # Returns bot, to keep modifying in subsequent checks
+                    bot = deal.dynamic_take_profit(
+                        symbol, current_bot, close_price
+                    )
 
                 if (
                     "trailling_stop_loss_price" not in bot["deal"]
@@ -218,7 +213,7 @@ class StreamingController:
                         deal.so_update_deal(key)
         pass
 
-    def process_deals(self, result):
+    async def process_klines(self, result):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
@@ -231,9 +226,6 @@ class StreamingController:
             self.streaming_db.research_controller.update_one(
                 {"_id": "settings"}, {"$set": {"update_required": False}}
             )
-            if self.client:
-                print("Closing client connection")
-                self.client.close_connection()
             raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
@@ -247,11 +239,11 @@ class StreamingController:
                 {"pair": symbol, "status": "active"}
             )
             if current_bot:
-                self.process_deals_bot(
+                self.execute_strategies(
                     current_bot, close_price, open_price, symbol, "bots"
                 )
             if current_test_bot:
-                self.process_deals_bot(
+                self.execute_strategies(
                     current_test_bot, close_price, open_price, symbol, "paper_trading"
                 )
             return
@@ -272,9 +264,11 @@ class StreamingController:
 
                 if "data" in res:
                     if "e" in res["data"] and res["data"]["e"] == "kline":
-                        self.process_deals(res["data"])
+                        await self.process_klines(res["data"])
                     else:
                         print(f'Error: {res["data"]}')
+                                                
+                await self.client.close_connection()
 
     async def get_user_data(self):
         print("Streaming user data")
@@ -287,4 +281,4 @@ class StreamingController:
                     print(res)
             except Exception as error:
                 print(f"get_user_data sockets error: {error}")
-                client.close_connection()
+                await client.close_connection()
