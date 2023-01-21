@@ -74,25 +74,39 @@ export default async function request(
   json = undefined
 ) {
 
-  const headers = new Headers({
-    "content-type": "application/json",
-    accept: "application/json",
-    Authorization: `Bearer ${getToken()}`,
-  })
-
-  let options = {
-    method: verb,
-    mode: "cors",
-    cache: "no-cache",
-    headers: headers,
-  };
-  if (json) {
-    options.body = JSON.stringify(json);
-  }
-
+  let response = await fetch(url);
   const baseUrl = buildBackUrl();
-  url = url instanceof URL ? url : baseUrl + url;
-  const response = await fetch(url, options);
+
+  try {
+    url = new URL(url)
+    response = await fetch(url);
+    
+  } catch (e) {
+    if (e instanceof TypeError) {
+      url = baseUrl + url
+      const headers = new Headers({
+        "content-type": "application/json",
+        accept: "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      })
+    
+      let options = {
+        method: verb,
+        mode: "cors",
+        cache: "no-cache",
+        headers: headers,
+      };
+      
+      if (json) {
+        options.body = JSON.stringify(json);
+      }
+      
+      response = await fetch(url, options);
+    }
+    console.log(e)
+
+  }
+  
   const content = await checkStatus(response);
   return content;
 }

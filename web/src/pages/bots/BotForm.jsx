@@ -58,7 +58,6 @@ class BotForm extends React.Component {
       // Chart state
       soPriceDeviation: 0,
       currentOrderLines: [],
-      currentTimeMarks: [],
       interval: "1h", // Fix legacy candlestick_interval
     };
   }
@@ -147,13 +146,6 @@ class BotForm extends React.Component {
       this.computeAvailableBalance();
     }
 
-    if (
-      !checkValue(this.props.bot.orders) &&
-      this.props.bot.orders !== p.bot.orders
-    ) {
-      const currentTimeMarks = updateTimescaleMarks(this.props.bot);
-      this.setState({ currentTimeMarks: currentTimeMarks });
-    }
   };
 
   requiredinValidation = () => {
@@ -539,7 +531,7 @@ class BotForm extends React.Component {
                   <TVChartContainer
                     symbol={this.props.bot.pair}
                     interval={this.state.interval}
-                    timescaleMarks={this.state.currentTimeMarks}
+                    timescaleMarks={updateTimescaleMarks(this.props.bot)}
                     orderLines={this.state.currentOrderLines}
                     onTick={(tick) => this.updatedPrice(tick.close)}
                     getLatestBar={(bar) => this.handleInitialPrice(bar[3])}

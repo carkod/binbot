@@ -12,7 +12,7 @@ export function getGainersLosers() {
 function getGainersLosersSucceeded(res) {
   return {
     type: GET_GAINERS_LOSERS_SUCESS,
-    data: res.data,
+    data: res,
   };
 }
 
@@ -27,7 +27,7 @@ function getGainersLosersFailed(err) {
  * of gainers and losers
  */
 export function* getGainersLosersApi() {
-  const requestURL = `${process.env.REACT_APP_GAINERS_LOSERS}`;
+  const requestURL = `${process.env.REACT_APP_TICKER_24}`;
   try {
     const res = yield call(request, requestURL, "GET");
     yield put(getGainersLosersSucceeded(res));

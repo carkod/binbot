@@ -15,9 +15,10 @@ const gainersLosersReducer = produce((draft, action) => {
 
     case GET_GAINERS_LOSERS_SUCESS: {
       if (action.data) {
-        draft.data = action.data;
+        const filterUSDTmarket = action.data.filter(item => item.symbol.endsWith("USDT"))
+        const usdtData = filterUSDTmarket.sort((a,b) => parseFloat(a.priceChangePercent) - parseFloat(b.priceChangePercent)).reverse()
+        draft.data = usdtData;
       }
-
       return draft;
     }
 
