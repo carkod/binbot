@@ -4,11 +4,13 @@ from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController
 from db import setup_db
+
+
 class TerminateStreaming(Exception):
     pass
 
-class StreamingController:
 
+class StreamingController:
     def __init__(self):
         # For some reason, db connections internally only work with
         # db:27017 instead of localhost=:2018
@@ -18,20 +20,28 @@ class StreamingController:
         self.conn_key = None
         self.list_bots = []
         self.list_paper_trading_bots = []
-        self.settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
-        self.test_settings = self.streaming_db.research_controller.find_one({"_id": "test_autotrade_settings"})
+        self.settings = self.streaming_db.research_controller.find_one(
+            {"_id": "settings"}
+        )
+        self.test_settings = self.streaming_db.research_controller.find_one(
+            {"_id": "test_autotrade_settings"}
+        )
         # Start streaming service globally
         # This will allow access for the entire FastApi scope
         asyncio.Event.connection_open = True
 
     async def setup_client(self):
-        client = await AsyncClient.create(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
+        client = await AsyncClient.create(
+            os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"]
+        )
         socket = BinanceSocketManager(client)
         return socket, client
-    
+
     def combine_stream_names(self, interval):
         if self.settings["autotrade"] == 1:
-            self.list_bots = list(self.streaming_db.bots.distinct("pair", {"status": "active"}))
+            self.list_bots = list(
+                self.streaming_db.bots.distinct("pair", {"status": "active"})
+            )
 
         if self.test_settings["autotrade"] == 1:
             self.list_paper_trading_bots = list(
@@ -47,8 +57,10 @@ class StreamingController:
             params.append(f"{market.lower()}@kline_{interval}")
 
         return params
-    
-    def process_deals_bot(self, current_bot, close_price, symbol, db_collection):
+
+    def process_deals_bot(
+        self, current_bot, close_price, open_price, symbol, db_collection
+    ):
         """
         Processes the deal market websocket price updates
 
@@ -57,9 +69,15 @@ class StreamingController:
         """
 
         # Short strategy
-        if "short_buy_price" in current_bot and float(current_bot["short_buy_price"]) > 0 and float(current_bot["short_buy_price"]) >= float(close_price):
+        if (
+            "short_buy_price" in current_bot
+            and float(current_bot["short_buy_price"]) > 0
+            and float(current_bot["short_buy_price"]) >= float(close_price)
+        ):
             # If hit short_buy_price, resume long strategy by resetting short_buy_price
-            CreateDealController(current_bot, db_collection=db_collection).execute_short_buy()
+            CreateDealController(
+                current_bot, db_collection=db_collection
+            ).execute_short_buy()
             raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         # Long strategy starts
@@ -73,10 +91,14 @@ class StreamingController:
             )
 
             # Auto switch to short strategy
-            if "short_sell_price" in current_bot and 0 < float(current_bot["short_sell_price"]) >= float(close_price):
+            if "short_sell_price" in current_bot and 0 < float(
+                current_bot["short_sell_price"]
+            ) >= float(close_price):
                 # If hit short_sell_price, resume long strategy by resetting short_sell_price
                 try:
-                    CreateDealController(current_bot, db_collection=db_collection).execute_short_sell()
+                    CreateDealController(
+                        current_bot, db_collection=db_collection
+                    ).execute_short_sell()
                 except Exception as error:
                     print(f"Autoswitch to short strategy error: {error}")
 
@@ -87,8 +109,7 @@ class StreamingController:
                 "stop_loss" in bot
                 and float(bot["stop_loss"]) > 0
                 and "stop_loss_price" in bot["deal"]
-                and float(bot["deal"]["stop_loss_price"])
-                > float(close_price)
+                and float(bot["deal"]["stop_loss_price"]) > float(close_price)
             ):
                 deal = CreateDealController(bot, db_collection)
                 deal.execute_stop_loss(close_price)
@@ -102,7 +123,9 @@ class StreamingController:
                     if bot["mode"] == "autotrade":
                         deal = CreateDealController(bot, db_collection)
                         # Returns bot, to keep modifying in subsequent checks
-                        bot = deal.dynamic_take_profit(symbol, current_bot["candlestick_interval"], close_price)
+                        bot = deal.dynamic_take_profit(
+                            symbol, current_bot["candlestick_interval"], close_price
+                        )
 
                 if (
                     "trailling_stop_loss_price" not in bot["deal"]
@@ -127,11 +150,12 @@ class StreamingController:
                     )
                     # Update deal take_profit
                     bot["deal"]["take_profit_price"] = new_take_profit
-                    
+
                     if (
                         bot["deal"]["trailling_stop_loss_price"]
                         > bot["deal"]["buy_price"]
-                    ):
+                        # Make sure it's red candlestick, to avoid slippage loss
+                    ) and (float(open_price) - float(close_price)) < 0:
                         # Selling below buy_price will cause a loss
                         # instead let it drop until it hits safety order or stop loss
                         print(
@@ -144,12 +168,17 @@ class StreamingController:
                             float(new_take_profit)
                             * (float(bot["trailling_deviation"]) / 100)
                         )
-                        print(f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
+                        print(
+                            f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
+                        )
                     else:
                         # Protect against drops by selling at buy price + 0.75% commission
-                        bot["deal"]["trailling_stop_loss_price"] = (float(bot["deal"]["buy_price"]) * 1.075)
-                        print(f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}')
-
+                        bot["deal"]["trailling_stop_loss_price"] = (
+                            float(bot["deal"]["buy_price"]) * 1.075
+                        )
+                        print(
+                            f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
+                        )
 
                     updated_bot = self.streaming_db[db_collection].update_one(
                         {"id": current_bot["id"]},
@@ -169,9 +198,7 @@ class StreamingController:
                 price = bot["deal"]["trailling_stop_loss_price"]
                 # Direction 2 (downward): breaking the trailling_stop_loss
                 if float(price) > 0 and float(close_price) <= float(price):
-                    print(
-                        f"Hit trailling_stop_loss_price {price}. Selling {symbol}"
-                    )
+                    print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
                     try:
                         deal = CreateDealController(bot, db_collection)
                         deal.trailling_profit()
@@ -197,9 +224,13 @@ class StreamingController:
         when price and symbol match existent deal
         """
         # Re-retrieve settings in the middle of streaming
-        local_settings = self.streaming_db.research_controller.find_one({"_id": "settings"})
+        local_settings = self.streaming_db.research_controller.find_one(
+            {"_id": "settings"}
+        )
         if local_settings["update_required"]:
-            self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": False}})
+            self.streaming_db.research_controller.update_one(
+                {"_id": "settings"}, {"$set": {"update_required": False}}
+            )
             if self.client:
                 print("Closing client connection")
                 self.client.close_connection()
@@ -207,6 +238,7 @@ class StreamingController:
 
         if "k" in result:
             close_price = result["k"]["c"]
+            open_price = result["k"]["o"]
             symbol = result["k"]["s"]
             current_bot = self.streaming_db.bots.find_one(
                 {"pair": symbol, "status": "active"}
@@ -215,14 +247,15 @@ class StreamingController:
                 {"pair": symbol, "status": "active"}
             )
             if current_bot:
-                self.process_deals_bot(current_bot, close_price, symbol, "bots")
+                self.process_deals_bot(
+                    current_bot, close_price, open_price, symbol, "bots"
+                )
             if current_test_bot:
                 self.process_deals_bot(
-                    current_test_bot, close_price, symbol, "paper_trading"
+                    current_test_bot, close_price, open_price, symbol, "paper_trading"
                 )
             return
 
-    
     async def get_klines(self, interval):
         print("Starting streaming klines")
         self.socket, self.client = await self.setup_client()
@@ -233,7 +266,7 @@ class StreamingController:
         async with klines as k:
             while True:
                 res = await k.recv()
-                
+
                 if "result" in res:
                     print(f'Subscriptions: {res["result"]}')
 
@@ -242,7 +275,7 @@ class StreamingController:
                         self.process_deals(res["data"])
                     else:
                         print(f'Error: {res["data"]}')
-    
+
     async def get_user_data(self):
         print("Streaming user data")
         socket, client = await self.setup_client()
