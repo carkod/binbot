@@ -43,7 +43,7 @@ import {
   getTestBot,
   setBotState,
 } from "./actions";
-import { convertGBP, getQuoteAsset } from "./requests";
+import { convertGBP, getQuoteAsset, getBaseAsset } from "./requests";
 
 class TestBotForm extends React.Component {
   constructor(props) {
@@ -90,6 +90,9 @@ class TestBotForm extends React.Component {
     ) {
       getQuoteAsset(this.props.bot.pair).then(({ data }) =>
         this.props.setBotState({ quoteAsset: data })
+      );
+      getBaseAsset(this.props.bot.pair).then(({ data }) =>
+        this.props.setBot({ baseAsset: data })
       );
       const currentDate = moment().toISOString();
       this.props.setBotState({

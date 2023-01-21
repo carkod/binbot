@@ -36,7 +36,7 @@ import {
   getSymbols,
   setBot,
 } from "./actions";
-import { convertGBP, getQuoteAsset } from "./requests";
+import { convertGBP, getBaseAsset, getQuoteAsset } from "./requests";
 import MainTab from "../../components/MainTab";
 import StopLossTab from "../../components/StopLossTab";
 import TakeProfitTab from "../../components/TakeProfitTab";
@@ -109,6 +109,9 @@ class BotForm extends React.Component {
     ) {
       getQuoteAsset(this.props.bot.pair).then(({ data }) =>
         this.props.setBot({ quoteAsset: data })
+      );
+      getBaseAsset(this.props.bot.pair).then(({ data }) =>
+        this.props.setBot({ baseAsset: data })
       );
       const currentDate = moment().toISOString();
       this.props.setBot({

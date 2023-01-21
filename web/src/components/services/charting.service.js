@@ -233,12 +233,11 @@ export function updateTimescaleMarks(bot) {
       const timescaleMark = {
         id: order.order_id,
         label: label,
-        tooltip: [order.status, ` ${order.deal_type} ${order.qty}`],
+        tooltip: [`${order.deal_type}`, ` ${order.price} ${bot.baseAsset} / ${order.qty} ${bot.quoteAsset}`,],
         time: matchTsToTimescale(order.timestamp),
         color: color,
       };
 
-      
       // Avoid object not extensible error
       // Since tradingview library requires this, it can be an exception to immutable state
       totalTimescaleMarks.push(timescaleMark);
