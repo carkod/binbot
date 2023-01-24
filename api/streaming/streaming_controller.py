@@ -249,9 +249,9 @@ class StreamingController:
             return
 
     async def get_klines(self, interval):
-        print("Starting streaming klines")
         self.socket, self.client = await self.setup_client()
         params = self.combine_stream_names(interval)
+        print(f"Starting streaming klines {params}")
         klines = self.socket.multiplex_socket(params)
         self.conn_key = klines
 

@@ -216,7 +216,7 @@ export function updateTimescaleMarks(bot) {
   let label = "B";
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach((order) => {
-      if (order.deal_type === "take_profit") {
+      if (order.deal_type === "take_profit" || order.deal_type === "stop_loss") {
         color = dealColors.take_profit;
         label = "S";
       }
