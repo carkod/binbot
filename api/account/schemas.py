@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from pydantic import BaseModel
 from tools.handle_error import StandardResponse
 
@@ -17,13 +18,16 @@ class BalanceSchema(BaseModel):
 class BalanceResponse(StandardResponse):
     data: list[BalanceSchema]
 
+
 class ListSymbolsResponse(StandardResponse):
     data: list[str]
+
 
 class BinanceBalanceResponse(BaseModel):
     asset: str
     free: float
     locked: float
+
 
 class Binance24Ticker(BaseModel):
     symbol: str
@@ -48,5 +52,16 @@ class Binance24Ticker(BaseModel):
     lastId: int
     count: int
 
+
 class GainersLosersResponse(StandardResponse):
     data: list[Binance24Ticker]
+
+
+class EstimatedBalance(BaseModel):
+    time: str
+    assets: list
+    estimated_total_usdt: float
+
+
+class EstimatedBalancesResponse(StandardResponse):
+    data: EstimatedBalance
