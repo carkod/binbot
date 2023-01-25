@@ -3,6 +3,8 @@ from fastapi import APIRouter
 from account.account import Account
 from account.assets import Assets
 from account.schemas import BalanceResponse, GainersLosersResponse
+from account.margin import MarginAccount
+from account.schemas import EstimatedBalancesResponse
 
 account_blueprint = APIRouter()
 
@@ -73,3 +75,7 @@ def store_balance():
 @account_blueprint.get("/gainers-losers", response_model=GainersLosersResponse, tags=["account"])
 async def retrieve_gainers_losers():
     return await Assets().retrieve_gainers_losers()
+
+@account_blueprint.get("/balance/margin", response_model=EstimatedBalancesResponse, tags=["margin"])
+def margin_balance_estimate():
+    return MarginAccount().margin_balance_estimate()

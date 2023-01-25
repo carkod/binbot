@@ -7,24 +7,8 @@ from pydantic import BaseModel, Field, validator
 from deals.schema import DealSchema, OrderSchema
 from tools.enum_definitions import BinbotEnums
 from tools.handle_error import StandardResponse
-from uuid import UUID, uuid4
 
-class PyObjectId:
 
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not isinstance(v, str):
-            raise ValueError('Invalid string')
-        return str(v)
-
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type='string')
-  
 class SafetyOrderSchema(BaseModel):
     name: str = "so_1"  # should be so_<index>
     status: Literal[

@@ -1059,41 +1059,44 @@ class CreateDealController(Account):
             return
         return
 
-    def dynamic_take_profit(self, symbol, interval, close_price):
+    def dynamic_take_profit(self, symbol, current_bot, close_price):
 
         params = {
             "symbol": symbol,
-            "interval": interval,
+            "interval": current_bot["candlestick_interval"],
         }
         res = requests.get(url=self.bb_candlestick_url, params=params)
         data = handle_binance_errors(res)
         list_prices = numpy.array(data["trace"][0]["close"])
-        series_sd = round_numbers((numpy.std(list_prices.astype(numpy.single))), 2)
+        series_sd = numpy.std(list_prices.astype(numpy.single))
         sd = series_sd / float(close_price)
 
         take_profit = self.active_bot.deal.take_profit_price
         if sd >= 0:
             self.active_bot.deal.sd = sd
-            # Too little sd and the bot won't trail, instead it'll sell immediately
-            # Too much sd and the bot will never sell and overlap with other positions
-            volatility = (sd) / float(close_price)
-            if volatility < 0.018:
-                volatility = 0.018
-            elif volatility > 0.088:
-                volatility = 0.088
+            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"]:
+                # Too little sd and the bot won't trail, instead it'll sell immediately
+                # Too much sd and the bot will never sell and overlap with other positions
+                volatility = sd / float(close_price)
+                if volatility < 0.018:
+                    volatility = 0.018
+                elif volatility > 0.088:
+                    volatility = 0.088
 
-            # sd is multiplied by 2 to increase the difference between take_profit and trailling_stop_loss
-            # this avoids closing too early
-            new_trailling_stop_loss_price = float(take_profit) - (
-                float(take_profit) * volatility
-            )
-            if new_trailling_stop_loss_price > float(
-                self.active_bot.deal.buy_price
-            ):
-                self.active_bot.deal.trailling_stop_loss_price = (
-                    new_trailling_stop_loss_price
+                # sd is multiplied by 2 to increase the difference between take_profit and trailling_stop_loss
+                # this avoids closing too early
+                new_trailling_stop_loss_price = float(close_price) - (
+                    float(close_price) * volatility
                 )
-                print(f"Updated trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
+                if new_trailling_stop_loss_price > float(
+                    self.active_bot.deal.buy_price
+                ):
+                    self.active_bot.deal.trailling_stop_loss_price = (
+                        new_trailling_stop_loss_price
+                    )
+                    # Update tralling_profit price
+                    self.active_bot.deal.take_profit_price = float(close_price) * (1 + (volatility))
+                    print(f"Updated trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
 
         bot = encode_json(self.active_bot)
         return bot
