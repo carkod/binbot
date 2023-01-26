@@ -1,12 +1,13 @@
 from time import time
-from typing import Literal, Optional
+from typing import Literal
 
 from bson.objectid import ObjectId
-from pydantic import BaseModel, Field, validator
-
 from deals.schema import DealSchema, OrderSchema
+from pydantic import BaseModel, Field, validator
 from tools.enum_definitions import BinbotEnums
 from tools.handle_error import StandardResponse
+
+from tools.enum_definitions import BinbotEnums
 
 
 class SafetyOrderSchema(BaseModel):
@@ -68,20 +69,20 @@ class BotSchema(BaseModel):
         if 0 <= float(v) < 100:
             return v
         else:
-            raise ValueError(f'{v} must be a percentage')
-    
+            raise ValueError(f"{v} must be a percentage")
+
     @validator("status")
     def check_statuses(cls, v: str):
         if v not in BinbotEnums.statuses:
             raise ValueError(f'Status must be one of {", ".join(BinbotEnums.statuses)}')
         return v
-    
+
     @validator("mode")
     def check_mode(cls, v: str):
         if v not in BinbotEnums.mode:
             raise ValueError(f'Status must be one of {", ".join(BinbotEnums.mode)}')
         return v
-    
+
     @validator("strategy")
     def check_strategy(cls, v: str):
         if v not in BinbotEnums.strategy:
