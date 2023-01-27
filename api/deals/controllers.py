@@ -1057,8 +1057,10 @@ class CreateDealController(Account):
         )
 
         if not base_order_deal:
-            if self.active_bot.strategy == "margin_long" or self.active_bot.strategy == "margin_sell":
-                MarginDeal(deal_controller=self).open_margin_deal()
+            if self.active_bot.strategy == "margin_long":
+                bot = MarginDeal(deal_controller=self).margin_long_base_order()
+            elif self.active_bot.strategy == "margin_short":
+                bot = MarginDeal(deal_controller=self).margin_short_base_order()
             else:
                 bot = self.base_order()
             

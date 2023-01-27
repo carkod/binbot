@@ -39,3 +39,20 @@ class DealSchema(BaseModel):
         if float(v) < 0:
             raise ValueError("Price must be a positive number")
         return v
+
+
+class MarginOrderSchema(BaseModel):
+    order_type: str | None = None
+    time_in_force: str | None = None
+    timestamp: float = 0
+    pair: str | None = None
+    qty: str | None = None
+    order_side: str | None = None
+    order_id: str | None = None
+    fills: Any = None
+    price: float | None = None
+    status: str | None = None
+    marginBuyBorrowAmount: int = 0
+    marginBuyBorrowAsset: str = "USDT"
+    isIsolated: bool = False
+    deal_type: str | None = None # [base_order, take_profit, so_{x}, short_sell, short_buy]

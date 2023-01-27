@@ -71,42 +71,35 @@ export function buildBackUrl() {
 export default async function request(
   url,
   verb = "GET",
-  json = undefined
+  body = undefined
 ) {
 
-  let response = await fetch(url);
   const baseUrl = buildBackUrl();
+  let options = {
+    method: verb,
+    mode: "cors",
+    cache: "no-cache",
+    headers: new Headers({
+      "content-type": "application/json",
+      accept: "application/json"
+    })
+  };
 
   try {
     url = new URL(url)
-    response = await fetch(url);
-    
   } catch (e) {
     if (e instanceof TypeError) {
       url = baseUrl + url
-      const headers = new Headers({
-        "content-type": "application/json",
-        accept: "application/json",
-        Authorization: `Bearer ${getToken()}`,
-      })
-    
-      let options = {
-        method: verb,
-        mode: "cors",
-        cache: "no-cache",
-        headers: headers,
-      };
-      
-      if (json) {
-        options.body = JSON.stringify(json);
-      }
-      
-      response = await fetch(url, options);
+      options.headers["Authorization"] = `Bearer ${getToken()}`
     }
-    console.log(e)
+  }
 
+
+  if (body) {
+    options.body = JSON.stringify(body);
   }
   
+  const response = await fetch(url, options);
   const content = await checkStatus(response);
   return content;
 }

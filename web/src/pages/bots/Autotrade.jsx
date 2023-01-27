@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Form from "react-bootstrap/Form";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Button,
@@ -7,12 +8,12 @@ import {
   CardHeader,
   CardTitle,
   Col,
-  Row,
+  Row
 } from "reactstrap";
 import LightSwitch from "../../components/LightSwitch";
 import SettingsInput from "../../components/SettingsInput";
 import { getBalanceRaw } from "../../state/balances/actions";
-import { getSettings, editSettings, setSettingsState } from "./actions";
+import { editSettings, getSettings, setSettingsState } from "./actions";
 
 export default function Autotrade() {
   const [localState, setLocalState] = useState({
@@ -112,6 +113,20 @@ export default function Autotrade() {
                         name="telegram_signals"
                         toggle={toggle}
                       />
+                    </Col>
+                    <Col md="3">
+                      <label htmlFor="strategy">Strategy</label>
+                      <Form.Select
+                        size="sm"
+                        name="strategy"
+                        onClick={handleInput}
+                        value={settingsProps.autotradeSettings.strategy}
+                      >
+                        <option value="long">Long</option>
+                        <option value="short">Short</option>
+                        <option value="margin_long">Margin long</option>
+                        <option value="margin_short">Margin short</option>
+                      </Form.Select>
                     </Col>
                   </Row>
                   <Row>

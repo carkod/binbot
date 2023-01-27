@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Form from "react-bootstrap/Form";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Button,
@@ -7,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
   Col,
-  Row,
+  Row
 } from "reactstrap";
 import LightSwitch from "../../components/LightSwitch";
 import SettingsInput from "../../components/SettingsInput";
@@ -15,7 +16,7 @@ import { getBalanceRaw } from "../../state/balances/actions";
 import {
   getTestAutotradeSettings,
   saveTestAutoTradeSettings,
-  setTestAutotradeSetting,
+  setTestAutotradeSetting
 } from "./actions";
 
 export default function TestAutotrade() {
@@ -33,8 +34,7 @@ export default function TestAutotrade() {
     dispatch(setTestAutotradeSetting(payload));
   const saveSettings = () => {
     dispatch(saveTestAutoTradeSettings(settingsProps.testAutotradeSettings));
-  }
-    
+  };
 
   useEffect(() => {
     const getSettings = () => dispatch(getTestAutotradeSettings());
@@ -43,10 +43,11 @@ export default function TestAutotrade() {
     getBalance();
   }, [dispatch]);
 
-  const handleInput = (e) =>
+  const handleInput = (e) => {
     dispatchSetSettings({
       [e.target.name]: e.target.value,
     });
+  }
 
   const toggle = (name, value) => {
     if (parseInt(value) === 0) {
@@ -97,7 +98,7 @@ export default function TestAutotrade() {
               {settingsProps.testAutotradeSettings && (
                 <>
                   <Row>
-                    <Col md="3">
+                    <Col md="2">
                       <SettingsInput
                         value={
                           settingsProps.testAutotradeSettings
@@ -108,28 +109,27 @@ export default function TestAutotrade() {
                         handleChange={handleInput}
                       />
                     </Col>
-                    <Col md="3">
+                    <Col md="2">
                       <SettingsInput
                         value={
-                          settingsProps.testAutotradeSettings.max_active_autotrade_bots
+                          settingsProps.testAutotradeSettings
+                            .max_active_autotrade_bots
                         }
                         name={"max_active_autotrade_bots"}
                         label={"Max active autotrade bots"}
                         handleChange={handleInput}
                       />
                     </Col>
-                    <Col md="3">
+                    <Col md="2">
                       <label htmlFor="autotrade">Autotrade?</label>
                       <br />
                       <LightSwitch
-                        value={
-                          settingsProps.testAutotradeSettings.autotrade
-                        }
+                        value={settingsProps.testAutotradeSettings.autotrade}
                         name="autotrade"
                         toggle={toggle}
                       />
                     </Col>
-                    <Col md="3">
+                    <Col md="2">
                       <label htmlFor="telegram_signals">
                         Send messages to telegram?
                       </label>
@@ -141,6 +141,21 @@ export default function TestAutotrade() {
                         name="telegram_signals"
                         toggle={toggle}
                       />
+                    </Col>
+                    <Col md="2">
+                      <label htmlFor="strategy">Strategy</label>
+                      <br />
+                      <Form.Select
+                        size="sm"
+                        name="strategy"
+                        onChange={handleInput}
+                        value={settingsProps.testAutotradeSettings.strategy}
+                      >
+                        <option value="long">Long</option>
+                        <option value="short">Short</option>
+                        <option value="margin_long">Margin long</option>
+                        <option value="margin_short">Margin short</option>
+                      </Form.Select>
                     </Col>
                   </Row>
                   <Row>

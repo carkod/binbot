@@ -333,9 +333,7 @@ const settingsReducer = produce((draft, action) => {
     case GET_TEST_AUTOTRADE_SETTINGS:
       return draft;
     case SET_TEST_AUTOTRADE_SETTING:
-      for (const [key, value] of Object.entries(action.payload)) {
-        draft.test_autotrade_settings[key] = value;
-      }
+      draft.test_autotrade_settings = { ...draft.test_autotrade_settings, ...action.payload }
       return draft;
     default:
       break;
