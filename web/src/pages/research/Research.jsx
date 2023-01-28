@@ -106,8 +106,15 @@ class Research extends React.Component {
               <ControllerTab
                 blacklistData={this.state.blacklistData}
                 symbols={this.props.symbols}
-                addToBlacklist={(data) => this.props.addBlackList(data)}
-                removeFromBlacklist={(data) => this.props.deleteBlackList(data)}
+                addToBlacklist={(data) => {
+                  this.props.addBlackList(data);
+                  this.props.getBlacklist();
+                }}
+                removeFromBlacklist={(data) => {
+                  this.props.deleteBlackList(data);
+                  this.props.getBlacklist();
+                  this.setState({ selectedBlacklist: ""})
+              }}
                 triggerGbpHedge={this.triggerGbpHedge}
               /> 
             </TabPane>
