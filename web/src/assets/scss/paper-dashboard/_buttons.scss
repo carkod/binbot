@@ -274,6 +274,8 @@
   background: transparent;
   border: none;
   outline: none;
+  padding: 0;
+  margin: 0;
 
   &:focus {
     outline: none;
@@ -282,4 +284,15 @@
 
 .btn-margin-right {
   margin-right: $margin-base-vertical;
+}
+
+.btn--tooltip {
+  @extend .btn-reset;
+
+  color: $dark-gray;
+  font-size: 9.0852px; // Equalize with card label size
+  &::after {
+    content: "\24D8";
+    margin-left: $margin-base-vertical;
+  }
 }

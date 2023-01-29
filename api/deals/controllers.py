@@ -1001,6 +1001,7 @@ class CreateDealController(Account):
         series_sd = numpy.std(list_prices.astype(numpy.single))
         sd = series_sd / float(close_price)
 
+        print(f"dynamic profit for {symbol} sd: ", sd)
         if sd >= 0:
             self.active_bot.deal.sd = sd
             if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"]:

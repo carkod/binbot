@@ -78,11 +78,7 @@ export default async function request(
   let options = {
     method: verb,
     mode: "cors",
-    cache: "no-cache",
-    headers: new Headers({
-      "content-type": "application/json",
-      accept: "application/json"
-    })
+    cache: "no-cache"
   };
 
   try {
@@ -90,7 +86,12 @@ export default async function request(
   } catch (e) {
     if (e instanceof TypeError) {
       url = baseUrl + url
-      options.headers["Authorization"] = `Bearer ${getToken()}`
+      const headers = new Headers({
+        "content-type": "application/json",
+        accept: "application/json",
+        Authorization: `Bearer ${getToken()}`
+      })
+      options.headers = headers
     }
   }
 
