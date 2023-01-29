@@ -10,6 +10,7 @@ from tools.handle_error import encode_json
 from tools.round_numbers import round_numbers, supress_notation
 
 class NotEnoughMarginFunds(Exception):
+    # Not enough funds in Isolated Margin account
     pass
 
 class MarginDeal:
@@ -75,12 +76,33 @@ class MarginDeal:
 
         return response
 
-    def get_margin_balance(self):
+    def get_margin_balance(self) -> list:
+        """
+        Get balance of Cross Margin account.
+
+        @Args:
+        asset: str
+
+        """
         info = self.client.get_margin_account()
         assets = [item for item in info["userAssets"] if float(item["netAsset"]) > 0]
         if len(assets) == 0:
-            raise NotEnoughMarginFunds("Not enough funds")
+            raise NotEnoughMarginFunds("No funds in Cross Margin account")
         return assets
+
+    def get_isolated_balance(self):
+        """
+        Get balance of Isolated Margin account
+
+        Use isolated margin account is preferrable,
+        because this is the one that supports the most assets
+        """
+        info = self.client.get_isolated_margin_account()
+        assets = info["assets"]
+        if len(assets) == 0:
+            raise NotEnoughMarginFunds("No funds in Isolated Margin account")
+        return assets
+
 
     def margin_long_base_order(self):
         """
@@ -91,8 +113,13 @@ class MarginDeal:
         2. Carry on with usual base_order
         """
         print(f"Opening margin margin_long_base_order")
+        # Uncomment for production
+        # if self.db_collection == "bots":
         # Check margin account balance first
-        balance = self.get_margin_balance()
+        balance = self.get_isolated_balance()
+        find_balance_to_use = next((item for item in balance if item["asset"] == self.active_bot.balance_to_use), None)
+        if find_balance_to_use:
+            raise NotEnoughMarginFunds(f"Not enough {self.active_bot.balance_to_use} in Isolated Margin account to execute base_order")
 
         # Proceed with usual base_order
         book_order = Book_Order(self.active_bot.pair)
@@ -165,3 +192,4 @@ class MarginDeal:
 
     def margin_short_base_order(self):
         print(f"Opening margin margin_short_base_order")
+        pass

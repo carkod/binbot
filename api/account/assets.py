@@ -1,14 +1,11 @@
 import json
 from datetime import datetime, timedelta
-from decimal import Decimal
 
 import pandas as pd
-from bson.objectid import ObjectId
-
 from account.account import Account
 from account.schemas import BalanceSchema
+from bson.objectid import ObjectId
 from db import setup_db
-from orders.models.book_order import Book_Order
 from tools.handle_error import InvalidSymbol, json_response, json_response_message
 from tools.round_numbers import round_numbers
 
@@ -39,58 +36,6 @@ class Assets(Account):
         resp = json_response({"data": balances})
         return resp
 
-    def get_binbot_balance(self):
-        """
-        More strict balance
-        - No locked
-        - Minus safety orders
-        """
-        # Get a list of safety orders
-        so_list = list(
-            self.db.bots.aggregate(
-                [
-                    {
-                        "$addFields": {
-                            "so_num": {"$size": {"$objectToArray": "$safety_orders"}},
-                        }
-                    },
-                    {"$match": {"so_num": {"$ne": 0}}},
-                    {"$addFields": {"s_os": {"$objectToArray": "$safety_orders"}}},
-                    {"$unwind": "$safety_orders"},
-                    {"$group": {"_id": {"so": "$s_os.v.so_size", "pair": "$pair"}}},
-                ]
-            )
-        )
-        data = self.request_data()["balances"]
-        df = pd.DataFrame(data)
-        df["free"] = pd.to_numeric(df["free"])
-        df["asset"] = df["asset"].astype(str)
-        df.drop("locked", axis=1, inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        # Get table with > 0
-        balances = df[df["free"] > 0].to_dict("records")
-
-        # Include safety orders
-        for b in balances:
-            for item in so_list:
-                if b["asset"] in item["_id"]["pair"]:
-                    decimals = -(
-                        Decimal(
-                            self.price_filter_by_symbol(item["_id"]["pair"], "tickSize")
-                        )
-                        .as_tuple()
-                        .exponent
-                    )
-                    total_so = sum(
-                        [float(x) if x != "" else 0 for x in item["_id"]["so"]]
-                    )
-                    b["free"] = round_numbers(float(b["free"]) - total_so, decimals)
-
-        # filter out empty
-        # Return response
-        resp = json_response(balances)
-        return resp
-
     def get_pnl(self, days=7):
         current_time = datetime.now()
         start = current_time - timedelta(days=days)
@@ -115,7 +60,7 @@ class Assets(Account):
             qty = b["free"]
         return qty
 
-    async def store_balance(self) -> dict:
+    def store_balance(self) -> dict:
         """
         Alternative PnL data that runs as a cronjob everyday once at 1200
         Store current balance in Db
@@ -229,6 +174,8 @@ class Assets(Account):
         """
         Alternative to storing balance,
         use Binance new snapshot endpoint to store
+        with a very high rate limit weight
+
         Because this is a cronjob, it doesn't have application context
         """
         db = setup_db()
@@ -261,13 +208,22 @@ class Assets(Account):
             print(f"{current_time} Balance stored!")
         else:
             print(f"{current_time} Unable to store balance! Error: {balanceId}")
-    
+
     async def retrieve_gainers_losers(self, market_asset="USDT"):
         """
         Create and return a ranking with gainers vs losers data
         """
         data = self.ticker_24()
-        gainers_losers_list = [item for item in data if item["symbol"].endswith(market_asset)]
-        gainers_losers_list.sort(reverse=True, key=lambda item: float(item["priceChangePercent"]))
+        gainers_losers_list = [
+            item for item in data if item["symbol"].endswith(market_asset)
+        ]
+        gainers_losers_list.sort(
+            reverse=True, key=lambda item: float(item["priceChangePercent"])
+        )
 
-        return json_response({"message": "Successfully retrieved gainers and losers data", "data": gainers_losers_list})
+        return json_response(
+            {
+                "message": "Successfully retrieved gainers and losers data",
+                "data": gainers_losers_list,
+            }
+        )

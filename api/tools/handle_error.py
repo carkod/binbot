@@ -64,7 +64,7 @@ def json_response_error(message):
     return json_response(body)
 
 
-def handle_binance_errors(response: Response):
+def handle_binance_errors(response: Response) -> str | None:
     """
     Handles:
     - HTTP codes, not authorized, rate limits...
@@ -72,7 +72,7 @@ def handle_binance_errors(response: Response):
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-    content: dict[str, object] = response.json()
+    content = response.json()
 
     if response.status_code == 404:
         raise HTTPError()
@@ -123,8 +123,8 @@ def handle_binance_errors(response: Response):
 
         if content["code"] == -1121:
             raise InvalidSymbol(f'Binance error: {content["msg"]}')
-    else:
-        return content
+    
+    return content
 
 
 def encode_json(raw):
