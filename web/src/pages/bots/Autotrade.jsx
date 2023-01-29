@@ -119,7 +119,7 @@ export default function Autotrade() {
                       <Form.Select
                         size="sm"
                         name="strategy"
-                        onClick={handleInput}
+                        onChange={handleInput}
                         value={settingsProps.autotradeSettings.strategy}
                       >
                         <option value="long">Long</option>

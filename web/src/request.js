@@ -78,23 +78,24 @@ export default async function request(
   let options = {
     method: verb,
     mode: "cors",
-    cache: "no-cache"
+    cache: "no-cache",
+    headers: {
+      "content-type": "application/json"
+    }
   };
+
+  if (verb === "GET") {
+    options.headers = new Headers({})
+  }
 
   try {
     url = new URL(url)
   } catch (e) {
     if (e instanceof TypeError) {
-      url = baseUrl + url
-      const headers = new Headers({
-        "content-type": "application/json",
-        accept: "application/json",
-        Authorization: `Bearer ${getToken()}`
-      })
-      options.headers = headers
+      url = new URL(baseUrl + url)
+      options.headers.Authorization = `Bearer ${getToken()}`
     }
   }
-
 
   if (body) {
     options.body = JSON.stringify(body);
@@ -118,6 +119,7 @@ export async function requestForm(
     cache: "no-cache",
     body: formData,
   };
+  options.headers.Authorization = `Bearer ${getToken()}`
 
   const baseUrl = buildBackUrl();
   url = url instanceof URL ? url : baseUrl + url;
