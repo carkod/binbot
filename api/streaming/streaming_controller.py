@@ -1,5 +1,4 @@
 import os
-import asyncio
 from binance import AsyncClient, BinanceSocketManager
 from pymongo import ReturnDocument
 from deals.controllers import CreateDealController

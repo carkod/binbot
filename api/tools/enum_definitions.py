@@ -55,4 +55,4 @@ class EnumDefinitions:
 class BinbotEnums:
     statuses = ("inactive", "active", "completed", "error", "archived")
     mode = ("manual", "autotrade")
-    strategy = ("long", "short")
+    strategy = ("long", "short", "margin_long", "margin_short")

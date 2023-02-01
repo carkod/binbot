@@ -259,7 +259,7 @@ class Dashboard extends React.Component {
               </Row>
               <Row>
                 <Col lg="6" md="12">
-                  {this.props.gainersLosersData.length > 0 && 
+                  {this.props.gainersLosersData?.length > 0 && 
                     <GainersLosers data={this.props.gainersLosersData} />
                   }
                 </Col>

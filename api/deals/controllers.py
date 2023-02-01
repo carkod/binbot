@@ -9,6 +9,7 @@ from requests.exceptions import HTTPError
 from pydantic import ValidationError
 
 from account.account import Account
+from deals.margin import MarginDeal
 from bots.schemas import BotSchema
 from deals.models import DealModel, BinanceOrderModel
 from deals.schema import DealSchema, OrderSchema
@@ -390,77 +391,6 @@ class CreateDealController(Account):
             raise TraillingProfitError(error)
 
         return bot
-
-    def open_deal(self):
-
-        """
-        Mandatory deals section
-        - If base order deal is not executed, bot is not activated
-        """
-        # Short strategy checks
-        if self.active_bot.strategy == "short":
-            if (
-                not hasattr(self.active_bot, "short_buy_price")
-                or float(self.active_bot.short_buy_price) == 0
-            ):
-                raise ShortStrategyError(
-                    "Short strategy requires short_buy_price to be set, or it will never trigger"
-                )
-            else:
-                pass
-
-        # If there is already a base order do not execute
-        base_order_deal = next(
-            (
-                bo_deal
-                for bo_deal in self.active_bot.orders
-                if bo_deal.deal_type == "base_order"
-            ),
-            None,
-        )
-
-        if not base_order_deal:
-            bot = self.base_order()
-        else:
-            bot = self.db_collection.find_one({"id": self.active_bot.id})
-            self.active_bot = BotSchema.parse_obj(bot)
-
-        """
-        Optional deals section
-
-        The following functionality is triggered according to the options set in the bot
-        """
-        # Update stop loss regarless of base order
-        if hasattr(self.active_bot, "stop_loss") and float(self.active_bot.stop_loss) > 0:
-            buy_price = float(self.active_bot.deal.buy_price)
-            stop_loss_price = buy_price - (buy_price * float(self.active_bot.stop_loss) / 100)
-            self.active_bot.deal.stop_loss_price = supress_notation(
-                stop_loss_price, self.price_precision
-            )
-
-        # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
-        # if we don't do this, the trailling stop loss will trigger
-        if self.active_bot.deal and (
-            self.active_bot.deal.trailling_stop_loss_price > 0
-            or self.active_bot.deal.trailling_stop_loss_price < self.active_bot.deal.buy_price
-        ):
-
-            take_profit_price = float(self.active_bot.deal.buy_price) * (
-                1 + (float(self.active_bot.take_profit) / 100)
-            )
-            self.active_bot.deal.take_profit_price = take_profit_price
-            # Update trailling_stop_loss
-            # an update of the
-            self.active_bot.deal.trailling_stop_loss_price = 0
-
-
-        self.active_bot.status = "active"
-        bot = encode_json(self.active_bot)
-        if "_id" in bot:
-            bot.pop("_id")
-
-        self.db_collection.update_one({"id": self.active_bot.id}, {"$set": bot})
-        return
 
     def close_all(self):
         """
@@ -1071,13 +1001,13 @@ class CreateDealController(Account):
         series_sd = numpy.std(list_prices.astype(numpy.single))
         sd = series_sd / float(close_price)
 
-        take_profit = self.active_bot.deal.take_profit_price
+        print(f"dynamic profit for {symbol} sd: ", sd)
         if sd >= 0:
             self.active_bot.deal.sd = sd
             if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"]:
                 # Too little sd and the bot won't trail, instead it'll sell immediately
                 # Too much sd and the bot will never sell and overlap with other positions
-                volatility = sd / float(close_price)
+                volatility: float = float(sd) / float(close_price)
                 if volatility < 0.018:
                     volatility = 0.018
                 elif volatility > 0.088:
@@ -1091,12 +1021,87 @@ class CreateDealController(Account):
                 if new_trailling_stop_loss_price > float(
                     self.active_bot.deal.buy_price
                 ):
-                    self.active_bot.deal.trailling_stop_loss_price = (
-                        new_trailling_stop_loss_price
-                    )
+                    self.active_bot.trailling_deviation = volatility
                     # Update tralling_profit price
-                    self.active_bot.deal.take_profit_price = float(close_price) * (1 + (volatility))
-                    print(f"Updated trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
+                    self.active_bot.deal.take_profit_price = volatility
+                    print(f"Updated trailling_deviation and take_profit {self.active_bot.deal.trailling_stop_loss_price}")
 
         bot = encode_json(self.active_bot)
         return bot
+
+    def open_deal(self):
+
+        """
+        Mandatory deals section
+        - If base order deal is not executed, bot is not activated
+        """
+        # Short strategy checks
+        if self.active_bot.strategy == "short":
+            if (
+                not hasattr(self.active_bot, "short_buy_price")
+                or float(self.active_bot.short_buy_price) == 0
+            ):
+                raise ShortStrategyError(
+                    "Short strategy requires short_buy_price to be set, or it will never trigger"
+                )
+            else:
+                pass
+
+        # If there is already a base order do not execute
+        base_order_deal = next(
+            (
+                bo_deal
+                for bo_deal in self.active_bot.orders
+                if bo_deal.deal_type == "base_order"
+            ),
+            None,
+        )
+
+        if not base_order_deal:
+            if self.active_bot.strategy == "margin_long":
+                bot = MarginDeal(deal_controller=self).margin_long_base_order()
+            elif self.active_bot.strategy == "margin_short":
+                bot = MarginDeal(deal_controller=self).margin_short_base_order()
+            else:
+                bot = self.base_order()
+            
+        else:
+            bot = self.db_collection.find_one({"id": self.active_bot.id})
+            self.active_bot = BotSchema.parse_obj(bot)
+
+        """
+        Optional deals section
+
+        The following functionality is triggered according to the options set in the bot
+        """
+        # Update stop loss regarless of base order
+        if hasattr(self.active_bot, "stop_loss") and float(self.active_bot.stop_loss) > 0:
+            buy_price = float(self.active_bot.deal.buy_price)
+            stop_loss_price = buy_price - (buy_price * float(self.active_bot.stop_loss) / 100)
+            self.active_bot.deal.stop_loss_price = supress_notation(
+                stop_loss_price, self.price_precision
+            )
+
+        # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
+        # if we don't do this, the trailling stop loss will trigger
+        if self.active_bot.deal and (
+            self.active_bot.deal.trailling_stop_loss_price > 0
+            or self.active_bot.deal.trailling_stop_loss_price < self.active_bot.deal.buy_price
+        ):
+
+            take_profit_price = float(self.active_bot.deal.buy_price) * (
+                1 + (float(self.active_bot.take_profit) / 100)
+            )
+            self.active_bot.deal.take_profit_price = take_profit_price
+            # Update trailling_stop_loss
+            # an update of the
+            self.active_bot.deal.trailling_stop_loss_price = 0
+
+
+        self.active_bot.status = "active"
+        bot = encode_json(self.active_bot)
+        if "_id" in bot:
+            bot.pop("_id")
+
+        self.db_collection.update_one({"id": self.active_bot.id}, {"$set": bot})
+        return

@@ -3,7 +3,6 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from streaming.streaming_controller import StreamingController
 
 from account.routes import account_blueprint
 from autotrade.routes import autotrade_settings_blueprint

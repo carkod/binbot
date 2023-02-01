@@ -39,7 +39,7 @@ class Book_Order(BinanceApi):
         @param: order_side -
             Buy order = get ask prices = True
             Sell order = get bids prices = False
-        @param: qty - quantity wanted to be bought
+        @param: qty - quantity wanted to be bought/sold
         @param: order_side - BUY or SELL
         """
 

@@ -65,7 +65,7 @@ export const ControllerTab = ({
                           type="select"
                           name="blacklist"
                           id="blacklisted"
-                          defaultValue={""}
+                          value={removeBlacklist}
                           onChange={(e) => setRemoveBlacklist(e.target.value)}
                         >
                           <option value={""}> </option>
@@ -78,7 +78,9 @@ export const ControllerTab = ({
                       </FormGroup>
                       <Button
                         color="primary"
-                        onClick={() => removeFromBlacklist(removeBlacklist)}
+                        onClick={() => {
+                          removeFromBlacklist(removeBlacklist);
+                        }}
                       >
                         Delete
                       </Button>
