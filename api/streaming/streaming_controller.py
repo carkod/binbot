@@ -1,8 +1,9 @@
 import os
+
 from binance import AsyncClient, BinanceSocketManager
-from pymongo import ReturnDocument
-from deals.controllers import CreateDealController
 from db import setup_db
+from deals.controllers import CreateDealController
+from pymongo import ReturnDocument
 
 
 class TerminateStreaming(Exception):
@@ -114,54 +115,45 @@ class StreamingController:
             # Take profit trailling
             if bot["trailling"] == "true" and float(bot["deal"]["buy_price"]) > 0:
 
-                if bot["mode"] == "autotrade":
+                if bot["dynamic_trailling"]:
                     deal = CreateDealController(bot, db_collection)
                     # Returns bot, to keep modifying in subsequent checks
-                    bot = deal.dynamic_take_profit(
-                        symbol, current_bot, close_price
-                    )
+                    bot = deal.dynamic_take_profit(symbol, current_bot, close_price)
 
-                if (
-                    "trailling_stop_loss_price" not in bot["deal"]
-                    or bot["deal"]["trailling_stop_loss_price"] == 0
-                ) or float(bot["deal"]["take_profit_price"]) == 0:
-                    # If current price didn't break take_profit (first time hitting take_profit)
-                    current_take_profit_price = float(bot["deal"]["buy_price"]) * (
-                        1 + (float(bot["take_profit"]) / 100)
-                    )
-                    print(f"{symbol} Updated (Didn't break trailling)")
-                else:
-                    # If current price broke take profit, we start trailling
-                    # This is necessary to avoid conflict between trailling take profit and safety orders
-                    current_take_profit_price = float(
-                        bot["deal"]["trailling_stop_loss_price"]
-                    ) * (1 + (float(bot["take_profit"]) / 100))
+                # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
+                initial_take_profit_price = float(bot["deal"]["buy_price"]) * (
+                    1 + (float(bot["take_profit"]) / 100)
+                )
+                print(f"{symbol} Updated (Didn't break trailling)")
 
                 # Direction 1 (upward): breaking the current trailling
-                if float(close_price) >= float(current_take_profit_price) and bot:
+                if bot and float(close_price) >= float(initial_take_profit_price):
                     new_take_profit = float(close_price) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
+                    new_trailling_stop_loss = float(
+                            close_price
+                        ) - (
+                            float(close_price)
+                            * (float(bot["trailling_deviation"]) / 100)
+                        )
                     # Update deal take_profit
                     bot["deal"]["take_profit_price"] = new_take_profit
+                    # take_profit but for trailling, to avoid confusion
+                    # trailling_profit_price always be > trailling_stop_loss_price
+                    bot["deal"]["trailling_profit_price"] = new_take_profit
 
                     if (
-                        bot["deal"]["trailling_stop_loss_price"]
+                        new_trailling_stop_loss
                         > bot["deal"]["buy_price"]
-                        # Make sure it's red candlestick, to avoid slippage loss
-                    ) and (float(open_price) - float(close_price)) < 0:
+                    ):
                         # Selling below buy_price will cause a loss
                         # instead let it drop until it hits safety order or stop loss
                         print(
                             f"{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
                         )
                         # Update trailling_stop_loss
-                        bot["deal"]["trailling_stop_loss_price"] = float(
-                            new_take_profit
-                        ) - (
-                            float(new_take_profit)
-                            * (float(bot["trailling_deviation"]) / 100)
-                        )
+                        bot["deal"]["trailling_stop_loss_price"] = new_trailling_stop_loss
                         print(
                             f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                         )
@@ -174,11 +166,13 @@ class StreamingController:
                             f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                         )
 
-                    updated_bot = self.streaming_db[db_collection].update_one(
+                    bot = self.streaming_db[db_collection].find_one_and_update(
                         {"id": current_bot["id"]},
                         {"$set": {"deal": bot["deal"]}},
+                        upsert=False,
+                        return_document=ReturnDocument.AFTER,
                     )
-                    if not updated_bot:
+                    if not bot:
                         self.streaming_db[db_collection].update_one(
                             {"id": current_bot["id"]},
                             {
@@ -191,7 +185,12 @@ class StreamingController:
                 # Sell after hitting trailling stop_loss and if price already broken trailling
                 price = bot["deal"]["trailling_stop_loss_price"]
                 # Direction 2 (downward): breaking the trailling_stop_loss
-                if float(price) > 0 and float(close_price) <= float(price):
+                # Make sure it's red candlestick, to avoid slippage loss
+                if (
+                    float(price) > 0
+                    and float(close_price) < float(price)
+                    and (float(open_price) - float(close_price)) > 0
+                ):
                     print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
                     try:
                         deal = CreateDealController(bot, db_collection)
@@ -266,7 +265,7 @@ class StreamingController:
                         await self.process_klines(res["data"])
                     else:
                         print(f'Error: {res["data"]}')
-                                                
+
                 await self.client.close_connection()
 
     async def get_user_data(self):

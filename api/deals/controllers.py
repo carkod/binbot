@@ -364,6 +364,7 @@ class CreateDealController(Account):
         self.active_bot.orders.append(order_data)
 
         self.active_bot.deal.take_profit_price = res["price"]
+        self.active_bot.deal.trailling_profit_price = res["price"]
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
