@@ -1,14 +1,10 @@
-import uuid
-from decimal import Decimal
-from time import time
-
 import numpy
 import requests
 from pymongo import ReturnDocument
 from requests.exceptions import HTTPError
 from pydantic import ValidationError
 
-from account.account import Account
+from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from bots.schemas import BotSchema
 from deals.models import DealModel, BinanceOrderModel
@@ -22,10 +18,26 @@ from tools.exceptions import (
 )
 from tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_errors, encode_json
 from tools.round_numbers import round_numbers, supress_notation
-from db import setup_db
 
 
-class CreateDealController(Account):
+# class Base:
+#     def __init__(self, bot, collection):
+#         self.active_bot = bot + " and this is Base bot"
+#         self.db_collection = collection + " and this is base db_collection"
+#         pass
+#     def __repr__(self) -> str:
+#         return 'Base(' + self.active_bot + ',' + str(self.db_collection) + ')'
+
+# class Deal(Base):
+#     def __init__(self, bot, collection):
+#         return super().__init__(bot, collection)
+    
+#     def __repr__(self) -> str:
+#         return 'Deal(' + self.active_bot + ',' + str(self.db_collection) + ')'
+
+
+
+class CreateDealController(BaseDeal):
     """
     Centralized deal controller.
 
@@ -39,63 +51,9 @@ class CreateDealController(Account):
     """
 
     def __init__(self, bot, db_collection="paper_trading"):
+        super().__init__(bot, db_collection)
         # Inherit from parent class
-        self.active_bot = BotSchema.parse_obj(bot)
-        self.db = setup_db()
-        self.db_collection = self.db[db_collection]
-        self.decimal_precision = self.get_quote_asset_precision(self.active_bot.pair)
-        # PRICE_FILTER decimals
-        self.price_precision = -1 * (
-            Decimal(str(self.price_filter_by_symbol(self.active_bot.pair, "tickSize")))
-            .as_tuple()
-            .exponent
-        )
-        self.qty_precision = -1 * (
-            Decimal(str(self.lot_size_by_symbol(self.active_bot.pair, "stepSize")))
-            .as_tuple()
-            .exponent
-        )
-
-    def generate_id(self):
-        return uuid.uuid4().hex
-
-    def simulate_order(self, pair, price, qty, side):
-        order = {
-            "symbol": pair,
-            "orderId": self.generate_id(),
-            "orderListId": -1,
-            "clientOrderId": self.generate_id(),
-            "transactTime": time() * 1000,
-            "price": price,
-            "origQty": qty,
-            "executedQty": qty,
-            "cummulativeQuoteQty": qty,
-            "status": "FILLED",
-            "timeInForce": "GTC",
-            "type": "LIMIT",
-            "side": side,
-            "fills": [],
-        }
-        return order
-
-    def simulate_response_order(self, pair, price, qty, side):
-        response_order = {
-            "symbol": pair,
-            "orderId": id,
-            "orderListId": -1,
-            "clientOrderId": id,
-            "transactTime": time() * 1000,
-            "price": price,
-            "origQty": qty,
-            "executedQty": qty,
-            "cummulativeQuoteQty": qty,
-            "status": "FILLED",
-            "timeInForce": "GTC",
-            "type": "LIMIT",
-            "side": side,
-            "fills": [],
-        }
-        return response_order
+        
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
@@ -119,12 +77,6 @@ class CreateDealController(Account):
         qty = round_numbers(balance, self.qty_precision)
         return qty
 
-    def update_deal_logs(self, msg):
-        self.db_collection.update_one(
-            {"id": self.active_bot.id},
-            {"$push": {"errors": msg}},
-        )
-        return msg
 
     def base_order(self):
         """
@@ -1059,9 +1011,7 @@ class CreateDealController(Account):
         )
 
         if not base_order_deal:
-            if self.active_bot.strategy == "margin_long":
-                bot = MarginDeal(deal_controller=self).margin_long_base_order()
-            elif self.active_bot.strategy == "margin_short":
+            if self.active_bot.strategy == "margin_short":
                 bot = MarginDeal(deal_controller=self).margin_short_base_order()
             else:
                 bot = self.base_order()
@@ -1075,8 +1025,12 @@ class CreateDealController(Account):
 
         The following functionality is triggered according to the options set in the bot
         """
+
         # Update stop loss regarless of base order
         if hasattr(self.active_bot, "stop_loss") and float(self.active_bot.stop_loss) > 0:
+            if self.active_bot.strategy == "margin_short":
+                bot = MarginDeal(deal_controller=self).margin_short_stop_loss()
+
             buy_price = float(self.active_bot.deal.buy_price)
             stop_loss_price = buy_price - (buy_price * float(self.active_bot.stop_loss) / 100)
             self.active_bot.deal.stop_loss_price = supress_notation(

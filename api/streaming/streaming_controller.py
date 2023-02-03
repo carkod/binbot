@@ -3,6 +3,7 @@ import os
 from binance import AsyncClient, BinanceSocketManager
 from db import setup_db
 from deals.controllers import CreateDealController
+from deals.margin import MarginDeal
 from pymongo import ReturnDocument
 
 
@@ -64,6 +65,11 @@ class StreamingController:
         It updates the bots deals, safety orders, trailling orders, stop loss
         for both paper trading test bots and real bots
         """
+        # Margin short
+        if current_bot["strategy"] == "margin_short":
+            margin_deal = MarginDeal(current_bot, db_collection=db_collection)
+            margin_deal.streaming_updates(close_price)
+            return
 
         # Short strategy
         if (
