@@ -1,8 +1,9 @@
 import os
+
 from binance import AsyncClient, BinanceSocketManager
-from pymongo import ReturnDocument
-from deals.controllers import CreateDealController
 from db import setup_db
+from deals.controllers import CreateDealController
+from pymongo import ReturnDocument
 
 
 class TerminateStreaming(Exception):
@@ -117,9 +118,7 @@ class StreamingController:
                 if bot["mode"] == "autotrade":
                     deal = CreateDealController(bot, db_collection)
                     # Returns bot, to keep modifying in subsequent checks
-                    bot = deal.dynamic_take_profit(
-                        symbol, current_bot, close_price
-                    )
+                    bot = deal.dynamic_take_profit(symbol, current_bot, close_price)
 
                 if (
                     "trailling_stop_loss_price" not in bot["deal"]
@@ -148,8 +147,7 @@ class StreamingController:
                     if (
                         bot["deal"]["trailling_stop_loss_price"]
                         > bot["deal"]["buy_price"]
-                        # Make sure it's red candlestick, to avoid slippage loss
-                    ) and (float(open_price) - float(close_price)) < 0:
+                    ):
                         # Selling below buy_price will cause a loss
                         # instead let it drop until it hits safety order or stop loss
                         print(
@@ -191,7 +189,12 @@ class StreamingController:
                 # Sell after hitting trailling stop_loss and if price already broken trailling
                 price = bot["deal"]["trailling_stop_loss_price"]
                 # Direction 2 (downward): breaking the trailling_stop_loss
-                if float(price) > 0 and float(close_price) <= float(price):
+                # Make sure it's red candlestick, to avoid slippage loss
+                if (
+                    float(price) > 0
+                    and float(close_price) < float(price)
+                    and (float(open_price) - float(close_price)) > 0
+                ):
                     print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
                     try:
                         deal = CreateDealController(bot, db_collection)
@@ -266,7 +269,7 @@ class StreamingController:
                         await self.process_klines(res["data"])
                     else:
                         print(f'Error: {res["data"]}')
-                                                
+
                 await self.client.close_connection()
 
     async def get_user_data(self):
