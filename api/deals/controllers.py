@@ -1012,7 +1012,7 @@ class CreateDealController(BaseDeal):
 
         if not base_order_deal:
             if self.active_bot.strategy == "margin_short":
-                bot = MarginDeal(deal_controller=self).margin_short_base_order()
+                bot = MarginDeal(bot=self.active_bot, db_collection=self.db_collection.name).margin_short_base_order()
             else:
                 bot = self.base_order()
             
@@ -1029,7 +1029,7 @@ class CreateDealController(BaseDeal):
         # Update stop loss regarless of base order
         if hasattr(self.active_bot, "stop_loss") and float(self.active_bot.stop_loss) > 0:
             if self.active_bot.strategy == "margin_short":
-                bot = MarginDeal(deal_controller=self).margin_short_stop_loss()
+                bot = MarginDeal(bot=self.active_bot, db_collection=self.db_collection).margin_short_stop_loss()
 
             buy_price = float(self.active_bot.deal.buy_price)
             stop_loss_price = buy_price - (buy_price * float(self.active_bot.stop_loss) / 100)
@@ -1042,7 +1042,7 @@ class CreateDealController(BaseDeal):
         if self.active_bot.deal and (
             self.active_bot.deal.trailling_stop_loss_price > 0
             or self.active_bot.deal.trailling_stop_loss_price < self.active_bot.deal.buy_price
-        ):
+        ) and not self.active_bot.strategy == "margin_short":
 
             take_profit_price = float(self.active_bot.deal.buy_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
