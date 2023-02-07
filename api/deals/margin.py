@@ -2,13 +2,16 @@ import os
 from time import time
 
 from binance.client import Client
+from requests import HTTPError
+from tools.handle_error import QuantityTooLow
+from tools.round_numbers import round_numbers, supress_notation
 from deals.base import BaseDeal
 from deals.models import BinanceRepayRecords
 from deals.schema import DealSchema, MarginOrderSchema
 from orders.models.book_order import Book_Order
 from pymongo import ReturnDocument
 from tools.handle_error import encode_json
-
+from pydantic import ValidationError
 
 class MarginShortError(Exception):
     pass
@@ -115,6 +118,24 @@ class MarginDeal(BaseDeal):
         if len(assets) == 0:
             raise MarginShortError("No funds in Isolated Margin account")
         return assets
+    
+    def compute_isolated_qty(self,):
+        """
+        Same as compute_qty but with isolated margin balance
+        """
+        balance = self.get_isolated_balance()
+        find_balance_to_use = next(
+            (
+                item
+                for item in balance
+                if item["asset"] == self.active_bot.balance_to_use
+            ),
+            None,
+        )
+        if find_balance_to_use:
+            return None
+        qty = round_numbers(find_balance_to_use, self.qty_precision)
+        return qty
 
     def init_margin_short(self, borrow_rate=2.5):
         """
@@ -299,6 +320,9 @@ class MarginDeal(BaseDeal):
             fills=order_res["fills"],
             time_in_force=order_res["timeInForce"],
             status=order_res["status"],
+            marginBuyBorrowAmount=order_res["marginBuyBorrowAmount"],
+            marginBuyBorrowAsset=order_res["marginBuyBorrowAsset"],
+            isIsolated=order_res["isIsolated"],
         )
 
         self.active_bot.orders.append(order_data)
@@ -337,25 +361,153 @@ class MarginDeal(BaseDeal):
         price = float(close_price)
         self.active_bot.deal.current_price = price
 
+        self.active_bot.deal.stop_loss_price = self.active_bot.deal.buy_price - (self.active_bot.deal.buy_price * (float(self.active_bot.stop_loss) / 100))
+
         # Direction 1: upward trend
         # Future feature: trailling
         if price < self.active_bot.deal.take_profit_price:
             self.terminate_margin_short()
         
         # Direction 2: downard trend
+        elif price > 0 and price > self.active_bot.deal.stop_loss_price:
+            self.execute_stop_loss(price)
+        
         else:
-            self.margin_short_stop_loss()
+            return
 
-    def margin_short_stop_loss(self):
+    def set_margin_short_stop_loss(self):
         """
-        Triggers stop_loss for margin_short
-        this is used during streaming updates
+        Sets stop_loss for margin_short at initial activation
         """
         price = self.active_bot.deal.buy_price
-
         if (
             hasattr(self.active_bot, "stop_loss")
             and float(self.active_bot.stop_loss) > 0
         ):
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
             self.active_bot.deal.margin_short_stop_loss_price = stop_loss_price
+
+
+    def execute_stop_loss(self, close_price=0):
+        """
+        Execute stop loss when price is hit
+        This is used during streaming updates
+        """
+        if self.db_collection.name == "paper_trading":
+            qty = self.active_bot.deal.buy_total_qty
+        else:
+            qty = self.compute_isolated_qty(self.active_bot.pair)
+
+        # If for some reason, the bot has been closed already (e.g. transacted on Binance)
+        # Inactivate bot
+        if not qty:
+            self.update_deal_logs(
+                f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
+            )
+            params = {"id": self.active_bot.id}
+            self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
+            return
+    
+        order_id = None
+        for order in self.active_bot.orders:
+            if order.deal_type == "margin_short_take_profit":
+                order_id = order.order_id
+                self.active_bot.orders.remove(order)
+                break
+
+        if order_id:
+            try:
+                # First cancel old order to unlock balance
+                self.client.cancel_margin_order(
+                symbol=self.active_bot.pair,
+                orderId=order_id)
+                self.update_deal_logs("Old take profit order cancelled")
+            except HTTPError as error:
+                self.update_deal_logs("Take profit order not found, no need to cancel")
+                return
+
+        book_order = Book_Order(self.active_bot.pair)
+        price = float(book_order.matching_engine(True, qty))
+        if not price:
+            price = float(book_order.matching_engine(True))
+
+        # Margin buy (buy back)
+        if self.db_collection.name == "paper_trading":
+            res = self.simulate_margin_order(self.active_bot.pair, price, qty, "BUY")
+        else:
+            try:
+                res = self.client.create_margin_order(
+                    symbol=self.active_bot.pair,
+                    side="BUY",
+                    type="LIMIT",
+                    timeInForce="GTC",
+                    quantity=qty,
+                    price=supress_notation(price, self.price_precision))
+            except QuantityTooLow as error:
+                # Delete incorrectly activated or old bots
+                self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
+                print(f"Deleted obsolete bot {self.active_bot.pair}")
+            except Exception as error:
+                self.update_deal_logs(
+                    f"Error trying to open new stop_limit order {error}"
+                )
+                return
+
+        if res["status"] == "NEW":
+            self.update_deal_logs(
+                "Failed to execute stop loss order (status NEW), retrying..."
+            )
+            self.execute_stop_loss(price)
+
+        stop_loss_order = MarginOrderSchema(
+            timestamp=res["transactTime"],
+            deal_type="stop_loss",
+            order_id=res["orderId"],
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=res["price"],
+            qty=res["origQty"],
+            fills=res["fills"],
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+            marginBuyBorrowAmount=res["marginBuyBorrowAmount"],
+            marginBuyBorrowAsset=res["marginBuyBorrowAsset"],
+            isIsolated=res["isIsolated"],
+        )
+
+        commission = 0
+        for chunk in res["fills"]:
+            commission += float(chunk["commission"])
+
+        self.active_bot.orders.append(stop_loss_order)
+        self.active_bot.deal.sell_price = res["price"]
+        self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        msg = f"Completed Stop loss"
+        self.active_bot.errors.append(msg)
+        self.active_bot.status = "completed"
+
+        try:
+
+            bot = encode_json(self.active_bot)
+            if "_id" in bot:
+                bot.pop("_id")
+
+            self.db_collection.update_one(
+                {"id": self.active_bot.id},
+                {"$set": bot},
+            )
+
+        except ValidationError as error:
+            self.update_deal_logs(f"Stop loss error: {error}")
+            return
+        except (TypeError, AttributeError) as error:
+            message = str(";".join(error.args))
+            self.update_deal_logs(f"Stop loss error: {message}")
+            return
+        except Exception as error:
+            self.update_deal_logs(f"Stop loss error: {error}")
+            return
+        pass
+

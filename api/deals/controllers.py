@@ -20,23 +20,6 @@ from tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_er
 from tools.round_numbers import round_numbers, supress_notation
 
 
-# class Base:
-#     def __init__(self, bot, collection):
-#         self.active_bot = bot + " and this is Base bot"
-#         self.db_collection = collection + " and this is base db_collection"
-#         pass
-#     def __repr__(self) -> str:
-#         return 'Base(' + self.active_bot + ',' + str(self.db_collection) + ')'
-
-# class Deal(Base):
-#     def __init__(self, bot, collection):
-#         return super().__init__(bot, collection)
-    
-#     def __repr__(self) -> str:
-#         return 'Deal(' + self.active_bot + ',' + str(self.db_collection) + ')'
-
-
-
 class CreateDealController(BaseDeal):
     """
     Centralized deal controller.
@@ -724,7 +707,6 @@ class CreateDealController(BaseDeal):
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
-        self.active_bot.status = "completed"
         msg = f"Completed Stop loss"
         self.active_bot.errors.append(msg)
         self.active_bot.status = "completed"
@@ -1029,7 +1011,7 @@ class CreateDealController(BaseDeal):
         # Update stop loss regarless of base order
         if hasattr(self.active_bot, "stop_loss") and float(self.active_bot.stop_loss) > 0:
             if self.active_bot.strategy == "margin_short":
-                bot = MarginDeal(bot=self.active_bot, db_collection=self.db_collection).margin_short_stop_loss()
+                bot = MarginDeal(bot=self.active_bot, db_collection=self.db_collection).set_margin_short_stop_loss()
 
             buy_price = float(self.active_bot.deal.buy_price)
             stop_loss_price = buy_price - (buy_price * float(self.active_bot.stop_loss) / 100)
