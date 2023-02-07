@@ -92,7 +92,7 @@ class TestBotForm extends React.Component {
         this.props.setBotState({ quoteAsset: data })
       );
       getBaseAsset(this.props.bot.pair).then(({ data }) =>
-        this.props.setBot({ baseAsset: data })
+        this.props.setBotState({ baseAsset: data })
       );
       const currentDate = moment().toISOString();
       this.props.setBotState({
