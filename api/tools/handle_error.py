@@ -97,7 +97,7 @@ def handle_binance_errors(response: Response) -> str | None:
         sleep(120)
 
     # Binbot errors
-    if content and "error" in content:
+    if content and "error" in content and content["error"] == 1:
         raise BinanceErrors(content["message"])
 
     # Binance errors

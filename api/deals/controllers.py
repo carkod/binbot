@@ -957,6 +957,7 @@ class CreateDealController(BaseDeal):
                     self.active_bot.deal.buy_price
                 ):
                     self.active_bot.trailling_deviation = volatility
+                    self.active_bot.deal.trailling_stop_loss_price = float(close_price) - (float(close_price) * volatility)
                     # Update tralling_profit price
                     self.active_bot.deal.take_profit_price = volatility
                     print(f"Updated trailling_deviation and take_profit {self.active_bot.deal.trailling_stop_loss_price}")

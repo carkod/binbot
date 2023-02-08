@@ -188,16 +188,17 @@ class StreamingController:
                             },
                         )
 
-                # Sell after hitting trailling stop_loss and if price already broken trailling
-                price = bot["deal"]["trailling_stop_loss_price"]
                 # Direction 2 (downward): breaking the trailling_stop_loss
                 # Make sure it's red candlestick, to avoid slippage loss
+                # Sell after hitting trailling stop_loss and if price already broken trailling
                 if (
-                    float(price) > 0
-                    and float(close_price) < float(price)
-                    and (float(open_price) - float(close_price)) > 0
+                    float(bot["deal"]["trailling_stop_loss_price"]) > 0
+                    # Broken stop_loss
+                    and float(close_price) < float(bot["deal"]["trailling_stop_loss_price"])
+                    # Red candlestick
+                    and (float(open_price) > float(close_price))
                 ):
-                    print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
+                    print(f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}')
                     try:
                         deal = CreateDealController(bot, db_collection)
                         deal.trailling_profit()
