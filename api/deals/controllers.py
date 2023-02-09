@@ -19,7 +19,6 @@ from tools.exceptions import (
 from tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_errors, encode_json
 from tools.round_numbers import round_numbers, supress_notation
 
-
 class CreateDealController(BaseDeal):
     """
     Centralized deal controller.

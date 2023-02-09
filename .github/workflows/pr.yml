@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Build image
         run: docker build --tag binbot .
       - name: Test app
@@ -45,7 +45,6 @@ jobs:
           -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
           -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
-          -e PYTHONUNBUFFERED=TRUE \
           -e ENV=ci -d binbot
           curl --head --fail --retry-delay 5 --retry 3 --retry-connrefused http://localhost
       - name: Test api
@@ -56,10 +55,8 @@ jobs:
           -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
           -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
-          -e PYTHONUNBUFFERED=TRUE \
           -e ENV=ci -d binbot
-          docker logs binbot
-          sleep 5 && \
+          sleep 5 &&
           curl --head --fail --retry-delay 30 --retry 5 --retry-connrefused http://localhost:8008
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
@@ -77,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Build image
         run: docker build --tag binbot_streaming -f Dockerfile.streaming .
       - name: Test run script
@@ -108,7 +105,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       # Setup Python (faster than using Python container)
       - name: Setup Python
         uses: actions/setup-python@v2

@@ -2,6 +2,7 @@ import os
 from time import time
 
 from binance.client import Client
+from binance.exceptions import BinanceAPIException
 from requests import HTTPError
 from tools.handle_error import QuantityTooLow
 from tools.round_numbers import round_numbers, supress_notation
@@ -153,22 +154,18 @@ class MarginDeal(BaseDeal):
             (
                 item
                 for item in balance
-                if item["asset"] == self.active_bot.balance_to_use
+                if item["symbol"] == self.active_bot.pair
             ),
             None,
         )
         if not find_balance_to_use:
             # transfer
-            transfer_transaction = self.client.transfer_spot_to_isolated_margin(
-                asset=self.active_bot.balance_to_use,
-                symbol=self.active_bot.pair,
-                amount=self.active_bot.base_order_size,
-            )
-            if not transfer_transaction:
-                raise MarginShortError(
-                    f"Not enough {self.active_bot.balance_to_use} in Isolated Margin account to execute base_order"
+            try:
+                self.client.transfer_spot_to_isolated_margin(
+                    asset=self.active_bot.balance_to_use,
+                    symbol=self.active_bot.pair,
+                    amount=self.active_bot.base_order_size,
                 )
-            else:
                 asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
                 # In the future, amount_to_borrow = base + base * (2.5)
                 amount_to_borrow = self.active_bot.base_order_size
@@ -180,11 +177,8 @@ class MarginDeal(BaseDeal):
                     self.active_bot.deal.margin_loan_id = margin_loan_transaction
 
                     return
-
-                else:
-                    raise MarginShortError(margin_loan_transaction)
-
-        pass
+            except BinanceAPIException as error:
+                raise MarginShortError(error.message)
 
     def terminate_margin_short(self):
         """
@@ -200,27 +194,28 @@ class MarginDeal(BaseDeal):
             (
                 item
                 for item in balance
-                if item["asset"] == self.active_bot.balance_to_use
+                if item["symbol"] == self.active_bot.pair
             ),
             None,
         )
         if find_balance_to_use:
             # repay
-            asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-            amount = (
-                self.active_bot.deal.buy_total_qty
-                if self.active_bot.deal.buy_total_qty
-                else self.active_bot.base_order_size
-            )
-            repay_transaction = self.client.repay_margin_loan(
-                asset=asset, amount=amount
-            )
-            if repay_transaction:
-                repay_details: BinanceRepayRecords = (
+            try:
+                asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
+                amount = (
+                    self.active_bot.deal.buy_total_qty
+                    if self.active_bot.deal.buy_total_qty
+                    else self.active_bot.base_order_size
+                )
+                self.client.repay_margin_loan(
+                    asset=asset, symbol=self.active_bot.pair, amount=amount, isIsolated=True
+                )
+                repay_details_res: BinanceRepayRecords = (
                     self.client.get_margin_repay_details(
-                        isolatedSymbol=self.active_bot.pair
+                        asset=asset, isolatedSymbol=self.active_bot.pair
                     )
                 )
+                repay_details = repay_details_res["rows"][0]
                 self.active_bot.deal.margin_short_loan_interest = repay_details[
                     "interest"
                 ]
@@ -232,61 +227,44 @@ class MarginDeal(BaseDeal):
                 ]
                 self.active_bot.status = "completed"
 
-                transfer_transaction = self.client.transfer_isolated_margin_to_spot(
-                    asset=asset, symbol=self.active_bot.pair, amount=amount
+                self.client.transfer_isolated_margin_to_spot(
+                    asset=self.active_bot.balance_to_use, symbol=self.active_bot.pair, amount=amount
                 )
 
-                if transfer_transaction:
-                    self.active_bot.deal.buy_total_qty = amount_to_borrow
-                    completion_msg = f"Margin_short bot repaid, funds transferred back to SPOT. Bot completed"
-                    self.active_bot.errors.append(completion_msg)
-                    print(completion_msg)
-                else:
-                    raise MarginShortError(
-                        f"Unable to terminate margin_short transfer transaction: {transfer_transaction}"
-                    )
-
-            else:
-                raise MarginShortError(
-                    f"Unable to repay transaction: {repay_transaction}"
-                )
-
-            if not transfer_transaction:
-                raise MarginShortError(
-                    f"Not enough {self.active_bot.balance_to_use} in Isolated Margin account to execute base_order"
-                )
-            else:
+                self.active_bot.deal.buy_total_qty = amount_to_borrow
+                completion_msg = f"Margin_short bot repaid, funds transferred back to SPOT. Bot completed"
+                self.active_bot.errors.append(completion_msg)
+                print(completion_msg)
 
                 # In the future, amount_to_borrow = base + base * (2.5)
                 amount_to_borrow = self.active_bot.base_order_size
                 margin_loan_transaction = self.client.create_margin_loan(
                     asset=asset, amount=amount_to_borrow, isIsolated=True
                 )
-                if margin_loan_transaction:
-                    self.active_bot.deal.buy_total_qty = amount_to_borrow
-                    self.active_bot.deal.margin_loan_id = margin_loan_transaction
+                
+                self.active_bot.deal.buy_total_qty = amount_to_borrow
+                self.active_bot.deal.margin_loan_id = margin_loan_transaction
 
-                    # Activate bot
-                    self.active_bot.status = "completed"
+                # Activate bot
+                self.active_bot.status = "completed"
 
-                    bot = encode_json(self.active_bot)
-                    if "_id" in bot:
-                        bot.pop("_id")  # _id is what causes conflict not id
+                bot = encode_json(self.active_bot)
+                if "_id" in bot:
+                    bot.pop("_id")  # _id is what causes conflict not id
 
-                    document = self.db_collection.find_one_and_update(
-                        {"id": self.active_bot.id},
-                        {"$set": bot},
-                        return_document=ReturnDocument.AFTER,
-                    )
+                document = self.db_collection.find_one_and_update(
+                    {"id": self.active_bot.id},
+                    {"$set": bot},
+                    return_document=ReturnDocument.AFTER,
+                )
 
-                    return document
+                return document
 
-                else:
-                    raise MarginShortError(margin_loan_transaction)
-        else:
-            raise MarginShortError(
-                f"No margin found when trying to terminate {self.active_bot.pair}"
-            )
+            except BinanceAPIException as error:
+                raise MarginShortError(
+                    f"Unable to terminate margin_short transfer transaction: {error}"
+                )
+
 
     def margin_short_base_order(self):
         """
@@ -298,7 +276,7 @@ class MarginDeal(BaseDeal):
         """
         print(f"Opening margin margin_long_base_order")
         # Uncomment for production
-        if self.db_collection == "bots":
+        if self.db_collection.name == "bots":
             self.init_margin_short()
             # Margin sell
             order_res = self.sell_order(self.active_bot.deal.buy_total_qty)

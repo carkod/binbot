@@ -7,6 +7,7 @@ from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 
 from account.account import Account
+from deals.margin import MarginShortError
 from db import setup_db
 from deals.controllers import CreateDealController
 from orders.models.book_order import Book_Order
@@ -184,6 +185,9 @@ class Bot(Account):
                 return json_response_error(error.args[0])
             except NotEnoughFunds as e:
                 return json_response_error(e.args[0])
+            except MarginShortError as error:
+                message = str("Unable to create margin_short bot: ".join(error.args))
+                return json_response_error(message)
             except Exception as error:
                 resp = json_response_error(f"Unable to activate bot: {error}")
                 return resp
