@@ -207,4 +207,5 @@ export default function spotTrading(bot, currentPrice) {
       });
     }
   }
+  return totalOrderLines
 }
