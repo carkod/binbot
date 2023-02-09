@@ -961,6 +961,28 @@ class CreateDealController(BaseDeal):
                     self.active_bot.deal.take_profit_price = volatility
                     print(f"Updated trailling_deviation and take_profit {self.active_bot.deal.trailling_stop_loss_price}")
 
+            try:
+
+                bot = encode_json(self.active_bot)
+                if "_id" in bot:
+                    bot.pop("_id")
+
+                self.db_collection.update_one(
+                    {"id": self.active_bot.id},
+                    {"$set": bot},
+                )
+
+            except ValidationError as error:
+                self.update_deal_logs(f"Dynamic take profit error: {error}")
+                return
+            except (TypeError, AttributeError) as error:
+                message = str(";".join(error.args))
+                self.update_deal_logs(f"Dynamic take profit error: {message}")
+                return
+            except Exception as error:
+                self.update_deal_logs(f"Dynamic take profit error: {error}")
+                return
+
         bot = encode_json(self.active_bot)
         return bot
 
