@@ -43,6 +43,7 @@ class MarginDeal(BaseDeal):
             "side": side,
             "marginBuyBorrowAmount": 5,
             "marginBuyBorrowAsset": "BTC",
+            "isIsolated": "true",
             "fills": [],
         }
         return order
@@ -364,6 +365,21 @@ class MarginDeal(BaseDeal):
         ):
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
             self.active_bot.deal.margin_short_stop_loss_price = stop_loss_price
+
+            bot = encode_json(self.active_bot)
+            if "_id" in bot:
+                bot.pop("_id")  # _id is what causes conflict not id
+
+            document = self.db_collection.find_one_and_update(
+                {"id": self.active_bot.id},
+                {"$set": bot},
+                return_document=ReturnDocument.AFTER,
+            )
+
+            return document
+
+        bot = encode_json(self.active_bot)
+        return bot
 
 
     def execute_stop_loss(self, close_price=0):
