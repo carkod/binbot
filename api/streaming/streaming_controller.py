@@ -137,29 +137,25 @@ class StreamingController:
                     new_take_profit = float(close_price) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
-                    new_trailling_stop_loss = float(
-                            close_price
-                        ) - (
-                            float(close_price)
-                            * (float(bot["trailling_deviation"]) / 100)
-                        )
+                    new_trailling_stop_loss = float(close_price) - (
+                        float(close_price) * (float(bot["trailling_deviation"]) / 100)
+                    )
                     # Update deal take_profit
                     bot["deal"]["take_profit_price"] = new_take_profit
                     # take_profit but for trailling, to avoid confusion
                     # trailling_profit_price always be > trailling_stop_loss_price
                     bot["deal"]["trailling_profit_price"] = new_take_profit
 
-                    if (
-                        new_trailling_stop_loss
-                        > bot["deal"]["buy_price"]
-                    ):
+                    if new_trailling_stop_loss > bot["deal"]["buy_price"]:
                         # Selling below buy_price will cause a loss
                         # instead let it drop until it hits safety order or stop loss
                         print(
                             f"{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
                         )
                         # Update trailling_stop_loss
-                        bot["deal"]["trailling_stop_loss_price"] = new_trailling_stop_loss
+                        bot["deal"][
+                            "trailling_stop_loss_price"
+                        ] = new_trailling_stop_loss
                         print(
                             f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                         )
@@ -194,11 +190,14 @@ class StreamingController:
                 if (
                     float(bot["deal"]["trailling_stop_loss_price"]) > 0
                     # Broken stop_loss
-                    and float(close_price) < float(bot["deal"]["trailling_stop_loss_price"])
+                    and float(close_price)
+                    < float(bot["deal"]["trailling_stop_loss_price"])
                     # Red candlestick
                     and (float(open_price) > float(close_price))
                 ):
-                    print(f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}')
+                    print(
+                        f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}'
+                    )
                     try:
                         deal = CreateDealController(bot, db_collection)
                         deal.trailling_profit()
@@ -275,15 +274,53 @@ class StreamingController:
 
                 await self.client.close_connection()
 
+    def process_user_data(self, result):
+        # Parse result. Print result for raw result from Binance
+        order_id = result["i"]
+        if order_id:
+
+            self.streaming_db.bots.update_one(
+                {"orders": {"$elemMatch": {"order_id": order_id}}},
+                {
+                    "$inc": {"deal.commission": float(result["n"])},
+                    "$set": {
+                        "orders.$.status": result["status"],
+                        "orders.$.price": result["price"],
+                        "orders.$.qty": result["executedQty"],
+                        "orders.$.order_side": result["side"],
+                        "orders.$.fills": result["fills"],
+                        "orderes.$.timestamp": result["transactTime"],
+                    },
+                },
+            )
+
+        else:
+            print(
+                f"No bot found with order client order id: {order_id}. Order status: {result['X']}"
+            )
+
     async def get_user_data(self):
         print("Streaming user data")
         socket, client = await self.setup_client()
         user_data = socket.user_socket()
         async with user_data as ud:
             try:
-                while True:
-                    res = await ud.recv()
-                    print(res)
+                res = await ud.recv()
+
+                if "result" in res:
+                    print(f'Subscriptions: {res["result"]}')
+                    await self.process_user_data(res["result"])
+                else:
+                    print(f"Error: {res}")
+
+                await self.client.close_connection()
+
             except Exception as error:
                 print(f"get_user_data sockets error: {error}")
                 await client.close_connection()
+
+    async def get_isolated_margin_data(self):
+        print("Streaming isolated margin data")
+        socket, client = await self.setup_client()
+        # im_data = socket.isolated_margin_socket(symbol)
+        pass
