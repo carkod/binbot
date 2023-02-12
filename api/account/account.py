@@ -236,7 +236,7 @@ class Account(BinbotApi):
         )
         return symbol_balance
 
-    def matching_engine(self, symbol, order_side, qty=None):
+    def matching_engine(self, symbol: str, order_side: bool, qty=None):
         """
         Match quantity with available 100% fill order price,
         so that order can immediately buy/sell
@@ -245,7 +245,6 @@ class Account(BinbotApi):
             Buy order = get ask prices = True
             Sell order = get bids prices = False
         @param: qty - quantity wanted to be bought/sold
-        @param: order_side - BUY or SELL
         """
 
         url = self.order_book_url

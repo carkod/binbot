@@ -272,15 +272,20 @@ class MarginDeal(BaseDeal):
         2. Carry on with usual base_order
         """
         print(f"Opening margin margin_long_base_order")
-        # Uncomment for production
+        
+        initial_price = float(self.matching_engine(self.active_bot.pair, True))
+        qty = round_numbers(
+            (float(self.active_bot.base_order_size) / float(initial_price)),
+            self.qty_precision,
+        )
         if self.db_collection.name == "bots":
             self.init_margin_short()
             # Margin sell
-            order_res = self.sell_order(self.active_bot.deal.buy_total_qty)
+            order_res = self.sell_order(qty)
         else:
             # Margin sell
             order_res = self.simulate_margin_order(
-                self.active_bot.deal.buy_total_qty, "SELL"
+                qty, "SELL"
             )
 
         order_data = MarginOrderSchema(
