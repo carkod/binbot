@@ -469,9 +469,16 @@ class MarginDeal(BaseDeal):
             commission += float(chunk["commission"])
 
         self.active_bot.orders.append(stop_loss_order)
-        self.active_bot.deal.sell_price = res["price"]
-        self.active_bot.deal.sell_qty = res["origQty"]
-        self.active_bot.deal.sell_timestamp = res["transactTime"]
+
+        # Guard against type errors
+        # These errors are sometimes hard to debug, it takes hours
+        deal = DealSchema(
+            sell_price = res["price"],
+            sell_qty = res["origQty"],
+            sell_timestamp = res["transactTime"]
+        )
+        self.active_bot.deal = deal
+
         msg = f"Completed Stop loss"
         self.active_bot.errors.append(msg)
         self.active_bot.status = "completed"

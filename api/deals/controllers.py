@@ -851,13 +851,17 @@ class CreateDealController(BaseDeal):
         commission = 0
         for chunk in res["fills"]:
             commission += float(chunk["commission"])
+        
+        deal = DealSchema(
+            short_sell_price = res["price"],
+            short_sell_qty = res["origQty"],
+            short_sell_timestamp = res["transactTime"]
+        )
 
         self.active_bot.orders.append(short_sell_order)
         self.active_bot.short_sell_price = 0  # stops short_sell position
         self.active_bot.strategy = "short"
-        self.active_bot.deal.short_sell_price = res["price"]
-        self.active_bot.deal.short_sell_qty = res["origQty"]
-        self.active_bot.deal.short_sell_timestamp = res["transactTime"]
+        
         # reset trailling_stop_loss_price after short is triggered
         self.active_bot.deal.trailling_stop_loss_price = 0
         self.active_bot.deal.take_profit_price = float(
