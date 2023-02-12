@@ -9,7 +9,6 @@ from deals.margin import MarginDeal
 from bots.schemas import BotSchema
 from deals.models import DealModel, BinanceOrderModel
 from deals.schema import DealSchema, OrderSchema
-from orders.models.book_order import Book_Order
 from tools.exceptions import (
     OpenDealError,
     ShortStrategyError,
@@ -74,13 +73,12 @@ class CreateDealController(BaseDeal):
 
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
-        book_order = Book_Order(pair)
-        initial_price = float(book_order.matching_engine(False))
+        initial_price = float(self.matching_engine(pair, False))
         qty = round_numbers(
             (float(self.active_bot.base_order_size) / float(initial_price)),
             self.qty_precision,
         )
-        price = float(book_order.matching_engine(False, qty))
+        price = float(self.matching_engine(pair, False, qty))
 
         # setup stop_loss_price
         stop_loss_price = 0
@@ -266,7 +264,6 @@ class CreateDealController(BaseDeal):
 
         # Dispatch real order
         else:
-
             tp_order = {
                 "pair": self.active_bot.pair,
                 "qty": supress_notation(qty, self.qty_precision),
@@ -280,6 +277,24 @@ class CreateDealController(BaseDeal):
         # If error pass it up to parent function, can't continue
         if "error" in res:
             raise TraillingProfitError(res["error"])
+    
+        if res["status"] == "NEW":
+            params = [
+                ("symbol", self.active_bot_pair),
+                ("type", "LIMIT"),
+                ("side", "SELL"),
+                ("cancelReplaceMode", "ALLOW_FAILURE")
+            ]
+            response = self.signed_request(url=self.cancel_replace_url, method="POST", params=params)
+            data = handle_binance_errors(response)
+            if "newOrderResponse" in data:
+                res = data["newOrderResponse"]
+            elif "code" in data:
+                TraillingProfitError(res["data"])
+            self.update_deal_logs(
+                "Failed to execute stop loss order (status NEW), retrying..."
+            )
+            self.trailling_profit(price)
 
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -355,8 +370,7 @@ class CreateDealController(BaseDeal):
         balance = self.get_one_balance(base_asset)
         if balance:
             qty = round_numbers(balance, self.qty_precision)
-            book_order = Book_Order(pair)
-            price = float(book_order.matching_engine(True, qty))
+            price = float(self.matching_engine(pair, True, qty))
 
             if price:
                 order = {
@@ -471,8 +485,7 @@ class CreateDealController(BaseDeal):
         """
         pair = self.active_bot.pair
         so_qty = self.active_bot.safety_orders[so_index].so_size
-        book_order = Book_Order(pair)
-        price = book_order.matching_engine(False, so_qty)
+        price = self.matching_engine(pair, False, so_qty)
         qty = round_numbers(
             float(so_qty),
             self.qty_precision,
@@ -649,10 +662,9 @@ class CreateDealController(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
-        book_order = Book_Order(self.active_bot.pair)
-        price = float(book_order.matching_engine(True, qty))
+        price = float(self.matching_engine(self.active_bot.pair, True, qty))
         if not price:
-            price = float(book_order.matching_engine(True))
+            price = float(self.matching_engine(self.active_bot.pair, True))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
@@ -778,10 +790,9 @@ class CreateDealController(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 pass
 
-        book_order = Book_Order(bot.pair)
-        price = float(book_order.matching_engine(True, qty))
+        price = float(self.matching_engine(bot.pair, True, qty))
         if not price:
-            price = float(book_order.matching_engine(True))
+            price = float(self.matching_engine(bot.pair, True))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(bot.pair, price, qty, "SELL")

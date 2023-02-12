@@ -278,7 +278,9 @@ class StreamingController:
         # Parse result. Print result for raw result from Binance
         order_id = result["i"]
         if order_id:
-
+            # Keep all orders up to date
+            # This includes all bots with any status ["active", "completed", ...]
+            # This will help detect bugs in the bots opening and closing mechanism
             self.streaming_db.bots.update_one(
                 {"orders": {"$elemMatch": {"order_id": order_id}}},
                 {
@@ -289,7 +291,7 @@ class StreamingController:
                         "orders.$.qty": result["executedQty"],
                         "orders.$.order_side": result["side"],
                         "orders.$.fills": result["fills"],
-                        "orderes.$.timestamp": result["transactTime"],
+                        "orders.$.timestamp": result["transactTime"],
                     },
                 },
             )

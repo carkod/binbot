@@ -9,7 +9,6 @@ from tools.round_numbers import round_numbers, supress_notation
 from deals.base import BaseDeal
 from deals.models import BinanceRepayRecords
 from deals.schema import DealSchema, MarginOrderSchema
-from orders.models.book_order import Book_Order
 from pymongo import ReturnDocument
 from tools.handle_error import encode_json
 from pydantic import ValidationError
@@ -25,8 +24,7 @@ class MarginDeal(BaseDeal):
         return super().__init__(bot, db_collection)
 
     def simulate_margin_order(self, qty, side):
-        book_order = Book_Order(self.active_bot.pair)
-        price = float(book_order.matching_engine(True, qty))
+        price = float(self.matching_engine(self.active_bot.pair, True, qty))
         order = {
             "symbol": self.active_bot.pair,
             "orderId": self.generate_id(),
@@ -52,8 +50,7 @@ class MarginDeal(BaseDeal):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
-        book_order = Book_Order(self.active_bot.pair)
-        price = float(book_order.matching_engine(True, qty))
+        price = float(self.matching_engine(self.active_bot.pair, True, qty))
         response = self.client.create_margin_order(
             symbol=self.active_bot.pair,
             side="BUY",
@@ -70,8 +67,7 @@ class MarginDeal(BaseDeal):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
-        book_order = Book_Order(self.active_bot.pair)
-        price = float(book_order.matching_engine(False, qty))
+        price = float(self.matching_engine(self.active_bot.pair, False, qty))
         response = self.client.create_margin_order(
             symbol=self.active_bot.pair,
             side="SELL",
@@ -387,14 +383,13 @@ class MarginDeal(BaseDeal):
         Execute stop loss when price is hit
         This is used during streaming updates
         """
-        if self.db_collection.name == "paper_trading":
-            qty = self.active_bot.deal.buy_total_qty
-        else:
+        qty = None
+        if self.db_collection.name == "bots":
             qty = self.compute_isolated_qty(self.active_bot.pair)
 
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
-        if not qty:
+        if self.db_collection.name == "bots" and not qty:
             self.update_deal_logs(
                 f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
             )
@@ -420,14 +415,12 @@ class MarginDeal(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
-        book_order = Book_Order(self.active_bot.pair)
-        price = float(book_order.matching_engine(True, qty))
-        if not price:
-            price = float(book_order.matching_engine(True))
+        if qty:
+            price = float(self.matching_engine(self.active_bot.pair, True, qty))
 
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
-            res = self.simulate_margin_order(self.active_bot.pair, price, qty, "BUY")
+            res = self.simulate_margin_order(qty, "BUY")
         else:
             try:
                 res = self.client.create_margin_order(
@@ -448,10 +441,11 @@ class MarginDeal(BaseDeal):
                 return
 
         if res["status"] == "NEW":
-            self.update_deal_logs(
-                "Failed to execute stop loss order (status NEW), retrying..."
-            )
-            self.execute_stop_loss(price)
+            error_msg = "Failed to execute stop loss order (status NEW), retrying..."
+            self.update_deal_logs(error_msg)
+            raise Exception(error_msg)
+            # Not retry for now, as it can cause an infinite loop
+            # self.execute_stop_loss(price)
 
         stop_loss_order = MarginOrderSchema(
             timestamp=res["transactTime"],

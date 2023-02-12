@@ -10,7 +10,6 @@ from account.account import Account
 from deals.margin import MarginShortError
 from db import setup_db
 from deals.controllers import CreateDealController
-from orders.models.book_order import Book_Order
 from tools.enum_definitions import BinbotEnums
 from tools.exceptions import OpenDealError
 from tools.handle_error import (
@@ -232,8 +231,7 @@ class Bot(Account):
             balance = self.get_one_balance(base_asset)
             if balance:
                 qty = float(balance)
-                book_order = Book_Order(pair)
-                price = float(book_order.matching_engine(False, qty))
+                price = float(self.matching_engine(pair, False, qty))
 
                 if price and float(supress_notation(qty, qty_precision)) < 1:
                     order = {
