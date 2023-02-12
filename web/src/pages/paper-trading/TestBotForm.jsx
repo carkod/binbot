@@ -409,7 +409,7 @@ class TestBotForm extends React.Component {
                           this.props.bot.bot_profit > 0 ? "success" : "danger"
                         }
                       >
-                        {this.props.bot.bot_profit + "%"}
+                        {this.props.bot.bot_profit.toFixed(4) + "%"}
                       </Badge>{" "}
                       {!checkValue(this.props.bot.status) && (
                         <Badge

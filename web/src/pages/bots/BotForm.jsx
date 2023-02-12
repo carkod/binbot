@@ -22,7 +22,7 @@ import {
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
-import { bot } from "../../state/bots/actions";
+import { bot, computeSingleBotProfit } from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
 import { checkBalance, checkValue, roundDecimals } from "../../validations.js";
 import SafetyOrdersTab from "../../components/SafetyOrdersTab";
@@ -119,27 +119,12 @@ class BotForm extends React.Component {
       });
     }
 
-    if (
-      Object.keys(this.props.bot.deal).length > 0 &&
-      !checkValue(this.props.bot.base_order_size) &&
-      this.props.bot.deal !== p.bot.deal
-    ) {
-      let currentPrice =
-        this.state.currentChartPrice ||
-        parseFloat(this.props.bot.deal.current_price);
-      if (this.props.bot.deal.buy_price) {
-        const buyPrice = parseFloat(this.props.bot.deal.buy_price);
-        if (
-          this.props.bot.status === "completed" &&
-          !checkValue(this.props.bot.deal.sell_price)
-        ) {
-          currentPrice = this.props.bot.deal.sell_price;
-        }
-        const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-        this.setState({ bot_profit: profitChange.toFixed(4) });
-      } else {
-        this.setState({ bot_profit: 0 });
-      }
+    if (this.state.currentChartPrice !== s.currentChartPrice) {
+      const newBotProfit = computeSingleBotProfit(
+        this.props.bot,
+        this.state.currentChartPrice
+      );
+      this.props.setBot({ bot_profit: newBotProfit });
     }
 
     if (
@@ -148,7 +133,6 @@ class BotForm extends React.Component {
     ) {
       this.computeAvailableBalance();
     }
-
   };
 
   requiredinValidation = () => {
@@ -281,7 +265,7 @@ class BotForm extends React.Component {
         cooldown: this.props.bot.cooldown,
         strategy: this.props.bot.strategy,
         short_buy_price: this.props.bot.short_buy_price,
-        short_sell_price: this.props.bot.short_sell_price
+        short_sell_price: this.props.bot.short_sell_price,
       };
       if (this.state.id === null) {
         this.props.createBot(form);
@@ -484,18 +468,15 @@ class BotForm extends React.Component {
                   <Col>
                     <CardTitle tag="h3">
                       {this.props.bot?.pair}{" "}
-                      {!checkValue(this.state.bot_profit) &&
-                        !isNaN(this.state.bot_profit) && (
-                          <Badge
-                            color={
-                              parseFloat(this.state.bot_profit) > 0
-                                ? "success"
-                                : "danger"
-                            }
-                          >
-                            {this.state.bot_profit + "%"}
-                          </Badge>
-                        )}{" "}
+                      <Badge
+                        color={
+                          parseFloat(this.props.bot.bot_profit) > 0
+                            ? "success"
+                            : "danger"
+                        }
+                      >
+                        {this.props.bot.bot_profit.toFixed(4) + "%"}
+                      </Badge>{" "}
                       {!checkValue(this.props.bot?.status) && (
                         <Badge
                           color={
@@ -746,9 +727,7 @@ class BotForm extends React.Component {
             </Col>
             <Col md="5" sm="12">
               {this.props.balance_estimate && (
-                <BalanceAnalysis
-                  balance={this.props.balance_estimate}
-                />
+                <BalanceAnalysis balance={this.props.balance_estimate} />
               )}
             </Col>
           </Row>

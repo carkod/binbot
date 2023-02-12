@@ -271,7 +271,7 @@ class MarginDeal(BaseDeal):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        print(f"Opening margin margin_long_base_order")
+        print(f"Opening margin_short_base_order")
         
         initial_price = float(self.matching_engine(self.active_bot.pair, True))
         qty = round_numbers(
@@ -291,7 +291,7 @@ class MarginDeal(BaseDeal):
         order_data = MarginOrderSchema(
             timestamp=order_res["transactTime"],
             order_id=order_res["orderId"],
-            deal_type="margin_short",
+            deal_type="base_order",
             pair=order_res["symbol"],
             order_side=order_res["side"],
             order_type=order_res["type"],

@@ -2,14 +2,6 @@
   "version": "0.0.2",
   "configurations": [
     {
-      "name": "Python: streaming",
-      "type": "python",
-      "request": "launch",
-      "program": "${workspaceFolder}/api/market_updates.py",
-      "console": "internalConsole",
-      "justMyCode": true
-    },
-    {
       "name": "Python: FastAPI",
       "type": "python",
       "request": "launch",
@@ -19,6 +11,14 @@
       "jinja": true,
       "justMyCode": true,
       "console": "internalConsole"
+    },
+    {
+      "name": "Python: streaming",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/api/market_updates.py",
+      "console": "internalConsole",
+      "justMyCode": true
     },
     {
       "type": "chrome",
