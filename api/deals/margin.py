@@ -420,7 +420,7 @@ class MarginDeal(BaseDeal):
 
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
-            res = self.simulate_margin_order(qty, "BUY")
+            res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
             try:
                 res = self.client.create_margin_order(

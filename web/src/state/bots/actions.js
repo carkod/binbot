@@ -64,26 +64,60 @@ export function setFilterByMonthState() {
   };
 }
 
-export function getProfit(base_price, current_price) {
+export function getProfit(base_price, current_price, strategy = "long") {
   if (!checkValue(base_price) && !checkValue(current_price)) {
-    const percent =
+    let percent =
       ((parseFloat(current_price) - parseFloat(base_price)) /
-        parseFloat(base_price)) * 100;
+        parseFloat(base_price)) *
+      100;
+    if (strategy === "margin_short") {
+      percent = percent * -1;
+      console.log(`rendering a short bot. Profit = ${percent}`)
+    }
     return percent.toFixed(2);
   }
   return 0;
 }
 
+export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
+  if (bot.deal && bot.base_order_size) {
+    let currentPrice = bot.deal.sell_price
+      ? bot.deal.sell_price
+      : realTimeCurrPrice || bot.deal.current_price;
+    if (bot.deal.buy_price) {
+      const buyPrice = bot.deal.buy_price;
+      let profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
+      // Flip the value for shorts
+      if (bot.strategy === "margin_short") {
+        profitChange = parseFloat(profitChange) * -1;
+        console.log(`rendering a short bot. Profit = ${profitChange}`)
+      }
+      return profitChange;
+    } else {
+      return 0;
+    }
+  }
+}
+
 export function computeTotalProfit(bots) {
-  let currTotalProfit = 0
+  let currTotalProfit = 0;
   const totalProfit = bots
     .map((bot) => bot.deal)
     .reduce((accumulator, currBot) => {
-      if (currBot && !checkValue(currBot.take_profit_price) && parseFloat(currBot.take_profit_price) > 0) {
+      if (
+        currBot &&
+        !checkValue(currBot.take_profit_price) &&
+        parseFloat(currBot.take_profit_price) > 0
+      ) {
         if (currBot.buy_price === 0) {
-          currTotalProfit = 0
+          currTotalProfit = 0;
+        } else if (currBot.deal?.sell_price) {
+          currTotalProfit = getProfit(currBot.buy_price, currBot.sell_price);
         } else {
-          currTotalProfit = getProfit(currBot.buy_price, currBot.take_profit_price);
+          currTotalProfit = getProfit(
+            currBot.buy_price,
+            currBot.take_profit_price
+          );
         }
       }
       return parseFloat(accumulator) + parseFloat(currTotalProfit);

@@ -1,5 +1,5 @@
 import produce from "immer";
-import { bot, computeTotalProfit } from "../../state/bots/actions";
+import { bot, computeSingleBotProfit, computeTotalProfit } from "../../state/bots/actions";
 import {
   ACTIVATE_TEST_BOT,
   ACTIVATE_TEST_BOT_ERROR,
@@ -63,6 +63,7 @@ const testBotsReducer = produce((draft, action) => {
       return draft;
     }
     case GET_TEST_BOT_SUCCESS: {
+      action.bot.bot_profit = computeSingleBotProfit(action.bot)
       draft.bot = { ...draft.bot, ...action.bot };
       return draft;
     }
@@ -74,6 +75,7 @@ const testBotsReducer = produce((draft, action) => {
     }
 
     case CREATE_TEST_BOT: {
+      action.bot.bot_profit = computeSingleBotProfit(action.bot)
       draft.bot = { ...draft.bot, ...action.bot };
       return draft;
     }
@@ -87,6 +89,7 @@ const testBotsReducer = produce((draft, action) => {
     }
 
     case EDIT_TEST_BOT:
+      action.data.bot_profit = computeSingleBotProfit(action.bot)
       draft.bot = { ...draft.bot, ...action.data };
       return draft;
 

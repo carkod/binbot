@@ -813,7 +813,7 @@ class CreateDealController(BaseDeal):
                     short_sell_order_payload = {"pair": bot.pair, "qty": qty}
                     res = self.bb_request(
                         method="POST",
-                        url=self.bb_sell_market_order_url,
+                        url=self.bb_sell_order_url,
                         payload=short_sell_order_payload,
                     )
             except QuantityTooLow as error:

@@ -32,6 +32,7 @@ import {
 import StopLossTab from "../../components/StopLossTab";
 import TakeProfitTab from "../../components/TakeProfitTab";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
+import { computeSingleBotProfit } from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
 import { checkBalance, checkValue } from "../../validations.js";
 import { getSymbolInfo, getSymbols } from "../bots/actions";
@@ -43,14 +44,13 @@ import {
   getTestBot,
   setBotState,
 } from "./actions";
-import { convertGBP, getQuoteAsset, getBaseAsset } from "./requests";
+import { convertGBP, getBaseAsset, getQuoteAsset } from "./requests";
 
 class TestBotForm extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       id: props.match.params.id ? props.match.params.id : null,
-      bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
       soPriceDeviation: 0,
@@ -100,32 +100,6 @@ class TestBotForm extends React.Component {
       });
     }
 
-    if (
-      Object.keys(this.props.bot.deal).length > 0 &&
-      !checkValue(this.props.bot.base_order_size) &&
-      this.props.bot.deal !== p.bot.deal
-    ) {
-      let currentPrice =
-        this.state.currentChartPrice ||
-        parseFloat(this.props.bot.deal.current_price);
-      if (this.props.bot.deal.buy_price) {
-        const buyPrice = parseFloat(this.props.bot.deal.buy_price);
-
-        if (
-          this.props.bot.status === "completed" &&
-          !checkValue(this.props.bot.deal.sell_price)
-        ) {
-          currentPrice = this.props.bot.deal.sell_price;
-        }
-
-        const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-
-        this.setState({ bot_profit: profitChange.toFixed(4) });
-      } else {
-        this.setState({ bot_profit: 0 });
-      }
-    }
-
     if (this.props.bot.trailling !== p.bot.trailling) {
       const newOrderLines = updateOrderLines(
         this.props.bot,
@@ -136,6 +110,11 @@ class TestBotForm extends React.Component {
           draft.currentOrderLines = newOrderLines;
         })
       );
+    }
+
+    if (this.state.currentChartPrice !== s.currentChartPrice) {
+      const newBotProfit = computeSingleBotProfit(this.props.bot);
+      this.props.setBotState({ bot_profit: newBotProfit })
     }
   };
 
@@ -397,7 +376,7 @@ class TestBotForm extends React.Component {
       produce(this.state, (draft) => {
         draft.currentOrderLines = newOrderLines;
         draft.currentChartPrice = parseFloat(price);
-        draft.timescaleMarks = timescaleMarks
+        draft.timescaleMarks = timescaleMarks;
       })
     );
   };
@@ -425,17 +404,13 @@ class TestBotForm extends React.Component {
                   <Col>
                     <CardTitle tag="h3">
                       {this.props.bot?.pair}{" "}
-                      {!checkValue(this.state.bot_profit) && (
-                        <Badge
-                          color={
-                            parseFloat(this.state.bot_profit) > 0
-                              ? "success"
-                              : "danger"
-                          }
-                        >
-                          {this.state.bot_profit + "%"}
-                        </Badge>
-                      )}{" "}
+                      <Badge
+                        color={
+                          this.props.bot.bot_profit > 0 ? "success" : "danger"
+                        }
+                      >
+                        {this.props.bot.bot_profit + "%"}
+                      </Badge>{" "}
                       {!checkValue(this.props.bot.status) && (
                         <Badge
                           color={
