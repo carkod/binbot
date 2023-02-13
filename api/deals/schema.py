@@ -32,6 +32,7 @@ class DealSchema(BaseModel):
     sell_qty: float = 0
     post_closure_current_price: float = 0
     trailling_stop_loss_price: float = 0
+    trailling_profit_price: float = 0
     short_sell_price: float = 0
     short_sell_qty: float = 0
     short_sell_timestamp: float = 0

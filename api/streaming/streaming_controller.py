@@ -127,18 +127,30 @@ class StreamingController:
                     bot = deal.dynamic_take_profit(symbol, current_bot, close_price)
 
                 # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
-                initial_take_profit_price = float(bot["deal"]["buy_price"]) * (
-                    1 + (float(bot["take_profit"]) / 100)
-                )
-                print(f"{symbol} Updated (Didn't break trailling)")
-
-                # Direction 1 (upward): breaking the current trailling
-                if bot and float(close_price) >= float(initial_take_profit_price):
-                    new_take_profit = float(close_price) * (
+                if bot["deal"]["trailling_stop_loss_price"] == 0:
+                    trailling_price = float(bot["deal"]["buy_price"]) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
-                    new_trailling_stop_loss = float(close_price) - (
-                        float(close_price) * (float(bot["trailling_deviation"]) / 100)
+                    print(
+                        f"{symbol} First time breaking trailling (setting trailling_stop_loss)"
+                    )
+                else:
+                    # Current take profit + next take_profit
+                    trailling_price = float(bot["deal"]["take_profit_price"]) * (
+                        1 + (float(bot["take_profit"]) / 100)
+                    )
+                    print(
+                        f"{symbol} Updated (Didn't break trailling), updating trailling price points"
+                    )
+
+                # Direction 1 (upward): breaking the current trailling
+                if bot and float(close_price) >= float(trailling_price):
+                    new_take_profit = float(trailling_price) * (
+                        1 + (float(bot["take_profit"]) / 100)
+                    )
+                    new_trailling_stop_loss = float(trailling_price) - (
+                        float(trailling_price)
+                        * (float(bot["trailling_deviation"]) / 100)
                     )
                     # Update deal take_profit
                     bot["deal"]["take_profit_price"] = new_take_profit
@@ -153,9 +165,7 @@ class StreamingController:
                             f"{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
                         )
                         # Update trailling_stop_loss
-                        bot["deal"][
-                            "trailling_stop_loss_price"
-                        ] = new_trailling_stop_loss
+                        bot["deal"]["trailling_stop_loss_price"] = new_trailling_stop_loss
                         print(
                             f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                         )
@@ -281,7 +291,23 @@ class StreamingController:
             # Keep all orders up to date
             # This includes all bots with any status ["active", "completed", ...]
             # This will help detect bugs in the bots opening and closing mechanism
+            print(f"Updating order no: {order_id}")
             self.streaming_db.bots.update_one(
+                {"orders": {"$elemMatch": {"order_id": order_id}}},
+                {
+                    "$inc": {"deal.commission": float(result["n"])},
+                    "$set": {
+                        "orders.$.status": result["status"],
+                        "orders.$.price": result["price"],
+                        "orders.$.qty": result["executedQty"],
+                        "orders.$.order_side": result["side"],
+                        "orders.$.fills": result["fills"],
+                        "orders.$.timestamp": result["transactTime"],
+                    },
+                },
+            )
+
+            self.streaming_db.paper_trading.update_one(
                 {"orders": {"$elemMatch": {"order_id": order_id}}},
                 {
                     "$inc": {"deal.commission": float(result["n"])},
