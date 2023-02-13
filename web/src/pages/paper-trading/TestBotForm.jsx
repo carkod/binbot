@@ -114,7 +114,7 @@ class TestBotForm extends React.Component {
 
     if (this.state.currentChartPrice !== s.currentChartPrice) {
       const newBotProfit = computeSingleBotProfit(this.props.bot);
-      this.props.setBotState({ bot_profit: newBotProfit })
+      this.props.setBotState({ bot_profit: newBotProfit });
     }
   };
 
@@ -432,13 +432,14 @@ class TestBotForm extends React.Component {
                     </CardTitle>
                   </Col>
                   <Col>
-                    {!checkValue(this.state.bot_profit) &&
-                      !isNaN(this.state.bot_profit) && (
+                    {
+                      !checkValue(this.props.bot.bot_profit) && (
                         <h5>
                           Earnings after commissions (est.):{" "}
-                          {parseFloat(this.state.bot_profit) - 0.3 + "%"}
+                          {parseFloat(this.props.bot.bot_profit) - 0.3 + "%"}
                         </h5>
-                      )}
+                      )
+                    }
                   </Col>
                 </Row>
               </CardHeader>
@@ -458,9 +459,7 @@ class TestBotForm extends React.Component {
           </Col>
         </Row>
         <Row>
-          {!checkValue(this.props.bot) &&
-          this.props.bot.orders.length > 0 &&
-          !checkValue(this.props.match.params.id) ? (
+          {this.props.bot.orders.length > 0 && this.props.match.params.id ? (
             <>
               <Col md="7" sm="12">
                 <BotInfo bot={this.props.bot} />

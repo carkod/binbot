@@ -44,8 +44,8 @@ class Account(BinbotApi):
             params["symbol"] = symbol
 
         mongo_cache = self.setup_mongocache()
-        # set up a cache that expires in 86400'' (24hrs)
-        session = CachedSession('http_cache', backend=mongo_cache, expire_after=86400)
+        # set up a cache that expires in 1440'' (24hrs)
+        session = CachedSession('http_cache', backend=mongo_cache, expire_after=1440)
         exchange_info_res = session.get(url=f"{self.exchangeinfo_url}", params=params)
         exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info

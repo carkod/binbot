@@ -74,7 +74,7 @@ export default function BotInfo({ bot }) {
           )}
         </Table>
         <hr />
-        {!checkValue(bot.deal) && !checkValue(bot.deal.buy_price) && (
+        {bot.deal && (
           <div className="col-6">
             <h5>Deal information (representated in the graph)</h5>
             <ListGroup>

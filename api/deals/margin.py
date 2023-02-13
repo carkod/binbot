@@ -21,7 +21,7 @@ class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection: str) -> None:
         # Inherit from parent class
         self.client = Client(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
-        return super().__init__(bot, db_collection)
+        super().__init__(bot, db_collection)
 
     def simulate_margin_order(self, qty, side):
         price = float(self.matching_engine(self.active_bot.pair, True, qty))
@@ -320,18 +320,7 @@ class MarginDeal(BaseDeal):
 
         # Activate bot
         self.active_bot.status = "active"
-
-        bot = encode_json(self.active_bot)
-        if "_id" in bot:
-            bot.pop("_id")  # _id is what causes conflict not id
-
-        document = self.db_collection.find_one_and_update(
-            {"id": self.active_bot.id},
-            {"$set": bot},
-            return_document=ReturnDocument.AFTER,
-        )
-
-        return document
+        return self.active_bot
 
     def streaming_updates(self, close_price: str):
         """
@@ -367,17 +356,7 @@ class MarginDeal(BaseDeal):
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
             self.active_bot.deal.margin_short_stop_loss_price = stop_loss_price
 
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")  # _id is what causes conflict not id
-
-            document = self.db_collection.find_one_and_update(
-                {"id": self.active_bot.id},
-                {"$set": bot},
-                return_document=ReturnDocument.AFTER,
-            )
-
-            return document
+            return self.active_bot
 
         bot = encode_json(self.active_bot)
         return bot
