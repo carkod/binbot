@@ -1033,6 +1033,7 @@ class CreateDealController(BaseDeal):
                 self.active_bot = MarginDeal(bot=self.active_bot, db_collection=self.db_collection.name).margin_short_base_order()
             else:
                 bot = self.base_order()
+                self.active_bot = BotSchema.parse_obj(bot)
             
         else:
             bot = self.db_collection.find_one({"id": self.active_bot.id})

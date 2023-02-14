@@ -5,7 +5,7 @@ from db import setup_db
 from deals.controllers import CreateDealController
 from deals.margin import MarginDeal
 from pymongo import ReturnDocument
-
+from datetime import datetime
 
 class TerminateStreaming(Exception):
     pass
@@ -132,7 +132,7 @@ class StreamingController:
                         1 + (float(bot["take_profit"]) / 100)
                     )
                     print(
-                        f"{symbol} First time breaking trailling (setting trailling_stop_loss)"
+                        f"{datetime.utcnow()} {symbol} First time breaking trailling (setting trailling_stop_loss)"
                     )
                 else:
                     # Current take profit + next take_profit
@@ -140,7 +140,7 @@ class StreamingController:
                         1 + (float(bot["take_profit"]) / 100)
                     )
                     print(
-                        f"{symbol} Updated (Didn't break trailling), updating trailling price points"
+                        f"{datetime.utcnow()} {symbol} Updated (Didn't break trailling), updating trailling price points"
                     )
 
                 # Direction 1 (upward): breaking the current trailling
@@ -167,7 +167,7 @@ class StreamingController:
                         # Update trailling_stop_loss
                         bot["deal"]["trailling_stop_loss_price"] = new_trailling_stop_loss
                         print(
-                            f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
+                            f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                         )
                     else:
                         # Protect against drops by selling at buy price + 0.75% commission
@@ -175,7 +175,7 @@ class StreamingController:
                             float(bot["deal"]["buy_price"]) * 1.075
                         )
                         print(
-                            f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
+                            f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                         )
 
                     bot = self.streaming_db[db_collection].find_one_and_update(

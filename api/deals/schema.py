@@ -48,6 +48,7 @@ class DealSchema(BaseModel):
     margin_short_sell_price: float = 0
     margin_short_sell_timestamp: float = 0
     margin_short_buy_back_price: float = 0
+    margin_short_buy_back_timestamp: float = 0
 
     @validator(
         "buy_price",
