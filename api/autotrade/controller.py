@@ -8,7 +8,7 @@ from tools.handle_error import (
     json_response_error,
     json_response_message,
 )
-
+from time import time
 
 class AutotradeSettingsController:
     """
@@ -37,8 +37,8 @@ class AutotradeSettingsController:
             settings = data.dict()
             if "_id" in settings:
                 settings.pop("_id")
-            if "update_required" in settings and settings["update_required"] == False:
-                settings["update_required"] = True
+            if "update_required" in settings and settings["update_required"] == None:
+                settings["update_required"] = time()
 
             self.db.update_one({"_id": self.document_id}, {"$set": settings})
             resp = json_response_message("Successfully updated settings")

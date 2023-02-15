@@ -6,7 +6,7 @@ from deals.controllers import CreateDealController
 from deals.margin import MarginDeal
 from pymongo import ReturnDocument
 from datetime import datetime
-
+from time import time
 class TerminateStreaming(Exception):
     pass
 
@@ -236,9 +236,12 @@ class StreamingController:
         local_settings = self.streaming_db.research_controller.find_one(
             {"_id": "settings"}
         )
-        if local_settings["update_required"]:
+        # Add margin time to update_required signal to avoid restarting constantly
+        # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
+        print(time() - local_settings["update_required"])
+        if time() - local_settings["update_required"] > 600:
             self.streaming_db.research_controller.update_one(
-                {"_id": "settings"}, {"$set": {"update_required": False}}
+                {"_id": "settings"}, {"$set": {"update_required": None}}
             )
             raise TerminateStreaming("Streaming needs to restart to reload bots.")
 

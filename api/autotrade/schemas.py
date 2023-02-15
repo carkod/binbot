@@ -20,7 +20,7 @@ class AutotradeSettingsSchema(BaseModel):
     balance_size_to_use: str = "100"
     max_request: int = 950
     system_logs: list[str] = []
-    update_required: bool = False
+    update_required: float | None = None
     telegram_signals: int = 1
     max_active_autotrade_bots: int = 1
     base_order_size: str = "15"  # Assuming 10 USDT is the minimum, adding a bit more to avoid MIN_NOTIONAL fail

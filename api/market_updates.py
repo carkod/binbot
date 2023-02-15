@@ -37,6 +37,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as error:
         print(error)
-        print("Waiting 5 seconds before restarting sockets. This is to allow possible delays in database update")
-        time.sleep(5)
         asyncio.run(main())

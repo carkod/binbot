@@ -399,9 +399,7 @@ class MarginDeal(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
-        if qty:
-            price = float(self.matching_engine(self.active_bot.pair, True, qty))
-
+        price = float(self.matching_engine(self.active_bot.pair, True, qty))
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
@@ -524,7 +522,7 @@ class MarginDeal(BaseDeal):
                 return
 
         if qty:
-            price = float(self.matching_engine(self.active_bot.pair, True, qty))
+            price = self.matching_engine(self.active_bot.pair, True, qty)
 
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
