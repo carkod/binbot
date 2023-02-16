@@ -446,9 +446,8 @@ class MarginDeal(BaseDeal):
             isIsolated=res["isIsolated"],
         )
 
-        commission = 0
         for chunk in res["fills"]:
-            commission += float(chunk["commission"])
+            self.active_bot.total_commission += float(chunk["commission"])
 
         self.active_bot.orders.append(stop_loss_order)
 
@@ -570,12 +569,10 @@ class MarginDeal(BaseDeal):
             isIsolated=res["isIsolated"],
         )
 
-        commission = 0
         for chunk in res["fills"]:
-            commission += float(chunk["commission"])
+            self.active_bot.total_commission += float(chunk["commission"])
 
         self.active_bot.orders.append(take_profit_order)
-        self.active_bot.total_commission += commission
 
         # Guard against type errors
         # These errors are sometimes hard to debug, it takes hours

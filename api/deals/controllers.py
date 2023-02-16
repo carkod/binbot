@@ -540,9 +540,9 @@ class CreateDealController(BaseDeal):
             "origQty"
         ]  # update with actual quantity
 
-        commission = 0
         for chunk in safety_order.fills:
-            commission += float(chunk["commission"])
+            self.active_bot.total_commission += float(chunk["commission"])
+            
 
         if hasattr(self.active_bot.deal, "buy_total_qty"):
             buy_total_qty = float(self.active_bot.deal.buy_total_qty) + float(
@@ -710,9 +710,8 @@ class CreateDealController(BaseDeal):
             status=res["status"],
         )
 
-        commission = 0
         for chunk in res["fills"]:
-            commission += float(chunk["commission"])
+            self.active_bot.total_commission += float(chunk["commission"])
 
         self.active_bot.orders.append(stop_loss_order)
         self.active_bot.deal.sell_price = res["price"]
@@ -848,15 +847,12 @@ class CreateDealController(BaseDeal):
             status=res["status"],
         )
 
-        commission = 0
         for chunk in res["fills"]:
-            commission += float(chunk["commission"])
-        
-        deal = DealSchema(
-            short_sell_price = res["price"],
-            short_sell_qty = res["origQty"],
-            short_sell_timestamp = res["transactTime"]
-        )
+            self.active_bot.total_commission += float(chunk["commission"])
+
+        self.active_bot.short_sell_price = res["price"]
+        self.active_bot.short_sell_qty = res["origQty"]
+        self.active_bot.short_sell_timestamp = res["transactTime"]
 
         self.active_bot.orders.append(short_sell_order)
         self.active_bot.short_sell_price = 0  # stops short_sell position
