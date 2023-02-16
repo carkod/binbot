@@ -55,8 +55,9 @@ jobs:
           -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
           -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
-          -e ENV=ci -d binbot && docker ps
-          # curl --head --fail --retry-delay 5 --retry 5 --retry-connrefused http://localhost:8008
+          -e ENV=ci -d binbot \
+          sleep 10 \
+          curl --head --fail --retry-delay 5 --retry 5 --retry-connrefused http://localhost:8008
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |

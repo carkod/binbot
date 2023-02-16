@@ -949,9 +949,10 @@ class CreateDealController(BaseDeal):
         print(f"dynamic profit for {symbol} sd: ", sd)
         if sd >= 0:
             self.active_bot.deal.sd = sd
-            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"]:
+            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"] and sd < current_bot["deal"]["sd"]:
                 # Too little sd and the bot won't trail, instead it'll sell immediately
                 # Too much sd and the bot will never sell and overlap with other positions
+                # Current volatility < previous volatility, otherwise trailling_stop_loss could be so low that it doesn't closes
                 volatility: float = float(sd) / float(close_price)
                 if volatility < 0.018:
                     volatility = 0.018
