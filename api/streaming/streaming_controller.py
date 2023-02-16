@@ -298,7 +298,7 @@ class StreamingController:
             self.streaming_db.bots.update_one(
                 {"orders": {"$elemMatch": {"order_id": order_id}}},
                 {
-                    "$inc": {"deal.commission": float(result["n"])},
+                    "$inc": {"total_commission": float(result["n"])},
                     "$set": {
                         "orders.$.status": result["status"],
                         "orders.$.price": result["price"],
@@ -313,7 +313,7 @@ class StreamingController:
             self.streaming_db.paper_trading.update_one(
                 {"orders": {"$elemMatch": {"order_id": order_id}}},
                 {
-                    "$inc": {"deal.commission": float(result["n"])},
+                    "$inc": {"total_commission": float(result["n"])},
                     "$set": {
                         "orders.$.status": result["status"],
                         "orders.$.price": result["price"],

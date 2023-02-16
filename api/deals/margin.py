@@ -585,7 +585,6 @@ class MarginDeal(BaseDeal):
         self.active_bot.status = "completed"
 
         try:
-
             bot = encode_json(self.active_bot)
             if "_id" in bot:
                 bot.pop("_id")
