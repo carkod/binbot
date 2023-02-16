@@ -11,6 +11,7 @@ from db import setup_db
 from requests_cache import CachedSession, MongoCache
 from pymongo import MongoClient
 import os
+import pandas
 class Account(BinbotApi):
     def __init__(self):
         self.db = setup_db()
@@ -43,8 +44,8 @@ class Account(BinbotApi):
             params["symbol"] = symbol
 
         mongo_cache = self.setup_mongocache()
-        # set up a cache that expires in 86400'' (24hrs)
-        session = CachedSession('http_cache', backend=mongo_cache, expire_after=86400)
+        # set up a cache that expires in 1440'' (24hrs)
+        session = CachedSession('http_cache', backend=mongo_cache, expire_after=1440)
         exchange_info_res = session.get(url=f"{self.exchangeinfo_url}", params=params)
         exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info
@@ -234,3 +235,46 @@ class Account(BinbotApi):
             (x["free"] for x in data["data"] if x["asset"] == symbol), None
         )
         return symbol_balance
+
+    def matching_engine(self, symbol: str, order_side: bool, qty=None):
+        """
+        Match quantity with available 100% fill order price,
+        so that order can immediately buy/sell
+        If it doesn't match, do split order
+        @param: order_side -
+            Buy order = get ask prices = True
+            Sell order = get bids prices = False
+        @param: qty - quantity wanted to be bought/sold
+        """
+
+        url = self.order_book_url
+        params = [("symbol", symbol)]
+        res = requests.get(url=url, params=params)
+        data = handle_binance_errors(res)
+        
+        if order_side:
+            df = pandas.DataFrame(data["bids"], columns=["price", "qty"])
+        else:
+            df = pandas.DataFrame(data["asks"], columns=["price", "qty"])
+
+        df["qty"] = df["qty"].astype(float)
+
+        # Test bots qty = None
+        if not qty:
+            return df["price"].iloc[0]
+
+        # If quantity matches list
+        df = df[:5]
+        match_qty = df[df.qty > float(qty)]
+        condition = df["qty"] > float(qty)
+        if not condition.any():
+            # force market order
+            return None
+        try:
+            match_qty["price"].iloc[0]
+        except IndexError as e:
+            print(e)
+            print(f'Matching engine error {match_qty["price"]}')
+
+        final_qty = match_qty["price"].iloc[0]
+        return final_qty

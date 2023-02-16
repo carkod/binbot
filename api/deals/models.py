@@ -1,6 +1,7 @@
 from time import time
-from pydantic import BaseModel
 from typing import List
+
+from pydantic import BaseModel
 
 
 class BinanceOrderModel(BaseModel):
@@ -15,6 +16,22 @@ class BinanceOrderModel(BaseModel):
     status: str
     price: str
     deal_type: str
+
+
+class BinanceRepayRecord(BaseModel):
+    isolatedSymbol: str
+    amount: str
+    asset: str
+    interest: str
+    principal: str
+    status: str
+    timestamp: float
+    txId: int
+
+
+class BinanceRepayRecords(BaseModel):
+    rows: list[BinanceRepayRecord]
+    total: int  # no. repays
 
 
 class DealModel(BaseModel):
@@ -38,7 +55,6 @@ class DealModel(BaseModel):
     short_sell_price: float = 0
     short_sell_qty: float = 0
     short_sell_timestamp: float = time() * 1000
-
 
 
 class SafetyOrderModel(BaseModel):

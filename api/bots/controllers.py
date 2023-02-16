@@ -7,9 +7,9 @@ from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 
 from account.account import Account
+from deals.margin import MarginShortError
 from db import setup_db
 from deals.controllers import CreateDealController
-from orders.models.book_order import Book_Order
 from tools.enum_definitions import BinbotEnums
 from tools.exceptions import OpenDealError
 from tools.handle_error import (
@@ -31,7 +31,7 @@ class Bot(Account):
         self.db_collection = self.db[collection_name]
     
     def _update_required(self):
-        self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": True}})
+        self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": time()}})
         return
 
     def get(self, status, start_date, end_date, no_cooldown):
@@ -184,6 +184,9 @@ class Bot(Account):
                 return json_response_error(error.args[0])
             except NotEnoughFunds as e:
                 return json_response_error(e.args[0])
+            except MarginShortError as error:
+                message = str("Unable to create margin_short bot: ".join(error.args))
+                return json_response_error(message)
             except Exception as error:
                 resp = json_response_error(f"Unable to activate bot: {error}")
                 return resp
@@ -228,8 +231,7 @@ class Bot(Account):
             balance = self.get_one_balance(base_asset)
             if balance:
                 qty = float(balance)
-                book_order = Book_Order(pair)
-                price = float(book_order.matching_engine(False, qty))
+                price = float(self.matching_engine(pair, False, qty))
 
                 if price and float(supress_notation(qty, qty_precision)) < 1:
                     order = {

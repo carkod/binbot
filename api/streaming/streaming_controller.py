@@ -3,9 +3,10 @@ import os
 from binance import AsyncClient, BinanceSocketManager
 from db import setup_db
 from deals.controllers import CreateDealController
+from deals.margin import MarginDeal
 from pymongo import ReturnDocument
-
-
+from datetime import datetime
+from time import time
 class TerminateStreaming(Exception):
     pass
 
@@ -64,6 +65,11 @@ class StreamingController:
         It updates the bots deals, safety orders, trailling orders, stop loss
         for both paper trading test bots and real bots
         """
+        # Margin short
+        if current_bot["strategy"] == "margin_short":
+            margin_deal = MarginDeal(current_bot, db_collection=db_collection)
+            margin_deal.streaming_updates(close_price)
+            return
 
         # Short strategy
         if (
@@ -121,32 +127,38 @@ class StreamingController:
                     bot = deal.dynamic_take_profit(symbol, current_bot, close_price)
 
                 # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
-                initial_take_profit_price = float(bot["deal"]["buy_price"]) * (
-                    1 + (float(bot["take_profit"]) / 100)
-                )
-                print(f"{symbol} Updated (Didn't break trailling)")
-
-                # Direction 1 (upward): breaking the current trailling
-                if bot and float(close_price) >= float(initial_take_profit_price):
-                    new_take_profit = float(close_price) * (
+                if bot["deal"]["trailling_stop_loss_price"] == 0:
+                    trailling_price = float(bot["deal"]["buy_price"]) * (
                         1 + (float(bot["take_profit"]) / 100)
                     )
-                    new_trailling_stop_loss = float(
-                            close_price
-                        ) - (
-                            float(close_price)
-                            * (float(bot["trailling_deviation"]) / 100)
-                        )
+                    print(
+                        f"{datetime.utcnow()} {symbol} First time breaking trailling (setting trailling_stop_loss)"
+                    )
+                else:
+                    # Current take profit + next take_profit
+                    trailling_price = float(bot["deal"]["take_profit_price"]) * (
+                        1 + (float(bot["take_profit"]) / 100)
+                    )
+                    print(
+                        f"{datetime.utcnow()} {symbol} Updated (Didn't break trailling), updating trailling price points"
+                    )
+
+                # Direction 1 (upward): breaking the current trailling
+                if bot and float(close_price) >= float(trailling_price):
+                    new_take_profit = float(trailling_price) * (
+                        1 + (float(bot["take_profit"]) / 100)
+                    )
+                    new_trailling_stop_loss = float(trailling_price) - (
+                        float(trailling_price)
+                        * (float(bot["trailling_deviation"]) / 100)
+                    )
                     # Update deal take_profit
                     bot["deal"]["take_profit_price"] = new_take_profit
                     # take_profit but for trailling, to avoid confusion
                     # trailling_profit_price always be > trailling_stop_loss_price
                     bot["deal"]["trailling_profit_price"] = new_take_profit
 
-                    if (
-                        new_trailling_stop_loss
-                        > bot["deal"]["buy_price"]
-                    ):
+                    if new_trailling_stop_loss > bot["deal"]["buy_price"]:
                         # Selling below buy_price will cause a loss
                         # instead let it drop until it hits safety order or stop loss
                         print(
@@ -155,7 +167,7 @@ class StreamingController:
                         # Update trailling_stop_loss
                         bot["deal"]["trailling_stop_loss_price"] = new_trailling_stop_loss
                         print(
-                            f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
+                            f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                         )
                     else:
                         # Protect against drops by selling at buy price + 0.75% commission
@@ -163,7 +175,7 @@ class StreamingController:
                             float(bot["deal"]["buy_price"]) * 1.075
                         )
                         print(
-                            f'Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
+                            f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                         )
 
                     bot = self.streaming_db[db_collection].find_one_and_update(
@@ -182,16 +194,20 @@ class StreamingController:
                             },
                         )
 
-                # Sell after hitting trailling stop_loss and if price already broken trailling
-                price = bot["deal"]["trailling_stop_loss_price"]
                 # Direction 2 (downward): breaking the trailling_stop_loss
                 # Make sure it's red candlestick, to avoid slippage loss
+                # Sell after hitting trailling stop_loss and if price already broken trailling
                 if (
-                    float(price) > 0
-                    and float(close_price) < float(price)
-                    and (float(open_price) - float(close_price)) > 0
+                    float(bot["deal"]["trailling_stop_loss_price"]) > 0
+                    # Broken stop_loss
+                    and float(close_price)
+                    < float(bot["deal"]["trailling_stop_loss_price"])
+                    # Red candlestick
+                    and (float(open_price) > float(close_price))
                 ):
-                    print(f"Hit trailling_stop_loss_price {price}. Selling {symbol}")
+                    print(
+                        f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}'
+                    )
                     try:
                         deal = CreateDealController(bot, db_collection)
                         deal.trailling_profit()
@@ -220,9 +236,12 @@ class StreamingController:
         local_settings = self.streaming_db.research_controller.find_one(
             {"_id": "settings"}
         )
-        if local_settings["update_required"]:
+        # Add margin time to update_required signal to avoid restarting constantly
+        # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
+        print(time() - local_settings["update_required"])
+        if time() - local_settings["update_required"] > 600:
             self.streaming_db.research_controller.update_one(
-                {"_id": "settings"}, {"$set": {"update_required": False}}
+                {"_id": "settings"}, {"$set": {"update_required": None}}
             )
             raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
@@ -268,15 +287,71 @@ class StreamingController:
 
                 await self.client.close_connection()
 
+    def process_user_data(self, result):
+        # Parse result. Print result for raw result from Binance
+        order_id = result["i"]
+        if order_id:
+            # Keep all orders up to date
+            # This includes all bots with any status ["active", "completed", ...]
+            # This will help detect bugs in the bots opening and closing mechanism
+            print(f"Updating order no: {order_id}")
+            self.streaming_db.bots.update_one(
+                {"orders": {"$elemMatch": {"order_id": order_id}}},
+                {
+                    "$inc": {"total_commission": float(result["n"])},
+                    "$set": {
+                        "orders.$.status": result["status"],
+                        "orders.$.price": result["price"],
+                        "orders.$.qty": result["executedQty"],
+                        "orders.$.order_side": result["side"],
+                        "orders.$.fills": result["fills"],
+                        "orders.$.timestamp": result["transactTime"],
+                    },
+                },
+            )
+
+            self.streaming_db.paper_trading.update_one(
+                {"orders": {"$elemMatch": {"order_id": order_id}}},
+                {
+                    "$inc": {"total_commission": float(result["n"])},
+                    "$set": {
+                        "orders.$.status": result["status"],
+                        "orders.$.price": result["price"],
+                        "orders.$.qty": result["executedQty"],
+                        "orders.$.order_side": result["side"],
+                        "orders.$.fills": result["fills"],
+                        "orders.$.timestamp": result["transactTime"],
+                    },
+                },
+            )
+
+        else:
+            print(
+                f"No bot found with order client order id: {order_id}. Order status: {result['X']}"
+            )
+
     async def get_user_data(self):
         print("Streaming user data")
         socket, client = await self.setup_client()
         user_data = socket.user_socket()
         async with user_data as ud:
             try:
-                while True:
-                    res = await ud.recv()
-                    print(res)
+                res = await ud.recv()
+
+                if "result" in res:
+                    print(f'Subscriptions: {res["result"]}')
+                    await self.process_user_data(res["result"])
+                else:
+                    print(f"Error: {res}")
+
+                await self.client.close_connection()
+
             except Exception as error:
                 print(f"get_user_data sockets error: {error}")
                 await client.close_connection()
+
+    async def get_isolated_margin_data(self):
+        print("Streaming isolated margin data")
+        socket, client = await self.setup_client()
+        # im_data = socket.isolated_margin_socket(symbol)
+        pass
