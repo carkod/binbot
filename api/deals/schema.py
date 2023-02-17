@@ -19,6 +19,7 @@ class OrderSchema(BaseModel):
 
 class DealSchema(BaseModel):
     buy_price: float = 0  # base currency quantity e.g. 3000 USDT in BTCUSDT
+    base_order_price: float = 0 # To replace buy_price - better naming for both long and short positions
     buy_timestamp: float = 0
     buy_total_qty: float = 0
     current_price: float = 0
@@ -38,8 +39,6 @@ class DealSchema(BaseModel):
     short_sell_timestamp: float = 0
     stop_loss_price: float = 0
     margin_short_base_order: float = 0  # borrowed amount
-    margin_short_take_profit_price: float = 0
-    margin_short_stop_loss_price: float = 0
     margin_load_id: str = ""
     margin_short_loan_interest: float = 0
     margin_short_loan_principal: float = 0

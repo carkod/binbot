@@ -241,12 +241,12 @@ class StreamingController:
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
             print(time() - local_settings["update_required"])
-        if time() - local_settings["update_required"] > 200:
-            self.streaming_db.research_controller.update_one(
-                {"_id": "settings"}, {"$set": {"update_required": None}}
-            )
-            await self.client.close_connection()
-            raise TerminateStreaming("Streaming needs to restart to reload bots.")
+            if time() - local_settings["update_required"] > 600:
+                self.streaming_db.research_controller.update_one(
+                    {"_id": "settings"}, {"$set": {"update_required": None}}
+                )
+                await self.client.close_connection()
+                raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
             close_price = result["k"]["c"]

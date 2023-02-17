@@ -315,7 +315,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_sell_price=order_res["price"]
         self.active_bot.deal.buy_total_qty=order_res["origQty"]
         self.active_bot.deal.margin_short_base_order=order_res["origQty"]
-        self.active_bot.deal.margin_short_take_profit_price=tp_price
+        self.active_bot.deal.take_profit_price=tp_price
 
         # Activate bot
         self.active_bot.status = "active"
@@ -333,13 +333,13 @@ class MarginDeal(BaseDeal):
 
         # Direction 1: upward trend
         # Future feature: trailling
-        if price < self.active_bot.deal.margin_short_take_profit_price:
+        if price > 0 and self.active_bot.deal.stop_loss_price > 0 and price < self.active_bot.deal.take_profit_price:
             self.execute_take_profit()
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
         
         # Direction 2: downard trend
-        elif price > 0 and self.active_bot.deal.margin_short_stop_loss_price > 0 and price > self.active_bot.deal.margin_short_stop_loss_price:
+        elif price > 0 and self.active_bot.deal.stop_loss_price > 0 and price > self.active_bot.deal.stop_loss_price:
             self.execute_stop_loss()
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
@@ -356,8 +356,22 @@ class MarginDeal(BaseDeal):
             hasattr(self.active_bot, "stop_loss")
             and float(self.active_bot.stop_loss) > 0
         ):
-            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
-            self.active_bot.deal.margin_short_stop_loss_price = stop_loss_price
+            stop_loss_price = price + (price * (float(self.active_bot.stop_loss) / 100))
+            self.active_bot.deal.stop_loss_price = stop_loss_price
+
+        return self.active_bot
+
+    def set_margin_take_profit(self):
+        """
+        Sets take_profit for margin_short at initial activation
+        """
+        price = self.active_bot.deal.margin_short_sell_price
+        if (
+            hasattr(self.active_bot, "take_profit")
+            and float(self.active_bot.take_profit) > 0
+        ):
+            take_profit_price = price + (price * (float(self.active_bot.take_profit) / 100))
+            self.active_bot.deal.take_profit_price = take_profit_price
 
         return self.active_bot
 
@@ -383,7 +397,7 @@ class MarginDeal(BaseDeal):
     
         order_id = None
         for order in self.active_bot.orders:
-            if order.deal_type == "margin_short_stop_loss":
+            if order.deal_type == "stop_loss":
                 order_id = order.order_id
                 self.active_bot.orders.remove(order)
                 break
@@ -399,7 +413,7 @@ class MarginDeal(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
-        price = float(self.matching_engine(self.active_bot.pair, True, qty))
+        price = self.matching_engine(self.active_bot.pair, True, qty)
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")

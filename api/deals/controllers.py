@@ -1052,6 +1052,10 @@ class CreateDealController(BaseDeal):
                 self.active_bot.deal.stop_loss_price = supress_notation(
                     stop_loss_price, self.price_precision
                 )
+        
+        # Margin short Take profit
+        if hasattr(self.active_bot, "take_profit") and float(self.active_bot.take_profit) > 0 and self.active_bot.strategy == "margin_short":
+            self.active_bot = MarginDeal(bot=self.active_bot, db_collection=self.db_collection.name).set_margin_take_profit()
 
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
         # if we don't do this, the trailling stop loss will trigger
