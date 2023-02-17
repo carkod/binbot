@@ -333,7 +333,7 @@ class MarginDeal(BaseDeal):
 
         # Direction 1: upward trend
         # Future feature: trailling
-        if price > 0 and self.active_bot.deal.stop_loss_price > 0 and price < self.active_bot.deal.take_profit_price:
+        if price > 0 and self.active_bot.deal.take_profit_price > 0 and price < self.active_bot.deal.take_profit_price:
             self.execute_take_profit()
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
@@ -518,7 +518,7 @@ class MarginDeal(BaseDeal):
     
         order_id = None
         for order in self.active_bot.orders:
-            if order.deal_type == "margin_short_take_profit":
+            if order.deal_type == "take_profit":
                 order_id = order.order_id
                 self.active_bot.orders.remove(order)
                 break
@@ -568,7 +568,7 @@ class MarginDeal(BaseDeal):
 
         take_profit_order = MarginOrderSchema(
             timestamp=res["transactTime"],
-            deal_type="stop_loss",
+            deal_type="take_profit",
             order_id=res["orderId"],
             pair=res["symbol"],
             order_side=res["side"],

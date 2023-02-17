@@ -241,7 +241,7 @@ class StreamingController:
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
             print(time() - local_settings["update_required"])
-            if time() - local_settings["update_required"] > 600:
+            if time() - local_settings["update_required"] > 200:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": None}}
                 )
@@ -342,17 +342,20 @@ class StreamingController:
             try:
                 res = await ud.recv()
 
-                if "result" in res:
-                    print(f'Subscriptions: {res["result"]}')
-                    await self.process_user_data(res["result"])
+                if "e" in res:
+                    if "executionReport" in res["e"]:
+                        await self.process_user_data(res)
+                    elif "outboundAccountPosition" in res["e"]:
+                        print(f'Assets changed {res["e"]}')
+                    elif "balanceUpdate" in res["e"]:
+                        print(f'Funds transferred {res["e"]}')
                 else:
-                    print(f"Error: {res}")
-
-                await self.client.close_connection()
+                    print(f"Unrecognized user data: {res}")
 
             except Exception as error:
                 print(f"get_user_data sockets error: {error}")
                 await client.close_connection()
+            await client.close_connection()
 
     async def get_isolated_margin_data(self):
         print("Streaming isolated margin data")
