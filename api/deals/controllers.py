@@ -967,7 +967,7 @@ class CreateDealController(BaseDeal):
                 if new_trailling_stop_loss_price > float(
                     self.active_bot.deal.buy_price
                 ):
-                    self.active_bot.trailling_deviation = volatility
+                    self.active_bot.trailling_deviation = volatility * 100
                     self.active_bot.deal.trailling_stop_loss_price = float(close_price) - (float(close_price) * volatility)
                     # Update tralling_profit price
                     print(f"Updated trailling_deviation and take_profit {self.active_bot.deal.trailling_stop_loss_price}")
@@ -998,9 +998,9 @@ class CreateDealController(BaseDeal):
         return bot
 
     def open_deal(self):
-
         """
         Mandatory deals section
+
         - If base order deal is not executed, bot is not activated
         """
         # Short strategy checks
@@ -1031,10 +1031,6 @@ class CreateDealController(BaseDeal):
             else:
                 bot = self.base_order()
                 self.active_bot = BotSchema.parse_obj(bot)
-            
-        else:
-            bot = self.db_collection.find_one({"id": self.active_bot.id})
-            self.active_bot = BotSchema.parse_obj(bot)
 
         """
         Optional deals section
@@ -1052,6 +1048,10 @@ class CreateDealController(BaseDeal):
                 self.active_bot.deal.stop_loss_price = supress_notation(
                     stop_loss_price, self.price_precision
                 )
+        
+        # Margin short Take profit
+        if hasattr(self.active_bot, "take_profit") and float(self.active_bot.take_profit) > 0 and self.active_bot.strategy == "margin_short":
+            self.active_bot = MarginDeal(bot=self.active_bot, db_collection=self.db_collection.name).set_margin_take_profit()
 
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
         # if we don't do this, the trailling stop loss will trigger

@@ -56,9 +56,9 @@ export default function marginTrading(bot, currentPrice) {
 
   if (bot.stop_loss && bot.stop_loss > 0) {
     let stopLossPrice = 0;
-    if (bot.deal.margin_short_buy_back_price) {
+    if (bot.deal.stop_loss_price) {
       stopLossPrice =
-        bot.deal.margin_short_stop_loss_price;
+        bot.deal.stop_loss_price;
     } else {
       stopLossPrice = currentPrice * (1 + (bot.stop_loss / 100));
     }

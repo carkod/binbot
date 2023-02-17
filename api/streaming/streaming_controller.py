@@ -65,12 +65,6 @@ class StreamingController:
         It updates the bots deals, safety orders, trailling orders, stop loss
         for both paper trading test bots and real bots
         """
-        # Margin short
-        if current_bot["strategy"] == "margin_short":
-            margin_deal = MarginDeal(current_bot, db_collection=db_collection)
-            margin_deal.streaming_updates(close_price)
-            return
-
         # Short strategy
         if (
             "short_buy_price" in current_bot
@@ -225,6 +219,13 @@ class StreamingController:
                     ) >= float(close_price):
                         deal = CreateDealController(bot, db_collection)
                         deal.so_update_deal(key)
+            
+
+            # Margin short
+            if current_bot["strategy"] == "margin_short":
+                margin_deal = MarginDeal(current_bot, db_collection=db_collection)
+                margin_deal.streaming_updates(close_price)
+                return
         pass
 
     async def process_klines(self, result):
@@ -238,12 +239,14 @@ class StreamingController:
         )
         # Add margin time to update_required signal to avoid restarting constantly
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
-        print(time() - local_settings["update_required"])
-        if time() - local_settings["update_required"] > 600:
-            self.streaming_db.research_controller.update_one(
-                {"_id": "settings"}, {"$set": {"update_required": None}}
-            )
-            raise TerminateStreaming("Streaming needs to restart to reload bots.")
+        if local_settings["update_required"]:
+            print(time() - local_settings["update_required"])
+            if time() - local_settings["update_required"] > 200:
+                self.streaming_db.research_controller.update_one(
+                    {"_id": "settings"}, {"$set": {"update_required": None}}
+                )
+                await self.client.close_connection()
+                raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
             close_price = result["k"]["c"]
@@ -274,18 +277,19 @@ class StreamingController:
 
         async with klines as k:
             while True:
-                res = await k.recv()
+                try:
+                    res = await k.recv()
 
-                if "result" in res:
-                    print(f'Subscriptions: {res["result"]}')
+                    if "result" in res:
+                        print(f'Subscriptions: {res["result"]}')
 
-                if "data" in res:
-                    if "e" in res["data"] and res["data"]["e"] == "kline":
-                        await self.process_klines(res["data"])
-                    else:
-                        print(f'Error: {res["data"]}')
-
-                await self.client.close_connection()
+                    if "data" in res:
+                        if "e" in res["data"] and res["data"]["e"] == "kline":
+                            await self.process_klines(res["data"])
+                        else:
+                            print(f'Error: {res["data"]}')
+                except Exception as error:
+                    await self.client.close_connection()
 
     def process_user_data(self, result):
         # Parse result. Print result for raw result from Binance
@@ -338,17 +342,20 @@ class StreamingController:
             try:
                 res = await ud.recv()
 
-                if "result" in res:
-                    print(f'Subscriptions: {res["result"]}')
-                    await self.process_user_data(res["result"])
+                if "e" in res:
+                    if "executionReport" in res["e"]:
+                        await self.process_user_data(res)
+                    elif "outboundAccountPosition" in res["e"]:
+                        print(f'Assets changed {res["e"]}')
+                    elif "balanceUpdate" in res["e"]:
+                        print(f'Funds transferred {res["e"]}')
                 else:
-                    print(f"Error: {res}")
-
-                await self.client.close_connection()
+                    print(f"Unrecognized user data: {res}")
 
             except Exception as error:
                 print(f"get_user_data sockets error: {error}")
                 await client.close_connection()
+            await client.close_connection()
 
     async def get_isolated_margin_data(self):
         print("Streaming isolated margin data")
