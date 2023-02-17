@@ -135,11 +135,18 @@ class Bot(Account):
             resp = json_response_error(f"Failed to create new bot: {e}")
         return resp
 
-    def edit(self, botId, data):
+    def edit(self, botId, data: BotSchema):
         if not botId:
             return json_response_message("id is required to update bot")
 
         try:
+            # Merge new data with old data
+            initial_bot_data = self.db_collection.find_one({"id": botId})
+            data.deal = initial_bot_data["deal"]
+            data.orders = initial_bot_data["orders"]
+            data.created_at = initial_bot_data["created_at"]
+            data.total_commission = initial_bot_data["total_commission"]
+            data.updated_at = round(time() * 1000)
             bot = data.dict()
             if "id" in bot:
                 bot.pop("id")

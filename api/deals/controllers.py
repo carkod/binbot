@@ -967,7 +967,7 @@ class CreateDealController(BaseDeal):
                 if new_trailling_stop_loss_price > float(
                     self.active_bot.deal.buy_price
                 ):
-                    self.active_bot.trailling_deviation = volatility
+                    self.active_bot.trailling_deviation = volatility * 100
                     self.active_bot.deal.trailling_stop_loss_price = float(close_price) - (float(close_price) * volatility)
                     # Update tralling_profit price
                     print(f"Updated trailling_deviation and take_profit {self.active_bot.deal.trailling_stop_loss_price}")
@@ -998,9 +998,9 @@ class CreateDealController(BaseDeal):
         return bot
 
     def open_deal(self):
-
         """
         Mandatory deals section
+
         - If base order deal is not executed, bot is not activated
         """
         # Short strategy checks
@@ -1031,10 +1031,6 @@ class CreateDealController(BaseDeal):
             else:
                 bot = self.base_order()
                 self.active_bot = BotSchema.parse_obj(bot)
-            
-        else:
-            bot = self.db_collection.find_one({"id": self.active_bot.id})
-            self.active_bot = BotSchema.parse_obj(bot)
 
         """
         Optional deals section
