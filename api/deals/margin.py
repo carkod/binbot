@@ -307,15 +307,14 @@ class MarginDeal(BaseDeal):
         )
 
         self.active_bot.orders.append(order_data)
-        tp_price = float(order_res["price"]) * 1 + (
-            float(self.active_bot.take_profit) / 100
-        )
 
         self.active_bot.deal.margin_short_sell_timestamp=order_res["transactTime"]
         self.active_bot.deal.margin_short_sell_price=order_res["price"]
         self.active_bot.deal.buy_total_qty=order_res["origQty"]
         self.active_bot.deal.margin_short_base_order=order_res["origQty"]
-        self.active_bot.deal.take_profit_price=tp_price
+        self.active_bot.deal.take_profit_price=float(self.active_bot.deal.margin_short_sell_price) - (
+            (float(self.active_bot.take_profit) / 100) * self.active_bot.deal.margin_short_sell_price
+        )
 
         # Activate bot
         self.active_bot.status = "active"
@@ -436,12 +435,10 @@ class MarginDeal(BaseDeal):
                 )
                 return
 
-        if res["status"] == "NEW":
-            error_msg = "Failed to execute stop loss order (status NEW), retrying..."
+        if res["status"] != "NEW":
+            error_msg = "Failed to execute margin short stop loss order (status NEW), retrying..."
             self.update_deal_logs(error_msg)
-            raise Exception(error_msg)
-            # Not retry for now, as it can cause an infinite loop
-            # self.execute_stop_loss(price)
+            res = self.replace_order()
 
         stop_loss_order = MarginOrderSchema(
             timestamp=res["transactTime"],
@@ -559,12 +556,10 @@ class MarginDeal(BaseDeal):
                 )
                 return
 
-        if res["status"] == "NEW":
+        if res["status"] != "NEW":
             error_msg = "Failed to execute stop loss order (status NEW), retrying..."
             self.update_deal_logs(error_msg)
-            raise Exception(error_msg)
-            # Not retry for now, as it can cause an infinite loop
-            # self.execute_stop_loss(price)
+            res = self.replace_order()
 
         take_profit_order = MarginOrderSchema(
             timestamp=res["transactTime"],

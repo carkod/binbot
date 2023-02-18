@@ -7,6 +7,8 @@ from deals.margin import MarginDeal
 from pymongo import ReturnDocument
 from datetime import datetime
 from time import time
+
+
 class TerminateStreaming(Exception):
     pass
 
@@ -27,6 +29,20 @@ class StreamingController:
         self.test_settings = self.streaming_db.research_controller.find_one(
             {"_id": "test_autotrade_settings"}
         )
+    
+    def _update_required(self):
+        """
+        Terminate streaming and restart list of bots required
+
+        This will queue up a timer to restart streaming_controller when timer is reached
+        This timer is added, so that update_required petitions can be accumulated and
+        avoid successively restarting streaming_controller, which consumes a lot of memory
+
+        This means that everytime there is an update in the list of active bots,
+        it will reset the timer
+        """
+        self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": time()}})
+        return
 
     async def setup_client(self):
         client = await AsyncClient.create(
@@ -57,7 +73,13 @@ class StreamingController:
         return params
 
     def execute_strategies(
-        self, current_bot, close_price, open_price, symbol, db_collection
+        self,
+        current_bot,
+        close_price,
+        open_price,
+        symbol,
+        db_collection,
+        closed_candle: bool,
     ):
         """
         Processes the deal market websocket price updates
@@ -75,7 +97,7 @@ class StreamingController:
             CreateDealController(
                 current_bot, db_collection=db_collection
             ).execute_short_buy()
-            raise TerminateStreaming("Streaming needs to restart to reload bots.")
+            self._update_required()
 
         # Long strategy starts
         if current_bot and "deal" in current_bot:
@@ -154,7 +176,9 @@ class StreamingController:
                             f"{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
                         )
                         # Update trailling_stop_loss
-                        bot["deal"]["trailling_stop_loss_price"] = new_trailling_stop_loss
+                        bot["deal"][
+                            "trailling_stop_loss_price"
+                        ] = new_trailling_stop_loss
                         print(
                             f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                         )
@@ -193,6 +217,7 @@ class StreamingController:
                     < float(bot["deal"]["trailling_stop_loss_price"])
                     # Red candlestick
                     and (float(open_price) > float(close_price))
+                    and closed_candle
                 ):
                     print(
                         f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}'
@@ -201,7 +226,8 @@ class StreamingController:
                         deal = CreateDealController(bot, db_collection)
                         deal.trailling_profit()
                         # This terminates the bot
-                        return
+                        self._update_required()
+
                     except Exception as error:
                         print(error)
                         return
@@ -216,7 +242,7 @@ class StreamingController:
                     ) >= float(close_price):
                         deal = CreateDealController(bot, db_collection)
                         deal.so_update_deal(key)
-            
+
             # Margin short
             if current_bot["strategy"] == "margin_short":
                 margin_deal = MarginDeal(current_bot, db_collection=db_collection)
@@ -245,7 +271,6 @@ class StreamingController:
         # Add margin time to update_required signal to avoid restarting constantly
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
-            print(time() - local_settings["update_required"])
             if time() - local_settings["update_required"] > 200:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": None}}
@@ -265,11 +290,21 @@ class StreamingController:
             )
             if current_bot:
                 self.execute_strategies(
-                    current_bot, close_price, open_price, symbol, "bots"
+                    current_bot,
+                    close_price,
+                    open_price,
+                    symbol,
+                    "bots",
+                    closed_candle=result["k"]["x"],
                 )
             if current_test_bot:
                 self.execute_strategies(
-                    current_test_bot, close_price, open_price, symbol, "paper_trading"
+                    current_test_bot,
+                    close_price,
+                    open_price,
+                    symbol,
+                    "paper_trading",
+                    closed_candle=result["k"]["x"],
                 )
             return
 
@@ -293,12 +328,18 @@ class StreamingController:
                             await self.process_klines(res["data"])
                         else:
                             print(f'Error: {res["data"]}')
+                    pass
                 except Exception as error:
-                    await self.client.close_connection()
+                    print(f"get_klines sockets error: {error}")
+                    pass
+
+                await self.client.close_connection()
 
     def process_user_data(self, result):
         # Parse result. Print result for raw result from Binance
         order_id = result["i"]
+        # Example of real update
+        # {'e': 'executionReport', 'E': 1676750256695, 's': 'UNFIUSDT', 'c': 'web_86e55fed9bad494fba5e213dbe5b2cfc', 'S': 'SELL', 'o': 'LIMIT', 'f': 'GTC', 'q': '8.20000000', 'p': '6.23700000', 'P': '0.00000000', 'F': '0.00000000', 'g': -1, 'C': 'KrHPY4jWdWwFBHUMtBBfJl', 'x': 'CANCELED', ...}
         if order_id:
             # Keep all orders up to date
             # This includes all bots with any status ["active", "completed", ...]
@@ -309,12 +350,12 @@ class StreamingController:
                 {
                     "$inc": {"total_commission": float(result["n"])},
                     "$set": {
-                        "orders.$.status": result["status"],
-                        "orders.$.price": result["price"],
-                        "orders.$.qty": result["executedQty"],
-                        "orders.$.order_side": result["side"],
-                        "orders.$.fills": result["fills"],
-                        "orders.$.timestamp": result["transactTime"],
+                        "orders.$.status": result["X"],
+                        "orders.$.price": result["p"],
+                        "orders.$.qty": result["q"],
+                        "orders.$.order_side": result["S"],
+                        "orders.$.order_type": result["o"],
+                        "orders.$.timestamp": result["T"],
                     },
                 },
             )
@@ -324,12 +365,12 @@ class StreamingController:
                 {
                     "$inc": {"total_commission": float(result["n"])},
                     "$set": {
-                        "orders.$.status": result["status"],
-                        "orders.$.price": result["price"],
-                        "orders.$.qty": result["executedQty"],
-                        "orders.$.order_side": result["side"],
-                        "orders.$.fills": result["fills"],
-                        "orders.$.timestamp": result["transactTime"],
+                        "orders.$.status": result["X"],
+                        "orders.$.price": result["p"],
+                        "orders.$.qty": result["q"],
+                        "orders.$.order_side": result["S"],
+                        "orders.$.order_type": result["o"],
+                        "orders.$.timestamp": result["T"],
                     },
                 },
             )
@@ -344,23 +385,26 @@ class StreamingController:
         socket, client = await self.setup_client()
         user_data = socket.user_socket()
         async with user_data as ud:
-            try:
-                res = await ud.recv()
+            while True:
+                try:
+                    res = await ud.recv()
 
-                if "e" in res:
-                    if "executionReport" in res["e"]:
-                        await self.process_user_data(res)
-                    elif "outboundAccountPosition" in res["e"]:
-                        print(f'Assets changed {res["e"]}')
-                    elif "balanceUpdate" in res["e"]:
-                        print(f'Funds transferred {res["e"]}')
-                else:
-                    print(f"Unrecognized user data: {res}")
+                    if "e" in res:
+                        if "executionReport" in res["e"]:
+                            self.process_user_data(res)
+                        elif "outboundAccountPosition" in res["e"]:
+                            print(f'Assets changed {res["e"]}')
+                        elif "balanceUpdate" in res["e"]:
+                            print(f'Funds transferred {res["e"]}')
+                    else:
+                        print(f"Unrecognized user data: {res}")
 
-            except Exception as error:
-                print(f"get_user_data sockets error: {error}")
+                    pass
+                except Exception as error:
+                    print(f"get_user_data sockets error: {error}")
+                    pass
+            
                 await client.close_connection()
-            await client.close_connection()
 
     async def get_isolated_margin_data(self):
         print("Streaming isolated margin data")

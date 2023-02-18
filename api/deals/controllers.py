@@ -18,6 +18,9 @@ from tools.exceptions import (
 from tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_errors, encode_json
 from tools.round_numbers import round_numbers, supress_notation
 
+class CreateDealControllerError(Exception):
+    pass
+
 class CreateDealController(BaseDeal):
     """
     Centralized deal controller.
@@ -57,7 +60,7 @@ class CreateDealController(BaseDeal):
             return None
         qty = round_numbers(balance, self.qty_precision)
         return qty
-
+    
 
     def base_order(self):
         """
@@ -278,23 +281,11 @@ class CreateDealController(BaseDeal):
         if "error" in res:
             raise TraillingProfitError(res["error"])
     
-        if res["status"] == "NEW":
-            params = [
-                ("symbol", self.active_bot_pair),
-                ("type", "LIMIT"),
-                ("side", "SELL"),
-                ("cancelReplaceMode", "ALLOW_FAILURE")
-            ]
-            response = self.signed_request(url=self.cancel_replace_url, method="POST", params=params)
-            data = handle_binance_errors(response)
-            if "newOrderResponse" in data:
-                res = data["newOrderResponse"]
-            elif "code" in data:
-                TraillingProfitError(res["data"])
+        if res["status"] != "NEW":
             self.update_deal_logs(
-                "Failed to execute stop loss order (status NEW), retrying..."
+                "Failed to execute trailling profit order (status NEW), retrying..."
             )
-            self.trailling_profit(price)
+            res = self.replace_order()
 
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -357,12 +348,10 @@ class CreateDealController(BaseDeal):
                 if "deal_type" in d and (
                     d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
                 ):
-                    order_id = d["order_id"]
-                    res = requests.delete(
-                        url=f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}"
+                    self.update_deal_logs(
+                        "Failed to close all active orders (status NEW), retrying..."
                     )
-
-                    handle_binance_errors(res)
+                    res = self.replace_order()
 
         # Sell everything
         pair = self.active_bot.pair
@@ -690,11 +679,11 @@ class CreateDealController(BaseDeal):
                 )
                 return
 
-        if res["status"] == "NEW":
+        if res["status"] != "NEW":
             self.update_deal_logs(
                 "Failed to execute stop loss order (status NEW), retrying..."
             )
-            self.execute_stop_loss(price)
+            res = self.replace_order()
 
         stop_loss_order = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -827,11 +816,11 @@ class CreateDealController(BaseDeal):
                 )
                 return
 
-        if res["status"] == "NEW":
+        if res["status"] != "NEW":
             self.update_deal_logs(
-                "Failed to execute stop loss order (status NEW), retrying..."
+                "Failed to execute short sell order (status NEW), retrying..."
             )
-            self.execute_short_sell()
+            res = self.replace_order()
 
         short_sell_order = BinanceOrderModel(
             timestamp=res["transactTime"],

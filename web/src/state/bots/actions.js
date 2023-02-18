@@ -81,17 +81,19 @@ export function getProfit(base_price, current_price, strategy = "long") {
 
 export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
   if (bot.deal && bot.base_order_size) {
-    let currentPrice = bot.deal.sell_price
+    if (bot.deal.buy_price > 0) {
+      const currentPrice = bot.deal.sell_price
       ? bot.deal.sell_price
       : realTimeCurrPrice || bot.deal.current_price;
-    if (bot.deal.buy_price) {
       const buyPrice = bot.deal.buy_price;
-      let profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-      // Flip the value for shorts
-      if (bot.strategy === "margin_short") {
-        profitChange = parseFloat(profitChange) * -1;
-        console.log(`rendering a short bot. Profit = ${profitChange}`)
-      }
+      const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
+      return profitChange;
+    } else if (bot.deal.margin_short_sell_price > 0) {
+      const currentPrice = bot.deal.margin_short_buy_back_price
+      ? bot.deal.margin_short_buy_back_price
+      : realTimeCurrPrice || bot.deal.current_price;
+      const marginSellPrice = bot.deal.margin_short_sell_price
+      const profitChange = parseFloat(((currentPrice - marginSellPrice) / marginSellPrice) * 100) * -1;
       return profitChange;
     } else {
       return 0;

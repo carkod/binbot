@@ -6,6 +6,8 @@ from account.account import Account
 from bots.schemas import BotSchema
 from db import setup_db
 
+class DealCreationError(Exception):
+    pass
 
 class BaseDeal(Account):
     """
@@ -82,3 +84,16 @@ class BaseDeal(Account):
             {"$push": {"errors": msg}},
         )
         return msg
+
+    def replace_order(self):
+        params = [
+                ("symbol", self.active_bot.pair),
+                ("type", "MARKET"),
+                ("side", "SELL"),
+                ("cancelReplaceMode", "ALLOW_FAILURE")
+            ]
+        response = self.signed_request(url=self.cancel_replace_url, method="POST", params=params)
+        if "code" in response:
+            raise DealCreationError(response["msg"], response["data"])
+    
+        return response["newOrderResponse"]
