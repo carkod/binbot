@@ -115,11 +115,6 @@ class StreamingController:
             # Take profit trailling
             if bot["trailling"] == "true" and float(bot["deal"]["buy_price"]) > 0:
 
-                if bot["dynamic_trailling"]:
-                    deal = CreateDealController(bot, db_collection)
-                    # Returns bot, to keep modifying in subsequent checks
-                    bot = deal.dynamic_take_profit(symbol, current_bot, close_price)
-
                 # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
                 if bot["deal"]["trailling_stop_loss_price"] == 0:
                     trailling_price = float(bot["deal"]["buy_price"]) * (
@@ -205,6 +200,8 @@ class StreamingController:
                     try:
                         deal = CreateDealController(bot, db_collection)
                         deal.trailling_profit()
+                        # This terminates the bot
+                        return
                     except Exception as error:
                         print(error)
                         return
@@ -220,12 +217,20 @@ class StreamingController:
                         deal = CreateDealController(bot, db_collection)
                         deal.so_update_deal(key)
             
-
             # Margin short
             if current_bot["strategy"] == "margin_short":
                 margin_deal = MarginDeal(current_bot, db_collection=db_collection)
                 margin_deal.streaming_updates(close_price)
                 return
+
+            # Execute dynamic_take_profit at the end,
+            # so that trailling_take_profit and trailling_stop_loss can execute before
+            # else trailling_stop_loss could be hit but then changed because of dynamic_tp
+            if bot["trailling"] == "true" and bot["dynamic_trailling"]:
+                deal = CreateDealController(bot, db_collection)
+                # Returns bot, to keep modifying in subsequent checks
+                bot = deal.dynamic_take_profit(symbol, current_bot, close_price)
+
         pass
 
     async def process_klines(self, result):
