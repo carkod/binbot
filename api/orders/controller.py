@@ -108,21 +108,3 @@ class OrderController(Account):
         else:
             resp = json_response_message("No open orders found!")
         return resp
-
-    def replace_order(self, symbol, side: str="BUY"):
-        """
-        Cancel current open order and create a new order
-        """
-        params = [
-            ("symbol", symbol),
-            ("type", "LIMIT"),
-            ("side", side),
-            ("cancelReplaceMode", "ALLOW_FAILURE")
-        ]
-        data = self.signed_request(url=self.cancel_replace_url, method="POST", params=params)
-
-        if data and len(data) > 0:
-            resp = json_response({"message": "order cancelled and new created!", "data": data})
-        else:
-            resp = json_response_message("No open orders found!")
-        return resp

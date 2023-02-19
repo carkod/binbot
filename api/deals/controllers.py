@@ -281,11 +281,11 @@ class CreateDealController(BaseDeal):
         if "error" in res:
             raise TraillingProfitError(res["error"])
     
-        if res["status"] != "NEW":
+        if res["status"] != "FILLED":
             self.update_deal_logs(
                 "Failed to execute trailling profit order (status NEW), retrying..."
             )
-            res = self.replace_order()
+            res = self.replace_order(res["orderId"])
 
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -351,7 +351,7 @@ class CreateDealController(BaseDeal):
                     self.update_deal_logs(
                         "Failed to close all active orders (status NEW), retrying..."
                     )
-                    res = self.replace_order()
+                    res = self.replace_order(d["orderId"])
 
         # Sell everything
         pair = self.active_bot.pair
@@ -679,11 +679,11 @@ class CreateDealController(BaseDeal):
                 )
                 return
 
-        if res["status"] != "NEW":
+        if res["status"] != "FILLED":
             self.update_deal_logs(
                 "Failed to execute stop loss order (status NEW), retrying..."
             )
-            res = self.replace_order()
+            res = self.replace_order(res["orderId"])
 
         stop_loss_order = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -816,11 +816,11 @@ class CreateDealController(BaseDeal):
                 )
                 return
 
-        if res["status"] != "NEW":
+        if res["status"] != "FILLED":
             self.update_deal_logs(
                 "Failed to execute short sell order (status NEW), retrying..."
             )
-            res = self.replace_order()
+            res = self.replace_order(res["orderId"])
 
         short_sell_order = BinanceOrderModel(
             timestamp=res["transactTime"],

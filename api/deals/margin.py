@@ -435,10 +435,10 @@ class MarginDeal(BaseDeal):
                 )
                 return
 
-        if res["status"] != "NEW":
+        if res["status"] != "FILLED":
             error_msg = "Failed to execute margin short stop loss order (status NEW), retrying..."
             self.update_deal_logs(error_msg)
-            res = self.replace_order()
+            res = self.replace_order(res["orderId"])
 
         stop_loss_order = MarginOrderSchema(
             timestamp=res["transactTime"],
@@ -556,10 +556,10 @@ class MarginDeal(BaseDeal):
                 )
                 return
 
-        if res["status"] != "NEW":
+        if res["status"] != "FILLED":
             error_msg = "Failed to execute stop loss order (status NEW), retrying..."
             self.update_deal_logs(error_msg)
-            res = self.replace_order()
+            res = self.replace_order(res["orderId"])
 
         take_profit_order = MarginOrderSchema(
             timestamp=res["transactTime"],
