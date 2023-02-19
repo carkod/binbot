@@ -115,10 +115,10 @@ class Bots extends React.Component {
           });
           this.setState(selectAll);
           break;
-        case "show-completed":
+        case "completed" : case "active":
           const startDate = this.startDate.valueAsNumber;
           const endDate = this.endDate.valueAsNumber;
-          const status = "completed";
+          const status = value;
           this.props.getBots({ startDate, endDate, status });
           break
         default:
@@ -174,12 +174,13 @@ class Bots extends React.Component {
                   <option value="">Select bulk action</option>
                   <option value="delete-selected">Delete selected</option>
                   <option value="unselect-all">Unselect all</option>
+                  <option value="completed">Show completed only</option>
+                  <option value="active">Show active only</option>
                   <option value="select-all">Select all</option>
-                  <option value="show-completed">Show completed only</option>
                 </Input>
               </Col>
               <Col sm={2}>
-                <Button onClick={this.onSubmitBulkAction}>Apply action</Button>
+                <Button onClick={this.onSubmitBulkAction}>Apply bulk action</Button>
               </Col>
               <Col sm={2}>
                 <label htmlFor="startDate">Filter by start date</label>

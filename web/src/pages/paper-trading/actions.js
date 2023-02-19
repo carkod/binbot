@@ -77,11 +77,10 @@ export function getTestBotsSucceeded(res) {
  *
  * @return {object}       An action object with a type of BOT_ERROR passing the error
  */
-export function getTestBotsFailed(error) {
+export function getTestBotsFailed(res) {
+  addNotification("Some errors encountered", res.message, "error");
   return {
     type: GET_TEST_BOTS_ERROR,
-    isError: true,
-    data: error,
   };
 }
 
