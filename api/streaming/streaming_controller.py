@@ -345,7 +345,7 @@ class StreamingController:
             # This includes all bots with any status ["active", "completed", ...]
             # This will help detect bugs in the bots opening and closing mechanism
             print(f"Updating order no: {order_id}")
-            self.streaming_db.bots.update_one(
+            db_result = self.streaming_db.bots.update_one(
                 {"orders": {"$elemMatch": {"order_id": order_id}}},
                 {
                     "$inc": {"total_commission": float(result["n"])},
@@ -359,8 +359,8 @@ class StreamingController:
                     },
                 },
             )
-
-            self.streaming_db.paper_trading.update_one(
+            print(f'modified count {db_result.raw_result["nModified"]}')
+            db_result = self.streaming_db.paper_trading.update_one(
                 {"orders": {"$elemMatch": {"order_id": order_id}}},
                 {
                     "$inc": {"total_commission": float(result["n"])},
@@ -374,6 +374,7 @@ class StreamingController:
                     },
                 },
             )
+            print(f'modified count {db_result.raw_result["nModified"]}')
 
         else:
             print(

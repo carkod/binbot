@@ -79,6 +79,17 @@ export function getProfit(base_price, current_price, strategy = "long") {
   return 0;
 }
 
+/**
+ * This function calculates the profit (not including commissions/fees)
+ * for a single bot, namely the BotForm and TestBotForm components
+ * by using input data from that individual bot as opposed to computeTotalProfit
+ * function which uses an accumulator function to aggregate all profits of all bots
+ * 
+ * 
+ * @param { BotSchema } bot
+ * @param { number } realTimeCurrPrice 
+ * @returns { number }
+ */
 export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
   if (bot.deal && bot.base_order_size) {
     if (bot.deal.buy_price > 0) {

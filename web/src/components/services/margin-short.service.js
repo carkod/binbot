@@ -7,7 +7,7 @@ export default function marginTrading(bot, currentPrice) {
     // If there is sell_price, it means it's completed
     totalOrderLines.push({
       id: "base_order",
-      text: "Base",
+      text: "Base (Margin sell)",
       tooltip: [
         bot.status,
         `${
@@ -22,13 +22,14 @@ export default function marginTrading(bot, currentPrice) {
     });
     totalOrderLines.push({
       id: "take_profit",
-      text: `Take profit ${bot.take_profit}% (Margin)`,
-      tooltip: [bot.status, " Sell Order "],
+      text: `Take profit ${bot.take_profit}% (Margin buy)`,
+      tooltip: [bot.status, " Margin buy"],
       quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
       price: bot.deal.buy_back_price, // buy_profit * take_profit%
       color: dealColors.take_profit,
     });
   } else {
+    const price = bot.deal.margin_short_sell_price > 0 ? bot.deal.margin_short_sell_price : currentPrice;
     totalOrderLines.push({
       id: "base_order",
       text: "Base",
@@ -41,7 +42,7 @@ export default function marginTrading(bot, currentPrice) {
         }`,
       ],
       quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-      price: parseFloat(currentPrice),
+      price: parseFloat(price),
       color: dealColors.base_order,
     });
     totalOrderLines.push({
@@ -49,7 +50,7 @@ export default function marginTrading(bot, currentPrice) {
       text: `Take profit ${bot.take_profit}% (Margin)`,
       tooltip: [bot.status, " Sell Order "],
       quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-      price: currentPrice - ( currentPrice * parseFloat(bot.take_profit) / 100), // buy_profit * take_profit%
+      price: price - ( price * parseFloat(bot.take_profit) / 100), // buy_profit * take_profit%
       color: dealColors.take_profit,
     });
   }
