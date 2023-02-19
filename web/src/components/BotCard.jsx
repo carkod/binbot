@@ -15,20 +15,18 @@ import { botDuration, computeSingleBotProfit } from "../state/bots/actions";
 import { checkValue, roundDecimals } from "../validations";
 
 const renderSellTimestamp = (bot) => {
-  if (!checkValue(bot.deal?.buy_timestamp)) {
-    let sell_timestamp = new Date();
-    if (!checkValue(bot.deal.sell_timestamp)) {
-      sell_timestamp = bot.deal.sell_timestamp;
-      return (
-        <>
-          {sell_timestamp === 0
-            ? botDuration(bot.deal.buy_timestamp, new Date().getTime())
-            : botDuration(bot.deal.buy_timestamp, sell_timestamp)}
-        </>
-      );
-    }
+  // Long positions
+  if (bot.deal) {
+    let exitPositionTs = bot.deal.sell_timestamp || bot.deal.margin_short_buy_back_timestamp || new Date();
+    let enterPositionTs = bot.deal.buy_timestamp || bot.deal.margin_short_sell_timestamp;
+    return (
+      <>
+        {botDuration(enterPositionTs, exitPositionTs)}
+      </>
+    );
+  } else {
+    return (<></>)
   }
-  return "";
 };
 
 const getNetProfit = (bot) => {

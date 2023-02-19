@@ -132,6 +132,7 @@ class StreamingController:
             ):
                 deal = CreateDealController(bot, db_collection)
                 deal.execute_stop_loss(close_price)
+                self._update_required()
                 return
 
             # Take profit trailling
