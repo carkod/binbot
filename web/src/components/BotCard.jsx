@@ -33,11 +33,7 @@ const getNetProfit = (bot) => {
   // current price if bot is active
   // sell price if bot is completed
   let netProfit = computeSingleBotProfit(bot);
-  if (netProfit !== 0) {
-    netProfit = netProfit.toFixed(2)
-  } else {
-    netProfit = 0;
-  }
+  if (!netProfit) netProfit = 0;
   return netProfit
 };
 export default function BotCard({

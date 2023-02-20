@@ -97,15 +97,15 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
       ? bot.deal.sell_price
       : realTimeCurrPrice || bot.deal.current_price;
       const buyPrice = bot.deal.buy_price;
-      const profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-      return profitChange;
+      let profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
+      return +profitChange.toFixed(2)
     } else if (bot.deal.margin_short_sell_price > 0) {
       const currentPrice = bot.deal.margin_short_buy_back_price
       ? bot.deal.margin_short_buy_back_price
       : realTimeCurrPrice || bot.deal.current_price;
       const marginSellPrice = bot.deal.margin_short_sell_price
-      const profitChange = parseFloat(((currentPrice - marginSellPrice) / marginSellPrice) * 100) * -1;
-      return profitChange;
+      let profitChange = parseFloat(((currentPrice - marginSellPrice) / marginSellPrice) * 100) * -1;
+      return +profitChange.toFixed(2)
     } else {
       return 0;
     }
