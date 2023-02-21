@@ -79,7 +79,6 @@ class StreamingController:
         open_price: str,
         symbol: str,
         db_collection,
-        closed_candle: bool,
     ):
         """
         Processes the deal market websocket price updates
@@ -218,7 +217,6 @@ class StreamingController:
                     < float(bot["deal"]["trailling_stop_loss_price"])
                     # Red candlestick
                     and (float(open_price) > float(close_price))
-                    and closed_candle
                 ):
                     print(
                         f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}'
@@ -296,7 +294,6 @@ class StreamingController:
                     open_price,
                     symbol,
                     "bots",
-                    closed_candle=result["k"]["x"],
                 )
             if current_test_bot:
                 self.execute_strategies(
@@ -305,7 +302,6 @@ class StreamingController:
                     open_price,
                     symbol,
                     "paper_trading",
-                    closed_candle=result["k"]["x"],
                 )
             return
 
