@@ -75,9 +75,9 @@ class StreamingController:
     def execute_strategies(
         self,
         current_bot,
-        close_price,
-        open_price,
-        symbol,
+        close_price: str,
+        open_price: str,
+        symbol: str,
         db_collection,
         closed_candle: bool,
     ):
@@ -248,11 +248,11 @@ class StreamingController:
             if current_bot["strategy"] == "margin_short":
                 margin_deal = MarginDeal(current_bot, db_collection=db_collection)
                 margin_deal.streaming_updates(close_price)
-                return
 
             # Execute dynamic_take_profit at the end,
             # so that trailling_take_profit and trailling_stop_loss can execute before
             # else trailling_stop_loss could be hit but then changed because of dynamic_tp
+            print(f"Is candle closed? {closed_candle}")
             if bot["trailling"] == "true" and bot["dynamic_trailling"]:
                 deal = CreateDealController(bot, db_collection)
                 # Returns bot, to keep modifying in subsequent checks

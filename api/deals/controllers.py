@@ -17,6 +17,8 @@ from tools.exceptions import (
 )
 from tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_errors, encode_json
 from tools.round_numbers import round_numbers, supress_notation
+from scipy.stats import linregress
+
 
 class CreateDealControllerError(Exception):
     pass
@@ -931,17 +933,20 @@ class CreateDealController(BaseDeal):
         }
         res = requests.get(url=self.bb_candlestick_url, params=params)
         data = handle_binance_errors(res)
-        list_prices = numpy.array(data["trace"][0]["close"])
+        list_prices = numpy.array(data["trace"][0]["close"]).astype(numpy.single)
         series_sd = numpy.std(list_prices.astype(numpy.single))
         sd = series_sd / float(close_price)
+        dates = numpy.array(data["trace"][0]["x"])
 
-        print(f"dynamic profit for {symbol} sd: ", sd)
+        # Calculate linear regression to get trend
+        slope, intercept, rvalue, pvalue, stderr = linregress(dates, list_prices)
+
         if sd >= 0:
             self.active_bot.deal.sd = sd
-            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"] and sd < current_bot["deal"]["sd"]:
-                # Too little sd and the bot won't trail, instead it'll sell immediately
-                # Too much sd and the bot will never sell and overlap with other positions
-                # Current volatility < previous volatility, otherwise trailling_stop_loss could be so low that it doesn't closes
+            
+            print(f"dynamic profit for {symbol} sd: {sd}", f'slope is {"positive" if slope > 0 else "negative"}')
+            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"] and ((current_bot["strategy"] == "long" and slope > 0) or (current_bot["strategy"] == "margin_short" and slope < 0)):
+                # Only do dynamic trailling if regression line confirms it
                 volatility: float = float(sd) / float(close_price)
                 if volatility < 0.018:
                     volatility = 0.018

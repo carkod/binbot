@@ -312,9 +312,6 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_sell_price=order_res["price"]
         self.active_bot.deal.buy_total_qty=order_res["origQty"]
         self.active_bot.deal.margin_short_base_order=order_res["origQty"]
-        self.active_bot.deal.take_profit_price=float(self.active_bot.deal.margin_short_sell_price) - (
-            (float(self.active_bot.take_profit) / 100) * self.active_bot.deal.margin_short_sell_price
-        )
 
         # Activate bot
         self.active_bot.status = "active"
@@ -327,8 +324,7 @@ class MarginDeal(BaseDeal):
 
         price = float(close_price)
         self.active_bot.deal.current_price = price
-
-        self.active_bot.deal.stop_loss_price = self.active_bot.deal.buy_price - (self.active_bot.deal.buy_price * (float(self.active_bot.stop_loss) / 100))
+        self.active_bot.deal.stop_loss_price = self.active_bot.deal.margin_short_sell_price + (self.active_bot.deal.margin_short_sell_price * (float(self.active_bot.stop_loss) / 100))
 
         # Direction 1: upward trend
         # Future feature: trailling
@@ -343,8 +339,7 @@ class MarginDeal(BaseDeal):
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
 
-        else:
-            return
+        return
 
     def set_margin_short_stop_loss(self):
         """
@@ -369,7 +364,7 @@ class MarginDeal(BaseDeal):
             hasattr(self.active_bot, "take_profit")
             and float(self.active_bot.take_profit) > 0
         ):
-            take_profit_price = price + (price * (float(self.active_bot.take_profit) / 100))
+            take_profit_price = price - (price * (float(self.active_bot.take_profit) / 100))
             self.active_bot.deal.take_profit_price = take_profit_price
 
         return self.active_bot
@@ -467,6 +462,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_buy_back_price=res["price"],
         self.active_bot.deal.buy_total_qty=res["origQty"],
         self.active_bot.deal.margin_short_buy_back_timestamp=res["transactTime"]
+        self.active_bot.status = "completed"
 
         msg = f"Completed Stop loss"
         self.active_bot.errors.append(msg)
