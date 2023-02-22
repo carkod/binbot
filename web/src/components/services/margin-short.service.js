@@ -2,7 +2,7 @@ import { dealColors } from "./charting.service";
 
 export default function marginTrading(bot, currentPrice) {
   let totalOrderLines = [];
-
+  currentPrice = parseFloat(currentPrice)
   if (bot.deal.buy_back_price && bot.deal.buy_back_price > 0) {
     // If there is sell_price, it means it's completed
     totalOrderLines.push({

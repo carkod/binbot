@@ -250,7 +250,6 @@ class StreamingController:
             # Execute dynamic_take_profit at the end,
             # so that trailling_take_profit and trailling_stop_loss can execute before
             # else trailling_stop_loss could be hit but then changed because of dynamic_tp
-            print(f"Is candle closed? {closed_candle}")
             if bot["trailling"] == "true" and bot["dynamic_trailling"]:
                 deal = CreateDealController(bot, db_collection)
                 # Returns bot, to keep modifying in subsequent checks

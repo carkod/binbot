@@ -113,7 +113,7 @@ class TestBotForm extends React.Component {
     }
 
     if (this.state.currentChartPrice !== s.currentChartPrice) {
-      const newBotProfit = computeSingleBotProfit(this.props.bot);
+      const newBotProfit = computeSingleBotProfit(this.props.bot, this.state.currentChartPrice);
       this.props.setBotState({ bot_profit: newBotProfit });
     }
   };
