@@ -20,7 +20,6 @@ class MarginShortError(Exception):
 class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection: str) -> None:
         # Inherit from parent class
-        self.client = Client(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
         super().__init__(bot, db_collection)
 
     def simulate_margin_order(self, qty, side):

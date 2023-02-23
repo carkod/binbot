@@ -72,7 +72,6 @@ export function getProfit(base_price, current_price, strategy = "long") {
       100;
     if (strategy === "margin_short") {
       percent = percent * -1;
-      console.log(`rendering a short bot. Profit = ${percent}`)
     }
     return percent.toFixed(2);
   }
@@ -84,28 +83,46 @@ export function getProfit(base_price, current_price, strategy = "long") {
  * for a single bot, namely the BotForm and TestBotForm components
  * by using input data from that individual bot as opposed to computeTotalProfit
  * function which uses an accumulator function to aggregate all profits of all bots
- * 
- * 
+ *
+ *
  * @param { BotSchema } bot
- * @param { number } realTimeCurrPrice 
+ * @param { number } realTimeCurrPrice
  * @returns { number }
  */
 export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
   if (bot.deal && bot.base_order_size) {
     if (bot.deal.buy_price > 0) {
       const currentPrice = bot.deal.sell_price
-      ? bot.deal.sell_price
-      : realTimeCurrPrice || bot.deal.current_price;
+        ? bot.deal.sell_price
+        : realTimeCurrPrice || bot.deal.current_price;
       const buyPrice = bot.deal.buy_price;
       let profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-      return +profitChange.toFixed(2)
+      return +profitChange.toFixed(2);
     } else if (bot.deal.margin_short_sell_price > 0) {
-      const currentPrice = bot.deal.margin_short_buy_back_price > 0
-      ? bot.deal.margin_short_buy_back_price
-      : realTimeCurrPrice || bot.deal.current_price;
-      const marginSellPrice = bot.deal.margin_short_sell_price
-      let profitChange = parseFloat(((currentPrice - marginSellPrice) / marginSellPrice) * 100) * -1;
-      return +profitChange.toFixed(2)
+      // Completed margin short
+      if (bot.deal.margin_short_buy_back_price > 0) {
+        const currentPrice = bot.deal.margin_short_buy_back_price;
+        const marginSellPrice = bot.deal.margin_short_sell_price;
+        let profitChange =
+          parseFloat(
+            ((currentPrice - marginSellPrice) / marginSellPrice) * 100
+          ) * -1;
+        return +profitChange.toFixed(2);
+      } else {
+        const currentPrice =
+          bot.deal.margin_short_buy_back_price > 0
+            ? bot.deal.margin_short_buy_back_price
+            : realTimeCurrPrice || bot.deal.current_price;
+        if (currentPrice === 0) {
+          return 0;
+        }
+        const marginSellPrice = bot.deal.margin_short_sell_price;
+        let profitChange =
+          parseFloat(
+            ((currentPrice - marginSellPrice) / marginSellPrice) * 100
+          ) * -1;
+        return +profitChange.toFixed(2);
+      }
     } else {
       return 0;
     }
