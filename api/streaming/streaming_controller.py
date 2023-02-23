@@ -150,8 +150,9 @@ class StreamingController:
                         trailling_price = float(bot["deal"]["buy_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
                         )
+                        # If trailling_stop_loss < base order it will reset every time
                         print(
-                            f"{datetime.utcnow()} {symbol} First time breaking trailling (setting trailling_stop_loss)"
+                            f"{datetime.utcnow()} {symbol} Setting trailling_stop_loss"
                         )
                     else:
                         # Current take profit + next take_profit

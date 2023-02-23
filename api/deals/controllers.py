@@ -37,9 +37,8 @@ class CreateDealController(BaseDeal):
     """
 
     def __init__(self, bot, db_collection="paper_trading"):
-        super().__init__(bot, db_collection)
         # Inherit from parent class
-        
+        super().__init__(bot, db_collection)
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
@@ -256,7 +255,9 @@ class CreateDealController(BaseDeal):
             qty = self.compute_qty(self.active_bot.pair)
             # Already sold?
             if not qty:
-                print(f"Bot already closed? There is no {self.active_bot.pair} quantity in the balance. Please delete the bot.")
+                closed_orders = self.close_open_orders(self.active_bot.pair)
+                if not closed_orders:
+                    print(f"Bot already closed? There is no {self.active_bot.pair} quantity in the balance. Please delete the bot.")
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":
@@ -623,12 +624,12 @@ class CreateDealController(BaseDeal):
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
         if not qty:
-            self.update_deal_logs(
-                f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
-            )
-            params = {"id": self.active_bot.id}
-            self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
-            return
+            closed_orders = self.close_open_orders(self.active_bot.pair)
+            if not closed_orders:
+                self.update_deal_logs(
+                    f"Cannot execute update stop limit, quantity is {qty}"
+                )
+                return
 
         order_id = None
         for order in self.active_bot.orders:
@@ -650,8 +651,6 @@ class CreateDealController(BaseDeal):
                 return
 
         price = float(self.matching_engine(self.active_bot.pair, True, qty))
-        if not price:
-            price = float(self.matching_engine(self.active_bot.pair, True))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
@@ -669,10 +668,6 @@ class CreateDealController(BaseDeal):
                 # If matching_engine could not find bid/ask price in the books
                     res = self.client.order_market_sell(**stop_limit_order)
 
-            except QuantityTooLow as error:
-                # Delete incorrectly activated or old bots
-                self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
-                print(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:
                 self.update_deal_logs(
                     f"Error trying to open new stop_limit order {error}"

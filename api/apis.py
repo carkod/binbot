@@ -39,8 +39,6 @@ class BinanceApi:
     user_data_stream = f"{BASE}/api/v3/userDataStream"
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
 
-    streams_url = f"{WS_BASE}"
-
     withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
     withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"
     deposit_history_url = f"{BASE}/wapi/v3/depositHistory.html"
@@ -49,9 +47,7 @@ class BinanceApi:
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
     account_snapshot_url = f"{BASE}/sapi/v1/accountSnapshot"
 
-    def __init__(self) -> None:
-        self.client = Client(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
-        return super().__init__()
+    client = Client(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
 
     def get_server_time(self):
         data = self.request(url=self.server_time_url)
