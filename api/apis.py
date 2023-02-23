@@ -51,7 +51,7 @@ class BinanceApi:
 
     def __init__(self) -> None:
         self.client = Client(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
-        super().__init__()
+        return super().__init__()
 
     def get_server_time(self):
         data = self.request(url=self.server_time_url)

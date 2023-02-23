@@ -945,7 +945,7 @@ class CreateDealController(BaseDeal):
             self.active_bot.deal.sd = sd
             
             print(f"dynamic profit for {symbol} sd: {sd}", f'slope is {"positive" if slope > 0 else "negative"}')
-            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"] and ((current_bot["strategy"] == "long" and slope > 0) or (current_bot["strategy"] == "margin_short" and slope < 0)):
+            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"] and ((current_bot["strategy"] == "long" and slope > 0) or (current_bot["strategy"] == "margin_short" and slope < 0)) and current_bot["deal"]["sd"] > sd:
                 # Only do dynamic trailling if regression line confirms it
                 volatility: float = float(sd) / float(close_price)
                 if volatility < 0.018:
@@ -965,6 +965,8 @@ class CreateDealController(BaseDeal):
                     self.active_bot.deal.trailling_stop_loss_price = float(close_price) - (float(close_price) * volatility)
                     # Update tralling_profit price
                     print(f"Updated trailling_deviation and take_profit {self.active_bot.deal.trailling_stop_loss_price}")
+                    self.active_bot.deal.take_profit_price = float(close_price) + (float(close_price) * volatility)
+                    self.active_bot.deal.trailling_profit_price = float(close_price) + (float(close_price) * volatility)
 
             try:
 
