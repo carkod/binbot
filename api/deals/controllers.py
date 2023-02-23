@@ -270,24 +270,20 @@ class CreateDealController(BaseDeal):
         # Dispatch real order
         else:
             tp_order = {
-                "pair": self.active_bot.pair,
-                "qty": supress_notation(qty, self.qty_precision),
+                "symbol": self.active_bot.pair,
+                "quantity": supress_notation(qty, self.qty_precision),
                 "price": supress_notation(price, self.price_precision),
             }
 
-            res = self.bb_request(
-                method="POST", url=self.bb_sell_order_url, payload=tp_order
-            )
+            try:
+                # If matching_engine finds bid/ask price to sell LIMIT immediately
+                if price:
+                    self.client.order_limit_sell(**tp_order)
+                else:
+                    self.client.order_market_sell(**tp_order)
 
-        # If error pass it up to parent function, can't continue
-        if "error" in res:
-            raise TraillingProfitError(res["error"])
-    
-        if res["status"] != "FILLED":
-            self.update_deal_logs(
-                "Failed to execute trailling profit order (status NEW), retrying..."
-            )
-            res = self.replace_order(res["orderId"])
+            except Exception as err:
+                raise TraillingProfitError(err["error"])
 
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -662,15 +658,17 @@ class CreateDealController(BaseDeal):
         else:
             try:
                 stop_limit_order = {
-                    "pair": self.active_bot.pair,
-                    "qty": qty,
+                    "symbol": self.active_bot.pair,
+                    "quantity": qty,
                     "price": supress_notation(price, self.price_precision),
                 }
-                res = self.bb_request(
-                    method="POST",
-                    url=self.bb_sell_order_url,
-                    payload=stop_limit_order,
-                )
+                # If matching_engine does return a price
+                if price:
+                    res = self.client.order_limit_sell(**stop_limit_order)
+                else:
+                # If matching_engine could not find bid/ask price in the books
+                    res = self.client.order_market_sell(**stop_limit_order)
+
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
@@ -680,12 +678,6 @@ class CreateDealController(BaseDeal):
                     f"Error trying to open new stop_limit order {error}"
                 )
                 return
-
-        if res["status"] != "FILLED":
-            self.update_deal_logs(
-                "Failed to execute stop loss order (status NEW), retrying..."
-            )
-            res = self.replace_order(res["orderId"])
 
         stop_loss_order = BinanceOrderModel(
             timestamp=res["transactTime"],

@@ -225,7 +225,7 @@ class StreamingController:
                         and float(close_price)
                         < float(bot["deal"]["trailling_stop_loss_price"])
                         # Red candlestick
-                        and (float(open_price) > float(close_price))
+                        # and (float(open_price) > float(close_price))
                     ):
                         print(
                             f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}'
@@ -356,6 +356,7 @@ class StreamingController:
                         "orders.$.order_side": result["S"],
                         "orders.$.order_type": result["o"],
                         "orders.$.timestamp": result["T"],
+                        "status": "completed"
                     },
                 },
             )
@@ -371,6 +372,7 @@ class StreamingController:
                         "orders.$.order_side": result["S"],
                         "orders.$.order_type": result["o"],
                         "orders.$.timestamp": result["T"],
+                        "status": "completed"
                     },
                 },
             )
