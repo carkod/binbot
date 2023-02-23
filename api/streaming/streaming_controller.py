@@ -29,7 +29,7 @@ class StreamingController:
         self.test_settings = self.streaming_db.research_controller.find_one(
             {"_id": "test_autotrade_settings"}
         )
-    
+
     def _update_required(self):
         """
         Terminate streaming and restart list of bots required
@@ -41,7 +41,9 @@ class StreamingController:
         This means that everytime there is an update in the list of active bots,
         it will reset the timer
         """
-        self.streaming_db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": time()}})
+        self.streaming_db.research_controller.update_one(
+            {"_id": "settings"}, {"$set": {"update_required": time()}}
+        )
         return
 
     async def setup_client(self):
@@ -71,8 +73,6 @@ class StreamingController:
             params.append(f"{market.lower()}@kline_{interval}")
 
         return params
-
-    
 
     def execute_strategies(
         self,
@@ -145,7 +145,6 @@ class StreamingController:
 
                 # Take profit trailling
                 if bot["trailling"] == "true" and float(bot["deal"]["buy_price"]) > 0:
-
                     # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
                     if bot["deal"]["trailling_stop_loss_price"] == 0:
                         trailling_price = float(bot["deal"]["buy_price"]) * (
@@ -335,53 +334,65 @@ class StreamingController:
 
                 await self.client.close_connection()
 
+    def close_trailling_orders(self, result, db_collection: str="bots"):
+        """
+        This database query closes any orders found that are trailling orders i.e.
+        stop_loss, take_profit, trailling_profit, margin_short_stop_loss, margin_short_trailling_profit
+        the two latter also denoted as stop_loss and take_profit for simplification purposes
+
+        If no order is found with the given order_id, then try with the paper_trading collection
+        as it could be a test bot
+
+        Finally, if paper_trading doesn't match that order_id either, then try any order in the DB
+        """
+        order_id = result["i"]
+        # Close successful take_profit
+        query = self.streaming_db[db_collection].update_one(
+            {
+                "orders": {
+                    "$elemMatch": {"order_id": order_id}
+                }
+            },
+            {
+                "$set": {
+                    "status": {"$or": [
+                        {"$eq": [(result['X'] == 'FILLED'), "$deal_type", "take_profit"]},
+                        {"$eq": [(result['X'] == 'FILLED'), "$deal_type", "stop_loss"]},
+
+                    ]},
+                    "deal.current_price": result["p"],
+                    "deal.sell_price": result["p"],
+                    "orders.$.status": result["X"],
+                    "orders.$.price": result["p"],
+                    "orders.$.qty": result["q"],
+                    "orders.$.order_side": result["S"],
+                    "orders.$.order_type": result["o"],
+                    "orders.$.timestamp": result["T"],
+                },
+                "$inc": {"total_commission": float(result["n"])},
+                "$push": {"errors": "Bot completed!"},
+            },
+        )
+        return query
+
     def process_user_data(self, result):
         # Parse result. Print result for raw result from Binance
         order_id = result["i"]
         # Example of real update
         # {'e': 'executionReport', 'E': 1676750256695, 's': 'UNFIUSDT', 'c': 'web_86e55fed9bad494fba5e213dbe5b2cfc', 'S': 'SELL', 'o': 'LIMIT', 'f': 'GTC', 'q': '8.20000000', 'p': '6.23700000', 'P': '0.00000000', 'F': '0.00000000', 'g': -1, 'C': 'KrHPY4jWdWwFBHUMtBBfJl', 'x': 'CANCELED', ...}
-        if order_id:
-            # Keep all orders up to date
-            # This includes all bots with any status ["active", "completed", ...]
-            # This will help detect bugs in the bots opening and closing mechanism
-            print(f"Updating order no: {order_id}")
-            db_result = self.streaming_db.bots.update_one(
-                {"orders": {"$elemMatch": {"order_id": order_id}}},
-                {
-                    "$inc": {"total_commission": float(result["n"])},
-                    "$set": {
-                        "orders.$.status": result["X"],
-                        "orders.$.price": result["p"],
-                        "orders.$.qty": result["q"],
-                        "orders.$.order_side": result["S"],
-                        "orders.$.order_type": result["o"],
-                        "orders.$.timestamp": result["T"],
-                        "status": "completed"
-                    },
-                },
-            )
-            print(f'modified count {db_result.raw_result["nModified"]}')
-            db_result = self.streaming_db.paper_trading.update_one(
-                {"orders": {"$elemMatch": {"order_id": order_id}}},
-                {
-                    "$inc": {"total_commission": float(result["n"])},
-                    "$set": {
-                        "orders.$.status": result["X"],
-                        "orders.$.price": result["p"],
-                        "orders.$.qty": result["q"],
-                        "orders.$.order_side": result["S"],
-                        "orders.$.order_type": result["o"],
-                        "orders.$.timestamp": result["T"],
-                        "status": "completed"
-                    },
-                },
-            )
-            print(f'modified count {db_result.raw_result["nModified"]}')
-
-        else:
-            print(
-                f"No bot found with order client order id: {order_id}. Order status: {result['X']}"
-            )
+        query = self.close_trailling_orders(result)
+        print(f'Order updates modified: {query.raw_result["nModified"]}')
+        if query.raw_result["nModified"] == 0:
+            # Order not found in bots, so try paper_trading collection
+            query = self.close_trailling_orders(result, db_collection="paper_trading")
+            print(f'Order updates modified: {query.raw_result["nModified"]}')
+            if query.raw_result["nModified"] == 0:
+                print(
+                    f"No bot found with order client order id: {order_id}. Order status: {result['X']}"
+                )
+                return
+        return
+    
 
     async def get_user_data(self):
         print("Streaming user data")
@@ -406,7 +417,7 @@ class StreamingController:
                 except Exception as error:
                     print(f"get_user_data sockets error: {error}")
                     pass
-            
+
                 await client.close_connection()
 
     async def get_isolated_margin_data(self):
