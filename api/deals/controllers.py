@@ -17,6 +17,11 @@ from tools.exceptions import (
 )
 from tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_errors, encode_json
 from tools.round_numbers import round_numbers, supress_notation
+from scipy.stats import linregress
+
+
+class CreateDealControllerError(Exception):
+    pass
 
 class CreateDealController(BaseDeal):
     """
@@ -57,7 +62,7 @@ class CreateDealController(BaseDeal):
             return None
         qty = round_numbers(balance, self.qty_precision)
         return qty
-
+    
 
     def base_order(self):
         """
@@ -265,36 +270,20 @@ class CreateDealController(BaseDeal):
         # Dispatch real order
         else:
             tp_order = {
-                "pair": self.active_bot.pair,
-                "qty": supress_notation(qty, self.qty_precision),
+                "symbol": self.active_bot.pair,
+                "quantity": supress_notation(qty, self.qty_precision),
                 "price": supress_notation(price, self.price_precision),
             }
 
-            res = self.bb_request(
-                method="POST", url=self.bb_sell_order_url, payload=tp_order
-            )
+            try:
+                # If matching_engine finds bid/ask price to sell LIMIT immediately
+                if price:
+                    self.client.order_limit_sell(**tp_order)
+                else:
+                    self.client.order_market_sell(**tp_order)
 
-        # If error pass it up to parent function, can't continue
-        if "error" in res:
-            raise TraillingProfitError(res["error"])
-    
-        if res["status"] == "NEW":
-            params = [
-                ("symbol", self.active_bot_pair),
-                ("type", "LIMIT"),
-                ("side", "SELL"),
-                ("cancelReplaceMode", "ALLOW_FAILURE")
-            ]
-            response = self.signed_request(url=self.cancel_replace_url, method="POST", params=params)
-            data = handle_binance_errors(response)
-            if "newOrderResponse" in data:
-                res = data["newOrderResponse"]
-            elif "code" in data:
-                TraillingProfitError(res["data"])
-            self.update_deal_logs(
-                "Failed to execute stop loss order (status NEW), retrying..."
-            )
-            self.trailling_profit(price)
+            except Exception as err:
+                raise TraillingProfitError(err["error"])
 
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -357,12 +346,10 @@ class CreateDealController(BaseDeal):
                 if "deal_type" in d and (
                     d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
                 ):
-                    order_id = d["order_id"]
-                    res = requests.delete(
-                        url=f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}"
+                    self.update_deal_logs(
+                        "Failed to close all active orders (status NEW), retrying..."
                     )
-
-                    handle_binance_errors(res)
+                    res = self.replace_order(d["orderId"])
 
         # Sell everything
         pair = self.active_bot.pair
@@ -671,15 +658,17 @@ class CreateDealController(BaseDeal):
         else:
             try:
                 stop_limit_order = {
-                    "pair": self.active_bot.pair,
-                    "qty": qty,
+                    "symbol": self.active_bot.pair,
+                    "quantity": qty,
                     "price": supress_notation(price, self.price_precision),
                 }
-                res = self.bb_request(
-                    method="POST",
-                    url=self.bb_sell_order_url,
-                    payload=stop_limit_order,
-                )
+                # If matching_engine does return a price
+                if price:
+                    res = self.client.order_limit_sell(**stop_limit_order)
+                else:
+                # If matching_engine could not find bid/ask price in the books
+                    res = self.client.order_market_sell(**stop_limit_order)
+
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
@@ -689,12 +678,6 @@ class CreateDealController(BaseDeal):
                     f"Error trying to open new stop_limit order {error}"
                 )
                 return
-
-        if res["status"] == "NEW":
-            self.update_deal_logs(
-                "Failed to execute stop loss order (status NEW), retrying..."
-            )
-            self.execute_stop_loss(price)
 
         stop_loss_order = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -827,11 +810,11 @@ class CreateDealController(BaseDeal):
                 )
                 return
 
-        if res["status"] == "NEW":
+        if res["status"] != "FILLED":
             self.update_deal_logs(
-                "Failed to execute stop loss order (status NEW), retrying..."
+                "Failed to execute short sell order (status NEW), retrying..."
             )
-            self.execute_short_sell()
+            res = self.replace_order(res["orderId"])
 
         short_sell_order = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -942,17 +925,20 @@ class CreateDealController(BaseDeal):
         }
         res = requests.get(url=self.bb_candlestick_url, params=params)
         data = handle_binance_errors(res)
-        list_prices = numpy.array(data["trace"][0]["close"])
+        list_prices = numpy.array(data["trace"][0]["close"]).astype(numpy.single)
         series_sd = numpy.std(list_prices.astype(numpy.single))
         sd = series_sd / float(close_price)
+        dates = numpy.array(data["trace"][0]["x"])
 
-        print(f"dynamic profit for {symbol} sd: ", sd)
+        # Calculate linear regression to get trend
+        slope, intercept, rvalue, pvalue, stderr = linregress(dates, list_prices)
+
         if sd >= 0:
             self.active_bot.deal.sd = sd
-            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"] and sd < current_bot["deal"]["sd"]:
-                # Too little sd and the bot won't trail, instead it'll sell immediately
-                # Too much sd and the bot will never sell and overlap with other positions
-                # Current volatility < previous volatility, otherwise trailling_stop_loss could be so low that it doesn't closes
+            
+            print(f"dynamic profit for {symbol} sd: {sd}", f'slope is {"positive" if slope > 0 else "negative"}')
+            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"] and ((current_bot["strategy"] == "long" and slope > 0) or (current_bot["strategy"] == "margin_short" and slope < 0)) and current_bot["deal"]["sd"] > sd:
+                # Only do dynamic trailling if regression line confirms it
                 volatility: float = float(sd) / float(close_price)
                 if volatility < 0.018:
                     volatility = 0.018
@@ -971,6 +957,8 @@ class CreateDealController(BaseDeal):
                     self.active_bot.deal.trailling_stop_loss_price = float(close_price) - (float(close_price) * volatility)
                     # Update tralling_profit price
                     print(f"Updated trailling_deviation and take_profit {self.active_bot.deal.trailling_stop_loss_price}")
+                    self.active_bot.deal.take_profit_price = float(close_price) + (float(close_price) * volatility)
+                    self.active_bot.deal.trailling_profit_price = float(close_price) + (float(close_price) * volatility)
 
             try:
 

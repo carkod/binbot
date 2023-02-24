@@ -1,5 +1,6 @@
 import moment from "moment";
 import PropTypes from "prop-types";
+import { Button } from "react-bootstrap";
 import { useHistory } from "react-router-dom";
 import {
   Badge,
@@ -8,44 +9,32 @@ import {
   CardFooter,
   CardTitle,
   Col,
-  Row,
+  Row
 } from "reactstrap";
-import { botDuration, getProfit } from "../state/bots/actions";
+import { botDuration, computeSingleBotProfit } from "../state/bots/actions";
 import { checkValue, roundDecimals } from "../validations";
-import { Button } from "react-bootstrap";
 
 const renderSellTimestamp = (bot) => {
-  if (!checkValue(bot.deal?.buy_timestamp)) {
-    let sell_timestamp = new Date();
-    if (!checkValue(bot.deal.sell_timestamp)) {
-      sell_timestamp = bot.deal.sell_timestamp;
-      return (
-        <>
-          {sell_timestamp === 0
-            ? botDuration(bot.deal.buy_timestamp, new Date().getTime())
-            : botDuration(bot.deal.buy_timestamp, sell_timestamp)}
-        </>
-      );
-    }
+  // Long positions
+  if (bot.deal) {
+    let exitPositionTs = bot.deal.sell_timestamp || bot.deal.margin_short_buy_back_timestamp || new Date();
+    let enterPositionTs = bot.deal.buy_timestamp || bot.deal.margin_short_sell_timestamp;
+    return (
+      <>
+        {botDuration(enterPositionTs, exitPositionTs)}
+      </>
+    );
+  } else {
+    return (<></>)
   }
-  return "";
 };
 
 const getNetProfit = (bot) => {
   // current price if bot is active
   // sell price if bot is completed
-  let finalPrice = bot.deal.current_price;
-  if (bot.status === "completed") {
-    finalPrice = bot.deal.sell_price;
-  }
-
-  let netProfit = getProfit(bot.deal.buy_price, finalPrice);
-
-  if (bot.strategy === "short" || bot.deal.buy_price === 0) {
-    netProfit = 0;
-  }
-
-  return netProfit;
+  let netProfit = computeSingleBotProfit(bot);
+  if (!netProfit) netProfit = 0;
+  return netProfit
 };
 export default function BotCard({
   tabIndex,

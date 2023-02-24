@@ -129,10 +129,10 @@ class TestBots extends React.Component {
           });
           this.setState(selectAll);
           break;
-        case "show-completed":
+        case "completed": case "active":
           const startDate = this.startDate.valueAsNumber;
           const endDate = this.endDate.valueAsNumber;
-          const status = "completed";
+          const status = value;
           this.props.getTestBots({ startDate, endDate, status });
           break
         default:
@@ -169,8 +169,9 @@ class TestBots extends React.Component {
                   <option value="">Select bulk action</option>
                   <option value="delete-selected">Delete selected</option>
                   <option value="unselect-all">Unselect all</option>
+                  <option value="completed">Show completed only</option>
+                  <option value="active">Show active only</option>
                   <option value="select-all">Select all</option>
-                  <option value="show-completed">Show completed only</option>
                 </Input>
               </Col>
               <Col sm={2}>

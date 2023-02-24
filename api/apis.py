@@ -6,6 +6,8 @@ from time import time
 from requests import get, request
 from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from py3cw.request import Py3CW
+from binance.client import Client
+
 
 class BinanceApi:
     """
@@ -19,7 +21,7 @@ class BinanceApi:
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
-    recvWindow = 9000
+    recvWindow = 9600
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
     server_time_url = f"{BASE}/api/v3/time"
@@ -46,6 +48,10 @@ class BinanceApi:
 
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
     account_snapshot_url = f"{BASE}/sapi/v1/accountSnapshot"
+
+    def __init__(self) -> None:
+        self.client = Client(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
+        return super().__init__()
 
     def get_server_time(self):
         data = self.request(url=self.server_time_url)
@@ -84,6 +90,7 @@ class BinanceApi:
         res = request(method, **args)
         data = handle_binance_errors(res)
         return data
+
 
 
 class BinbotApi(BinanceApi):

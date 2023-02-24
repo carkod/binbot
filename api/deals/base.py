@@ -7,6 +7,10 @@ from bots.schemas import BotSchema
 from db import setup_db
 
 
+class DealCreationError(Exception):
+    pass
+
+
 class BaseDeal(Account):
     """
     Base Deal class to share with CreateDealController and MarginDeal
@@ -82,3 +86,20 @@ class BaseDeal(Account):
             {"$push": {"errors": msg}},
         )
         return msg
+
+    def replace_order(self, cancel_order_id):
+        payload = [
+            ("symbol", self.active_bot.pair),
+            ("quantity", self.active_bot.base_order_size),
+            ("cancelOrderId", cancel_order_id),
+            ("type", "MARKET"),
+            ("side", "SELL"),
+            ("cancelReplaceMode", "ALLOW_FAILURE"),
+        ]
+        response = self.signed_request(
+            url=self.cancel_replace_url, method="POST", payload=payload
+        )
+        if "code" in response:
+            raise DealCreationError(response["msg"], response["data"])
+
+        return response["newOrderResponse"]

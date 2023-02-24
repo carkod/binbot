@@ -113,7 +113,7 @@ class TestBotForm extends React.Component {
     }
 
     if (this.state.currentChartPrice !== s.currentChartPrice) {
-      const newBotProfit = computeSingleBotProfit(this.props.bot);
+      const newBotProfit = computeSingleBotProfit(this.props.bot, this.state.currentChartPrice);
       this.props.setBotState({ bot_profit: newBotProfit });
     }
   };
@@ -409,7 +409,7 @@ class TestBotForm extends React.Component {
                           this.props.bot.bot_profit > 0 ? "success" : "danger"
                         }
                       >
-                        {this.props.bot.bot_profit.toFixed(4) + "%"}
+                        {this.props.bot.bot_profit + "%"}
                       </Badge>{" "}
                       {!checkValue(this.props.bot.status) && (
                         <Badge

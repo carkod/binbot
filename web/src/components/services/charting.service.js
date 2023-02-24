@@ -45,11 +45,18 @@ export function updateTimescaleMarks(bot) {
   let label = "B";
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach((order) => {
+      // If base_order and margin_short
+      if (bot.strategy === "margin_short") {
+        label = "S";  
+      }
       if (
         order.deal_type === "take_profit" ||
         order.deal_type === "stop_loss"
       ) {
         color = dealColors.take_profit;
+        if (bot.strategy === "margin_short") {
+          label = "B";  
+        }
         label = "S";
       }
       if (order.deal_type === "trailling_profit") {
