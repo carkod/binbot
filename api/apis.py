@@ -21,7 +21,7 @@ class BinanceApi:
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
-    recvWindow = 9600
+    recvWindow = 9000
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
     server_time_url = f"{BASE}/api/v3/time"
@@ -46,12 +46,6 @@ class BinanceApi:
 
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
     account_snapshot_url = f"{BASE}/sapi/v1/accountSnapshot"
-
-    client = Client(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
-
-    def get_server_time(self):
-        data = self.request(url=self.server_time_url)
-        return data["serverTime"]
 
     def signed_request(self, url, method="GET", payload={}, params={}):
         """
@@ -88,7 +82,6 @@ class BinanceApi:
         return data
 
 
-
 class BinbotApi(BinanceApi):
     """
     API endpoints on this project itself
@@ -106,7 +99,6 @@ class BinbotApi(BinanceApi):
     bb_paper_trading_url = f"{bb_base_url}/paper-trading"
     bb_paper_trading_activate_url = f"{bb_base_url}/paper-trading/activate"
     bb_paper_trading_deactivate_url = f"{bb_base_url}/paper-trading/deactivate"
-
 
     # Trade operations
     bb_buy_order_url = f"{bb_base_url}/order/buy"
@@ -132,6 +124,7 @@ class BinbotApi(BinanceApi):
         data = handle_binance_errors(res)
         return data
 
+
 class ThreeCommasApiError:
     """3commas.io API error"""
 
@@ -141,43 +134,39 @@ class ThreeCommasApiError:
     def __str__(self):
         return "3commas API error: status={}".format(self.status)
 
-class ThreeCommasApi:
 
+class ThreeCommasApi:
     def get_marketplace_presets(self):
-        p3cw = Py3CW(
-            key=os.environ["3C_API_KEY"],
-            secret=os.environ["3C_SECRET"]
-        )
+        p3cw = Py3CW(key=os.environ["3C_API_KEY"], secret=os.environ["3C_SECRET"])
         error, data = p3cw.request(
-            entity='marketplace',
+            entity="marketplace",
             action="presets",
             payload={
                 "sort_direction": "asc",
                 "bot_strategy": "long",
                 "profit_per_day_from": 1,
-            }
+            },
         )
         if error:
             error = ThreeCommasApiError(error)
             return json_response_error(error)
         else:
-            return json_response({"message": "Sucessfully retrieved preset bots!", "data": data["bots"]})
+            return json_response(
+                {"message": "Sucessfully retrieved preset bots!", "data": data["bots"]}
+            )
 
     def get_all_marketplace_item(self):
-        p3cw = Py3CW(
-            key=os.environ["3C_API_KEY"],
-            secret=os.environ["3C_SECRET"]
-        )
+        p3cw = Py3CW(key=os.environ["3C_API_KEY"], secret=os.environ["3C_SECRET"])
         error, data = p3cw.request(
-            entity='marketplace',
+            entity="marketplace",
             action="items",
             payload={
                 "scope": "all",
                 "limit": 1000,
                 "offset": 0,
                 "order": "newest",
-                "locale": "en"
-            }
+                "locale": "en",
+            },
         )
 
         if error:
@@ -187,12 +176,9 @@ class ThreeCommasApi:
             return data
 
     def get_marketplace_item_signals(self, id):
-        p3cw = Py3CW(
-            key=os.environ["3C_API_KEY"],
-            secret=os.environ["3C_SECRET"]
-        )
+        p3cw = Py3CW(key=os.environ["3C_API_KEY"], secret=os.environ["3C_SECRET"])
         error, data = p3cw.request(
-            entity='marketplace',
+            entity="marketplace",
             action="signals",
             action_id=str(id),
         )

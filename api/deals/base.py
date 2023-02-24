@@ -18,7 +18,6 @@ class BaseDeal(Account):
     """
 
     def __init__(self, bot, db_collection):
-        self.client = Client(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
         self.active_bot = BotSchema.parse_obj(bot)
         self.db = setup_db()
         self.db_collection = self.db[db_collection]
@@ -34,6 +33,7 @@ class BaseDeal(Account):
             .as_tuple()
             .exponent
         )
+        self.client = Client(os.getenv("BINANCE_KEY"), os.getenv("BINANCE_SECRET"))
         super().__init__()
 
     def __repr__(self) -> str:

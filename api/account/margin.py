@@ -5,9 +5,9 @@ from binance.client import Client
 
 from account.schemas import EstimatedBalance
 from tools.handle_error import json_response
+from apis import BinanceApi
 
-
-class MarginAccount:
+class MarginAccount(BinanceApi):
     def __init__(self) -> None:
         self.client = Client(os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"])
 
