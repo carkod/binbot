@@ -44,7 +44,6 @@ class CreateDealController(BaseDeal):
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
-        print(self.bb_balance_url)
         data = self.bb_request(url=self.bb_balance_url)
         symbol_balance = next(
             (x["free"] for x in data["data"] if x["asset"] == symbol), None

@@ -187,7 +187,6 @@ class Bot(Account):
                 ).open_deal()
                 return json_response_message("Successfully activated bot!")
             except OpenDealError as error:
-                print(error)
                 return json_response_error(error.args[0])
             except NotEnoughFunds as e:
                 return json_response_error(e.args[0])

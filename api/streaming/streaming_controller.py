@@ -105,7 +105,6 @@ class StreamingController:
                 CreateDealController(
                     current_bot, db_collection=db_collection
                 ).execute_short_buy()
-                self._update_required()
 
             # Long strategy starts
             if current_bot and "deal" in current_bot:
@@ -225,7 +224,7 @@ class StreamingController:
                         and float(close_price)
                         < float(bot["deal"]["trailling_stop_loss_price"])
                         # Red candlestick
-                        # and (float(open_price) > float(close_price))
+                        and (float(open_price) > float(close_price))
                     ):
                         print(
                             f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}'
@@ -273,11 +272,11 @@ class StreamingController:
         # Add margin time to update_required signal to avoid restarting constantly
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
-            if time() - local_settings["update_required"] > 200:
+            print(f'Time to update_required {time() - local_settings["update_required"]}')
+            if time() - local_settings["update_required"] > 30:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": None}}
                 )
-                await self.client.close_connection()
                 raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:

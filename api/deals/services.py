@@ -11,7 +11,8 @@ from apis import BinanceApi
 from tools import EnumDefinitions
 from tools.handle_error import handle_binance_errors
 
-
+class OrderBookError(Exception):
+    pass
 class BuyOrder(BinanceApi):
     """Post order
 
@@ -59,8 +60,7 @@ class BuyOrder(BinanceApi):
             df = pd.DataFrame(data["ask"], columns=["price", "qty"])
 
         else:
-            print("Incorrect bid/ask keyword for last_order_book_price")
-            exit(1)
+            raise OrderBookError("Incorrect bid/ask keyword for last_order_book_price")
 
         df["qty"] = df["qty"].astype(float)
 
