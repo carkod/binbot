@@ -11,7 +11,6 @@ def edit_settings(item: AutotradeSettingsSchema):
     Autotrade settings for bots
     these use real money and real Binance transactions
     """
-    print(item)
     return AutotradeSettingsController().edit_settings(item)
 
 

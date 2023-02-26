@@ -1,11 +1,12 @@
 import uuid
+import os
 from decimal import Decimal
 from time import time
 
 from account.account import Account
 from bots.schemas import BotSchema
 from db import setup_db
-
+from binance.client import Client
 
 class DealCreationError(Exception):
     pass
@@ -32,6 +33,8 @@ class BaseDeal(Account):
             .as_tuple()
             .exponent
         )
+        self.client = Client(os.getenv("BINANCE_KEY"), os.getenv("BINANCE_SECRET"))
+        super().__init__()
 
     def __repr__(self) -> str:
         """
@@ -103,3 +106,14 @@ class BaseDeal(Account):
             raise DealCreationError(response["msg"], response["data"])
 
         return response["newOrderResponse"]
+
+    def close_open_orders(self, symbol):
+        """
+        Check open orders and replace with new
+        """
+        open_orders = self.client.get_open_orders(symbol=symbol)
+        for order in open_orders:
+            if order["status"] == "NEW":
+                self.client.cancel_order(symbol=symbol, orderId=order["orderId"])
+                return True
+        return False

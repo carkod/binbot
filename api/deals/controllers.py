@@ -19,8 +19,10 @@ from tools.handle_error import NotEnoughFunds, QuantityTooLow, handle_binance_er
 from tools.round_numbers import round_numbers, supress_notation
 from scipy.stats import linregress
 
-
 class CreateDealControllerError(Exception):
+    pass
+
+class StreamingSaveError(Exception):
     pass
 
 class CreateDealController(BaseDeal):
@@ -37,13 +39,11 @@ class CreateDealController(BaseDeal):
     """
 
     def __init__(self, bot, db_collection="paper_trading"):
-        super().__init__(bot, db_collection)
         # Inherit from parent class
-        
+        super().__init__(bot, db_collection)
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
-        print(self.bb_balance_url)
         data = self.bb_request(url=self.bb_balance_url)
         symbol_balance = next(
             (x["free"] for x in data["data"] if x["asset"] == symbol), None
@@ -62,8 +62,36 @@ class CreateDealController(BaseDeal):
             return None
         qty = round_numbers(balance, self.qty_precision)
         return qty
-    
 
+    def save_bot_streaming(self):
+        """
+        MongoDB query to save bot using Pydantic
+
+        This function differs from usual save query in that
+        it returns the saved bot, thus called streaming, it's
+        specifically for streaming saves
+        """
+
+        try:
+
+            bot = encode_json(self.active_bot)
+            if "_id" in bot:
+                bot.pop("_id")
+
+            bot = self.db_collection.find_one_and_update(
+                {"id": self.active_bot.id},
+                {
+                    "$set": bot,
+                },
+                return_document=ReturnDocument.AFTER,
+            )
+
+        except Exception as error:
+            self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
+            raise StreamingSaveError(error)
+
+        return bot
+    
     def base_order(self):
         """
         Required initial order to trigger bot.
@@ -256,7 +284,14 @@ class CreateDealController(BaseDeal):
             qty = self.compute_qty(self.active_bot.pair)
             # Already sold?
             if not qty:
-                print(f"Bot already closed? There is no {self.active_bot.pair} quantity in the balance. Please delete the bot.")
+                closed_orders = self.close_open_orders(self.active_bot.pair)
+                if not closed_orders:
+                    self.update_deal_logs(
+                        f"No quantity in balance, no closed orders. Cannot execute update trailling profit."
+                    )
+                    self.active_bot.status = "error"
+                    self.save_bot_streaming()
+                    return
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":
@@ -311,24 +346,7 @@ class CreateDealController(BaseDeal):
         self.active_bot.errors.append(msg)
         print(msg)
 
-        try:
-
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")
-
-            bot = self.db_collection.find_one_and_update(
-                {"id": self.active_bot.id},
-                {
-                    "$set": bot,
-                },
-                return_document=ReturnDocument.AFTER,
-            )
-
-        except Exception as error:
-            self.update_deal_logs(f"Failed to close trailling take profit: {error}")
-            raise TraillingProfitError(error)
-
+        bot = self.save_bot_streaming()
         return bot
 
     def close_all(self):
@@ -623,12 +641,14 @@ class CreateDealController(BaseDeal):
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
         if not qty:
-            self.update_deal_logs(
-                f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
-            )
-            params = {"id": self.active_bot.id}
-            self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
-            return
+            closed_orders = self.close_open_orders(self.active_bot.pair)
+            if not closed_orders:
+                self.update_deal_logs(
+                    f"No quantity in balance, no closed orders. Cannot execute update stop limit."
+                )
+                self.active_bot.status = "error"
+                self.save_bot_streaming()
+                return
 
         order_id = None
         for order in self.active_bot.orders:
@@ -650,8 +670,6 @@ class CreateDealController(BaseDeal):
                 return
 
         price = float(self.matching_engine(self.active_bot.pair, True, qty))
-        if not price:
-            price = float(self.matching_engine(self.active_bot.pair, True))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
@@ -669,10 +687,6 @@ class CreateDealController(BaseDeal):
                 # If matching_engine could not find bid/ask price in the books
                     res = self.client.order_market_sell(**stop_limit_order)
 
-            except QuantityTooLow as error:
-                # Delete incorrectly activated or old bots
-                self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
-                print(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:
                 self.update_deal_logs(
                     f"Error trying to open new stop_limit order {error}"
@@ -704,28 +718,8 @@ class CreateDealController(BaseDeal):
         self.active_bot.errors.append(msg)
         self.active_bot.status = "completed"
 
-        try:
-
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")
-
-            self.db_collection.update_one(
-                {"id": self.active_bot.id},
-                {"$set": bot},
-            )
-
-        except ValidationError as error:
-            self.update_deal_logs(f"Stop loss error: {error}")
-            return
-        except (TypeError, AttributeError) as error:
-            message = str(";".join(error.args))
-            self.update_deal_logs(f"Stop loss error: {message}")
-            return
-        except Exception as error:
-            self.update_deal_logs(f"Stop loss error: {error}")
-            return
-        pass
+        bot = self.save_bot_streaming()
+        return bot
 
     def execute_short_sell(self):
         """
@@ -960,29 +954,7 @@ class CreateDealController(BaseDeal):
                     self.active_bot.deal.take_profit_price = float(close_price) + (float(close_price) * volatility)
                     self.active_bot.deal.trailling_profit_price = float(close_price) + (float(close_price) * volatility)
 
-            try:
-
-                bot = encode_json(self.active_bot)
-                if "_id" in bot:
-                    bot.pop("_id")
-
-                self.db_collection.update_one(
-                    {"id": self.active_bot.id},
-                    {"$set": bot},
-                )
-
-            except ValidationError as error:
-                self.update_deal_logs(f"Dynamic take profit error: {error}")
-                return
-            except (TypeError, AttributeError) as error:
-                message = str(";".join(error.args))
-                self.update_deal_logs(f"Dynamic take profit error: {message}")
-                return
-            except Exception as error:
-                self.update_deal_logs(f"Dynamic take profit error: {error}")
-                return
-
-        bot = encode_json(self.active_bot)
+        bot = self.save_bot_streaming()
         return bot
 
     def open_deal(self):

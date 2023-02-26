@@ -84,7 +84,7 @@ class Assets(Account):
                     rate: float = self.get_ticker_price(f'{b["asset"]}USDT')
                     total_usdt += float(qty) * float(rate)
                 except InvalidSymbol:
-                    print(InvalidSymbol(b["asset"]))
+                    print(b["asset"])
                     # Some coins like NFT are air dropped and cannot be traded
                     break
 
