@@ -153,9 +153,6 @@ class MarginDeal(BaseDeal):
         try:
             if not find_balance_to_use:
                 # transfer
-                self.client.enable_isolated_margin_account(
-                    symbol=self.active_bot.pair
-                )
                 self.client.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
@@ -275,7 +272,6 @@ class MarginDeal(BaseDeal):
         2. Carry on with usual base_order
         """
         print(f"Opening margin_short_base_order")
-
         initial_price = float(self.matching_engine(self.active_bot.pair, True))
         qty = round_numbers(
             (float(self.active_bot.base_order_size) / float(initial_price)),

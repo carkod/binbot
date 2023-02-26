@@ -71,12 +71,6 @@ class BotSchema(BaseModel):
         else:
             raise ValueError(f"{v} must be a percentage")
 
-    @validator("status")
-    def check_Status(cls, v: str):
-        if v not in BinbotEnums.Status:
-            raise ValueError(f'Status must be one of {", ".join(BinbotEnums.Status)}')
-        return v
-
     @validator("mode")
     def check_mode(cls, v: str):
         if v not in BinbotEnums.mode:

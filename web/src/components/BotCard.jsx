@@ -132,7 +132,7 @@ export default function BotCard({
                 </Col>
                 <Col md="5">
                   <p className="card-category">
-                    {!checkValue(x.deal) && x.deal.buy_price.toFixed(6)}
+                    {x.deal?.buy_price && x.deal.buy_price.toFixed(6)}
                   </p>
                 </Col>
               </Row>

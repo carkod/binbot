@@ -22,7 +22,11 @@ import {
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
-import { bot, computeSingleBotProfit } from "../../state/bots/actions";
+import {
+  bot,
+  checkIsolatedMargin,
+  computeSingleBotProfit,
+} from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
 import { checkBalance, checkValue, roundDecimals } from "../../validations.js";
 import SafetyOrdersTab from "../../components/SafetyOrdersTab";
@@ -117,6 +121,8 @@ class BotForm extends React.Component {
       this.props.setBot({
         name: `${this.props.bot.pair}_${currentDate}`,
       });
+
+      this.marginShortValidation();
     }
 
     if (this.state.currentChartPrice !== s.currentChartPrice) {
@@ -132,6 +138,23 @@ class BotForm extends React.Component {
       !checkValue(this.props.balances)
     ) {
       this.computeAvailableBalance();
+    }
+  };
+
+  marginShortValidation = async () => {
+    if (this.props.bot.pair && this.props.bot.strategy === "margin_short") {
+      const check = await checkIsolatedMargin(this.props.bot.pair);
+      if (!check) {
+        this.props.setBot({
+          marginShortError:
+            "Cannot open margin_short, isolated margin not available for this asset.",
+        });
+      } else {
+        this.props.setBot({
+          marginShortError:
+            null,
+        });
+      }
     }
   };
 
@@ -191,6 +214,8 @@ class BotForm extends React.Component {
         this.props.setBot({ traillingDeviationError: false });
       }
     }
+
+    this.marginShortValidation();
 
     return true;
   };
@@ -362,6 +387,10 @@ class BotForm extends React.Component {
     const { name, value } = e.target;
     if (name === "pair") {
       this.props.getSymbolInfo(value);
+    }
+
+    if (name === "strategy" && value === "margin_short") {
+      this.marginShortValidation();
     }
 
     // Update charts

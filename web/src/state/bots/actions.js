@@ -48,6 +48,7 @@ export const bot = {
   addAllError: "",
   cooldown: 0,
   strategy: "long",
+  marginShortError: null,
   short_buy_price: 0,
   short_sell_price: 0,
 };
@@ -193,4 +194,18 @@ export function botDuration(start, end) {
   }
 
   return dateStringify;
+}
+
+export async function checkIsolatedMargin(symbol) {
+  const url = new URL(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`)
+  const request = await fetch(url);
+  const data = await request.json();
+  let check = false;
+  data.symbols[0].permissions.forEach(element => {
+    if (element.includes("TRD_GRP_")) {
+      check = true;
+      return check;
+    }
+  });
+  return check;
 }

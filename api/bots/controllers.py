@@ -120,6 +120,11 @@ class Bot(Account):
         try:
             bot = data.dict()
             bot["id"] = str(ObjectId())
+            if bot["strategy"] == "margin_short":
+                check_asset = self.check_isolated_margin_exists(bot["pair"])
+                if not check_asset:
+                    return json_response_error("Isolated margin not available for this asset.")
+
             self.db_collection.insert_one(bot)
             resp = json_response(
                 {
