@@ -1,8 +1,8 @@
 from time import time
 
 from binance.exceptions import BinanceAPIException
+from tools.enum_definitions import Statuses
 from deals.base import BaseDeal
-from deals.models import BinanceRepayRecords
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
 from pymongo import ReturnDocument
@@ -150,27 +150,32 @@ class MarginDeal(BaseDeal):
             (item for item in balance if item["symbol"] == self.active_bot.pair),
             None,
         )
-        if not find_balance_to_use:
-            # transfer
-            try:
+        try:
+            if not find_balance_to_use:
+                # transfer
+                self.client.enable_isolated_margin_account(
+                    symbol=self.active_bot.pair
+                )
                 self.client.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
                     amount=self.active_bot.base_order_size,
                 )
-                asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-                # In the future, amount_to_borrow = base + base * (2.5)
-                amount_to_borrow = self.active_bot.base_order_size
-                margin_loan_transaction = self.client.create_margin_loan(
-                    asset=asset, amount=amount_to_borrow, isIsolated=True
-                )
-                if margin_loan_transaction:
-                    self.active_bot.deal.buy_total_qty = amount_to_borrow
-                    self.active_bot.deal.margin_loan_id = margin_loan_transaction
+            asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
+            # In the future, amount_to_borrow = base + base * (2.5)
+            amount_to_borrow = self.active_bot.base_order_size
+            margin_loan_transaction = self.client.create_margin_loan(
+                asset=asset, symbol=self.active_bot.pair, amount=amount_to_borrow, isIsolated=True
+            )
+            if margin_loan_transaction:
+                self.active_bot.deal.buy_total_qty = amount_to_borrow
+                self.active_bot.deal.margin_loan_id = margin_loan_transaction
 
-                    return
-            except BinanceAPIException as error:
-                raise MarginShortError(error.message)
+            return
+        except BinanceAPIException as error:
+            if error.code in (-11019, -3045):
+                self.terminate_margin_short()
+            raise MarginShortError(error.message)
 
     def terminate_margin_short(self):
         """
@@ -196,51 +201,53 @@ class MarginDeal(BaseDeal):
                     if self.active_bot.deal.buy_total_qty
                     else self.active_bot.base_order_size
                 )
-                self.client.repay_margin_loan(
-                    asset=asset,
-                    symbol=self.active_bot.pair,
-                    amount=amount,
-                    isIsolated=True,
-                )
-                repay_details_res: BinanceRepayRecords = (
-                    self.client.get_margin_repay_details(
-                        asset=asset, isolatedSymbol=self.active_bot.pair
+                # Check if there is a loan
+                # Binance may reject loans if they don't have asset
+                # or binbot errors may transfer funds but no loan is created
+                query_loan = self.client.get_margin_loan_details(asset=asset)
+                if query_loan["total"] > 0:
+                    self.client.repay_margin_loan(
+                        asset=asset,
+                        symbol=self.active_bot.pair,
+                        amount=amount,
+                        isIsolated=True,
                     )
-                )
-                repay_details = repay_details_res["rows"][0]
-                self.active_bot.deal.margin_short_loan_interest = repay_details[
-                    "interest"
-                ]
-                self.active_bot.deal.margin_short_loan_principal = repay_details[
-                    "principal"
-                ]
-                self.active_bot.deal.margin_short_loan_timestamp = repay_details[
-                    "timestamp"
-                ]
-                self.active_bot.status = "completed"
+                    repay_details_res = (
+                        self.client.get_margin_repay_details(
+                            asset=asset, isolatedSymbol=self.active_bot.pair
+                        )
+                    )
+                    repay_details = repay_details_res["rows"][0]
+                    self.active_bot.deal.margin_short_loan_interest = repay_details[
+                        "interest"
+                    ]
+                    self.active_bot.deal.margin_short_loan_principal = repay_details[
+                        "principal"
+                    ]
+                    self.active_bot.deal.margin_short_loan_timestamp = repay_details[
+                        "timestamp"
+                    ]
+                    self.active_bot.status = Statuses.completed
+                else:
+                    self.active_bot.status = Statuses.error
+                    self.active_bot.errors.append("Loan not found for this bot.")
 
+
+                # transfer back to SPOT account
                 self.client.transfer_isolated_margin_to_spot(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
                     amount=amount,
                 )
 
-                self.active_bot.deal.buy_total_qty = amount_to_borrow
+                # Disable isolated pair to avoid reaching the 15 pair limit
+                self.client.disable_isolated_margin_account(
+                    symbol=self.active_bot.pair
+                )
+
                 completion_msg = f"Margin_short bot repaid, funds transferred back to SPOT. Bot completed"
                 self.active_bot.errors.append(completion_msg)
                 print(completion_msg)
-
-                # In the future, amount_to_borrow = base + base * (2.5)
-                amount_to_borrow = self.active_bot.base_order_size
-                margin_loan_transaction = self.client.create_margin_loan(
-                    asset=asset, amount=amount_to_borrow, isIsolated=True
-                )
-
-                self.active_bot.deal.buy_total_qty = amount_to_borrow
-                self.active_bot.deal.margin_loan_id = margin_loan_transaction
-
-                # Activate bot
-                self.active_bot.status = "completed"
 
                 bot = encode_json(self.active_bot)
                 if "_id" in bot:
