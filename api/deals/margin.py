@@ -91,16 +91,6 @@ class MarginDeal(BaseDeal):
             raise MarginShortError("No funds in Cross Margin account")
         return assets
 
-    def get_loan_record(self):
-        """
-        Get loan details
-        https://binance-docs.github.io/apidocs/spot/en/#query-loan-record-user_data
-        """
-        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-        transaction = self.client.repay_margin_loan(asset=asset, amount="1.1")
-
-        pass
-
     def get_isolated_balance(self):
         """
         Get balance of Isolated Margin account
@@ -134,13 +124,13 @@ class MarginDeal(BaseDeal):
         qty = round_numbers(find_balance_to_use, self.qty_precision)
         return qty
 
-    def init_margin_short(self, borrow_rate=2.5):
+    def init_margin_short(self, qty):
         """
         Pre-tasks for db_collection = bots
         These tasks are not necessary for paper_trading
 
         1. transfer funds
-        2. create loan
+        2. create loan with qty given by market
         3. borrow 2.5x to do base order
         """
         print("Initializating margin_short tasks for real bots trading")
@@ -160,13 +150,15 @@ class MarginDeal(BaseDeal):
                 )
             asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
             # In the future, amount_to_borrow = base + base * (2.5)
-            amount_to_borrow = self.active_bot.base_order_size
-            margin_loan_transaction = self.client.create_margin_loan(
-                asset=asset, symbol=self.active_bot.pair, amount=amount_to_borrow, isIsolated=True
+            self.client.create_margin_loan(
+                asset=asset, symbol=self.active_bot.pair, amount=qty, isIsolated=True
             )
-            if margin_loan_transaction:
-                self.active_bot.deal.buy_total_qty = amount_to_borrow
-                self.active_bot.deal.margin_loan_id = margin_loan_transaction
+            loan_details = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
+            fee_details = self.signed_request(self.isolated_fee_url, payload={"symbol": self.active_bot.pair})
+            self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0]["timestamp"]
+            self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0]["principal"]
+            self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
+            self.active_bot.deal.margin_short_loan_interest = float(next((item["dailyInterest"] for item in fee_details[0]["data"] if item["coin"] == asset), 0))
 
             return
         except BinanceAPIException as error:
@@ -193,20 +185,15 @@ class MarginDeal(BaseDeal):
             # repay
             try:
                 asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-                amount = (
-                    self.active_bot.deal.buy_total_qty
-                    if self.active_bot.deal.buy_total_qty
-                    else self.active_bot.base_order_size
-                )
                 # Check if there is a loan
                 # Binance may reject loans if they don't have asset
                 # or binbot errors may transfer funds but no loan is created
-                query_loan = self.client.get_margin_loan_details(asset=asset)
+                query_loan = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
                 if query_loan["total"] > 0:
                     self.client.repay_margin_loan(
                         asset=asset,
                         symbol=self.active_bot.pair,
-                        amount=amount,
+                        amount=self.active_bot.deal.margin_short_loan_principal,
                         isIsolated=True,
                     )
                     repay_details_res = (
@@ -234,7 +221,7 @@ class MarginDeal(BaseDeal):
                 self.client.transfer_isolated_margin_to_spot(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
-                    amount=amount,
+                    amount=find_balance_to_use,
                 )
 
                 # Disable isolated pair to avoid reaching the 15 pair limit
@@ -278,11 +265,12 @@ class MarginDeal(BaseDeal):
             self.qty_precision,
         )
         if self.db_collection.name == "bots":
-            self.init_margin_short()
+            self.init_margin_short(qty)
+
             # Margin sell
             order_res = self.sell_order(qty)
         else:
-            # Margin sell
+            # Simulate Margin sell
             order_res = self.simulate_margin_order(qty, "SELL")
 
         order_data = MarginOrderSchema(
@@ -297,8 +285,8 @@ class MarginDeal(BaseDeal):
             fills=order_res["fills"],
             time_in_force=order_res["timeInForce"],
             status=order_res["status"],
-            marginBuyBorrowAmount=order_res["marginBuyBorrowAmount"],
-            marginBuyBorrowAsset=order_res["marginBuyBorrowAsset"],
+            margin_buy_borrow_amount=order_res["marginBuyBorrowAmount"],
+            margin_buy_borrow_asset=order_res["marginBuyBorrowAsset"],
             isIsolated=order_res["isIsolated"],
         )
 
@@ -447,14 +435,7 @@ class MarginDeal(BaseDeal):
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
             try:
-                res = self.client.create_margin_order(
-                    symbol=self.active_bot.pair,
-                    side="BUY",
-                    type="LIMIT",
-                    timeInForce="GTC",
-                    quantity=qty,
-                    price=supress_notation(price, self.price_precision),
-                )
+                res = self.buy_order(price, qty)
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
@@ -464,11 +445,7 @@ class MarginDeal(BaseDeal):
                     f"Error trying to open new stop_limit order {error}"
                 )
                 return
-
-        if res["status"] != "FILLED":
-            error_msg = "Failed to execute margin short stop loss order (status NEW), retrying..."
-            self.update_deal_logs(error_msg)
-            res = self.replace_order(res["orderId"])
+            
 
         stop_loss_order = MarginOrderSchema(
             timestamp=res["transactTime"],
@@ -549,14 +526,7 @@ class MarginDeal(BaseDeal):
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
             try:
-                res = self.client.create_margin_order(
-                    symbol=self.active_bot.pair,
-                    side="BUY",
-                    type="LIMIT",
-                    timeInForce="GTC",
-                    quantity=qty,
-                    price=supress_notation(price, self.price_precision),
-                )
+                res = self.buy_order(price=supress_notation(price, self.price_precision), qty=supress_notation(qty, self.qty_precision))
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
@@ -566,11 +536,6 @@ class MarginDeal(BaseDeal):
                     f"Error trying to open new stop_limit order {error}"
                 )
                 return
-
-        if res["status"] != "FILLED":
-            error_msg = "Failed to execute stop loss order (status NEW), retrying..."
-            self.update_deal_logs(error_msg)
-            res = self.replace_order(res["orderId"])
 
         take_profit_order = MarginOrderSchema(
             timestamp=res["transactTime"],
@@ -584,8 +549,6 @@ class MarginDeal(BaseDeal):
             fills=res["fills"],
             time_in_force=res["timeInForce"],
             status=res["status"],
-            marginBuyBorrowAmount=res["marginBuyBorrowAmount"],
-            marginBuyBorrowAsset=res["marginBuyBorrowAsset"],
             isIsolated=res["isIsolated"],
         )
 

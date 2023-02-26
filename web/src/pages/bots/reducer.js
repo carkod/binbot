@@ -40,7 +40,7 @@ import {
 
 // The initial state of the App
 export const initialState = {
-  bots: new Array(bot),
+  bots: [],
   bot: bot,
   data: null,
   message: null,
@@ -76,7 +76,7 @@ const botReducer = produce((draft, action) => {
       return draft;
     }
     case GET_BOTS_SUCCESS: {
-      if (action.bots) {
+      if (action.bots && draft.bots.length > 0) {
         draft.bots = [...draft.bots, ...action.bots];
         draft.totalProfit = computeTotalProfit(action.bots);
       } else {

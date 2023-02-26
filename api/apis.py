@@ -47,6 +47,9 @@ class BinanceApi:
     dust_transfer_url = f"{BASE}/sapi/v1/asset/dust"
     account_snapshot_url = f"{BASE}/sapi/v1/accountSnapshot"
 
+    # Margin
+    isolated_fee_url = f"{BASE}/sapi/v1/margin/isolatedMarginData"
+
     def signed_request(self, url, method="GET", payload={}, params={}):
         """
         USER_DATA, TRADE signed requests
