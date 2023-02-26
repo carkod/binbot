@@ -1,7 +1,7 @@
 from time import time
 
 from binance.exceptions import BinanceAPIException
-from tools.enum_definitions import Statuses
+from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
@@ -227,9 +227,9 @@ class MarginDeal(BaseDeal):
                     self.active_bot.deal.margin_short_loan_timestamp = repay_details[
                         "timestamp"
                     ]
-                    self.active_bot.status = Statuses.completed
+                    self.active_bot.status = Status.completed
                 else:
-                    self.active_bot.status = Statuses.error
+                    self.active_bot.status = Status.error
                     self.active_bot.errors.append("Loan not found for this bot.")
 
 
@@ -314,7 +314,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_base_order = order_res["origQty"]
 
         # Activate bot
-        self.active_bot.status = "active"
+        self.active_bot.status = Status.active
         return self.active_bot
 
     def streaming_updates(self, close_price: str):
@@ -501,7 +501,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_buy_back_price = (res["price"],)
         self.active_bot.deal.buy_total_qty = (res["origQty"],)
         self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
-        self.active_bot.status = "completed"
+        self.active_bot.status = Status.completed
 
         msg = f"Completed Stop loss"
         self.active_bot.errors.append(msg)
@@ -606,6 +606,6 @@ class MarginDeal(BaseDeal):
 
         msg = f"Completed Take profit!"
         self.active_bot.errors.append(msg)
-        self.active_bot.status = "completed"
+        self.active_bot.status = Status.completed
 
         return

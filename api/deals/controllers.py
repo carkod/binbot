@@ -3,6 +3,7 @@ import requests
 from pymongo import ReturnDocument
 from requests.exceptions import HTTPError
 from pydantic import ValidationError
+from tools.enum_definitions import Status
 
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
@@ -165,7 +166,7 @@ class CreateDealController(BaseDeal):
         )
 
         # Activate bot
-        self.active_bot.status = "active"
+        self.active_bot.status = Status.active
 
         bot = encode_json(self.active_bot)
         if "_id" in bot:
@@ -248,7 +249,7 @@ class CreateDealController(BaseDeal):
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
-        self.active_bot.status = "completed"
+        self.active_bot.status = Status.completed
         msg = f"Completed take profit"
         self.active_bot.errors.append(msg)
 
@@ -269,7 +270,7 @@ class CreateDealController(BaseDeal):
 
         return bot
 
-    def trailling_profit(self) -> BotSchema:
+    def trailling_profit(self) -> BotSchema | None:
         """
         Sell at take_profit price, because prices will not reach trailling
         """
@@ -289,9 +290,9 @@ class CreateDealController(BaseDeal):
                     self.update_deal_logs(
                         f"No quantity in balance, no closed orders. Cannot execute update trailling profit."
                     )
-                    self.active_bot.status = "error"
-                    self.save_bot_streaming()
-                    return
+                    self.active_bot.status = Status.error
+                    bot = self.save_bot_streaming()
+                    return bot
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":
@@ -341,7 +342,7 @@ class CreateDealController(BaseDeal):
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
-        self.active_bot.status = "completed"
+        self.active_bot.status = Status.completed
         msg = f"Completed take profit after failing to break trailling {self.active_bot.pair}"
         self.active_bot.errors.append(msg)
         print(msg)
@@ -646,7 +647,7 @@ class CreateDealController(BaseDeal):
                 self.update_deal_logs(
                     f"No quantity in balance, no closed orders. Cannot execute update stop limit."
                 )
-                self.active_bot.status = "error"
+                self.active_bot.status = Status.error
                 self.save_bot_streaming()
                 return
 
@@ -716,7 +717,7 @@ class CreateDealController(BaseDeal):
         self.active_bot.deal.sell_timestamp = res["transactTime"]
         msg = f"Completed Stop loss"
         self.active_bot.errors.append(msg)
-        self.active_bot.status = "completed"
+        self.active_bot.status = Status.completed
 
         bot = self.save_bot_streaming()
         return bot
@@ -1029,7 +1030,7 @@ class CreateDealController(BaseDeal):
             self.active_bot.deal.trailling_stop_loss_price = 0
 
 
-        self.active_bot.status = "active"
+        self.active_bot.status = Status.active
         bot = encode_json(self.active_bot)
         if "_id" in bot:
             bot.pop("_id")
