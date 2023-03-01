@@ -86,10 +86,10 @@ class Account(BinbotApi):
         if symbol:
             params["symbol"] = symbol
         
-        mongo_cache = self.setup_mongocache()
+        # mongo_cache = self.setup_mongocache()
         # expire_after = 15m because candlesticks are 15m
-        session = CachedSession('ticker_24_cache', backend=mongo_cache, expire_after=15)
-        res = session.get(url=url, params=params)
+        # session = CachedSession('ticker_24_cache', backend=mongo_cache, expire_after=15)
+        res = requests.get(url=url, params=params)
         data = handle_binance_errors(res)
         return data
 
