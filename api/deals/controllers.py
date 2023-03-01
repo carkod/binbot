@@ -932,7 +932,15 @@ class CreateDealController(BaseDeal):
             self.active_bot.deal.sd = sd
             
             print(f"dynamic profit for {symbol} sd: {sd}", f'slope is {"positive" if slope > 0 else "negative"}')
-            if current_bot["deal"]["trailling_stop_loss_price"] > 0 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"] and ((current_bot["strategy"] == "long" and slope > 0) or (current_bot["strategy"] == "margin_short" and slope < 0)) and current_bot["deal"]["sd"] > sd:
+            if (
+                current_bot["deal"]["trailling_stop_loss_price"] > 0
+                and current_bot["deal"]["trailling_stop_loss_price"] > current_bot["deal"]["base_order_size"]
+                and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"]
+                and (
+                    (current_bot["strategy"] == "long" and slope > 0)
+                    or (current_bot["strategy"] == "margin_short" and slope < 0)
+                )
+                and current_bot["deal"]["sd"] > sd):
                 # Only do dynamic trailling if regression line confirms it
                 volatility: float = float(sd) / float(close_price)
                 if volatility < 0.018:
