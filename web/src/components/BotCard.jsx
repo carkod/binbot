@@ -11,17 +11,17 @@ import {
   Col,
   Row
 } from "reactstrap";
-import { botDuration, computeSingleBotProfit } from "../state/bots/actions";
+import { computeSingleBotProfit } from "../state/bots/actions";
 import { checkValue, roundDecimals } from "../validations";
+import renderTimestamp from "./services/bot-duration";
+
 
 const renderSellTimestamp = (bot) => {
   // Long positions
   if (bot.deal) {
-    let exitPositionTs = bot.deal.sell_timestamp || bot.deal.margin_short_buy_back_timestamp || new Date();
-    let enterPositionTs = bot.deal.buy_timestamp || bot.deal.margin_short_sell_timestamp;
     return (
       <>
-        {botDuration(enterPositionTs, exitPositionTs)}
+        {renderTimestamp(bot)}
       </>
     );
   } else {

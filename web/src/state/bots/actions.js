@@ -1,4 +1,3 @@
-import moment from "moment";
 import { checkValue, intervalOptions } from "../../validations";
 import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../constants";
 
@@ -166,35 +165,6 @@ export function weekAgo() {
   return lastWeek.getTime();
 }
 
-export function botDuration(start, end) {
-  const startTime = moment(start);
-  const endTime = moment(end);
-  const duration = moment.duration(endTime.diff(startTime));
-
-  let days = Math.floor(duration.asDays());
-  duration.subtract(moment.duration(days, "days"));
-
-  let hours = duration.hours();
-  duration.subtract(moment.duration(hours, "hours"));
-
-  let minutes = duration.minutes();
-  duration.subtract(moment.duration(minutes, "minutes"));
-
-  const seconds = duration.seconds();
-  let dateStringify = `${seconds}s`;
-
-  if (minutes > 0) {
-    dateStringify = `${minutes}m ${dateStringify}`;
-  }
-  if (hours > 0) {
-    dateStringify = `${hours}h ${dateStringify}`;
-  }
-  if (days > 0) {
-    dateStringify = `${days}d ${dateStringify}`;
-  }
-
-  return dateStringify;
-}
 
 export async function checkIsolatedMargin(symbol) {
   const url = new URL(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`)

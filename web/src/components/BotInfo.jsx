@@ -8,26 +8,21 @@ import {
   ListGroupItem,
   Table,
 } from "reactstrap";
-import { checkValue } from "../validations";
 import moment from "moment";
-import { botDuration } from "../state/bots/actions";
+import renderTimestamp from "./services/bot-duration";
 
 const renderSellTimestamp = (bot) => {
-  if (!checkValue(bot.deal?.buy_timestamp)) {
-    let sell_timestamp = new Date();
-    if (!checkValue(bot.deal.sell_timestamp)) {
-      sell_timestamp = bot.deal.sell_timestamp;
-      return (
-        <ListGroupItem className="d-flex justify-content-between align-items-start">
-          <strong>duration</strong>
-          {sell_timestamp === 0
-            ? botDuration(bot.deal.buy_timestamp, new Date().getTime())
-            : botDuration(bot.deal.buy_timestamp, sell_timestamp)}
-        </ListGroupItem>
-      );
-    }
+  if (bot.deal) {
+    return (
+      <ListGroupItem className="d-flex justify-content-between align-items-start">
+        <strong>duration</strong>
+        {renderTimestamp(bot)}
+      </ListGroupItem>
+    );
+
+  } else {
+    return (<></>)
   }
-  return "";
 };
 
 export default function BotInfo({ bot }) {

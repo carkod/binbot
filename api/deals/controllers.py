@@ -934,7 +934,7 @@ class CreateDealController(BaseDeal):
             print(f"dynamic profit for {symbol} sd: {sd}", f'slope is {"positive" if slope > 0 else "negative"}')
             if (
                 current_bot["deal"]["trailling_stop_loss_price"] > 0
-                and current_bot["deal"]["trailling_stop_loss_price"] > current_bot["deal"]["base_order_size"]
+                and current_bot["deal"]["trailling_stop_loss_price"] > current_bot["deal"]["base_order_price"]
                 and float(close_price) > current_bot["deal"]["trailling_stop_loss_price"]
                 and (
                     (current_bot["strategy"] == "long" and slope > 0)
