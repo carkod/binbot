@@ -53,7 +53,8 @@ class StreamingController:
         socket = BinanceSocketManager(client)
         return socket, client
 
-    def combine_stream_names(self, interval):
+    def combine_stream_names(self):
+        interval = self.settings["candlestick_interval"]
         if self.settings["autotrade"] == 1:
             self.list_bots = list(
                 self.streaming_db.bots.distinct("pair", {"status": "active"})
@@ -277,6 +278,7 @@ class StreamingController:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": None}}
                 )
+                await self.client.close_connection()
                 raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
@@ -307,30 +309,25 @@ class StreamingController:
                 )
             return
 
-    async def get_klines(self, interval):
+    async def get_klines(self):
         self.socket, self.client = await self.setup_client()
-        params = self.combine_stream_names(interval)
+        params = self.combine_stream_names()
         print(f"Starting streaming klines {params}")
         klines = self.socket.multiplex_socket(params)
         self.conn_key = klines
 
         async with klines as k:
             while True:
-                try:
-                    res = await k.recv()
+                res = await k.recv()
 
-                    if "result" in res:
-                        print(f'Subscriptions: {res["result"]}')
+                if "result" in res:
+                    print(f'Subscriptions: {res["result"]}')
 
-                    if "data" in res:
-                        if "e" in res["data"] and res["data"]["e"] == "kline":
-                            await self.process_klines(res["data"])
-                        else:
-                            print(f'Error: {res["data"]}')
-                    pass
-                except Exception as error:
-                    print(f"get_klines sockets error: {error}")
-                    pass
+                if "data" in res:
+                    if "e" in res["data"] and res["data"]["e"] == "kline":
+                        await self.process_klines(res["data"])
+                    else:
+                        print(f'Error: {res["data"]}')
 
                 await self.client.close_connection()
 
