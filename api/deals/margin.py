@@ -285,17 +285,15 @@ class MarginDeal(BaseDeal):
             fills=order_res["fills"],
             time_in_force=order_res["timeInForce"],
             status=order_res["status"],
-            margin_buy_borrow_amount=order_res["marginBuyBorrowAmount"],
-            margin_buy_borrow_asset=order_res["marginBuyBorrowAsset"],
             is_isolated=order_res["isIsolated"],
         )
 
         self.active_bot.orders.append(order_data)
 
         self.active_bot.deal.margin_short_sell_timestamp = order_res["transactTime"]
-        self.active_bot.deal.margin_short_sell_price = order_res["price"]
-        self.active_bot.deal.buy_total_qty = order_res["origQty"]
-        self.active_bot.deal.margin_short_base_order = order_res["origQty"]
+        self.active_bot.deal.margin_short_sell_price = float(order_res["price"])
+        self.active_bot.deal.buy_total_qty = float(order_res["origQty"])
+        self.active_bot.deal.margin_short_base_order = float(order_res["origQty"])
 
         # Activate bot
         self.active_bot.status = Status.active
@@ -366,13 +364,12 @@ class MarginDeal(BaseDeal):
         """
         Sets stop_loss for margin_short at initial activation
         """
-        price = self.active_bot.deal.margin_short_sell_price
+        price = float(self.active_bot.deal.margin_short_sell_price)
         if (
             hasattr(self.active_bot, "stop_loss")
             and float(self.active_bot.stop_loss) > 0
         ):
-            stop_loss_price = price + (price * (float(self.active_bot.stop_loss) / 100))
-            self.active_bot.deal.stop_loss_price = stop_loss_price
+            self.active_bot.deal.stop_loss_price = price + (price * (float(self.active_bot.stop_loss) / 100))
 
         return self.active_bot
 
@@ -380,7 +377,7 @@ class MarginDeal(BaseDeal):
         """
         Sets take_profit for margin_short at initial activation
         """
-        price = self.active_bot.deal.margin_short_sell_price
+        price = float(self.active_bot.deal.margin_short_sell_price)
         if (
             hasattr(self.active_bot, "take_profit")
             and float(self.active_bot.take_profit) > 0

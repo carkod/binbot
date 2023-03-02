@@ -24,7 +24,6 @@ import BotInfo from "../../components/BotInfo";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
 import {
   bot,
-  checkIsolatedMargin,
   computeSingleBotProfit,
 } from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
@@ -142,20 +141,7 @@ class BotForm extends React.Component {
   };
 
   marginShortValidation = async () => {
-    if (this.props.bot.pair && this.props.bot.strategy === "margin_short") {
-      const check = await checkIsolatedMargin(this.props.bot.pair);
-      if (!check) {
-        this.props.setBot({
-          marginShortError:
-            "Cannot open margin_short, isolated margin not available for this asset.",
-        });
-      } else {
-        this.props.setBot({
-          marginShortError:
-            null,
-        });
-      }
-    }
+    return true
   };
 
   requiredinValidation = () => {

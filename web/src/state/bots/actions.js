@@ -163,18 +163,3 @@ export function weekAgo() {
   );
   return lastWeek.getTime();
 }
-
-
-export async function checkIsolatedMargin(symbol) {
-  const url = new URL(`https://api.binance.com/api/v3/exchangeInfo?symbol=${symbol}`)
-  const request = await fetch(url);
-  const data = await request.json();
-  let check = false;
-  data.symbols[0].permissions.forEach(element => {
-    if (element.includes("TRD_GRP_") || element.includes("MARGIN")) {
-      check = true;
-      return check;
-    }
-  });
-  return check;
-}

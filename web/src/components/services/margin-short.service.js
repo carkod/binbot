@@ -61,7 +61,7 @@ export default function marginTrading(bot, currentPrice) {
       stopLossPrice =
         bot.deal.stop_loss_price;
     } else {
-      stopLossPrice = currentPrice * (1 + (bot.stop_loss / 100));
+      stopLossPrice = currentPrice * (1 + (parseFloat(bot.stop_loss) / 100));
     }
     // Stop loss
     totalOrderLines.push({
