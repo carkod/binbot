@@ -109,13 +109,17 @@ class MarginDeal(BaseDeal):
     ):
         """
         Same as compute_qty but with isolated margin balance
+
+        Find available amount to buy_back
+        this is the borrowed amount
         """
         balance = self.get_isolated_balance()
+        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
         find_balance_to_use = next(
             (
-                item
+                item["baseAsset"]["borrowed"]
                 for item in balance
-                if item["asset"] == self.active_bot.balance_to_use
+                if item["baseAsset"]["asset"] == asset and float(item["baseAsset"]["borrowed"]) > 0
             ),
             None,
         )
@@ -396,17 +400,17 @@ class MarginDeal(BaseDeal):
         """
         qty = 1
         if self.db_collection.name == "bots":
-            qty = self.compute_isolated_qty(self.active_bot.pair)
+            qty = self.compute_isolated_qty()
 
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
-        if self.db_collection.name == "bots" and not qty:
-            self.update_deal_logs(
-                f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
-            )
-            params = {"id": self.active_bot.id}
-            self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
-            return
+        # if self.db_collection.name == "bots" and not qty:
+        #     self.update_deal_logs(
+        #         f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
+        #     )
+        #     params = {"id": self.active_bot.id}
+        #     self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
+        #     return
 
         order_id = None
         for order in self.active_bot.orders:
@@ -485,17 +489,17 @@ class MarginDeal(BaseDeal):
         """
         qty = 1
         if self.db_collection.name == "bots":
-            qty = self.compute_isolated_qty(self.active_bot.pair)
+            qty = self.compute_isolated_qty()
 
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
-        if self.db_collection.name == "bots" and not qty:
-            self.update_deal_logs(
-                f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
-            )
-            params = {"id": self.active_bot.id}
-            self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
-            return
+        # if self.db_collection.name == "bots" and not qty:
+        #     self.update_deal_logs(
+        #         f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
+        #     )
+        #     params = {"id": self.active_bot.id}
+        #     self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
+        #     return
 
         order_id = None
         for order in self.active_bot.orders:

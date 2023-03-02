@@ -55,15 +55,12 @@ class StreamingController:
 
     def combine_stream_names(self):
         interval = self.settings["candlestick_interval"]
-        if self.settings["autotrade"] == 1:
-            self.list_bots = list(
-                self.streaming_db.bots.distinct("pair", {"status": "active"})
-            )
-
-        if self.test_settings["autotrade"] == 1:
-            self.list_paper_trading_bots = list(
-                self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
-            )
+        self.list_bots = list(
+            self.streaming_db.bots.distinct("pair", {"status": "active"})
+        )
+        self.list_paper_trading_bots = list(
+            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
+        )
 
         markets = self.list_bots + self.list_paper_trading_bots
         params = []
