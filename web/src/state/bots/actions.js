@@ -84,7 +84,6 @@ export function getProfit(base_price, current_price, strategy = "long") {
  * by using input data from that individual bot as opposed to computeTotalProfit
  * function which uses an accumulator function to aggregate all profits of all bots
  *
- *
  * @param { BotSchema } bot
  * @param { number } realTimeCurrPrice
  * @returns { number }
@@ -172,7 +171,7 @@ export async function checkIsolatedMargin(symbol) {
   const data = await request.json();
   let check = false;
   data.symbols[0].permissions.forEach(element => {
-    if (element.includes("TRD_GRP_")) {
+    if (element.includes("TRD_GRP_") || element.includes("MARGIN")) {
       check = true;
       return check;
     }

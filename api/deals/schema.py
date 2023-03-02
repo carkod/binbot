@@ -65,6 +65,6 @@ class DealSchema(BaseModel):
 
 
 class MarginOrderSchema(OrderSchema):
-    marginBuyBorrowAmount: int = 0
-    marginBuyBorrowAsset: str = "USDT"
-    isIsolated: bool = False
+    margin_buy_borrow_amount: int = 0
+    margin_buy_borrow_asset: str = "USDT"
+    is_isolated: bool = False

@@ -288,8 +288,8 @@ class Account(BinbotApi):
         """
 
         symbols = self._exchange_info(symbol)
-        permissions = symbols["symbols"]["permissions"]
+        permissions = symbols["symbols"][0]["permissions"]
         for permission in permissions:
-            if "TRD_GRP_" in permission:
+            if "TRD_GRP_" in permission or "MARGIN" in permission:
                 return True
         return False

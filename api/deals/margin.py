@@ -287,7 +287,7 @@ class MarginDeal(BaseDeal):
             status=order_res["status"],
             margin_buy_borrow_amount=order_res["marginBuyBorrowAmount"],
             margin_buy_borrow_asset=order_res["marginBuyBorrowAsset"],
-            isIsolated=order_res["isIsolated"],
+            is_isolated=order_res["isIsolated"],
         )
 
         self.active_bot.orders.append(order_data)

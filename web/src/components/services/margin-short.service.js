@@ -55,7 +55,7 @@ export default function marginTrading(bot, currentPrice) {
     });
   }
 
-  if (bot.stop_loss && bot.stop_loss > 0) {
+  if (bot.stop_loss && parseFloat(bot.stop_loss) > 0) {
     let stopLossPrice = 0;
     if (bot.deal.stop_loss_price) {
       stopLossPrice =

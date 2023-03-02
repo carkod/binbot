@@ -24,7 +24,7 @@ export default function StopLossTab({
           </Label>
           <InputGroup size="sm">
             <Input
-              type="text"
+              type="number"
               name="stop_loss"
               onChange={handleChange}
               onBlur={handleBlur}
