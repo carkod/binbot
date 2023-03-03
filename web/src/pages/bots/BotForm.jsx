@@ -399,6 +399,7 @@ class BotForm extends React.Component {
     if (validation) {
       await this.handleSubmit(e);
       this.props.activateBot(this.state.id);
+      this.props.getBot(this.props.match.params.id);
     }
   };
 
