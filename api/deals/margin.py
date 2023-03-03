@@ -91,14 +91,14 @@ class MarginDeal(BaseDeal):
             raise MarginShortError("No funds in Cross Margin account")
         return assets
 
-    def get_isolated_balance(self):
+    def get_isolated_balance(self, symbol=None):
         """
         Get balance of Isolated Margin account
 
         Use isolated margin account is preferrable,
         because this is the one that supports the most assets
         """
-        info = self.client.get_isolated_margin_account()
+        info = self.client.get_isolated_margin_account(symbols=symbol)
         assets = info["assets"]
         if len(assets) == 0:
             raise MarginShortError("No funds in Isolated Margin account")
@@ -113,19 +113,10 @@ class MarginDeal(BaseDeal):
         Find available amount to buy_back
         this is the borrowed amount
         """
-        balance = self.get_isolated_balance()
-        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-        find_balance_to_use = next(
-            (
-                item["baseAsset"]["borrowed"]
-                for item in balance
-                if item["baseAsset"]["asset"] == asset and float(item["baseAsset"]["borrowed"]) > 0
-            ),
-            None,
-        )
-        if find_balance_to_use:
+        balance = self.get_isolated_balance(self.active_bot.pair)
+        if len(balance) == 0 or balance[0]["baseAsset"]["borrowed"] == 0:
             return None
-        qty = round_numbers(find_balance_to_use, self.qty_precision)
+        qty = round_numbers(float(balance[0]["baseAsset"]["borrowed"]), self.qty_precision)
         return qty
 
     def init_margin_short(self, qty):
@@ -180,12 +171,8 @@ class MarginDeal(BaseDeal):
         print("Terminating margin_short tasks for real bots trading")
 
         # Check margin account balance first
-        balance = self.get_isolated_balance()
-        find_balance_to_use = next(
-            (item for item in balance if item["symbol"] == self.active_bot.pair),
-            None,
-        )
-        if find_balance_to_use:
+        balance = self.get_isolated_balance(self.active_bot.pair)
+        if len(balance) > 0:
             # repay
             try:
                 asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
@@ -194,10 +181,11 @@ class MarginDeal(BaseDeal):
                 # or binbot errors may transfer funds but no loan is created
                 query_loan = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
                 if query_loan["total"] > 0:
+                    repay_amount = float(self.active_bot.deal.margin_short_loan_principal) + float(self.active_bot.deal.margin_short_loan_interest)
                     self.client.repay_margin_loan(
                         asset=asset,
                         symbol=self.active_bot.pair,
-                        amount=self.active_bot.deal.margin_short_loan_principal,
+                        amount=repay_amount,
                         isIsolated=True,
                     )
                     repay_details_res = (
@@ -215,6 +203,36 @@ class MarginDeal(BaseDeal):
                     self.active_bot.deal.margin_short_loan_timestamp = repay_details[
                         "timestamp"
                     ]
+
+                    # Sell quote and get base asset (USDT)
+                    balance = self.get_isolated_balance(self.active_bot.pair)
+                    # In theory, we should sell self.active_bot.base_order
+                    # but this can be out of sync
+                    sell_back_qty = supress_notation(balance[0]["baseAsset"]["free"], self.qty_precision)
+                    res = self.sell_order(sell_back_qty)
+                    sell_back_order = MarginOrderSchema(
+                        timestamp=res["transactTime"],
+                        deal_type="take_profit",
+                        order_id=res["orderId"],
+                        pair=res["symbol"],
+                        order_side=res["side"],
+                        order_type=res["type"],
+                        price=res["price"],
+                        qty=res["origQty"],
+                        fills=res["fills"],
+                        time_in_force=res["timeInForce"],
+                        status=res["status"],
+                        is_isolated=res["isIsolated"],
+                    )
+
+                    for chunk in res["fills"]:
+                        self.active_bot.total_commission += float(chunk["commission"])
+
+                    self.active_bot.orders.append(sell_back_order)
+
+                    self.active_bot.deal.margin_short_buy_back_price = res["price"]
+                    self.active_bot.deal.buy_total_qty = res["origQty"]
+                    self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
                     self.active_bot.status = Status.completed
                 else:
                     self.active_bot.status = Status.error
@@ -225,7 +243,13 @@ class MarginDeal(BaseDeal):
                 self.client.transfer_isolated_margin_to_spot(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
-                    amount=find_balance_to_use,
+                    amount=balance[0]["quoteAsset"]["free"],
+                )
+                # transfer back any quote asset qty leftovers
+                self.client.transfer_isolated_margin_to_spot(
+                    asset=asset,
+                    symbol=self.active_bot.pair,
+                    amount=balance[0]["baseAsset"]["free"],
                 )
 
                 # Disable isolated pair to avoid reaching the 15 pair limit
@@ -460,9 +484,7 @@ class MarginDeal(BaseDeal):
             fills=res["fills"],
             time_in_force=res["timeInForce"],
             status=res["status"],
-            marginBuyBorrowAmount=res["marginBuyBorrowAmount"],
-            marginBuyBorrowAsset=res["marginBuyBorrowAsset"],
-            isIsolated=res["isIsolated"],
+            is_isolated=res["isIsolated"],
         )
 
         for chunk in res["fills"]:
@@ -472,12 +494,12 @@ class MarginDeal(BaseDeal):
 
         # Guard against type errors
         # These errors are sometimes hard to debug, it takes hours
-        self.active_bot.deal.margin_short_buy_back_price = (res["price"],)
-        self.active_bot.deal.buy_total_qty = (res["origQty"],)
+        self.active_bot.deal.margin_short_buy_back_price = res["price"]
+        self.active_bot.deal.buy_total_qty = res["origQty"]
         self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
         self.active_bot.status = Status.completed
 
-        msg = f"Completed Stop loss"
+        msg = f"Completed Stop loss order"
         self.active_bot.errors.append(msg)
 
         return
@@ -550,22 +572,15 @@ class MarginDeal(BaseDeal):
             fills=res["fills"],
             time_in_force=res["timeInForce"],
             status=res["status"],
-            isIsolated=res["isIsolated"],
+            is_isolated=res["isIsolated"],
         )
 
         for chunk in res["fills"]:
             self.active_bot.total_commission += float(chunk["commission"])
 
         self.active_bot.orders.append(take_profit_order)
-
-        # Guard against type errors
-        # These errors are sometimes hard to debug, it takes hours
-        self.active_bot.deal.margin_short_buy_back_price = res["price"]
-        self.active_bot.deal.buy_total_qty = res["origQty"]
-        self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
-
         msg = f"Completed Take profit!"
         self.active_bot.errors.append(msg)
-        self.active_bot.status = Status.completed
+        # self.active_bot.status = Status.completed
 
         return

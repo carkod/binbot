@@ -270,7 +270,9 @@ class StreamingController:
         # Add margin time to update_required signal to avoid restarting constantly
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
-            print(f'Time to update_required {time() - local_settings["update_required"]}')
+            print(
+                f'Time to update_required {time() - local_settings["update_required"]}'
+            )
             if time() - local_settings["update_required"] > 15:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": None}}
@@ -328,7 +330,7 @@ class StreamingController:
 
                 await self.client.close_connection()
 
-    def close_trailling_orders(self, result, db_collection: str="bots"):
+    def close_trailling_orders(self, result, db_collection: str = "bots"):
         """
         This database query closes any orders found that are trailling orders i.e.
         stop_loss, take_profit, trailling_profit, margin_short_stop_loss, margin_short_trailling_profit
@@ -342,18 +344,27 @@ class StreamingController:
         order_id = result["i"]
         # Close successful take_profit
         query = self.streaming_db[db_collection].update_one(
-            {
-                "orders": {
-                    "$elemMatch": {"order_id": order_id}
-                }
-            },
+            {"orders": {"$elemMatch": {"order_id": order_id}}},
             {
                 "$set": {
-                    "status": {"$or": [
-                        {"$eq": [(result['X'] == 'FILLED'), "$deal_type", "take_profit"]},
-                        {"$eq": [(result['X'] == 'FILLED'), "$deal_type", "stop_loss"]},
-
-                    ]},
+                    "status": {
+                        "$or": [
+                            {
+                                "$eq": [
+                                    (result["X"] == "FILLED"),
+                                    "$deal_type",
+                                    "take_profit",
+                                ]
+                            },
+                            {
+                                "$eq": [
+                                    (result["X"] == "FILLED"),
+                                    "$deal_type",
+                                    "stop_loss",
+                                ]
+                            },
+                        ]
+                    },
                     "deal.current_price": result["p"],
                     "deal.sell_price": result["p"],
                     "orders.$.status": result["X"],
@@ -386,7 +397,6 @@ class StreamingController:
                 )
                 return
         return
-    
 
     async def get_user_data(self):
         print("Streaming user data")
