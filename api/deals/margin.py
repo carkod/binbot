@@ -323,6 +323,11 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.buy_total_qty = float(order_res["origQty"])
         self.active_bot.deal.margin_short_base_order = float(order_res["origQty"])
 
+        # Estimate interest to add to total cost
+        isolated_fees = self.signed_request(url=self.isolated_fee_url, payload={"symbol": self.active_bot.pair})
+        # for the following computation check https://www.binance.com/en/margin-fee
+        self.active_bot.deal.hourly_interest_rate = float(isolated_fees[0]["data"][0]["dailyInterest"]) / 24
+
         # Activate bot
         self.active_bot.status = Status.active
         return self.active_bot
