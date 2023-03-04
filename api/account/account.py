@@ -278,18 +278,3 @@ class Account(BinbotApi):
 
         final_qty = match_qty["price"].iloc[0]
         return final_qty
-
-    def check_isolated_margin_exists(self, symbol):
-        """
-        Check in exchange info if asset can be isolate-traded
-
-        For isolated margin, the "isMarginTradingAllowed" property
-        is often "false". So the only reliable property is permissions
-        """
-
-        symbols = self._exchange_info(symbol)
-        permissions = symbols["symbols"][0]["permissions"]
-        for permission in permissions:
-            if "TRD_GRP_" in permission or "MARGIN" in permission:
-                return True
-        return False

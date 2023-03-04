@@ -14,7 +14,7 @@ class Dashboard extends React.Component {
     super(props);
     this.state = {
       revenue: 0,
-      percentageRevenue: "0",
+      percentageRevenue: 0,
       lineChartData: null,
       lineChartLegend: null,
       pieChartData: null,
@@ -204,14 +204,46 @@ class Dashboard extends React.Component {
                     <CardBody>
                       <Row>
                         <Col md="12">
-                          <div className="stats">
-                            <p className="card-category">Total Balance</p>
-                            {!checkValue(balanceEstimate) && (
-                              <CardTitle tag="h3" className={`card-title`}>
-                                {`${roundDecimals(balanceEstimate, 2)} £`}
-                              </CardTitle>
-                            )}
-                          </div>
+                          {!checkValue(balanceEstimate) && (
+                            <div className="stats">
+                                <Row>
+                                  <Col md="4" xs="5">
+                                    <div className="icon-big text-center icon-warning">
+                                      <i className="nc-icon nc-money-coins text-success" />
+                                    </div>
+                                  </Col>
+                                  <Col md="8" xs="7">
+                                    <p className="card-category u-text-right">
+                                      Total Balance
+                                    </p>
+                                    <CardTitle
+                                      tag="h3"
+                                      className="card-title numbers"
+                                    >
+                                      {roundDecimals(
+                                        balanceEstimate.total_fiat,
+                                        2
+                                      )}{" "}
+                                      {balanceEstimate.asset}
+                                      <br />
+                                    </CardTitle>
+                                  </Col>
+                                </Row>
+                                <hr />
+                                <Row>
+                                  <Col>
+                                    <p className="card-category">
+                                      Left to allocate:
+                                    </p>
+                                  </Col>
+                                  <Col>
+                                    <p className="card-category u-text-right">
+                                      {balanceEstimate.fiat_left}{" "} {balanceEstimate.asset}
+                                    </p>
+                                  </Col>
+                                </Row>
+                            </div>
+                          )}
                         </Col>
                       </Row>
                     </CardBody>
@@ -223,7 +255,7 @@ class Dashboard extends React.Component {
                       <Row>
                         <Col md="4" xs="5">
                           <div className="icon-big text-center icon-warning">
-                            <i className="nc-icon nc-money-coins text-success" />
+                            <i className="nc-icon nc-bank text-success" />
                           </div>
                         </Col>
                         <Col md="8" xs="7">
@@ -259,9 +291,9 @@ class Dashboard extends React.Component {
               </Row>
               <Row>
                 <Col lg="6" md="12">
-                  {this.props.gainersLosersData?.length > 0 && 
+                  {this.props.gainersLosersData?.length > 0 && (
                     <GainersLosers data={this.props.gainersLosersData} />
-                  }
+                  )}
                 </Col>
                 <Col lg="6" md="12">
                   {this.state.lineChartData && (
@@ -304,8 +336,8 @@ const mapStateToProps = (s) => {
   return {
     loading: loading,
     assetList: balance_raw,
-    balanceEstimate: balanceEstimate?.total_fiat,
-    gainersLosersData: gainersLosersData
+    balanceEstimate: balanceEstimate,
+    gainersLosersData: gainersLosersData,
   };
 };
 

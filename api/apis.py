@@ -49,6 +49,7 @@ class BinanceApi:
 
     # Margin
     isolated_fee_url = f"{BASE}/sapi/v1/margin/isolatedMarginData"
+    isolated_account = f"{BASE}/sapi/v1/margin/isolated/account"
 
     def signed_request(self, url, method="GET", payload={}, params={}):
         """

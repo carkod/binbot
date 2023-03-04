@@ -113,12 +113,20 @@ class Assets(Account):
         Estimated balance in given fiat coin
         """
         balances_response = self.get_raw_balance()
+        # Isolated m
+        isolated_margin = self.signed_request(url=self.isolated_account)
+        get_usdt_btc_rate = self.ticker(symbol=f'BTC{fiat}', json=False)
+        total_isolated_margin = float(isolated_margin["totalNetAssetOfBtc"]) * float(get_usdt_btc_rate["price"])
+
         balances = json.loads(balances_response.body)
         total_fiat = 0
         rate = 0
+        left_to_allocate = 0
         for b in balances["data"]:
             # Transform tethers/stablecoins
             if "USD" in b["asset"] or fiat == b["asset"]:
+                if fiat == b["asset"]:
+                    left_to_allocate = b["free"]
                 total_fiat += self._check_locked(b)
             # Transform market assets/alt coins
             elif b["asset"] == "NFT":
@@ -133,7 +141,10 @@ class Assets(Account):
 
         balance = {
             "balances": balances["data"],
-            "total_fiat": total_fiat,
+            "total_fiat": total_fiat + total_isolated_margin,
+            "total_isolated_margin": total_isolated_margin,
+            "fiat_left": left_to_allocate,
+            "asset": fiat
         }
         if balance:
             resp = json_response({"data": balance})
