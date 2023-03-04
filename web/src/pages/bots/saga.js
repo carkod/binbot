@@ -53,7 +53,7 @@ export function* getBotsApi(payload) {
   let requestURL = `${process.env.REACT_APP_GET_BOTS}`;
   if (payload.params) {
     const { startDate, endDate, status=null } = payload.params;
-    const params = `${startDate ? "start_date=" + startDate + "&" : ""}${endDate ? "end_date=" + endDate : ""}${status ? "status=" + status : ""}`;
+    const params = `${startDate ? "start_date=" + startDate + "&" : ""}${endDate ? "end_date=" + endDate : ""}${status ? "&status=" + status : ""}`;
     requestURL += `?${params}`
   }
 

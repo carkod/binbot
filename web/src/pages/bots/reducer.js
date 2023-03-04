@@ -77,7 +77,7 @@ const botReducer = produce((draft, action) => {
     }
     case GET_BOTS_SUCCESS: {
       if (action.bots && draft.bots.length > 0) {
-        draft.bots = [...draft.bots, ...action.bots];
+        draft.bots = action.bots;
         draft.totalProfit = computeTotalProfit(action.bots);
       } else {
         draft.bots = action.bots;
