@@ -7,10 +7,15 @@ from account.account import Account
 from bots.schemas import BotSchema
 from db import setup_db
 from binance.client import Client
+from tools.handle_error import encode_json
+from pymongo import ReturnDocument
+
 
 class DealCreationError(Exception):
     pass
 
+class StreamingSaveError(Exception):
+    pass
 
 class BaseDeal(Account):
     """
@@ -117,3 +122,32 @@ class BaseDeal(Account):
                 self.client.cancel_order(symbol=symbol, orderId=order["orderId"])
                 return True
         return False
+
+    def save_bot_streaming(self):
+        """
+        MongoDB query to save bot using Pydantic
+
+        This function differs from usual save query in that
+        it returns the saved bot, thus called streaming, it's
+        specifically for streaming saves
+        """
+
+        try:
+
+            bot = encode_json(self.active_bot)
+            if "_id" in bot:
+                bot.pop("_id")
+
+            bot = self.db_collection.find_one_and_update(
+                {"id": self.active_bot.id},
+                {
+                    "$set": bot,
+                },
+                return_document=ReturnDocument.AFTER,
+            )
+
+        except Exception as error:
+            self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
+            raise StreamingSaveError(error)
+
+        return bot

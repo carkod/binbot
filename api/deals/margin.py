@@ -1,11 +1,11 @@
 from time import time
 
 from binance.exceptions import BinanceAPIException
+from bots.schemas import BotSchema
 from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
-from pymongo import ReturnDocument
 from requests import HTTPError
 from tools.handle_error import QuantityTooLow, encode_json
 from tools.round_numbers import round_numbers, supress_notation
@@ -238,6 +238,9 @@ class MarginDeal(BaseDeal):
                     self.active_bot.status = Status.error
                     self.active_bot.errors.append("Loan not found for this bot.")
 
+                # Save in two steps, because it takes time for Binance to process repayments
+                bot = self.save_bot_streaming()
+                self.active_bot = BotSchema.parse_obj(bot)
 
                 # transfer back to SPOT account
                 self.client.transfer_isolated_margin_to_spot(
@@ -261,17 +264,9 @@ class MarginDeal(BaseDeal):
                 self.active_bot.errors.append(completion_msg)
                 print(completion_msg)
 
-                bot = encode_json(self.active_bot)
-                if "_id" in bot:
-                    bot.pop("_id")  # _id is what causes conflict not id
+                bot = self.save_bot_streaming()
 
-                document = self.db_collection.find_one_and_update(
-                    {"id": self.active_bot.id},
-                    {"$set": bot},
-                    return_document=ReturnDocument.AFTER,
-                )
-
-                return document
+                return bot
 
             except BinanceAPIException as error:
                 raise MarginShortError(
@@ -346,7 +341,7 @@ class MarginDeal(BaseDeal):
                 * (float(self.active_bot.stop_loss) / 100)
             )
         )
-        print(f"margin_short streaming updating {self.active_bot.pair}")
+        print(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price}")
 
         # Direction 1: upward trend
         # Future feature: trailling
@@ -503,7 +498,6 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_buy_back_price = res["price"]
         self.active_bot.deal.buy_total_qty = res["origQty"]
         self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
-        self.active_bot.status = Status.completed
 
         msg = f"Completed Stop loss order"
         self.active_bot.errors.append(msg)

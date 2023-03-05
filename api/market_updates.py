@@ -1,7 +1,6 @@
 import asyncio
 import atexit
 import os
-import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from streaming.streaming_controller import StreamingController
