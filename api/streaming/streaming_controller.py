@@ -327,8 +327,7 @@ class StreamingController:
                         await self.process_klines(res["data"])
                     else:
                         print(f'Error: {res["data"]}')
-
-                await self.client.close_connection()
+                        await self.client.close_connection()
 
     def close_trailling_orders(self, result, db_collection: str = "bots"):
         """
