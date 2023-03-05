@@ -102,9 +102,10 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
       if (bot.deal.margin_short_buy_back_price > 0) {
         const currentPrice = bot.deal.margin_short_buy_back_price;
         const marginSellPrice = bot.deal.margin_short_sell_price;
+        const interests = (+bot.deal.hourly_interest_rate) * (+bot.deal.margin_short_loan_principal)
         let profitChange =
           parseFloat(
-            ((currentPrice - marginSellPrice) / marginSellPrice) * 100
+            ((currentPrice - marginSellPrice - interests) / marginSellPrice) * 100
           ) * -1;
         return +profitChange.toFixed(2);
       } else {

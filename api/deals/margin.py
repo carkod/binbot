@@ -346,6 +346,7 @@ class MarginDeal(BaseDeal):
                 * (float(self.active_bot.stop_loss) / 100)
             )
         )
+        print(f"margin_short streaming updating {self.active_bot.pair}")
 
         # Direction 1: upward trend
         # Future feature: trailling
