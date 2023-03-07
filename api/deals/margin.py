@@ -350,7 +350,7 @@ class MarginDeal(BaseDeal):
             and self.active_bot.deal.take_profit_price > 0
             and price < self.active_bot.deal.take_profit_price
         ):
-            print(f'Executing margin_short take_profit after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}')
+            print(f'Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}')
             self.execute_take_profit()
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
@@ -438,22 +438,22 @@ class MarginDeal(BaseDeal):
         #     return
 
         order_id = None
-        for order in self.active_bot.orders:
-            if order.deal_type == "stop_loss":
-                order_id = order.order_id
-                self.active_bot.orders.remove(order)
-                break
+        # for order in self.active_bot.orders:
+        #     if order.deal_type == "stop_loss":
+        #         order_id = order.order_id
+        #         self.active_bot.orders.remove(order)
+        #         break
 
-        if order_id:
-            try:
-                # First cancel old order to unlock balance
-                self.client.cancel_margin_order(
-                    symbol=self.active_bot.pair, orderId=order_id
-                )
-                self.update_deal_logs("Old take profit order cancelled")
-            except HTTPError as error:
-                self.update_deal_logs("Take profit order not found, no need to cancel")
-                return
+        # if order_id:
+        #     try:
+        #         # First cancel old order to unlock balance
+        #         self.client.cancel_margin_order(
+        #             symbol=self.active_bot.pair, orderId=order_id
+        #         )
+        #         self.update_deal_logs("Old take profit order cancelled")
+        #     except HTTPError as error:
+        #         self.update_deal_logs("Take profit order not found, no need to cancel")
+        #         return
 
         price = self.matching_engine(self.active_bot.pair, True, qty)
         # Margin buy (buy back)
@@ -523,23 +523,23 @@ class MarginDeal(BaseDeal):
         #     self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
         #     return
 
-        order_id = None
-        for order in self.active_bot.orders:
-            if order.deal_type == "take_profit":
-                order_id = order.order_id
-                self.active_bot.orders.remove(order)
-                break
+        # order_id = None
+        # for order in self.active_bot.orders:
+        #     if order.deal_type == "take_profit":
+        #         order_id = order.order_id
+        #         self.active_bot.orders.remove(order)
+        #         break
 
-        if order_id:
-            try:
-                # First cancel old order to unlock balance
-                self.client.cancel_margin_order(
-                    symbol=self.active_bot.pair, orderId=order_id
-                )
-                self.update_deal_logs("Old take profit order cancelled")
-            except HTTPError as error:
-                self.update_deal_logs("Take profit order not found, no need to cancel")
-                return
+        # if order_id:
+        #     try:
+        #         # First cancel old order to unlock balance
+        #         self.client.cancel_margin_order(
+        #             symbol=self.active_bot.pair, orderId=order_id
+        #         )
+        #         self.update_deal_logs("Old take profit order cancelled")
+        #     except HTTPError as error:
+        #         self.update_deal_logs("Take profit order not found, no need to cancel")
+        #         return
 
         if qty:
             price = self.matching_engine(self.active_bot.pair, True, qty)
