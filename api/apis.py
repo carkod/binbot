@@ -6,7 +6,6 @@ from time import time
 from requests import get, request
 from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from py3cw.request import Py3CW
-from binance.client import Client
 
 
 class BinanceApi:
@@ -50,6 +49,7 @@ class BinanceApi:
     # Margin
     isolated_fee_url = f"{BASE}/sapi/v1/margin/isolatedMarginData"
     isolated_account = f"{BASE}/sapi/v1/margin/isolated/account"
+    loan_record = f"{BASE}/sapi/v1/margin/loan"
 
     def signed_request(self, url, method="GET", payload={}, params={}):
         """

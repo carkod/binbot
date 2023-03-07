@@ -6,7 +6,6 @@ from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
-from requests import HTTPError
 from tools.handle_error import QuantityTooLow, encode_json
 from tools.round_numbers import round_numbers, supress_notation
 
@@ -98,10 +97,8 @@ class MarginDeal(BaseDeal):
         Use isolated margin account is preferrable,
         because this is the one that supports the most assets
         """
-        info = self.client.get_isolated_margin_account(symbols=symbol)
+        info = self.signed_request(url=self.isolated_account, payload={"symbols": symbol})
         assets = info["assets"]
-        if len(assets) == 0:
-            raise MarginShortError("No funds in Isolated Margin account")
         return assets
 
     def compute_isolated_qty(
@@ -113,7 +110,7 @@ class MarginDeal(BaseDeal):
         Find available amount to buy_back
         this is the borrowed amount
         """
-        balance = self.get_isolated_balance(self.active_bot.pair)
+        balance = self.get_isolated_balance(symbol=self.active_bot.pair)
         if len(balance) == 0 or balance[0]["baseAsset"]["borrowed"] == 0:
             return None
         qty = round_numbers(float(balance[0]["baseAsset"]["borrowed"]), self.qty_precision)
@@ -130,13 +127,9 @@ class MarginDeal(BaseDeal):
         """
         print("Initializating margin_short tasks for real bots trading")
         # Check margin account balance first
-        balance = self.get_isolated_balance()
-        find_balance_to_use = next(
-            (item for item in balance if item["symbol"] == self.active_bot.pair),
-            None,
-        )
+        balance = self.get_isolated_balance(self.active_bot.pair)
         try:
-            if not find_balance_to_use:
+            if len(balance) == 0:
                 # transfer
                 self.client.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
@@ -174,104 +167,103 @@ class MarginDeal(BaseDeal):
         balance = self.get_isolated_balance(self.active_bot.pair)
         if len(balance) > 0:
             # repay
+            asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
+            repay_amount = float(balance[0]["baseAsset"]["borrowed"]) + float(balance[0]["baseAsset"]["interest"])
+            # Check if there is a loan
+            # Binance may reject loans if they don't have asset
+            # or binbot errors may transfer funds but no loan is created
+            query_loan = self.signed_request(url=self.loan_record, payload={"asset": asset, "isolatedSymbol": self.active_bot.pair})
+            if query_loan["total"] > 0 and repay_amount > 0:
+                self.client.repay_margin_loan(
+                    asset=asset,
+                    symbol=self.active_bot.pair,
+                    amount=repay_amount,
+                    isIsolated="TRUE",
+                )
+                repay_details_res = (
+                    self.client.get_margin_repay_details(
+                        asset=asset, isolatedSymbol=self.active_bot.pair
+                    )
+                )
+                repay_details = repay_details_res["rows"][0]
+                self.active_bot.deal.margin_short_loan_interest = repay_details[
+                    "interest"
+                ]
+                self.active_bot.deal.margin_short_loan_principal = repay_details[
+                    "principal"
+                ]
+                self.active_bot.deal.margin_short_loan_timestamp = repay_details[
+                    "timestamp"
+                ]
+
+                # Sell quote and get base asset (USDT)
+                balance = self.get_isolated_balance(self.active_bot.pair)
+                # In theory, we should sell self.active_bot.base_order
+                # but this can be out of sync
+                sell_back_qty = supress_notation(balance[0]["baseAsset"]["free"], self.qty_precision)
+                res = self.sell_order(sell_back_qty)
+                sell_back_order = MarginOrderSchema(
+                    timestamp=res["transactTime"],
+                    deal_type="take_profit",
+                    order_id=res["orderId"],
+                    pair=res["symbol"],
+                    order_side=res["side"],
+                    order_type=res["type"],
+                    price=res["price"],
+                    qty=res["origQty"],
+                    fills=res["fills"],
+                    time_in_force=res["timeInForce"],
+                    status=res["status"],
+                    is_isolated=res["isIsolated"],
+                )
+
+                for chunk in res["fills"]:
+                    self.active_bot.total_commission += float(chunk["commission"])
+
+                self.active_bot.orders.append(sell_back_order)
+
+                self.active_bot.deal.margin_short_buy_back_price = res["price"]
+                self.active_bot.deal.buy_total_qty = res["origQty"]
+                self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
+                self.active_bot.status = Status.completed
+            else:
+                self.active_bot.status = Status.error
+                self.active_bot.errors.append("Loan not found for this bot.")
+
+            # Save in two steps, because it takes time for Binance to process repayments
+            bot = self.save_bot_streaming()
+            self.active_bot = BotSchema.parse_obj(bot)
+
             try:
-                asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-                # Check if there is a loan
-                # Binance may reject loans if they don't have asset
-                # or binbot errors may transfer funds but no loan is created
-                query_loan = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
-                if query_loan["total"] > 0:
-                    repay_amount = float(self.active_bot.deal.margin_short_loan_principal) + float(self.active_bot.deal.margin_short_loan_interest)
-                    self.client.repay_margin_loan(
-                        asset=asset,
-                        symbol=self.active_bot.pair,
-                        amount=repay_amount,
-                        isIsolated=True,
-                    )
-                    repay_details_res = (
-                        self.client.get_margin_repay_details(
-                            asset=asset, isolatedSymbol=self.active_bot.pair
-                        )
-                    )
-                    repay_details = repay_details_res["rows"][0]
-                    self.active_bot.deal.margin_short_loan_interest = repay_details[
-                        "interest"
-                    ]
-                    self.active_bot.deal.margin_short_loan_principal = repay_details[
-                        "principal"
-                    ]
-                    self.active_bot.deal.margin_short_loan_timestamp = repay_details[
-                        "timestamp"
-                    ]
-
-                    # Sell quote and get base asset (USDT)
-                    balance = self.get_isolated_balance(self.active_bot.pair)
-                    # In theory, we should sell self.active_bot.base_order
-                    # but this can be out of sync
-                    sell_back_qty = supress_notation(balance[0]["baseAsset"]["free"], self.qty_precision)
-                    res = self.sell_order(sell_back_qty)
-                    sell_back_order = MarginOrderSchema(
-                        timestamp=res["transactTime"],
-                        deal_type="take_profit",
-                        order_id=res["orderId"],
-                        pair=res["symbol"],
-                        order_side=res["side"],
-                        order_type=res["type"],
-                        price=res["price"],
-                        qty=res["origQty"],
-                        fills=res["fills"],
-                        time_in_force=res["timeInForce"],
-                        status=res["status"],
-                        is_isolated=res["isIsolated"],
-                    )
-
-                    for chunk in res["fills"]:
-                        self.active_bot.total_commission += float(chunk["commission"])
-
-                    self.active_bot.orders.append(sell_back_order)
-
-                    self.active_bot.deal.margin_short_buy_back_price = res["price"]
-                    self.active_bot.deal.buy_total_qty = res["origQty"]
-                    self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
-                    self.active_bot.status = Status.completed
-                else:
-                    self.active_bot.status = Status.error
-                    self.active_bot.errors.append("Loan not found for this bot.")
-
-                # Save in two steps, because it takes time for Binance to process repayments
-                bot = self.save_bot_streaming()
-                self.active_bot = BotSchema.parse_obj(bot)
-
                 # transfer back to SPOT account
                 self.client.transfer_isolated_margin_to_spot(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
                     amount=balance[0]["quoteAsset"]["free"],
                 )
-                # transfer back any quote asset qty leftovers
-                self.client.transfer_isolated_margin_to_spot(
-                    asset=asset,
-                    symbol=self.active_bot.pair,
-                    amount=balance[0]["baseAsset"]["free"],
-                )
-
-                # Disable isolated pair to avoid reaching the 15 pair limit
-                self.client.disable_isolated_margin_account(
-                    symbol=self.active_bot.pair
-                )
-
-                completion_msg = f"Margin_short bot repaid, funds transferred back to SPOT. Bot completed"
-                self.active_bot.errors.append(completion_msg)
-                print(completion_msg)
-
-                bot = self.save_bot_streaming()
-
-                return bot
-
             except BinanceAPIException as error:
-                raise MarginShortError(
-                    f"Unable to terminate margin_short transfer transaction: {error}"
-                )
+                print(error)
+
+            # transfer back any quote asset qty leftovers
+            self.client.transfer_isolated_margin_to_spot(
+                asset=asset,
+                symbol=self.active_bot.pair,
+                amount=balance[0]["baseAsset"]["free"],
+            )
+
+            # Disable isolated pair to avoid reaching the 15 pair limit
+            self.client.disable_isolated_margin_account(
+                symbol=self.active_bot.pair
+            )
+
+            completion_msg = f"Margin_short bot repaid, funds transferred back to SPOT. Bot completed"
+            self.active_bot.errors.append(completion_msg)
+            print(completion_msg)
+
+            bot = self.save_bot_streaming()
+
+            return bot
+
 
     def margin_short_base_order(self):
         """
