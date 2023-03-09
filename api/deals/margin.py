@@ -1,4 +1,5 @@
 from time import time
+from urllib.error import HTTPError
 
 from binance.exceptions import BinanceAPIException
 from bots.schemas import BotSchema
@@ -128,31 +129,38 @@ class MarginDeal(BaseDeal):
         print("Initializating margin_short tasks for real bots trading")
         # Check margin account balance first
         balance = self.get_isolated_balance(self.active_bot.pair)
-        try:
-            if len(balance) == 0:
+        if len(balance) == 0:
+            try:
                 # transfer
                 self.client.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
                     amount=self.active_bot.base_order_size,
                 )
-            asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-            # In the future, amount_to_borrow = base + base * (2.5)
-            self.client.create_margin_loan(
-                asset=asset, symbol=self.active_bot.pair, amount=qty, isIsolated=True
-            )
-            loan_details = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
-            fee_details = self.signed_request(self.isolated_fee_url, payload={"symbol": self.active_bot.pair})
-            self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0]["timestamp"]
-            self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0]["principal"]
-            self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
-            self.active_bot.deal.margin_short_loan_interest = float(next((item["dailyInterest"] for item in fee_details[0]["data"] if item["coin"] == asset), 0))
+            except BinanceAPIException as error:
+                if error.code == -11003:
+                    raise MarginShortError("Isolated margin not available")
+                # Enable
+                self.client.enable_isolated_margin_account(
+                    symbol=self.active_bot.pair
+                )
+            except Exception as error:
+                print(error)
+                
 
-            return
-        except BinanceAPIException as error:
-            if error.code in (-11019, -3045):
-                self.terminate_margin_short()
-            raise MarginShortError(error.message)
+        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
+        # In the future, amount_to_borrow = base + base * (2.5)
+        self.client.create_margin_loan(
+            asset=asset, symbol=self.active_bot.pair, amount=qty, isIsolated=True
+        )
+        loan_details = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
+        fee_details = self.signed_request(self.isolated_fee_url, payload={"symbol": self.active_bot.pair})
+        self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0]["timestamp"]
+        self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0]["principal"]
+        self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
+        self.active_bot.deal.margin_short_loan_interest = float(next((item["dailyInterest"] for item in fee_details[0]["data"] if item["coin"] == asset), 0))
+
+        return
 
     def terminate_margin_short(self):
         """
@@ -168,18 +176,43 @@ class MarginDeal(BaseDeal):
         if len(balance) > 0:
             # repay
             asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-            repay_amount = float(balance[0]["baseAsset"]["borrowed"]) + float(balance[0]["baseAsset"]["interest"])
+            repay_amount = round_numbers(float(balance[0]["baseAsset"]["borrowed"]) + float(balance[0]["baseAsset"]["interest"]), self.qty_precision)
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
             query_loan = self.signed_request(url=self.loan_record, payload={"asset": asset, "isolatedSymbol": self.active_bot.pair})
             if query_loan["total"] > 0 and repay_amount > 0:
+                # buy back
+                buy_back_price = float(self.matching_engine(self.active_bot.pair, True, repay_amount))
+                back_back_res = self.buy_order(buy_back_price, repay_amount)
+                buy_back_order = MarginOrderSchema(
+                    timestamp=back_back_res["transactTime"],
+                    deal_type="buy_back",
+                    order_id=back_back_res["orderId"],
+                    pair=back_back_res["symbol"],
+                    order_side=back_back_res["side"],
+                    order_type=back_back_res["type"],
+                    price=back_back_res["price"],
+                    qty=back_back_res["origQty"],
+                    fills=back_back_res["fills"],
+                    time_in_force=back_back_res["timeInForce"],
+                    status=back_back_res["status"],
+                    is_isolated=back_back_res["isIsolated"],
+                )
+
+                for chunk in back_back_res["fills"]:
+                    self.active_bot.total_commission += float(chunk["commission"])
+
+                self.active_bot.orders.append(buy_back_order)
+
+                repay_amount = round_numbers(repay_amount, self.qty_precision)
                 self.client.repay_margin_loan(
                     asset=asset,
                     symbol=self.active_bot.pair,
                     amount=repay_amount,
                     isIsolated="TRUE",
                 )
+
                 repay_details_res = (
                     self.client.get_margin_repay_details(
                         asset=asset, isolatedSymbol=self.active_bot.pair
@@ -275,10 +308,15 @@ class MarginDeal(BaseDeal):
         """
         print(f"Opening margin_short_base_order")
         initial_price = float(self.matching_engine(self.active_bot.pair, True))
+        # Given USDT amount we want to buy,
+        # how much can we buy?
         qty = round_numbers(
             (float(self.active_bot.base_order_size) / float(initial_price)),
             self.qty_precision,
         )
+        if qty == 0:
+            raise QuantityTooLow("Margin short quantity is too low")
+
         if self.db_collection.name == "bots":
             self.init_margin_short(qty)
 
@@ -430,22 +468,22 @@ class MarginDeal(BaseDeal):
         #     return
 
         order_id = None
-        # for order in self.active_bot.orders:
-        #     if order.deal_type == "stop_loss":
-        #         order_id = order.order_id
-        #         self.active_bot.orders.remove(order)
-        #         break
+        for order in self.active_bot.orders:
+            if order.deal_type == "stop_loss":
+                order_id = order.order_id
+                self.active_bot.orders.remove(order)
+                break
 
-        # if order_id:
-        #     try:
-        #         # First cancel old order to unlock balance
-        #         self.client.cancel_margin_order(
-        #             symbol=self.active_bot.pair, orderId=order_id
-        #         )
-        #         self.update_deal_logs("Old take profit order cancelled")
-        #     except HTTPError as error:
-        #         self.update_deal_logs("Take profit order not found, no need to cancel")
-        #         return
+        if order_id:
+            try:
+                # First cancel old order to unlock balance
+                self.client.cancel_margin_order(
+                    symbol=self.active_bot.pair, orderId=order_id
+                )
+                self.update_deal_logs("Old take profit order cancelled")
+            except HTTPError as error:
+                self.update_deal_logs("Take profit order not found, no need to cancel")
+                return
 
         price = self.matching_engine(self.active_bot.pair, True, qty)
         # Margin buy (buy back)
@@ -515,23 +553,23 @@ class MarginDeal(BaseDeal):
         #     self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
         #     return
 
-        # order_id = None
-        # for order in self.active_bot.orders:
-        #     if order.deal_type == "take_profit":
-        #         order_id = order.order_id
-        #         self.active_bot.orders.remove(order)
-        #         break
+        order_id = None
+        for order in self.active_bot.orders:
+            if order.deal_type == "take_profit":
+                order_id = order.order_id
+                self.active_bot.orders.remove(order)
+                break
 
-        # if order_id:
-        #     try:
-        #         # First cancel old order to unlock balance
-        #         self.client.cancel_margin_order(
-        #             symbol=self.active_bot.pair, orderId=order_id
-        #         )
-        #         self.update_deal_logs("Old take profit order cancelled")
-        #     except HTTPError as error:
-        #         self.update_deal_logs("Take profit order not found, no need to cancel")
-        #         return
+        if order_id:
+            try:
+                # First cancel old order to unlock balance
+                self.client.cancel_margin_order(
+                    symbol=self.active_bot.pair, orderId=order_id
+                )
+                self.update_deal_logs("Old take profit order cancelled")
+            except HTTPError as error:
+                self.update_deal_logs("Take profit order not found, no need to cancel")
+                return
 
         if qty:
             price = self.matching_engine(self.active_bot.pair, True, qty)

@@ -132,23 +132,40 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
 export function computeTotalProfit(bots) {
   let currTotalProfit = 0;
   const totalProfit = bots
-    .map((bot) => bot.deal)
-    .reduce((accumulator, currBot) => {
+    .map((bot) => bot)
+    .reduce((accumulator, bot) => {
       if (
-        currBot &&
-        !checkValue(currBot.take_profit_price) &&
-        parseFloat(currBot.take_profit_price) > 0
+        bot.deal &&
+        !checkValue(bot.deal.take_profit_price) &&
+        parseFloat(bot.deal.take_profit_price) > 0
       ) {
-        if (currBot.buy_price === 0) {
+
+        let enterPositionPrice = 0;
+        let exitPositionPrice = bot.deal.current_price;
+
+        if (bot.deal.buy_price > 0) {
+            enterPositionPrice = bot.deal.buy_price
+        }
+        if (bot.deal.margin_short_sell_price > 0) {
+            enterPositionPrice =  bot.deal.margin_short_sell_price
+        }
+        if (bot.deal.sell_price > 0) {
+            exitPositionPrice = bot.deal.sell_price
+        }
+        if (bot.deal.margin_short_buy_back_price > 0) {
+          exitPositionPrice = bot.deal.margin_short_buy_back_price
+        }
+
+        if (exitPositionPrice === 0 || enterPositionPrice === 0) {
           currTotalProfit = 0;
-        } else if (currBot.deal?.sell_price) {
-          currTotalProfit = getProfit(currBot.buy_price, currBot.sell_price);
         } else {
           currTotalProfit = getProfit(
-            currBot.buy_price,
-            currBot.take_profit_price
+            enterPositionPrice,
+            exitPositionPrice,
+            bot.strategy
           );
         }
+        
       }
       return parseFloat(accumulator) + parseFloat(currTotalProfit);
     }, 0);

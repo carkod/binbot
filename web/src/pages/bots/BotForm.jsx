@@ -635,7 +635,7 @@ class BotForm extends React.Component {
                       handleBlur={this.handleBlur}
                       addMin={this.addMin}
                       addAll={this.addAll}
-                      baseOrderSizeInfoText="Must be filled in to calculate the other parameters"
+                      baseOrderSizeInfoText="Must be filled in to calculate the other parameters. For short orders, this value must + stop_loss to cover losses"
                     />
 
                     {/*
