@@ -120,6 +120,7 @@ class Bot(Account):
         try:
             bot = data.dict()
             bot["id"] = str(ObjectId())
+
             self.db_collection.insert_one(bot)
             resp = json_response(
                 {

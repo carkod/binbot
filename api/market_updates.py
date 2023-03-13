@@ -1,7 +1,6 @@
 import asyncio
 import atexit
 import os
-import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from streaming.streaming_controller import StreamingController
@@ -27,7 +26,7 @@ if os.getenv("ENV") != "development" or os.getenv("ENV") != "ci":
 async def main():
     mu = StreamingController()
     await asyncio.gather(
-        mu.get_klines("15m"),
+        mu.get_klines(),
         mu.get_user_data(),
     )
 

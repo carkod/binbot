@@ -53,16 +53,14 @@ class StreamingController:
         socket = BinanceSocketManager(client)
         return socket, client
 
-    def combine_stream_names(self, interval):
-        if self.settings["autotrade"] == 1:
-            self.list_bots = list(
-                self.streaming_db.bots.distinct("pair", {"status": "active"})
-            )
-
-        if self.test_settings["autotrade"] == 1:
-            self.list_paper_trading_bots = list(
-                self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
-            )
+    def combine_stream_names(self):
+        interval = self.settings["candlestick_interval"]
+        self.list_bots = list(
+            self.streaming_db.bots.distinct("pair", {"status": "active"})
+        )
+        self.list_paper_trading_bots = list(
+            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
+        )
 
         markets = self.list_bots + self.list_paper_trading_bots
         params = []
@@ -272,11 +270,14 @@ class StreamingController:
         # Add margin time to update_required signal to avoid restarting constantly
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
-            print(f'Time to update_required {time() - local_settings["update_required"]}')
-            if time() - local_settings["update_required"] > 30:
+            print(
+                f'Time to update_required {time() - local_settings["update_required"]}'
+            )
+            if time() - local_settings["update_required"] > 15:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": None}}
                 )
+                await self.client.close_connection()
                 raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
@@ -307,34 +308,28 @@ class StreamingController:
                 )
             return
 
-    async def get_klines(self, interval):
+    async def get_klines(self):
         self.socket, self.client = await self.setup_client()
-        params = self.combine_stream_names(interval)
+        params = self.combine_stream_names()
         print(f"Starting streaming klines {params}")
         klines = self.socket.multiplex_socket(params)
         self.conn_key = klines
 
         async with klines as k:
             while True:
-                try:
-                    res = await k.recv()
+                res = await k.recv()
 
-                    if "result" in res:
-                        print(f'Subscriptions: {res["result"]}')
+                if "result" in res:
+                    print(f'Subscriptions: {res["result"]}')
 
-                    if "data" in res:
-                        if "e" in res["data"] and res["data"]["e"] == "kline":
-                            await self.process_klines(res["data"])
-                        else:
-                            print(f'Error: {res["data"]}')
-                    pass
-                except Exception as error:
-                    print(f"get_klines sockets error: {error}")
-                    pass
+                if "data" in res:
+                    if "e" in res["data"] and res["data"]["e"] == "kline":
+                        await self.process_klines(res["data"])
+                    else:
+                        print(f'Error: {res["data"]}')
+                        await self.client.close_connection()
 
-                await self.client.close_connection()
-
-    def close_trailling_orders(self, result, db_collection: str="bots"):
+    def close_trailling_orders(self, result, db_collection: str = "bots"):
         """
         This database query closes any orders found that are trailling orders i.e.
         stop_loss, take_profit, trailling_profit, margin_short_stop_loss, margin_short_trailling_profit
@@ -348,18 +343,27 @@ class StreamingController:
         order_id = result["i"]
         # Close successful take_profit
         query = self.streaming_db[db_collection].update_one(
-            {
-                "orders": {
-                    "$elemMatch": {"order_id": order_id}
-                }
-            },
+            {"orders": {"$elemMatch": {"order_id": order_id}}},
             {
                 "$set": {
-                    "status": {"$or": [
-                        {"$eq": [(result['X'] == 'FILLED'), "$deal_type", "take_profit"]},
-                        {"$eq": [(result['X'] == 'FILLED'), "$deal_type", "stop_loss"]},
-
-                    ]},
+                    "status": {
+                        "$or": [
+                            {
+                                "$eq": [
+                                    (result["X"] == "FILLED"),
+                                    "$deal_type",
+                                    "take_profit",
+                                ]
+                            },
+                            {
+                                "$eq": [
+                                    (result["X"] == "FILLED"),
+                                    "$deal_type",
+                                    "stop_loss",
+                                ]
+                            },
+                        ]
+                    },
                     "deal.current_price": result["p"],
                     "deal.sell_price": result["p"],
                     "orders.$.status": result["X"],
@@ -392,7 +396,6 @@ class StreamingController:
                 )
                 return
         return
-    
 
     async def get_user_data(self):
         print("Streaming user data")

@@ -188,11 +188,15 @@ export default function MainTab({
               value={bot.strategy}
               onChange={handleChange}
               onBlur={handleBlur}
+              invalid={bot.marginShortError}
             >
               <option value="long">Long</option>
               <option value="short">Short</option>
               <option value="margin_short">Margin short</option>
             </Input>
+            <FormFeedback invalid={bot.marginShortError}>
+              {bot.marginShortError}
+            </FormFeedback>
           </FormGroup>
         </Col>
         {bot.strategy === "short" && (

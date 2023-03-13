@@ -1,4 +1,3 @@
-import moment from "moment";
 import { checkValue, intervalOptions } from "../../validations";
 import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../constants";
 
@@ -48,6 +47,7 @@ export const bot = {
   addAllError: "",
   cooldown: 0,
   strategy: "long",
+  marginShortError: null,
   short_buy_price: 0,
   short_sell_price: 0,
 };
@@ -84,7 +84,6 @@ export function getProfit(base_price, current_price, strategy = "long") {
  * by using input data from that individual bot as opposed to computeTotalProfit
  * function which uses an accumulator function to aggregate all profits of all bots
  *
- *
  * @param { BotSchema } bot
  * @param { number } realTimeCurrPrice
  * @returns { number }
@@ -103,9 +102,10 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
       if (bot.deal.margin_short_buy_back_price > 0) {
         const currentPrice = bot.deal.margin_short_buy_back_price;
         const marginSellPrice = bot.deal.margin_short_sell_price;
+        const interests = (+bot.deal.hourly_interest_rate) * (+bot.deal.margin_short_loan_principal)
         let profitChange =
           parseFloat(
-            ((currentPrice - marginSellPrice) / marginSellPrice) * 100
+            ((currentPrice - marginSellPrice - interests) / marginSellPrice) * 100
           ) * -1;
         return +profitChange.toFixed(2);
       } else {
@@ -132,23 +132,40 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
 export function computeTotalProfit(bots) {
   let currTotalProfit = 0;
   const totalProfit = bots
-    .map((bot) => bot.deal)
-    .reduce((accumulator, currBot) => {
+    .map((bot) => bot)
+    .reduce((accumulator, bot) => {
       if (
-        currBot &&
-        !checkValue(currBot.take_profit_price) &&
-        parseFloat(currBot.take_profit_price) > 0
+        bot.deal &&
+        !checkValue(bot.deal.take_profit_price) &&
+        parseFloat(bot.deal.take_profit_price) > 0
       ) {
-        if (currBot.buy_price === 0) {
+
+        let enterPositionPrice = 0;
+        let exitPositionPrice = bot.deal.current_price;
+
+        if (bot.deal.buy_price > 0) {
+            enterPositionPrice = bot.deal.buy_price
+        }
+        if (bot.deal.margin_short_sell_price > 0) {
+            enterPositionPrice =  bot.deal.margin_short_sell_price
+        }
+        if (bot.deal.sell_price > 0) {
+            exitPositionPrice = bot.deal.sell_price
+        }
+        if (bot.deal.margin_short_buy_back_price > 0) {
+          exitPositionPrice = bot.deal.margin_short_buy_back_price
+        }
+
+        if (exitPositionPrice === 0 || enterPositionPrice === 0) {
           currTotalProfit = 0;
-        } else if (currBot.deal?.sell_price) {
-          currTotalProfit = getProfit(currBot.buy_price, currBot.sell_price);
         } else {
           currTotalProfit = getProfit(
-            currBot.buy_price,
-            currBot.take_profit_price
+            enterPositionPrice,
+            exitPositionPrice,
+            bot.strategy
           );
         }
+        
       }
       return parseFloat(accumulator) + parseFloat(currTotalProfit);
     }, 0);
@@ -163,34 +180,4 @@ export function weekAgo() {
     today.getDate() - 7
   );
   return lastWeek.getTime();
-}
-
-export function botDuration(start, end) {
-  const startTime = moment(start);
-  const endTime = moment(end);
-  const duration = moment.duration(endTime.diff(startTime));
-
-  let days = Math.floor(duration.asDays());
-  duration.subtract(moment.duration(days, "days"));
-
-  let hours = duration.hours();
-  duration.subtract(moment.duration(hours, "hours"));
-
-  let minutes = duration.minutes();
-  duration.subtract(moment.duration(minutes, "minutes"));
-
-  const seconds = duration.seconds();
-  let dateStringify = `${seconds}s`;
-
-  if (minutes > 0) {
-    dateStringify = `${minutes}m ${dateStringify}`;
-  }
-  if (hours > 0) {
-    dateStringify = `${hours}h ${dateStringify}`;
-  }
-  if (days > 0) {
-    dateStringify = `${days}d ${dateStringify}`;
-  }
-
-  return dateStringify;
 }

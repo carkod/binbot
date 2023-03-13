@@ -2,11 +2,11 @@ from time import time
 from typing import Literal
 
 from bson.objectid import ObjectId
+from tools.enum_definitions import Status
 from deals.schema import DealSchema, OrderSchema
 from pydantic import BaseModel, Field, validator
 from tools.enum_definitions import BinbotEnums
 from tools.handle_error import StandardResponse
-
 from tools.enum_definitions import BinbotEnums
 
 
@@ -36,7 +36,7 @@ class BotSchema(BaseModel):
     balance_to_use: str = "1"
     base_order_size: str = "15"  # Min Binance 0.0001 BNB
     candlestick_interval: str = "15m"
-    cooldown: int = 0  # cooldown period before opening next bot with same pair
+    cooldown: int = 0  # cooldown period in minutes before opening next bot with same pair
     created_at: float = 0
     deal: DealSchema = Field(default_factory=DealSchema)
     dynamic_trailling: bool = False
@@ -45,7 +45,7 @@ class BotSchema(BaseModel):
     mode: str = "manual"  # Manual is triggered by the terminal dashboard, autotrade by research app
     name: str = "Default bot"
     orders: list[OrderSchema] = []  # Internal
-    status: str = "inactive"
+    status: Status = Status.inactive
     stop_loss: float = 0
     take_profit: float = 0
     trailling: str = "true"
@@ -71,12 +71,6 @@ class BotSchema(BaseModel):
         else:
             raise ValueError(f"{v} must be a percentage")
 
-    @validator("status")
-    def check_statuses(cls, v: str):
-        if v not in BinbotEnums.statuses:
-            raise ValueError(f'Status must be one of {", ".join(BinbotEnums.statuses)}')
-        return v
-
     @validator("mode")
     def check_mode(cls, v: str):
         if v not in BinbotEnums.mode:
@@ -90,6 +84,7 @@ class BotSchema(BaseModel):
         return v
 
     class Config:
+        use_enum_values = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
         schema_extra = {

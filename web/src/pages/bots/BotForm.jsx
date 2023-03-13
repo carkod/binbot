@@ -22,7 +22,10 @@ import {
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
-import { bot, computeSingleBotProfit } from "../../state/bots/actions";
+import {
+  bot,
+  computeSingleBotProfit,
+} from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
 import { checkBalance, checkValue, roundDecimals } from "../../validations.js";
 import SafetyOrdersTab from "../../components/SafetyOrdersTab";
@@ -117,6 +120,8 @@ class BotForm extends React.Component {
       this.props.setBot({
         name: `${this.props.bot.pair}_${currentDate}`,
       });
+
+      this.marginShortValidation();
     }
 
     if (this.state.currentChartPrice !== s.currentChartPrice) {
@@ -133,6 +138,10 @@ class BotForm extends React.Component {
     ) {
       this.computeAvailableBalance();
     }
+  };
+
+  marginShortValidation = async () => {
+    return true
   };
 
   requiredinValidation = () => {
@@ -191,6 +200,8 @@ class BotForm extends React.Component {
         this.props.setBot({ traillingDeviationError: false });
       }
     }
+
+    this.marginShortValidation();
 
     return true;
   };
@@ -364,6 +375,10 @@ class BotForm extends React.Component {
       this.props.getSymbolInfo(value);
     }
 
+    if (name === "strategy" && value === "margin_short") {
+      this.marginShortValidation();
+    }
+
     // Update charts
     const newOrderLines = updateOrderLines(
       this.props.bot,
@@ -384,6 +399,7 @@ class BotForm extends React.Component {
     if (validation) {
       await this.handleSubmit(e);
       this.props.activateBot(this.state.id);
+      this.props.getBot(this.props.match.params.id);
     }
   };
 
@@ -619,7 +635,7 @@ class BotForm extends React.Component {
                       handleBlur={this.handleBlur}
                       addMin={this.addMin}
                       addAll={this.addAll}
-                      baseOrderSizeInfoText="Must be filled in to calculate the other parameters"
+                      baseOrderSizeInfoText="Must be filled in to calculate the other parameters. For short orders, this value must + stop_loss to cover losses"
                     />
 
                     {/*

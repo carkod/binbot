@@ -40,6 +40,7 @@ import {
 
 // The initial state of the App
 export const initialState = {
+  bots: [],
   bot: bot,
   data: null,
   message: null,

@@ -48,6 +48,7 @@ class DealSchema(BaseModel):
     margin_short_sell_timestamp: float = 0
     margin_short_buy_back_price: float = 0
     margin_short_buy_back_timestamp: float = 0
+    hourly_interest_rate: float = 0
 
     @validator(
         "buy_price",
@@ -65,6 +66,6 @@ class DealSchema(BaseModel):
 
 
 class MarginOrderSchema(OrderSchema):
-    marginBuyBorrowAmount: int = 0
-    marginBuyBorrowAsset: str = "USDT"
-    isIsolated: bool = False
+    margin_buy_borrow_amount: int = 0
+    margin_buy_borrow_asset: str = "USDT"
+    is_isolated: bool = False

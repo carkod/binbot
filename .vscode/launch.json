@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "uvicorn",
       "cwd": "${workspaceFolder}/api",
-      "args": ["main:app", "--port", "8008", "--workers", "2"],
+      "args": ["main:app", "--port", "8008"],
       "jinja": true,
       "justMyCode": true,
       "console": "internalConsole"

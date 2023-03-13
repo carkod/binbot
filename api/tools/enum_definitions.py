@@ -1,3 +1,5 @@
+from enum import Enum
+
 class EnumDefinitions:
     """
     Enums established by Binance API
@@ -56,3 +58,10 @@ class BinbotEnums:
     statuses = ("inactive", "active", "completed", "error", "archived")
     mode = ("manual", "autotrade")
     strategy = ("long", "short", "margin_long", "margin_short")
+
+class Status(str, Enum):
+    inactive = "inactive"
+    active = "active"
+    completed = "completed"
+    error = "error"
+    archived = "archived"

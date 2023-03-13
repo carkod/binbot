@@ -55,13 +55,13 @@ export default function marginTrading(bot, currentPrice) {
     });
   }
 
-  if (bot.stop_loss && bot.stop_loss > 0) {
+  if (bot.stop_loss && parseFloat(bot.stop_loss) > 0) {
     let stopLossPrice = 0;
     if (bot.deal.stop_loss_price) {
       stopLossPrice =
         bot.deal.stop_loss_price;
     } else {
-      stopLossPrice = currentPrice * (1 + (bot.stop_loss / 100));
+      stopLossPrice = currentPrice * (1 + (parseFloat(bot.stop_loss) / 100));
     }
     // Stop loss
     totalOrderLines.push({

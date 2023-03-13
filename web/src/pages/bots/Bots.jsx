@@ -213,7 +213,7 @@ class Bots extends React.Component {
           <Row>
             {!checkValue(bots)
               ? bots.map((x, i) => (
-                  <Col key={x.id} sm="6" md="4" lg="3">
+                  <Col key={i} sm="6" md="4" lg="3">
                     <BotCard
                       tabIndex={i}
                       x={x}

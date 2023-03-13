@@ -12,7 +12,7 @@ const computeProportions = (data) => {
     loserCount: 0,
   };
   data.reduce((c, a) => {
-    if (parseFloat(a.priceChangePercent) >= 0) {
+    if (parseFloat(a.priceChangePercent) > 0) {
       total.gainerAccumulator =
         c.gainerAccumulator + parseFloat(a.priceChangePercent);
       total.gainerCount++;
