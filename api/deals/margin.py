@@ -2,6 +2,8 @@ from time import time
 from urllib.error import HTTPError
 
 from binance.exceptions import BinanceAPIException
+from deals.schema import DealSchema
+from tools.enum_definitions import Strategy
 from bots.schemas import BotSchema
 from tools.enum_definitions import Status
 from deals.base import BaseDeal
@@ -289,7 +291,7 @@ class MarginDeal(BaseDeal):
                 symbol=self.active_bot.pair
             )
 
-            completion_msg = f"Margin_short bot repaid, funds transferred back to SPOT. Bot completed"
+            completion_msg = f"Margin_short bot repaid, funds transferred back to SPOT."
             self.active_bot.errors.append(completion_msg)
             print(completion_msg)
 
@@ -385,8 +387,8 @@ class MarginDeal(BaseDeal):
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
 
-        # Direction 2: downard trend
-        elif (
+        # Direction 2: downward trend
+        if (
             price > 0
             and self.active_bot.deal.stop_loss_price > 0
             and price > self.active_bot.deal.stop_loss_price
@@ -395,6 +397,19 @@ class MarginDeal(BaseDeal):
             self.execute_stop_loss()
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
+
+        # Reversal
+         # Direction 2: downward trend
+        if (
+            price > 0
+            and self.active_bot.deal.stop_loss_price > 0
+            and price > self.active_bot.deal.stop_loss_price
+        ):
+            print(f'Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}')
+            if self.db_collection.name == "bots":
+                self.terminate_margin_short()
+                
+            self.execute_stop_loss_reversal()
 
         try:
             bot = encode_json(self.active_bot)
@@ -611,6 +626,30 @@ class MarginDeal(BaseDeal):
         self.active_bot.orders.append(take_profit_order)
         msg = f"Completed Take profit!"
         self.active_bot.errors.append(msg)
-        # self.active_bot.status = Status.completed
+        self.active_bot.status = Status.completed
+
+        return
+
+    def execute_stop_loss_reversal(self):
+        """
+        Switch to long strategy:
+
+        1. Change strategy type
+        2. Open long strategy deal as usual (open_deal)
+        3. Set margin_short variables to 0
+        4. Repay loan
+        """
+
+        reset_deal = DealSchema()
+        self.active_bot.deal = reset_deal
+        self.active_bot.strategy = Strategy.long
+
+        # Create and activate bot using a network request
+        # otherwise we get circular import (Create) or duplicated code
+        bot = self.active_bot.parse_obj()
+        created_bot = self.signed_request(url=self.bb_bot_url, method="POST", payload=bot)
+        if created_bot["error"] == 0:
+            activated_bot = self.signed_request(url=self.bb_activate_bot_url)
+            print(activated_bot)
 
         return

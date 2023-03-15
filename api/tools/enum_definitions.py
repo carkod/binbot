@@ -65,3 +65,7 @@ class Status(str, Enum):
     completed = "completed"
     error = "error"
     archived = "archived"
+
+class Strategy(str, Enum):
+    long = "long"
+    margin_short = "margin_short"
