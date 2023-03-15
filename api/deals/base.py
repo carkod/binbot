@@ -123,6 +123,22 @@ class BaseDeal(Account):
                 return True
         return False
 
+    def update_required(self):
+        """
+        Terminate streaming and restart list of bots required
+
+        This will queue up a timer to restart streaming_controller when timer is reached
+        This timer is added, so that update_required petitions can be accumulated and
+        avoid successively restarting streaming_controller, which consumes a lot of memory
+
+        This means that everytime there is an update in the list of active bots,
+        it will reset the timer
+        """
+        self.db.research_controller.update_one(
+            {"_id": "settings"}, {"$set": {"update_required": time()}}
+        )
+        return
+
     def save_bot_streaming(self):
         """
         MongoDB query to save bot using Pydantic

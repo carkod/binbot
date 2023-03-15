@@ -89,7 +89,7 @@ class StreamingController:
         # Margin short
         if current_bot["strategy"] == "margin_short":
             margin_deal = MarginDeal(current_bot, db_collection=db_collection)
-            margin_deal.streaming_updates(close_price)
+            margin_deal.streaming_updates(close_price, open_price)
             return
 
         else:

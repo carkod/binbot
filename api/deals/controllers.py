@@ -1035,9 +1035,7 @@ class CreateDealController(BaseDeal):
                 or self.active_bot.deal.trailling_stop_loss_price
                 < self.active_bot.deal.buy_price
             )
-            and not self.active_bot.strategy == "margin_short"
         ):
-
             take_profit_price = float(self.active_bot.deal.buy_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )

@@ -1,4 +1,5 @@
 from time import time
+from datetime import datetime
 from urllib.error import HTTPError
 
 from binance.exceptions import BinanceAPIException
@@ -359,7 +360,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.status = Status.active
         return self.active_bot
 
-    def streaming_updates(self, close_price: str):
+    def streaming_updates(self, close_price: str, open_price: str):
         """
         Margin_short streaming updates
         """
@@ -375,19 +376,52 @@ class MarginDeal(BaseDeal):
         )
         print(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price}")
 
-        # Direction 1: upward trend
-        # Future feature: trailling
+        # Direction 1.1: downward trend (short)
+        # Breaking trailling
         if (
             price > 0
             and self.active_bot.deal.take_profit_price > 0
             and price < self.active_bot.deal.take_profit_price
         ):
-            print(f'Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}')
-            self.execute_take_profit()
-            if self.db_collection.name == "bots":
-                self.terminate_margin_short()
+            
+            if self.active_bot.trailling == "true" and self.active_bot.deal.margin_short_sell_price > 0:
 
-        # Direction 2: downward trend
+                self.update_trailling_profit(close_price)
+                self.active_bot = self.save_bot_streaming()
+
+                # Direction 2 (downward): breaking the trailling_stop_loss
+                # Make sure it's red candlestick, to avoid slippage loss
+                # Sell after hitting trailling stop_loss and if price already broken trailling
+                if (
+                    float(self.active_bot.deal.trailling_stop_loss_price) > 0
+                    # Broken stop_loss
+                    and float(close_price)
+                    < float(self.active_bot.deal.trailling_stop_loss_price)
+                    # Red candlestick
+                    and (float(open_price) > float(close_price))
+                ):
+                    print(
+                        f'Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}'
+                    )
+                    # since price is given by matching engine
+                    # execute_take_profit = trailling_profit
+                    self.execute_take_profit()
+                    if self.db_collection.name == "bots":
+                        self.terminate_margin_short()
+
+                    self.update_required()
+
+
+            else:
+
+                print(f'Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}')
+                self.execute_take_profit()
+                if self.db_collection.name == "bots":
+                    self.terminate_margin_short()
+                self.update_required()
+
+        # Direction 1.2: upward trend (short)
+        # Not breaking trailling
         if (
             price > 0
             and self.active_bot.deal.stop_loss_price > 0
@@ -395,8 +429,10 @@ class MarginDeal(BaseDeal):
         ):
             print(f'Executing margin_short stop_loss after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}')
             self.execute_stop_loss()
+            self.execute_stop_loss_reversal()
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
+            self.update_required()
 
         # Reversal
          # Direction 2: downward trend
@@ -410,6 +446,7 @@ class MarginDeal(BaseDeal):
                 self.terminate_margin_short()
                 
             self.execute_stop_loss_reversal()
+            self.update_required()
 
         try:
             bot = encode_json(self.active_bot)
@@ -640,16 +677,75 @@ class MarginDeal(BaseDeal):
         4. Repay loan
         """
 
-        reset_deal = DealSchema()
-        self.active_bot.deal = reset_deal
+        # Reset bot to prepare for new activation
+        del self.active_bot.deal
+        del self.active_bot.orders
         self.active_bot.strategy = Strategy.long
+        self.save_bot_streaming()
 
         # Create and activate bot using a network request
         # otherwise we get circular import (Create) or duplicated code
-        bot = self.active_bot.parse_obj()
+        bot = self.active_bot.dict()
+
         created_bot = self.signed_request(url=self.bb_bot_url, method="POST", payload=bot)
         if created_bot["error"] == 0:
-            activated_bot = self.signed_request(url=self.bb_activate_bot_url)
-            print(activated_bot)
+            reactivated_bot = self.request(url=f"{self.bb_activate_bot_url}/{self.active_bot.id}")
+            print("Created a reversal bot (margin_short -> long)", reactivated_bot)
 
         return
+
+    def update_trailling_profit(self, close_price):
+
+        if self.active_bot.deal.trailling_stop_loss_price == 0:
+            trailling_price = float(self.active_bot.deal.margin_short_sell_price) - (
+                self.active_bot.deal.margin_short_sell_price * ((self.active_bot.take_profit) / 100)
+            )
+            # If trailling_stop_loss < base order it will reset every time
+            print(
+                f"{datetime.utcnow()} {self.active_bot.pair} Setting trailling_stop_loss (short)"
+            )
+        else:
+
+            # Current take profit + next take_profit
+            trailling_price = float(self.active_bot.deal.take_profit_price) * (
+                1 + (float(self.active_bot.take_profit) / 100)
+            )
+            print(
+                f"{datetime.utcnow()} {self.active_bot.pair} Updated (Didn't break trailling), updating trailling price points (short)"
+            )
+        
+        # Direction 1 (upward): breaking the current trailling
+        if float(close_price) <= float(trailling_price):
+            new_take_profit = float(trailling_price) * (
+                1 + (float(self.active_bot.take_profit) / 100)
+            )
+            new_trailling_stop_loss = float(trailling_price) * (
+                1 + (float(self.active_bot.trailling_deviation) / 100)
+            )
+            # Update deal take_profit
+            self.active_bot.deal.take_profit_price = new_take_profit
+            # take_profit but for trailling, to avoid confusion
+            # trailling_profit_price always be > trailling_stop_loss_price
+            self.active_bot.deal.trailling_profit_price = new_take_profit
+
+            if new_trailling_stop_loss > self.active_bot.deal.margin_short_sell_price:
+                # Selling below buy_price will cause a loss
+                # instead let it drop until it hits safety order or stop loss
+                print(
+                    f"{self.active_bot.pair} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
+                )
+                # Update trailling_stop_loss
+                self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss
+                print(
+                    f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
+                )
+            else:
+                # Protect against drops by selling at buy price + 0.75% commission
+                self.active_bot.deal.trailling_stop_loss_price = (
+                    float(self.active_bot.deal["buy_price"]) * 1.075
+                )
+                print(
+                    f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
+                )
+            
+        self.save_bot_streaming()
