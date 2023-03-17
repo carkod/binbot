@@ -387,7 +387,9 @@ class MarginDeal(BaseDeal):
             if self.active_bot.trailling == "true" and self.active_bot.deal.margin_short_sell_price > 0:
 
                 self.update_trailling_profit(close_price)
-                self.active_bot = self.save_bot_streaming()
+                bot = self.save_bot_streaming()
+                self.active_bot = BotSchema.parse_obj(bot)
+
 
                 # Direction 2 (downward): breaking the trailling_stop_loss
                 # Make sure it's red candlestick, to avoid slippage loss
@@ -429,9 +431,14 @@ class MarginDeal(BaseDeal):
         ):
             print(f'Executing margin_short stop_loss after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}')
             self.execute_stop_loss()
-            self.execute_stop_loss_reversal()
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
+
+            # To profit from reversal, we still need to repay loan and transfer
+            # assets back to SPOT account, so this means executing stop loss
+            # and creating a new long bot, this way we can also keep the old bot
+            # with the corresponding data for profit/loss calculation
+            self.create_long_bot()
             self.update_required()
 
         # Reversal
@@ -445,7 +452,7 @@ class MarginDeal(BaseDeal):
             if self.db_collection.name == "bots":
                 self.terminate_margin_short()
                 
-            self.execute_stop_loss_reversal()
+            self.create_long_bot()
             self.update_required()
 
         try:
@@ -667,7 +674,7 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def execute_stop_loss_reversal(self):
+    def create_long_bot(self):
         """
         Switch to long strategy:
 
@@ -742,7 +749,7 @@ class MarginDeal(BaseDeal):
             else:
                 # Protect against drops by selling at buy price + 0.75% commission
                 self.active_bot.deal.trailling_stop_loss_price = (
-                    float(self.active_bot.deal["buy_price"]) * 1.075
+                    float(self.active_bot.deal.buy_price) * 1.075
                 )
                 print(
                     f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
