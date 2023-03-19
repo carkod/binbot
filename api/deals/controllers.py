@@ -90,10 +90,7 @@ class CreateDealController(BaseDeal):
 
         # setup stop_loss_price
         stop_loss_price = 0
-        if (
-            hasattr(self.active_bot, "stop_loss")
-            and float(self.active_bot.stop_loss) > 0
-        ):
+        if float(self.active_bot.stop_loss) > 0:
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
         if not price:
@@ -904,8 +901,6 @@ class CreateDealController(BaseDeal):
         slope, intercept, rvalue, pvalue, stderr = linregress(dates, list_prices)
 
         if sd >= 0:
-            self.active_bot.deal.sd = sd
-
             print(
                 f"dynamic profit for {symbol} sd: {sd}",
                 f'slope is {"positive" if slope > 0 else "negative"}',
@@ -934,9 +929,11 @@ class CreateDealController(BaseDeal):
                 new_trailling_stop_loss_price = float(close_price) - (
                     float(close_price) * volatility
                 )
+                # deal.sd comparison will prevent it from making trailling_stop_loss too big
+                # and thus losing all the gains
                 if new_trailling_stop_loss_price > float(
                     self.active_bot.deal.buy_price
-                ):
+                ) and sd < self.active_bot.deal.sd:
                     self.active_bot.trailling_deviation = volatility * 100
                     self.active_bot.deal.trailling_stop_loss_price = float(
                         close_price
@@ -952,6 +949,7 @@ class CreateDealController(BaseDeal):
                         float(close_price) * volatility
                     )
 
+        self.active_bot.deal.sd = sd
         bot = self.save_bot_streaming()
         return bot
 

@@ -47,6 +47,7 @@ class BotSchema(BaseModel):
     orders: list[OrderSchema] = []  # Internal
     status: Status = Status.inactive
     stop_loss: float = 0
+    margin_short_reversal: bool = False # If stop_loss > 0, allow for reversal
     take_profit: float = 0
     trailling: str = "true"
     trailling_deviation: float = 0
