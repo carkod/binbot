@@ -7,6 +7,7 @@ from deals.margin import MarginDeal
 from pymongo import ReturnDocument
 from datetime import datetime
 from time import time
+import asyncio
 
 
 class TerminateStreaming(Exception):
@@ -317,7 +318,8 @@ class StreamingController:
 
         async with klines as k:
             while True:
-                res = await k.recv()
+                # If fails to connect, this will cancel loop
+                res = await asyncio.wait_for(k.recv(), timeout=60)
 
                 if "result" in res:
                     print(f'Subscriptions: {res["result"]}')
