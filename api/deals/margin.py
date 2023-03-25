@@ -263,7 +263,7 @@ class MarginDeal(BaseDeal):
             bot = self.save_bot_streaming()
             self.active_bot: BotSchema = BotSchema.parse_obj(bot)
 
-            if balance[0]["quoteAsset"]["free"] != 0:
+            if float(balance[0]["quoteAsset"]["free"]) != 0:
                 try:
                     # transfer back to SPOT account
                     self.client.transfer_isolated_margin_to_spot(
@@ -298,6 +298,7 @@ class MarginDeal(BaseDeal):
 
             completion_msg = f"{self.active_bot.pair} ISOLATED margin funds transferred back to SPOT."
             self.active_bot.errors.append(completion_msg)
+            self.active_bot.status = Status.completed
             print(completion_msg)
             bot = self.save_bot_streaming()
 
@@ -563,6 +564,8 @@ class MarginDeal(BaseDeal):
                 print(f"Deleted obsolete bot {self.active_bot.pair}")
             except BinanceAPIException as error:
                 print(error)
+                if error.code == -2010:
+                    return
             except Exception as error:
                 self.update_deal_logs(
                     f"Error trying to open new stop_limit order {error}"

@@ -277,6 +277,7 @@ class BotForm extends React.Component {
         strategy: this.props.bot.strategy,
         short_buy_price: this.props.bot.short_buy_price,
         short_sell_price: this.props.bot.short_sell_price,
+        margin_short_reversal: this.props.bot.margin_short_reversal
       };
       if (this.state.id === null) {
         this.props.createBot(form);
@@ -473,6 +474,11 @@ class BotForm extends React.Component {
     }
   };
 
+  toggleAutoswitch = (value) => {
+    console.log(value)
+    this.props.setBot({ margin_short_reversal: value })
+  }
+
   render() {
     return (
       <div className="content">
@@ -654,8 +660,10 @@ class BotForm extends React.Component {
                     <StopLossTab
                       stop_loss={this.props.bot.stop_loss}
                       stopLossError={this.props.bot.stopLossError}
+                      margin_short_reversal={this.props.bot.margin_short_reversal}
                       handleChange={this.handleChange}
                       handleBlur={this.handleBlur}
+                      toggleAutoswitch={this.toggleAutoswitch}
                     />
 
                     <TakeProfitTab

@@ -42,6 +42,7 @@ export const bot = {
   quoteAsset: "",
   baseAsset: "",
   stop_loss: 0,
+  margin_short_reversal: true,
   stopLossError: false,
   safety_orders: [],
   addAllError: "",
