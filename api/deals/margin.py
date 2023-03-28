@@ -274,7 +274,7 @@ class MarginDeal(BaseDeal):
                 except BinanceAPIException as error:
                     print(error)
 
-            if self.get_remaining_quote_asset() > 0 or float(balance[0]["baseAsset"]["free"]) > 0:
+            if self.get_remaining_quote_asset() > 0 and float(balance[0]["baseAsset"]["free"]) > 0:
                 # transfer back any quote asset qty leftovers
                 self.client.transfer_isolated_margin_to_spot(
                     asset=asset,
@@ -403,7 +403,7 @@ class MarginDeal(BaseDeal):
                     and float(close_price)
                     < float(self.active_bot.deal.trailling_stop_loss_price)
                     # Red candlestick
-                    and (float(open_price) > float(close_price))
+                    # and (float(open_price) > float(close_price))
                 ):
                     print(
                         f'Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}'
@@ -446,7 +446,6 @@ class MarginDeal(BaseDeal):
             # and creating a new long bot, this way we can also keep the old bot
             # with the corresponding data for profit/loss calculation
             self.switch_to_long_bot()
-            self.update_required()
 
         try:
             bot = encode_json(self.active_bot)
@@ -457,6 +456,7 @@ class MarginDeal(BaseDeal):
                 {"id": self.active_bot.id},
                 {"$set": bot},
             )
+            self.update_required()
 
         except ValidationError as error:
             self.update_deal_logs(f'margin_short steaming update error: {error}')
@@ -562,7 +562,7 @@ class MarginDeal(BaseDeal):
                 print(f"Deleted obsolete bot {self.active_bot.pair}")
             except BinanceAPIException as error:
                 print(error)
-                if error.code == -2010:
+                if error.code in (-2010, -1013):
                     return
             except Exception as error:
                 self.update_deal_logs(
@@ -647,6 +647,19 @@ class MarginDeal(BaseDeal):
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
             try:
+
+                if qty == 0 or free <= qty:
+                    # Not enough funds probably because already bought before
+                    # correct using quote asset to buy base asset
+                    # we want base asset anyway now, because of long bot
+                    quote_asset_qty = self.get_remaining_quote_asset()
+                    price = self.matching_engine(self.active_bot.pair, False, qty)
+                    qty = round_numbers(float(quote_asset_qty) / float(price), self.qty_precision)
+
+                # If still qty = 0, it means everything is clear
+                if qty == 0:
+                    return
+
                 res = self.buy_order(price=supress_notation(price, self.price_precision), qty=supress_notation(qty, self.qty_precision))
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
@@ -722,7 +735,6 @@ class MarginDeal(BaseDeal):
         self.active_bot.strategy = Strategy.long
         self.active_bot.status = Status.active
         self.active_bot.margin_short_reversal = False
-        self.save_bot_streaming()
 
         # Create and activate bot using a network request
         # otherwise we get circular import (Create) or duplicated code
@@ -742,8 +754,8 @@ class MarginDeal(BaseDeal):
         else:
 
             # Current take profit + next take_profit
-            trailling_price = float(self.active_bot.deal.take_profit_price) * (
-                1 + (float(self.active_bot.take_profit) / 100)
+            trailling_price = float(self.active_bot.deal.take_profit_price) - (
+                float(self.active_bot.deal.take_profit_price) * (float(self.active_bot.take_profit) / 100)
             )
             print(
                 f"{datetime.utcnow()} {self.active_bot.pair} Updated (Didn't break trailling), updating trailling price points (short)"
@@ -751,8 +763,8 @@ class MarginDeal(BaseDeal):
         
         # Direction 1 (upward): breaking the current trailling
         if float(close_price) <= float(trailling_price):
-            new_take_profit = float(trailling_price) * (
-                1 + (float(self.active_bot.take_profit) / 100)
+            new_take_profit = float(trailling_price) - (
+                float(trailling_price) * (float(self.active_bot.take_profit) / 100)
             )
             new_trailling_stop_loss = float(trailling_price) * (
                 1 + (float(self.active_bot.trailling_deviation) / 100)
@@ -763,7 +775,7 @@ class MarginDeal(BaseDeal):
             # trailling_profit_price always be > trailling_stop_loss_price
             self.active_bot.deal.trailling_profit_price = new_take_profit
 
-            if new_trailling_stop_loss > self.active_bot.deal.margin_short_sell_price:
+            if new_trailling_stop_loss < self.active_bot.deal.margin_short_sell_price:
                 # Selling below buy_price will cause a loss
                 # instead let it drop until it hits safety order or stop loss
                 print(
@@ -782,5 +794,3 @@ class MarginDeal(BaseDeal):
                 print(
                     f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
                 )
-            
-        self.save_bot_streaming()

@@ -3,7 +3,7 @@ import { dealColors } from "./charting.service";
 export default function marginTrading(bot, currentPrice) {
   let totalOrderLines = [];
   currentPrice = parseFloat(currentPrice)
-  if (bot.deal.buy_back_price && bot.deal.buy_back_price > 0) {
+  if (bot.deal.margin_short_buy_back_price && bot.deal.margin_short_buy_back_price > 0) {
 
     // If there is sell_price, it means it's completed
     totalOrderLines.push({
@@ -43,7 +43,7 @@ export default function marginTrading(bot, currentPrice) {
     
   } else {
 
-    if (bot.trailling === "trailling") {
+    if (bot.trailling === "true" || bot.trailling) {
       if (bot.status === "active" && bot.deal.trailling_stop_loss_price > 0) {
         totalOrderLines.push({
           id: "trailling_profit",
