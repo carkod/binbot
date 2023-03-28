@@ -49,10 +49,10 @@ export default function TakeProfit({
             </BotFormTooltip>
             <br />
             <Button
-              color={trailling === "true" ? "success" : "secondary"}
+              color={trailling === "true" || trailling ? "success" : "secondary"}
               onClick={toggleTrailling}
             >
-              {trailling === "true" ? "On" : "Off"}
+              {trailling === "true" || trailling ? "On" : "Off"}
             </Button>
           </FormGroup>
         </Col>

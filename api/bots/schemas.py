@@ -49,7 +49,7 @@ class BotSchema(BaseModel):
     stop_loss: float = 0
     margin_short_reversal: bool = False # If stop_loss > 0, allow for reversal
     take_profit: float = 0
-    trailling: str = "true"
+    trailling: bool = True
     trailling_deviation: float = 0
     trailling_profit: float = 0  # Trailling activation (first take profit hit)
     safety_orders: list[SafetyOrderSchema] = []
@@ -83,6 +83,12 @@ class BotSchema(BaseModel):
         if v not in BinbotEnums.strategy:
             raise ValueError(f'Status must be one of {", ".join(BinbotEnums.strategy)}')
         return v
+
+    @validator("trailling")
+    def check_trailling(cls, v: str | bool):
+        if isinstance(v, str) and v.lower() == "false":
+            return False
+        return True
 
     class Config:
         use_enum_values = True

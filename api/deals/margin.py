@@ -388,12 +388,11 @@ class MarginDeal(BaseDeal):
             and price < self.active_bot.deal.take_profit_price
         ):
             
-            if self.active_bot.trailling == "true" and self.active_bot.deal.margin_short_sell_price > 0:
+            if (self.active_bot.trailling == "true" or self.active_bot.trailling) and self.active_bot.deal.margin_short_sell_price > 0:
 
                 self.update_trailling_profit(close_price)
                 bot = self.save_bot_streaming()
                 self.active_bot = BotSchema.parse_obj(bot)
-
 
                 # Direction 2 (downward): breaking the trailling_stop_loss
                 # Make sure it's red candlestick, to avoid slippage loss
@@ -416,7 +415,6 @@ class MarginDeal(BaseDeal):
                         self.terminate_margin_short()
 
                     self.update_required()
-
 
             else:
 
@@ -611,7 +609,7 @@ class MarginDeal(BaseDeal):
         """
         qty = 1
         if self.db_collection.name == "bots":
-            qty = self.compute_margin_buy_back()
+            qty, free = self.compute_margin_buy_back()
 
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
