@@ -200,12 +200,17 @@ class MarginDeal(BaseDeal):
             if query_loan["total"] > 0 and repay_amount > 0:
                 # Only supress trailling 0s, so that everything is paid
                 repay_amount = supress_trailling(repay_amount)
-                self.client.repay_margin_loan(
-                    asset=asset,
-                    symbol=self.active_bot.pair,
-                    amount=repay_amount,
-                    isIsolated="TRUE",
-                )
+                try:
+                    self.client.repay_margin_loan(
+                        asset=asset,
+                        symbol=self.active_bot.pair,
+                        amount=repay_amount,
+                        isIsolated="TRUE",
+                    )
+                except BinanceAPIException as error:
+                    if error.code == -3041:
+                        self.active_bot.errors.append(error.message)
+                        pass
 
                 repay_details_res = (
                     self.client.get_margin_repay_details(
