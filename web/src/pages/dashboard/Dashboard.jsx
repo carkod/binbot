@@ -1,3 +1,4 @@
+import produce from "immer";
 import React from "react";
 import { connect } from "react-redux";
 import { Card, CardBody, CardFooter, CardTitle, Col, Row } from "reactstrap";
@@ -9,6 +10,8 @@ import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
 import { getGainersLosers } from "./saga";
+import moment from "moment";
+
 class Dashboard extends React.Component {
   constructor(props) {
     super(props);
@@ -24,13 +27,30 @@ class Dashboard extends React.Component {
       networthLayout: null,
       dailyPnL: null,
       usdBalance: 0, // Does not rely on cronjob totalBtcBalance
+      btcPrices: []
     };
+  }
+
+  getBtcprices = async (periods=86400) => {
+    const startDate = moment().subtract(1, 'months').valueOf();
+    const options = {
+      contentType: "application/json",
+      mode: "cors",
+      cache: "no-cache",
+    }
+    const response = await fetch(`https://api.cryptowat.ch/markets/binance/BTCUSDT/ohlc?periods=${periods}&value=${startDate}`, options);
+    const data = response.json();
+    const btcPrices = produce(this.state, (draft) => {
+      draft.selectedCards.push(data);
+    });
+    this.setState({btcPrices: btcPrices});
   }
 
   componentDidMount = () => {
     this.props.getBalanceRaw();
     this.props.getEstimate();
     this.props.getGainersLosers();
+    // this.getBtcprices();
   };
 
   componentDidUpdate = (p, s) => {
@@ -333,6 +353,7 @@ const mapStateToProps = (s) => {
   const { data: balanceEstimate } = s.estimateReducer;
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
+
   return {
     loading: loading,
     assetList: balance_raw,

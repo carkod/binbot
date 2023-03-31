@@ -90,21 +90,6 @@ export default function marginTrading(bot, currentPrice) {
     } else {
       const price = bot.deal.margin_short_sell_price > 0 ? bot.deal.margin_short_sell_price : currentPrice;
       totalOrderLines.push({
-        id: "base_order",
-        text: "Base",
-        tooltip: [
-          bot.status,
-          `${
-            bot.deal.buy_total_qty > 0
-              ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)"
-              : ""
-          }`,
-        ],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-        price: parseFloat(price),
-        color: dealColors.base_order,
-      });
-      totalOrderLines.push({
         id: "take_profit",
         text: `Take profit ${bot.take_profit}% (Margin)`,
         tooltip: [bot.status, " Sell Order "],
@@ -133,6 +118,24 @@ export default function marginTrading(bot, currentPrice) {
       color: "red",
     });
   }
+
+  // Always need to show base_order
+  const price = bot.deal.margin_short_sell_price > 0 ? bot.deal.margin_short_sell_price : currentPrice;
+  totalOrderLines.push({
+    id: "base_order",
+    text: "Base",
+    tooltip: [
+      bot.status,
+      `${
+        bot.deal.buy_total_qty > 0
+          ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)"
+          : ""
+      }`,
+    ],
+    quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+    price: parseFloat(price),
+    color: dealColors.base_order,
+  });
 
   return totalOrderLines;
 }
