@@ -405,8 +405,7 @@ class MarginDeal(BaseDeal):
                 if (
                     float(self.active_bot.deal.trailling_stop_loss_price) > 0
                     # Broken stop_loss
-                    and float(close_price)
-                    < float(self.active_bot.deal.trailling_stop_loss_price)
+                    and float(close_price) > float(self.active_bot.deal.trailling_stop_loss_price)
                     # Red candlestick
                     # and (float(open_price) > float(close_price))
                 ):
@@ -414,7 +413,6 @@ class MarginDeal(BaseDeal):
                         f'Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}'
                     )
                     # since price is given by matching engine
-                    # execute_take_profit = trailling_profit
                     self.execute_take_profit()
                     if self.db_collection.name == "bots":
                         self.terminate_margin_short()

@@ -34,6 +34,7 @@ export const bot = {
   takeProfitError: false,
   trailling: "false",
   trailling_deviation: "0.63",
+  dynamic_trailling: false,
   traillingDeviationError: false,
   formIsValid: true,
   candlestick_interval: intervalOptions[3],

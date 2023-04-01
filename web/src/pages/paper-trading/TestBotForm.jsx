@@ -186,7 +186,8 @@ class TestBotForm extends React.Component {
         strategy: this.props.bot.strategy,
         short_buy_price: this.props.bot.short_buy_price,
         short_sell_price: this.props.bot.short_sell_price,
-        margin_short_reversal: this.props.bot.margin_short_reversal
+        margin_short_reversal: this.props.bot.margin_short_reversal,
+        dynamic_trailling: this.props.bot.dynamic_trailling,
       };
       if (!checkValue(this.props.match.params.id)) {
         form.id = this.props.match.params.id;
@@ -320,10 +321,10 @@ class TestBotForm extends React.Component {
     }
   };
 
-  toggleTrailling = () => {
-    const value = this.props.bot.trailling === "true" ? "false" : "true";
+  toggleTrailling = (prop) => {
+    const value = this.props.bot[prop] || this.props.bot[prop] === "true" ? false : true;
     this.props.setBotState({
-      trailling: value,
+      [prop]: value,
     });
   };
 
@@ -395,7 +396,7 @@ class TestBotForm extends React.Component {
   };
 
   toggleAutoswitch = (value) => {
-    this.props.setBot({ margin_short_reversal: value })
+    this.props.setBotState({ margin_short_reversal: value })
   }
 
   render() {
@@ -583,6 +584,7 @@ class TestBotForm extends React.Component {
                       take_profit={this.props.bot.take_profit}
                       trailling={this.props.bot.trailling}
                       trailling_deviation={this.props.bot.trailling_deviation}
+                      dynamic_trailling={this.props.bot.dynamic_trailling}
                       handleChange={this.handleChange}
                       handleBlur={this.handleBlur}
                       toggleTrailling={this.toggleTrailling}
