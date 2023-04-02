@@ -46,37 +46,57 @@ class MarginDeal(BaseDeal):
         }
         return order
 
-    def buy_order(self, price, qty):
+    def buy_order(self, price, qty, type="LIMIT"):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
         price = float(self.matching_engine(self.active_bot.pair, True, qty))
-        response = self.client.create_margin_order(
-            symbol=self.active_bot.pair,
-            side="BUY",
-            type="LIMIT",
-            timeInForce="GTC",
-            quantity=qty,
-            price=price,
-            isIsolated="TRUE",
-        )
+        time_in_force = "GTC"
+        if type == "LIMIT":
+            response = self.client.create_margin_order(
+                symbol=self.active_bot.pair,
+                side="BUY",
+                type=type,
+                timeInForce=time_in_force,
+                quantity=qty,
+                price=price,
+                isIsolated="TRUE",
+            )
+        else:
+            response = self.client.create_margin_order(
+                symbol=self.active_bot.pair,
+                side="BUY",
+                type=type,
+                quantity=qty,
+                isIsolated="TRUE",
+            )
 
         return response
 
-    def sell_order(self, qty):
+    def sell_order(self, qty, type="LIMIT"):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
         price = float(self.matching_engine(self.active_bot.pair, False, qty))
-        response = self.client.create_margin_order(
-            symbol=self.active_bot.pair,
-            side="SELL",
-            type="LIMIT",
-            timeInForce="GTC",
-            quantity=qty,
-            price=price,
-            isIsolated="TRUE",
-        )
+        if type == "LIMIT":
+            response = self.client.create_margin_order(
+                symbol=self.active_bot.pair,
+                side="SELL",
+                type=type,
+                timeInForce="GTC",
+                quantity=qty,
+                price=price,
+                isIsolated="TRUE",
+            )
+        else:
+            response = self.client.create_margin_order(
+                symbol=self.active_bot.pair,
+                side="SELL",
+                type=type,
+                quantity=qty,
+                price=price,
+                isIsolated="TRUE",
+            )
 
         return response
 
@@ -399,36 +419,60 @@ class MarginDeal(BaseDeal):
                 bot = self.save_bot_streaming()
                 self.active_bot = BotSchema.parse_obj(bot)
 
-                # Direction 2 (downward): breaking the trailling_stop_loss
-                # Make sure it's red candlestick, to avoid slippage loss
-                # Sell after hitting trailling stop_loss and if price already broken trailling
-                if (
-                    float(self.active_bot.deal.trailling_stop_loss_price) > 0
-                    # Broken stop_loss
-                    and float(close_price) > float(self.active_bot.deal.trailling_stop_loss_price)
-                    # Red candlestick
-                    # and (float(open_price) > float(close_price))
-                ):
-                    print(
-                        f'Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}'
-                    )
-                    # since price is given by matching engine
-                    self.execute_take_profit()
-                    if self.db_collection.name == "bots":
-                        self.terminate_margin_short()
-
-                    self.update_required()
-
             else:
-
+                # Execute the usual non-trailling take_profit
                 print(f'Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}')
                 self.execute_take_profit()
                 if self.db_collection.name == "bots":
                     self.terminate_margin_short()
                 self.update_required()
 
-        # Direction 1.2: upward trend (short)
+        # Direction 2: upward trend (short). breaking the trailling_stop_loss
+        # Make sure it's red candlestick, to avoid slippage loss
+        # Sell after hitting trailling stop_loss and if price already broken trailling
+        if (
+            float(self.active_bot.deal.trailling_stop_loss_price) > 0
+            # Broken stop_loss
+            and float(close_price) > float(self.active_bot.deal.trailling_stop_loss_price)
+            # Red candlestick
+            # and (float(open_price) > float(close_price))
+        ):
+            print(
+                f'Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}'
+            )
+            # since price is given by matching engine
+            self.execute_take_profit(float(close_price))
+            if self.db_collection.name == "bots":
+                self.terminate_margin_short()
+
+            self.update_required()
+
+        # Direction 2: upward trend (short)
         # Not breaking trailling
+        if (
+            price > 0
+            and self.active_bot.deal.stop_loss_price > 0
+            and price > self.active_bot.deal.stop_loss_price
+        ):
+            print(f'Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}')
+            self.execute_stop_loss()
+            if self.db_collection.name == "bots":
+                if hasattr(self.active_bot, "margin_short_reversal") and self.active_bot.margin_short_reversal:
+                    # If we want to do reversal long bot, there is no point
+                    # incurring in an additional transaction
+                    self.terminate_margin_short(buy_back_fiat=False)
+                else:
+                    self.terminate_margin_short()
+
+            # To profit from reversal, we still need to repay loan and transfer
+            # assets back to SPOT account, so this means executing stop loss
+            # and creating a new long bot, this way we can also keep the old bot
+            # with the corresponding data for profit/loss calculation
+            self.switch_to_long_bot()
+
+
+        # Direction 1.3: upward trend (short)
+        # Breaking trailling_stop_loss, completing trailling
         if (
             price > 0
             and self.active_bot.deal.stop_loss_price > 0
@@ -605,7 +649,7 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def execute_take_profit(self):
+    def execute_take_profit(self, price=None):
         """
         Execute take profit when price is hit
         Buy back asset sold
@@ -613,16 +657,6 @@ class MarginDeal(BaseDeal):
         qty = 1
         if self.db_collection.name == "bots":
             qty, free = self.compute_margin_buy_back()
-
-        # If for some reason, the bot has been closed already (e.g. transacted on Binance)
-        # Inactivate bot
-        # if self.db_collection.name == "bots" and not qty:
-        #     self.update_deal_logs(
-        #         f"Cannot execute update stop limit, quantity is {qty}. Deleting bot"
-        #     )
-        #     params = {"id": self.active_bot.id}
-        #     self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
-        #     return
 
         order_id = None
         for order in self.active_bot.orders:
@@ -642,12 +676,15 @@ class MarginDeal(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
-        if qty:
+        if qty and not price:
             price = self.matching_engine(self.active_bot.pair, True, qty)
 
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
+        elif price:
+            # Use market order
+            res = self.buy_order(price=price, qty=supress_notation(qty, self.qty_precision), type="MARKET")
         else:
             try:
 
