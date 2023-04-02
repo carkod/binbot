@@ -142,7 +142,7 @@ class StreamingController:
                     return
 
                 # Take profit trailling
-                if bot["trailling"] == "true" and float(bot["deal"]["buy_price"]) > 0:
+                if (bot["trailling"] == "true" or bot["trailling"]) and float(bot["deal"]["buy_price"]) > 0:
                     # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
                     if bot["deal"]["trailling_stop_loss_price"] == 0:
                         trailling_price = float(bot["deal"]["buy_price"]) * (

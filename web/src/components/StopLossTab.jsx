@@ -17,7 +17,8 @@ export default function StopLossTab({
   handleBlur,
   stop_loss,
   margin_short_reversal,
-  toggleAutoswitch
+  toggleAutoswitch,
+  strategy="long"
 }) {
   return (
     <TabPane tabId="stop-loss">
@@ -38,21 +39,24 @@ export default function StopLossTab({
           </InputGroup>
           <FormFeedback valid={!stopLossError}>Not a percentage</FormFeedback>
         </Col>
-        <Col md="6" sm="12">
-          <BotFormTooltip
+        {strategy === "margin_short" && (
+          <Col md="6" sm="12">
+            <BotFormTooltip
               name="margin_short_reversal"
               text={"Autoswitches to long bot"}
             >
               Autoswitch (reversal)
-          </BotFormTooltip>
-          <br />
-          <Button
-            color={margin_short_reversal ? "success" : "secondary"}
-            onClick={() => toggleAutoswitch(!margin_short_reversal)}
-          >
-            {margin_short_reversal ? "On" : "Off"}
-          </Button>
-        </Col>
+            </BotFormTooltip>
+            <br />
+            <Button
+              color={margin_short_reversal ? "success" : "secondary"}
+              onClick={() => toggleAutoswitch(!margin_short_reversal)}
+            >
+              {margin_short_reversal ? "On" : "Off"}
+            </Button>
+          
+          </Col>
+        )}
       </Row>
     </TabPane>
   );
