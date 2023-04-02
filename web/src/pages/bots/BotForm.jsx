@@ -667,7 +667,6 @@ class BotForm extends React.Component {
                       handleChange={this.handleChange}
                       handleBlur={this.handleBlur}
                       toggleAutoswitch={this.toggleAutoswitch}
-                      strategy={this.props.bot.strategy}
                     />
 
                     <TakeProfitTab
