@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import {
+  Button,
   Card,
   CardBody,
   CardHeader,
@@ -26,11 +27,14 @@ const renderSellTimestamp = (bot) => {
 };
 
 export default function BotInfo({ bot }) {
+  const [showOrderInfo, toggleOrderInfo] = useState(true)
   return (
     <Card>
-      <CardHeader>
-        <CardTitle tag="h5">Orders information</CardTitle>
+      <CardHeader className="u-space-between">
+        <CardTitle tag="h5">Orders information{" "}</CardTitle>
+        <Button onClick={() => toggleOrderInfo(!showOrderInfo)} className="u-float-right">Hide</Button>
       </CardHeader>
+      {showOrderInfo && 
       <CardBody>
         <Table responsive>
           <thead>
@@ -106,6 +110,7 @@ export default function BotInfo({ bot }) {
           </div>
         )}
       </CardBody>
+      }
     </Card>
   );
 }
