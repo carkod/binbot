@@ -161,6 +161,7 @@ class StreamingController:
                             f"{datetime.utcnow()} {symbol} Updated (Didn't break trailling), updating trailling price points"
                         )
 
+                    bot["deal"]["trailling_profit_price"] = trailling_price
                     # Direction 1 (upward): breaking the current trailling
                     if bot and float(close_price) >= float(trailling_price):
                         new_take_profit = float(trailling_price) * (
