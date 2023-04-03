@@ -148,17 +148,10 @@ class StreamingController:
                         trailling_price = float(bot["deal"]["buy_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
                         )
-                        # If trailling_stop_loss < base order it will reset every time
-                        print(
-                            f"{datetime.utcnow()} {symbol} Setting trailling_stop_loss"
-                        )
                     else:
                         # Current take profit + next take_profit
                         trailling_price = float(bot["deal"]["take_profit_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
-                        )
-                        print(
-                            f"{datetime.utcnow()} {symbol} Updated (Didn't break trailling), updating trailling price points"
                         )
 
                     bot["deal"]["trailling_profit_price"] = trailling_price
@@ -275,7 +268,7 @@ class StreamingController:
             print(
                 f'Time to update_required {time() - local_settings["update_required"]}'
             )
-            if time() - local_settings["update_required"] > 15:
+            if time() - local_settings["update_required"] > 50:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": None}}
                 )

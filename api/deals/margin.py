@@ -11,7 +11,7 @@ from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
 from tools.handle_error import QuantityTooLow, encode_json
-from tools.round_numbers import round_numbers, supress_notation, supress_trailling
+from tools.round_numbers import round_numbers, supress_notation, supress_trailling, round_numbers_ceiling
 
 
 class MarginShortError(Exception):
@@ -132,13 +132,15 @@ class MarginDeal(BaseDeal):
         Same as compute_qty but with isolated margin balance
 
         Find available amount to buy_back
-        this is the borrowed amount
+        this is the borrowed amount + interests.
+        Decimals have to be rounded up to avoid leaving
+        "leftover" interests
         """
         balance = self.get_isolated_balance(symbol=self.active_bot.pair)
         if len(balance) == 0 or balance[0]["baseAsset"]["borrowed"] == 0:
             return None
         qty = float(balance[0]["baseAsset"]["borrowed"]) + float(balance[0]["baseAsset"]["interest"])
-        return round_numbers(qty, self.qty_precision), float(balance[0]["baseAsset"]["free"])
+        return round_numbers_ceiling(qty, self.qty_precision), float(balance[0]["baseAsset"]["free"])
 
     def get_remaining_quote_asset(self):
         balance = self.get_isolated_balance(symbol=self.active_bot.pair)
@@ -184,11 +186,15 @@ class MarginDeal(BaseDeal):
             asset=asset, symbol=self.active_bot.pair, amount=qty, isIsolated=True
         )
         loan_details = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
-        fee_details = self.signed_request(self.isolated_fee_url, payload={"symbol": self.active_bot.pair})
         self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0]["timestamp"]
         self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0]["principal"]
         self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
-        self.active_bot.deal.margin_short_loan_interest = float(next((item["dailyInterest"] for item in fee_details[0]["data"] if item["coin"] == asset), 0))
+
+        # Estimate interest to add to total cost
+        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
+        # This interest rate is much more accurate than any of the others
+        hourly_fees = self.signed_request(url=self.isolated_hourly_interest, payload={"assets": asset, "isIsolated": "TRUE"})
+        self.active_bot.deal.hourly_interest_rate = float(hourly_fees[0]["nextHourlyInterestRate"])
 
         return
 
@@ -229,6 +235,8 @@ class MarginDeal(BaseDeal):
                     )
                 except BinanceAPIException as error:
                     if error.code == -3041:
+                        # Most likely not enough funds to pay back
+                        # Get fiat (USDT) to pay back
                         self.active_bot.errors.append(error.message)
                         pass
 
@@ -237,16 +245,17 @@ class MarginDeal(BaseDeal):
                         asset=asset, isolatedSymbol=self.active_bot.pair
                     )
                 )
-                repay_details = repay_details_res["rows"][0]
-                self.active_bot.deal.margin_short_loan_interest = repay_details[
-                    "interest"
-                ]
-                self.active_bot.deal.margin_short_loan_principal = repay_details[
-                    "principal"
-                ]
-                self.active_bot.deal.margin_short_loan_timestamp = repay_details[
-                    "timestamp"
-                ]
+                if len(repay_details_res["rows"]) > 0:
+                    repay_details = repay_details_res["rows"][0]
+                    self.active_bot.deal.margin_short_loan_interest = repay_details[
+                        "interest"
+                    ]
+                    self.active_bot.deal.margin_short_loan_principal = repay_details[
+                        "principal"
+                    ]
+                    self.active_bot.deal.margin_short_loan_timestamp = repay_details[
+                        "timestamp"
+                    ]
 
                 if buy_back_fiat:
                     # Sell quote and get base asset (USDT)
@@ -353,6 +362,9 @@ class MarginDeal(BaseDeal):
             self.init_margin_short(qty)
 
             # Margin sell
+            # Add markup on top of qty to cover for stop_losses
+            # Round up so that we don't have leftovers
+            qty = round_numbers_ceiling(qty * (1 * self.active_bot.stop_loss), self.qty_precision)
             order_res = self.sell_order(qty)
         else:
             # Simulate Margin sell
@@ -380,11 +392,6 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.buy_total_qty = float(order_res["origQty"])
         self.active_bot.deal.margin_short_base_order = float(order_res["origQty"])
 
-        # Estimate interest to add to total cost
-        isolated_fees = self.signed_request(url=self.isolated_fee_url, payload={"symbol": self.active_bot.pair})
-        # for the following computation check https://www.binance.com/en/margin-fee
-        self.active_bot.deal.hourly_interest_rate = float(isolated_fees[0]["data"][0]["dailyInterest"]) / 24
-
         # Activate bot
         self.active_bot.status = Status.active
         return self.active_bot
@@ -403,7 +410,11 @@ class MarginDeal(BaseDeal):
                 * (float(self.active_bot.stop_loss) / 100)
             )
         )
-        print(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price}")
+        self.active_bot.deal.margin_short_loan_interest = float(self.active_bot.deal.margin_short_loan_principal) * float(self.active_bot.deal.hourly_interest_rate)
+        # Add it to as part of total_commission for easy profit calculation
+        self.active_bot.total_commission += float(self.active_bot.deal.margin_short_loan_principal) * float(self.active_bot.deal.hourly_interest_rate)
+        print(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}")
+        
 
         # Direction 1.1: downward trend (short)
         # Breaking trailling
@@ -603,10 +614,6 @@ class MarginDeal(BaseDeal):
                     return
 
                 res = self.buy_order(price, qty)
-            except QuantityTooLow as error:
-                # Delete incorrectly activated or old bots
-                self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
-                print(f"Deleted obsolete bot {self.active_bot.pair}")
             except BinanceAPIException as error:
                 print(error)
                 if error.code in (-2010, -1013):
@@ -616,7 +623,6 @@ class MarginDeal(BaseDeal):
                     f"Error trying to open new stop_limit order {error}"
                 )
                 return
-            
 
         stop_loss_order = MarginOrderSchema(
             timestamp=res["transactTime"],
@@ -651,8 +657,15 @@ class MarginDeal(BaseDeal):
 
     def execute_take_profit(self, price=None):
         """
-        Execute take profit when price is hit
-        Buy back asset sold
+        Execute take profit when price is hit.
+        This can be a simple take_profit order when take_profit_price is hit or
+        a trailling_stop_loss when trailling_stop_loss_price is hit.
+        This is because the only difference is the price and the price either provided
+        by whatever triggers this sell or if not provided the matching_engine will provide it.
+
+        This also sits well with the concept of "taking profit", which is closing a position at profit.
+
+        - Buy back asset sold
         """
         qty = 1
         if self.db_collection.name == "bots":
@@ -683,8 +696,13 @@ class MarginDeal(BaseDeal):
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         elif price:
-            # Use market order
-            res = self.buy_order(price=price, qty=supress_notation(qty, self.qty_precision), type="MARKET")
+            try:
+                # Use market order
+                res = self.buy_order(price=price, qty=supress_notation(qty, self.qty_precision), type="MARKET")
+            except BinanceAPIException as error:
+                if error.code == -2010:
+                    self.update_deal_logs(f"{error.message}. Not enough fiat to buy back loaned quantity")
+                    return
         else:
             try:
 
@@ -800,7 +818,7 @@ class MarginDeal(BaseDeal):
             print(
                 f"{datetime.utcnow()} {self.active_bot.pair} Updated (Didn't break trailling), updating trailling price points (short)"
             )
-        
+
         # Direction 1 (upward): breaking the current trailling
         if float(close_price) <= float(trailling_price):
             new_take_profit = float(trailling_price) - (
