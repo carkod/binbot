@@ -1,5 +1,6 @@
 import numpy
 import requests
+
 from bots.schemas import BotSchema
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
@@ -106,6 +107,7 @@ class CreateDealController(BaseDeal):
                 "qty": qty,
                 "price": supress_notation(price, self.price_precision),
             }
+            self.buy_order()
             res = self.bb_request(
                 method="POST", url=self.bb_buy_order_url, payload=order
             )
@@ -190,14 +192,9 @@ class CreateDealController(BaseDeal):
                     "SELL",
                 )
         else:
-            tp_order = {
-                "pair": self.active_bot.pair,
-                "qty": supress_notation(qty, self.qty_precision),
-                "price": supress_notation(price, self.price_precision),
-            }
-            res = self.bb_request(
-                method="POST", url=self.bb_sell_order_url, payload=tp_order
-            )
+            qty = supress_notation(qty, self.qty_precision)
+            price = supress_notation(price, self.price_precision)
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
@@ -278,18 +275,8 @@ class CreateDealController(BaseDeal):
 
         # Dispatch real order
         else:
-            tp_order = {
-                "symbol": self.active_bot.pair,
-                "quantity": supress_notation(qty, self.qty_precision),
-                "price": supress_notation(price, self.price_precision),
-            }
-
             try:
-                # If matching_engine finds bid/ask price to sell LIMIT immediately
-                if price:
-                    self.client.order_limit_sell(**tp_order)
-                else:
-                    self.client.order_market_sell(**tp_order)
+                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=supress_notation(price, self.price_precision))
 
             except Exception as err:
                 raise TraillingProfitError(err["error"])
@@ -350,27 +337,8 @@ class CreateDealController(BaseDeal):
         if balance:
             qty = round_numbers(balance, self.qty_precision)
             price = float(self.matching_engine(pair, True, qty))
-
-            if price:
-                order = {
-                    "pair": pair,
-                    "qty": qty,
-                    "price": supress_notation(price, self.price_precision),
-                }
-                res = self.bb_request(
-                    method="POST", url=self.bb_sell_order_url, payload=order
-                )
-            else:
-                order = {
-                    "pair": pair,
-                    "qty": qty,
-                }
-                res = self.bb_request(
-                    method="POST", url=self.bb_sell_market_order_url, payload=order
-                )
-
-            # Continue even if there are errors
-            handle_binance_errors(res)
+            price = supress_notation(price, self.price_precision)
+            self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         return
 
@@ -402,12 +370,7 @@ class CreateDealController(BaseDeal):
                     print("Old take profit order cancelled")
 
                 qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
-                new_tp_order = {
-                    "pair": bot.pair,
-                    "qty": qty,
-                    "price": supress_notation(new_tp_price, self.price_precision),
-                }
-                res = requests.post(url=self.bb_sell_order_url, json=new_tp_order)
+                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=supress_notation(new_tp_price, self.price_precision))
 
                 # New take profit order successfully created
                 order = handle_binance_errors(res)
@@ -648,18 +611,7 @@ class CreateDealController(BaseDeal):
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
         else:
             try:
-                stop_limit_order = {
-                    "symbol": self.active_bot.pair,
-                    "quantity": qty,
-                    "price": supress_notation(price, self.price_precision),
-                }
-                # If matching_engine does return a price
-                if price:
-                    res = self.client.order_limit_sell(**stop_limit_order)
-                else:
-                    # If matching_engine could not find bid/ask price in the books
-                    res = self.client.order_market_sell(**stop_limit_order)
-
+                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
             except Exception as error:
                 self.update_deal_logs(
                     f"Error trying to open new stop_limit order {error}"
@@ -747,24 +699,7 @@ class CreateDealController(BaseDeal):
             res = self.simulate_order(bot.pair, price, qty, "SELL")
         else:
             try:
-                if price:
-                    short_sell_order_payload = {
-                        "pair": bot.pair,
-                        "qty": qty,
-                        "price": supress_notation(price, self.price_precision),
-                    }
-                    res = self.bb_request(
-                        method="POST",
-                        url=self.bb_sell_order_url,
-                        payload=short_sell_order_payload,
-                    )
-                else:
-                    short_sell_order_payload = {"pair": bot.pair, "qty": qty}
-                    res = self.bb_request(
-                        method="POST",
-                        url=self.bb_sell_order_url,
-                        payload=short_sell_order_payload,
-                    )
+                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=supress_notation(price, self.price_precision))
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(

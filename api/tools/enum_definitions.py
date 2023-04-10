@@ -22,17 +22,6 @@ class EnumDefinitions:
         "REJECTED",
         "EXPIRED",
     ]
-    order_types = [
-        "LIMIT",
-        "MARKET",
-        "STOP_LOSS",
-        "STOP_LOSS_LIMIT",
-        "TAKE_PROFIT",
-        "TAKE_PROFIT_LIMIT",
-        "LIMIT_MAKER",
-    ]
-    order_side = ["BUY", "SELL"]
-    time_in_force = ("GTC", "IOC", "FOK")
     chart_intervals = (
         "1m",
         "3m",
@@ -69,3 +58,21 @@ class Status(str, Enum):
 class Strategy(str, Enum):
     long = "long"
     margin_short = "margin_short"
+
+class OrderType(str, Enum):
+    limit = "LIMIT"
+    market= "MARKET"
+    stop_loss = "STOP_LOSS"
+    stop_loss_limit = "STOP_LOSS_LIMIT"
+    take_profit = "TAKE_PROFIT"
+    take_profit_limit = "TAKE_PROFIT_LIMIT"
+    limit_maker = "LIMIT_MAKER"
+
+class TimeInForce(str, Enum):
+    gtc = "GTC"
+    ioc = "IOC"
+    fok = "FOK"
+
+class OrderSide(str, Enum):
+    buy = "BUY"
+    sell = "SELL"

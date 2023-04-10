@@ -46,60 +46,6 @@ class MarginDeal(BaseDeal):
         }
         return order
 
-    def buy_order(self, price, qty, type="LIMIT"):
-        """
-        python-binance wrapper function to make it less verbose and less dependant
-        """
-        price = float(self.matching_engine(self.active_bot.pair, True, qty))
-        time_in_force = "GTC"
-        if type == "LIMIT":
-            response = self.client.create_margin_order(
-                symbol=self.active_bot.pair,
-                side="BUY",
-                type=type,
-                timeInForce=time_in_force,
-                quantity=qty,
-                price=price,
-                isIsolated="TRUE",
-            )
-        else:
-            response = self.client.create_margin_order(
-                symbol=self.active_bot.pair,
-                side="BUY",
-                type=type,
-                quantity=qty,
-                isIsolated="TRUE",
-            )
-
-        return response
-
-    def sell_order(self, qty, type="LIMIT"):
-        """
-        python-binance wrapper function to make it less verbose and less dependant
-        """
-        price = float(self.matching_engine(self.active_bot.pair, False, qty))
-        if type == "LIMIT":
-            response = self.client.create_margin_order(
-                symbol=self.active_bot.pair,
-                side="SELL",
-                type=type,
-                timeInForce="GTC",
-                quantity=qty,
-                price=price,
-                isIsolated="TRUE",
-            )
-        else:
-            response = self.client.create_margin_order(
-                symbol=self.active_bot.pair,
-                side="SELL",
-                type=type,
-                quantity=qty,
-                price=price,
-                isIsolated="TRUE",
-            )
-
-        return response
-
     def get_margin_balance(self) -> list:
         """
         Get balance of Cross Margin account.
@@ -263,7 +209,7 @@ class MarginDeal(BaseDeal):
                     # In theory, we should sell self.active_bot.base_order
                     # but this can be out of sync
                     sell_back_qty = supress_notation(balance[0]["baseAsset"]["free"], self.qty_precision)
-                    res = self.sell_order(sell_back_qty)
+                    res = self.sell_margin_order(symbol=self.active_bot.pair, qty=sell_back_qty)
                     sell_back_order = MarginOrderSchema(
                         timestamp=res["transactTime"],
                         deal_type="take_profit",
@@ -365,7 +311,7 @@ class MarginDeal(BaseDeal):
             # Add markup on top of qty to cover for stop_losses
             # Round up so that we don't have leftovers
             qty = round_numbers_ceiling(qty * (1 * self.active_bot.stop_loss), self.qty_precision)
-            order_res = self.sell_order(qty)
+            order_res = self.sell_margin_order(symbol=self.active_bot.pair, qty=qty)
         else:
             # Simulate Margin sell
             order_res = self.simulate_margin_order(qty, "SELL")
@@ -613,7 +559,7 @@ class MarginDeal(BaseDeal):
                 if qty == 0:
                     return
 
-                res = self.buy_order(price, qty)
+                res = self.buy_margin_order(symbol=self.active_bot.pair, qty=qty, price=price)
             except BinanceAPIException as error:
                 print(error)
                 if error.code in (-2010, -1013):
@@ -698,7 +644,7 @@ class MarginDeal(BaseDeal):
         elif price:
             try:
                 # Use market order
-                res = self.buy_order(price=price, qty=supress_notation(qty, self.qty_precision), type="MARKET")
+                res = self.buy_margin_order(symbol=self.active_bot.pair, price=price, qty=supress_notation(qty, self.qty_precision))
             except BinanceAPIException as error:
                 if error.code == -2010:
                     self.update_deal_logs(f"{error.message}. Not enough fiat to buy back loaned quantity")
@@ -718,7 +664,7 @@ class MarginDeal(BaseDeal):
                 if qty == 0:
                     return
 
-                res = self.buy_order(price=supress_notation(price, self.price_precision), qty=supress_notation(qty, self.qty_precision))
+                res = self.buy_margin_order(symbol=self.active_bot.pair, price=supress_notation(price, self.price_precision), qty=supress_notation(qty, self.qty_precision))
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")

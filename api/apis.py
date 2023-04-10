@@ -51,6 +51,7 @@ class BinanceApi:
     isolated_account = f"{BASE}/sapi/v1/margin/isolated/account"
     loan_record = f"{BASE}/sapi/v1/margin/loan"
     isolated_hourly_interest = f"{BASE}/sapi/v1/margin/next-hourly-interest-rate"
+    margin_order = f"{BASE}/sapi/v1/margin/order"
 
     def signed_request(self, url, method="GET", payload={}, params={}):
         """
@@ -109,6 +110,7 @@ class BinbotApi(BinanceApi):
     bb_buy_order_url = f"{bb_base_url}/order/buy"
     bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
     bb_sell_order_url = f"{bb_base_url}/order/sell"
+    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
     bb_opened_orders_url = f"{bb_base_url}/order/open"
     bb_close_order_url = f"{bb_base_url}/order/close"
 

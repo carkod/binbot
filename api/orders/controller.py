@@ -1,8 +1,6 @@
 from account.account import Account
-from requests import HTTPError
-from tools.enum_definitions import EnumDefinitions
+from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_error, json_response_message
-from tools.round_numbers import supress_notation
 from db import setup_db
 
 poll_percentage = 0
@@ -11,55 +9,55 @@ class OrderController(Account):
     def __init__(self) -> None:
         # Always GTC and limit orders
         # limit/market orders will be decided by matching_engine
-        self.timeInForce = EnumDefinitions.time_in_force[0]
-        self.order_type = EnumDefinitions.order_types[0]
         self.db = setup_db()
         pass
 
-    def sell_order(self, item):
-        symbol = item.pair
-        price = item.price
-        qty = item.qty
-        side = EnumDefinitions.order_side[1]
-        # Get data for a single crypto e.g. BTT in BNB market
-        payload = {
-            "symbol": symbol,
-            "side": side,
-            "type": self.order_type,
-            "timeInForce": self.timeInForce,
-            "price": price,
-            "quantity": qty,
-        }
-        try:
-            data = self.signed_request(
-                url=self.order_url, method="POST", payload=payload
-            )
-        except HTTPError as e:
-            return json_response_error(e)
+    def sell_order(self, symbol, qty, price):
+        """
+        If price is not provided by matching engine,
+        sell at market price
+        """
+        if price:
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.sell,
+                "type": OrderType.limit,
+                "timeInForce": TimeInForce.gtc,
+                "price": price,
+                "quantity": qty,
+            }
+        else:
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.sell,
+                "type": OrderType.market,
+                "quantity": qty,
+            }
+        data = self.signed_request(
+            url=self.order_url, method="POST", payload=payload
+        )
         return data
 
-    def buy_order(self, item):
-        symbol = item.pair
-        price = item.price
-        qty = item.qty
+    def buy_order(self, symbol, qty, price=None):
 
-        side = EnumDefinitions.order_side[0]
-        # Limit order
-        qty_precision = self.get_qty_precision(symbol)
+        if price:
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.buy,
+                "type": OrderType.limit,
+                "timeInForce": TimeInForce.gtc,
+                "price": price,
+                "quantity": qty,
+            }
+        else:
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.buy,
+                "type": OrderType.market,
+                "quantity": qty,
+            }
 
-        # Get data for a single crypto e.g. BTT in BNB market
-        payload = {
-            "symbol": symbol,
-            "side": side,
-            "type": self.order_type,
-            "timeInForce": self.timeInForce,
-            "price": price,
-            "quantity": supress_notation(qty, qty_precision),
-        }
-        try:
-            data = self.signed_request(url=self.order_url, method="POST", payload=payload)
-        except HTTPError as e:
-            return json_response_error(e)
+        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         return data
 
     def get_open_orders(self):
@@ -108,3 +106,61 @@ class OrderController(Account):
         else:
             resp = json_response_message("No open orders found!")
         return resp
+
+    def buy_margin_order(self, symbol, qty, price=None):
+        """
+        python-binance wrapper function to make it less verbose and less dependant
+        """
+        if not price:
+            price = float(self.matching_engine(symbol, True, qty))
+
+        if price:
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.buy,
+                "type": OrderType.limit,
+                "timeInForce": TimeInForce.gtc,
+                "quantity": qty,
+                "price": price,
+                "isIsolated": "TRUE",
+            }
+        else:
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.buy,
+                "type": OrderType.market,
+                "quantity": qty,
+                "isIsolated": "TRUE",
+            }
+
+        data = self.signed_request(url=self.margin_order, payload=payload)
+        return data
+
+    def sell_margin_order(self, symbol, qty, price=None):
+        """
+        python-binance wrapper function to make it less verbose and less dependant
+        """
+        if not price:
+            price = float(self.matching_engine(symbol, False, qty))
+
+        if price:
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.sell,
+                "type": OrderType.limit,
+                "timeInForce": TimeInForce.gtc,
+                "quantity": qty,
+                "price": price,
+                "isIsolated": "TRUE",
+            }
+        else:
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.sell,
+                "type": OrderType.market,
+                "quantity": qty,
+                "isIsolated": "TRUE",
+            }
+
+        data = self.signed_request(url=self.margin_order, payload=payload)
+        return data

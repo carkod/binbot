@@ -37,7 +37,7 @@ class BotSchema(BaseModel):
     base_order_size: str = "15"  # Min Binance 0.0001 BNB
     candlestick_interval: str = "15m"
     cooldown: int = 0  # cooldown period in minutes before opening next bot with same pair
-    created_at: float = 0
+    created_at: float = time() * 1000
     deal: DealSchema = Field(default_factory=DealSchema)
     dynamic_trailling: bool = False
     errors: list[str] = []
@@ -58,7 +58,7 @@ class BotSchema(BaseModel):
     short_sell_price: float = 0  # autoswitch to short_strategy
     # Deal and orders are internal, should never be updated by outside data
     total_commission: float = 0
-    updated_at: float = 0
+    updated_at: float = time() * 1000
 
     @validator("pair", "base_order_size", "candlestick_interval")
     def check_names_not_empty(cls, v):

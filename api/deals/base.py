@@ -3,7 +3,7 @@ import os
 from decimal import Decimal
 from time import time
 
-from account.account import Account
+from orders.controller import OrderController
 from bots.schemas import BotSchema
 from db import setup_db
 from binance.client import Client
@@ -17,7 +17,7 @@ class DealCreationError(Exception):
 class StreamingSaveError(Exception):
     pass
 
-class BaseDeal(Account):
+class BaseDeal(OrderController):
     """
     Base Deal class to share with CreateDealController and MarginDeal
     """
