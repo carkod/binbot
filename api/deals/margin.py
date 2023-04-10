@@ -107,6 +107,10 @@ class MarginDeal(BaseDeal):
         print("Initializating margin_short tasks for real bots trading")
         # Check margin account balance first
         balance = self.get_isolated_balance(self.active_bot.pair)
+        # always enable, it doesn't cause errors
+        self.client.enable_isolated_margin_account(
+            symbol=self.active_bot.pair
+        )
         if len(balance) == 0:
             try:
                 # transfer
@@ -118,20 +122,20 @@ class MarginDeal(BaseDeal):
             except BinanceAPIException as error:
                 if error.code == -11003:
                     raise MarginShortError("Isolated margin not available")
-                # Enable
-                self.client.enable_isolated_margin_account(
-                    symbol=self.active_bot.pair
-                )
             except Exception as error:
                 print(error)
                 
 
         asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
         # In the future, amount_to_borrow = base + base * (2.5)
-        self.client.create_margin_loan(
-            asset=asset, symbol=self.active_bot.pair, amount=qty, isIsolated=True
-        )
-        loan_details = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
+        try:
+            self.client.create_margin_loan(
+                asset=asset, symbol=self.active_bot.pair, amount=qty, isIsolated=True
+            )
+            loan_details = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
+        except Exception as error:
+            print(error)
+
         self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0]["timestamp"]
         self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0]["principal"]
         self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
@@ -294,7 +298,7 @@ class MarginDeal(BaseDeal):
         2. Carry on with usual base_order
         """
         print(f"Opening margin_short_base_order")
-        initial_price = float(self.matching_engine(self.active_bot.pair, True))
+        initial_price = float(self.matching_engine(self.active_bot.pair, False))
         # Given USDT amount we want to buy,
         # how much can we buy?
         qty = round_numbers(
@@ -541,7 +545,6 @@ class MarginDeal(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
-        price = self.matching_engine(self.active_bot.pair, True, qty)
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
@@ -552,7 +555,7 @@ class MarginDeal(BaseDeal):
                     # correct using quote asset to buy base asset
                     # we want base asset anyway now, because of long bot
                     quote_asset_qty = self.get_remaining_quote_asset()
-                    price = self.matching_engine(self.active_bot.pair, False, qty)
+                    price = self.matching_engine(self.active_bot.pair, True, qty)
                     qty = round_numbers(float(quote_asset_qty) / float(price), self.qty_precision)
 
                 # If still qty = 0, it means everything is clear
@@ -657,7 +660,7 @@ class MarginDeal(BaseDeal):
                     # correct using quote asset to buy base asset
                     # we want base asset anyway now, because of long bot
                     quote_asset_qty = self.get_remaining_quote_asset()
-                    price = self.matching_engine(self.active_bot.pair, False, qty)
+                    price = self.matching_engine(self.active_bot.pair, True, qty)
                     qty = round_numbers(float(quote_asset_qty) / float(price), self.qty_precision)
 
                 # If still qty = 0, it means everything is clear

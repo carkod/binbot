@@ -82,12 +82,12 @@ class CreateDealController(BaseDeal):
 
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
-        initial_price = float(self.matching_engine(pair, False))
+        initial_price = float(self.matching_engine(pair, True))
         qty = round_numbers(
             (float(self.active_bot.base_order_size) / float(initial_price)),
             self.qty_precision,
         )
-        price = float(self.matching_engine(pair, False, qty))
+        price = float(self.matching_engine(pair, True, qty))
 
         # setup stop_loss_price
         stop_loss_price = 0
@@ -102,15 +102,7 @@ class CreateDealController(BaseDeal):
                 pair, supress_notation(price, self.price_precision), qty, "BUY"
             )
         else:
-            order = {
-                "pair": pair,
-                "qty": qty,
-                "price": supress_notation(price, self.price_precision),
-            }
-            self.buy_order()
-            res = self.bb_request(
-                method="POST", url=self.bb_buy_order_url, payload=order
-            )
+            res = self.buy_order(symbol=pair, qty=qty, price=supress_notation(price, self.price_precision))
 
         order_data = OrderSchema(
             timestamp=res["transactTime"],
@@ -279,7 +271,7 @@ class CreateDealController(BaseDeal):
                 res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=supress_notation(price, self.price_precision))
 
             except Exception as err:
-                raise TraillingProfitError(err["error"])
+                raise TraillingProfitError(err)
 
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -427,7 +419,7 @@ class CreateDealController(BaseDeal):
         """
         pair = self.active_bot.pair
         so_qty = self.active_bot.safety_orders[so_index].so_size
-        price = self.matching_engine(pair, False, so_qty)
+        price = self.matching_engine(pair, True, so_qty)
         qty = round_numbers(
             float(so_qty),
             self.qty_precision,
@@ -605,7 +597,7 @@ class CreateDealController(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
-        price = float(self.matching_engine(self.active_bot.pair, True, qty))
+        price = float(self.matching_engine(self.active_bot.pair, False, qty))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
@@ -691,9 +683,7 @@ class CreateDealController(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 pass
 
-        price = float(self.matching_engine(bot.pair, True, qty))
-        if not price:
-            price = float(self.matching_engine(bot.pair, True))
+        price = float(self.matching_engine(bot.pair, False, qty))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(bot.pair, price, qty, "SELL")

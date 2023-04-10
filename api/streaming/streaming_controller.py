@@ -150,7 +150,7 @@ class StreamingController:
                         )
                     else:
                         # Current take profit + next take_profit
-                        trailling_price = float(bot["deal"]["take_profit_price"]) * (
+                        trailling_price = float(bot["deal"]["trailling_stop_loss_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
                         )
 
@@ -192,21 +192,21 @@ class StreamingController:
                                 f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                             )
 
-                        bot = self.streaming_db[db_collection].find_one_and_update(
+                    bot = self.streaming_db[db_collection].find_one_and_update(
+                        {"id": current_bot["id"]},
+                        {"$set": {"deal": bot["deal"]}},
+                        upsert=False,
+                        return_document=ReturnDocument.AFTER,
+                    )
+                    if not bot:
+                        self.streaming_db[db_collection].update_one(
                             {"id": current_bot["id"]},
-                            {"$set": {"deal": bot["deal"]}},
-                            upsert=False,
-                            return_document=ReturnDocument.AFTER,
+                            {
+                                "$push": {
+                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
+                                }
+                            },
                         )
-                        if not bot:
-                            self.streaming_db[db_collection].update_one(
-                                {"id": current_bot["id"]},
-                                {
-                                    "$push": {
-                                        "errors": f'Error updating trailling order {current_bot["_id"]}'
-                                    }
-                                },
-                            )
 
                     # Direction 2 (downward): breaking the trailling_stop_loss
                     # Make sure it's red candlestick, to avoid slippage loss
