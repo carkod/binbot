@@ -1,5 +1,6 @@
 import numpy
 import requests
+
 from bots.schemas import BotSchema
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
@@ -81,19 +82,16 @@ class CreateDealController(BaseDeal):
 
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
-        initial_price = float(self.matching_engine(pair, False))
+        initial_price = float(self.matching_engine(pair, True))
         qty = round_numbers(
             (float(self.active_bot.base_order_size) / float(initial_price)),
             self.qty_precision,
         )
-        price = float(self.matching_engine(pair, False, qty))
+        price = float(self.matching_engine(pair, True, qty))
 
         # setup stop_loss_price
         stop_loss_price = 0
-        if (
-            hasattr(self.active_bot, "stop_loss")
-            and float(self.active_bot.stop_loss) > 0
-        ):
+        if float(self.active_bot.stop_loss) > 0:
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
         if not price:
@@ -104,14 +102,7 @@ class CreateDealController(BaseDeal):
                 pair, supress_notation(price, self.price_precision), qty, "BUY"
             )
         else:
-            order = {
-                "pair": pair,
-                "qty": qty,
-                "price": supress_notation(price, self.price_precision),
-            }
-            res = self.bb_request(
-                method="POST", url=self.bb_buy_order_url, payload=order
-            )
+            res = self.buy_order(symbol=pair, qty=qty, price=supress_notation(price, self.price_precision))
 
         order_data = OrderSchema(
             timestamp=res["transactTime"],
@@ -193,14 +184,9 @@ class CreateDealController(BaseDeal):
                     "SELL",
                 )
         else:
-            tp_order = {
-                "pair": self.active_bot.pair,
-                "qty": supress_notation(qty, self.qty_precision),
-                "price": supress_notation(price, self.price_precision),
-            }
-            res = self.bb_request(
-                method="POST", url=self.bb_sell_order_url, payload=tp_order
-            )
+            qty = supress_notation(qty, self.qty_precision)
+            price = supress_notation(price, self.price_precision)
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
@@ -281,21 +267,11 @@ class CreateDealController(BaseDeal):
 
         # Dispatch real order
         else:
-            tp_order = {
-                "symbol": self.active_bot.pair,
-                "quantity": supress_notation(qty, self.qty_precision),
-                "price": supress_notation(price, self.price_precision),
-            }
-
             try:
-                # If matching_engine finds bid/ask price to sell LIMIT immediately
-                if price:
-                    self.client.order_limit_sell(**tp_order)
-                else:
-                    self.client.order_market_sell(**tp_order)
+                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=supress_notation(price, self.price_precision))
 
             except Exception as err:
-                raise TraillingProfitError(err["error"])
+                raise TraillingProfitError(err)
 
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -353,27 +329,8 @@ class CreateDealController(BaseDeal):
         if balance:
             qty = round_numbers(balance, self.qty_precision)
             price = float(self.matching_engine(pair, True, qty))
-
-            if price:
-                order = {
-                    "pair": pair,
-                    "qty": qty,
-                    "price": supress_notation(price, self.price_precision),
-                }
-                res = self.bb_request(
-                    method="POST", url=self.bb_sell_order_url, payload=order
-                )
-            else:
-                order = {
-                    "pair": pair,
-                    "qty": qty,
-                }
-                res = self.bb_request(
-                    method="POST", url=self.bb_sell_market_order_url, payload=order
-                )
-
-            # Continue even if there are errors
-            handle_binance_errors(res)
+            price = supress_notation(price, self.price_precision)
+            self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         return
 
@@ -405,12 +362,7 @@ class CreateDealController(BaseDeal):
                     print("Old take profit order cancelled")
 
                 qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
-                new_tp_order = {
-                    "pair": bot.pair,
-                    "qty": qty,
-                    "price": supress_notation(new_tp_price, self.price_precision),
-                }
-                res = requests.post(url=self.bb_sell_order_url, json=new_tp_order)
+                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=supress_notation(new_tp_price, self.price_precision))
 
                 # New take profit order successfully created
                 order = handle_binance_errors(res)
@@ -467,7 +419,7 @@ class CreateDealController(BaseDeal):
         """
         pair = self.active_bot.pair
         so_qty = self.active_bot.safety_orders[so_index].so_size
-        price = self.matching_engine(pair, False, so_qty)
+        price = self.matching_engine(pair, True, so_qty)
         qty = round_numbers(
             float(so_qty),
             self.qty_precision,
@@ -645,24 +597,13 @@ class CreateDealController(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
-        price = float(self.matching_engine(self.active_bot.pair, True, qty))
+        price = float(self.matching_engine(self.active_bot.pair, False, qty))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
         else:
             try:
-                stop_limit_order = {
-                    "symbol": self.active_bot.pair,
-                    "quantity": qty,
-                    "price": supress_notation(price, self.price_precision),
-                }
-                # If matching_engine does return a price
-                if price:
-                    res = self.client.order_limit_sell(**stop_limit_order)
-                else:
-                    # If matching_engine could not find bid/ask price in the books
-                    res = self.client.order_market_sell(**stop_limit_order)
-
+                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
             except Exception as error:
                 self.update_deal_logs(
                     f"Error trying to open new stop_limit order {error}"
@@ -742,32 +683,13 @@ class CreateDealController(BaseDeal):
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 pass
 
-        price = float(self.matching_engine(bot.pair, True, qty))
-        if not price:
-            price = float(self.matching_engine(bot.pair, True))
+        price = float(self.matching_engine(bot.pair, False, qty))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(bot.pair, price, qty, "SELL")
         else:
             try:
-                if price:
-                    short_sell_order_payload = {
-                        "pair": bot.pair,
-                        "qty": qty,
-                        "price": supress_notation(price, self.price_precision),
-                    }
-                    res = self.bb_request(
-                        method="POST",
-                        url=self.bb_sell_order_url,
-                        payload=short_sell_order_payload,
-                    )
-                else:
-                    short_sell_order_payload = {"pair": bot.pair, "qty": qty}
-                    res = self.bb_request(
-                        method="POST",
-                        url=self.bb_sell_order_url,
-                        payload=short_sell_order_payload,
-                    )
+                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=supress_notation(price, self.price_precision))
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(
@@ -904,8 +826,6 @@ class CreateDealController(BaseDeal):
         slope, intercept, rvalue, pvalue, stderr = linregress(dates, list_prices)
 
         if sd >= 0:
-            self.active_bot.deal.sd = sd
-
             print(
                 f"dynamic profit for {symbol} sd: {sd}",
                 f'slope is {"positive" if slope > 0 else "negative"}',
@@ -934,9 +854,11 @@ class CreateDealController(BaseDeal):
                 new_trailling_stop_loss_price = float(close_price) - (
                     float(close_price) * volatility
                 )
+                # deal.sd comparison will prevent it from making trailling_stop_loss too big
+                # and thus losing all the gains
                 if new_trailling_stop_loss_price > float(
                     self.active_bot.deal.buy_price
-                ):
+                ) and sd < self.active_bot.deal.sd:
                     self.active_bot.trailling_deviation = volatility * 100
                     self.active_bot.deal.trailling_stop_loss_price = float(
                         close_price
@@ -952,6 +874,7 @@ class CreateDealController(BaseDeal):
                         float(close_price) * volatility
                     )
 
+        self.active_bot.deal.sd = sd
         bot = self.save_bot_streaming()
         return bot
 
@@ -1035,9 +958,7 @@ class CreateDealController(BaseDeal):
                 or self.active_bot.deal.trailling_stop_loss_price
                 < self.active_bot.deal.buy_price
             )
-            and not self.active_bot.strategy == "margin_short"
         ):
-
             take_profit_price = float(self.active_bot.deal.buy_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )

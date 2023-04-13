@@ -15,6 +15,7 @@ export default function TakeProfit({
   take_profit,
   trailling,
   trailling_deviation,
+  dynamic_trailling,
   handleChange,
   handleBlur,
   toggleTrailling,
@@ -39,7 +40,7 @@ export default function TakeProfit({
             <strong>Take profit</strong> is required.
           </FormFeedback>
         </Col>
-        <Col md="6" sm="12">
+        <Col md="3" sm="12">
           <FormGroup>
             <BotFormTooltip
               name="trailling"
@@ -49,16 +50,35 @@ export default function TakeProfit({
             </BotFormTooltip>
             <br />
             <Button
-              color={trailling === "true" ? "success" : "secondary"}
-              onClick={toggleTrailling}
+              name="trailling"
+              color={trailling === "true" || trailling ? "success" : "secondary"}
+              onClick={(e) => toggleTrailling(e.target.name)}
             >
-              {trailling === "true" ? "On" : "Off"}
+              {trailling === "true" || trailling ? "On" : "Off"}
+            </Button>
+          </FormGroup>
+        </Col>
+        <Col md="3" sm="12">
+          <FormGroup>
+            <BotFormTooltip
+              name="dynamic_trailling"
+              text={"Update the trailling_deviation according to volatility (SD)"}
+            >
+              Dynamic trailling
+            </BotFormTooltip>
+            <br />
+            <Button
+              name="dynamic_trailling"
+              color={dynamic_trailling ? "success" : "secondary"}
+              onClick={(e) => toggleTrailling(e.target.name)}
+            >
+              {dynamic_trailling ? "On" : "Off"}
             </Button>
           </FormGroup>
         </Col>
       </Row>
       <Row className="u-margin-bottom">
-        {trailling === "true" && (
+        {(trailling || trailling === "true") && (
           <Col md="6" sm="12">
             <Label htmlFor="trailling_deviation">Trailling deviation (%)</Label>
             <Input

@@ -7,6 +7,7 @@ from deals.margin import MarginDeal
 from pymongo import ReturnDocument
 from datetime import datetime
 from time import time
+import asyncio
 
 
 class TerminateStreaming(Exception):
@@ -89,7 +90,7 @@ class StreamingController:
         # Margin short
         if current_bot["strategy"] == "margin_short":
             margin_deal = MarginDeal(current_bot, db_collection=db_collection)
-            margin_deal.streaming_updates(close_price)
+            margin_deal.streaming_updates(close_price, open_price)
             return
 
         else:
@@ -141,25 +142,19 @@ class StreamingController:
                     return
 
                 # Take profit trailling
-                if bot["trailling"] == "true" and float(bot["deal"]["buy_price"]) > 0:
+                if (bot["trailling"] == "true" or bot["trailling"]) and float(bot["deal"]["buy_price"]) > 0:
                     # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
                     if bot["deal"]["trailling_stop_loss_price"] == 0:
                         trailling_price = float(bot["deal"]["buy_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
                         )
-                        # If trailling_stop_loss < base order it will reset every time
-                        print(
-                            f"{datetime.utcnow()} {symbol} Setting trailling_stop_loss"
-                        )
                     else:
                         # Current take profit + next take_profit
-                        trailling_price = float(bot["deal"]["take_profit_price"]) * (
+                        trailling_price = float(bot["deal"]["trailling_stop_loss_price"]) * (
                             1 + (float(bot["take_profit"]) / 100)
                         )
-                        print(
-                            f"{datetime.utcnow()} {symbol} Updated (Didn't break trailling), updating trailling price points"
-                        )
 
+                    bot["deal"]["trailling_profit_price"] = trailling_price
                     # Direction 1 (upward): breaking the current trailling
                     if bot and float(close_price) >= float(trailling_price):
                         new_take_profit = float(trailling_price) * (
@@ -197,21 +192,21 @@ class StreamingController:
                                 f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                             )
 
-                        bot = self.streaming_db[db_collection].find_one_and_update(
+                    bot = self.streaming_db[db_collection].find_one_and_update(
+                        {"id": current_bot["id"]},
+                        {"$set": {"deal": bot["deal"]}},
+                        upsert=False,
+                        return_document=ReturnDocument.AFTER,
+                    )
+                    if not bot:
+                        self.streaming_db[db_collection].update_one(
                             {"id": current_bot["id"]},
-                            {"$set": {"deal": bot["deal"]}},
-                            upsert=False,
-                            return_document=ReturnDocument.AFTER,
+                            {
+                                "$push": {
+                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
+                                }
+                            },
                         )
-                        if not bot:
-                            self.streaming_db[db_collection].update_one(
-                                {"id": current_bot["id"]},
-                                {
-                                    "$push": {
-                                        "errors": f'Error updating trailling order {current_bot["_id"]}'
-                                    }
-                                },
-                            )
 
                     # Direction 2 (downward): breaking the trailling_stop_loss
                     # Make sure it's red candlestick, to avoid slippage loss
@@ -273,7 +268,7 @@ class StreamingController:
             print(
                 f'Time to update_required {time() - local_settings["update_required"]}'
             )
-            if time() - local_settings["update_required"] > 15:
+            if time() - local_settings["update_required"] > 50:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": None}}
                 )
@@ -317,7 +312,8 @@ class StreamingController:
 
         async with klines as k:
             while True:
-                res = await k.recv()
+                # If fails to connect, this will cancel loop
+                res = await asyncio.wait_for(k.recv(), timeout=60)
 
                 if "result" in res:
                     print(f'Subscriptions: {res["result"]}')

@@ -3,6 +3,21 @@ from decimal import Decimal
 import re
 
 
+def supress_trailling(value: str | float | int) -> float:
+    """
+    Supress trilling 0s
+    this function will not round the number
+    e.g. 3.140, 3.140000004
+
+    also supress scientific notation
+    e.g. 2.05-5
+    """
+    value = float(value)
+    # supress scientific notation 
+    number = float(f'{value:f}')
+    number = float('{0:g}'.format(number))
+    return number
+
 def round_numbers(value, decimals=6):
     decimal_points = 10 ** int(decimals)
     number = float(value)
@@ -11,11 +26,12 @@ def round_numbers(value, decimals=6):
         result = int(result)
     return result
 
-
 def round_numbers_ceiling(value, decimals=6):
     decimal_points = 10 ** int(decimals)
     number = float(value)
     result = math.ceil(number * decimal_points) / decimal_points
+    if decimals == 0:
+        result = int(result)
     return float(result)
 
 
@@ -54,3 +70,5 @@ def interval_to_millisecs(interval: str) -> int:
     if notation == "M":
         # month
         return int(time) * 30 * 24 * 60 * 60 * 1000
+
+    return 0

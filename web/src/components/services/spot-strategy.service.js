@@ -82,7 +82,7 @@ export default function spotTrading(bot, currentPrice) {
 
     if (
       bot.take_profit &&
-      bot.trailling === "true" &&
+      bot.trailling &&
       bot.deal.trailling_stop_loss_price > 0
     ) {
       // Bot is sold and completed
