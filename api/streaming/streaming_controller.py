@@ -1,14 +1,11 @@
-import os
-
-from binance import AsyncClient, BinanceSocketManager
+import json
 from db import setup_db
 from deals.controllers import CreateDealController
 from deals.margin import MarginDeal
 from pymongo import ReturnDocument
 from datetime import datetime
 from time import time
-import asyncio
-
+from streaming.socket_client import SpotWebsocketStreamClient
 
 class TerminateStreaming(Exception):
     pass
@@ -20,7 +17,8 @@ class StreamingController:
         # db:27017 instead of localhost=:2018
         self.streaming_db = setup_db()
         self.socket = None
-        self.client = None
+        # test wss://data-stream.binance.com
+        self.client = SpotWebsocketStreamClient(on_message=self.on_message, is_combined=True)
         self.conn_key = None
         self.list_bots = []
         self.list_paper_trading_bots = []
@@ -47,31 +45,6 @@ class StreamingController:
         )
         return
 
-    async def setup_client(self):
-        client = await AsyncClient.create(
-            os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"]
-        )
-        socket = BinanceSocketManager(client)
-        return socket, client
-
-    def combine_stream_names(self):
-        interval = self.settings["candlestick_interval"]
-        self.list_bots = list(
-            self.streaming_db.bots.distinct("pair", {"status": "active"})
-        )
-        self.list_paper_trading_bots = list(
-            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
-        )
-
-        markets = self.list_bots + self.list_paper_trading_bots
-        params = []
-        if len(markets) == 0:
-            # Listen to dummy stream to always trigger streaming
-            markets.append("BNBBTC")
-        for market in markets:
-            params.append(f"{market.lower()}@kline_{interval}")
-
-        return params
 
     def execute_strategies(
         self,
@@ -253,7 +226,21 @@ class StreamingController:
 
         pass
 
-    async def process_klines(self, result):
+    def on_message(self, socket, message):
+        # If fails to connect, this will cancel loop
+        res = json.loads(message)
+
+        if "result" in res:
+                print(f'Subscriptions: {res["result"]}')
+
+        if "data" in res:
+            if "e" in res["data"] and res["data"]["e"] == "kline":
+                self.process_klines(res["data"])
+            else:
+                print(f'Error: {res["data"]}')
+                self.client.stop()
+
+    def process_klines(self, result):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
@@ -272,7 +259,7 @@ class StreamingController:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": None}}
                 )
-                await self.client.close_connection()
+                self.client.stop()
                 raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
@@ -304,26 +291,21 @@ class StreamingController:
             return
 
     async def get_klines(self):
-        self.socket, self.client = await self.setup_client()
-        params = self.combine_stream_names()
-        print(f"Starting streaming klines {params}")
-        klines = self.socket.multiplex_socket(params)
-        self.conn_key = klines
+        try:
+            interval = self.settings["candlestick_interval"]
+            self.list_bots = list(
+                self.streaming_db.bots.distinct("pair", {"status": "active"})
+            )
+            self.list_paper_trading_bots = list(
+                self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
+            )
 
-        async with klines as k:
-            while True:
-                # If fails to connect, this will cancel loop
-                res = await asyncio.wait_for(k.recv(), timeout=60)
-
-                if "result" in res:
-                    print(f'Subscriptions: {res["result"]}')
-
-                if "data" in res:
-                    if "e" in res["data"] and res["data"]["e"] == "kline":
-                        await self.process_klines(res["data"])
-                    else:
-                        print(f'Error: {res["data"]}')
-                        await self.client.close_connection()
+            markets = self.list_bots + self.list_paper_trading_bots
+            self.client.klines(markets=markets, interval=interval)
+            
+        except Exception as error:
+            print(error)
+            self.client.stop()
 
     def close_trailling_orders(self, result, db_collection: str = "bots"):
         """
