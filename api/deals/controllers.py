@@ -237,12 +237,10 @@ class CreateDealController(BaseDeal):
         Sell at take_profit price, because prices will not reach trailling
         """
 
-        deal_data = self.active_bot.deal
-        deal_buy_price = self.active_bot.deal.buy_price
-        price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
+        price = self.active_bot.deal.trailling_stop_loss_price
 
         if self.db_collection.name == "paper_trading":
-            qty = deal_data.buy_total_qty
+            qty = self.active_bot.deal.buy_total_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
             # Already sold?
@@ -595,8 +593,6 @@ class CreateDealController(BaseDeal):
             except HTTPError as error:
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
-
-        price = float(self.matching_engine(self.active_bot.pair, False, qty))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
