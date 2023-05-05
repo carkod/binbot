@@ -290,7 +290,7 @@ class StreamingController:
                 )
             return
 
-    async def get_klines(self):
+    def get_klines(self):
         try:
             interval = self.settings["candlestick_interval"]
             self.list_bots = list(

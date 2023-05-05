@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime
 from time import time
 
@@ -320,7 +319,6 @@ class Bot(Account):
                     },
                 )
 
-                asyncio.Event.connection_open = False
                 return json_response_message(
                     "Active orders closed, sold base asset, deactivated"
                 )
