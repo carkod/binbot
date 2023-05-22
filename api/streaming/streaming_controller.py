@@ -1,4 +1,5 @@
 import json
+import logging
 from db import setup_db
 from deals.controllers import CreateDealController
 from deals.margin import MarginDeal
@@ -6,6 +7,7 @@ from pymongo import ReturnDocument
 from datetime import datetime
 from time import time
 from streaming.socket_client import SpotWebsocketStreamClient
+
 
 class TerminateStreaming(Exception):
     pass
@@ -252,7 +254,7 @@ class StreamingController:
         # Add margin time to update_required signal to avoid restarting constantly
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
-            print(
+            logging.info(
                 f'Time to update_required {time() - local_settings["update_required"]}'
             )
             if time() - local_settings["update_required"] > 50:
@@ -304,7 +306,7 @@ class StreamingController:
             self.client.klines(markets=markets, interval=interval)
             
         except Exception as error:
-            print(error)
+            logging.error(error)
             self.client.stop()
 
     def close_trailling_orders(self, result, db_collection: str = "bots"):
@@ -363,20 +365,20 @@ class StreamingController:
         # Example of real update
         # {'e': 'executionReport', 'E': 1676750256695, 's': 'UNFIUSDT', 'c': 'web_86e55fed9bad494fba5e213dbe5b2cfc', 'S': 'SELL', 'o': 'LIMIT', 'f': 'GTC', 'q': '8.20000000', 'p': '6.23700000', 'P': '0.00000000', 'F': '0.00000000', 'g': -1, 'C': 'KrHPY4jWdWwFBHUMtBBfJl', 'x': 'CANCELED', ...}
         query = self.close_trailling_orders(result)
-        print(f'Order updates modified: {query.raw_result["nModified"]}')
+        logging.debug(f'Order updates modified: {query.raw_result["nModified"]}')
         if query.raw_result["nModified"] == 0:
             # Order not found in bots, so try paper_trading collection
             query = self.close_trailling_orders(result, db_collection="paper_trading")
-            print(f'Order updates modified: {query.raw_result["nModified"]}')
+            logging.debug(f'Order updates modified: {query.raw_result["nModified"]}')
             if query.raw_result["nModified"] == 0:
-                print(
+                logging.debug(
                     f"No bot found with order client order id: {order_id}. Order status: {result['X']}"
                 )
                 return
         return
 
     async def get_user_data(self):
-        print("Streaming user data")
+        logging.info("Streaming user data")
         socket, client = await self.setup_client()
         user_data = socket.user_socket()
         async with user_data as ud:
@@ -388,21 +390,21 @@ class StreamingController:
                         if "executionReport" in res["e"]:
                             self.process_user_data(res)
                         elif "outboundAccountPosition" in res["e"]:
-                            print(f'Assets changed {res["e"]}')
+                            logging.info(f'Assets changed {res["e"]}')
                         elif "balanceUpdate" in res["e"]:
-                            print(f'Funds transferred {res["e"]}')
+                            logging.info(f'Funds transferred {res["e"]}')
                     else:
-                        print(f"Unrecognized user data: {res}")
+                        logging.info(f"Unrecognized user data: {res}")
 
                     pass
                 except Exception as error:
-                    print(f"get_user_data sockets error: {error}")
+                    logging.info(f"get_user_data sockets error: {error}")
                     pass
 
                 await client.close_connection()
 
     async def get_isolated_margin_data(self):
-        print("Streaming isolated margin data")
+        logging.info("Streaming isolated margin data")
         socket, client = await self.setup_client()
         # im_data = socket.isolated_margin_socket(symbol)
         pass

@@ -1,6 +1,7 @@
 from time import time
 from datetime import datetime
 from urllib.error import HTTPError
+from logging import debug
 
 from binance.exceptions import BinanceAPIException
 from deals.schema import DealSchema
@@ -365,6 +366,31 @@ class MarginDeal(BaseDeal):
         self.active_bot.total_commission += float(self.active_bot.deal.margin_short_loan_principal) * float(self.active_bot.deal.hourly_interest_rate)
         print(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}")
         
+        # Direction: downard trend (short)
+        # Breaking trailling_stop_loss
+        if self.active_bot.deal.trailling_stop_loss_price == 0:
+            trailling_take_profit = float(self.active_bot.deal.margin_short_sell_price) - (
+                self.active_bot.deal.margin_short_sell_price * ((self.active_bot.take_profit) / 100)
+            )
+            stop_loss_trailling_price = float(trailling_take_profit) - (
+                trailling_take_profit * ((self.active_bot.trailling_deviation) / 100)
+            )
+            # If trailling_stop_loss not below initial margin_short_sell price
+            if stop_loss_trailling_price < self.active_bot.deal.margin_short_sell_price:
+                self.active_bot.deal.trailling_stop_loss_price = stop_loss_trailling_price
+                bot = self.save_bot_streaming()
+                self.active_bot = BotSchema.parse_obj(bot)
+                debug(f'{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB')
+
+        # Keep trailling_stop_loss up to date
+        if self.active_bot.deal.trailling_stop_loss_price > 0 and self.active_bot.deal.trailling_profit_price and self.active_bot.deal.trailling_stop_loss_price < self.active_bot.deal.margin_short_sell_price:
+            self.active_bot.deal.trailling_stop_loss_price = float(self.active_bot.deal.trailling_profit_price) * (
+                1 + ((self.active_bot.trailling_deviation) / 100)
+            )
+            bot = self.save_bot_streaming()
+            self.active_bot = BotSchema.parse_obj(bot)
+            debug(f'{self.active_bot.pair} Updating after broken first trailling_profit (short) and saved to DB')
+
 
         # Direction 1.1: downward trend (short)
         # Breaking trailling
@@ -376,7 +402,7 @@ class MarginDeal(BaseDeal):
             
             if (self.active_bot.trailling == "true" or self.active_bot.trailling) and self.active_bot.deal.margin_short_sell_price > 0:
 
-                self.update_trailling_profit(close_price)
+                self.update_trailling_profit(price)
                 bot = self.save_bot_streaming()
                 self.active_bot = BotSchema.parse_obj(bot)
 
@@ -394,7 +420,7 @@ class MarginDeal(BaseDeal):
         if (
             float(self.active_bot.deal.trailling_stop_loss_price) > 0
             # Broken stop_loss
-            and float(close_price) > float(self.active_bot.deal.trailling_stop_loss_price)
+            and float(close_price) >= float(self.active_bot.deal.trailling_stop_loss_price)
             # Red candlestick
             # and (float(open_price) > float(close_price))
         ):
@@ -697,6 +723,9 @@ class MarginDeal(BaseDeal):
             self.active_bot.total_commission += float(chunk["commission"])
 
         self.active_bot.orders.append(take_profit_order)
+        self.active_bot.deal.margin_short_buy_back_price = res["price"]
+        self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
+        self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
         msg = f"Completed Take profit!"
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
@@ -754,26 +783,25 @@ class MarginDeal(BaseDeal):
             trailling_price = float(self.active_bot.deal.margin_short_sell_price) - (
                 self.active_bot.deal.margin_short_sell_price * ((self.active_bot.take_profit) / 100)
             )
-            # If trailling_stop_loss < base order it will reset every time
-            print(
-                f"{datetime.utcnow()} {self.active_bot.pair} Setting trailling_stop_loss (short)"
-            )
-        else:
 
+        
+        if self.active_bot.deal.trailling_profit_price == 0:
+        
             # Current take profit + next take_profit
             trailling_price = float(self.active_bot.deal.take_profit_price) - (
                 float(self.active_bot.deal.take_profit_price) * (float(self.active_bot.take_profit) / 100)
             )
-            print(
-                f"{datetime.utcnow()} {self.active_bot.pair} Updated (Didn't break trailling), updating trailling price points (short)"
+            self.active_bot.deal.trailling_profit_price = trailling_price
+            debug(
+                f"{self.active_bot.pair} Updated (Didn't break trailling), updating trailling price points (short)"
             )
-
-        # Direction 1 (upward): breaking the current trailling
-        if float(close_price) <= float(trailling_price):
-            new_take_profit = float(trailling_price) - (
-                float(trailling_price) * (float(self.active_bot.take_profit) / 100)
+        
+        # Direction 1 (downward): breaking the current trailling
+        if float(close_price) <= float(self.active_bot.deal.trailling_profit_price):
+            new_take_profit = float(self.active_bot.deal.trailling_profit_price) - (
+                float(self.active_bot.deal.trailling_profit_price) * (float(self.active_bot.take_profit) / 100)
             )
-            new_trailling_stop_loss = float(trailling_price) * (
+            new_trailling_stop_loss = float(self.active_bot.deal.trailling_profit_price) * (
                 1 + (float(self.active_bot.trailling_deviation) / 100)
             )
             # Update deal take_profit
@@ -782,6 +810,7 @@ class MarginDeal(BaseDeal):
             # trailling_profit_price always be > trailling_stop_loss_price
             self.active_bot.deal.trailling_profit_price = new_take_profit
 
+            # Update trailling_stop_loss
             if new_trailling_stop_loss < self.active_bot.deal.margin_short_sell_price:
                 # Selling below buy_price will cause a loss
                 # instead let it drop until it hits safety order or stop loss
@@ -790,14 +819,6 @@ class MarginDeal(BaseDeal):
                 )
                 # Update trailling_stop_loss
                 self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss
-                print(
-                    f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
-                )
-            else:
-                # Protect against drops by selling at buy price + 0.75% commission
-                self.active_bot.deal.trailling_stop_loss_price = (
-                    float(self.active_bot.deal.buy_price) * 1.075
-                )
                 print(
                     f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
                 )
