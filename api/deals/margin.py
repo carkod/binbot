@@ -96,6 +96,33 @@ class MarginDeal(BaseDeal):
         qty = float(balance[0]["quoteAsset"]["free"])
         return round_numbers(qty, self.qty_precision)
 
+    def cancel_open_orders(self, deal_type):
+        """
+        Given an order deal_type i.e. take_profit, stop_loss etc
+        cancel currently open orders to unblock funds
+        """
+
+        order_id = None
+        for order in self.active_bot.orders:
+            if order.deal_type == deal_type:
+                order_id = order.order_id
+                self.active_bot.orders.remove(order)
+                break
+
+        if order_id:
+            try:
+                # First cancel old order to unlock balance
+                self.client.cancel_margin_order(
+                    symbol=self.active_bot.pair, orderId=order_id
+                )
+                self.update_deal_logs("Old take profit order cancelled")
+            except HTTPError as error:
+                self.update_deal_logs("Take profit order not found, no need to cancel")
+                return
+
+        return
+
+
     def init_margin_short(self, qty):
         """
         Pre-tasks for db_collection = bots
@@ -543,6 +570,10 @@ class MarginDeal(BaseDeal):
         if self.db_collection.name == "bots":
             qty, free = self.compute_margin_buy_back()
 
+            # Cancel orders first
+            # paper_trading doesn't have real orders so no need to check
+            self.cancel_open_orders("stop_loss")
+
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
         # if self.db_collection.name == "bots" and not qty:
@@ -553,28 +584,11 @@ class MarginDeal(BaseDeal):
         #     self.bb_request(f"{self.bb_bot_url}", "DELETE", params=params)
         #     return
 
-        order_id = None
-        for order in self.active_bot.orders:
-            if order.deal_type == "stop_loss":
-                order_id = order.order_id
-                self.active_bot.orders.remove(order)
-                break
-
-        if order_id:
-            try:
-                # First cancel old order to unlock balance
-                self.client.cancel_margin_order(
-                    symbol=self.active_bot.pair, orderId=order_id
-                )
-                self.update_deal_logs("Old take profit order cancelled")
-            except HTTPError as error:
-                self.update_deal_logs("Take profit order not found, no need to cancel")
-                return
-
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
+
             try:
                 if qty == 0 or free <= qty:
                     # Not enough funds probably because already bought before
@@ -645,24 +659,7 @@ class MarginDeal(BaseDeal):
         qty = 1
         if self.db_collection.name == "bots":
             qty, free = self.compute_margin_buy_back()
-
-        order_id = None
-        for order in self.active_bot.orders:
-            if order.deal_type == "take_profit":
-                order_id = order.order_id
-                self.active_bot.orders.remove(order)
-                break
-
-        if order_id:
-            try:
-                # First cancel old order to unlock balance
-                self.client.cancel_margin_order(
-                    symbol=self.active_bot.pair, orderId=order_id
-                )
-                self.update_deal_logs("Old take profit order cancelled")
-            except HTTPError as error:
-                self.update_deal_logs("Take profit order not found, no need to cancel")
-                return
+            self.cancel_open_orders("take_profit")
 
         if qty and not price:
             price = self.matching_engine(self.active_bot.pair, True, qty)
