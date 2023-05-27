@@ -32,5 +32,8 @@ if os.getenv("ENV") != "ci":
     # scheduler.start()
     # atexit.register(lambda: scheduler.shutdown(wait=False))
 
-mu = StreamingController()
-mu.get_klines()
+try:
+    mu = StreamingController()
+    mu.get_klines()
+except Exception as error:
+    logging.error(f"Streaming controller error: {error}")

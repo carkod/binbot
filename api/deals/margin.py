@@ -374,7 +374,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.status = Status.active
         return self.active_bot
 
-    def streaming_updates(self, close_price: str, open_price: str):
+    def streaming_updates(self, close_price: str):
         """
         Margin_short streaming updates
         """
@@ -393,32 +393,6 @@ class MarginDeal(BaseDeal):
         self.active_bot.total_commission += float(self.active_bot.deal.margin_short_loan_principal) * float(self.active_bot.deal.hourly_interest_rate)
         print(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}")
         
-        # Direction: downard trend (short)
-        # Breaking trailling_stop_loss
-        if self.active_bot.deal.trailling_stop_loss_price == 0:
-            trailling_take_profit = float(self.active_bot.deal.margin_short_sell_price) - (
-                self.active_bot.deal.margin_short_sell_price * ((self.active_bot.take_profit) / 100)
-            )
-            stop_loss_trailling_price = float(trailling_take_profit) - (
-                trailling_take_profit * ((self.active_bot.trailling_deviation) / 100)
-            )
-            # If trailling_stop_loss not below initial margin_short_sell price
-            if stop_loss_trailling_price < self.active_bot.deal.margin_short_sell_price:
-                self.active_bot.deal.trailling_stop_loss_price = stop_loss_trailling_price
-                bot = self.save_bot_streaming()
-                self.active_bot = BotSchema.parse_obj(bot)
-                debug(f'{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB')
-
-        # Keep trailling_stop_loss up to date
-        if self.active_bot.deal.trailling_stop_loss_price > 0 and self.active_bot.deal.trailling_profit_price and self.active_bot.deal.trailling_stop_loss_price < self.active_bot.deal.margin_short_sell_price:
-            self.active_bot.deal.trailling_stop_loss_price = float(self.active_bot.deal.trailling_profit_price) * (
-                1 + ((self.active_bot.trailling_deviation) / 100)
-            )
-            bot = self.save_bot_streaming()
-            self.active_bot = BotSchema.parse_obj(bot)
-            debug(f'{self.active_bot.pair} Updating after broken first trailling_profit (short) and saved to DB')
-
-
         # Direction 1.1: downward trend (short)
         # Breaking trailling
         if (
@@ -426,7 +400,7 @@ class MarginDeal(BaseDeal):
             and self.active_bot.deal.take_profit_price > 0
             and price < self.active_bot.deal.take_profit_price
         ):
-            
+
             if (self.active_bot.trailling == "true" or self.active_bot.trailling) and self.active_bot.deal.margin_short_sell_price > 0:
 
                 self.update_trailling_profit(price)
@@ -776,12 +750,23 @@ class MarginDeal(BaseDeal):
 
     def update_trailling_profit(self, close_price):
 
+        # Direction: downward trend (short)
+        # Breaking trailling_stop_loss
         if self.active_bot.deal.trailling_stop_loss_price == 0:
-            trailling_price = float(self.active_bot.deal.margin_short_sell_price) - (
+            trailling_take_profit = float(self.active_bot.deal.margin_short_sell_price) - (
                 self.active_bot.deal.margin_short_sell_price * ((self.active_bot.take_profit) / 100)
             )
+            stop_loss_trailling_price = float(trailling_take_profit) - (
+                trailling_take_profit * ((self.active_bot.trailling_deviation) / 100)
+            )
+            # If trailling_stop_loss not below initial margin_short_sell price
+            if stop_loss_trailling_price < self.active_bot.deal.margin_short_sell_price:
+                self.active_bot.deal.trailling_stop_loss_price = stop_loss_trailling_price
+                bot = self.save_bot_streaming()
+                self.active_bot = BotSchema.parse_obj(bot)
+                debug(f'{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB')
 
-        
+
         if self.active_bot.deal.trailling_profit_price == 0:
         
             # Current take profit + next take_profit
@@ -793,6 +778,13 @@ class MarginDeal(BaseDeal):
                 f"{self.active_bot.pair} Updated (Didn't break trailling), updating trailling price points (short)"
             )
         
+        # Keep trailling_stop_loss up to date
+        if self.active_bot.deal.trailling_stop_loss_price > 0 and self.active_bot.deal.trailling_profit_price > 0 and self.active_bot.deal.trailling_stop_loss_price < self.active_bot.deal.margin_short_sell_price:
+            self.active_bot.deal.trailling_stop_loss_price = float(self.active_bot.deal.trailling_profit_price) * (
+                1 + ((self.active_bot.trailling_deviation) / 100)
+            )
+            debug(f'{self.active_bot.pair} Updating after broken first trailling_profit (short)')
+
         # Direction 1 (downward): breaking the current trailling
         if float(close_price) <= float(self.active_bot.deal.trailling_profit_price):
             new_take_profit = float(self.active_bot.deal.trailling_profit_price) - (

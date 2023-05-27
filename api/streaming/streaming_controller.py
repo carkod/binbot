@@ -65,7 +65,7 @@ class StreamingController:
         # Margin short
         if current_bot["strategy"] == "margin_short":
             margin_deal = MarginDeal(current_bot, db_collection=db_collection)
-            margin_deal.streaming_updates(close_price, open_price)
+            margin_deal.streaming_updates(close_price)
             return
 
         else:
@@ -293,21 +293,16 @@ class StreamingController:
             return
 
     def get_klines(self):
-        try:
-            interval = self.settings["candlestick_interval"]
-            self.list_bots = list(
-                self.streaming_db.bots.distinct("pair", {"status": "active"})
-            )
-            self.list_paper_trading_bots = list(
-                self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
-            )
+        interval = self.settings["candlestick_interval"]
+        self.list_bots = list(
+            self.streaming_db.bots.distinct("pair", {"status": "active"})
+        )
+        self.list_paper_trading_bots = list(
+            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
+        )
 
-            markets = self.list_bots + self.list_paper_trading_bots
-            self.client.klines(markets=markets, interval=interval)
-            
-        except Exception as error:
-            logging.error(error)
-            self.client.stop()
+        markets = self.list_bots + self.list_paper_trading_bots
+        self.client.klines(markets=markets, interval=interval)
 
     def close_trailling_orders(self, result, db_collection: str = "bots"):
         """
