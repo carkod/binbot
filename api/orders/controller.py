@@ -12,12 +12,13 @@ class OrderController(Account):
         self.db = setup_db()
         pass
 
-    def sell_order(self, symbol, qty, price):
+    def sell_order(self, symbol, qty, price=None):
         """
         If price is not provided by matching engine,
         sell at market price
         """
         if price:
+            price = float(self.matching_engine(symbol, False, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
@@ -41,6 +42,7 @@ class OrderController(Account):
     def buy_order(self, symbol, qty, price=None):
 
         if price:
+            price = float(self.matching_engine(symbol, True, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -111,10 +113,8 @@ class OrderController(Account):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
-        if not price:
-            price = float(self.matching_engine(symbol, True, qty))
-
         if price:
+            price = float(self.matching_engine(symbol, True, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -140,10 +140,8 @@ class OrderController(Account):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
-        if not price:
-            price = float(self.matching_engine(symbol, False, qty))
-
         if price:
+            price = float(self.matching_engine(symbol, False, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,

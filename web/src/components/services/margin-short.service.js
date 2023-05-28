@@ -44,28 +44,45 @@ export default function marginTrading(bot, currentPrice) {
   } else {
 
     if (bot.trailling === "true" || bot.trailling) {
-      if (bot.status === "active" && bot.deal.trailling_stop_loss_price > 0) {
-        totalOrderLines.push({
-          id: "trailling_profit",
-          text: `Take profit (trailling) ${bot.take_profit}%`,
-          tooltip: [bot.status, " Trace upward profit"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price: bot.deal.trailling_profit_price || bot.deal.take_profit_price, // take_profit / trailling_profit
-          color: dealColors.trailling_profit,
-        });
-        totalOrderLines.push({
-          id: "trailling_stop_loss",
-          text: `Trailling stop loss -${bot.trailling_deviation}%`,
-          tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
-          price: bot.deal.trailling_stop_loss_price, // take_profit / trailling_profit
-          color: dealColors.take_profit,
-        });
+      if (bot.status === "active") {
+        if (bot.deal.trailling_stop_loss_price > 0) {
+          totalOrderLines.push({
+            id: "trailling_profit",
+            text: `Take profit (trailling) ${bot.take_profit}%`,
+            tooltip: [bot.status, " Trace upward profit"],
+            quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+            price: bot.deal.trailling_profit_price || bot.deal.take_profit_price, // take_profit / trailling_profit
+            color: dealColors.trailling_profit,
+          });
+          totalOrderLines.push({
+            id: "trailling_stop_loss",
+            text: `Trailling stop loss -${bot.trailling_deviation}%`,
+            tooltip: [bot.status, " Sell order when prices drop here"],
+            quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+            price: bot.deal.trailling_stop_loss_price, // take_profit / trailling_profit
+            color: dealColors.take_profit,
+          });
+        } else {
+          // If bot is active, but trailling_stop_loss still is 0
+          // this means that current price is too low to set it
+          // otherwise we'd be selling at a loss, so set only the usual take_profit by default
+          const price = bot.deal.margin_short_sell_price > 0 ? bot.deal.margin_short_sell_price : currentPrice;
+          totalOrderLines.push({
+            id: "take_profit",
+            text: `Take profit ${bot.take_profit}% (Margin)`,
+            tooltip: [bot.status, " Sell Order "],
+            quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+            price: price - ( price * parseFloat(bot.take_profit) / 100), // buy_profit * take_profit%
+            color: dealColors.take_profit,
+          });
+          
+        }
+        
       } else {
         // If trailling moved the orderlines
         // If deal doesn't exist
         const trailling_profit = currentPrice - (currentPrice * (bot.take_profit / 100))
-        const trailling_stop_loss_price = trailling_profit - (trailling_profit * (bot.trailling_deviation * 100))
+        const trailling_stop_loss_price = trailling_profit - (trailling_profit * (bot.trailling_deviation / 100))
         
         totalOrderLines.push({
           id: "trailling_profit",

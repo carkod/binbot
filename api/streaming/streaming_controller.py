@@ -1,13 +1,12 @@
-import os
-
-from binance import AsyncClient, BinanceSocketManager
+import json
+import logging
 from db import setup_db
 from deals.controllers import CreateDealController
 from deals.margin import MarginDeal
 from pymongo import ReturnDocument
 from datetime import datetime
 from time import time
-import asyncio
+from streaming.socket_client import SpotWebsocketStreamClient
 
 
 class TerminateStreaming(Exception):
@@ -20,7 +19,8 @@ class StreamingController:
         # db:27017 instead of localhost=:2018
         self.streaming_db = setup_db()
         self.socket = None
-        self.client = None
+        # test wss://data-stream.binance.com
+        self.client = SpotWebsocketStreamClient(on_message=self.on_message, on_error=self.on_error, is_combined=True)
         self.conn_key = None
         self.list_bots = []
         self.list_paper_trading_bots = []
@@ -35,43 +35,16 @@ class StreamingController:
         """
         Terminate streaming and restart list of bots required
 
-        This will queue up a timer to restart streaming_controller when timer is reached
-        This timer is added, so that update_required petitions can be accumulated and
-        avoid successively restarting streaming_controller, which consumes a lot of memory
-
-        This means that everytime there is an update in the list of active bots,
-        it will reset the timer
+        This will count and store number of times update is required,
+        so that we can add a condition to restart when it hits certain threshold
+        
+        This is to avoid excess memory consumption
         """
         self.streaming_db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": {"update_required": time()}}
+            {"_id": "settings"}, {"$inc": {"update_required": 1}}
         )
         return
 
-    async def setup_client(self):
-        client = await AsyncClient.create(
-            os.environ["BINANCE_KEY"], os.environ["BINANCE_SECRET"]
-        )
-        socket = BinanceSocketManager(client)
-        return socket, client
-
-    def combine_stream_names(self):
-        interval = self.settings["candlestick_interval"]
-        self.list_bots = list(
-            self.streaming_db.bots.distinct("pair", {"status": "active"})
-        )
-        self.list_paper_trading_bots = list(
-            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
-        )
-
-        markets = self.list_bots + self.list_paper_trading_bots
-        params = []
-        if len(markets) == 0:
-            # Listen to dummy stream to always trigger streaming
-            markets.append("BNBBTC")
-        for market in markets:
-            params.append(f"{market.lower()}@kline_{interval}")
-
-        return params
 
     def execute_strategies(
         self,
@@ -90,7 +63,7 @@ class StreamingController:
         # Margin short
         if current_bot["strategy"] == "margin_short":
             margin_deal = MarginDeal(current_bot, db_collection=db_collection)
-            margin_deal.streaming_updates(close_price, open_price)
+            margin_deal.streaming_updates(close_price)
             return
 
         else:
@@ -253,7 +226,25 @@ class StreamingController:
 
         pass
 
-    async def process_klines(self, result):
+    def on_error(self, socket, msg):
+        print(msg)
+        self.get_klines()
+
+    def on_message(self, socket, message):
+        # If fails to connect, this will cancel loop
+        res = json.loads(message)
+
+        if "result" in res:
+                print(f'Subscriptions: {res["result"]}')
+
+        if "data" in res:
+            if "e" in res["data"] and res["data"]["e"] == "kline":
+                self.process_klines(res["data"])
+            else:
+                print(f'Error: {res["data"]}')
+                self.client.stop()
+
+    def process_klines(self, result):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
@@ -265,14 +256,14 @@ class StreamingController:
         # Add margin time to update_required signal to avoid restarting constantly
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
-            print(
-                f'Time to update_required {time() - local_settings["update_required"]}'
+            logging.info(
+                f'Number of update_required requests: {local_settings["update_required"]}'
             )
-            if time() - local_settings["update_required"] > 50:
+            if local_settings["update_required"] > 10:
                 self.streaming_db.research_controller.update_one(
-                    {"_id": "settings"}, {"$set": {"update_required": None}}
+                    {"_id": "settings"}, {"$set": {"update_required": 0}}
                 )
-                await self.client.close_connection()
+                self.client.stop()
                 raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
@@ -303,27 +294,21 @@ class StreamingController:
                 )
             return
 
-    async def get_klines(self):
-        self.socket, self.client = await self.setup_client()
-        params = self.combine_stream_names()
-        print(f"Starting streaming klines {params}")
-        klines = self.socket.multiplex_socket(params)
-        self.conn_key = klines
+    def get_klines(self):
+        interval = self.settings["candlestick_interval"]
+        self.list_bots = list(
+            self.streaming_db.bots.distinct("pair", {"status": "active"})
+        )
+        self.list_paper_trading_bots = list(
+            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
+        )
+        # Reset to new update_required system
+        self.streaming_db.research_controller.update_one(
+            {"_id": "settings"}, {"$set": {"update_required": 0}}
+        )
 
-        async with klines as k:
-            while True:
-                # If fails to connect, this will cancel loop
-                res = await asyncio.wait_for(k.recv(), timeout=60)
-
-                if "result" in res:
-                    print(f'Subscriptions: {res["result"]}')
-
-                if "data" in res:
-                    if "e" in res["data"] and res["data"]["e"] == "kline":
-                        await self.process_klines(res["data"])
-                    else:
-                        print(f'Error: {res["data"]}')
-                        await self.client.close_connection()
+        markets = self.list_bots + self.list_paper_trading_bots
+        self.client.klines(markets=markets, interval=interval)
 
     def close_trailling_orders(self, result, db_collection: str = "bots"):
         """
@@ -381,20 +366,20 @@ class StreamingController:
         # Example of real update
         # {'e': 'executionReport', 'E': 1676750256695, 's': 'UNFIUSDT', 'c': 'web_86e55fed9bad494fba5e213dbe5b2cfc', 'S': 'SELL', 'o': 'LIMIT', 'f': 'GTC', 'q': '8.20000000', 'p': '6.23700000', 'P': '0.00000000', 'F': '0.00000000', 'g': -1, 'C': 'KrHPY4jWdWwFBHUMtBBfJl', 'x': 'CANCELED', ...}
         query = self.close_trailling_orders(result)
-        print(f'Order updates modified: {query.raw_result["nModified"]}')
+        logging.debug(f'Order updates modified: {query.raw_result["nModified"]}')
         if query.raw_result["nModified"] == 0:
             # Order not found in bots, so try paper_trading collection
             query = self.close_trailling_orders(result, db_collection="paper_trading")
-            print(f'Order updates modified: {query.raw_result["nModified"]}')
+            logging.debug(f'Order updates modified: {query.raw_result["nModified"]}')
             if query.raw_result["nModified"] == 0:
-                print(
+                logging.debug(
                     f"No bot found with order client order id: {order_id}. Order status: {result['X']}"
                 )
                 return
         return
 
     async def get_user_data(self):
-        print("Streaming user data")
+        logging.info("Streaming user data")
         socket, client = await self.setup_client()
         user_data = socket.user_socket()
         async with user_data as ud:
@@ -406,21 +391,21 @@ class StreamingController:
                         if "executionReport" in res["e"]:
                             self.process_user_data(res)
                         elif "outboundAccountPosition" in res["e"]:
-                            print(f'Assets changed {res["e"]}')
+                            logging.info(f'Assets changed {res["e"]}')
                         elif "balanceUpdate" in res["e"]:
-                            print(f'Funds transferred {res["e"]}')
+                            logging.info(f'Funds transferred {res["e"]}')
                     else:
-                        print(f"Unrecognized user data: {res}")
+                        logging.info(f"Unrecognized user data: {res}")
 
                     pass
                 except Exception as error:
-                    print(f"get_user_data sockets error: {error}")
+                    logging.info(f"get_user_data sockets error: {error}")
                     pass
 
                 await client.close_connection()
 
     async def get_isolated_margin_data(self):
-        print("Streaming isolated margin data")
+        logging.info("Streaming isolated margin data")
         socket, client = await self.setup_client()
         # im_data = socket.isolated_margin_socket(symbol)
         pass
