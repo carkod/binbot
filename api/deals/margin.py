@@ -324,7 +324,7 @@ class MarginDeal(BaseDeal):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        info(f"Opening margin_short_base_order")
+        logging.info(f"Opening margin_short_base_order")
         initial_price = float(self.matching_engine(self.active_bot.pair, False))
         # Given USDT amount we want to buy,
         # how much can we buy?
@@ -390,7 +390,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_loan_interest = float(self.active_bot.deal.margin_short_loan_principal) * float(self.active_bot.deal.hourly_interest_rate)
         # Add it to as part of total_commission for easy profit calculation
         self.active_bot.total_commission += float(self.active_bot.deal.margin_short_loan_principal) * float(self.active_bot.deal.hourly_interest_rate)
-        logging.info(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}")
+        logging.debug(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}")
         
         # Direction 1.1: downward trend (short)
         # Breaking trailling
@@ -408,7 +408,7 @@ class MarginDeal(BaseDeal):
 
             else:
                 # Execute the usual non-trailling take_profit
-                logging.info(f'Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}')
+                logging.debug(f'Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}')
                 self.execute_take_profit()
                 if self.db_collection.name == "bots":
                     self.terminate_margin_short()
@@ -667,7 +667,7 @@ class MarginDeal(BaseDeal):
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
-                info(f"Deleted obsolete bot {self.active_bot.pair}")
+                logging.info(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:
                 self.update_deal_logs(
                     f"Error trying to open new stop_limit order {error}"

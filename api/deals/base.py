@@ -135,7 +135,7 @@ class BaseDeal(OrderController):
         it will reset the timer
         """
         self.db.research_controller.update_one(
-            {"_id": "settings"}, {"$inc": {"update_required": 1}}
+            {"_id": "settings"}, {"$set": {"update_required": time()}}
         )
         return
 

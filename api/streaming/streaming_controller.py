@@ -41,7 +41,7 @@ class StreamingController:
         This is to avoid excess memory consumption
         """
         self.streaming_db.research_controller.update_one(
-            {"_id": "settings"}, {"$inc": {"update_required": 1}}
+            {"_id": "settings"}, {"$set": {"update_required": time()}}
         )
         return
 
@@ -257,11 +257,11 @@ class StreamingController:
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
             logging.info(
-                f'Number of update_required requests: {local_settings["update_required"]}'
+                f'Time elapsed for update_required: {time() - local_settings["update_required"]}'
             )
-            if local_settings["update_required"] > 10:
+            if (time() - local_settings["update_required"]) > 3:
                 self.streaming_db.research_controller.update_one(
-                    {"_id": "settings"}, {"$set": {"update_required": 0}}
+                    {"_id": "settings"}, {"$set": {"update_required": time()}}
                 )
                 self.client.stop()
                 raise TerminateStreaming("Streaming needs to restart to reload bots.")
@@ -304,7 +304,7 @@ class StreamingController:
         )
         # Reset to new update_required system
         self.streaming_db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": {"update_required": 0}}
+            {"_id": "settings"}, {"$set": {"update_required": time()}}
         )
 
         markets = self.list_bots + self.list_paper_trading_bots
@@ -403,9 +403,3 @@ class StreamingController:
                     pass
 
                 await client.close_connection()
-
-    async def get_isolated_margin_data(self):
-        logging.info("Streaming isolated margin data")
-        socket, client = await self.setup_client()
-        # im_data = socket.isolated_margin_socket(symbol)
-        pass
