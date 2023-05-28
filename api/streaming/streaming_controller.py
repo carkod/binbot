@@ -20,7 +20,7 @@ class StreamingController:
         self.streaming_db = setup_db()
         self.socket = None
         # test wss://data-stream.binance.com
-        self.client = SpotWebsocketStreamClient(on_message=self.on_message, is_combined=True)
+        self.client = SpotWebsocketStreamClient(on_message=self.on_message, on_error=self.on_error, is_combined=True)
         self.conn_key = None
         self.list_bots = []
         self.list_paper_trading_bots = []
@@ -35,15 +35,13 @@ class StreamingController:
         """
         Terminate streaming and restart list of bots required
 
-        This will queue up a timer to restart streaming_controller when timer is reached
-        This timer is added, so that update_required petitions can be accumulated and
-        avoid successively restarting streaming_controller, which consumes a lot of memory
-
-        This means that everytime there is an update in the list of active bots,
-        it will reset the timer
+        This will count and store number of times update is required,
+        so that we can add a condition to restart when it hits certain threshold
+        
+        This is to avoid excess memory consumption
         """
         self.streaming_db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": {"update_required": time()}}
+            {"_id": "settings"}, {"$inc": {"update_required": 1}}
         )
         return
 
@@ -228,6 +226,10 @@ class StreamingController:
 
         pass
 
+    def on_error(self, socket, msg):
+        print(msg)
+        self.get_klines()
+
     def on_message(self, socket, message):
         # If fails to connect, this will cancel loop
         res = json.loads(message)
@@ -255,11 +257,11 @@ class StreamingController:
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
             logging.info(
-                f'Time to update_required {time() - local_settings["update_required"]}'
+                f'Number of update_required requests: {local_settings["update_required"]}'
             )
-            if time() - local_settings["update_required"] > 50:
+            if local_settings["update_required"] > 10:
                 self.streaming_db.research_controller.update_one(
-                    {"_id": "settings"}, {"$set": {"update_required": None}}
+                    {"_id": "settings"}, {"$set": {"update_required": 0}}
                 )
                 self.client.stop()
                 raise TerminateStreaming("Streaming needs to restart to reload bots.")
@@ -299,6 +301,10 @@ class StreamingController:
         )
         self.list_paper_trading_bots = list(
             self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
+        )
+        # Reset to new update_required system
+        self.streaming_db.research_controller.update_one(
+            {"_id": "settings"}, {"$set": {"update_required": 0}}
         )
 
         markets = self.list_bots + self.list_paper_trading_bots

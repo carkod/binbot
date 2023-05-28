@@ -1,7 +1,8 @@
+import logging
+
 from time import time
 from datetime import datetime
 from urllib.error import HTTPError
-from logging import debug
 
 from binance.exceptions import BinanceAPIException
 from deals.schema import DealSchema
@@ -132,7 +133,7 @@ class MarginDeal(BaseDeal):
         2. create loan with qty given by market
         3. borrow 2.5x to do base order
         """
-        print("Initializating margin_short tasks for real bots trading")
+        logging.info("Initializating margin_short tasks for real bots trading")
         # Check margin account balance first
         balance = self.get_isolated_balance(self.active_bot.pair)
         # always enable, it doesn't cause errors
@@ -150,8 +151,6 @@ class MarginDeal(BaseDeal):
             except BinanceAPIException as error:
                 if error.code == -11003:
                     raise MarginShortError("Isolated margin not available")
-            except Exception as error:
-                print(error)
                 
 
         asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
@@ -162,7 +161,7 @@ class MarginDeal(BaseDeal):
             )
             loan_details = self.client.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
         except Exception as error:
-            print(error)
+            logging.error(error)
 
         self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0]["timestamp"]
         self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0]["principal"]
@@ -189,7 +188,7 @@ class MarginDeal(BaseDeal):
         2. Exchange asset to quote asset (USDT)
         3. Transfer back to spot
         """
-        print("Terminating margin_short tasks for real bots trading")
+        logging.info("Terminating margin_short tasks for real bots trading")
 
         # Check margin account balance first
         balance = self.get_isolated_balance(self.active_bot.pair)
@@ -284,7 +283,7 @@ class MarginDeal(BaseDeal):
                         amount=balance[0]["quoteAsset"]["free"],
                     )
                 except BinanceAPIException as error:
-                    print(error)
+                    logging.error(error)
 
             if self.get_remaining_quote_asset() > 0 and float(balance[0]["baseAsset"]["free"]) > 0:
                 # transfer back any quote asset qty leftovers
@@ -303,7 +302,7 @@ class MarginDeal(BaseDeal):
                     symbol=self.active_bot.pair
                 )
             except BinanceAPIException as error:
-                print(error)
+                logging.error(error)
                 if error.code == -3051:
                     self.active_bot.errors.append(error.message)
                     pass
@@ -311,7 +310,7 @@ class MarginDeal(BaseDeal):
             completion_msg = f"{self.active_bot.pair} ISOLATED margin funds transferred back to SPOT."
             self.active_bot.errors.append(completion_msg)
             self.active_bot.status = Status.completed
-            print(completion_msg)
+            logging.info(completion_msg)
             bot = self.save_bot_streaming()
 
             return bot
@@ -325,7 +324,7 @@ class MarginDeal(BaseDeal):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        print(f"Opening margin_short_base_order")
+        info(f"Opening margin_short_base_order")
         initial_price = float(self.matching_engine(self.active_bot.pair, False))
         # Given USDT amount we want to buy,
         # how much can we buy?
@@ -391,7 +390,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_loan_interest = float(self.active_bot.deal.margin_short_loan_principal) * float(self.active_bot.deal.hourly_interest_rate)
         # Add it to as part of total_commission for easy profit calculation
         self.active_bot.total_commission += float(self.active_bot.deal.margin_short_loan_principal) * float(self.active_bot.deal.hourly_interest_rate)
-        print(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}")
+        logging.info(f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}")
         
         # Direction 1.1: downward trend (short)
         # Breaking trailling
@@ -409,7 +408,7 @@ class MarginDeal(BaseDeal):
 
             else:
                 # Execute the usual non-trailling take_profit
-                print(f'Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}')
+                logging.info(f'Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}')
                 self.execute_take_profit()
                 if self.db_collection.name == "bots":
                     self.terminate_margin_short()
@@ -425,7 +424,7 @@ class MarginDeal(BaseDeal):
             # Red candlestick
             # and (float(open_price) > float(close_price))
         ):
-            print(
+            logging.info(
                 f'Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}'
             )
             # since price is given by matching engine
@@ -442,7 +441,7 @@ class MarginDeal(BaseDeal):
             and self.active_bot.deal.stop_loss_price > 0
             and price > self.active_bot.deal.stop_loss_price
         ):
-            print(f'Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}')
+            logging.info(f'Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}')
             self.execute_stop_loss()
             if self.db_collection.name == "bots":
                 if hasattr(self.active_bot, "margin_short_reversal") and self.active_bot.margin_short_reversal:
@@ -466,7 +465,7 @@ class MarginDeal(BaseDeal):
             and self.active_bot.deal.stop_loss_price > 0
             and price > self.active_bot.deal.stop_loss_price
         ):
-            print(f'Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}')
+            logging.info(f'Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}')
             self.execute_stop_loss()
             if self.db_collection.name == "bots":
                 if hasattr(self.active_bot, "margin_short_reversal") and self.active_bot.margin_short_reversal:
@@ -578,7 +577,7 @@ class MarginDeal(BaseDeal):
 
                 res = self.buy_margin_order(symbol=self.active_bot.pair, qty=qty, price=price)
             except BinanceAPIException as error:
-                print(error)
+                logging.error(error)
                 if error.code in (-2010, -1013):
                     return
             except Exception as error:
@@ -668,7 +667,7 @@ class MarginDeal(BaseDeal):
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
                 self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
-                print(f"Deleted obsolete bot {self.active_bot.pair}")
+                info(f"Deleted obsolete bot {self.active_bot.pair}")
             except Exception as error:
                 self.update_deal_logs(
                     f"Error trying to open new stop_limit order {error}"
@@ -764,7 +763,7 @@ class MarginDeal(BaseDeal):
                 self.active_bot.deal.trailling_stop_loss_price = stop_loss_trailling_price
                 bot = self.save_bot_streaming()
                 self.active_bot = BotSchema.parse_obj(bot)
-                debug(f'{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB')
+                logging.info(f'{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB')
 
 
         if self.active_bot.deal.trailling_profit_price == 0:
@@ -774,7 +773,7 @@ class MarginDeal(BaseDeal):
                 float(self.active_bot.deal.take_profit_price) * (float(self.active_bot.take_profit) / 100)
             )
             self.active_bot.deal.trailling_profit_price = trailling_price
-            debug(
+            logging.info(
                 f"{self.active_bot.pair} Updated (Didn't break trailling), updating trailling price points (short)"
             )
         
@@ -783,7 +782,7 @@ class MarginDeal(BaseDeal):
             self.active_bot.deal.trailling_stop_loss_price = float(self.active_bot.deal.trailling_profit_price) * (
                 1 + ((self.active_bot.trailling_deviation) / 100)
             )
-            debug(f'{self.active_bot.pair} Updating after broken first trailling_profit (short)')
+            logging.info(f'{self.active_bot.pair} Updating after broken first trailling_profit (short)')
 
         # Direction 1 (downward): breaking the current trailling
         if float(close_price) <= float(self.active_bot.deal.trailling_profit_price):
@@ -803,11 +802,11 @@ class MarginDeal(BaseDeal):
             if new_trailling_stop_loss < self.active_bot.deal.margin_short_sell_price:
                 # Selling below buy_price will cause a loss
                 # instead let it drop until it hits safety order or stop loss
-                print(
+                logging.info(
                     f"{self.active_bot.pair} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
                 )
                 # Update trailling_stop_loss
                 self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss
-                print(
+                logging.info(
                     f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
                 )

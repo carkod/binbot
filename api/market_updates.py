@@ -37,3 +37,5 @@ try:
     mu.get_klines()
 except Exception as error:
     logging.error(f"Streaming controller error: {error}")
+    mu = StreamingController()
+    mu.get_klines()
