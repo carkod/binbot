@@ -3,7 +3,7 @@ import hmac
 import os
 from urllib.parse import urlencode
 from time import time
-from requests import get, request
+from requests import request
 from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from py3cw.request import Py3CW
 
@@ -48,8 +48,10 @@ class BinanceApi:
 
     # Margin
     isolated_fee_url = f"{BASE}/sapi/v1/margin/isolatedMarginData"
-    isolated_account = f"{BASE}/sapi/v1/margin/isolated/account"
-    loan_record = f"{BASE}/sapi/v1/margin/loan"
+    isolated_account_url = f"{BASE}/sapi/v1/margin/isolated/account"
+    margin_isolated_transfer_url = f"{BASE}/sapi/v1/margin/isolated/transfer"
+    loan_record_url = f"{BASE}/sapi/v1/margin/loan"
+    margin_repay_url = f"{BASE}/sapi/v1/margin/repay"
     isolated_hourly_interest = f"{BASE}/sapi/v1/margin/next-hourly-interest-rate"
     margin_order = f"{BASE}/sapi/v1/margin/order"
 
@@ -87,6 +89,48 @@ class BinanceApi:
         data = handle_binance_errors(res)
         return data
 
+    def cancel_margin_order(self, symbol, order_id):
+        return self.signed_request(self.margin_order, method="DELETE", payload={"symbol": symbol, "orderId": order_id})
+
+    def enable_isolated_margin_account(self, symbol):
+        return self.signed_request(self.isolated_account_url, method="POST", payload={"symbol": symbol})
+    
+    def disable_isolated_margin_account(self, symbol):
+        return self.signed_request(self.isolated_account_url, method="DELETE", payload={"symbol": symbol})
+
+    def transfer_isolated_margin_to_spot(self, asset, symbol, amount):
+        return self.signed_request(self.margin_isolated_transfer_url, method="POST", payload={"transFrom": "ISOLATED_MARGIN", "transTo": "SPOT", "asset": asset, "symbol": symbol, "amount": amount})
+
+    def transfer_spot_to_isolated_margin(self, asset, symbol, amount):
+        return self.signed_request(self.margin_isolated_transfer_url, method="POST", payload={"transFrom": "SPOT", "transTo": "ISOLATED_MARGIN", "asset": asset, "symbol": symbol, "amount": amount})
+
+    def create_margin_loan(self, asset, symbol, amount, isIsolated=True):
+        if not isIsolated:
+            isIsolated = "FALSE"
+        else:
+            isIsolated = "TRUE"
+
+        return self.signed_request(self.loan_record_url, method="POST", payload={"asset": asset, "symbol": symbol, "amount": amount, "isIsolated": isIsolated})
+
+    def get_margin_loan_details(self, asset: str, isolatedSymbol: str):
+        return self.signed_request(self.loan_record_url, payload={"asset": asset, "isolatedSymbol": isolatedSymbol})
+
+    def get_margin_repay_details(self, asset: str, isolatedSymbol: str):
+        return self.signed_request(self.margin_repay_url, payload={"asset": asset, "isolatedSymbol": isolatedSymbol})
+
+    def repay_margin_loan(self, asset: str, isolatedSymbol: str):
+        return self.signed_request(self.margin_repay_url, method="POST", payload={"asset": asset, "isolatedSymbol": isolatedSymbol})
+
+    def get_isolated_balance(self, symbol=None):
+        """
+        Get balance of Isolated Margin account
+
+        Use isolated margin account is preferrable,
+        because this is the one that supports the most assets
+        """
+        info = self.signed_request(url=self.isolated_account_url, payload={"symbols": symbol})
+        assets = info["assets"]
+        return assets
 
 class BinbotApi(BinanceApi):
     """

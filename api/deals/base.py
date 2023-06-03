@@ -38,7 +38,6 @@ class BaseDeal(OrderController):
             .as_tuple()
             .exponent
         )
-        self.client = Client(os.getenv("BINANCE_KEY"), os.getenv("BINANCE_SECRET"))
         super().__init__()
 
     def __repr__(self) -> str:
@@ -116,10 +115,10 @@ class BaseDeal(OrderController):
         """
         Check open orders and replace with new
         """
-        open_orders = self.client.get_open_orders(symbol=symbol)
+        open_orders = self.signed_request(self.open_orders, payload={"symbol": symbol})
         for order in open_orders:
             if order["status"] == "NEW":
-                self.client.cancel_order(symbol=symbol, orderId=order["orderId"])
+                self.signed_request(self.order_url, method="DELETE", payload={"symbol": symbol, "orderId": order["orderId"]})
                 return True
         return False
 

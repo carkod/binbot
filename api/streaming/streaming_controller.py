@@ -259,12 +259,14 @@ class StreamingController:
             logging.info(
                 f'Time elapsed for update_required: {time() - local_settings["update_required"]}'
             )
-            if (time() - local_settings["update_required"]) > 3:
+            if (time() - local_settings["update_required"]) > 20:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": time()}}
                 )
-                self.client.stop()
-                raise TerminateStreaming("Streaming needs to restart to reload bots.")
+                logging.info("Restarting streaming_controller")
+                self.get_klines()
+                # self.client.stop()
+                # raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
             close_price = result["k"]["c"]
