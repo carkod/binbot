@@ -161,4 +161,8 @@ class OrderController(Account):
             }
 
         data = self.signed_request(url=self.margin_order, method="POST", payload=payload)
+
+        if float(data["price"]) == 0:
+            data["price"] = data["fills"][0]["price"]
+
         return data

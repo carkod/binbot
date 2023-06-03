@@ -5,6 +5,7 @@ from datetime import datetime
 from urllib.error import HTTPError
 
 from binance.exceptions import BinanceAPIException
+from tools.handle_error import BinanceErrors
 from deals.schema import DealSchema
 from tools.enum_definitions import Strategy
 from bots.schemas import BotSchema
@@ -71,9 +72,11 @@ class MarginDeal(BaseDeal):
             or self.isolated_balance[0]["baseAsset"]["borrowed"] == 0
         ):
             return None
+
         qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(
             self.isolated_balance[0]["baseAsset"]["interest"]
         )
+
         return round_numbers_ceiling(qty, self.qty_precision), float(
             self.isolated_balance[0]["baseAsset"]["free"]
         )
@@ -145,29 +148,22 @@ class MarginDeal(BaseDeal):
                 asset=asset, symbol=self.active_bot.pair, amount=qty
             )
             loan_details = self.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
+
+            self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0]["timestamp"]
+            self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0]["principal"]
+            self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
+
+            # Estimate interest to add to total cost
+            asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
+            # This interest rate is much more accurate than any of the others
+            hourly_fees = self.signed_request(url=self.isolated_hourly_interest, payload={"assets": asset, "isIsolated": "TRUE"})
+            self.active_bot.deal.hourly_interest_rate = float(hourly_fees[0]["nextHourlyInterestRate"])
+
         except BinanceErrors as error:
             logging.error(error)
+            return
         except Exception as error:
             logging.error(error)
-
-        self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0][
-            "timestamp"
-        ]
-        self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0][
-            "principal"
-        ]
-        self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
-
-        # Estimate interest to add to total cost
-        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-        # This interest rate is much more accurate than any of the others
-        hourly_fees = self.signed_request(
-            url=self.isolated_hourly_interest,
-            payload={"assets": asset, "isIsolated": "TRUE"},
-        )
-        self.active_bot.deal.hourly_interest_rate = float(
-            hourly_fees[0]["nextHourlyInterestRate"]
-        )
 
         return
 
@@ -198,12 +194,12 @@ class MarginDeal(BaseDeal):
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
             query_loan = self.signed_request(
-                url=self.loan_record,
+                url=self.loan_record_url,
                 payload={"asset": asset, "isolatedSymbol": self.active_bot.pair},
             )
             if query_loan["total"] > 0 and repay_amount > 0:
                 # Only supress trailling 0s, so that everything is paid
-                repay_amount = supress_trailling(repay_amount)
+                # repay_amount = supress_trailling(repay_amount)
                 try:
                     self.repay_margin_loan(
                         asset=asset,
@@ -211,6 +207,9 @@ class MarginDeal(BaseDeal):
                         amount=repay_amount,
                         isIsolated="TRUE",
                     )
+                    # Complete bot here to avoid unimportant errors blocking completion
+                    # Once margin loan is repaid it is closed profit
+                    self.active_bot.status = Status.completed
                 except BinanceAPIException as error:
                     if error.code == -3041:
                         # Most likely not enough funds to pay back
@@ -308,7 +307,9 @@ class MarginDeal(BaseDeal):
             # that can't be cleaned out completely, need to do it manually
             # this is ok, since this is not a hard requirement to complete the deal
             try:
-                self.disable_isolated_margin_account(symbol=self.active_bot.pair)
+                self.disable_isolated_margin_account(
+                    symbol=self.active_bot.pair
+                )
             except BinanceAPIException as error:
                 logging.error(error)
                 if error.code == -3051:
@@ -317,7 +318,6 @@ class MarginDeal(BaseDeal):
 
             completion_msg = f"{self.active_bot.pair} ISOLATED margin funds transferred back to SPOT."
             self.active_bot.errors.append(completion_msg)
-            self.active_bot.status = Status.completed
             logging.info(completion_msg)
             bot = self.save_bot_streaming()
 
@@ -335,7 +335,7 @@ class MarginDeal(BaseDeal):
         initial_price = float(self.matching_engine(self.active_bot.pair, False))
         # Given USDT amount we want to buy,
         # how much can we buy?
-        qty = round_numbers(
+        qty = round_numbers_ceiling(
             (float(self.active_bot.base_order_size) / float(initial_price)),
             self.qty_precision,
         )
@@ -685,6 +685,14 @@ class MarginDeal(BaseDeal):
                         f"{error.message}. Not enough fiat to buy back loaned quantity"
                     )
                     return
+            except BinanceErrors as error:
+                message, code = error.args
+                logging.error(message)
+                if code == -2010:
+                    return
+                if code == -1102:
+                    return
+
         else:
             try:
                 if qty == 0 or free <= qty:
@@ -740,7 +748,6 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
         msg = f"Completed Take profit!"
         self.active_bot.errors.append(msg)
-        self.active_bot.status = Status.completed
 
         return
 

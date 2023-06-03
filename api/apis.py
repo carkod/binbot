@@ -118,8 +118,8 @@ class BinanceApi:
     def get_margin_repay_details(self, asset: str, isolatedSymbol: str):
         return self.signed_request(self.margin_repay_url, payload={"asset": asset, "isolatedSymbol": isolatedSymbol})
 
-    def repay_margin_loan(self, asset: str, isolatedSymbol: str):
-        return self.signed_request(self.margin_repay_url, method="POST", payload={"asset": asset, "isolatedSymbol": isolatedSymbol})
+    def repay_margin_loan(self, asset: str, symbol: str, amount: float, isIsolated: str):
+        return self.signed_request(self.margin_repay_url, method="POST", payload={"asset": asset, "symbol": symbol, "amount": amount, "isIsolated": isIsolated})
 
     def get_isolated_balance(self, symbol=None):
         """
