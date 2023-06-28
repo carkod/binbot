@@ -265,13 +265,12 @@ class StreamingController:
                 )
                 logging.info("Restarting streaming_controller")
                 self.get_klines()
-                # self.client.stop()
-                # raise TerminateStreaming("Streaming needs to restart to reload bots.")
 
         if "k" in result:
             close_price = result["k"]["c"]
             open_price = result["k"]["o"]
             symbol = result["k"]["s"]
+            print(symbol)
             current_bot = self.streaming_db.bots.find_one(
                 {"pair": symbol, "status": "active"}
             )
