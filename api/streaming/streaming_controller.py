@@ -98,7 +98,7 @@ class StreamingController:
                             current_bot, db_collection=db_collection
                         ).execute_short_sell()
                     except Exception as error:
-                        print(f"Autoswitch to short strategy error: {error}")
+                        logging.error(f"Autoswitch to short strategy error: {error}")
 
                     return
 
@@ -146,14 +146,14 @@ class StreamingController:
                         if new_trailling_stop_loss > bot["deal"]["buy_price"]:
                             # Selling below buy_price will cause a loss
                             # instead let it drop until it hits safety order or stop loss
-                            print(
+                            logging.info(
                                 f"{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
                             )
                             # Update trailling_stop_loss
                             bot["deal"][
                                 "trailling_stop_loss_price"
                             ] = new_trailling_stop_loss
-                            print(
+                            logging.info(
                                 f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                             )
                         else:
@@ -161,7 +161,7 @@ class StreamingController:
                             bot["deal"]["trailling_stop_loss_price"] = (
                                 float(bot["deal"]["buy_price"]) * 1.075
                             )
-                            print(
+                            logging.info(
                                 f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
                             )
 
@@ -192,7 +192,7 @@ class StreamingController:
                         # Red candlestick
                         and (float(open_price) > float(close_price))
                     ):
-                        print(
+                        logging.info(
                             f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}'
                         )
                         try:
@@ -202,7 +202,7 @@ class StreamingController:
                             self._update_required()
 
                         except Exception as error:
-                            print(error)
+                            logging.error(error)
                             return
 
                 # Open safety orders
@@ -227,7 +227,7 @@ class StreamingController:
         pass
 
     def on_error(self, socket, msg):
-        print(msg)
+        logging.error(msg)
         self.get_klines()
 
     def on_message(self, socket, message):
@@ -235,13 +235,13 @@ class StreamingController:
         res = json.loads(message)
 
         if "result" in res:
-                print(f'Subscriptions: {res["result"]}')
+                logging.info(f'Subscriptions: {res["result"]}')
 
         if "data" in res:
             if "e" in res["data"] and res["data"]["e"] == "kline":
                 self.process_klines(res["data"])
             else:
-                print(f'Error: {res["data"]}')
+                logging.error(f'Error: {res["data"]}')
                 self.client.stop()
 
     def process_klines(self, result):
@@ -270,7 +270,6 @@ class StreamingController:
             close_price = result["k"]["c"]
             open_price = result["k"]["o"]
             symbol = result["k"]["s"]
-            print(symbol)
             current_bot = self.streaming_db.bots.find_one(
                 {"pair": symbol, "status": "active"}
             )
@@ -309,6 +308,7 @@ class StreamingController:
         )
 
         markets = self.list_bots + self.list_paper_trading_bots
+        print(f'Markets {markets}')
         self.client.klines(markets=markets, interval=interval)
 
     def close_trailling_orders(self, result, db_collection: str = "bots"):

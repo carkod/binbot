@@ -291,16 +291,17 @@ class MarginDeal(BaseDeal):
                 except BinanceAPIException as error:
                     logging.error(error)
 
-            if (
-                self.get_remaining_quote_asset() > 0
-                and float(self.isolated_balance[0]["baseAsset"]["free"]) > 0
-            ):
+            # if (
+            #     self.get_remaining_quote_asset() > 0
+            #     and float(self.isolated_balance[0]["baseAsset"]["free"]) > 0
+            # ):
                 # transfer back any quote asset qty leftovers
-                self.transfer_isolated_margin_to_spot(
-                    asset=asset,
-                    symbol=self.active_bot.pair,
-                    amount=self.isolated_balance[0]["baseAsset"]["free"],
-                )
+            print("Transfering base asset back to Spot")
+            self.transfer_isolated_margin_to_spot(
+                asset=asset,
+                symbol=self.active_bot.pair,
+                amount=self.isolated_balance[0]["baseAsset"]["free"],
+            )
 
             # Disable isolated pair to avoid reaching the 15 pair limit
             # this is not always possible, sometimes there are small quantities
