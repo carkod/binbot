@@ -132,7 +132,6 @@ class StreamingController:
             close_price = result["k"]["c"]
             open_price = result["k"]["o"]
             symbol = result["k"]["s"]
-            print(symbol)
             current_bot = self.streaming_db.bots.find_one(
                 {"pair": symbol, "status": "active"}
             )
