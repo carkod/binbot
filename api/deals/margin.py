@@ -17,7 +17,6 @@ from tools.handle_error import QuantityTooLow, encode_json, BinanceErrors
 from tools.round_numbers import (
     round_numbers,
     supress_notation,
-    supress_trailling,
     round_numbers_ceiling,
 )
 

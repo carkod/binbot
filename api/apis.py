@@ -7,7 +7,8 @@ from requests import request
 from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from py3cw.request import Py3CW
 
-
+class IsolateBalanceError(Exception):
+    pass
 class BinanceApi:
     """
     Binance API URLs
@@ -128,8 +129,13 @@ class BinanceApi:
         Use isolated margin account is preferrable,
         because this is the one that supports the most assets
         """
-        info = self.signed_request(url=self.isolated_account_url, payload={"symbols": symbol})
+        payload = None
+        if symbol:
+            payload = {"symbols": [symbol]}
+        info = self.signed_request(url=self.isolated_account_url, payload=payload)
         assets = info["assets"]
+        if len(assets) == 0:
+            raise IsolateBalanceError("Hit symbol 24hr restriction or not available at the moment")
         return assets
 
 class BinbotApi(BinanceApi):
