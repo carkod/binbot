@@ -37,7 +37,7 @@ class AutotradeSettingsController:
             settings = data.dict()
             if "_id" in settings:
                 settings.pop("_id")
-            if "update_required" in settings and settings["update_required"] == None:
+            if "update_required" in settings:
                 settings["update_required"] = time()
 
             self.db.update_one({"_id": self.document_id}, {"$set": settings})

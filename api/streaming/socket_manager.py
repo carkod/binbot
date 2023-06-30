@@ -190,9 +190,9 @@ class BinanceWebsocketClient:
         if not self._single_stream(stream):
             raise ValueError("Invalid stream name, expect a string")
 
-        stream = [stream]
+        list_streams = [stream]
         self.socket_manager.send_message(
-            json.dumps({"method": "UNSUBSCRIBE", "params": stream, "id": id})
+            json.dumps({"method": "UNSUBSCRIBE", "params": list_streams, "id": id})
         )
 
     def ping(self):

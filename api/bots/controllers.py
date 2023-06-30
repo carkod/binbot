@@ -30,7 +30,7 @@ class Bot(Account):
         self.db_collection = self.db[collection_name]
     
     def _update_required(self):
-        self.db.research_controller.update_one({"_id": "settings"}, {"$inc": {"update_required": 1}})
+        self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": time()}})
         return
 
     def get(self, status, start_date, end_date, no_cooldown):

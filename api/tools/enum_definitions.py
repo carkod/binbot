@@ -68,11 +68,21 @@ class OrderType(str, Enum):
     take_profit_limit = "TAKE_PROFIT_LIMIT"
     limit_maker = "LIMIT_MAKER"
 
+    def __str__(self):
+        return str(self.str)
+
+
 class TimeInForce(str, Enum):
     gtc = "GTC"
     ioc = "IOC"
     fok = "FOK"
 
+    def __str__(self):
+        return str(self.str)
+
 class OrderSide(str, Enum):
     buy = "BUY"
     sell = "SELL"
+
+    def __str__(self):
+        return str(self.str)

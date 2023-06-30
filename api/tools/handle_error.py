@@ -80,7 +80,7 @@ def handle_binance_errors(response: Response) -> str | None:
     if response.status_code >= 400:
         error = response.json()
         if "msg" in error:
-            raise BinanceErrors(error["msg"])
+            raise BinanceErrors(error["msg"], error["code"])
         if "error" in error:
             raise BinbotErrors(error["message"])
 

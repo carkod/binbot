@@ -69,7 +69,7 @@ class Assets(Account):
         balances_response = self.get_raw_balance()
         bin_balance = json.loads(balances_response.body)
         current_time = datetime.utcnow()
-        total_usdt = 0
+        total_usdt: float = 0
         rate: float = 0
         for b in bin_balance["data"]:
             # Only tether coins for hedging
@@ -81,7 +81,7 @@ class Assets(Account):
             else:
                 try:
                     qty = self._check_locked(b)
-                    rate: float = self.get_ticker_price(f'{b["asset"]}USDT')
+                    rate = self.get_ticker_price(f'{b["asset"]}USDT')
                     total_usdt += float(qty) * float(rate)
                 except InvalidSymbol:
                     print(b["asset"])
@@ -114,7 +114,7 @@ class Assets(Account):
         """
         balances_response = self.get_raw_balance()
         # Isolated m
-        isolated_margin = self.signed_request(url=self.isolated_account)
+        isolated_margin = self.signed_request(url=self.isolated_account_url)
         get_usdt_btc_rate = self.ticker(symbol=f'BTC{fiat}', json=False)
         total_isolated_margin = float(isolated_margin["totalNetAssetOfBtc"]) * float(get_usdt_btc_rate["price"])
 

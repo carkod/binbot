@@ -133,7 +133,7 @@ class OrderController(Account):
                 "isIsolated": "TRUE",
             }
 
-        data = self.signed_request(url=self.margin_order, payload=payload)
+        data = self.signed_request(url=self.margin_order, method="POST", payload=payload)
         return data
 
     def sell_margin_order(self, symbol, qty, price=None):
@@ -160,5 +160,9 @@ class OrderController(Account):
                 "isIsolated": "TRUE",
             }
 
-        data = self.signed_request(url=self.margin_order, payload=payload)
+        data = self.signed_request(url=self.margin_order, method="POST", payload=payload)
+
+        if float(data["price"]) == 0:
+            data["price"] = data["fills"][0]["price"]
+
         return data
