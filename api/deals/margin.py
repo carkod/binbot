@@ -459,6 +459,9 @@ class MarginDeal(BaseDeal):
             and self.active_bot.deal.stop_loss_price > 0
             and price > self.active_bot.deal.stop_loss_price
         ):
+            
+            # If bot autoswtich is on reverse to long bot
+            # else reverse to long bot
             logging.info(
                 f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}"
             )
@@ -474,11 +477,12 @@ class MarginDeal(BaseDeal):
                 else:
                     self.terminate_margin_short()
 
-            # To profit from reversal, we still need to repay loan and transfer
-            # assets back to SPOT account, so this means executing stop loss
-            # and creating a new long bot, this way we can also keep the old bot
-            # with the corresponding data for profit/loss calculation
-            self.switch_to_long_bot()
+            if self.active_bot.margin_short_reversal:
+                # To profit from reversal, we still need to repay loan and transfer
+                # assets back to SPOT account, so this means executing stop loss
+                # and creating a new long bot, this way we can also keep the old bot
+                # with the corresponding data for profit/loss calculation
+                self.switch_to_long_bot()
 
         # Direction 1.3: upward trend (short)
         # Breaking trailling_stop_loss, completing trailling
@@ -502,11 +506,12 @@ class MarginDeal(BaseDeal):
                 else:
                     self.terminate_margin_short()
 
-            # To profit from reversal, we still need to repay loan and transfer
-            # assets back to SPOT account, so this means executing stop loss
-            # and creating a new long bot, this way we can also keep the old bot
-            # with the corresponding data for profit/loss calculation
-            self.switch_to_long_bot()
+            if self.active_bot.margin_short_reversal:
+                # To profit from reversal, we still need to repay loan and transfer
+                # assets back to SPOT account, so this means executing stop loss
+                # and creating a new long bot, this way we can also keep the old bot
+                # with the corresponding data for profit/loss calculation
+                self.switch_to_long_bot()
 
         try:
             bot = encode_json(self.active_bot)

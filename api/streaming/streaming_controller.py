@@ -111,6 +111,10 @@ class StreamingController:
                 ):
                     deal = CreateDealController(bot, db_collection)
                     deal.execute_stop_loss(close_price)
+                    if bot["margin_short_reversal"]:
+                        margin_deal = MarginDeal(current_bot, db_collection=db_collection)
+                        margin_deal.margin_short_base_order()
+
                     self._update_required()
                     return
 
