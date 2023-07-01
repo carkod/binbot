@@ -211,7 +211,7 @@ class MarginDeal(BaseDeal):
                     # Once margin loan is repaid it is closed profit
                     self.active_bot.status = Status.completed
                 except BinanceAPIException as error:
-                    if error.code == -3041:
+                    if error.code == -3041 or error.code == -3015:
                         # Most likely not enough funds to pay back
                         # Get fiat (USDT) to pay back
                         self.active_bot.errors.append(error.message)
@@ -319,10 +319,9 @@ class MarginDeal(BaseDeal):
 
             completion_msg = f"{self.active_bot.pair} ISOLATED margin funds transferred back to SPOT."
             self.active_bot.errors.append(completion_msg)
-            logging.info(completion_msg)
             bot = self.save_bot_streaming()
-
-            return bot
+            self.active_bot: BotSchema = BotSchema.parse_obj(bot)
+            return self.active_bot
 
     def margin_short_base_order(self):
         """
@@ -452,38 +451,6 @@ class MarginDeal(BaseDeal):
 
             self.update_required()
 
-        # Direction 2: upward trend (short)
-        # Not breaking trailling
-        if (
-            price > 0
-            and self.active_bot.deal.stop_loss_price > 0
-            and price > self.active_bot.deal.stop_loss_price
-        ):
-            
-            # If bot autoswtich is on reverse to long bot
-            # else reverse to long bot
-            logging.info(
-                f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}"
-            )
-            self.execute_stop_loss()
-            if self.db_collection.name == "bots":
-                if (
-                    hasattr(self.active_bot, "margin_short_reversal")
-                    and self.active_bot.margin_short_reversal
-                ):
-                    # If we want to do reversal long bot, there is no point
-                    # incurring in an additional transaction
-                    self.terminate_margin_short(buy_back_fiat=False)
-                else:
-                    self.terminate_margin_short()
-
-            if self.active_bot.margin_short_reversal:
-                # To profit from reversal, we still need to repay loan and transfer
-                # assets back to SPOT account, so this means executing stop loss
-                # and creating a new long bot, this way we can also keep the old bot
-                # with the corresponding data for profit/loss calculation
-                self.switch_to_long_bot()
-
         # Direction 1.3: upward trend (short)
         # Breaking trailling_stop_loss, completing trailling
         if (
@@ -503,25 +470,16 @@ class MarginDeal(BaseDeal):
                     # If we want to do reversal long bot, there is no point
                     # incurring in an additional transaction
                     self.terminate_margin_short(buy_back_fiat=False)
+                    # To profit from reversal, we still need to repay loan and transfer
+                    # assets back to SPOT account, so this means executing stop loss
+                    # and creating a new long bot, this way we can also keep the old bot
+                    # with the corresponding data for profit/loss calculation
+                    self.switch_to_long_bot()
                 else:
                     self.terminate_margin_short()
 
-            if self.active_bot.margin_short_reversal:
-                # To profit from reversal, we still need to repay loan and transfer
-                # assets back to SPOT account, so this means executing stop loss
-                # and creating a new long bot, this way we can also keep the old bot
-                # with the corresponding data for profit/loss calculation
-                self.switch_to_long_bot()
-
         try:
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")
-
-            self.db_collection.update_one(
-                {"id": self.active_bot.id},
-                {"$set": bot},
-            )
+            self.save_bot_streaming()
             self.update_required()
 
         except ValidationError as error:
@@ -755,6 +713,10 @@ class MarginDeal(BaseDeal):
         msg = f"Completed Take profit!"
         self.active_bot.errors.append(msg)
 
+        # Keep bot up to date in the DB
+        # this avoid unsyched bots when errors ocurr in other functions
+        self.save_bot_streaming()
+
         return
 
     def switch_to_long_bot(self):
@@ -801,10 +763,11 @@ class MarginDeal(BaseDeal):
         self.active_bot.status = Status.active
         self.active_bot.margin_short_reversal = False
 
-        # Create and activate bot using a network request
-        # otherwise we get circular import (Create) or duplicated code
-        bot = self.active_bot.dict()
-        return bot
+        # Keep bot up to date in the DB
+        # this avoid unsyched bots when errors ocurr in other functions
+        self.save_bot_streaming()
+
+        return self.active_bot
 
     def update_trailling_profit(self, close_price):
         # Direction: downward trend (short)
