@@ -1,14 +1,19 @@
 import uuid
-import os
+import requests
+import numpy
+import logging
+
 from decimal import Decimal
 from time import time
 
 from orders.controller import OrderController
 from bots.schemas import BotSchema
 from db import setup_db
-from binance.client import Client
 from tools.handle_error import encode_json
 from pymongo import ReturnDocument
+from tools.round_numbers import round_numbers
+from tools.handle_error import handle_binance_errors
+from scipy.stats import linregress
 
 
 class DealCreationError(Exception):
@@ -48,6 +53,19 @@ class BaseDeal(OrderController):
 
     def generate_id(self):
         return uuid.uuid4().hex
+
+    def compute_qty(self, pair):
+        """
+        Helper function to compute buy_price.
+        Previous qty = bot.deal["buy_total_qty"]
+        """
+
+        asset = self.find_baseAsset(pair)
+        balance = self.get_one_balance(asset)
+        if not balance:
+            return None
+        qty = round_numbers(balance, self.qty_precision)
+        return qty
 
     def simulate_order(self, pair, price, qty, side):
         order = {
@@ -165,4 +183,75 @@ class BaseDeal(OrderController):
             self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
             raise StreamingSaveError(error)
 
+        return bot
+
+    def dynamic_take_profit(self, current_bot, close_price):
+
+        self.active_bot = BotSchema.parse_obj(current_bot)
+
+        params = {
+            "symbol": self.active_bot.pair,
+            "interval": self.active_bot.candlestick_interval,
+        }
+        res = requests.get(url=self.bb_candlestick_url, params=params)
+        data = handle_binance_errors(res)
+        list_prices = numpy.array(data["trace"][0]["close"]).astype(numpy.single)
+        series_sd = numpy.std(list_prices.astype(numpy.single))
+        sd = series_sd / float(close_price)
+        dates = numpy.array(data["trace"][0]["x"])
+
+        # Calculate linear regression to get trend
+        slope, intercept, rvalue, pvalue, stderr = linregress(dates, list_prices)
+
+        if sd >= 0:
+            logging.debug(
+                f"dynamic profit for {self.active_bot.pair} sd: {sd}",
+                f'slope is {"positive" if slope > 0 else "negative"}',
+            )
+            if (
+                self.active_bot.deal.trailling_stop_loss_price > 0
+                and self.active_bot.deal.trailling_stop_loss_price
+                > self.active_bot.deal.base_order_price
+                and float(close_price)
+                > self.active_bot.deal.trailling_stop_loss_price
+                and (
+                    (self.active_bot.strategy == "long" and slope > 0)
+                    or (self.active_bot.strategy == "margin_short" and slope < 0)
+                )
+                and self.active_bot.deal.sd > sd
+            ):
+                # Only do dynamic trailling if regression line confirms it
+                volatility: float = float(sd) / float(close_price)
+                if volatility < 0.018:
+                    volatility = 0.018
+                elif volatility > 0.088:
+                    volatility = 0.088
+
+                # sd is multiplied by 2 to increase the difference between take_profit and trailling_stop_loss
+                # this avoids closing too early
+                new_trailling_stop_loss_price = float(close_price) - (
+                    float(close_price) * volatility
+                )
+                # deal.sd comparison will prevent it from making trailling_stop_loss too big
+                # and thus losing all the gains
+                if new_trailling_stop_loss_price > float(
+                    self.active_bot.deal.buy_price
+                ) and sd < self.active_bot.deal.sd:
+                    self.active_bot.trailling_deviation = volatility * 100
+                    self.active_bot.deal.trailling_stop_loss_price = float(
+                        close_price
+                    ) - (float(close_price) * volatility)
+                    # Update tralling_profit price
+                    logging.info(
+                        f"Updated trailling_deviation and take_profit {self.active_bot.deal.trailling_stop_loss_price}"
+                    )
+                    self.active_bot.deal.take_profit_price = float(close_price) + (
+                        float(close_price) * volatility
+                    )
+                    self.active_bot.deal.trailling_profit_price = float(close_price) + (
+                        float(close_price) * volatility
+                    )
+
+        self.active_bot.deal.sd = sd
+        bot = self.save_bot_streaming()
         return bot
