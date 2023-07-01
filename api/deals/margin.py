@@ -107,11 +107,16 @@ class MarginDeal(BaseDeal):
         if order_id:
             try:
                 # First cancel old order to unlock balance
-                self.cancel_margin_order(symbol=self.active_bot.pair, orderId=order_id)
+                self.cancel_margin_order(symbol=self.active_bot.pair, order_id=order_id)
                 self.update_deal_logs("Old take profit order cancelled")
             except HTTPError as error:
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
+            
+            except Exception as error:
+                # Most likely old error out of date orderId
+                if error.args[1] == -2011:
+                    return
 
         return
 
@@ -814,6 +819,9 @@ class MarginDeal(BaseDeal):
             self.active_bot.deal.trailling_stop_loss_price = float(
                 self.active_bot.deal.trailling_profit_price
             ) * (1 + ((self.active_bot.trailling_deviation) / 100))
+
+            # Reset stop_loss_price to avoid confusion in front-end
+            self.active_bot.deal.stop_loss_price = 0
             logging.info(
                 f"{self.active_bot.pair} Updating after broken first trailling_profit (short)"
             )
