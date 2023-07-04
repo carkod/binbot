@@ -3,6 +3,7 @@ import logging
 from db import setup_db
 from deals.controllers import CreateDealController
 from deals.margin import MarginDeal
+from deals.spot import SpotLongDeal
 from pymongo import ReturnDocument
 from datetime import datetime
 from time import time
@@ -79,150 +80,11 @@ class StreamingController:
                 ).execute_short_buy()
 
             # Long strategy starts
-            if current_bot and "deal" in current_bot:
-                # Update Current price only for active bots
-                # This is to keep historical profit intact
-                bot = self.streaming_db[db_collection].find_one_and_update(
-                    {"id": current_bot["id"]},
-                    {"$set": {"deal.current_price": close_price}},
-                    return_document=ReturnDocument.AFTER,
-                )
-
-                # Auto switch to short strategy
-                if "short_sell_price" in current_bot and 0 < float(
-                    current_bot["short_sell_price"]
-                ) >= float(close_price):
-                    # If hit short_sell_price, resume long strategy by resetting short_sell_price
-                    try:
-                        CreateDealController(
-                            current_bot, db_collection=db_collection
-                        ).execute_short_sell()
-                    except Exception as error:
-                        logging.error(f"Autoswitch to short strategy error: {error}")
-
-                    return
-
-                # Stop loss
-                if (
-                    "stop_loss" in bot
-                    and float(bot["stop_loss"]) > 0
-                    and "stop_loss_price" in bot["deal"]
-                    and float(bot["deal"]["stop_loss_price"]) > float(close_price)
-                ):
-                    deal = CreateDealController(bot, db_collection)
-                    deal.execute_stop_loss(close_price)
-                    self._update_required()
-                    return
-
-                # Take profit trailling
-                if (bot["trailling"] == "true" or bot["trailling"]) and float(bot["deal"]["buy_price"]) > 0:
-                    # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
-                    if bot["deal"]["trailling_stop_loss_price"] == 0:
-                        trailling_price = float(bot["deal"]["buy_price"]) * (
-                            1 + (float(bot["take_profit"]) / 100)
-                        )
-                    else:
-                        # Current take profit + next take_profit
-                        trailling_price = float(bot["deal"]["trailling_stop_loss_price"]) * (
-                            1 + (float(bot["take_profit"]) / 100)
-                        )
-
-                    bot["deal"]["trailling_profit_price"] = trailling_price
-                    # Direction 1 (upward): breaking the current trailling
-                    if bot and float(close_price) >= float(trailling_price):
-                        new_take_profit = float(trailling_price) * (
-                            1 + (float(bot["take_profit"]) / 100)
-                        )
-                        new_trailling_stop_loss = float(trailling_price) - (
-                            float(trailling_price)
-                            * (float(bot["trailling_deviation"]) / 100)
-                        )
-                        # Update deal take_profit
-                        bot["deal"]["take_profit_price"] = new_take_profit
-                        # take_profit but for trailling, to avoid confusion
-                        # trailling_profit_price always be > trailling_stop_loss_price
-                        bot["deal"]["trailling_profit_price"] = new_take_profit
-
-                        if new_trailling_stop_loss > bot["deal"]["buy_price"]:
-                            # Selling below buy_price will cause a loss
-                            # instead let it drop until it hits safety order or stop loss
-                            logging.info(
-                                f"{symbol} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
-                            )
-                            # Update trailling_stop_loss
-                            bot["deal"][
-                                "trailling_stop_loss_price"
-                            ] = new_trailling_stop_loss
-                            logging.info(
-                                f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
-                            )
-                        else:
-                            # Protect against drops by selling at buy price + 0.75% commission
-                            bot["deal"]["trailling_stop_loss_price"] = (
-                                float(bot["deal"]["buy_price"]) * 1.075
-                            )
-                            logging.info(
-                                f'{datetime.utcnow()} Updated {symbol} trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}'
-                            )
-
-                    bot = self.streaming_db[db_collection].find_one_and_update(
-                        {"id": current_bot["id"]},
-                        {"$set": {"deal": bot["deal"]}},
-                        upsert=False,
-                        return_document=ReturnDocument.AFTER,
-                    )
-                    if not bot:
-                        self.streaming_db[db_collection].update_one(
-                            {"id": current_bot["id"]},
-                            {
-                                "$push": {
-                                    "errors": f'Error updating trailling order {current_bot["_id"]}'
-                                }
-                            },
-                        )
-
-                    # Direction 2 (downward): breaking the trailling_stop_loss
-                    # Make sure it's red candlestick, to avoid slippage loss
-                    # Sell after hitting trailling stop_loss and if price already broken trailling
-                    if (
-                        float(bot["deal"]["trailling_stop_loss_price"]) > 0
-                        # Broken stop_loss
-                        and float(close_price)
-                        < float(bot["deal"]["trailling_stop_loss_price"])
-                        # Red candlestick
-                        and (float(open_price) > float(close_price))
-                    ):
-                        logging.info(
-                            f'Hit trailling_stop_loss_price {bot["deal"]["trailling_stop_loss_price"]}. Selling {symbol}'
-                        )
-                        try:
-                            deal = CreateDealController(bot, db_collection)
-                            deal.trailling_profit()
-                            # This terminates the bot
-                            self._update_required()
-
-                        except Exception as error:
-                            logging.error(error)
-                            return
-
-                # Open safety orders
-                # When bot = None, when bot doesn't exist (unclosed websocket)
-                if "safety_orders" in bot and len(bot["safety_orders"]) > 0:
-                    for key, so in enumerate(bot["safety_orders"]):
-                        # Index is the ID of the safety order price that matches safety_orders list
-                        if ("status" in so and so["status"] == 0) and float(
-                            so["buy_price"]
-                        ) >= float(close_price):
-                            deal = CreateDealController(bot, db_collection)
-                            deal.so_update_deal(key)
-
-                # Execute dynamic_take_profit at the end,
-                # so that trailling_take_profit and trailling_stop_loss can execute before
-                # else trailling_stop_loss could be hit but then changed because of dynamic_tp
-                if bot["trailling"] == "true" and bot["dynamic_trailling"]:
-                    deal = CreateDealController(bot, db_collection)
-                    # Returns bot, to keep modifying in subsequent checks
-                    bot = deal.dynamic_take_profit(symbol, current_bot, close_price)
+            if current_bot["strategy"] == "long":
+                SpotLongDeal(
+                    current_bot, db_collection=db_collection
+                ).streaming_updates(close_price, open_price)
+                self._update_required()
 
         pass
 
