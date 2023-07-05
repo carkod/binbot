@@ -3,7 +3,6 @@ import os
 from time import sleep
 
 from bson import json_util
-from bson.objectid import ObjectId
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from requests import Response, put
@@ -11,8 +10,19 @@ from requests.exceptions import HTTPError
 from fastapi.encoders import jsonable_encoder
 from copy import deepcopy
 
+class IsolateBalanceError(Exception):
+    def __init__(self, message) -> None:
+        self.message = message
+
 class BinanceErrors(Exception):
-    pass
+    def __init__(self, msg, code):
+        self.code = code
+        self.message = msg
+        return None
+    
+    def __str__(self) -> str:
+        return f"Binance Error: {self.code} {self.message}"
+
 
 
 class InvalidSymbol(BinanceErrors):

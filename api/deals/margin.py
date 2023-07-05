@@ -13,13 +13,12 @@ from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
-from tools.handle_error import QuantityTooLow, encode_json, BinanceErrors
+from tools.handle_error import QuantityTooLow, IsolateBalanceError, BinanceErrors
 from tools.round_numbers import (
     round_numbers,
     supress_notation,
     round_numbers_ceiling,
 )
-
 
 class MarginShortError(Exception):
     pass
@@ -111,7 +110,7 @@ class MarginDeal(BaseDeal):
             except HTTPError as error:
                 self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
-            
+
             except Exception as error:
                 # Most likely old error out of date orderId
                 if error.args[1] == -2011:
@@ -119,7 +118,7 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def init_margin_short(self, qty):
+    def init_margin_short(self, initial_price):
         """
         Pre-tasks for db_collection = bots
         These tasks are not necessary for paper_trading
@@ -133,39 +132,70 @@ class MarginDeal(BaseDeal):
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
         # always enable, it doesn't cause errors
         self.enable_isolated_margin_account(symbol=self.active_bot.pair)
+
+        # Given USDT amount we want to buy,
+        # how much can we buy?
+        qty = round_numbers_ceiling(
+            (float(self.active_bot.base_order_size) / float(initial_price)),
+            self.qty_precision,
+        )
+        if qty == 0:
+            raise QuantityTooLow("Margin short quantity is too low")
+
+        # transfer quantity is base order size (what we want to invest) + stop loss to cover losses
+        stop_loss_qty = (float(initial_price) * (1 + (self.active_bot.stop_loss / 100))) * qty
+        transfer_qty = round_numbers_ceiling(
+            (stop_loss_qty + float(self.active_bot.base_order_size)),
+            self.qty_precision,
+        )
         if balance == 0:
             try:
                 # transfer
                 self.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
-                    amount=self.active_bot.base_order_size,
+                    amount=transfer_qty,
                 )
             except BinanceAPIException as error:
                 if error.code == -11003:
                     raise MarginShortError("Isolated margin not available")
 
         asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-        # In the future, amount_to_borrow = base + base * (2.5)
         try:
             self.create_margin_loan(
                 asset=asset, symbol=self.active_bot.pair, amount=qty
             )
-            loan_details = self.get_margin_loan_details(asset=asset, isolatedSymbol=self.active_bot.pair)
+            loan_details = self.get_margin_loan_details(
+                asset=asset, isolatedSymbol=self.active_bot.pair
+            )
 
-            self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0]["timestamp"]
-            self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0]["principal"]
+            self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0][
+                "timestamp"
+            ]
+            self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0][
+                "principal"
+            ]
             self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
+            self.active_bot.deal.margin_short_base_order = qty
 
             # Estimate interest to add to total cost
             asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
             # This interest rate is much more accurate than any of the others
-            hourly_fees = self.signed_request(url=self.isolated_hourly_interest, payload={"assets": asset, "isIsolated": "TRUE"})
-            self.active_bot.deal.hourly_interest_rate = float(hourly_fees[0]["nextHourlyInterestRate"])
+            hourly_fees = self.signed_request(
+                url=self.isolated_hourly_interest,
+                payload={"assets": asset, "isIsolated": "TRUE"},
+            )
+            self.active_bot.deal.hourly_interest_rate = float(
+                hourly_fees[0]["nextHourlyInterestRate"]
+            )
 
         except BinanceErrors as error:
-            logging.error(error)
-            return
+            if error.args[1] == -3045:
+                msg = "Binance doesn't have any money to lend"
+                self.update_deal_logs(msg)
+                raise MarginShortError(msg)
+            
+            raise MarginShortError(error.args[0])
         except Exception as error:
             logging.error(error)
 
@@ -299,7 +329,7 @@ class MarginDeal(BaseDeal):
             #     self.get_remaining_quote_asset() > 0
             #     and float(self.isolated_balance[0]["baseAsset"]["free"]) > 0
             # ):
-                # transfer back any quote asset qty leftovers
+            # transfer back any quote asset qty leftovers
             print("Transfering base asset back to Spot")
             self.transfer_isolated_margin_to_spot(
                 asset=asset,
@@ -312,9 +342,7 @@ class MarginDeal(BaseDeal):
             # that can't be cleaned out completely, need to do it manually
             # this is ok, since this is not a hard requirement to complete the deal
             try:
-                self.disable_isolated_margin_account(
-                    symbol=self.active_bot.pair
-                )
+                self.disable_isolated_margin_account(symbol=self.active_bot.pair)
             except BinanceAPIException as error:
                 logging.error(error)
                 if error.code == -3051:
@@ -337,27 +365,14 @@ class MarginDeal(BaseDeal):
         """
         logging.info(f"Opening margin_short_base_order")
         initial_price = float(self.matching_engine(self.active_bot.pair, False))
-        # Given USDT amount we want to buy,
-        # how much can we buy?
-        qty = round_numbers_ceiling(
-            (float(self.active_bot.base_order_size) / float(initial_price)),
-            self.qty_precision,
-        )
-        # Prepare for margin sell
-        # Add markup on top of qty to cover for stop_losses
-        # and round up so that we don't have leftovers
-        qty = round_numbers_ceiling(
-            qty * (1 * self.active_bot.stop_loss), self.qty_precision
-        )
-        if qty == 0:
-            raise QuantityTooLow("Margin short quantity is too low")
 
         if self.db_collection.name == "bots":
-            self.init_margin_short(qty)
-            order_res = self.sell_margin_order(symbol=self.active_bot.pair, qty=qty)
+            self.init_margin_short(initial_price)
+            order_res = self.sell_margin_order(symbol=self.active_bot.pair, qty=self.active_bot.deal.margin_short_base_order)
         else:
             # Simulate Margin sell
-            order_res = self.simulate_margin_order(qty, "SELL")
+            # qty doesn't matter in paper bots
+            order_res = self.simulate_margin_order(1, "SELL")
 
         order_data = MarginOrderSchema(
             timestamp=order_res["transactTime"],
