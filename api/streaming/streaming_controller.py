@@ -64,7 +64,12 @@ class StreamingController:
         # Margin short
         if current_bot["strategy"] == "margin_short":
             margin_deal = MarginDeal(current_bot, db_collection=db_collection)
-            margin_deal.streaming_updates(close_price)
+            try:
+                margin_deal.streaming_updates(close_price)
+            except Exception as error:
+                logging.info(error)
+                margin_deal.update_deal_logs(error)
+                pass
             return
 
         else:
@@ -118,7 +123,7 @@ class StreamingController:
         # Add margin time to update_required signal to avoid restarting constantly
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
-            logging.info(
+            logging.debug(
                 f'Time elapsed for update_required: {time() - local_settings["update_required"]}'
             )
             if (time() - local_settings["update_required"]) > 20:
