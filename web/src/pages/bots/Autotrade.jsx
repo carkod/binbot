@@ -222,6 +222,7 @@ export default function Autotrade() {
                             handleChange={handleInput}
                             type="number"
                             infoText="Should be kept as small as possible as this will increase funds needed to start base_order_size"
+                            unit="%"
                           />
                         </Col>
                         <Col md="3">
