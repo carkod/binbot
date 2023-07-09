@@ -14,6 +14,7 @@ from tools.exceptions import OpenDealError
 from tools.handle_error import (
     NotEnoughFunds,
     QuantityTooLow,
+    IsolateBalanceError,
     handle_binance_errors,
     json_response,
     json_response_message,
@@ -193,6 +194,8 @@ class Bot(Account):
             except MarginShortError as error:
                 message = str("Unable to create margin_short bot: ".join(error.args))
                 return json_response_error(message)
+            except IsolateBalanceError as error:
+                return json_response_error(error.message)
             except Exception as error:
                 resp = json_response_error(f"Unable to activate bot: {error}")
                 return resp
