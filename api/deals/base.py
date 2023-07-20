@@ -28,8 +28,8 @@ class BaseDeal(OrderController):
     """
 
     def __init__(self, bot, db_collection):
+        super().__init__()
         self.active_bot = BotSchema.parse_obj(bot)
-        self.db = setup_db()
         self.db_collection = self.db[db_collection]
         self.decimal_precision = self.get_quote_asset_precision(self.active_bot.pair)
         # PRICE_FILTER decimals
@@ -43,7 +43,6 @@ class BaseDeal(OrderController):
             .as_tuple()
             .exponent
         )
-        super().__init__()
 
     def __repr__(self) -> str:
         """

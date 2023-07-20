@@ -46,6 +46,7 @@ class CreateDealController(BaseDeal):
     def __init__(self, bot, db_collection="paper_trading"):
         # Inherit from parent class
         super().__init__(bot, db_collection)
+        self.active_bot = BotSchema.parse_obj(bot)
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request

@@ -19,11 +19,12 @@ class AutotradeSettingsController:
         self, document_id: Literal["test_autotrade_settings", "settings"] = "settings"
     ):
         self.document_id = document_id
-        self.db = setup_db().research_controller
+        self.db = setup_db()
+        self.db_collection = self.db.research_controller
 
     def get_settings(self):
         try:
-            settings = self.db.find_one({"_id": self.document_id})
+            settings = self.db_collection.find_one({"_id": self.document_id})
             resp = json_response(
                 {"message": "Successfully retrieved settings", "data": settings}
             )
@@ -40,7 +41,7 @@ class AutotradeSettingsController:
             if "update_required" in settings:
                 settings["update_required"] = time()
 
-            self.db.update_one({"_id": self.document_id}, {"$set": settings})
+            self.db_collection.update_one({"_id": self.document_id}, {"$set": settings})
             resp = json_response_message("Successfully updated settings")
         except TypeError as e:
 

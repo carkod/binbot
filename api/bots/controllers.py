@@ -7,7 +7,6 @@ from fastapi.exceptions import RequestValidationError
 
 from account.account import Account
 from deals.margin import MarginShortError
-from db import setup_db
 from deals.controllers import CreateDealController
 from tools.enum_definitions import BinbotEnums
 from tools.exceptions import OpenDealError
@@ -27,7 +26,7 @@ from bots.schemas import BotSchema
 
 class Bot(Account):
     def __init__(self, collection_name="paper_trading"):
-        self.db = setup_db()
+        super().__init__()
         self.db_collection = self.db[collection_name]
     
     def _update_required(self):
@@ -155,11 +154,12 @@ class Bot(Account):
             resp = json_response(
                 {"message": "Successfully updated bot", "botId": str(botId)}
             )
-            self._update_required()
         except RequestValidationError as e:
             resp = json_response_error(f"Failed validation: {e}")
         except Exception as e:
             resp = json_response_error(f"Failed to create new bot: {e}")
+        
+        self._update_required()
         return resp
 
     def delete(self, bot_ids: List[str] = Query(...)):

@@ -146,7 +146,7 @@ export default function BotCard({
                 </Col>
               </Row>
 
-              {x.trailling === "true" && (
+              {x.trailling && (
                 <Row>
                   <Col md="7">
                     <p className="card-category">Trailling loss</p>

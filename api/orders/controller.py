@@ -9,7 +9,7 @@ class OrderController(Account):
     def __init__(self) -> None:
         # Always GTC and limit orders
         # limit/market orders will be decided by matching_engine
-        self.db = setup_db()
+        super().__init__()
         pass
 
     def sell_order(self, symbol, qty, price=None):

@@ -23,7 +23,6 @@ import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
 import {
-  bot,
   computeSingleBotProfit,
 } from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
@@ -81,9 +80,6 @@ class BotForm extends React.Component {
         },
         () => this.computeAvailableBalance()
       );
-    }
-    if (checkValue(this.props.match.params.symbol)) {
-      this.props.setBot(bot);
     }
   };
 
@@ -400,7 +396,7 @@ class BotForm extends React.Component {
     const validation = this.requiredinValidation();
     if (validation) {
       this.handleSubmit(e);
-      await this.props.activateBot(this.state.id);
+      this.props.activateBot(this.state.id);
       this.props.getBot(this.props.match.params.id);
     }
   };
@@ -412,7 +408,6 @@ class BotForm extends React.Component {
     });
   }
     
-
   handleToggleIndicator = (value) => {
     this.setState({ toggleIndicators: value });
   };

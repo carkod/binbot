@@ -4,8 +4,6 @@ from db import setup_db
 from deals.controllers import CreateDealController
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
-from pymongo import ReturnDocument
-from datetime import datetime
 from time import time
 from streaming.socket_client import SpotWebsocketStreamClient
 

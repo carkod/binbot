@@ -75,7 +75,7 @@ export default function* watchGetBotApi() {
 /**
  * Get single bot
  */
-export function* getBot(payload) {
+export function* getBotApi(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
 
@@ -88,7 +88,7 @@ export function* getBot(payload) {
 }
 
 export function* watchGetBot() {
-  yield takeLatest(GET_BOT, getBot);
+  yield takeLatest(GET_BOT, getBotApi);
 }
 
 /**
@@ -112,7 +112,7 @@ export function* watchCreateBot() {
 /**
  * Get single bot
  */
-export function* editBot({ data, id }) {
+export function* editBotApi({ data, id }) {
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
   try {
     const res = yield call(request, requestURL, "PUT", data);
@@ -123,7 +123,7 @@ export function* editBot({ data, id }) {
 }
 
 export function* watchEditBot() {
-  yield takeLatest(EDIT_BOT, editBot);
+  yield takeLatest(EDIT_BOT, editBotApi);
 }
 
 /**
