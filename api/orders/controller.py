@@ -134,6 +134,19 @@ class OrderController(Account):
             }
 
         data = self.signed_request(url=self.margin_order, method="POST", payload=payload)
+        if data["status"] != "FILLED":
+            delete_payload = {
+                "symbol": symbol,
+                "isIsolated": "TRUE",
+                "orderId": data["orderId"]
+            }
+            try:
+                self.signed_request(url=self.margin_order, method="DELETE", payload=delete_payload)                
+            except Exception as error:
+                return
+            
+            self.buy_margin_order(symbol, qty)
+            
         return data
 
     def sell_margin_order(self, symbol, qty, price=None):

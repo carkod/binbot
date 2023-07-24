@@ -45,7 +45,7 @@
       "name": "Python: Producer",
       "type": "python",
       "request": "launch",
-      "program": "binquant/producer/__init__.py",
+      "program": "binquant/producer.py",
       "console": "internalConsole",
       "justMyCode": true
     },
@@ -54,6 +54,14 @@
       "type": "python",
       "request": "launch",
       "program": "binquant/consumer/__init__.py",
+      "console": "internalConsole",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Test Producer",
+      "type": "python",
+      "request": "launch",
+      "program": "binquant/kafka_producer.py",
       "console": "internalConsole",
       "justMyCode": true
     },

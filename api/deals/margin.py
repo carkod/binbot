@@ -236,11 +236,12 @@ class MarginDeal(BaseDeal):
         total_base_qty = round_numbers_ceiling(current_price * required_qty_quote, self.qty_precision)
         qty = round_numbers_ceiling(float(query_loan["rows"][0]["principal"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]), self.qty_precision)
         try:
-            self.transfer_spot_to_isolated_margin(
-                asset=self.active_bot.balance_to_use,
-                symbol=self.active_bot.pair,
-                amount=total_base_qty,
-            )
+            # Commented out temporarily to retry with isolated funds first
+            # self.transfer_spot_to_isolated_margin(
+            #     asset=self.active_bot.balance_to_use,
+            #     symbol=self.active_bot.pair,
+            #     amount=total_base_qty,
+            # )
             res = self.buy_margin_order(
                 symbol=self.active_bot.pair, qty=qty, price=current_price
             )
@@ -323,7 +324,7 @@ class MarginDeal(BaseDeal):
                         pass
                 except BinanceErrors as error:
                     if error.code == -3041:
-                        self.retry_repayment(repay_amount, buy_back_fiat)
+                        self.retry_repayment(query_loan, buy_back_fiat)
                         pass
                 except Exception as error:
                     self.update_deal_logs(error)
@@ -345,24 +346,21 @@ class MarginDeal(BaseDeal):
                     self.active_bot.deal.margin_short_loan_timestamp = repay_details[
                         "timestamp"
                     ]
+                
+                self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
+                sell_back_qty = supress_notation(
+                    self.isolated_balance[0]["baseAsset"]["free"],
+                    self.qty_precision,
+                )
 
-                if buy_back_fiat:
+                if buy_back_fiat and float(sell_back_qty):
                     # Sell quote and get base asset (USDT)
                     # In theory, we should sell self.active_bot.base_order
                     # but this can be out of sync
-                    sell_back_qty = supress_notation(
-                        self.isolated_balance[0]["baseAsset"]["free"],
-                        self.qty_precision,
+                    
+                    res = self.sell_margin_order(
+                        symbol=self.active_bot.pair, qty=sell_back_qty
                     )
-                    try:
-                        res = self.sell_margin_order(
-                            symbol=self.active_bot.pair, qty=sell_back_qty
-                        )
-                    except BinanceErrors as error:
-                        if error.code == -2010:
-                            logging.error(error.message)
-                            pass
-
                     sell_back_order = MarginOrderSchema(
                         timestamp=res["transactTime"],
                         deal_type="take_profit",
@@ -400,7 +398,8 @@ class MarginDeal(BaseDeal):
             self.active_bot: BotSchema = BotSchema.parse_obj(bot)
 
             try:
-
+                # get new balance
+                self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
                 print(f"Transfering leftover isolated assets back to Spot")
                 if float(self.isolated_balance[0]["quoteAsset"]["free"]) != 0:
                     # transfer back to SPOT account
@@ -435,9 +434,7 @@ class MarginDeal(BaseDeal):
 
             completion_msg = f"{self.active_bot.pair} ISOLATED margin funds transferred back to SPOT."
             self.active_bot.errors.append(completion_msg)
-            
-        # Make sure bot is completed
-        self.active_bot.status = Status.completed
+
         bot = self.save_bot_streaming()
         self.active_bot = BotSchema.parse_obj(bot)
     
@@ -650,16 +647,12 @@ class MarginDeal(BaseDeal):
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
             try:
-                if qty == 0 or free <= qty:
-                    # Not enough funds probably because already bought before
-                    # correct using quote asset to buy base asset
-                    # we want base asset anyway now, because of long bot
-                    quote, base = self.get_remaining_assets()
-                    price = self.matching_engine(self.active_bot.pair, True, qty)
-                    qty = round_numbers(
-                        float(quote) / float(price), self.qty_precision
-                    )
-
+                quote, base = self.get_remaining_assets()
+                price = self.matching_engine(self.active_bot.pair, True, qty)
+                # No need to round?
+                # qty = round_numbers(
+                #     float(quote) / float(price), self.qty_precision
+                # )
                 # If still qty = 0, it means everything is clear
                 if qty == 0:
                     return
@@ -669,6 +662,9 @@ class MarginDeal(BaseDeal):
                 )
             except BinanceAPIException as error:
                 logging.error(error)
+                if error.code in (-2010, -1013):
+                    return
+            except BinanceErrors as error:
                 if error.code in (-2010, -1013):
                     return
             except Exception as error:
@@ -843,21 +839,22 @@ class MarginDeal(BaseDeal):
             ),
             None,
         )
-        tp_price = float(base_order.price) * 1 + (
+        # start from current stop_loss_price which is where the bot switched to long strategy
+        new_base_order_price = float(self.active_bot.deal.stop_loss_price)
+        tp_price = new_base_order_price * (1 + (
             float(self.active_bot.take_profit) / 100
-        )
+        ))
         if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = base_order.price - (
-                base_order.price * (float(self.active_bot.stop_loss) / 100)
+            stop_loss_price = new_base_order_price - (
+                new_base_order_price * (float(self.active_bot.stop_loss) / 100)
             )
         else:
             stop_loss_price = 0
 
         self.active_bot.deal = DealSchema(
             buy_timestamp=base_order.timestamp,
-            buy_price=base_order.price,
+            buy_price=new_base_order_price,
             buy_total_qty=base_order.qty,
-            current_price=base_order.price,
             take_profit_price=tp_price,
             stop_loss_price=stop_loss_price,
         )
@@ -872,6 +869,9 @@ class MarginDeal(BaseDeal):
         return self.active_bot
 
     def update_trailling_profit(self, close_price):
+        # Fix potential bugs in bot updates
+        if self.active_bot.deal.take_profit_price == 0:
+            self.margin_short_base_order()
         # Direction: downward trend (short)
         # Breaking trailling_stop_loss
         if self.active_bot.deal.trailling_stop_loss_price == 0:

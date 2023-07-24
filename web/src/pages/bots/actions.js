@@ -50,6 +50,7 @@ export const ARCHIVE_BOT_SUCCESS = "ARCHIVE_BOT_SUCCESS";
 export const ARCHIVE_BOT_ERROR = "ARCHIVE_BOT_ERROR";
 
 export const SET_BOT = "SET_BOT";
+export const RESET_BOT = "RESET_BOT";
 
 // Autotrade settings
 export const GET_SETTINGS = "GET_SETTINGS";
@@ -374,7 +375,6 @@ export function deactivateBotFailed(error) {
 
 /**
  * Get symbols
- *
  * @return {object} An action object with a type of BOT
  */
 export function getSymbols() {
@@ -524,5 +524,15 @@ export function editSettingsSucceeded(payload) {
 export function editSettingsFailed() {
   return {
     type: EDIT_SETTINGS_ERROR,
+  };
+}
+
+/**
+ * Clear out form when visiting /bots/new
+ * @return {object} An action object with a type of BOT
+ */
+export function resetBot() {
+  return {
+    type: RESET_BOT,
   };
 }

@@ -1,4 +1,4 @@
-import { call, put, takeLatest } from "redux-saga/effects";
+import { call, put, take, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
 import request, { buildBackUrl } from "../../request";
 import {
@@ -42,6 +42,7 @@ import {
   loadCandlestickFailed,
   loadCandlestickSucceeded,
   LOAD_CANDLESTICK,
+  EDIT_BOT_SUCCESS,
 } from "./actions";
 
 const baseUrl = buildBackUrl();
@@ -198,6 +199,7 @@ export function* activateBot(payload) {
   const requestURL = `${process.env.REACT_APP_ACTIVATE_BOT}/${id}`;
   try {
     yield put(loading(true));
+    yield take(EDIT_BOT_SUCCESS);
     const res = yield call(request, requestURL);
     yield put(activateBotSucceeded(res));
   } catch (err) {

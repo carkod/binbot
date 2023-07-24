@@ -118,18 +118,6 @@ class StreamingController:
         local_settings = self.streaming_db.research_controller.find_one(
             {"_id": "settings"}
         )
-        # Add margin time to update_required signal to avoid restarting constantly
-        # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
-        if local_settings["update_required"]:
-            logging.debug(
-                f'Time elapsed for update_required: {time() - local_settings["update_required"]}'
-            )
-            if (time() - local_settings["update_required"]) > 20:
-                self.streaming_db.research_controller.update_one(
-                    {"_id": "settings"}, {"$set": {"update_required": time()}}
-                )
-                logging.info("Restarting streaming_controller")
-                self.get_klines()
 
         if "k" in result:
             close_price = result["k"]["c"]
@@ -157,7 +145,20 @@ class StreamingController:
                     symbol,
                     "paper_trading",
                 )
-            return
+        
+        # Add margin time to update_required signal to avoid restarting constantly
+        # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
+        if local_settings["update_required"]:
+            logging.debug(
+                f'Time elapsed for update_required: {time() - local_settings["update_required"]}'
+            )
+            if (time() - local_settings["update_required"]) > 20:
+                self.streaming_db.research_controller.update_one(
+                    {"_id": "settings"}, {"$set": {"update_required": time()}}
+                )
+                logging.info("Restarting streaming_controller")
+                self.get_klines()
+        return
 
     def get_klines(self):
         interval = self.settings["candlestick_interval"]

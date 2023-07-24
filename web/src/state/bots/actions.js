@@ -98,6 +98,9 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
         : realTimeCurrPrice || bot.deal.current_price;
       const buyPrice = bot.deal.buy_price;
       let profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
+      if (currentPrice === 0) {
+        profitChange = 0;
+      }
       return +profitChange.toFixed(2);
     } else if (bot.deal.margin_short_sell_price > 0) {
       // Completed margin short

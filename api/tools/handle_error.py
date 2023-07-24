@@ -108,12 +108,12 @@ def handle_binance_errors(response: Response) -> str | None:
 
     # Binbot errors
     if content and "error" in content and content["error"] == 1:
-        raise BinanceErrors(content["message"])
+        raise BinanceErrors(content["message"], content["error"])
 
     # Binance errors
     if content and "code" in content:
         if content["code"] == -1013:
-            raise QuantityTooLow()
+            raise QuantityTooLow(content["message"], content["error"])
         if content["code"] == 200:
             return content
         if (
@@ -123,7 +123,7 @@ def handle_binance_errors(response: Response) -> str | None:
         ):
             # Not enough funds. Ignore, send to bot errors
             # Need to be dealt with at higher levels
-            raise NotEnoughFunds(content["msg"])
+            raise NotEnoughFunds(content["msg"], content["code"])
 
         if content["code"] == -1003:
             # Too many requests, most likely exceeded API rate limits
@@ -132,7 +132,7 @@ def handle_binance_errors(response: Response) -> str | None:
             sleep(60)
 
         if content["code"] == -1121:
-            raise InvalidSymbol(f'Binance error: {content["msg"]}')
+            raise InvalidSymbol(f'Binance error: {content["msg"]}', content["msg"])
     
     return content
 

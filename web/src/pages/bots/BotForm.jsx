@@ -37,6 +37,7 @@ import {
   getSymbolInfo,
   getSymbols,
   setBot,
+  resetBot,
 } from "./actions";
 import { convertGBP, getBaseAsset, getQuoteAsset } from "./requests";
 import MainTab from "../../components/MainTab";
@@ -72,6 +73,8 @@ class BotForm extends React.Component {
       this.props.setBot({ formIsValid: true });
       this.props.getBot(this.props.match.params.id);
       this.computeAvailableBalance();
+    } else {
+      this.props.resetBot()
     }
     if (!checkValue(this.props.match.params?.symbol)) {
       this.props.setBot(
@@ -392,12 +395,12 @@ class BotForm extends React.Component {
     this.computeAvailableBalance();
   };
 
-  handleActivation = async (e) => {
+  handleActivation = (e) => {
     const validation = this.requiredinValidation();
     if (validation) {
       this.handleSubmit(e);
       this.props.activateBot(this.state.id);
-      this.props.getBot(this.props.match.params.id);
+      this.props.getBot(this.props.match.params.id)
     }
   };
 
@@ -789,4 +792,5 @@ export default connect(mapStateToProps, {
   activateBot,
   deactivateBot,
   setBot,
+  resetBot,
 })(BotForm);
