@@ -133,7 +133,7 @@ class BinanceApi:
         info = self.signed_request(url=self.isolated_account_url, payload=payload)
         assets = info["assets"]
         if len(assets) == 0:
-            raise IsolateBalanceError("Hit symbol 24hr restriction or not available at the moment")
+            raise IsolateBalanceError("Hit symbol 24hr restriction or not available (requires transfer in)")
         return assets
 
 class BinbotApi(BinanceApi):

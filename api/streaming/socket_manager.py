@@ -59,18 +59,7 @@ class BinanceSocketManager(threading.Thread):
     def read_data(self):
         data = ""
         while True:
-            try:
-                op_code, frame = self.ws.recv_data_frame(True)
-            except WebSocketException as e:
-                if isinstance(e, WebSocketConnectionClosedException):
-                    self.logger.error("Lost websocket connection")
-                else:
-                    self.logger.error(f"Websocket exception: {e}")
-
-            except Exception as e:
-                self.logger.error(f"Exception in read_data: {e}")
-                raise e
-
+            op_code, frame = self.ws.recv_data_frame(True)
             if op_code == ABNF.OPCODE_CLOSE:
                 self.logger.warning(
                     "CLOSE frame received, closing websocket connection"

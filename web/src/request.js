@@ -118,8 +118,10 @@ export async function requestForm(
     mode: "cors",
     cache: "no-cache",
     body: formData,
+    headers: {
+      "Authorization": `Bearer ${getToken()}`,
+    }
   };
-  options.headers.Authorization = `Bearer ${getToken()}`
 
   const baseUrl = buildBackUrl();
   url = url instanceof URL ? url : baseUrl + url;
