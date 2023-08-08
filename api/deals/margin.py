@@ -595,7 +595,7 @@ class MarginDeal(BaseDeal):
                 # assets back to SPOT account, so this means executing stop loss
                 # and creating a new long bot, this way we can also keep the old bot
                 # with the corresponding data for profit/loss calculation
-                self.switch_to_long_bot()
+                self.switch_to_long_bot(price)
             else:
                 self.terminate_margin_short()
 
@@ -835,7 +835,7 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def switch_to_long_bot(self):
+    def switch_to_long_bot(self, current_price):
         """
         Switch to long strategy.
         Doing some parts of open_deal from scratch
@@ -858,7 +858,7 @@ class MarginDeal(BaseDeal):
             None,
         )
         # start from current stop_loss_price which is where the bot switched to long strategy
-        new_base_order_price = float(self.active_bot.deal.stop_loss_price)
+        new_base_order_price = current_price
         tp_price = new_base_order_price * (1 + (
             float(self.active_bot.take_profit) / 100
         ))
