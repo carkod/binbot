@@ -51,7 +51,7 @@ class StreamingController:
         close_price: str,
         open_price: str,
         symbol: str,
-        db_collection,
+        db_collection_name,
     ):
         """
         Processes the deal market websocket price updates
@@ -61,7 +61,7 @@ class StreamingController:
         """
         # Margin short
         if current_bot["strategy"] == "margin_short":
-            margin_deal = MarginDeal(current_bot, db_collection=db_collection)
+            margin_deal = MarginDeal(current_bot, db_collection_name=db_collection_name)
             try:
                 margin_deal.streaming_updates(close_price)
             except Exception as error:
@@ -72,20 +72,20 @@ class StreamingController:
 
         else:
             # Short strategy
-            if (
-                "short_buy_price" in current_bot
-                and float(current_bot["short_buy_price"]) > 0
-                and float(current_bot["short_buy_price"]) >= float(close_price)
-            ):
-                # If hit short_buy_price, resume long strategy by resetting short_buy_price
-                CreateDealController(
-                    current_bot, db_collection=db_collection
-                ).execute_short_buy()
+            # if (
+            #     "short_buy_price" in current_bot
+            #     and float(current_bot["short_buy_price"]) > 0
+            #     and float(current_bot["short_buy_price"]) >= float(close_price)
+            # ):
+            #     # If hit short_buy_price, resume long strategy by resetting short_buy_price
+            #     CreateDealController(
+            #         current_bot, db_collection=db_collection
+            #     ).execute_short_buy()
 
             # Long strategy starts
             if current_bot["strategy"] == "long":
                 SpotLongDeal(
-                    current_bot, db_collection=db_collection
+                    current_bot, db_collection_name=db_collection_name
                 ).streaming_updates(close_price, open_price)
                 self._update_required()
 

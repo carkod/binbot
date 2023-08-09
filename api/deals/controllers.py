@@ -1,4 +1,3 @@
-import numpy
 import requests
 
 from bots.schemas import BotSchema
@@ -8,18 +7,14 @@ from deals.models import BinanceOrderModel
 from deals.schema import DealSchema, OrderSchema
 from pydantic import ValidationError
 from pymongo import ReturnDocument
-from requests.exceptions import HTTPError
-from scipy.stats import linregress
 from tools.enum_definitions import Status
 from tools.exceptions import (
     OpenDealError,
     ShortStrategyError,
     TakeProfitError,
-    TraillingProfitError,
 )
 from tools.handle_error import (
     NotEnoughFunds,
-    QuantityTooLow,
     encode_json,
     handle_binance_errors,
 )
@@ -83,20 +78,15 @@ class CreateDealController(BaseDeal):
 
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
-        initial_price = float(self.matching_engine(pair, True))
+        price = float(self.matching_engine(pair, True))
         qty = round_numbers(
-            (float(self.active_bot.base_order_size) / float(initial_price)),
+            (float(self.active_bot.base_order_size) / float(price)),
             self.qty_precision,
         )
-        price = float(self.matching_engine(pair, True, qty))
-
         # setup stop_loss_price
         stop_loss_price = 0
         if float(self.active_bot.stop_loss) > 0:
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
-
-        if not price:
-            price = initial_price
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(
@@ -409,7 +399,7 @@ class CreateDealController(BaseDeal):
         if not base_order_deal:
             if self.active_bot.strategy == "margin_short":
                 self.active_bot = MarginDeal(
-                    bot=self.active_bot, db_collection=self.db_collection.name
+                    bot=self.active_bot, db_collection_name=self.db_collection.name
                 ).margin_short_base_order()
             else:
                 bot = self.base_order()
@@ -428,7 +418,7 @@ class CreateDealController(BaseDeal):
         ):
             if self.active_bot.strategy == "margin_short":
                 self.active_bot = MarginDeal(
-                    bot=self.active_bot, db_collection=self.db_collection.name
+                    bot=self.active_bot, db_collection_name=self.db_collection.name
                 ).set_margin_short_stop_loss()
             else:
                 buy_price = float(self.active_bot.deal.buy_price)
@@ -446,7 +436,7 @@ class CreateDealController(BaseDeal):
             and self.active_bot.strategy == "margin_short"
         ):
             self.active_bot = MarginDeal(
-                bot=self.active_bot, db_collection=self.db_collection.name
+                bot=self.active_bot, db_collection_name=self.db_collection.name
             ).set_margin_take_profit()
 
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade

@@ -1,4 +1,3 @@
-from ast import Tuple
 import logging
 
 from time import time
@@ -18,8 +17,7 @@ from tools.handle_error import QuantityTooLow, IsolateBalanceError, BinanceError
 from tools.round_numbers import (
     round_numbers,
     supress_notation,
-    round_numbers_ceiling,
-    supress_trailling
+    round_numbers_ceiling
 )
 
 class MarginShortError(Exception):
@@ -27,9 +25,9 @@ class MarginShortError(Exception):
 
 
 class MarginDeal(BaseDeal):
-    def __init__(self, bot, db_collection: str) -> None:
+    def __init__(self, bot, db_collection_name: str) -> None:
         # Inherit from parent class
-        super().__init__(bot, db_collection)
+        super().__init__(bot, db_collection_name)
         try:
             self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
         except IsolateBalanceError as error:
@@ -190,7 +188,10 @@ class MarginDeal(BaseDeal):
             self.qty_precision,
         )
 
-        if balance == 0:
+        # For leftover values
+        # or transfers to activate isolated pair
+        # sometimes to activate an isolated pair we need to transfer sth
+        if balance <= 1:
             try:
                 # transfer
                 self.transfer_spot_to_isolated_margin(
@@ -199,6 +200,8 @@ class MarginDeal(BaseDeal):
                     amount=transfer_qty,
                 )
             except BinanceAPIException as error:
+                if error.code == -3041:
+                    raise MarginShortError("Spot balance is not enough")
                 if error.code == -11003:
                     raise MarginShortError("Isolated margin not available")
 
@@ -254,12 +257,6 @@ class MarginDeal(BaseDeal):
         total_base_qty = round_numbers_ceiling(current_price * required_qty_quote, self.qty_precision)
         qty = round_numbers_ceiling(float(query_loan["rows"][0]["principal"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]), self.qty_precision)
         try:
-            # Commented out temporarily to retry with isolated funds first
-            # self.transfer_spot_to_isolated_margin(
-            #     asset=self.active_bot.balance_to_use,
-            #     symbol=self.active_bot.pair,
-            #     amount=total_base_qty,
-            # )
             res = self.buy_margin_order(
                 symbol=self.active_bot.pair, qty=qty, price=current_price
             )
@@ -288,7 +285,16 @@ class MarginDeal(BaseDeal):
             self.terminate_margin_short(buy_back_fiat)
         except Exception as error:
             print(error)
-            self._append_errors("Not enough SPOT balance to repay loan, need to liquidate manually")
+            try:
+                self.transfer_spot_to_isolated_margin(
+                    asset=self.active_bot.balance_to_use,
+                    symbol=self.active_bot.pair,
+                    amount=total_base_qty,
+                )
+                self.retry_repayment(query_loan, buy_back_fiat)
+            except Exception as error:
+                print(error)
+                self._append_errors("Not enough SPOT balance to repay loan, need to liquidate manually")
             return
 
 

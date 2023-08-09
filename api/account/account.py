@@ -12,6 +12,7 @@ from requests_cache import CachedSession, MongoCache
 from pymongo import MongoClient
 import os
 import pandas
+
 class Account(BinbotApi):
     def __init__(self):
         self.db = setup_db()

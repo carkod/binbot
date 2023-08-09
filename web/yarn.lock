@@ -3134,10 +3134,10 @@ binary-search-bounds@^2.0.4:
   resolved "https://registry.yarnpkg.com/binary-search-bounds/-/binary-search-bounds-2.0.5.tgz#125e5bd399882f71e6660d4bf1186384e989fba7"
   integrity sha512-H0ea4Fd3lS1+sTEB2TgcLoK21lLhwEJzlQv3IN47pJS976Gx4zoWe0ak3q+uYh60ppQxg9F16Ri4tS1sfD4+jA==
 
-binbot-charts@^0.3.1:
-  version "0.3.2"
-  resolved "https://registry.yarnpkg.com/binbot-charts/-/binbot-charts-0.3.2.tgz#c93e17e2ee048e2bf1a8a9eb9a327afd5f12553a"
-  integrity sha512-WZnIOPfBydSNp0MlAtHNUYjcMadVE+qIjd+VcZ9Z39r2NhCr02KHv/4WPvL13srjcers6T6aebMMPxtql0t4Gw==
+binbot-charts@^0.4.1:
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/binbot-charts/-/binbot-charts-0.4.1.tgz#5dee409e47ed697992ff7c9b4a3135225ab0f219"
+  integrity sha512-DAUqNxuhvZ7oDD+gz3MtcsBfNpHLgBhz1wxsI+K70mXWMeaTxMdZ4sr2Inop1aRRX0eiJxCGj6Pifzq3UdUqBQ==
   dependencies:
     react "^17.0.1"
     react-dom "^17.0.1"
