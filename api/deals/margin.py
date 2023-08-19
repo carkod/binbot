@@ -311,7 +311,7 @@ class MarginDeal(BaseDeal):
         2. Exchange asset to quote asset (USDT)
         3. Transfer back to spot
         """
-        logging.info("Terminating margin_short tasks for real bots trading")
+        logging.info(f"Terminating margin_short {self.active_bot.pair} for real bots trading")
 
         # Check margin account balance first
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])

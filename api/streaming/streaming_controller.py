@@ -1,7 +1,6 @@
 import json
 import logging
 from db import setup_db
-from deals.controllers import CreateDealController
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from time import time
@@ -44,7 +43,6 @@ class StreamingController:
         )
         return
 
-
     def execute_strategies(
         self,
         current_bot,
@@ -71,16 +69,6 @@ class StreamingController:
             return
 
         else:
-            # Short strategy
-            # if (
-            #     "short_buy_price" in current_bot
-            #     and float(current_bot["short_buy_price"]) > 0
-            #     and float(current_bot["short_buy_price"]) >= float(close_price)
-            # ):
-            #     # If hit short_buy_price, resume long strategy by resetting short_buy_price
-            #     CreateDealController(
-            #         current_bot, db_collection=db_collection
-            #     ).execute_short_buy()
 
             # Long strategy starts
             if current_bot["strategy"] == "long":

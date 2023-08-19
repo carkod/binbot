@@ -5,16 +5,13 @@ from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
 from deals.schema import DealSchema, OrderSchema
-from pydantic import ValidationError
 from pymongo import ReturnDocument
 from tools.enum_definitions import Status
 from tools.exceptions import (
-    OpenDealError,
     ShortStrategyError,
     TakeProfitError,
 )
 from tools.handle_error import (
-    NotEnoughFunds,
     encode_json,
     handle_binance_errors,
 )
@@ -322,50 +319,6 @@ class CreateDealController(BaseDeal):
                 return
         else:
             self.update_deal_logs("Error: Bot does not contain a base order deal")
-
-    
-
-
-    def execute_short_buy(self):
-        """
-        Short strategy, buy after hitting a certain short_buy_price
-
-        1. Set parameters for short_buy
-        2. Open new deal as usual
-        """
-        self.active_bot.short_buy_price = 0
-        self.active_bot.strategy = "long"
-
-        try:
-            self.open_deal()
-            self.update_deal_logs("Successfully activated bot!")
-
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")
-
-            self.db_collection.update_one(
-                {"id": self.active_bot.id},
-                {"$set": bot},
-            )
-
-        except ValidationError as error:
-            self.update_deal_logs(f"Short buy error: {error}")
-            return
-        except (TypeError, AttributeError) as error:
-            message = str(";".join(error.args))
-            self.update_deal_logs(f"Short buy error: {message}")
-            return
-        except OpenDealError as error:
-            message = str(";".join(error.args))
-            self.update_deal_logs(f"Short buy error: {message}")
-        except NotEnoughFunds as e:
-            message = str(";".join(e.args))
-            self.update_deal_logs(f"Short buy error: {message}")
-        except Exception as error:
-            self.update_deal_logs(f"Short buy error: {error}")
-            return
-        return
 
 
     def open_deal(self):

@@ -123,7 +123,6 @@ export default function Autotrade() {
                         value={settingsProps.autotradeSettings.strategy}
                       >
                         <option value="long">Long</option>
-                        <option value="short">Short</option>
                         <option value="margin_long">Margin long</option>
                         <option value="margin_short">Margin short</option>
                       </Form.Select>
