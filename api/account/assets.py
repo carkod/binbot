@@ -5,6 +5,8 @@ import pandas as pd
 from account.account import Account
 from account.schemas import BalanceSchema
 from bson.objectid import ObjectId
+from charts.models import CandlestickParams
+from charts.models import Candlestick
 from db import setup_db
 from tools.handle_error import InvalidSymbol, json_response, json_response_message
 from tools.round_numbers import round_numbers
@@ -87,6 +89,10 @@ class Assets(Account):
                     print(b["asset"])
                     # Some coins like NFT are air dropped and cannot be traded
                     break
+
+        isolated_balance_total = self.get_isolated_balance_total()
+        rate = self.get_ticker_price('BTCUSDT')
+        total_usdt += float(isolated_balance_total) * float(rate)
 
         total_balance = {
             "time": current_time.strftime("%Y-%m-%d"),
@@ -238,3 +244,66 @@ class Assets(Account):
                 "data": gainers_losers_list,
             }
         )
+
+    async def get_balance_series(self, end_date, start_date):
+
+        params = {}
+
+        if start_date:
+            start_date = start_date * 1000
+            try:
+                float(start_date)
+            except ValueError:
+                resp = json_response(
+                    {"message": f"start_date must be a timestamp float", "data": []}
+                )
+                return resp
+
+            obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
+            gte_tp_id = ObjectId.from_datetime(obj_start_date)
+            try:
+                params["_id"]["$gte"] = gte_tp_id
+            except KeyError:
+                params["_id"] = {"$gte": gte_tp_id}
+
+        
+        if end_date:
+            end_date = end_date * 1000
+            try:
+                float(end_date)
+            except ValueError as e:
+                resp = json_response(
+                    {"message": f"end_date must be a timestamp float: {e}", "data": []}
+                )
+                return resp
+
+            obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
+            lte_tp_id = ObjectId.from_datetime(obj_end_date)
+            params["_id"]["$lte"] = lte_tp_id
+
+        balance_series = list(
+            self.db.balances.find(params).sort(
+                [("_id", -1)]
+            )
+        )
+        balances_series_diff = []
+        balances_series_dates = []
+        for index, item in enumerate(balance_series):
+            diff = (balance_series[index - 1]["estimated_total_usdt"] - item["estimated_total_usdt"])
+            percentage = round_numbers(diff / balance_series[index - 1]["estimated_total_usdt"], 4)
+            balances_series_diff.append(percentage)
+            balances_series_dates.append()
+
+        params = CandlestickParams(
+            limit=31,
+            symbol="BTCUSDT",
+            interval="1d",
+        )
+
+        cs = Candlestick()
+        df, dates = cs.get_klines(params)
+        trace = cs.candlestick_trace(df, dates)
+        # btc_candlestick = btc_candlestick_res.json()
+
+        resp = json_response({"message": "Sucessfully rendered benchmark data.", "data": balance_series})
+        return resp
