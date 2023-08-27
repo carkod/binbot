@@ -17,7 +17,7 @@ import {
   balanceRawReducer,
   estimateReducer,
 } from "./state/balances/reducer";
-import { gainersLosersReducer } from "./pages/dashboard/reducer";
+import { gainersLosersReducer, btcBenchmarkReducer } from "./pages/dashboard/reducer";
 
 const rootReducer = combineReducers({
   registrationReducer,
@@ -35,5 +35,6 @@ const rootReducer = combineReducers({
   usersReducer,
   testBotsReducer,
   gainersLosersReducer,
+  btcBenchmarkReducer,
 });
 export default rootReducer;

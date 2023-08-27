@@ -28,16 +28,7 @@ class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection_name: str) -> None:
         # Inherit from parent class
         super().__init__(bot, db_collection_name)
-        try:
-            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-        except IsolateBalanceError as error:
-            if error.code == -11001:# Transfer to activate Isolatd balance
-                self.transfer_spot_to_isolated_margin(
-                    asset=self.active_bot.balance_to_use,
-                    symbol=self.active_bot.pair,
-                    amount="1",
-                )
-                pass
+        self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
 
     def _append_errors(self, error):
         """
@@ -160,7 +151,16 @@ class MarginDeal(BaseDeal):
         # Check margin account balance first
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
         # always enable, it doesn't cause errors
-        self.enable_isolated_margin_account(symbol=self.active_bot.pair)
+        try:
+            self.enable_isolated_margin_account(symbol=self.active_bot.pair)
+        except BinanceErrors as error:
+            if error.code == -11001:
+                # Isolated margin account needs to be activated with a transfer
+                self.transfer_spot_to_isolated_margin(
+                    asset=self.active_bot.balance_to_use,
+                    symbol=self.active_bot.pair,
+                    amount="1",
+                )
 
         # Given USDT amount we want to buy,
         # how much can we buy?

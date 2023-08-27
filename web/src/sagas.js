@@ -16,7 +16,7 @@ import watchGetBotApi, {
   watchGetCandlestick,
   watchGetSettingsApi,
 } from "./pages/bots/saga";
-import { watchGetGainersLosers } from "./pages/dashboard/saga";
+import { watchGetGainersLosers, watchBenchmarksApi } from "./pages/dashboard/saga";
 import watchGetTestBotsApi, {
   watchActivateTestBotApi,
   watchCloseTestBotApi,
@@ -82,5 +82,6 @@ export default function* rootSaga() {
     watchGetTestAutotradeSettingsApi(),
     watchEditTestAutotradeSettings(),
     watchGetGainersLosers(),
+    watchBenchmarksApi(),
   ]);
 }

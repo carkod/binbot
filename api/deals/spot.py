@@ -94,7 +94,7 @@ class SpotLongDeal(BaseDeal):
             timestamp=res["transactTime"],
             deal_type="stop_loss",
             order_id=res["orderId"],
-            pair=res[""],
+            pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
             price=res["price"],

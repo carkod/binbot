@@ -1,6 +1,7 @@
 import React from "react";
 import Plot from "react-plotly.js";
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "reactstrap";
+import { listCssColors } from "../../validations";
 
 function LineChart({ data, width = "100%", height = "100%" }) {
   const layout = {
@@ -13,12 +14,10 @@ function LineChart({ data, width = "100%", height = "100%" }) {
       b: 60,
       l: 35,
     },
-    showlegend: false,
+    showlegend: true,
     xaxis: {
       autorange: true,
-      title: "Date",
       type: "date",
-      tickformat: "%d/%m",
     },
     yaxis: {
       type: "linear",
@@ -29,7 +28,24 @@ function LineChart({ data, width = "100%", height = "100%" }) {
   return (
     <>
       <Plot
-        data={data}
+        data={[
+          {
+            x: data.dates,
+            y: data.btc,
+            type: 'scatter',
+            mode: 'lines',
+            marker: {color: listCssColors[7]},
+            name: 'BTC prices',
+          },
+          {
+            x: data.dates,
+            y: data.usdt,
+            type: 'scatter',
+            mode: 'lines',
+            marker: {color: listCssColors[4]},
+            name: "USDT balance"
+          }
+        ]}
         layout={layout}
         useResizeHandler={true}
         style={{ width: width, height: height }}
@@ -45,7 +61,11 @@ export function PortfolioBenchmarkChart({ data, legend }) {
         <CardTitle tag="h5">Portfolio benchmarking</CardTitle>
         <p className="card-category">Compare Portfolio against BTC and USDT</p>
       </CardHeader>
-      <CardBody>{data && <LineChart data={data} />}</CardBody>
+      {data && 
+        <CardBody>
+          <LineChart data={data} />
+        </CardBody>
+      }
       <CardFooter>
         <div className="legend">
           {legend &&

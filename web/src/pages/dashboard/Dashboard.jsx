@@ -9,7 +9,7 @@ import { checkValue, listCssColors, roundDecimals } from "../../validations";
 import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
-import { getGainersLosers } from "./saga";
+import { getGainersLosers, getBenchmarkData, getBenchmarkUsdt } from "./saga";
 import moment from "moment";
 
 class Dashboard extends React.Component {
@@ -50,7 +50,7 @@ class Dashboard extends React.Component {
     this.props.getBalanceRaw();
     this.props.getEstimate();
     this.props.getGainersLosers();
-    // this.getBtcprices();
+    this.props.getBenchmarkData();
   };
 
   componentDidUpdate = (p, s) => {
@@ -315,14 +315,16 @@ class Dashboard extends React.Component {
                     <GainersLosers data={this.props.gainersLosersData} />
                   )}
                 </Col>
+                
                 <Col lg="6" md="12">
-                  {this.state.lineChartData && (
+                  {this.props.benchmarkData && (
                     <PortfolioBenchmarkChart
-                      data={this.state.lineChartData}
+                      data={this.props.benchmarkData}
                       legend={this.state.lineChartLegend}
                     />
                   )}
                 </Col>
+
               </Row>
               <Row>
                 <Col md="12">
@@ -353,12 +355,14 @@ const mapStateToProps = (s) => {
   const { data: balanceEstimate } = s.estimateReducer;
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
+  const { data: benchmarkData } = s.btcBenchmarkReducer;
 
   return {
     loading: loading,
     assetList: balance_raw,
     balanceEstimate: balanceEstimate,
     gainersLosersData: gainersLosersData,
+    benchmarkData: benchmarkData,
   };
 };
 
@@ -367,4 +371,6 @@ export default connect(mapStateToProps, {
   getEstimate,
   getBalanceRaw,
   getGainersLosers,
+  getBenchmarkData,
+  getBenchmarkUsdt,
 })(Dashboard);

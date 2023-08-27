@@ -91,7 +91,7 @@ class Assets(Account):
                     break
 
         isolated_balance_total = self.get_isolated_balance_total()
-        rate = self.get_ticker_price('BTCUSDT')
+        rate = self.get_ticker_price("BTCUSDT")
         total_usdt += float(isolated_balance_total) * float(rate)
 
         total_balance = {
@@ -121,8 +121,10 @@ class Assets(Account):
         balances_response = self.get_raw_balance()
         # Isolated m
         isolated_margin = self.signed_request(url=self.isolated_account_url)
-        get_usdt_btc_rate = self.ticker(symbol=f'BTC{fiat}', json=False)
-        total_isolated_margin = float(isolated_margin["totalNetAssetOfBtc"]) * float(get_usdt_btc_rate["price"])
+        get_usdt_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
+        total_isolated_margin = float(isolated_margin["totalNetAssetOfBtc"]) * float(
+            get_usdt_btc_rate["price"]
+        )
 
         balances = json.loads(balances_response.body)
         total_fiat = 0
@@ -150,7 +152,7 @@ class Assets(Account):
             "total_fiat": total_fiat + total_isolated_margin,
             "total_isolated_margin": total_isolated_margin,
             "fiat_left": left_to_allocate,
-            "asset": fiat
+            "asset": fiat,
         }
         if balance:
             resp = json_response({"data": balance})
@@ -170,7 +172,6 @@ class Assets(Account):
         )
         balances = []
         for datapoint in snapshot_account_data["snapshotVos"]:
-
             fiat_rate = self.get_ticker_price(f"BTC{fiat}")
             total_fiat = float(datapoint["data"]["totalAssetOfBtc"]) * float(fiat_rate)
             balance = {
@@ -245,7 +246,9 @@ class Assets(Account):
             }
         )
 
-    def match_series_dates(self, dates, balance_date, i:int=0, count=0) -> int | None:
+    def match_series_dates(
+        self, dates, balance_date, i: int = 0, count=0
+    ) -> int | None:
         if i == len(dates):
             return None
 
@@ -261,12 +264,10 @@ class Assets(Account):
             i += 1
             count += 1
             self.match_series_dates(dates, balance_date, i, count)
-        
+
         return i
 
-
     async def get_balance_series(self, end_date, start_date):
-
         params = {}
 
         if start_date:
@@ -286,7 +287,6 @@ class Assets(Account):
             except KeyError:
                 params["_id"] = {"$gte": gte_tp_id}
 
-        
         if end_date:
             end_date = end_date * 1000
             try:
@@ -301,11 +301,7 @@ class Assets(Account):
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
             params["_id"]["$lte"] = lte_tp_id
 
-        balance_series = list(
-            self.db.balances.find(params).sort(
-                [("_id", -1)]
-            )
-        )
+        balance_series = list(self.db.balances.find(params).sort([("_id", -1)]))
 
         # btc candlestick data series
         params = CandlestickParams(
@@ -318,30 +314,44 @@ class Assets(Account):
         df, dates = cs.get_klines(params)
         trace = cs.candlestick_trace(df, dates)
 
-
         balances_series_diff = []
         balances_series_dates = []
         balance_btc_diff = []
-        balance_series.sort(key=lambda item: item["_id"],reverse=False)
+        balance_series.sort(key=lambda item: item["_id"], reverse=False)
 
         for index, item in enumerate(balance_series):
-            diff = (balance_series[index - 1]["estimated_total_usdt"] - item["estimated_total_usdt"])
-            percentage = round_numbers(diff / balance_series[index - 1]["estimated_total_usdt"], 4)
+            diff = (
+                balance_series[index - 1]["estimated_total_usdt"]
+                - item["estimated_total_usdt"]
+            )
+            percentage = round_numbers(
+                diff / balance_series[index - 1]["estimated_total_usdt"], 4
+            )
 
             btc_index = self.match_series_dates(dates, item["time"], index)
             if btc_index:
                 balances_series_diff.append(percentage)
 
-                btc_diff = (float(trace["close"][btc_index - 1]) - float(trace["close"][btc_index]))
-                btc_percentage = round_numbers((btc_diff / float(trace["close"][btc_index - 1])), 4)
+                btc_diff = float(trace["close"][btc_index - 1]) - float(
+                    trace["close"][btc_index]
+                )
+                btc_percentage = round_numbers(
+                    (btc_diff / float(trace["close"][btc_index - 1])), 4
+                )
                 balances_series_dates.append(item["time"])
                 balance_btc_diff.append(btc_percentage)
             else:
                 continue
 
-        resp = json_response({"message": "Sucessfully rendered benchmark data.", "data": {
-            "usdt": balances_series_diff,
-            "btc": balance_btc_diff,
-            "dates": balances_series_dates
-        }})
+        resp = json_response(
+            {
+                "message": "Sucessfully rendered benchmark data.",
+                "data": {
+                    "usdt": balances_series_diff,
+                    "btc": balance_btc_diff,
+                    "dates": balances_series_dates,
+                },
+                "error": 0,
+            }
+        )
         return resp
