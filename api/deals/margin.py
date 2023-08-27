@@ -31,23 +31,14 @@ class MarginDeal(BaseDeal):
         try:
             self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
         except IsolateBalanceError as error:
-
-            try:
-                # Transfer to activate Isolatd balance
+            if error.code == -11001:# Transfer to activate Isolatd balance
                 self.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
                     amount="1",
                 )
                 pass
-            except IsolateBalanceError as error:
-                self.transfer_isolated_margin_to_spot(
-                    asset=self.active_bot.balance_to_use,
-                    symbol=self.active_bot.pair,
-                    amount="1",
-                )
-                pass
-    
+
     def _append_errors(self, error):
         """
         Sets errors to be stored later with save_bot

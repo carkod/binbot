@@ -245,6 +245,26 @@ class Assets(Account):
             }
         )
 
+    def match_series_dates(self, dates, balance_date, i:int=0, count=0) -> int | None:
+        if i == len(dates):
+            return None
+
+        dt_obj = datetime.fromtimestamp(dates[i] / 1000)
+        str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
+
+        if count > 5:
+            print("Not able to match any BTC dates for this balance store date")
+            return None
+
+        # Match balance store dates with btc price dates
+        if str_date != balance_date:
+            i += 1
+            count += 1
+            self.match_series_dates(dates, balance_date, i, count)
+        
+        return i
+
+
     async def get_balance_series(self, end_date, start_date):
 
         params = {}
@@ -286,14 +306,8 @@ class Assets(Account):
                 [("_id", -1)]
             )
         )
-        balances_series_diff = []
-        balances_series_dates = []
-        for index, item in enumerate(balance_series):
-            diff = (balance_series[index - 1]["estimated_total_usdt"] - item["estimated_total_usdt"])
-            percentage = round_numbers(diff / balance_series[index - 1]["estimated_total_usdt"], 4)
-            balances_series_diff.append(percentage)
-            balances_series_dates.append()
 
+        # btc candlestick data series
         params = CandlestickParams(
             limit=31,
             symbol="BTCUSDT",
@@ -303,7 +317,31 @@ class Assets(Account):
         cs = Candlestick()
         df, dates = cs.get_klines(params)
         trace = cs.candlestick_trace(df, dates)
-        # btc_candlestick = btc_candlestick_res.json()
 
-        resp = json_response({"message": "Sucessfully rendered benchmark data.", "data": balance_series})
+
+        balances_series_diff = []
+        balances_series_dates = []
+        balance_btc_diff = []
+        balance_series.sort(key=lambda item: item["_id"],reverse=False)
+
+        for index, item in enumerate(balance_series):
+            diff = (balance_series[index - 1]["estimated_total_usdt"] - item["estimated_total_usdt"])
+            percentage = round_numbers(diff / balance_series[index - 1]["estimated_total_usdt"], 4)
+
+            btc_index = self.match_series_dates(dates, item["time"], index)
+            if btc_index:
+                balances_series_diff.append(percentage)
+
+                btc_diff = (float(trace["close"][btc_index - 1]) - float(trace["close"][btc_index]))
+                btc_percentage = round_numbers((btc_diff / float(trace["close"][btc_index - 1])), 4)
+                balances_series_dates.append(item["time"])
+                balance_btc_diff.append(btc_percentage)
+            else:
+                continue
+
+        resp = json_response({"message": "Sucessfully rendered benchmark data.", "data": {
+            "usdt": balances_series_diff,
+            "btc": balance_btc_diff,
+            "dates": balances_series_dates
+        }})
         return resp

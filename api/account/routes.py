@@ -1,8 +1,8 @@
 from fastapi import APIRouter
-
+from datetime import datetime, timedelta
 from account.account import Account
 from account.assets import Assets
-from account.schemas import BalanceResponse, GainersLosersResponse
+from account.schemas import BalanceResponse, GainersLosersResponse, BalanceSeriesResponse
 
 account_blueprint = APIRouter()
 
@@ -50,26 +50,32 @@ def ticker_24(pair=None):
     return Account().ticker_24(symbol=pair)
 
 
-@account_blueprint.get("/balance/estimate", tags=["account"])
+@account_blueprint.get("/balance/estimate", tags=["assets"])
 async def balance_estimated():
     return Assets().balance_estimate()
 
 
-@account_blueprint.get("/balance/series", tags=["account"])
+@account_blueprint.get("/balance/series", tags=["assets"])
 def balance_series():
     return Assets().balance_series()
 
 
-@account_blueprint.get("/pnl", tags=["account"])
+@account_blueprint.get("/pnl", tags=["assets"])
 def get_pnl():
     return Assets().get_pnl()
 
 
-@account_blueprint.get("/store-balance", tags=["account"])
+@account_blueprint.get("/store-balance", tags=["assets"])
 def store_balance():
     return Assets().store_balance()
 
 
-@account_blueprint.get("/gainers-losers", response_model=GainersLosersResponse, tags=["account"])
+@account_blueprint.get("/gainers-losers", response_model=GainersLosersResponse, tags=["assets"])
 async def retrieve_gainers_losers():
     return await Assets().retrieve_gainers_losers()
+
+@account_blueprint.get("/balance-series", response_model=BalanceSeriesResponse, tags=["assets"])
+async def get_balance_series():
+    today = datetime.now()
+    month_ago = today - timedelta(30)
+    return await Assets().get_balance_series(start_date=datetime.timestamp(month_ago), end_date=datetime.timestamp(today))

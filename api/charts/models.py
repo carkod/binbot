@@ -29,11 +29,9 @@ class CandlestickItemRequest(BaseModel):
 
 class CandlestickParams(BaseModel):
     symbol: str
-    interval: str  # See EnumDefitions
+    interval: str  # See EnumDefinitions
     limit: int = 600
-    startTime: float | None = (
-        None  # starTime and endTime must be camel cased for the API
-    )
+    startTime: float | None = None  # starTime and endTime must be camel cased for the API
     endTime: float | None = None
 
 
