@@ -34,6 +34,7 @@ class SpotLongDeal(BaseDeal):
 
         margin_deal = MarginDeal(self.active_bot, db_collection_name="bots")
         margin_deal.margin_short_base_order()
+        self.save_bot_streaming()
 
 
     def execute_stop_loss(self, price):

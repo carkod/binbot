@@ -76,7 +76,7 @@ class Assets(Account):
         for b in bin_balance["data"]:
             # Only tether coins for hedging
             if b["asset"] == "NFT":
-                break
+                continue
             elif b["asset"] in ["USD", "USDT"]:
                 qty = self._check_locked(b)
                 total_usdt += qty
@@ -252,20 +252,17 @@ class Assets(Account):
         if i == len(dates):
             return None
 
-        dt_obj = datetime.fromtimestamp(dates[i] / 1000)
-        str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
 
-        if count > 5:
+        for idx, d in enumerate(dates):
+            dt_obj = datetime.fromtimestamp(d / 1000)
+            str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
+            
+            # Match balance store dates with btc price dates
+            if str_date == balance_date:
+                return idx
+        else:
             print("Not able to match any BTC dates for this balance store date")
             return None
-
-        # Match balance store dates with btc price dates
-        if str_date != balance_date:
-            i += 1
-            count += 1
-            self.match_series_dates(dates, balance_date, i, count)
-
-        return i
 
     async def get_balance_series(self, end_date, start_date):
         params = {}
@@ -305,7 +302,7 @@ class Assets(Account):
 
         # btc candlestick data series
         params = CandlestickParams(
-            limit=31,
+            limit=31, # One month - 1 (calculating percentages) worth of data to display
             symbol="BTCUSDT",
             interval="1d",
         )
@@ -317,6 +314,7 @@ class Assets(Account):
         balances_series_diff = []
         balances_series_dates = []
         balance_btc_diff = []
+        balance_series_diff_qty = []
         balance_series.sort(key=lambda item: item["_id"], reverse=False)
 
         for index, item in enumerate(balance_series):
@@ -331,6 +329,7 @@ class Assets(Account):
             btc_index = self.match_series_dates(dates, item["time"], index)
             if btc_index:
                 balances_series_diff.append(percentage)
+                balance_series_diff_qty.append(diff)
 
                 btc_diff = float(trace["close"][btc_index - 1]) - float(
                     trace["close"][btc_index]
@@ -350,6 +349,7 @@ class Assets(Account):
                     "usdt": balances_series_diff,
                     "btc": balance_btc_diff,
                     "dates": balances_series_dates,
+                    "usdt_qty": balance_series_diff_qty
                 },
                 "error": 0,
             }

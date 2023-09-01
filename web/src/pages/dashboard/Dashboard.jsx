@@ -27,24 +27,27 @@ class Dashboard extends React.Component {
       networthLayout: null,
       dailyPnL: null,
       usdBalance: 0, // Does not rely on cronjob totalBtcBalance
-      btcPrices: []
+      btcPrices: [],
     };
   }
 
-  getBtcprices = async (periods=86400) => {
-    const startDate = moment().subtract(1, 'months').valueOf();
+  getBtcprices = async (periods = 86400) => {
+    const startDate = moment().subtract(1, "months").valueOf();
     const options = {
       contentType: "application/json",
       mode: "cors",
       cache: "no-cache",
-    }
-    const response = await fetch(`https://api.cryptowat.ch/markets/binance/BTCUSDT/ohlc?periods=${periods}&value=${startDate}`, options);
+    };
+    const response = await fetch(
+      `https://api.cryptowat.ch/markets/binance/BTCUSDT/ohlc?periods=${periods}&value=${startDate}`,
+      options
+    );
     const data = response.json();
     const btcPrices = produce(this.state, (draft) => {
       draft.selectedCards.push(data);
     });
-    this.setState({btcPrices: btcPrices});
-  }
+    this.setState({ btcPrices: btcPrices });
+  };
 
   componentDidMount = () => {
     this.props.getBalanceRaw();
@@ -219,57 +222,60 @@ class Dashboard extends React.Component {
           {!load ? (
             <>
               <Row>
-                <Col lg="4" md="6" sm="6">
+                <Col lg="3" md="6" sm="6" xs="6">
                   <Card className="card-stats">
                     <CardBody>
                       <Row>
                         <Col md="12">
-                          {!checkValue(balanceEstimate) && (
+                          {balanceEstimate && (
                             <div className="stats">
-                                <Row>
-                                  <Col md="4" xs="5">
-                                    <div className="icon-big text-center icon-warning">
-                                      <i className="nc-icon nc-money-coins text-success" />
-                                    </div>
-                                  </Col>
-                                  <Col md="8" xs="7">
-                                    <p className="card-category u-text-right">
-                                      Total Balance
-                                    </p>
-                                    <CardTitle
-                                      tag="h3"
-                                      className="card-title numbers"
-                                    >
-                                      {roundDecimals(
-                                        balanceEstimate.total_fiat,
-                                        2
-                                      )}{" "}
-                                      {balanceEstimate.asset}
-                                      <br />
-                                    </CardTitle>
-                                  </Col>
-                                </Row>
-                                <hr />
-                                <Row>
-                                  <Col>
-                                    <p className="card-category">
-                                      Left to allocate:
-                                    </p>
-                                  </Col>
-                                  <Col>
-                                    <p className="card-category u-text-right">
-                                      {balanceEstimate.fiat_left}{" "} {balanceEstimate.asset}
-                                    </p>
-                                  </Col>
-                                </Row>
+                              <Row>
+                                <Col md="4" xs="5">
+                                  <div className="icon-big text-center icon-warning">
+                                    <i className="nc-icon nc-money-coins text-success" />
+                                  </div>
+                                </Col>
+                                <Col md="8" xs="7">
+                                  <p className="card-category u-text-right">
+                                    Total Balance
+                                  </p>
+                                  <CardTitle
+                                    tag="h3"
+                                    className="card-title numbers"
+                                  >
+                                    {roundDecimals(
+                                      balanceEstimate.total_fiat,
+                                      2
+                                    )}{" "}
+                                    {balanceEstimate.asset}
+                                    <br />
+                                  </CardTitle>
+                                </Col>
+                              </Row>
                             </div>
                           )}
                         </Col>
                       </Row>
                     </CardBody>
+                    {balanceEstimate && (
+                      <CardFooter>
+                        <hr />
+                        <Row>
+                          <Col>
+                            <p className="card-category">Left to allocate:</p>
+                          </Col>
+                          <Col>
+                            <p className="card-category u-text-right">
+                              {balanceEstimate.fiat_left}{" "}
+                              {balanceEstimate.asset}
+                            </p>
+                          </Col>
+                        </Row>
+                      </CardFooter>
+                    )}
                   </Card>
                 </Col>
-                <Col lg="4" md="6" sm="6">
+                <Col lg="3" md="6" sm="6" xs="6">
                   <Card className="card-stats">
                     <CardBody>
                       <Row>
@@ -279,22 +285,24 @@ class Dashboard extends React.Component {
                           </div>
                         </Col>
                         <Col md="8" xs="7">
-                          <div className="numbers">
-                            <p className="card-category">Profit &amp; Loss</p>
+                          <div className="stats">
+                            <p className="card-category u-text-right">
+                              Profit &amp; Loss
+                            </p>
                             <CardTitle
-                              tag="div"
+                              tag="h3"
                               className={
-                                this.state.revenue > 0
-                                  ? "text-success"
-                                  : "text-danger"
+                                this.props.percentageRevenue > 0
+                                  ? "text-success card-title numbers"
+                                  : "text-danger card-title numbers"
                               }
                             >
                               <p>
-                                {this.state.percentageRevenue > 0 &&
-                                  `${this.state.percentageRevenue.toFixed(2)}%`}
-                              </p>
-                              <p>
-                                {this.state.revenue && `$${this.state.revenue}`}
+                                {typeof this.props.percentageRevenue ===
+                                  "number" &&
+                                  `${this.props.percentageRevenue.toFixed(
+                                    2
+                                  )}% `}
                               </p>
                             </CardTitle>
                             <p />
@@ -304,7 +312,20 @@ class Dashboard extends React.Component {
                     </CardBody>
                     <CardFooter>
                       <hr />
-                      <i className="fas fa-sync" /> Yesterday
+                      <Row>
+                        <Col>
+                          <p className="card-category">
+                            <i className="fas fa-sync" /> Yesterday
+                          </p>
+                        </Col>
+                        <Col>
+                          <p className="card-category u-text-right">
+                            {typeof this.props.revenue === "number" &&
+                              this.props.revenue.toFixed(4)}{" "}
+                            USDT
+                          </p>
+                        </Col>
+                      </Row>
                     </CardFooter>
                   </Card>
                 </Col>
@@ -315,7 +336,7 @@ class Dashboard extends React.Component {
                     <GainersLosers data={this.props.gainersLosersData} />
                   )}
                 </Col>
-                
+
                 <Col lg="6" md="12">
                   {this.props.benchmarkData && (
                     <PortfolioBenchmarkChart
@@ -324,7 +345,6 @@ class Dashboard extends React.Component {
                     />
                   )}
                 </Col>
-
               </Row>
               <Row>
                 <Col md="12">
@@ -356,6 +376,12 @@ const mapStateToProps = (s) => {
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
   const { data: benchmarkData } = s.btcBenchmarkReducer;
+  let percentageRevenue = 0;
+  let revenue = 0;
+  if (benchmarkData) {
+    percentageRevenue = benchmarkData.usdt[benchmarkData.usdt.length - 1] * 100;
+    revenue = benchmarkData.usdt_qty[benchmarkData.usdt_qty.length - 1];
+  }
 
   return {
     loading: loading,
@@ -363,6 +389,8 @@ const mapStateToProps = (s) => {
     balanceEstimate: balanceEstimate,
     gainersLosersData: gainersLosersData,
     benchmarkData: benchmarkData,
+    percentageRevenue: percentageRevenue,
+    revenue: revenue,
   };
 };
 

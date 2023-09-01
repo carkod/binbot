@@ -138,6 +138,29 @@ class MarginDeal(BaseDeal):
 
         return
 
+    def terminate_failed_transactions(self, transfer_qty: float = 0):
+        """
+        Transfer back from isolated account to spot account
+        Disable isolated pair (so we don't reach the limit)
+        """
+        if transfer_qty == 0:
+            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
+            transfer_qty = self.isolated_balance[0]["quoteAsset"]["free"]
+
+        try:
+            self.transfer_isolated_margin_to_spot(
+                asset=self.active_bot.balance_to_use,
+                symbol=self.active_bot.pair,
+                amount=transfer_qty,
+            )
+            self.disable_isolated_margin_account(symbol=self.active_bot.pair)
+        except BinanceErrors as error:
+            print(error)
+            # try again without transfer quantity
+            self.terminate_failed_transactions()
+        
+
+
     def init_margin_short(self, initial_price):
         """
         Pre-tasks for db_collection = bots
@@ -192,8 +215,10 @@ class MarginDeal(BaseDeal):
                 )
             except BinanceAPIException as error:
                 if error.code == -3041:
+                    self.terminate_failed_transactions(transfer_qty)
                     raise MarginShortError("Spot balance is not enough")
                 if error.code == -11003:
+                    self.terminate_failed_transactions(transfer_qty)
                     raise MarginShortError("Isolated margin not available")
 
         asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
@@ -229,9 +254,9 @@ class MarginDeal(BaseDeal):
             if error.args[1] == -3045:
                 msg = "Binance doesn't have any money to lend"
                 self._append_errors(msg)
+                self.terminate_failed_transactions(transfer_qty)
                 raise MarginShortError(msg)
             
-            raise MarginShortError(error.args[0])
         except Exception as error:
             logging.error(error)
 
@@ -335,7 +360,7 @@ class MarginDeal(BaseDeal):
                         # Get fiat (USDT) to pay back
                         self.active_bot.errors.append(error.message)
                     if error.code == -3015:
-                        # Can you be false alarm
+                        # false alarm
                         pass
                 except BinanceErrors as error:
                     if error.code == -3041:
@@ -448,6 +473,7 @@ class MarginDeal(BaseDeal):
                     pass
 
             completion_msg = f"{self.active_bot.pair} ISOLATED margin funds transferred back to SPOT."
+            self.active_bot.status = Status.completed
             self.active_bot.errors.append(completion_msg)
 
         bot = self.save_bot_streaming()

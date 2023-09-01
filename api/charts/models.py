@@ -63,7 +63,7 @@ class KlinesSchema:
 
     def update_data(self, data, timestamp=None):
         """
-        Function that specifically updates candlesticks.
+        Function that specifically updates candlesticks from websockets
         Finds existence of candlesticks and then updates with new stream kline data or adds new data
         """
         new_data = data  # This is not existent data but stream data from API
@@ -96,7 +96,7 @@ class KlinesSchema:
             return update_kline
         except Exception as e:
             return e
-
+    
     def delete_klines(self):
         result = self.db.klines.delete_one({"symbol": self._id})
         return result.acknowledged
@@ -119,8 +119,12 @@ class Candlestick(BinbotApi):
         df [Pandas dataframe]
         """
         logging.info("Requesting and Cleaning db of incomplete data...")
+        if params.limit:
+            # Avoid inconsistencies in data
+            params.limit = 600
+
         data = self.request(url=self.candlestick_url, params=vars(params))
-        klines_schema = KlinesSchema(params.symbol, params.interval, params.limit)
+        klines_schema = KlinesSchema(params.symbol, params.interval)
         klines = klines_schema.replace_klines(data)
         kline_df = pd.DataFrame(klines[params.interval])
         return kline_df
@@ -132,7 +136,7 @@ class Candlestick(BinbotApi):
         @params
         - df [Pandas dataframe]
         """
-        logging.info(f"Checking gaps in the kline data for {params.symbol}")
+        logging.warning(f"Checking gaps in the kline data for {params.symbol}")
         kline_df = df.copy(deep=True)
         df["gaps_check"] = df[0].diff()[1:]
         df = df.dropna()
@@ -180,8 +184,7 @@ class Candlestick(BinbotApi):
             klines = None
             pass
 
-        # 43200 = 12 hours deferred, update klines
-        if not klines or not isinstance(klines[params.interval], list) or (time() - (klines["15m"][len(klines["15m"]) - 1][0] / 1000)) > 43200:
+        if not klines or not isinstance(klines[params.interval], list):
             if params.startTime:
                 # Calculate diff start_time and end_time
                 # Divide by interval time to get limit
