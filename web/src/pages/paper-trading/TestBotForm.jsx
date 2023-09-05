@@ -69,9 +69,9 @@ class TestBotForm extends React.Component {
       this.props.getTestBot(this.props.match.params.id);
     }
     if (!checkValue(this.props.match.params?.symbol)) {
-      this.props.getTestBot({
+      this.props.setBotState({
         pair: this.props.match.params.symbol,
-      });
+      }, () => this.computeAvailableBalance());
     }
   };
 
@@ -84,10 +84,7 @@ class TestBotForm extends React.Component {
         `/admin/paper-trading/edit/${this.props.createdBotId}`
       );
     }
-    if (
-      !checkValue(this.props.bot.pair) &&
-      this.props.bot.pair !== p.bot.pair
-    ) {
+    if (this.props.bot?.pair !== p.bot.pair) {
       getQuoteAsset(this.props.bot.pair).then(({ data }) =>
         this.props.setBotState({ quoteAsset: data })
       );
@@ -412,10 +409,10 @@ class TestBotForm extends React.Component {
                       {this.props.bot?.pair}{" "}
                       <Badge
                         color={
-                          this.props.bot.bot_profit > 0 ? "success" : "danger"
+                          parseFloat(this.props.bot.bot_profit) > 0 ? "success" : "danger"
                         }
                       >
-                        {this.props.bot.bot_profit + "%"}
+                        {this.props.bot.bot_profit ? this.props.bot.bot_profit + "%" : "0%"}
                       </Badge>{" "}
                       {!checkValue(this.props.bot.status) && (
                         <Badge
@@ -675,7 +672,7 @@ class TestBotForm extends React.Component {
   }
 }
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (state) => {
   const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
   const { bot, createdBotId } = state.testBotsReducer;

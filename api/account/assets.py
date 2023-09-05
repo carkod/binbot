@@ -318,27 +318,11 @@ class Assets(Account):
         balance_series.sort(key=lambda item: item["_id"], reverse=False)
 
         for index, item in enumerate(balance_series):
-            diff = (
-                balance_series[index - 1]["estimated_total_usdt"]
-                - item["estimated_total_usdt"]
-            )
-            percentage = round_numbers(
-                diff / balance_series[index - 1]["estimated_total_usdt"], 4
-            )
-
             btc_index = self.match_series_dates(dates, item["time"], index)
             if btc_index:
-                balances_series_diff.append(percentage)
-                balance_series_diff_qty.append(diff)
-
-                btc_diff = float(trace["close"][btc_index - 1]) - float(
-                    trace["close"][btc_index]
-                )
-                btc_percentage = round_numbers(
-                    (btc_diff / float(trace["close"][btc_index - 1])), 4
-                )
+                balances_series_diff.append(float(balance_series[index]["estimated_total_usdt"]))
                 balances_series_dates.append(item["time"])
-                balance_btc_diff.append(btc_percentage)
+                balance_btc_diff.append(float(trace["close"][btc_index]))
             else:
                 continue
 
@@ -349,7 +333,6 @@ class Assets(Account):
                     "usdt": balances_series_diff,
                     "btc": balance_btc_diff,
                     "dates": balances_series_dates,
-                    "usdt_qty": balance_series_diff_qty
                 },
                 "error": 0,
             }

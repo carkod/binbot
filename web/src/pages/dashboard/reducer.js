@@ -51,6 +51,23 @@ const btcBenchmarkReducer = produce((draft, action) => {
 
     case GET_BTC_BENCHMARK_SUCESS: {
       if (action.data) {
+        action.data.btc.forEach((element, index) => {
+          if (index > 0) {
+            const previousQty = action.data.btc[index - 1];
+            const diff = (previousQty - element) / previousQty
+            draft.btcPrices.push(diff * 100);
+          }
+        });
+        action.data.usdt.forEach((element, index) => {
+          if (index > 0) {
+            const previousQty = action.data.usdt[index - 1];
+            const diff = (previousQty - element) / previousQty
+            draft.usdtBalanceSeries.push(diff * 100);
+          }
+        });
+        // Match dates with diff series
+        action.data.dates.shift()
+        draft.dates = action.data.dates;
         draft.data = action.data
       }
       return draft;
@@ -65,7 +82,7 @@ const btcBenchmarkReducer = produce((draft, action) => {
     default:
       return draft;
   }
-}, {data: null});
+}, {data: null, btcPrices: [], usdtBalanceSeries: []});
 
 export {
   gainersLosersReducer,

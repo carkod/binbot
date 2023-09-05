@@ -138,27 +138,20 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def terminate_failed_transactions(self, transfer_qty: float = 0):
+    def terminate_failed_transactions(self):
         """
         Transfer back from isolated account to spot account
         Disable isolated pair (so we don't reach the limit)
         """
-        if transfer_qty == 0:
-            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-            transfer_qty = self.isolated_balance[0]["quoteAsset"]["free"]
-
-        try:
-            self.transfer_isolated_margin_to_spot(
-                asset=self.active_bot.balance_to_use,
-                symbol=self.active_bot.pair,
-                amount=transfer_qty,
-            )
-            self.disable_isolated_margin_account(symbol=self.active_bot.pair)
-        except BinanceErrors as error:
-            print(error)
-            # try again without transfer quantity
-            self.terminate_failed_transactions()
-        
+        self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
+        qty = self.isolated_balance[0]["quoteAsset"]["free"]
+        self.transfer_isolated_margin_to_spot(
+            asset=self.active_bot.balance_to_use,
+            symbol=self.active_bot.pair,
+            amount=qty,
+        )
+        self.disable_isolated_margin_account(symbol=self.active_bot.pair)
+    
 
 
     def init_margin_short(self, initial_price):
@@ -215,10 +208,10 @@ class MarginDeal(BaseDeal):
                 )
             except BinanceAPIException as error:
                 if error.code == -3041:
-                    self.terminate_failed_transactions(transfer_qty)
+                    self.terminate_failed_transactions()
                     raise MarginShortError("Spot balance is not enough")
                 if error.code == -11003:
-                    self.terminate_failed_transactions(transfer_qty)
+                    self.terminate_failed_transactions()
                     raise MarginShortError("Isolated margin not available")
 
         asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
@@ -254,9 +247,8 @@ class MarginDeal(BaseDeal):
             if error.args[1] == -3045:
                 msg = "Binance doesn't have any money to lend"
                 self._append_errors(msg)
-                self.terminate_failed_transactions(transfer_qty)
+                self.terminate_failed_transactions()
                 raise MarginShortError(msg)
-            
         except Exception as error:
             logging.error(error)
 

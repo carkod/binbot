@@ -375,12 +375,12 @@ const mapStateToProps = (s) => {
   const { data: balanceEstimate } = s.estimateReducer;
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
-  const { data: benchmarkData } = s.btcBenchmarkReducer;
+  const { data: benchmarkData, btcPrices, usdtBalanceSeries, dates } = s.btcBenchmarkReducer;
   let percentageRevenue = 0;
   let revenue = 0;
-  if (benchmarkData) {
-    percentageRevenue = benchmarkData.usdt[benchmarkData.usdt.length - 1] * 100;
-    revenue = benchmarkData.usdt_qty[benchmarkData.usdt_qty.length - 1];
+  if (benchmarkData && balanceEstimate) {
+    revenue = (benchmarkData.usdt[benchmarkData.usdt.length - 1] - balanceEstimate.total_fiat);
+    percentageRevenue = (revenue / benchmarkData.usdt[benchmarkData.usdt.length - 1]) * 100;
   }
 
   return {
@@ -388,7 +388,11 @@ const mapStateToProps = (s) => {
     assetList: balance_raw,
     balanceEstimate: balanceEstimate,
     gainersLosersData: gainersLosersData,
-    benchmarkData: benchmarkData,
+    benchmarkData: {
+      usdt: usdtBalanceSeries,
+      btc: btcPrices,
+      dates: dates
+    },
     percentageRevenue: percentageRevenue,
     revenue: revenue,
   };

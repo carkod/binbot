@@ -193,8 +193,8 @@ const botReducer = produce((draft, action) => {
     }
 
     case GET_BOT_SUCCESS: {
-      draft.bot.bot_profit = computeSingleBotProfit(action.bots);
       draft.bot = { ...draft.bot, ...action.bots };
+      draft.bot.bot_profit = computeSingleBotProfit(action.bots);
       return draft;
     }
 

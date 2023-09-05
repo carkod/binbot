@@ -54,7 +54,6 @@ class BotForm extends React.Component {
     super(props);
     this.state = {
       id: props.match.params.id ? props.match.params.id : null,
-      bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
       currentChartPrice: 0,
@@ -498,7 +497,7 @@ class BotForm extends React.Component {
                             : "danger"
                         }
                       >
-                        {this.props.bot.bot_profit + "%"}
+                        {this.props.bot.bot_profit ?this.props.bot.bot_profit + "%" : "0%"}
                       </Badge>{" "}
                       {!checkValue(this.props.bot?.status) && (
                         <Badge
@@ -521,12 +520,12 @@ class BotForm extends React.Component {
                     </CardTitle>
                   </Col>
                   <Col>
-                    {!checkValue(this.state.bot_profit) &&
-                      !isNaN(this.state.bot_profit) && (
+                    {!checkValue(this.props.bot.bot_profit) &&
+                      !isNaN(this.props.bot.bot_profit) && (
                         <h4>
                           Earnings after commissions (est.):{" "}
                           {roundDecimals(
-                            parseFloat(this.state.bot_profit) - 0.3
+                            parseFloat(this.props.bot.bot_profit) - 0.3
                           ) + "%"}
                         </h4>
                       )}
