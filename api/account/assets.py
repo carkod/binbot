@@ -314,7 +314,6 @@ class Assets(Account):
         balances_series_diff = []
         balances_series_dates = []
         balance_btc_diff = []
-        balance_series_diff_qty = []
         balance_series.sort(key=lambda item: item["_id"], reverse=False)
 
         for index, item in enumerate(balance_series):

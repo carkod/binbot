@@ -6,14 +6,6 @@
   z-index: $zindex-modal;
 }
 
-.u-uppercase {
-  text-transform: uppercase;
-}
-
-.u-capitalize {
-  text-transform: capitalize;
-}
-
 .u-center {
   text-align: center;
 }
@@ -105,4 +97,16 @@
 
 .u-text-right {
   text-align: right;
+}
+
+// Align large Fontawesome icons
+.u-fa-lg {
+  position: relative;
+  display: inline-block;
+  i {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 2rem;
+  }
 }

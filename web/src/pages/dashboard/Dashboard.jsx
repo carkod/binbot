@@ -1,7 +1,8 @@
 import produce from "immer";
 import React from "react";
 import { connect } from "react-redux";
-import { Card, CardBody, CardFooter, CardTitle, Col, Row } from "reactstrap";
+import { Card, CardBody, CardFooter, CardTitle } from "reactstrap";
+import { Col, Row } from "react-bootstrap";
 import GainersLosers from "../../components/GainersLosers";
 import { loading } from "../../containers/spinner/actions";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
@@ -223,126 +224,131 @@ class Dashboard extends React.Component {
             <>
               <Row>
                 <Col lg="3" md="6" sm="6" xs="6">
-                  <Card className="card-stats">
-                    <CardBody>
-                      <Row>
-                        <Col md="12">
-                          {balanceEstimate && (
-                            <div className="stats">
-                              <Row>
-                                <Col md="4" xs="5">
-                                  <div className="icon-big text-center icon-warning">
-                                    <i className="nc-icon nc-money-coins text-success" />
-                                  </div>
-                                </Col>
-                                <Col md="8" xs="7">
-                                  <p className="card-category u-text-right">
-                                    Total Balance
+                  <Row>
+                    <Col lg="12">
+                      <Card className="card-stats">
+                        <CardBody>
+                          <Row>
+                            <Col md="12">
+                              {balanceEstimate && (
+                                <div className="stats">
+                                  <Row>
+                                    <Col md="4" xs="5">
+                                      <div className="icon-big text-center icon-warning">
+                                        <i className="nc-icon nc-money-coins text-success" />
+                                      </div>
+                                    </Col>
+                                    <Col md="8" xs="7">
+                                      <p className="card-category u-text-right">
+                                        Total Balance
+                                      </p>
+                                      <CardTitle
+                                        tag="h3"
+                                        className="card-title numbers"
+                                      >
+                                        {roundDecimals(
+                                          balanceEstimate.total_fiat,
+                                          2
+                                        )}{" "}
+                                        {balanceEstimate.asset}
+                                        <br />
+                                      </CardTitle>
+                                    </Col>
+                                  </Row>
+                                </div>
+                              )}
+                            </Col>
+                          </Row>
+                        </CardBody>
+                        {balanceEstimate && (
+                          <CardFooter>
+                            <hr />
+                            <Row>
+                              <Col>
+                                <p className="card-category">Left to allocate:</p>
+                              </Col>
+                              <Col>
+                                <p className="card-category u-text-right">
+                                  {balanceEstimate.fiat_left}{" "}
+                                  {balanceEstimate.asset}
+                                </p>
+                              </Col>
+                            </Row>
+                          </CardFooter>
+                        )}
+                      </Card>
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col lg="12">
+                      <Card className="card-stats">
+                        <CardBody>
+                          <Row>
+                            <Col md="4" xs="5">
+                              <div className="icon-big text-center icon-warning">
+                                <i className="nc-icon nc-bank text-success" />
+                              </div>
+                            </Col>
+                            <Col md="8" xs="7">
+                              <div className="stats">
+                                <p className="card-category u-text-right">
+                                  Profit &amp; Loss
+                                </p>
+                                <CardTitle
+                                  tag="h3"
+                                  className={
+                                    this.props.percentageRevenue > 0
+                                      ? "text-success card-title numbers"
+                                      : "text-danger card-title numbers"
+                                  }
+                                >
+                                  <p>
+                                    {typeof this.props.percentageRevenue ===
+                                      "number" &&
+                                      `${this.props.percentageRevenue.toFixed(
+                                        2
+                                      )}% `}
                                   </p>
-                                  <CardTitle
-                                    tag="h3"
-                                    className="card-title numbers"
-                                  >
-                                    {roundDecimals(
-                                      balanceEstimate.total_fiat,
-                                      2
-                                    )}{" "}
-                                    {balanceEstimate.asset}
-                                    <br />
-                                  </CardTitle>
-                                </Col>
-                              </Row>
-                            </div>
-                          )}
-                        </Col>
-                      </Row>
-                    </CardBody>
-                    {balanceEstimate && (
-                      <CardFooter>
-                        <hr />
-                        <Row>
-                          <Col>
-                            <p className="card-category">Left to allocate:</p>
-                          </Col>
-                          <Col>
-                            <p className="card-category u-text-right">
-                              {balanceEstimate.fiat_left}{" "}
-                              {balanceEstimate.asset}
-                            </p>
-                          </Col>
-                        </Row>
-                      </CardFooter>
-                    )}
-                  </Card>
-                </Col>
-                <Col lg="3" md="6" sm="6" xs="6">
-                  <Card className="card-stats">
-                    <CardBody>
-                      <Row>
-                        <Col md="4" xs="5">
-                          <div className="icon-big text-center icon-warning">
-                            <i className="nc-icon nc-bank text-success" />
-                          </div>
-                        </Col>
-                        <Col md="8" xs="7">
-                          <div className="stats">
-                            <p className="card-category u-text-right">
-                              Profit &amp; Loss
-                            </p>
-                            <CardTitle
-                              tag="h3"
-                              className={
-                                this.props.percentageRevenue > 0
-                                  ? "text-success card-title numbers"
-                                  : "text-danger card-title numbers"
-                              }
-                            >
-                              <p>
-                                {typeof this.props.percentageRevenue ===
-                                  "number" &&
-                                  `${this.props.percentageRevenue.toFixed(
-                                    2
-                                  )}% `}
+                                </CardTitle>
+                                <p />
+                              </div>
+                            </Col>
+                          </Row>
+                        </CardBody>
+                        <CardFooter>
+                          <hr />
+                          <Row>
+                            <Col>
+                              <p className="card-category">
+                                (Current - Last balance)
                               </p>
-                            </CardTitle>
-                            <p />
-                          </div>
-                        </Col>
-                      </Row>
-                    </CardBody>
-                    <CardFooter>
-                      <hr />
-                      <Row>
-                        <Col>
-                          <p className="card-category">
-                            <i className="fas fa-sync" /> Yesterday
-                          </p>
-                        </Col>
-                        <Col>
-                          <p className="card-category u-text-right">
-                            {typeof this.props.revenue === "number" &&
-                              this.props.revenue.toFixed(4)}{" "}
-                            USDT
-                          </p>
-                        </Col>
-                      </Row>
-                    </CardFooter>
-                  </Card>
+                            </Col>
+                            <Col>
+                              <p className="card-category u-text-right">
+                                {typeof this.props.revenue === "number" &&
+                                  this.props.revenue.toFixed(4)}{" "}
+                                USDT
+                              </p>
+                            </Col>
+                          </Row>
+                        </CardFooter>
+                      </Card>
+                    </Col>
+                  </Row>
+                </Col>
+                <Col lg="9">
+                  {this.props.benchmarkData && (
+                    <PortfolioBenchmarkChart
+                      data={this.props.benchmarkData}
+                      legend={this.state.lineChartLegend}
+                    />
+                  )}
                 </Col>
               </Row>
               <Row>
                 <Col lg="6" md="12">
                   {this.props.gainersLosersData?.length > 0 && (
                     <GainersLosers data={this.props.gainersLosersData} />
-                  )}
-                </Col>
-
-                <Col lg="6" md="12">
-                  {this.props.benchmarkData && (
-                    <PortfolioBenchmarkChart
-                      data={this.props.benchmarkData}
-                      legend={this.state.lineChartLegend}
-                    />
                   )}
                 </Col>
               </Row>
@@ -379,8 +385,8 @@ const mapStateToProps = (s) => {
   let percentageRevenue = 0;
   let revenue = 0;
   if (benchmarkData && balanceEstimate) {
-    revenue = (benchmarkData.usdt[benchmarkData.usdt.length - 1] - balanceEstimate.total_fiat);
-    percentageRevenue = (revenue / benchmarkData.usdt[benchmarkData.usdt.length - 1]) * 100;
+    revenue = (balanceEstimate.total_fiat - benchmarkData.usdt[benchmarkData.usdt.length - 1]);
+    percentageRevenue = (revenue / balanceEstimate.total_fiat) * 100;
   }
 
   return {
