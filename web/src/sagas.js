@@ -34,11 +34,6 @@ import {
   watchGetBlacklistApi,
   watchResearchApi,
 } from "./pages/research/saga";
-import watchUsersApi, {
-  watchCreateUserApi,
-  watchDeleteUserApi,
-  watchEditUserApi,
-} from "./pages/users/saga";
 import {
   watchGetEstimate,
   watchRawBalance,
@@ -67,10 +62,6 @@ export default function* rootSaga() {
     watchDeleteBlackListApi(),
     watchAddBlacklistApi(),
     watchGetEstimate(),
-    watchUsersApi(),
-    watchEditUserApi(),
-    watchDeleteUserApi(),
-    watchCreateUserApi(),
     watchGetTestBotsApi(),
     watchGetTestBotApi(),
     watchCreateTestBot(),

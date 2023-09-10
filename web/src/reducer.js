@@ -12,7 +12,6 @@ import {
 import { testBotsReducer } from "./pages/paper-trading/reducer";
 import { settingsReducer } from "./pages/bots/reducer";
 import { blacklistReducer } from "./pages/research/reducer";
-import { usersReducer } from "./pages/users/reducer";
 import {
   balanceRawReducer,
   estimateReducer,
@@ -32,7 +31,6 @@ const rootReducer = combineReducers({
   blacklistReducer,
   settingsReducer,
   estimateReducer,
-  usersReducer,
   testBotsReducer,
   gainersLosersReducer,
   btcBenchmarkReducer,
