@@ -1,11 +1,8 @@
 import json
 import logging
 from db import setup_db
-from deals.controllers import CreateDealController
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
-from pymongo import ReturnDocument
-from datetime import datetime
 from time import time
 from streaming.socket_client import SpotWebsocketStreamClient
 
@@ -46,14 +43,13 @@ class StreamingController:
         )
         return
 
-
     def execute_strategies(
         self,
         current_bot,
         close_price: str,
         open_price: str,
         symbol: str,
-        db_collection,
+        db_collection_name,
     ):
         """
         Processes the deal market websocket price updates
@@ -63,26 +59,21 @@ class StreamingController:
         """
         # Margin short
         if current_bot["strategy"] == "margin_short":
-            margin_deal = MarginDeal(current_bot, db_collection=db_collection)
-            margin_deal.streaming_updates(close_price)
+            margin_deal = MarginDeal(current_bot, db_collection_name=db_collection_name)
+            try:
+                margin_deal.streaming_updates(close_price)
+            except Exception as error:
+                logging.info(error)
+                margin_deal.update_deal_logs(error)
+                pass
             return
 
         else:
-            # Short strategy
-            if (
-                "short_buy_price" in current_bot
-                and float(current_bot["short_buy_price"]) > 0
-                and float(current_bot["short_buy_price"]) >= float(close_price)
-            ):
-                # If hit short_buy_price, resume long strategy by resetting short_buy_price
-                CreateDealController(
-                    current_bot, db_collection=db_collection
-                ).execute_short_buy()
 
             # Long strategy starts
             if current_bot["strategy"] == "long":
                 SpotLongDeal(
-                    current_bot, db_collection=db_collection
+                    current_bot, db_collection_name=db_collection_name
                 ).streaming_updates(close_price, open_price)
                 self._update_required()
 
@@ -115,18 +106,6 @@ class StreamingController:
         local_settings = self.streaming_db.research_controller.find_one(
             {"_id": "settings"}
         )
-        # Add margin time to update_required signal to avoid restarting constantly
-        # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
-        if local_settings["update_required"]:
-            logging.info(
-                f'Time elapsed for update_required: {time() - local_settings["update_required"]}'
-            )
-            if (time() - local_settings["update_required"]) > 20:
-                self.streaming_db.research_controller.update_one(
-                    {"_id": "settings"}, {"$set": {"update_required": time()}}
-                )
-                logging.info("Restarting streaming_controller")
-                self.get_klines()
 
         if "k" in result:
             close_price = result["k"]["c"]
@@ -154,7 +133,20 @@ class StreamingController:
                     symbol,
                     "paper_trading",
                 )
-            return
+        
+        # Add margin time to update_required signal to avoid restarting constantly
+        # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
+        if local_settings["update_required"]:
+            logging.debug(
+                f'Time elapsed for update_required: {time() - local_settings["update_required"]}'
+            )
+            if (time() - local_settings["update_required"]) > 20:
+                self.streaming_db.research_controller.update_one(
+                    {"_id": "settings"}, {"$set": {"update_required": time()}}
+                )
+                logging.info("Restarting streaming_controller")
+                self.get_klines()
+        return
 
     def get_klines(self):
         interval = self.settings["candlestick_interval"]

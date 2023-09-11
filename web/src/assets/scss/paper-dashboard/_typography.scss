@@ -1,3 +1,13 @@
+// Typography utilities
+.capitalize {
+  text-transform: capitalize;
+}
+
+.uppercase {
+  @extend .uppercase;
+}
+
+
 button,
 input,
 optgroup,
@@ -29,7 +39,7 @@ h1,
 
   small {
     font-weight: $font-weight-bold;
-    text-transform: uppercase;
+    @extend .uppercase;
     opacity: 0.8;
   }
 }
@@ -66,7 +76,7 @@ h6,
 .h6 {
   font-size: $font-size-h6;
   font-weight: $font-weight-bold;
-  text-transform: uppercase;
+  @extend .uppercase;
 }
 p {
   margin-bottom: $margin-base-vertical;
@@ -75,17 +85,11 @@ p {
   }
 }
 
-// i.fa{
-//     font-size: 18px;
-//     position: relative;
-//     top: 1px;
-// }
-
 .title {
   font-weight: $font-weight-bold;
 
   &.title-up {
-    text-transform: uppercase;
+    @extend .uppercase;
 
     a {
       color: $black-color;
@@ -106,10 +110,8 @@ p {
 }
 .category,
 .card-category {
-  text-transform: capitalize;
   font-weight: $font-weight-normal;
   color: $dark-gray;
-  font-size: $font-size-mini;
 }
 
 .card-category {
@@ -158,7 +160,7 @@ a.text-gray:hover {
   small {
     color: $default-color;
     font-size: $font-size-small;
-    text-transform: uppercase;
+    @extend .uppercase;
   }
 
   &.blockquote-primary {

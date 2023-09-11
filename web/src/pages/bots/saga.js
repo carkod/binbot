@@ -1,4 +1,4 @@
-import { call, put, takeLatest } from "redux-saga/effects";
+import { call, put, take, takeLatest } from "redux-saga/effects";
 import { loading } from "../../containers/spinner/actions";
 import request, { buildBackUrl } from "../../request";
 import {
@@ -42,6 +42,7 @@ import {
   loadCandlestickFailed,
   loadCandlestickSucceeded,
   LOAD_CANDLESTICK,
+  EDIT_BOT_SUCCESS,
 } from "./actions";
 
 const baseUrl = buildBackUrl();
@@ -75,7 +76,7 @@ export default function* watchGetBotApi() {
 /**
  * Get single bot
  */
-export function* getBot(payload) {
+export function* getBotApi(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
 
@@ -88,7 +89,7 @@ export function* getBot(payload) {
 }
 
 export function* watchGetBot() {
-  yield takeLatest(GET_BOT, getBot);
+  yield takeLatest(GET_BOT, getBotApi);
 }
 
 /**
@@ -112,7 +113,7 @@ export function* watchCreateBot() {
 /**
  * Get single bot
  */
-export function* editBot({ data, id }) {
+export function* editBotApi({ data, id }) {
   const requestURL = `${process.env.REACT_APP_GET_BOTS}/${id}`;
   try {
     const res = yield call(request, requestURL, "PUT", data);
@@ -123,7 +124,7 @@ export function* editBot({ data, id }) {
 }
 
 export function* watchEditBot() {
-  yield takeLatest(EDIT_BOT, editBot);
+  yield takeLatest(EDIT_BOT, editBotApi);
 }
 
 /**
@@ -198,6 +199,7 @@ export function* activateBot(payload) {
   const requestURL = `${process.env.REACT_APP_ACTIVATE_BOT}/${id}`;
   try {
     yield put(loading(true));
+    yield take(EDIT_BOT_SUCCESS);
     const res = yield call(request, requestURL);
     yield put(activateBotSucceeded(res));
   } catch (err) {

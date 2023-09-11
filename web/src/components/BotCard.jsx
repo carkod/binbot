@@ -62,7 +62,7 @@ export default function BotCard({
             </div>
           </Col>
           <Col md="5" xs="12">
-            <CardTitle tag="h5" className="card-title u-uppercase">
+            <CardTitle tag="h5" className="card-title uppercase">
               {!checkValue(x.deal) && (
                 <Badge color={getNetProfit(x) > 0 ? "success" : "danger"}>
                   {getNetProfit(x) + "%"}
@@ -74,7 +74,7 @@ export default function BotCard({
         <Row className="u-align-baseline">
           <Col md="7" xs="12">
             <div className="stats">
-              <p className="card-category">{x.name}</p>
+              <p className="card-category capitalize">{x.name}</p>
             </div>
           </Col>
           <Col md="5" xs="12">
@@ -104,7 +104,7 @@ export default function BotCard({
                   <p className="card-category">Mode</p>
                 </Col>
                 <Col md="5">
-                  <p className="card-category">
+                  <p className="card-category capitalize">
                     {!checkValue(x.mode) ? x.mode : "Unknown"}
                   </p>
                 </Col>
@@ -114,7 +114,7 @@ export default function BotCard({
                   <p className="card-category">Strategy</p>
                 </Col>
                 <Col md="5">
-                  <p className="card-category">{x.strategy}</p>
+                  <p className="card-category capitalize">{x.strategy}</p>
                 </Col>
               </Row>
               <Row>
@@ -146,7 +146,7 @@ export default function BotCard({
                 </Col>
               </Row>
 
-              {x.trailling === "true" && (
+              {x.trailling && (
                 <Row>
                   <Col md="7">
                     <p className="card-category">Trailling loss</p>
@@ -232,7 +232,7 @@ export default function BotCard({
               history.push(`${history.location.pathname}/edit/${x.id}`)
             }
           >
-            <i className="fas fa-edit u-disable-events" />
+            <i className="fa-solid fa-edit u-disable-events" />
           </Button>
           <Button
             variant="success"
@@ -241,7 +241,7 @@ export default function BotCard({
             data-id={x.id}
             onClick={handleSelection}
           >
-            <i className="fa fa-check u-disable-events" aria-hidden="true" />
+            <i className="fa-solid fa-check u-disable-events" aria-hidden="true" />
           </Button>
           {x.status !== "active" && (
             <Button

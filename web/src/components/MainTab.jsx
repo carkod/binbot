@@ -135,30 +135,6 @@ export default function MainTab({
         )}
       </Row>
       <Row>
-        {bot.strategy === "short" && (
-          <Col md="6">
-            <FormGroup>
-              <BotFormTooltip
-                name="short_sell_price"
-                text="Price at which to stop loss sell and later buy again with short_buy_price (short strategy autoswitch)"
-              >
-                Short Sell Price
-              </BotFormTooltip>
-              <InputGroup>
-                <Input
-                  type="number"
-                  name="short_sell_price"
-                  onBlur={handleBlur}
-                  onChange={handleChange}
-                  value={bot.short_sell_price}
-                  autoComplete="off"
-                  step="0.00000001"
-                />
-                <InputGroupText>{bot.quoteAsset}</InputGroupText>
-              </InputGroup>
-            </FormGroup>
-          </Col>
-        )}
         <Col md="6" sm="12">
           <FormGroup>
             <BotFormTooltip
@@ -191,7 +167,6 @@ export default function MainTab({
               invalid={bot.marginShortError}
             >
               <option value="long">Long</option>
-              <option value="short">Short</option>
               <option value="margin_short">Margin short</option>
             </Input>
             <FormFeedback invalid={bot.marginShortError}>
@@ -199,30 +174,6 @@ export default function MainTab({
             </FormFeedback>
           </FormGroup>
         </Col>
-        {bot.strategy === "short" && (
-          <Col md="6" sm="12">
-            <FormGroup>
-              <BotFormTooltip
-                name="short_buy_price"
-                text="Price at which to execute base order"
-              >
-                Short Buy Price
-              </BotFormTooltip>
-              <InputGroup>
-                <Input
-                  type="number"
-                  name="short_buy_price"
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  value={bot.short_buy_price}
-                  autoComplete="off"
-                  step="0.00000001"
-                />
-                <InputGroupText>{bot.quoteAsset}</InputGroupText>
-              </InputGroup>
-            </FormGroup>
-          </Col>
-        )}
       </Row>
     </TabPane>
   );

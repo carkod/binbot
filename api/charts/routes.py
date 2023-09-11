@@ -30,8 +30,8 @@ def delete_klines(symbol):
 @charts_blueprint.get(
     "/candlestick", summary="Retrieved klines stored in DB", tags=["charts"]
 )
-def get(symbol: str, interval: str="15m", limit: int=500, start_time: float | None=None, end_time: float | None=None):
+def get(symbol: str, interval: str="15m", limit: int=500, start_time: float | None=None, end_time: float | None=None, stats: bool = False):
     """
     Retrieve existing candlestick data stored in DB from Binance
     """
-    return Candlestick().get(symbol, interval, limit, start_time, end_time)
+    return Candlestick().get(symbol, interval, limit, start_time, end_time, stats)

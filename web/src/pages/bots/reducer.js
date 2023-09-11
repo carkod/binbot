@@ -1,6 +1,14 @@
 import produce from "immer";
-import { bot, computeSingleBotProfit, computeTotalProfit } from "../../state/bots/actions";
-import { GET_TEST_AUTOTRADE_SETTINGS, GET_TEST_AUTOTRADE_SETTINGS_SUCCESS, SET_TEST_AUTOTRADE_SETTING } from "../paper-trading/actions";
+import {
+  bot,
+  computeSingleBotProfit,
+  computeTotalProfit,
+} from "../../state/bots/actions";
+import {
+  GET_TEST_AUTOTRADE_SETTINGS,
+  GET_TEST_AUTOTRADE_SETTINGS_SUCCESS,
+  SET_TEST_AUTOTRADE_SETTING,
+} from "../paper-trading/actions";
 import {
   ACTIVATE_BOT,
   ACTIVATE_BOT_ERROR,
@@ -36,6 +44,7 @@ import {
   LOAD_CANDLESTICK_SUCCESS,
   SET_BOT,
   SET_SETTINGS_STATE,
+  RESET_BOT,
 } from "./actions";
 
 // The initial state of the App
@@ -63,7 +72,6 @@ export const settingsReducerInitial = {
   trailling_deviation: 0,
   stop_loss: 0,
 };
-
 
 const botReducer = produce((draft, action) => {
   switch (action.type) {
@@ -97,9 +105,7 @@ const botReducer = produce((draft, action) => {
     }
 
     case DELETE_BOT_SUCCESS:
-      let bots = draft.bots.filter(
-        (x) => !x.id.includes(draft.removeId)
-      );
+      let bots = draft.bots.filter((x) => !x.id.includes(draft.removeId));
       draft.bots = bots;
       draft.totalProfit = computeTotalProfit(bots);
       return draft;
@@ -181,14 +187,19 @@ const botReducer = produce((draft, action) => {
       }
       return draft;
 
+    case RESET_BOT: {
+      draft.bot = initialState.bot;
+      return draft;
+    }
+
     case GET_BOT_SUCCESS: {
-      draft.bot.bot_profit = computeSingleBotProfit(action.bots)
-      draft.bot = { ...draft.bot, ...action.bots};
+      draft.bot = { ...draft.bot, ...action.bots };
+      draft.bot.bot_profit = computeSingleBotProfit(action.bots);
       return draft;
     }
 
     case CREATE_BOT: {
-      draft.bot.bot_profit = computeSingleBotProfit(draft.bot)
+      draft.bot.bot_profit = computeSingleBotProfit(draft.bot);
       draft.bot = action.data;
       return draft;
     }
@@ -205,8 +216,8 @@ const botReducer = produce((draft, action) => {
     }
 
     case EDIT_BOT: {
-      action.data.bot_profit = computeSingleBotProfit(action.data)
-      draft.bot = { ...draft.bot, ...action.data};
+      action.data.bot_profit = computeSingleBotProfit(action.data);
+      draft.bot = { ...draft.bot, ...action.data };
       return draft;
     }
 
@@ -319,30 +330,35 @@ function candlestickReducer(state = initialState, action) {
   }
 }
 
-
-const settingsReducer = produce((draft, action) => {
-  switch (action.type) {
-    case GET_SETTINGS:
-      return draft; // same as just 'return'
-    case GET_SETTINGS_SUCCESS:
-      draft.settings = action.data
-      return draft
-    case SET_SETTINGS_STATE:
-      const { payload } = action;
-      draft.settings = { ...draft.settings, ...payload };
-      return draft;
-    case GET_TEST_AUTOTRADE_SETTINGS_SUCCESS:
-      draft.test_autotrade_settings = action.data;
-      return draft;
-    case GET_TEST_AUTOTRADE_SETTINGS:
-      return draft;
-    case SET_TEST_AUTOTRADE_SETTING:
-      draft.test_autotrade_settings = { ...draft.test_autotrade_settings, ...action.payload }
-      return draft;
-    default:
-      break;
-  }
-}, {settingsReducerInitial});
+const settingsReducer = produce(
+  (draft, action) => {
+    switch (action.type) {
+      case GET_SETTINGS:
+        return draft; // same as just 'return'
+      case GET_SETTINGS_SUCCESS:
+        draft.settings = action.data;
+        return draft;
+      case SET_SETTINGS_STATE:
+        const { payload } = action;
+        draft.settings = { ...draft.settings, ...payload };
+        return draft;
+      case GET_TEST_AUTOTRADE_SETTINGS_SUCCESS:
+        draft.test_autotrade_settings = action.data;
+        return draft;
+      case GET_TEST_AUTOTRADE_SETTINGS:
+        return draft;
+      case SET_TEST_AUTOTRADE_SETTING:
+        draft.test_autotrade_settings = {
+          ...draft.test_autotrade_settings,
+          ...action.payload,
+        };
+        return draft;
+      default:
+        break;
+    }
+  },
+  { settingsReducerInitial }
+);
 
 export {
   botReducer,

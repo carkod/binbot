@@ -42,16 +42,28 @@
       "console": "internalConsole"
     },
     {
-      "type": "pwa-chrome",
+      "name": "Python: Producer",
+      "type": "python",
       "request": "launch",
-      "name": "React: Web",
-      "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}/web/src",
-      "preLaunchTask": "startApp",
-      "postDebugTask": "stopApp",
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/*"
-      }
-    }
+      "program": "binquant/producer.py",
+      "console": "internalConsole",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Consumer",
+      "type": "python",
+      "request": "launch",
+      "program": "binquant/consumer/__init__.py",
+      "console": "internalConsole",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Test Producer",
+      "type": "python",
+      "request": "launch",
+      "program": "binquant/kafka_producer.py",
+      "console": "internalConsole",
+      "justMyCode": true
+    },
   ]
 }

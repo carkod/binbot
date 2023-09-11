@@ -29,11 +29,9 @@ class CandlestickItemRequest(BaseModel):
 
 class CandlestickParams(BaseModel):
     symbol: str
-    interval: str  # See EnumDefitions
+    interval: str  # See EnumDefinitions
     limit: int = 600
-    startTime: float | None = (
-        None  # starTime and endTime must be camel cased for the API
-    )
+    startTime: float | None = None  # starTime and endTime must be camel cased for the API
     endTime: float | None = None
 
 
@@ -65,7 +63,7 @@ class KlinesSchema:
 
     def update_data(self, data, timestamp=None):
         """
-        Function that specifically updates candlesticks.
+        Function that specifically updates candlesticks from websockets
         Finds existence of candlesticks and then updates with new stream kline data or adds new data
         """
         new_data = data  # This is not existent data but stream data from API
@@ -98,7 +96,7 @@ class KlinesSchema:
             return update_kline
         except Exception as e:
             return e
-
+    
     def delete_klines(self):
         result = self.db.klines.delete_one({"symbol": self._id})
         return result.acknowledged
@@ -121,8 +119,12 @@ class Candlestick(BinbotApi):
         df [Pandas dataframe]
         """
         logging.info("Requesting and Cleaning db of incomplete data...")
+        if params.limit:
+            # Avoid inconsistencies in data
+            params.limit = 600
+
         data = self.request(url=self.candlestick_url, params=vars(params))
-        klines_schema = KlinesSchema(params.symbol, params.interval, params.limit)
+        klines_schema = KlinesSchema(params.symbol, params.interval)
         klines = klines_schema.replace_klines(data)
         kline_df = pd.DataFrame(klines[params.interval])
         return kline_df
@@ -134,7 +136,7 @@ class Candlestick(BinbotApi):
         @params
         - df [Pandas dataframe]
         """
-        logging.info(f"Checking gaps in the kline data for {params.symbol}")
+        logging.warning(f"Checking gaps in the kline data for {params.symbol}")
         kline_df = df.copy(deep=True)
         df["gaps_check"] = df[0].diff()[1:]
         df = df.dropna()
@@ -182,7 +184,6 @@ class Candlestick(BinbotApi):
             klines = None
             pass
 
-        klines_schema = KlinesSchema(params.symbol, params.interval)
         if not klines or not isinstance(klines[params.interval], list):
             if params.startTime:
                 # Calculate diff start_time and end_time
@@ -192,8 +193,7 @@ class Candlestick(BinbotApi):
                 params.limit = ceil(diff_time / interval_to_millisecs(params.interval))
 
             # Store more data for db to fill up candlestick charts
-            data = self.request(url=self.candlestick_url, params=jsonable_encoder(params))
-            klines_schema.replace_klines(data)
+            self.delete_and_create_klines(params)
             df, dates = self.get_klines(params)
             return df, dates
         else:
@@ -359,6 +359,28 @@ class Candlestick(BinbotApi):
 
             all_time_low = pd.to_numeric(df[3]).min()
             volumes = df[5].tolist()
+
+            btc_params = CandlestickParams(
+                symbol="BTCUSDT",
+                interval="15m",
+            )
+            btc_df, btc_dates = self.get_klines(btc_params)
+            df[1].astype(float)
+            open_price_r = df[1].astype(float).corr(btc_df[1].astype(float))
+            high_price_r = df[2].astype(float).corr(btc_df[2].astype(float))
+            low_price_r = df[3].astype(float).corr(btc_df[3].astype(float))
+            close_price_r = df[4].astype(float).corr(btc_df[4].astype(float))
+            volume_r = df[5].astype(float).corr(btc_df[5].astype(float))
+
+            # collection of correlations
+            p_btc = {
+                "open_price": open_price_r,
+                "high_price": high_price_r,
+                "low_price": low_price_r,
+                "close_price": close_price_r,
+                "volume": volume_r
+            }
+
             resp = json_response(
                 {
                     "trace": [trace, ma_100, ma_25, ma_7],
@@ -366,6 +388,7 @@ class Candlestick(BinbotApi):
                     "volumes": volumes,
                     "amplitude": amplitude,
                     "all_time_low": all_time_low,
+                    "btc_correlation": p_btc,
                 }
             )
             return resp

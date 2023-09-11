@@ -9,7 +9,6 @@ import TestAutotrade from "../pages/paper-trading/TestAutotrade";
 import TestBotForm from "../pages/paper-trading/TestBotForm";
 import TestBots from "../pages/paper-trading/TestBots";
 import Research from "../pages/research/Research";
-import Users from "../pages/users/Users";
 
 const routes = [
   {
@@ -116,15 +115,6 @@ const routes = [
     name: "Research",
     icon: "nc-icon nc-ruler-pencil",
     component: Research,
-    layout: "/admin",
-    nav: true,
-    private: true,
-  },
-  {
-    path: "/users",
-    name: "Users",
-    icon: "nc-icon nc-single-02",
-    component: Users,
     layout: "/admin",
     nav: true,
     private: true,

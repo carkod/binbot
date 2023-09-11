@@ -123,7 +123,6 @@ export default function Autotrade() {
                         value={settingsProps.autotradeSettings.strategy}
                       >
                         <option value="long">Long</option>
-                        <option value="short">Short</option>
                         <option value="margin_long">Margin long</option>
                         <option value="margin_short">Margin short</option>
                       </Form.Select>
@@ -221,6 +220,7 @@ export default function Autotrade() {
                             label={"Stop loss"}
                             handleChange={handleInput}
                             type="number"
+                            infoText="Should be kept as small as possible as this will increase funds needed to start base_order_size"
                           />
                         </Col>
                         <Col md="3">

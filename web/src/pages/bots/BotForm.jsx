@@ -23,7 +23,6 @@ import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
 import {
-  bot,
   computeSingleBotProfit,
 } from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
@@ -38,6 +37,7 @@ import {
   getSymbolInfo,
   getSymbols,
   setBot,
+  resetBot,
 } from "./actions";
 import { convertGBP, getBaseAsset, getQuoteAsset } from "./requests";
 import MainTab from "../../components/MainTab";
@@ -54,7 +54,6 @@ class BotForm extends React.Component {
     super(props);
     this.state = {
       id: props.match.params.id ? props.match.params.id : null,
-      bot_profit: 0,
       activeTab: "main",
       toggleIndicators: true,
       currentChartPrice: 0,
@@ -73,6 +72,8 @@ class BotForm extends React.Component {
       this.props.setBot({ formIsValid: true });
       this.props.getBot(this.props.match.params.id);
       this.computeAvailableBalance();
+    } else {
+      this.props.resetBot()
     }
     if (!checkValue(this.props.match.params?.symbol)) {
       this.props.setBot(
@@ -81,9 +82,6 @@ class BotForm extends React.Component {
         },
         () => this.computeAvailableBalance()
       );
-    }
-    if (checkValue(this.props.match.params.symbol)) {
-      this.props.setBot(bot);
     }
   };
 
@@ -396,12 +394,12 @@ class BotForm extends React.Component {
     this.computeAvailableBalance();
   };
 
-  handleActivation = async (e) => {
+  handleActivation = (e) => {
     const validation = this.requiredinValidation();
     if (validation) {
       this.handleSubmit(e);
-      await this.props.activateBot(this.state.id);
-      this.props.getBot(this.props.match.params.id);
+      this.props.activateBot(this.state.id);
+      this.props.getBot(this.props.match.params.id)
     }
   };
 
@@ -412,7 +410,6 @@ class BotForm extends React.Component {
     });
   }
     
-
   handleToggleIndicator = (value) => {
     this.setState({ toggleIndicators: value });
   };
@@ -500,7 +497,7 @@ class BotForm extends React.Component {
                             : "danger"
                         }
                       >
-                        {this.props.bot.bot_profit + "%"}
+                        {this.props.bot.bot_profit ?this.props.bot.bot_profit + "%" : "0%"}
                       </Badge>{" "}
                       {!checkValue(this.props.bot?.status) && (
                         <Badge
@@ -523,12 +520,12 @@ class BotForm extends React.Component {
                     </CardTitle>
                   </Col>
                   <Col>
-                    {!checkValue(this.state.bot_profit) &&
-                      !isNaN(this.state.bot_profit) && (
+                    {!checkValue(this.props.bot.bot_profit) &&
+                      !isNaN(this.props.bot.bot_profit) && (
                         <h4>
                           Earnings after commissions (est.):{" "}
                           {roundDecimals(
-                            parseFloat(this.state.bot_profit) - 0.3
+                            parseFloat(this.props.bot.bot_profit) - 0.3
                           ) + "%"}
                         </h4>
                       )}
@@ -794,4 +791,5 @@ export default connect(mapStateToProps, {
   activateBot,
   deactivateBot,
   setBot,
+  resetBot,
 })(BotForm);

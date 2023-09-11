@@ -4,9 +4,8 @@ import os
 from urllib.parse import urlencode
 from time import time
 from requests import request
-from tools.handle_error import handle_binance_errors, json_response, json_response_error
+from tools.handle_error import handle_binance_errors, json_response, json_response_error, IsolateBalanceError
 from py3cw.request import Py3CW
-
 
 class BinanceApi:
     """
@@ -128,8 +127,26 @@ class BinanceApi:
         Use isolated margin account is preferrable,
         because this is the one that supports the most assets
         """
-        info = self.signed_request(url=self.isolated_account_url, payload={"symbols": symbol})
+        payload = {}
+        if symbol:
+            payload["symbols"] = [symbol]
+        info = self.signed_request(url=self.isolated_account_url, payload=payload)
         assets = info["assets"]
+        if len(assets) == 0:
+            raise IsolateBalanceError("Hit symbol 24hr restriction or not available (requires transfer in)")
+        return assets
+
+    def get_isolated_balance_total(self):
+        """
+        Get balance of Isolated Margin account
+
+        Use isolated margin account is preferrable,
+        because this is the one that supports the most assets
+        """
+        info = self.signed_request(url=self.isolated_account_url, payload={})
+        assets = info['totalNetAssetOfBtc']
+        if len(assets) == 0:
+            raise IsolateBalanceError("Hit symbol 24hr restriction or not available (requires transfer in)")
         return assets
 
 class BinbotApi(BinanceApi):

@@ -5,6 +5,8 @@ import pandas as pd
 from account.account import Account
 from account.schemas import BalanceSchema
 from bson.objectid import ObjectId
+from charts.models import CandlestickParams
+from charts.models import Candlestick
 from db import setup_db
 from tools.handle_error import InvalidSymbol, json_response, json_response_message
 from tools.round_numbers import round_numbers
@@ -74,7 +76,7 @@ class Assets(Account):
         for b in bin_balance["data"]:
             # Only tether coins for hedging
             if b["asset"] == "NFT":
-                break
+                continue
             elif b["asset"] in ["USD", "USDT"]:
                 qty = self._check_locked(b)
                 total_usdt += qty
@@ -87,6 +89,10 @@ class Assets(Account):
                     print(b["asset"])
                     # Some coins like NFT are air dropped and cannot be traded
                     break
+
+        isolated_balance_total = self.get_isolated_balance_total()
+        rate = self.get_ticker_price("BTCUSDT")
+        total_usdt += float(isolated_balance_total) * float(rate)
 
         total_balance = {
             "time": current_time.strftime("%Y-%m-%d"),
@@ -115,8 +121,10 @@ class Assets(Account):
         balances_response = self.get_raw_balance()
         # Isolated m
         isolated_margin = self.signed_request(url=self.isolated_account_url)
-        get_usdt_btc_rate = self.ticker(symbol=f'BTC{fiat}', json=False)
-        total_isolated_margin = float(isolated_margin["totalNetAssetOfBtc"]) * float(get_usdt_btc_rate["price"])
+        get_usdt_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
+        total_isolated_margin = float(isolated_margin["totalNetAssetOfBtc"]) * float(
+            get_usdt_btc_rate["price"]
+        )
 
         balances = json.loads(balances_response.body)
         total_fiat = 0
@@ -144,7 +152,7 @@ class Assets(Account):
             "total_fiat": total_fiat + total_isolated_margin,
             "total_isolated_margin": total_isolated_margin,
             "fiat_left": left_to_allocate,
-            "asset": fiat
+            "asset": fiat,
         }
         if balance:
             resp = json_response({"data": balance})
@@ -164,7 +172,6 @@ class Assets(Account):
         )
         balances = []
         for datapoint in snapshot_account_data["snapshotVos"]:
-
             fiat_rate = self.get_ticker_price(f"BTC{fiat}")
             total_fiat = float(datapoint["data"]["totalAssetOfBtc"]) * float(fiat_rate)
             balance = {
@@ -238,3 +245,95 @@ class Assets(Account):
                 "data": gainers_losers_list,
             }
         )
+
+    def match_series_dates(
+        self, dates, balance_date, i: int = 0, count=0
+    ) -> int | None:
+        if i == len(dates):
+            return None
+
+
+        for idx, d in enumerate(dates):
+            dt_obj = datetime.fromtimestamp(d / 1000)
+            str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
+            
+            # Match balance store dates with btc price dates
+            if str_date == balance_date:
+                return idx
+        else:
+            print("Not able to match any BTC dates for this balance store date")
+            return None
+
+    async def get_balance_series(self, end_date, start_date):
+        params = {}
+
+        if start_date:
+            start_date = start_date * 1000
+            try:
+                float(start_date)
+            except ValueError:
+                resp = json_response(
+                    {"message": f"start_date must be a timestamp float", "data": []}
+                )
+                return resp
+
+            obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
+            gte_tp_id = ObjectId.from_datetime(obj_start_date)
+            try:
+                params["_id"]["$gte"] = gte_tp_id
+            except KeyError:
+                params["_id"] = {"$gte": gte_tp_id}
+
+        if end_date:
+            end_date = end_date * 1000
+            try:
+                float(end_date)
+            except ValueError as e:
+                resp = json_response(
+                    {"message": f"end_date must be a timestamp float: {e}", "data": []}
+                )
+                return resp
+
+            obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
+            lte_tp_id = ObjectId.from_datetime(obj_end_date)
+            params["_id"]["$lte"] = lte_tp_id
+
+        balance_series = list(self.db.balances.find(params).sort([("_id", -1)]))
+
+        # btc candlestick data series
+        params = CandlestickParams(
+            limit=31, # One month - 1 (calculating percentages) worth of data to display
+            symbol="BTCUSDT",
+            interval="1d",
+        )
+
+        cs = Candlestick()
+        df, dates = cs.get_klines(params)
+        trace = cs.candlestick_trace(df, dates)
+
+        balances_series_diff = []
+        balances_series_dates = []
+        balance_btc_diff = []
+        balance_series.sort(key=lambda item: item["_id"], reverse=False)
+
+        for index, item in enumerate(balance_series):
+            btc_index = self.match_series_dates(dates, item["time"], index)
+            if btc_index:
+                balances_series_diff.append(float(balance_series[index]["estimated_total_usdt"]))
+                balances_series_dates.append(item["time"])
+                balance_btc_diff.append(float(trace["close"][btc_index]))
+            else:
+                continue
+
+        resp = json_response(
+            {
+                "message": "Sucessfully rendered benchmark data.",
+                "data": {
+                    "usdt": balances_series_diff,
+                    "btc": balance_btc_diff,
+                    "dates": balances_series_dates,
+                },
+                "error": 0,
+            }
+        )
+        return resp

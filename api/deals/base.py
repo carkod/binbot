@@ -27,23 +27,10 @@ class BaseDeal(OrderController):
     Base Deal class to share with CreateDealController and MarginDeal
     """
 
-    def __init__(self, bot, db_collection):
+    def __init__(self, bot, db_collection_name):
         self.active_bot = BotSchema.parse_obj(bot)
-        self.db = setup_db()
-        self.db_collection = self.db[db_collection]
-        self.decimal_precision = self.get_quote_asset_precision(self.active_bot.pair)
-        # PRICE_FILTER decimals
-        self.price_precision = -1 * (
-            Decimal(str(self.price_filter_by_symbol(self.active_bot.pair, "tickSize")))
-            .as_tuple()
-            .exponent
-        )
-        self.qty_precision = -1 * (
-            Decimal(str(self.lot_size_by_symbol(self.active_bot.pair, "stepSize")))
-            .as_tuple()
-            .exponent
-        )
         super().__init__()
+        self.db_collection = self.db[db_collection_name]
 
     def __repr__(self) -> str:
         """

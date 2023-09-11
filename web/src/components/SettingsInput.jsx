@@ -1,6 +1,7 @@
 import React from "react";
 import { FormFeedback, FormGroup, Input, Label } from "reactstrap";
 import { checkValue } from "../validations";
+import BotFormTooltip from "./BotFormTooltip";
 
 const SettingsInput = ({
   value,
@@ -9,11 +10,16 @@ const SettingsInput = ({
   handleChange,
   handleBlur,
   errorMsg,
+  infoText,
   ...props
 }) => {
   return (
     <FormGroup>
-      <Label for={name}>{label}</Label>
+      {infoText ? 
+        <BotFormTooltip name={name} text={infoText}>{label}</BotFormTooltip>
+        :
+        <Label for={name}>{label}</Label>
+      }
       <Input
         name={name}
         id={name}

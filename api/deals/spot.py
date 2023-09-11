@@ -1,9 +1,6 @@
 import logging
-import requests
-import numpy
 
 from deals.base import BaseDeal
-from pymongo import ReturnDocument
 from requests.exceptions import HTTPError
 from deals.models import BinanceOrderModel
 from tools.handle_error import (
@@ -26,10 +23,19 @@ class SpotLongDeal(BaseDeal):
     Spot (non-margin, no borrowing) long bot deal updates
     during streaming
     """
-    def __init__(self, bot, db_collection: str) -> None:
+    def __init__(self, bot, db_collection_name: str) -> None:
         # Inherit from parent class
-        super().__init__(bot, db_collection)
+        super().__init__(bot, db_collection_name)
     
+    def switch_margin_short(self, close_price):
+        msg = "Resetting bot for margin_short strategy..."
+        print(msg)
+        self.update_deal_logs(msg)
+
+        margin_deal = MarginDeal(self.active_bot, db_collection_name="bots")
+        margin_deal.margin_short_base_order()
+        self.save_bot_streaming()
+
 
     def execute_stop_loss(self, price):
         """
@@ -89,7 +95,7 @@ class SpotLongDeal(BaseDeal):
             timestamp=res["transactTime"],
             deal_type="stop_loss",
             order_id=res["orderId"],
-            pair=res["self.active_bot.pair"],
+            pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
             price=res["price"],
@@ -333,23 +339,13 @@ class SpotLongDeal(BaseDeal):
         pass
 
     def streaming_updates(self, close_price, open_price):
-        # Update Current price only for active bots
-        # This is to keep historical profit intact
-        bot = self.db_collection.find_one_and_update(
-            {"id": self.active_bot.id},
-            {"$set": {"deal.current_price": close_price}},
-            return_document=ReturnDocument.AFTER,
-        )
-
+        self.active_bot.deal.current_price = close_price
+        self.save_bot_streaming()
         # Stop loss
-        if (float(self.active_bot.stop_loss) > 0
-            and "stop_loss_price" in self.active_bot.deal
-            and float(self.active_bot.deal["stop_loss_price"]) > float(close_price)
-        ):
+        if (float(self.active_bot.stop_loss) > 0 and float(self.active_bot.deal.stop_loss_price) > float(close_price)):
             self.execute_stop_loss(close_price)
             if self.active_bot.margin_short_reversal:
-                margin_deal = MarginDeal(self.active_bot, db_collection=self.db_collection)
-                margin_deal.margin_short_base_order()
+                self.switch_margin_short(close_price)
 
             return
 
@@ -368,7 +364,7 @@ class SpotLongDeal(BaseDeal):
 
             self.active_bot.deal.trailling_profit_price = trailling_price
             # Direction 1 (upward): breaking the current trailling
-            if bot and float(close_price) >= float(trailling_price):
+            if float(close_price) >= float(trailling_price):
                 new_take_profit = float(trailling_price) * (
                     1 + (float(self.active_bot.take_profit) / 100)
                 )
@@ -401,9 +397,6 @@ class SpotLongDeal(BaseDeal):
                     logging.info(
                         f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
                     )
-
-            if not bot:
-                self.active_bot.errors.append("Error updating trailling order")
 
             self.save_bot_streaming()
 

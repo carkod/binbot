@@ -12,12 +12,11 @@ import {
 import { testBotsReducer } from "./pages/paper-trading/reducer";
 import { settingsReducer } from "./pages/bots/reducer";
 import { blacklistReducer } from "./pages/research/reducer";
-import { usersReducer } from "./pages/users/reducer";
 import {
   balanceRawReducer,
   estimateReducer,
 } from "./state/balances/reducer";
-import { gainersLosersReducer } from "./pages/dashboard/reducer";
+import { gainersLosersReducer, btcBenchmarkReducer } from "./pages/dashboard/reducer";
 
 const rootReducer = combineReducers({
   registrationReducer,
@@ -32,8 +31,8 @@ const rootReducer = combineReducers({
   blacklistReducer,
   settingsReducer,
   estimateReducer,
-  usersReducer,
   testBotsReducer,
   gainersLosersReducer,
+  btcBenchmarkReducer,
 });
 export default rootReducer;

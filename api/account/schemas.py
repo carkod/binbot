@@ -53,6 +53,12 @@ class Binance24Ticker(BaseModel):
     count: int
 
 
+class BinanceBalance(BaseModel):
+    asset: str
+    free: float
+    locked: float
+
+
 class GainersLosersResponse(StandardResponse):
     data: list[Binance24Ticker]
 
@@ -65,3 +71,13 @@ class EstimatedBalance(BaseModel):
 
 class EstimatedBalancesResponse(StandardResponse):
     data: EstimatedBalance
+
+
+class BalanceSeries(StandardResponse):
+    usdt: list[float]
+    btc: list[float]
+    dates: list[str]
+
+
+class BalanceSeriesResponse(StandardResponse):
+    data: list[BalanceSeries]

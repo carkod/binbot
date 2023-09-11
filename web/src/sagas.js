@@ -16,7 +16,7 @@ import watchGetBotApi, {
   watchGetCandlestick,
   watchGetSettingsApi,
 } from "./pages/bots/saga";
-import { watchGetGainersLosers } from "./pages/dashboard/saga";
+import { watchGetGainersLosers, watchBenchmarksApi } from "./pages/dashboard/saga";
 import watchGetTestBotsApi, {
   watchActivateTestBotApi,
   watchCloseTestBotApi,
@@ -34,11 +34,6 @@ import {
   watchGetBlacklistApi,
   watchResearchApi,
 } from "./pages/research/saga";
-import watchUsersApi, {
-  watchCreateUserApi,
-  watchDeleteUserApi,
-  watchEditUserApi,
-} from "./pages/users/saga";
 import {
   watchGetEstimate,
   watchRawBalance,
@@ -67,10 +62,6 @@ export default function* rootSaga() {
     watchDeleteBlackListApi(),
     watchAddBlacklistApi(),
     watchGetEstimate(),
-    watchUsersApi(),
-    watchEditUserApi(),
-    watchDeleteUserApi(),
-    watchCreateUserApi(),
     watchGetTestBotsApi(),
     watchGetTestBotApi(),
     watchCreateTestBot(),
@@ -82,5 +73,6 @@ export default function* rootSaga() {
     watchGetTestAutotradeSettingsApi(),
     watchEditTestAutotradeSettings(),
     watchGetGainersLosers(),
+    watchBenchmarksApi(),
   ]);
 }

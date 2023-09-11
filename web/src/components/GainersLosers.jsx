@@ -36,7 +36,7 @@ const GainersLosersCard = ({ data, title }) => {
         <ListGroup className="list-group-flush">
           {data.map((x, i) => (
             <ListGroup.Item key={i}>
-              <Card.Link href={`/admin/paper-trading/new/${x.symbol}`}>
+              <Card.Link href={`/admin/bots/new/${x.symbol}`}>
                 {x.symbol}
               </Card.Link>
               <Badge
@@ -60,7 +60,7 @@ export default function GainersLosers({ data }) {
   const gainersData = data.slice(0, 10);
   const perGainers = ((gainerCount / data.length) * 100).toFixed(2) + "%";
   // Bottom 10
-  const losersData = data.slice(-10);
+  const losersData = data.slice(-10).reverse();
   const perLosers = ((loserCount / data.length) * 100).toFixed(2) + "%";
   return (
     <div>
