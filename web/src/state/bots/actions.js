@@ -81,6 +81,24 @@ export function getProfit(base_price, current_price, strategy = "long") {
 }
 
 /**
+ * Calculate interests based on hourly interest rate
+ * @param {bot} bot object
+ * @returns {float}
+ */
+function getInterestsShortMargin(bot) {
+  const timeDelta = bot.deal.margin_short_sell_timestamp - bot.deal.margin_short_buy_back_timestamp;
+  const durationHours = (timeDelta / 1000) / 3600
+  const interests = parseFloat(bot.deal.hourly_interest_rate) * durationHours;
+  const closeTotal = bot.deal.margin_short_buy_back_price;
+  const openTotal = bot.deal.margin_short_sell_price;
+  return {
+    interests: interests,
+    openTotal: openTotal,
+    closeTotal: closeTotal,
+  }
+}
+
+/**
  * This function calculates the profit (not including commissions/fees)
  * for a single bot, namely the BotForm and TestBotForm components
  * by using input data from that individual bot as opposed to computeTotalProfit
@@ -105,27 +123,27 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
     } else if (bot.deal.margin_short_sell_price > 0) {
       // Completed margin short
       if (bot.deal.margin_short_buy_back_price > 0) {
-        const currentPrice = bot.deal.margin_short_buy_back_price;
-        const marginSellPrice = bot.deal.margin_short_sell_price;
-        const interests = (+bot.deal.hourly_interest_rate) * (+bot.deal.margin_short_loan_principal)
+        
+        const { interests, openTotal, closeTotal} = getInterestsShortMargin(bot);
         let profitChange =
           parseFloat(
-            ((currentPrice - marginSellPrice - interests) / marginSellPrice) * 100
-          ) * -1;
+            (((openTotal - closeTotal) / openTotal) - interests) * 100
+          );
         return +profitChange.toFixed(2);
       } else {
-        const currentPrice =
+        // Not completed margin_sho
+        const closePrice =
           bot.deal.margin_short_buy_back_price > 0
             ? bot.deal.margin_short_buy_back_price
             : realTimeCurrPrice || bot.deal.current_price;
-        if (currentPrice === 0) {
+        if (closePrice === 0) {
           return 0;
         }
-        const marginSellPrice = bot.deal.margin_short_sell_price;
+        const { interests, openTotal } = getInterestsShortMargin(bot);
         let profitChange =
           parseFloat(
-            ((currentPrice - marginSellPrice) / marginSellPrice) * 100
-          ) * -1;
+            (((openTotal - closePrice) / openTotal) - interests) * 100
+          );
         return +profitChange.toFixed(2);
       }
     } else {

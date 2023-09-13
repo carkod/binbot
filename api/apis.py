@@ -10,8 +10,6 @@ from py3cw.request import Py3CW
 class BinanceApi:
     """
     Binance API URLs
-
-    To test:
     https://binance.github.io/binance-api-swagger/
     """
 

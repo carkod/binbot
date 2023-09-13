@@ -247,7 +247,7 @@ class Assets(Account):
         )
 
     def match_series_dates(
-        self, dates, balance_date, i: int = 0, count=0
+        self, dates, balance_date, i: int = 0
     ) -> int | None:
         if i == len(dates):
             return None
@@ -298,7 +298,7 @@ class Assets(Account):
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
             params["_id"]["$lte"] = lte_tp_id
 
-        balance_series = list(self.db.balances.find(params).sort([("_id", -1)]))
+        balance_series = list(self.db.balances.find(params).sort([("time", -1)]))
 
         # btc candlestick data series
         params = CandlestickParams(
@@ -314,7 +314,6 @@ class Assets(Account):
         balances_series_diff = []
         balances_series_dates = []
         balance_btc_diff = []
-        balance_series.sort(key=lambda item: item["_id"], reverse=False)
 
         for index, item in enumerate(balance_series):
             btc_index = self.match_series_dates(dates, item["time"], index)
