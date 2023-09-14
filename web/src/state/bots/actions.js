@@ -86,7 +86,11 @@ export function getProfit(base_price, current_price, strategy = "long") {
  * @returns {float}
  */
 function getInterestsShortMargin(bot) {
-  const timeDelta = bot.deal.margin_short_sell_timestamp - bot.deal.margin_short_buy_back_timestamp;
+  let closeTimestamp = bot.deal.margin_short_buy_back_timestamp;
+  if (closeTimestamp === 0) {
+    closeTimestamp = new Date().getTime()
+  }
+  const timeDelta = closeTimestamp - bot.deal.margin_short_sell_timestamp;
   const durationHours = (timeDelta / 1000) / 3600
   const interests = parseFloat(bot.deal.hourly_interest_rate) * durationHours;
   const closeTotal = bot.deal.margin_short_buy_back_price;

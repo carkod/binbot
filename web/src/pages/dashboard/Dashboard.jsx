@@ -2,7 +2,7 @@ import produce from "immer";
 import React from "react";
 import { connect } from "react-redux";
 import { Card, CardBody, CardFooter, CardTitle } from "reactstrap";
-import { Col, Row } from "react-bootstrap";
+import { Col, Row, Container } from "react-bootstrap";
 import GainersLosers from "../../components/GainersLosers";
 import { loading } from "../../containers/spinner/actions";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
@@ -224,6 +224,7 @@ class Dashboard extends React.Component {
             <>
               <Row>
                 <Col lg="3" md="6" sm="6" xs="6">
+                  <Container>
                   <Row>
                     <Col lg="12">
                       <Card className="card-stats">
@@ -335,6 +336,7 @@ class Dashboard extends React.Component {
                       </Card>
                     </Col>
                   </Row>
+                  </Container>
                 </Col>
                 <Col lg="9">
                   {this.props.benchmarkData && (
@@ -385,7 +387,7 @@ const mapStateToProps = (s) => {
   let percentageRevenue = 0;
   let revenue = 0;
   if (benchmarkData && balanceEstimate) {
-    revenue = (balanceEstimate.total_fiat - benchmarkData.usdt[benchmarkData.usdt.length - 1]);
+    revenue = (balanceEstimate.total_fiat - benchmarkData.usdt[0]);
     percentageRevenue = (revenue / balanceEstimate.total_fiat) * 100;
   }
 
