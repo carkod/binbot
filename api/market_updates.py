@@ -12,7 +12,6 @@ from websocket import (
 )
 
 
-
 logging.Formatter.converter = time.gmtime  # date time in GMT/UTC
 logging.basicConfig(
     level=logging.INFO,
@@ -21,26 +20,30 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+
+def cronjobs():
+    assets = Assets()
+    assets.store_balance()
+    logging.log("Cron jobs completed")
+
+
 if os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()
-    assets = Assets()
-
-    assets.store_balance()
-    # scheduler.add_job(
-    #     func=assets.store_balance,
-    #     trigger="cron",
-    #     timezone="Europe/London",
-    #     hour=1,
-    #     minute=0,
-    #     id='store_balance'
-    # )
-    # scheduler.start()
-    # atexit.register(lambda: scheduler.shutdown(wait=False))
+    scheduler.add_job(
+        func=cronjobs,
+        trigger="cron",
+        timezone="Europe/London",
+        hour=1,
+        minute=0,
+        id="store_balance",
+    )
+    scheduler.start()
+    atexit.register(lambda: scheduler.shutdown(wait=False))
 
 try:
     mu = StreamingController()
     mu.get_klines()
-                
+
 except WebSocketException as e:
     if isinstance(e, WebSocketConnectionClosedException):
         logging.error("Lost websocket connection")

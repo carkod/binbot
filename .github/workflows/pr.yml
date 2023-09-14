@@ -86,7 +86,6 @@ jobs:
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e PYTHONUNBUFFERED=TRUE \
           -e ENV=ci -d binbot_streaming
-          docker logs binbot_streaming
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |

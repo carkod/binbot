@@ -116,7 +116,7 @@ $bg-danger: lighten($danger-color, 7%) !default;
 $bg-brown: lighten($brown-color, 7%) !default;
 $bg-purple: lighten($purple-color, 7%) !default;
 
-//     brand Colors
+// brand Colors
 $brand-primary: $primary-color !default;
 $brand-info: $info-color !default;
 $brand-success: $success-color !default;
@@ -126,7 +126,7 @@ $brand-inverse: $black-color !default;
 
 $link-disabled-color: #666666 !default;
 $dark-color: #212120 !default;
-//     light colors
+// light colors
 $light-blue: rgba($primary-color, 0.2);
 $light-azure: rgba($info-color, 0.2);
 $light-green: rgba($success-color, 0.2);
@@ -390,4 +390,3 @@ $zindex-notification: 1070 !default; // must be higher than a modal background (
 $zindex-modal: 1080 !default; // must be higher than a modal background (1050)
 $zindex-loader-bg: 1085 !default;
 $zindex-loader: 1090 !default;
-
