@@ -147,6 +147,14 @@ class BinanceApi:
             raise IsolateBalanceError("Hit symbol 24hr restriction or not available (requires transfer in)")
         return assets
 
+    def transfer_dust(self, assets):
+        """
+        Transform small balances to BNB
+        """
+        assets = ",".join(assets)
+        response = self.signed_request(url=self.dust_transfer_url, method="POST", payload={"asset": assets})
+        return response
+
 class BinbotApi(BinanceApi):
     """
     API endpoints on this project itself

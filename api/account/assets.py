@@ -8,7 +8,7 @@ from bson.objectid import ObjectId
 from charts.models import CandlestickParams
 from charts.models import Candlestick
 from db import setup_db
-from tools.handle_error import InvalidSymbol, json_response, json_response_message
+from tools.handle_error import InvalidSymbol, json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
 
 
@@ -335,4 +335,36 @@ class Assets(Account):
                 "error": 0,
             }
         )
+        return resp
+
+    def clean_balance_assets(self):
+        """
+        Check if there are many small assets (0.000.. BTC)
+        if there are more than 5 (number of bots)
+        transfer to BNB
+        """
+        balance = self.get_raw_balance()
+        data = json.loads(balance.body)["data"]
+        assets = []
+        for item in data:
+            if item["asset"] not in ["USDT", "NFT", "BNB"]:
+                assets.append(item["asset"])
+
+        if len(assets) > 5:
+            self.transfer_dust(assets)
+            resp = json_response_message("Sucessfully cleaned balance.")
+        else:
+            resp = json_response_error("Amount of assets in balance is low. Transfer not performed.")
+
+        return resp
+
+    def disable_isolated_accounts(self):
+        """
+        Check and disable isolated accounts
+        """
+        info = self.signed_request(url=self.isolated_account_url, payload={})
+        for item in info["assets"]:
+            if float(item["liquidatePrice"]) == 0:
+                self.disable_isolated_margin_account(item["symbol"])
+        resp = json_response_message("Sucessfully finished disabling isolated margin accounts.")
         return resp

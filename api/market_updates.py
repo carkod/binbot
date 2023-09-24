@@ -4,6 +4,7 @@ import logging
 import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from api.account.routes import disable_isolated
 from streaming.streaming_controller import StreamingController
 from account.assets import Assets
 from websocket import (
@@ -20,23 +21,28 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-
-def cronjobs():
-    assets = Assets()
-    assets.store_balance()
-    logging.log("Cron jobs completed")
-
-
 if os.getenv("ENV") != "ci":
     scheduler = BackgroundScheduler()
+    assets = Assets()
+
     scheduler.add_job(
-        func=cronjobs,
+        func=assets.store_balance(),
         trigger="cron",
         timezone="Europe/London",
         hour=1,
         minute=0,
         id="store_balance",
     )
+
+    scheduler.add_job(
+        func=assets.disable_isolated_accounts(),
+        trigger="cron",
+        timezone="Europe/London",
+        hour=2,
+        minute=0,
+        id="disable_isolated_accounts",
+    )
+
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))
 
