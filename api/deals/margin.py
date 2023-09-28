@@ -20,6 +20,8 @@ from tools.round_numbers import round_numbers, supress_notation, round_numbers_c
 class MarginShortError(Exception):
     pass
 
+# To be removed one day when commission endpoint found that provides this value
+ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection_name: str) -> None:
@@ -77,13 +79,12 @@ class MarginDeal(BaseDeal):
         ):
             return None
 
-        qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(
-            self.isolated_balance[0]["baseAsset"]["interest"]
-        )
+        qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]) + float(self.isolated_balance[0]["baseAsset"]["borrowed"]) * ESTIMATED_COMMISSIONS_RATE
+        qty = round_numbers_ceiling(qty, self.qty_precision)
 
-        return round_numbers_ceiling(qty, self.qty_precision), float(
-            self.isolated_balance[0]["baseAsset"]["free"]
-        )
+        free = float(self.isolated_balance[0]["baseAsset"]["free"])
+
+        return qty, free
 
     def get_remaining_assets(self) -> tuple[float, float]:
         """
@@ -706,11 +707,7 @@ class MarginDeal(BaseDeal):
             try:
                 quote, base = self.get_remaining_assets()
                 price = self.matching_engine(self.active_bot.pair, True, qty)
-                # No need to round?
-                # qty = round_numbers(
-                #     float(quote) / float(price), self.qty_precision
-                # )
-                # If still qty = 0, it means everything is clear
+
                 if qty == 0:
                     return
 

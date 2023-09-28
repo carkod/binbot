@@ -29,11 +29,10 @@ class SpotLongDeal(BaseDeal):
     
     def switch_margin_short(self, close_price):
         msg = "Resetting bot for margin_short strategy..."
-        print(msg)
         self.update_deal_logs(msg)
+        self.save_bot_streaming()
 
-        margin_deal = MarginDeal(self.active_bot, db_collection_name="bots")
-        margin_deal.margin_short_base_order()
+        self.active_bot = MarginDeal(self.active_bot, db_collection_name="bots").margin_short_base_order()
         self.save_bot_streaming()
 
 

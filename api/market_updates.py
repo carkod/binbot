@@ -4,7 +4,7 @@ import logging
 import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from api.account.routes import disable_isolated
+from account.routes import disable_isolated
 from streaming.streaming_controller import StreamingController
 from account.assets import Assets
 from websocket import (
@@ -26,7 +26,7 @@ if os.getenv("ENV") != "ci":
     assets = Assets()
 
     scheduler.add_job(
-        func=assets.store_balance(),
+        func=assets.store_balance,
         trigger="cron",
         timezone="Europe/London",
         hour=1,
@@ -35,12 +35,21 @@ if os.getenv("ENV") != "ci":
     )
 
     scheduler.add_job(
-        func=assets.disable_isolated_accounts(),
+        func=assets.disable_isolated_accounts,
         trigger="cron",
         timezone="Europe/London",
         hour=2,
         minute=0,
         id="disable_isolated_accounts",
+    )
+
+    scheduler.add_job(
+        func=assets.clean_balance_assets,
+        trigger="cron",
+        timezone="Europe/London",
+        hour=3,
+        minute=0,
+        id="clean_balance_assets",
     )
 
     scheduler.start()

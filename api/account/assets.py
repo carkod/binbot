@@ -337,28 +337,27 @@ class Assets(Account):
         )
         return resp
 
-    def clean_balance_assets(self):
+    async def clean_balance_assets(self):
         """
         Check if there are many small assets (0.000.. BTC)
         if there are more than 5 (number of bots)
         transfer to BNB
         """
-        balance = self.get_raw_balance()
-        data = json.loads(balance.body)["data"]
+        data = self.signed_request(url=self.account_url)
         assets = []
-        for item in data:
-            if item["asset"] not in ["USDT", "NFT", "BNB"]:
-                assets.append(item["asset"])
+        for item in data["balances"]:
+            if item["asset"] not in ["USDT", "NFT", "BNB"] and float(item["free"]) > 0:
+                assets.append(item["free"])
 
         if len(assets) > 5:
             self.transfer_dust(assets)
             resp = json_response_message("Sucessfully cleaned balance.")
         else:
-            resp = json_response_error("Amount of assets in balance is low. Transfer not performed.")
+            resp = json_response_error("Amount of assets in balance is low. Transfer not needed.")
 
         return resp
 
-    def disable_isolated_accounts(self):
+    async def disable_isolated_accounts(self):
         """
         Check and disable isolated accounts
         """
@@ -366,5 +365,9 @@ class Assets(Account):
         for item in info["assets"]:
             if float(item["liquidatePrice"]) == 0:
                 self.disable_isolated_margin_account(item["symbol"])
-        resp = json_response_message("Sucessfully finished disabling isolated margin accounts.")
+                msg = "Sucessfully finished disabling isolated margin accounts."
+        else:
+            msg = "Disabling isolated margin account not required yet."
+
+        resp = json_response_message(msg)
         return resp
