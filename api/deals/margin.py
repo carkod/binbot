@@ -311,14 +311,13 @@ class MarginDeal(BaseDeal):
             self.save_bot_streaming()
             self.terminate_margin_short(buy_back_fiat)
         except Exception as error:
-            print(error)
             try:
                 self.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
                     amount=total_base_qty,
                 )
-                self.retry_repayment(query_loan, buy_back_fiat)
+                # self.retry_repayment(query_loan, buy_back_fiat)
             except Exception as error:
                 print(error)
                 self._append_errors(
