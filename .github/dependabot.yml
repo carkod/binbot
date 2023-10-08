@@ -7,6 +7,9 @@ updates:
     commit-message:
       # Prefix all commit messages with "npm"
       prefix: "npm"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
 
   - package-ecosystem: "pip"
     directory: "/"
@@ -18,3 +21,6 @@ updates:
       prefix: "pip prod"
       prefix-development: "pip dev"
       include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]

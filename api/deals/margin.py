@@ -317,7 +317,6 @@ class MarginDeal(BaseDeal):
                     symbol=self.active_bot.pair,
                     amount=total_base_qty,
                 )
-                # self.retry_repayment(query_loan, buy_back_fiat)
             except Exception as error:
                 print(error)
                 self._append_errors(
@@ -377,7 +376,7 @@ class MarginDeal(BaseDeal):
                         pass
                 except BinanceErrors as error:
                     if error.code == -3041:
-                        self.retry_repayment(query_loan, buy_back_fiat)
+                        self.active_bot.errors.append(error.message)
                         pass
                 except Exception as error:
                     self.update_deal_logs(error)
