@@ -347,7 +347,7 @@ class Assets(Account):
         assets = []
         for item in data["balances"]:
             if item["asset"] not in ["USDT", "NFT", "BNB"] and float(item["free"]) > 0:
-                assets.append(item["free"])
+                assets.append(item["asset"])
 
         if len(assets) > 5:
             self.transfer_dust(assets)

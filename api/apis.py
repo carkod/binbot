@@ -1,3 +1,4 @@
+from typing import List
 import hashlib
 import hmac
 import os
@@ -147,12 +148,12 @@ class BinanceApi:
             raise IsolateBalanceError("Hit symbol 24hr restriction or not available (requires transfer in)")
         return assets
 
-    def transfer_dust(self, assets):
+    def transfer_dust(self, assets: List[str]):
         """
         Transform small balances to BNB
         """
-        assets = ",".join(assets)
-        response = self.signed_request(url=self.dust_transfer_url, method="POST", payload={"asset": assets})
+        list_assets = ",".join(assets)
+        response = self.signed_request(url=self.dust_transfer_url, method="POST", payload={"asset": list_assets})
         return response
 
 class BinbotApi(BinanceApi):
