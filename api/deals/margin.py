@@ -20,6 +20,8 @@ from tools.round_numbers import round_numbers, supress_notation, round_numbers_c
 class MarginShortError(Exception):
     pass
 
+# To be removed one day when commission endpoint found that provides this value
+ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection_name: str) -> None:
@@ -77,13 +79,12 @@ class MarginDeal(BaseDeal):
         ):
             return None
 
-        qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(
-            self.isolated_balance[0]["baseAsset"]["interest"]
-        )
+        qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]) + float(self.isolated_balance[0]["baseAsset"]["borrowed"]) * ESTIMATED_COMMISSIONS_RATE
+        qty = round_numbers_ceiling(qty, self.qty_precision)
 
-        return round_numbers_ceiling(qty, self.qty_precision), float(
-            self.isolated_balance[0]["baseAsset"]["free"]
-        )
+        free = float(self.isolated_balance[0]["baseAsset"]["free"])
+
+        return qty, free
 
     def get_remaining_assets(self) -> tuple[float, float]:
         """
@@ -310,14 +311,12 @@ class MarginDeal(BaseDeal):
             self.save_bot_streaming()
             self.terminate_margin_short(buy_back_fiat)
         except Exception as error:
-            print(error)
             try:
                 self.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
                     amount=total_base_qty,
                 )
-                self.retry_repayment(query_loan, buy_back_fiat)
             except Exception as error:
                 print(error)
                 self._append_errors(
@@ -377,7 +376,7 @@ class MarginDeal(BaseDeal):
                         pass
                 except BinanceErrors as error:
                     if error.code == -3041:
-                        self.retry_repayment(query_loan, buy_back_fiat)
+                        self.active_bot.errors.append(error.message)
                         pass
                 except Exception as error:
                     self.update_deal_logs(error)
@@ -706,11 +705,7 @@ class MarginDeal(BaseDeal):
             try:
                 quote, base = self.get_remaining_assets()
                 price = self.matching_engine(self.active_bot.pair, True, qty)
-                # No need to round?
-                # qty = round_numbers(
-                #     float(quote) / float(price), self.qty_precision
-                # )
-                # If still qty = 0, it means everything is clear
+
                 if qty == 0:
                     return
 

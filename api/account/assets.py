@@ -8,8 +8,9 @@ from bson.objectid import ObjectId
 from charts.models import CandlestickParams
 from charts.models import Candlestick
 from db import setup_db
-from tools.handle_error import InvalidSymbol, json_response, json_response_message
-from tools.round_numbers import round_numbers
+from tools.handle_error import InvalidSymbol, json_response, json_response_error, json_response_message
+from tools.round_numbers import round_numbers, round_numbers_ceiling, supress_notation
+from binance.exceptions import BinanceAPIException
 
 
 class Assets(Account):
@@ -247,7 +248,7 @@ class Assets(Account):
         )
 
     def match_series_dates(
-        self, dates, balance_date, i: int = 0, count=0
+        self, dates, balance_date, i: int = 0
     ) -> int | None:
         if i == len(dates):
             return None
@@ -298,7 +299,7 @@ class Assets(Account):
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
             params["_id"]["$lte"] = lte_tp_id
 
-        balance_series = list(self.db.balances.find(params).sort([("_id", -1)]))
+        balance_series = list(self.db.balances.find(params).sort([("time", -1)]))
 
         # btc candlestick data series
         params = CandlestickParams(
@@ -314,7 +315,6 @@ class Assets(Account):
         balances_series_diff = []
         balances_series_dates = []
         balance_btc_diff = []
-        balance_series.sort(key=lambda item: item["_id"], reverse=False)
 
         for index, item in enumerate(balance_series):
             btc_index = self.match_series_dates(dates, item["time"], index)
@@ -337,3 +337,101 @@ class Assets(Account):
             }
         )
         return resp
+
+    async def clean_balance_assets(self):
+        """
+        Check if there are many small assets (0.000.. BTC)
+        if there are more than 5 (number of bots)
+        transfer to BNB
+        """
+        data = self.signed_request(url=self.account_url)
+        assets = []
+        for item in data["balances"]:
+            if item["asset"] not in ["USDT", "NFT", "BNB"] and float(item["free"]) > 0:
+                assets.append(item["asset"])
+
+        if len(assets) > 5:
+            self.transfer_dust(assets)
+            resp = json_response_message("Sucessfully cleaned balance.")
+        else:
+            resp = json_response_error("Amount of assets in balance is low. Transfer not needed.")
+
+        return resp
+
+    async def disable_isolated_accounts(self):
+        """
+        Check and disable isolated accounts
+        """
+        info = self.signed_request(url=self.isolated_account_url, payload={})
+        for item in info["assets"]:
+            if float(item["liquidatePrice"]) == 0:
+                self.disable_isolated_margin_account(item["symbol"])
+                msg = "Sucessfully finished disabling isolated margin accounts."
+        else:
+            msg = "Disabling isolated margin account not required yet."
+
+        resp = json_response_message(msg)
+        return resp
+
+    def one_click_liquidation(self, asset, balance="USDT", json=True):
+        """
+        Emulate Binance Dashboard
+        One click liquidation function
+        """
+        pair = asset + balance
+        isolated_balance = self.get_isolated_balance(pair)
+        # Check margin account balance first
+        balance = float(isolated_balance[0]["quoteAsset"]["free"])        
+        qty_precision = self.get_qty_precision(pair)
+        if balance > 0:
+            # repay
+            repay_amount = float(
+                isolated_balance[0]["baseAsset"]["borrowed"]
+            ) + float(isolated_balance[0]["baseAsset"]["interest"])
+            # Check if there is a loan
+            # Binance may reject loans if they don't have asset
+            # or binbot errors may transfer funds but no loan is created
+            query_loan = self.signed_request(
+                url=self.loan_record_url,
+                payload={"asset": asset, "isolatedSymbol": pair},
+            )
+            if query_loan["total"] > 0 and repay_amount > 0:
+                # Only supress trailling 0s, so that everything is paid
+                repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
+                try:
+                    self.repay_margin_loan(
+                        asset=asset,
+                        symbol=pair,
+                        amount=repay_amount,
+                        isIsolated="TRUE",
+                    )
+                    # get new balance
+                    isolated_balance = self.get_isolated_balance(pair)
+                    print(f"Transfering leftover isolated assets back to Spot")
+                    if float(isolated_balance[0]["quoteAsset"]["free"]) != 0:
+                        # transfer back to SPOT account
+                        self.transfer_isolated_margin_to_spot(
+                            asset=asset,
+                            symbol=pair,
+                            amount=isolated_balance[0]["quoteAsset"]["free"],
+                        )
+                    if float(isolated_balance[0]["baseAsset"]["free"]) != 0:
+                        self.transfer_isolated_margin_to_spot(
+                            asset=asset,
+                            symbol=pair,
+                            amount=isolated_balance[0]["baseAsset"]["free"],
+                        )
+                    
+                    self.disable_isolated_margin_account(symbol=pair)
+                    return json_response_message(f"Successfully liquidated {pair}")
+
+                except BinanceAPIException as error:
+                    if error.code == -3041:
+                        # Most likely not enough funds to pay back
+                        # Get fiat (USDT) to pay back
+                        return json_response_error(error.message)
+                    if error.code == -3015:
+                        # false alarm
+                        pass
+                    if error.code == -3051:
+                        return json_response_error(error.message)

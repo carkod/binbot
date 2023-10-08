@@ -1,3 +1,4 @@
+from typing import List
 import hashlib
 import hmac
 import os
@@ -10,8 +11,6 @@ from py3cw.request import Py3CW
 class BinanceApi:
     """
     Binance API URLs
-
-    To test:
     https://binance.github.io/binance-api-swagger/
     """
 
@@ -148,6 +147,14 @@ class BinanceApi:
         if len(assets) == 0:
             raise IsolateBalanceError("Hit symbol 24hr restriction or not available (requires transfer in)")
         return assets
+
+    def transfer_dust(self, assets: List[str]):
+        """
+        Transform small balances to BNB
+        """
+        list_assets = ",".join(assets)
+        response = self.signed_request(url=self.dust_transfer_url, method="POST", payload={"asset": list_assets})
+        return response
 
 class BinbotApi(BinanceApi):
     """

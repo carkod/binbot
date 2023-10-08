@@ -128,11 +128,11 @@ export default function BotCard({
 
               <Row>
                 <Col md="7">
-                  <p className="card-category">Bought @</p>
+                  <p className="card-category">Open @</p>
                 </Col>
                 <Col md="5">
                   <p className="card-category">
-                    {x.deal?.buy_price && x.deal.buy_price.toFixed(6)}
+                    {(x.deal?.buy_price && x.deal.buy_price.toFixed(6)) || (x.deal?.buy_total_qty)}
                   </p>
                 </Col>
               </Row>

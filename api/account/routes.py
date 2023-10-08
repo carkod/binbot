@@ -79,3 +79,15 @@ async def get_balance_series():
     today = datetime.now()
     month_ago = today - timedelta(30)
     return await Assets().get_balance_series(start_date=datetime.timestamp(month_ago), end_date=datetime.timestamp(today))
+
+@account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
+async def clean_balance():
+    return await Assets().clean_balance_assets()
+
+@account_blueprint.get("/disable-isolated", response_model=BalanceSeriesResponse, tags=["assets"])
+async def disable_isolated():
+    return await Assets().disable_isolated_accounts()
+
+@account_blueprint.get("/one-click-liquidation/{asset}", response_model=BalanceSeriesResponse, tags=["assets"])
+def one_click_liquidation(asset):
+    return Assets().one_click_liquidation(asset, json=True)

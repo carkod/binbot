@@ -66,7 +66,7 @@ const btcBenchmarkReducer = produce((draft, action) => {
           }
         });
         // Match dates with diff series
-        action.data.dates.shift()
+        action.data.dates.pop()
         draft.dates = action.data.dates;
         draft.data = action.data
       }
