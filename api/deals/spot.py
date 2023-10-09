@@ -1,7 +1,9 @@
 import logging
 
-from deals.base import BaseDeal
 from requests.exceptions import HTTPError
+from deals.schema import DealSchema
+from deals.base import BaseDeal
+from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
 from tools.handle_error import (
     NotEnoughFunds,
@@ -10,13 +12,12 @@ from tools.handle_error import (
 from tools.exceptions import (
     TraillingProfitError,
 )
+from tools.enum_definitions import Status, Strategy
 from tools.round_numbers import round_numbers, supress_notation
+from tools.exceptions import TerminateStreaming
 from pydantic import ValidationError
-from tools.enum_definitions import Status
-from deals.margin import MarginDeal
 from datetime import datetime
 from bots.schemas import BotSchema
-from tools.exceptions import TerminateStreaming
 
 
 class SpotLongDeal(BaseDeal):
@@ -24,18 +25,47 @@ class SpotLongDeal(BaseDeal):
     Spot (non-margin, no borrowing) long bot deal updates
     during streaming
     """
+
     def __init__(self, bot, db_collection_name: str) -> None:
         # Inherit from parent class
         super().__init__(bot, db_collection_name)
-    
-    def switch_margin_short(self, close_price):
+
+    def switch_margin_short(self, new_base_order_price):
         msg = "Resetting bot for margin_short strategy..."
         self.update_deal_logs(msg)
-        self.save_bot_streaming()
+        base_order = next(
+            (
+                bo_deal
+                for bo_deal in self.active_bot.orders
+                if bo_deal.deal_type == "base_order"
+            ),
+            None,
+        )
+        # start from current stop_loss_price which is where the bot switched to long strategy
+        tp_price = new_base_order_price * (
+            1 + (float(self.active_bot.take_profit) / 100)
+        )
+        if float(self.active_bot.stop_loss) > 0:
+            stop_loss_price = new_base_order_price - (
+                new_base_order_price * (float(self.active_bot.stop_loss) / 100)
+            )
+        else:
+            stop_loss_price = 0
 
-        self.active_bot = MarginDeal(self.active_bot, db_collection_name="bots").margin_short_base_order()
-        self.save_bot_streaming()
+        self.active_bot.deal = DealSchema(
+            buy_timestamp=base_order.timestamp,
+            buy_price=new_base_order_price,
+            buy_total_qty=base_order.qty,
+            take_profit_price=tp_price,
+            stop_loss_price=stop_loss_price,
+        )
+        self.active_bot.strategy = Strategy.long
+        self.active_bot.status = Status.active
 
+        self.active_bot = MarginDeal(
+            self.active_bot, db_collection_name="bots"
+        ).margin_short_base_order()
+        self.save_bot_streaming()
 
     def execute_stop_loss(self, price):
         """
@@ -153,7 +183,11 @@ class SpotLongDeal(BaseDeal):
         # Dispatch real order
         else:
             try:
-                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=supress_notation(price, self.price_precision))
+                res = self.sell_order(
+                    symbol=self.active_bot.pair,
+                    qty=qty,
+                    price=supress_notation(price, self.price_precision),
+                )
             except Exception as err:
                 raise TraillingProfitError(err)
 
@@ -342,15 +376,21 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.deal.current_price = close_price
         self.save_bot_streaming()
         # Stop loss
-        if (float(self.active_bot.stop_loss) > 0 and float(self.active_bot.deal.stop_loss_price) > float(close_price)):
+        if float(self.active_bot.stop_loss) > 0 and float(
+            self.active_bot.deal.stop_loss_price
+        ) > float(close_price):
             self.execute_stop_loss(close_price)
             if self.active_bot.margin_short_reversal:
                 self.switch_margin_short(close_price)
-                raise TerminateStreaming("Streaming update needs to restart for autoswitched bot")
+                raise TerminateStreaming(
+                    "Streaming update needs to restart for autoswitched bot"
+                )
             return
 
         # Take profit trailling
-        if (self.active_bot.trailling == "true" or self.active_bot.trailling) and float(self.active_bot.deal.buy_price) > 0:
+        if (self.active_bot.trailling == "true" or self.active_bot.trailling) and float(
+            self.active_bot.deal.buy_price
+        ) > 0:
             # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
             if self.active_bot.deal.trailling_stop_loss_price == 0:
                 trailling_price = float(self.active_bot.deal.buy_price) * (
@@ -358,9 +398,9 @@ class SpotLongDeal(BaseDeal):
                 )
             else:
                 # Current take profit + next take_profit
-                trailling_price = float(self.active_bot.deal.trailling_stop_loss_price) * (
-                    1 + (float(self.active_bot.take_profit) / 100)
-                )
+                trailling_price = float(
+                    self.active_bot.deal.trailling_stop_loss_price
+                ) * (1 + (float(self.active_bot.take_profit) / 100))
 
             self.active_bot.deal.trailling_profit_price = trailling_price
             # Direction 1 (upward): breaking the current trailling
@@ -385,9 +425,11 @@ class SpotLongDeal(BaseDeal):
                         f"{self.active_bot.pair} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
                     )
                     # Update trailling_stop_loss
-                    self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss
+                    self.active_bot.deal.trailling_stop_loss_price = (
+                        new_trailling_stop_loss
+                    )
                     logging.info(
-                        f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
+                        f"{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
                     )
                 else:
                     # Protect against drops by selling at buy price + 0.75% commission
@@ -395,7 +437,7 @@ class SpotLongDeal(BaseDeal):
                         float(self.active_bot.deal.buy_price) * 1.075
                     )
                     logging.info(
-                        f'{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}'
+                        f"{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
                     )
 
             self.save_bot_streaming()
@@ -412,7 +454,7 @@ class SpotLongDeal(BaseDeal):
                 and (float(open_price) > float(close_price))
             ):
                 logging.info(
-                    f'Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}'
+                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}"
                 )
                 try:
                     self.trailling_profit()
@@ -425,10 +467,17 @@ class SpotLongDeal(BaseDeal):
 
         # Open safety orders
         # When bot = None, when bot doesn't exist (unclosed websocket)
-        if hasattr(self.active_bot, "safety_orders") and len(self.active_bot.safety_orders) > 0:
+        if (
+            hasattr(self.active_bot, "safety_orders")
+            and len(self.active_bot.safety_orders) > 0
+        ):
             for key, so in enumerate(self.active_bot.safety_orders):
                 # Index is the ID of the safety order price that matches safety_orders list
-                if hasattr(self.active_bot, "status") and self.active_bot.status == 0 and so.buy_price >= float(close_price):
+                if (
+                    hasattr(self.active_bot, "status")
+                    and self.active_bot.status == 0
+                    and so.buy_price >= float(close_price)
+                ):
                     self.so_update_deal(key)
 
         # Execute dynamic_take_profit at the end,
