@@ -16,6 +16,7 @@ from tools.enum_definitions import Status
 from deals.margin import MarginDeal
 from datetime import datetime
 from bots.schemas import BotSchema
+from tools.exceptions import TerminateStreaming
 
 
 class SpotLongDeal(BaseDeal):
@@ -345,7 +346,7 @@ class SpotLongDeal(BaseDeal):
             self.execute_stop_loss(close_price)
             if self.active_bot.margin_short_reversal:
                 self.switch_margin_short(close_price)
-
+                raise TerminateStreaming("Streaming update needs to restart for autoswitched bot")
             return
 
         # Take profit trailling

@@ -7,10 +7,6 @@ from time import time
 from streaming.socket_client import SpotWebsocketStreamClient
 
 
-class TerminateStreaming(Exception):
-    pass
-
-
 class StreamingController:
     def __init__(self):
         # For some reason, db connections internally only work with
@@ -18,7 +14,9 @@ class StreamingController:
         self.streaming_db = setup_db()
         self.socket = None
         # test wss://data-stream.binance.com
-        self.client = SpotWebsocketStreamClient(on_message=self.on_message, on_error=self.on_error, is_combined=True)
+        self.client = SpotWebsocketStreamClient(
+            on_message=self.on_message, on_error=self.on_error, is_combined=True
+        )
         self.conn_key = None
         self.list_bots = []
         self.list_paper_trading_bots = []
@@ -35,7 +33,7 @@ class StreamingController:
 
         This will count and store number of times update is required,
         so that we can add a condition to restart when it hits certain threshold
-        
+
         This is to avoid excess memory consumption
         """
         self.streaming_db.research_controller.update_one(
@@ -69,7 +67,6 @@ class StreamingController:
             return
 
         else:
-
             # Long strategy starts
             if current_bot["strategy"] == "long":
                 SpotLongDeal(
@@ -88,7 +85,7 @@ class StreamingController:
         res = json.loads(message)
 
         if "result" in res:
-                logging.info(f'Subscriptions: {res["result"]}')
+            logging.info(f'Subscriptions: {res["result"]}')
 
         if "data" in res:
             if "e" in res["data"] and res["data"]["e"] == "kline":
@@ -133,7 +130,7 @@ class StreamingController:
                     symbol,
                     "paper_trading",
                 )
-        
+
         # Add margin time to update_required signal to avoid restarting constantly
         # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
         if local_settings["update_required"]:
@@ -162,7 +159,7 @@ class StreamingController:
         )
 
         markets = self.list_bots + self.list_paper_trading_bots
-        print(f'Markets {markets}')
+        logging.info(f"Streaming updates: {markets}")
         self.client.klines(markets=markets, interval=interval)
 
     def close_trailling_orders(self, result, db_collection: str = "bots"):
