@@ -3,18 +3,20 @@ import requests
 import numpy
 import logging
 
-from decimal import Decimal
 from time import time
 
 from orders.controller import OrderController
 from bots.schemas import BotSchema
-from db import setup_db
 from tools.handle_error import encode_json
 from pymongo import ReturnDocument
 from tools.round_numbers import round_numbers
 from tools.handle_error import handle_binance_errors
 from scipy.stats import linregress
+from tools.round_numbers import round_numbers_ceiling
 
+
+# To be removed one day when commission endpoint found that provides this value
+ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 class DealCreationError(Exception):
     pass
@@ -29,6 +31,8 @@ class BaseDeal(OrderController):
 
     def __init__(self, bot, db_collection_name):
         self.active_bot = BotSchema.parse_obj(bot)
+        self.isolated_balance = None
+        self.qty_precision = None
         super().__init__()
         self.db_collection = self.db[db_collection_name]
 
@@ -53,6 +57,39 @@ class BaseDeal(OrderController):
             return None
         qty = round_numbers(balance, self.qty_precision)
         return qty
+
+    def compute_margin_buy_back(
+        self, pair: str, qty_precision
+    ):
+        """
+        Same as compute_qty but with isolated margin balance
+
+        Find available amount to buy_back
+        this is the borrowed amount + interests.
+        Decimals have to be rounded up to avoid leaving
+        "leftover" interests
+        """
+        if not self.isolated_balance:
+            self.isolated_balance = self.get_isolated_balance(pair)
+
+        if (
+            self.isolated_balance[0]["quoteAsset"]["free"] == 0
+            or self.isolated_balance[0]["baseAsset"]["borrowed"] == 0
+        ):
+            return None
+
+        qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]) + float(self.isolated_balance[0]["baseAsset"]["borrowed"]) * ESTIMATED_COMMISSIONS_RATE
+
+        # Save API calls
+        self.qty_precision = qty_precision
+
+        if not self.qty_precision:
+            self.qty_precision = self.get_qty_precision(pair)
+
+        qty = round_numbers_ceiling(qty, self.qty_precision)
+        free = float(self.isolated_balance[0]["baseAsset"]["free"])
+
+        return qty, free
 
     def simulate_order(self, pair, price, qty, side):
         order = {
@@ -208,7 +245,7 @@ class BaseDeal(OrderController):
                 and self.active_bot.deal.sd > sd
             ):
                 # Only do dynamic trailling if regression line confirms it
-                volatility: float = float(sd) / float(close_price)
+                volatility = float(sd) / float(close_price)
                 if volatility < 0.018:
                     volatility = 0.018
                 elif volatility > 0.088:

@@ -119,7 +119,7 @@ class BinanceApi:
     def repay_margin_loan(self, asset: str, symbol: str, amount: float, isIsolated: str):
         return self.signed_request(self.margin_repay_url, method="POST", payload={"asset": asset, "symbol": symbol, "amount": amount, "isIsolated": isIsolated})
 
-    def get_isolated_balance(self, symbol=None):
+    def get_isolated_balance(self, symbol=None) -> List:
         """
         Get balance of Isolated Margin account
 

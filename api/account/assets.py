@@ -2,7 +2,6 @@ import json
 from datetime import datetime, timedelta
 
 import pandas as pd
-from account.account import Account
 from account.schemas import BalanceSchema
 from bson.objectid import ObjectId
 from charts.models import CandlestickParams
@@ -11,12 +10,13 @@ from db import setup_db
 from tools.handle_error import InvalidSymbol, json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers, round_numbers_ceiling, supress_notation
 from binance.exceptions import BinanceAPIException
+from deals.base import BaseDeal
 
-
-class Assets(Account):
+class Assets(BaseDeal):
     def __init__(self):
         self.db = setup_db()
         self.usd_balance = 0
+        self.isolated_balance = None
 
     def get_raw_balance(self, asset=None):
         """
@@ -373,51 +373,58 @@ class Assets(Account):
         resp = json_response_message(msg)
         return resp
 
-    def one_click_liquidation(self, asset, balance="USDT", json=True):
+    def one_click_liquidation(self, pair: str, json: bool=True):
         """
         Emulate Binance Dashboard
         One click liquidation function
         """
-        pair = asset + balance
         isolated_balance = self.get_isolated_balance(pair)
+        base = isolated_balance[0]["baseAsset"]["asset"]
+        quote = isolated_balance[0]["quoteAsset"]["asset"]
         # Check margin account balance first
         balance = float(isolated_balance[0]["quoteAsset"]["free"])        
         qty_precision = self.get_qty_precision(pair)
         if balance > 0:
             # repay
-            repay_amount = float(
-                isolated_balance[0]["baseAsset"]["borrowed"]
-            ) + float(isolated_balance[0]["baseAsset"]["interest"])
+            qty, free = self.compute_margin_buy_back(pair, qty_precision)
+            repay_amount = qty
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
             query_loan = self.signed_request(
                 url=self.loan_record_url,
-                payload={"asset": asset, "isolatedSymbol": pair},
+                payload={"asset": base, "isolatedSymbol": pair},
             )
             if query_loan["total"] > 0 and repay_amount > 0:
                 # Only supress trailling 0s, so that everything is paid
                 repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
+
                 try:
-                    self.repay_margin_loan(
-                        asset=asset,
-                        symbol=pair,
-                        amount=repay_amount,
-                        isIsolated="TRUE",
-                    )
+                    if free == 0:
+                        buy_margin_response = self.buy_margin_order(
+                            symbol=pair,
+                            qty=supress_notation(qty, self.qty_precision),
+                        )
+                    if repay_amount <= float(buy_margin_response["origQty"]):
+                        self.repay_margin_loan(
+                            asset=base,
+                            symbol=pair,
+                            amount=repay_amount,
+                            isIsolated="TRUE",
+                        )
                     # get new balance
                     isolated_balance = self.get_isolated_balance(pair)
                     print(f"Transfering leftover isolated assets back to Spot")
                     if float(isolated_balance[0]["quoteAsset"]["free"]) != 0:
                         # transfer back to SPOT account
                         self.transfer_isolated_margin_to_spot(
-                            asset=asset,
+                            asset=quote,
                             symbol=pair,
                             amount=isolated_balance[0]["quoteAsset"]["free"],
                         )
                     if float(isolated_balance[0]["baseAsset"]["free"]) != 0:
                         self.transfer_isolated_margin_to_spot(
-                            asset=asset,
+                            asset=base,
                             symbol=pair,
                             amount=isolated_balance[0]["baseAsset"]["free"],
                         )

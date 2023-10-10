@@ -20,8 +20,6 @@ from tools.round_numbers import round_numbers, supress_notation, round_numbers_c
 class MarginShortError(Exception):
     pass
 
-# To be removed one day when commission endpoint found that provides this value
-ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection_name: str) -> None:
@@ -60,31 +58,6 @@ class MarginDeal(BaseDeal):
             "fills": [],
         }
         return order
-
-    def compute_margin_buy_back(
-        self,
-    ):
-        """
-        Same as compute_qty but with isolated margin balance
-
-        Find available amount to buy_back
-        this is the borrowed amount + interests.
-        Decimals have to be rounded up to avoid leaving
-        "leftover" interests
-        """
-
-        if (
-            self.isolated_balance[0]["quoteAsset"]["free"] == 0
-            or self.isolated_balance[0]["baseAsset"]["borrowed"] == 0
-        ):
-            return None
-
-        qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]) + float(self.isolated_balance[0]["baseAsset"]["borrowed"]) * ESTIMATED_COMMISSIONS_RATE
-        qty = round_numbers_ceiling(qty, self.qty_precision)
-
-        free = float(self.isolated_balance[0]["baseAsset"]["free"])
-
-        return qty, free
 
     def get_remaining_assets(self) -> tuple[float, float]:
         """
@@ -158,7 +131,9 @@ class MarginDeal(BaseDeal):
             self.disable_isolated_margin_account(symbol=self.active_bot.pair)
         except BinanceErrors as error:
             if error.code == -1003:
-                self._append_errors("Isolated margin account can't be disabled within 24hrs, please disable manually")
+                self._append_errors(
+                    "Isolated margin account can't be disabled within 24hrs, please disable manually"
+                )
                 all_errors = ". ".join(self.active_bot.errors)
                 # save error so it's available in the bot logs
                 self.save_bot_streaming()
@@ -267,63 +242,6 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def retry_repayment(self, query_loan, buy_back_fiat):
-        """
-        Retry repayment for failed isolated transactions
-        """
-
-        balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
-        required_qty_quote = float(query_loan["rows"][0]["principal"]) - balance
-        current_price = float(self.matching_engine(self.active_bot.pair, False))
-        total_base_qty = round_numbers_ceiling(
-            current_price * required_qty_quote, self.qty_precision
-        )
-        qty = round_numbers_ceiling(
-            float(query_loan["rows"][0]["principal"])
-            + float(self.isolated_balance[0]["baseAsset"]["interest"]),
-            self.qty_precision,
-        )
-        try:
-            res = self.buy_margin_order(
-                symbol=self.active_bot.pair, qty=qty, price=current_price
-            )
-            repay_order = MarginOrderSchema(
-                timestamp=res["transactTime"],
-                deal_type="stop_loss",
-                order_id=res["orderId"],
-                pair=res["symbol"],
-                order_side=res["side"],
-                order_type=res["type"],
-                price=res["price"],
-                qty=res["origQty"],
-                fills=res["fills"],
-                time_in_force=res["timeInForce"],
-                status=res["status"],
-                is_isolated=res["isIsolated"],
-            )
-
-            for chunk in res["fills"]:
-                self.active_bot.total_commission += float(chunk["commission"])
-
-            self.active_bot.orders.append(repay_order)
-            # Retrieve updated isolated balance again
-            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-            self.save_bot_streaming()
-            self.terminate_margin_short(buy_back_fiat)
-        except Exception as error:
-            try:
-                self.transfer_spot_to_isolated_margin(
-                    asset=self.active_bot.balance_to_use,
-                    symbol=self.active_bot.pair,
-                    amount=total_base_qty,
-                )
-            except Exception as error:
-                print(error)
-                self._append_errors(
-                    "Not enough SPOT balance to repay loan, need to liquidate manually"
-                )
-            return
-
     def terminate_margin_short(self, buy_back_fiat: bool = True):
         """
 
@@ -343,12 +261,10 @@ class MarginDeal(BaseDeal):
 
         # Check margin account balance first
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
+        asset = float(self.isolated_balance[0]["baseAsset"]["asset"])       
         if balance > 0:
             # repay
-            asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-            repay_amount = float(
-                self.isolated_balance[0]["baseAsset"]["borrowed"]
-            ) + float(self.isolated_balance[0]["baseAsset"]["interest"])
+            repay_amount = self.compute_margin_buy_back(self.active_bot.pair, self.qty_precision)
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
