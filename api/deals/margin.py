@@ -3,9 +3,6 @@ import logging
 from time import time
 from datetime import datetime
 from urllib.error import HTTPError
-
-from binance.exceptions import BinanceAPIException
-from tools.handle_error import BinanceErrors
 from deals.schema import DealSchema
 from tools.enum_definitions import Strategy
 from bots.schemas import BotSchema
@@ -13,7 +10,7 @@ from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
-from tools.handle_error import QuantityTooLow, IsolateBalanceError, BinanceErrors
+from tools.exceptions import QuantityTooLow, BinanceErrors
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 
 
@@ -194,7 +191,7 @@ class MarginDeal(BaseDeal):
                     symbol=self.active_bot.pair,
                     amount=transfer_qty,
                 )
-            except BinanceAPIException as error:
+            except BinanceErrors as error:
                 if error.code == -3041:
                     self.terminate_failed_transactions()
                     raise MarginShortError("Spot balance is not enough")
@@ -283,17 +280,12 @@ class MarginDeal(BaseDeal):
                         amount=repay_amount,
                         isIsolated="TRUE",
                     )
-                except BinanceAPIException as error:
-                    if error.code == -3041:
-                        # Most likely not enough funds to pay back
-                        # Get fiat (USDT) to pay back
-                        self.active_bot.errors.append(error.message)
-                    if error.code == -3015:
-                        # false alarm
-                        pass
                 except BinanceErrors as error:
                     if error.code == -3041:
                         self.active_bot.errors.append(error.message)
+                        pass
+                    if error.code == -3015:
+                        # false alarm
                         pass
                 except Exception as error:
                     self.update_deal_logs(error)
@@ -395,7 +387,7 @@ class MarginDeal(BaseDeal):
             # this is ok, since this is not a hard requirement to complete the deal
             try:
                 self.disable_isolated_margin_account(symbol=self.active_bot.pair)
-            except BinanceAPIException as error:
+            except BinanceErrors as error:
                 logging.error(error)
                 if error.code == -3051:
                     self._append_errors(error.message)
@@ -618,18 +610,10 @@ class MarginDeal(BaseDeal):
                 self.cancel_open_orders("stop_loss")
                 res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
 
-            except BinanceAPIException as error:
-                logging.error(error)
-                if error.code in (-2010, -1013):
-                    self.update_deal_logs(error.message)
-                    return
             except BinanceErrors as error:
                 if error.code in (-2010, -1013):
                     self.update_deal_logs(error.message)
                     return
-            except QuantityTooLow as error:
-                self.update_deal_logs(error)
-                return
 
             except Exception as error:
                 self.update_deal_logs(
@@ -705,15 +689,11 @@ class MarginDeal(BaseDeal):
                     price=price,
                     qty=supress_notation(qty, self.qty_precision),
                 )
-            except BinanceAPIException as error:
-                if error.code == -2010:
-                    self._append_errors(
-                        f"{error.message}. Not enough fiat to buy back loaned quantity"
-                    )
-                    return
             except BinanceErrors as error:
                 message, code = error.args
-                logging.error(message)
+                self._append_errors(
+                        f"{message}. Not enough fiat to buy back loaned quantity"
+                    )
                 if code == -2010:
                     return
                 if code == -1102:

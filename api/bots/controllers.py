@@ -1,7 +1,7 @@
-from datetime import datetime
-from time import time
-
 import requests
+
+from time import time
+from datetime import datetime
 from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 
@@ -9,11 +9,8 @@ from account.account import Account
 from deals.margin import MarginShortError
 from deals.controllers import CreateDealController
 from tools.enum_definitions import BinbotEnums
-from tools.exceptions import OpenDealError
+from tools.exceptions import OpenDealError, NotEnoughFunds, QuantityTooLow, IsolateBalanceError
 from tools.handle_error import (
-    NotEnoughFunds,
-    QuantityTooLow,
-    IsolateBalanceError,
     handle_binance_errors,
     json_response,
     json_response_message,

@@ -5,7 +5,8 @@ import os
 from urllib.parse import urlencode
 from time import time
 from requests import request
-from tools.handle_error import handle_binance_errors, json_response, json_response_error, IsolateBalanceError
+from tools.handle_error import handle_binance_errors, json_response, json_response_error
+from tools.exceptions import IsolateBalanceError
 from py3cw.request import Py3CW
 
 class BinanceApi:

@@ -7,10 +7,10 @@ from time import time
 
 from orders.controller import OrderController
 from bots.schemas import BotSchema
-from tools.handle_error import QuantityTooLow, encode_json
 from pymongo import ReturnDocument
 from tools.round_numbers import round_numbers, supress_notation
-from tools.handle_error import handle_binance_errors
+from tools.handle_error import handle_binance_errors, encode_json
+from tools.exceptions import QuantityTooLow
 from scipy.stats import linregress
 from tools.round_numbers import round_numbers_ceiling
 

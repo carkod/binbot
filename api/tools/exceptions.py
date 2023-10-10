@@ -1,3 +1,41 @@
+class IsolateBalanceError(Exception):
+    def __init__(self, message) -> None:
+        self.message = message
+
+
+class BinanceErrors(Exception):
+    def __init__(self, msg, code):
+        self.code = code
+        self.message = msg
+        return self
+
+    def __str__(self) -> str:
+        return f"Binance Error: {self.code} {self.message}"
+
+
+class InvalidSymbol(BinanceErrors):
+    pass
+
+
+class NotEnoughFunds(BinanceErrors):
+    pass
+
+
+class BinbotErrors(Exception):
+    pass
+
+
+class QuantityTooLow(BinanceErrors):
+    """
+    Raised when LOT_SIZE filter error triggers
+    This error should happen in the least cases,
+    unless purposedly triggered to check quantity
+    e.g. BTC = 0.0001 amounts are usually so small that it's hard to see if it's nothing or a considerable amount compared to others
+    """
+
+    pass
+
+
 class OpenDealError(Exception):
     pass
 
@@ -22,22 +60,15 @@ class ShortStrategyError(OpenDealError):
     pass
 
 
-class TraillingStopLossError(UpdateDealError):
-    pass
 
-
-class UpdateTakeProfitError(UpdateDealError):
-    pass
-
-
-"""
-This is required sometimes
-- Bot autoswtiched strategy, so streaming updates will keep trying to update something already sold
-causing exceptions to be raised constantly.
-
-
-On the other hand, we want to minimize number of times this exception is raised to avoid
-overloading the server with reloads
-"""
 class TerminateStreaming(Exception):
+    """
+    This is required sometimes
+    - Bot autoswtiched strategy, so streaming updates will keep trying to update something already sold
+    causing exceptions to be raised constantly.
+
+
+    On the other hand, we want to minimize number of times this exception is raised to avoid
+    overloading the server with reloads
+    """
     pass

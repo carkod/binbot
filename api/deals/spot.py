@@ -5,16 +5,14 @@ from deals.schema import DealSchema
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
-from tools.handle_error import (
-    NotEnoughFunds,
-    encode_json,
-)
+from tools.handle_error import encode_json
 from tools.exceptions import (
     TraillingProfitError,
+    NotEnoughFunds,
+    TerminateStreaming
 )
 from tools.enum_definitions import Status, Strategy
 from tools.round_numbers import round_numbers, supress_notation
-from tools.exceptions import TerminateStreaming
 from pydantic import ValidationError
 from datetime import datetime
 from bots.schemas import BotSchema

@@ -7,9 +7,9 @@ from bson.objectid import ObjectId
 from charts.models import CandlestickParams
 from charts.models import Candlestick
 from db import setup_db
-from tools.handle_error import InvalidSymbol, json_response, json_response_error, json_response_message
-from tools.round_numbers import round_numbers, round_numbers_ceiling, supress_notation
-from binance.exceptions import BinanceAPIException
+from tools.handle_error import json_response, json_response_error, json_response_message
+from tools.round_numbers import round_numbers
+from tools.exceptions import BinanceErrors, InvalidSymbol
 from deals.base import BaseDeal
 
 class Assets(BaseDeal):
@@ -382,7 +382,7 @@ class Assets(BaseDeal):
         try:
             self.margin_liquidation(pair)
 
-        except BinanceAPIException as error:
+        except BinanceErrors as error:
             if error.code == -3041:
                 # Most likely not enough funds to pay back
                 # Get fiat (USDT) to pay back
