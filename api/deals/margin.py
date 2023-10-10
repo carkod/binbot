@@ -264,7 +264,8 @@ class MarginDeal(BaseDeal):
         asset = float(self.isolated_balance[0]["baseAsset"]["asset"])       
         if balance > 0:
             # repay
-            repay_amount = self.compute_margin_buy_back(self.active_bot.pair, self.qty_precision)
+            qty, free = self.compute_margin_buy_back(self.active_bot.pair, self.qty_precision)
+            repay_amount = qty
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
@@ -606,37 +607,32 @@ class MarginDeal(BaseDeal):
         Execute stop loss when price is hit
         This is used during streaming updates
         """
-        qty = 1
-        if self.db_collection.name == "bots":
-            qty, free = self.compute_margin_buy_back()
-
-            # Cancel orders first
-            # paper_trading doesn't have real orders so no need to check
-            self.cancel_open_orders("stop_loss")
-
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
             try:
-                quote, base = self.get_remaining_assets()
-                price = self.matching_engine(self.active_bot.pair, True, qty)
 
-                if qty == 0:
-                    return
+                # Cancel orders first
+                # paper_trading doesn't have real orders so no need to check
+                self.cancel_open_orders("stop_loss")
+                res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
 
-                res = self.buy_margin_order(
-                    symbol=self.active_bot.pair, qty=qty, price=price
-                )
             except BinanceAPIException as error:
                 logging.error(error)
                 if error.code in (-2010, -1013):
+                    self.update_deal_logs(error.message)
                     return
             except BinanceErrors as error:
                 if error.code in (-2010, -1013):
+                    self.update_deal_logs(error.message)
                     return
+            except QuantityTooLow as error:
+                self.update_deal_logs(error)
+                return
+
             except Exception as error:
-                self._append_errors(
+                self.update_deal_logs(
                     f"Error trying to open new stop_limit order {error}"
                 )
                 # Continue in case of error to execute long bot
@@ -688,7 +684,7 @@ class MarginDeal(BaseDeal):
         """
         qty = 1
         if self.db_collection.name == "bots":
-            qty, free = self.compute_margin_buy_back()
+            qty, free = self.compute_margin_buy_back(self.active_bot.pair, self.qty_precision)
             self.cancel_open_orders("take_profit")
 
         if qty and not price:
