@@ -290,10 +290,12 @@ class BaseDeal(OrderController):
         quote = isolated_balance[0]["quoteAsset"]["asset"]
         # Check margin account balance first
         balance = float(isolated_balance[0]["quoteAsset"]["free"])
+        borrowed_amount = float(isolated_balance[0]["baseAsset"]["free"])
+        buy_margin_response = None
         if not qty_precision:
             qty_precision = self.get_qty_precision(pair)
 
-        if balance > 0:
+        if borrowed_amount > 0:
             # repay
             repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
             if repay_amount == 0 or not repay_amount:
@@ -309,21 +311,24 @@ class BaseDeal(OrderController):
                 # Only supress trailling 0s, so that everything is paid
                 repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
 
-                if free == 0 and free >= repay_amount:
+                if free == 0 or free <= repay_amount:
                     buy_margin_response = self.buy_margin_order(
                         symbol=pair,
                         qty=supress_notation(repay_amount, qty_precision),
                     )
-                if repay_amount <= float(buy_margin_response["origQty"]):
+                    repay_amount = float(buy_margin_response["origQty"])
+
+                if free >= repay_amount:
                     self.repay_margin_loan(
                         asset=base,
                         symbol=pair,
                         amount=repay_amount,
                         isIsolated="TRUE",
                     )
+
                 # get new balance
                 isolated_balance = self.get_isolated_balance(pair)
-                print(f"Transfering leftover isolated assets back to Spot")
+                logging.info(f"Transfering leftover isolated assets back to Spot")
                 if float(isolated_balance[0]["quoteAsset"]["free"]) != 0:
                     # transfer back to SPOT account
                     self.transfer_isolated_margin_to_spot(
@@ -337,8 +342,7 @@ class BaseDeal(OrderController):
                         symbol=pair,
                         amount=isolated_balance[0]["baseAsset"]["free"],
                     )
-                
+                        
                 self.disable_isolated_margin_account(symbol=pair)
                 return buy_margin_response
 
-            

@@ -7,7 +7,8 @@ class BinanceErrors(Exception):
     def __init__(self, msg, code):
         self.code = code
         self.message = msg
-        return self
+        super().__init__(self.code, self.message)
+        return None
 
     def __str__(self) -> str:
         return f"Binance Error: {self.code} {self.message}"
