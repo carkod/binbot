@@ -90,4 +90,4 @@ async def disable_isolated():
 
 @account_blueprint.get("/one-click-liquidation/{asset}", response_model=BalanceSeriesResponse, tags=["assets"])
 def one_click_liquidation(asset):
-    return Assets().one_click_liquidation(asset, json=True)
+    return Assets().one_click_liquidation(asset)

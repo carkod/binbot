@@ -5,7 +5,8 @@ import os
 from urllib.parse import urlencode
 from time import time
 from requests import request
-from tools.handle_error import handle_binance_errors, json_response, json_response_error, IsolateBalanceError
+from tools.handle_error import handle_binance_errors, json_response, json_response_error
+from tools.exceptions import IsolateBalanceError
 from py3cw.request import Py3CW
 
 class BinanceApi:
@@ -119,7 +120,7 @@ class BinanceApi:
     def repay_margin_loan(self, asset: str, symbol: str, amount: float, isIsolated: str):
         return self.signed_request(self.margin_repay_url, method="POST", payload={"asset": asset, "symbol": symbol, "amount": amount, "isIsolated": isIsolated})
 
-    def get_isolated_balance(self, symbol=None):
+    def get_isolated_balance(self, symbol=None) -> List:
         """
         Get balance of Isolated Margin account
 
@@ -185,6 +186,7 @@ class BinbotApi(BinanceApi):
     # balances
     bb_balance_url = f"{bb_base_url}/account/balance/raw"
     bb_balance_estimate_url = f"{bb_base_url}/account/balance/estimate"
+    bb_liquidation_url = f"{bb_base_url}/account/one-click-liquidation"
 
     # research
     bb_autotrade_settings_url = f"{bb_base_url}/autotrade-settings/bots"

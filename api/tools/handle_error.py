@@ -9,42 +9,8 @@ from requests import Response, put
 from requests.exceptions import HTTPError
 from fastapi.encoders import jsonable_encoder
 from copy import deepcopy
+from tools.exceptions import BinanceErrors, BinbotErrors, InvalidSymbol, NotEnoughFunds, QuantityTooLow
 
-class IsolateBalanceError(Exception):
-    def __init__(self, message) -> None:
-        self.message = message
-
-class BinanceErrors(Exception):
-    def __init__(self, msg, code):
-        self.code = code
-        self.message = msg
-        return None
-    
-    def __str__(self) -> str:
-        return f"Binance Error: {self.code} {self.message}"
-
-
-
-class InvalidSymbol(BinanceErrors):
-    pass
-
-
-class NotEnoughFunds(BinanceErrors):
-    pass
-
-class BinbotErrors(Exception):
-    pass
-
-
-class QuantityTooLow(BinanceErrors):
-    """
-    Raised when LOT_SIZE filter error triggers
-    This error should happen in the least cases,
-    unless purposedly triggered to check quantity
-    e.g. BTC = 0.0001 amounts are usually so small that it's hard to see if it's nothing or a considerable amount compared to others
-    """
-
-    pass
 
 
 def post_error(msg):

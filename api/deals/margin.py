@@ -3,9 +3,6 @@ import logging
 from time import time
 from datetime import datetime
 from urllib.error import HTTPError
-
-from binance.exceptions import BinanceAPIException
-from tools.handle_error import BinanceErrors
 from deals.schema import DealSchema
 from tools.enum_definitions import Strategy
 from bots.schemas import BotSchema
@@ -13,15 +10,13 @@ from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
-from tools.handle_error import QuantityTooLow, IsolateBalanceError, BinanceErrors
+from tools.exceptions import QuantityTooLow, BinanceErrors
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 
 
 class MarginShortError(Exception):
     pass
 
-# To be removed one day when commission endpoint found that provides this value
-ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection_name: str) -> None:
@@ -60,31 +55,6 @@ class MarginDeal(BaseDeal):
             "fills": [],
         }
         return order
-
-    def compute_margin_buy_back(
-        self,
-    ):
-        """
-        Same as compute_qty but with isolated margin balance
-
-        Find available amount to buy_back
-        this is the borrowed amount + interests.
-        Decimals have to be rounded up to avoid leaving
-        "leftover" interests
-        """
-
-        if (
-            self.isolated_balance[0]["quoteAsset"]["free"] == 0
-            or self.isolated_balance[0]["baseAsset"]["borrowed"] == 0
-        ):
-            return None
-
-        qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]) + float(self.isolated_balance[0]["baseAsset"]["borrowed"]) * ESTIMATED_COMMISSIONS_RATE
-        qty = round_numbers_ceiling(qty, self.qty_precision)
-
-        free = float(self.isolated_balance[0]["baseAsset"]["free"])
-
-        return qty, free
 
     def get_remaining_assets(self) -> tuple[float, float]:
         """
@@ -158,7 +128,9 @@ class MarginDeal(BaseDeal):
             self.disable_isolated_margin_account(symbol=self.active_bot.pair)
         except BinanceErrors as error:
             if error.code == -1003:
-                self._append_errors("Isolated margin account can't be disabled within 24hrs, please disable manually")
+                self._append_errors(
+                    "Isolated margin account can't be disabled within 24hrs, please disable manually"
+                )
                 all_errors = ". ".join(self.active_bot.errors)
                 # save error so it's available in the bot logs
                 self.save_bot_streaming()
@@ -219,7 +191,7 @@ class MarginDeal(BaseDeal):
                     symbol=self.active_bot.pair,
                     amount=transfer_qty,
                 )
-            except BinanceAPIException as error:
+            except BinanceErrors as error:
                 if error.code == -3041:
                     self.terminate_failed_transactions()
                     raise MarginShortError("Spot balance is not enough")
@@ -267,63 +239,6 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def retry_repayment(self, query_loan, buy_back_fiat):
-        """
-        Retry repayment for failed isolated transactions
-        """
-
-        balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
-        required_qty_quote = float(query_loan["rows"][0]["principal"]) - balance
-        current_price = float(self.matching_engine(self.active_bot.pair, False))
-        total_base_qty = round_numbers_ceiling(
-            current_price * required_qty_quote, self.qty_precision
-        )
-        qty = round_numbers_ceiling(
-            float(query_loan["rows"][0]["principal"])
-            + float(self.isolated_balance[0]["baseAsset"]["interest"]),
-            self.qty_precision,
-        )
-        try:
-            res = self.buy_margin_order(
-                symbol=self.active_bot.pair, qty=qty, price=current_price
-            )
-            repay_order = MarginOrderSchema(
-                timestamp=res["transactTime"],
-                deal_type="stop_loss",
-                order_id=res["orderId"],
-                pair=res["symbol"],
-                order_side=res["side"],
-                order_type=res["type"],
-                price=res["price"],
-                qty=res["origQty"],
-                fills=res["fills"],
-                time_in_force=res["timeInForce"],
-                status=res["status"],
-                is_isolated=res["isIsolated"],
-            )
-
-            for chunk in res["fills"]:
-                self.active_bot.total_commission += float(chunk["commission"])
-
-            self.active_bot.orders.append(repay_order)
-            # Retrieve updated isolated balance again
-            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-            self.save_bot_streaming()
-            self.terminate_margin_short(buy_back_fiat)
-        except Exception as error:
-            try:
-                self.transfer_spot_to_isolated_margin(
-                    asset=self.active_bot.balance_to_use,
-                    symbol=self.active_bot.pair,
-                    amount=total_base_qty,
-                )
-            except Exception as error:
-                print(error)
-                self._append_errors(
-                    "Not enough SPOT balance to repay loan, need to liquidate manually"
-                )
-            return
-
     def terminate_margin_short(self, buy_back_fiat: bool = True):
         """
 
@@ -343,12 +258,11 @@ class MarginDeal(BaseDeal):
 
         # Check margin account balance first
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
+        asset = float(self.isolated_balance[0]["baseAsset"]["asset"])       
         if balance > 0:
             # repay
-            asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-            repay_amount = float(
-                self.isolated_balance[0]["baseAsset"]["borrowed"]
-            ) + float(self.isolated_balance[0]["baseAsset"]["interest"])
+            qty, free = self.compute_margin_buy_back(self.active_bot.pair, self.qty_precision)
+            repay_amount = qty
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
@@ -366,17 +280,12 @@ class MarginDeal(BaseDeal):
                         amount=repay_amount,
                         isIsolated="TRUE",
                     )
-                except BinanceAPIException as error:
-                    if error.code == -3041:
-                        # Most likely not enough funds to pay back
-                        # Get fiat (USDT) to pay back
-                        self.active_bot.errors.append(error.message)
-                    if error.code == -3015:
-                        # false alarm
-                        pass
                 except BinanceErrors as error:
                     if error.code == -3041:
                         self.active_bot.errors.append(error.message)
+                        pass
+                    if error.code == -3015:
+                        # false alarm
                         pass
                 except Exception as error:
                     self.update_deal_logs(error)
@@ -478,7 +387,7 @@ class MarginDeal(BaseDeal):
             # this is ok, since this is not a hard requirement to complete the deal
             try:
                 self.disable_isolated_margin_account(symbol=self.active_bot.pair)
-            except BinanceAPIException as error:
+            except BinanceErrors as error:
                 logging.error(error)
                 if error.code == -3051:
                     self._append_errors(error.message)
@@ -586,8 +495,6 @@ class MarginDeal(BaseDeal):
                     f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}"
                 )
                 self.execute_take_profit()
-                if self.db_collection.name == "bots":
-                    self.terminate_margin_short()
                 self.update_required()
 
         # Direction 2: upward trend (short). breaking the trailling_stop_loss
@@ -606,9 +513,6 @@ class MarginDeal(BaseDeal):
             )
             # since price is given by matching engine
             self.execute_take_profit(float(close_price))
-            if self.db_collection.name == "bots":
-                self.terminate_margin_short()
-
             self.update_required()
 
         # Direction 1.3: upward trend (short)
@@ -626,16 +530,7 @@ class MarginDeal(BaseDeal):
                 hasattr(self.active_bot, "margin_short_reversal")
                 and self.active_bot.margin_short_reversal
             ):
-                # If we want to do reversal long bot, there is no point
-                # incurring in an additional transaction
-                self.terminate_margin_short(buy_back_fiat=False)
-                # To profit from reversal, we still need to repay loan and transfer
-                # assets back to SPOT account, so this means executing stop loss
-                # and creating a new long bot, this way we can also keep the old bot
-                # with the corresponding data for profit/loss calculation
                 self.switch_to_long_bot(price)
-            else:
-                self.terminate_margin_short()
 
         try:
             self.save_bot_streaming()
@@ -690,37 +585,24 @@ class MarginDeal(BaseDeal):
         Execute stop loss when price is hit
         This is used during streaming updates
         """
-        qty = 1
-        if self.db_collection.name == "bots":
-            qty, free = self.compute_margin_buy_back()
-
-            # Cancel orders first
-            # paper_trading doesn't have real orders so no need to check
-            self.cancel_open_orders("stop_loss")
-
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
             try:
-                quote, base = self.get_remaining_assets()
-                price = self.matching_engine(self.active_bot.pair, True, qty)
 
-                if qty == 0:
-                    return
+                # Cancel orders first
+                # paper_trading doesn't have real orders so no need to check
+                self.cancel_open_orders("stop_loss")
+                res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
 
-                res = self.buy_margin_order(
-                    symbol=self.active_bot.pair, qty=qty, price=price
-                )
-            except BinanceAPIException as error:
-                logging.error(error)
-                if error.code in (-2010, -1013):
-                    return
             except BinanceErrors as error:
                 if error.code in (-2010, -1013):
+                    self.update_deal_logs(error.message)
                     return
+
             except Exception as error:
-                self._append_errors(
+                self.update_deal_logs(
                     f"Error trying to open new stop_limit order {error}"
                 )
                 # Continue in case of error to execute long bot
@@ -772,97 +654,59 @@ class MarginDeal(BaseDeal):
         """
         qty = 1
         if self.db_collection.name == "bots":
-            qty, free = self.compute_margin_buy_back()
+            qty, free = self.compute_margin_buy_back(self.active_bot.pair, self.qty_precision)
             self.cancel_open_orders("take_profit")
-
-        if qty and not price:
-            price = self.matching_engine(self.active_bot.pair, True, qty)
-        elif qty == 0:
-            # Errored order, possible completed order.
-            # returning will skip directly to terminate_margin
-            return
 
         # Margin buy (buy back)
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
-        elif price:
-            try:
-                # Use market order
-                res = self.buy_margin_order(
-                    symbol=self.active_bot.pair,
-                    price=price,
-                    qty=supress_notation(qty, self.qty_precision),
-                )
-            except BinanceAPIException as error:
-                if error.code == -2010:
-                    self._append_errors(
-                        f"{error.message}. Not enough fiat to buy back loaned quantity"
-                    )
-                    return
-            except BinanceErrors as error:
-                message, code = error.args
-                logging.error(message)
-                if code == -2010:
-                    return
-                if code == -1102:
-                    return
-
         else:
             try:
-                if qty == 0 or free <= qty:
-                    # Not enough funds probably because already bought before
-                    # correct using quote asset to buy base asset
-                    # we want base asset anyway now, because of long bot
-                    quote, base = self.get_remaining_assets()
-                    price = self.matching_engine(self.active_bot.pair, True, qty)
-                    qty = round_numbers(float(quote) / float(price), self.qty_precision)
-
-                # If still qty = 0, it means everything is clear
-                if qty == 0:
-                    return
-
-                res = self.buy_margin_order(
-                    symbol=self.active_bot.pair,
-                    price=supress_notation(price, self.price_precision),
-                    qty=supress_notation(qty, self.qty_precision),
-                )
+                res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
             except QuantityTooLow as error:
                 # Delete incorrectly activated or old bots
-                self.bb_request(f"{self.bb_bot_url}/{self.active_bot.id}", "DELETE")
                 logging.info(f"Deleted obsolete bot {self.active_bot.pair}")
+            except BinanceErrors as error:
+                if error.code == -2010:
+                    self.update_deal_logs(error.message)
+                
             except Exception as error:
                 self._append_errors(
                     f"Error trying to open new stop_limit order {error}"
                 )
                 return
+        if res:
+        # No res means it wasn't properly closed/completed
 
-        take_profit_order = MarginOrderSchema(
-            timestamp=res["transactTime"],
-            deal_type="take_profit",
-            order_id=res["orderId"],
-            pair=res["symbol"],
-            order_side=res["side"],
-            order_type=res["type"],
-            price=res["price"],
-            qty=res["origQty"],
-            fills=res["fills"],
-            time_in_force=res["timeInForce"],
-            status=res["status"],
-            is_isolated=res["isIsolated"],
-        )
+            take_profit_order = MarginOrderSchema(
+                timestamp=res["transactTime"],
+                deal_type="take_profit",
+                order_id=res["orderId"],
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=res["price"],
+                qty=res["origQty"],
+                fills=res["fills"],
+                time_in_force=res["timeInForce"],
+                status=res["status"],
+                is_isolated=res["isIsolated"],
+            )
 
-        for chunk in res["fills"]:
-            self.active_bot.total_commission += float(chunk["commission"])
+            for chunk in res["fills"]:
+                self.active_bot.total_commission += float(chunk["commission"])
 
-        self.active_bot.orders.append(take_profit_order)
-        self.active_bot.deal.margin_short_buy_back_price = res["price"]
-        self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
-        self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
-        msg = f"Completed Take profit!"
+            self.active_bot.orders.append(take_profit_order)
+            self.active_bot.deal.margin_short_buy_back_price = res["price"]
+            self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
+            self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
+            msg = f"Completed Take profit!"
+        
+        else:
+            msg = f"Re-completed take profit"
+        
         self.active_bot.errors.append(msg)
-
-        # Keep bot up to date in the DB
-        # this avoid unsyched bots when errors ocurr in other functions
+        self.active_bot.status = Status.completed
         self.save_bot_streaming()
 
         return

@@ -2,21 +2,21 @@ import json
 from datetime import datetime, timedelta
 
 import pandas as pd
-from account.account import Account
 from account.schemas import BalanceSchema
 from bson.objectid import ObjectId
 from charts.models import CandlestickParams
 from charts.models import Candlestick
 from db import setup_db
-from tools.handle_error import InvalidSymbol, json_response, json_response_error, json_response_message
-from tools.round_numbers import round_numbers, round_numbers_ceiling, supress_notation
-from binance.exceptions import BinanceAPIException
+from tools.handle_error import json_response, json_response_error, json_response_message
+from tools.round_numbers import round_numbers
+from tools.exceptions import BinanceErrors, InvalidSymbol
+from deals.base import BaseDeal
 
-
-class Assets(Account):
+class Assets(BaseDeal):
     def __init__(self):
         self.db = setup_db()
         self.usd_balance = 0
+        self.isolated_balance = None
 
     def get_raw_balance(self, asset=None):
         """
@@ -373,65 +373,22 @@ class Assets(Account):
         resp = json_response_message(msg)
         return resp
 
-    def one_click_liquidation(self, asset, balance="USDT", json=True):
+    def one_click_liquidation(self, pair: str):
         """
         Emulate Binance Dashboard
         One click liquidation function
         """
-        pair = asset + balance
-        isolated_balance = self.get_isolated_balance(pair)
-        # Check margin account balance first
-        balance = float(isolated_balance[0]["quoteAsset"]["free"])        
-        qty_precision = self.get_qty_precision(pair)
-        if balance > 0:
-            # repay
-            repay_amount = float(
-                isolated_balance[0]["baseAsset"]["borrowed"]
-            ) + float(isolated_balance[0]["baseAsset"]["interest"])
-            # Check if there is a loan
-            # Binance may reject loans if they don't have asset
-            # or binbot errors may transfer funds but no loan is created
-            query_loan = self.signed_request(
-                url=self.loan_record_url,
-                payload={"asset": asset, "isolatedSymbol": pair},
-            )
-            if query_loan["total"] > 0 and repay_amount > 0:
-                # Only supress trailling 0s, so that everything is paid
-                repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
-                try:
-                    self.repay_margin_loan(
-                        asset=asset,
-                        symbol=pair,
-                        amount=repay_amount,
-                        isIsolated="TRUE",
-                    )
-                    # get new balance
-                    isolated_balance = self.get_isolated_balance(pair)
-                    print(f"Transfering leftover isolated assets back to Spot")
-                    if float(isolated_balance[0]["quoteAsset"]["free"]) != 0:
-                        # transfer back to SPOT account
-                        self.transfer_isolated_margin_to_spot(
-                            asset=asset,
-                            symbol=pair,
-                            amount=isolated_balance[0]["quoteAsset"]["free"],
-                        )
-                    if float(isolated_balance[0]["baseAsset"]["free"]) != 0:
-                        self.transfer_isolated_margin_to_spot(
-                            asset=asset,
-                            symbol=pair,
-                            amount=isolated_balance[0]["baseAsset"]["free"],
-                        )
-                    
-                    self.disable_isolated_margin_account(symbol=pair)
-                    return json_response_message(f"Successfully liquidated {pair}")
+        
+        try:
+            self.margin_liquidation(pair)
 
-                except BinanceAPIException as error:
-                    if error.code == -3041:
-                        # Most likely not enough funds to pay back
-                        # Get fiat (USDT) to pay back
-                        return json_response_error(error.message)
-                    if error.code == -3015:
-                        # false alarm
-                        pass
-                    if error.code == -3051:
-                        return json_response_error(error.message)
+        except BinanceErrors as error:
+            if error.code == -3041:
+                # Most likely not enough funds to pay back
+                # Get fiat (USDT) to pay back
+                return json_response_error(error.message)
+            if error.code == -3015:
+                # false alarm
+                pass
+            if error.code == -3051:
+                return json_response_error(error.message)
