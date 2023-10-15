@@ -36,6 +36,104 @@ const getNetProfit = (bot) => {
   if (!netProfit) netProfit = 0;
   return netProfit
 };
+
+/**
+ * Render deal bot opening and closing timestamp
+ * based on strategy. Timestamps short position bots
+ * are flipped compared to long positions.
+ * 
+ * @param {Bot} bot 
+ */
+const renderTimestamps = (bot) => {
+
+  if (bot.strategy === "long") {
+    if (bot.deal?.buy_timestamp > 0 && bot.deal?.sell_timestamp > 0) {
+      return (
+        <>
+          <Row>
+            <Col md="7">
+              <p className="card-category">Open time</p>
+            </Col>
+            <Col md="5">
+              <p className="card-category">
+                {moment(bot.deal?.buy_timestamp).format("D, MMM, hh:mm")}
+              </p>
+            </Col>
+          </Row>
+          <Row>
+            <Col md="7">
+              <p className="card-category">Close time</p>
+            </Col>
+            <Col md="5">
+              <p className="card-category">
+                {moment(bot.deal?.sell_timestamp).format("D, MMM, hh:mm")}
+              </p>
+            </Col>
+          </Row>
+        </>
+      )
+      
+    } else if (bot.deal?.buy_timestamp > 0) {
+      return (
+        <Row>
+          <Col md="7">
+            <p className="card-category">Open time</p>
+          </Col>
+          <Col md="5">
+            <p className="card-category">
+              {moment(bot.deal?.buy_timestamp).format("D, MMM, hh:mm")}
+            </p>
+          </Col>
+        </Row>
+      )
+    }
+  }
+
+  // margin bots
+  if (bot.strategy === "margin_short") {
+    if (bot.deal?.margin_short_sell_timestamp > 0 && bot.deal?.margin_short_buy_back_timestamp > 0) {
+      return (
+        <>
+          <Row>
+            <Col md="7">
+              <p className="card-category">Open time</p>
+            </Col>
+            <Col md="5">
+              <p className="card-category">
+                {moment(bot.deal?.margin_short_sell_timestamp).format("D, MMM, hh:mm")}
+              </p>
+            </Col>
+          </Row>
+          <Row>
+            <Col md="7">
+              <p className="card-category">Close time</p>
+            </Col>
+            <Col md="5">
+              <p className="card-category">
+                {moment(bot.deal?.sell_timestamp).format("D, MMM, hh:mm")}
+              </p>
+            </Col>
+          </Row>
+        </>
+      )
+    } else if (bot.deal?.margin_short_sell_timestamp > 0) {
+      return (
+        <Row>
+          <Col md="7">
+            <p className="card-category">Open time</p>
+          </Col>
+          <Col md="5">
+            <p className="card-category">
+              {moment(bot.deal?.margin_short_sell_timestamp).format("D, MMM, hh:mm")}
+            </p>
+          </Col>
+        </Row>
+      )
+    }
+    
+  }
+}
+
 export default function BotCard({
   tabIndex,
   x,
@@ -181,31 +279,7 @@ export default function BotCard({
                 </Row>
               )}
             </div>
-            {parseInt(x.deal?.buy_timestamp) > 0 && (
-              <Row>
-                <Col md="7">
-                  <p className="card-category">Buy time</p>
-                </Col>
-                <Col md="5">
-                  <p className="card-category">
-                    {moment(x.deal?.buy_timestamp).format("D, MMM, hh:mm")}
-                  </p>
-                </Col>
-              </Row>
-            )}
-
-            {parseInt(x.deal?.sell_timestamp) > 0 && (
-              <Row>
-                <Col md="7">
-                  <p className="card-category">Sell time</p>
-                </Col>
-                <Col md="5">
-                  <p className="card-category">
-                    {moment(x.deal?.sell_timestamp).format("D MMM, hh:mm")}
-                  </p>
-                </Col>
-              </Row>
-            )}
+            {renderTimestamps(x)}
             {!checkValue(x.deal?.buy_timestamp) &&
             !checkValue(x.deal?.sell_timestamp) ? (
               <Row>
