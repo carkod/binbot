@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from apis import ThreeCommasApi
 from research.controller import Controller
-from research.schemas import BlacklistSchema, BlacklistResponse
+from research.schemas import BlacklistSchema, BlacklistResponse, SubscribedSymbolsSchema
 
 research_blueprint = APIRouter()
 
@@ -42,3 +42,17 @@ def get_blacklisted():
 @research_blueprint.get("/3commas-presets", tags=["blacklist and research"])
 def three_commas_presets():
     return ThreeCommasApi().get_marketplace_presets()
+
+
+@research_blueprint.get("/subscribed", tags=["blacklist and research"])
+def get_subscribed_symbols():
+    return Controller().get_subscribed_symbols()
+
+
+@research_blueprint.post("/subscribed", tags=["blacklist and research"])
+def create_subscribed_symbols(data: list[SubscribedSymbolsSchema]):
+    return Controller().bulk_upsert_all(data)
+
+@research_blueprint.put("/subscribed/{symbol}", tags=["blacklist and research"])
+def edit_subscribed_symbol(symbol: str):
+    return Controller().edit_subscribed_symbol(symbol)

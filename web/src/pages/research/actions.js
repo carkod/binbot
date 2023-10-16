@@ -1,3 +1,4 @@
+import request from "../../request";
 import { addNotification } from "../../validations";
 
 export const GET_RESEARCH = "GET_RESEARCH";
@@ -128,4 +129,12 @@ export function deleteBlackListFailed() {
   return {
     type: DELETE_BLACKLIST_ERROR
   }
+}
+
+/**
+ * Websocket subscribed list of cryptos
+ */
+export async function getSubscribedListApi() {
+  const symbols = request(process.env.REACT_APP_SUBSCRIBED)
+  return symbols;
 }

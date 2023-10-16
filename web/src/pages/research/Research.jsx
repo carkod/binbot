@@ -5,6 +5,7 @@ import { Nav, NavItem, NavLink, TabContent, TabPane } from "reactstrap";
 import { addNotification, checkValue } from "../../validations";
 import { loadCandlestick, getSymbols } from "../bots/actions";
 import { getBalanceRaw } from "../../state/balances/actions";
+import { getSubscribedListApi } from "./actions";
 import {
   getBlacklist,
   addBlackList,
@@ -31,10 +32,12 @@ class Research extends React.Component {
     };
   }
 
-  componentDidMount = () => {
+  componentDidMount = async () => {
     this.props.getBlacklist();
     this.props.getSymbols();
     this.props.getBalanceRaw();
+    const subscribedList = await getSubscribedListApi();
+    this.setState({ subscribedList: subscribedList.data })
   };
 
   componentDidUpdate = (p, s) => {
@@ -105,6 +108,7 @@ class Research extends React.Component {
             <TabPane tabId="controllerTab">
               <ControllerTab
                 blacklistData={this.state.blacklistData}
+                subscribedSymbols={this.state.subscribedList}
                 symbols={this.props.symbols}
                 addToBlacklist={(data) => {
                   this.props.addBlackList(data);
@@ -136,6 +140,7 @@ const mapStateToProps = (state) => {
     symbols: symbols,
     blacklistData: blacklistData,
     balance_raw: balanceRaw,
+
   };
 };
 
@@ -145,5 +150,5 @@ export default connect(mapStateToProps, {
   getBlacklist,
   addBlackList,
   deleteBlackList,
-  getBalanceRaw
+  getBalanceRaw,
 })(Research);
