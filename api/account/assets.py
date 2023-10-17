@@ -387,7 +387,11 @@ class Assets(BaseDeal):
         """
         
         try:
-            self.margin_liquidation(pair)
+            response = self.margin_liquidation(pair)
+            if not response:
+                return json_response_error(f"Failed to liquidate {pair}: no loan found")
+            
+            return json_response_message(f"Successfully liquidated {pair}")
 
         except BinanceErrors as error:
             if error.code == -3041:

@@ -88,6 +88,6 @@ async def clean_balance():
 async def disable_isolated():
     return await Assets().disable_isolated_accounts()
 
-@account_blueprint.get("/one-click-liquidation/{asset}", response_model=BalanceSeriesResponse, tags=["assets"])
+@account_blueprint.get("/one-click-liquidation/{asset}", tags=["assets"])
 def one_click_liquidation(asset):
     return Assets().one_click_liquidation(asset)

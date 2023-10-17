@@ -10,7 +10,7 @@ from bots.schemas import BotSchema
 from pymongo import ReturnDocument
 from tools.round_numbers import round_numbers, supress_notation
 from tools.handle_error import handle_binance_errors, encode_json
-from tools.exceptions import QuantityTooLow
+from tools.exceptions import BinanceErrors
 from scipy.stats import linregress
 from tools.round_numbers import round_numbers_ceiling
 
@@ -290,16 +290,13 @@ class BaseDeal(OrderController):
         quote = isolated_balance[0]["quoteAsset"]["asset"]
         # Check margin account balance first
         balance = float(isolated_balance[0]["quoteAsset"]["free"])
-        borrowed_amount = float(isolated_balance[0]["baseAsset"]["free"])
+        repay_amount = float(isolated_balance[0]["baseAsset"]["borrowed"])
+        free = float(isolated_balance[0]["baseAsset"]["free"])
         buy_margin_response = None
         if not qty_precision:
             qty_precision = self.get_qty_precision(pair)
 
-        if borrowed_amount > 0:
-            # repay
-            repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
-            if repay_amount == 0 or not repay_amount:
-                raise QuantityTooLow(f"Liquidation amount {repay_amount}")
+        if repay_amount > 0:
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
@@ -311,12 +308,31 @@ class BaseDeal(OrderController):
                 # Only supress trailling 0s, so that everything is paid
                 repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
 
-                if free == 0 or free <= repay_amount:
-                    buy_margin_response = self.buy_margin_order(
-                        symbol=pair,
-                        qty=supress_notation(repay_amount, qty_precision),
-                    )
-                    repay_amount = float(buy_margin_response["origQty"])
+                if free == 0 or free < repay_amount:
+                    try:
+                        buy_margin_response = self.buy_margin_order(
+                            symbol=pair,
+                            qty=repay_amount,
+                        )
+                        repay_amount = float(buy_margin_response["origQty"])
+                    except BinanceErrors as error:
+                        if error.code == -3041:
+                            # Not enough funds in isolated pair
+                            # transfer from wallet
+                            transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
+                            available_balance = self.get_one_balance(quote)
+                            amount_to_transfer = 15 # Min amount
+                            if available_balance < 15:
+                                amount_to_transfer = available_balance
+                            self.transfer_spot_to_isolated_margin(
+                                asset=quote,
+                                symbol=pair,
+                                amount=amount_to_transfer,
+                            )
+                            buy_margin_response = self.buy_margin_order(pair, supress_notation(transfer_diff_qty, qty_precision))
+                            repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
+                            pass
+
 
                 if free >= repay_amount:
                     self.repay_margin_loan(

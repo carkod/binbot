@@ -23,10 +23,16 @@ class NotEnoughFunds(BinanceErrors):
 
 
 class BinbotErrors(Exception):
-    pass
+    def __init__(self, msg):
+        self.message = msg
+        super().__init__(self.message)
+        return None
+
+    def __str__(self) -> str:
+        return f"Binbot custome error: {self.message}"
 
 
-class QuantityTooLow(BinanceErrors):
+class QuantityTooLow(BinbotErrors):
     """
     Raised when LOT_SIZE filter error triggers
     This error should happen in the least cases,
@@ -35,7 +41,6 @@ class QuantityTooLow(BinanceErrors):
     """
 
     pass
-
 
 class OpenDealError(Exception):
     pass
