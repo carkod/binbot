@@ -358,13 +358,20 @@ class Assets(BaseDeal):
 
         return resp
 
-    async def disable_isolated_accounts(self):
+    async def disable_isolated_accounts(self, symbol=None):
         """
         Check and disable isolated accounts
         """
         info = self.signed_request(url=self.isolated_account_url, payload={})
         for item in info["assets"]:
+            # Liquidate price = 0 guarantees there is no loan unpaid
             if float(item["liquidatePrice"]) == 0:
+                if float(item["baseAsset"]["free"]) > 0:
+                    self.transfer_isolated_margin_to_spot(asset=item["baseAsset"]["asset"], symbol=item["symbol"], amount=float(item["baseAsset"]["free"]))
+                
+                if float(item["quoteAsset"]["free"]) > 0:
+                    self.transfer_isolated_margin_to_spot(asset=item["quoteAsset"]["asset"], symbol=item["symbol"], amount=float(item["quoteAsset"]["free"]))
+
                 self.disable_isolated_margin_account(item["symbol"])
                 msg = "Sucessfully finished disabling isolated margin accounts."
         else:

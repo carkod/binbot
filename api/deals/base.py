@@ -307,7 +307,7 @@ class BaseDeal(OrderController):
                 url=self.loan_record_url,
                 payload={"asset": base, "isolatedSymbol": pair},
             )
-            if query_loan["total"] > 0 and repay_amount > 0:
+            if repay_amount > 0:
                 # Only supress trailling 0s, so that everything is paid
                 repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
 
