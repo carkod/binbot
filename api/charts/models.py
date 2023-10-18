@@ -372,6 +372,8 @@ class Candlestick(BinbotApi):
             close_price_r = df[4].astype(float).corr(btc_df[4].astype(float))
             volume_r = df[5].astype(float).corr(btc_df[5].astype(float))
 
+            close_price_cov = df[4].astype(float).cov(btc_df[4].astype(float))
+
             # collection of correlations
             p_btc = {
                 "open_price": open_price_r,

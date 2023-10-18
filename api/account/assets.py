@@ -8,7 +8,7 @@ from charts.models import CandlestickParams
 from charts.models import Candlestick
 from db import setup_db
 from tools.handle_error import json_response, json_response_error, json_response_message
-from tools.round_numbers import round_numbers
+from tools.round_numbers import round_numbers, round_numbers_ceiling, supress_notation
 from tools.exceptions import BinanceErrors, InvalidSymbol
 from deals.base import BaseDeal
 
@@ -384,22 +384,97 @@ class Assets(BaseDeal):
         """
         Emulate Binance Dashboard
         One click liquidation function
+
+        This endpoint is different than the margin_liquidation function
+        in that it contains some clean up functionality in the cases
+        where there are are still funds in the isolated pair
         """
         
-        try:
-            response = self.margin_liquidation(pair)
-            if not response:
-                return json_response_error(f"Failed to liquidate {pair}: no loan found")
-            
-            return json_response_message(f"Successfully liquidated {pair}")
+        isolated_balance = self.get_isolated_balance(pair)
+        base = isolated_balance[0]["baseAsset"]["asset"]
+        quote = isolated_balance[0]["quoteAsset"]["asset"]
+        # Check margin account balance first
+        balance = float(isolated_balance[0]["quoteAsset"]["free"])
+        borrowed_amount = float(isolated_balance[0]["baseAsset"]["borrowed"])
+        free = float(isolated_balance[0]["baseAsset"]["free"])
+        buy_margin_response = None
+        qty_precision = self.get_qty_precision(pair)
 
-        except BinanceErrors as error:
-            if error.code == -3041:
-                # Most likely not enough funds to pay back
-                # Get fiat (USDT) to pay back
-                return json_response_error(error.message)
-            if error.code == -3015:
-                # false alarm
-                pass
-            if error.code == -3051:
-                return json_response_error(error.message)
+        if borrowed_amount > 0:
+            # Check if there is a loan
+            # Binance may reject loans if they don't have asset
+            # or binbot errors may transfer funds but no loan is created
+            query_loan = self.signed_request(
+                url=self.loan_record_url,
+                payload={"asset": base, "isolatedSymbol": pair},
+            )
+            # repay_amount contains total borrowed_amount + interests + commissions for buying back
+            # borrow amount is only the loan
+            repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
+            repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
+
+            if free == 0 or free < repay_amount:
+                try:
+                    # lot_size_by_symbol = self.lot_size_by_symbol(pair, "stepSize")
+                    qty = round_numbers_ceiling(repay_amount - free)
+                    buy_margin_response = self.buy_margin_order(
+                        symbol=pair,
+                        qty=qty,
+                    )
+                    repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
+                except BinanceErrors as error:
+                    if error.code == -3041:
+                        # Not enough funds in isolated pair
+                        # transfer from wallet
+                        transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
+                        available_balance = self.get_one_balance(quote)
+                        amount_to_transfer = 15 # Min amount
+                        if available_balance < 15:
+                            amount_to_transfer = available_balance
+                        self.transfer_spot_to_isolated_margin(
+                            asset=quote,
+                            symbol=pair,
+                            amount=amount_to_transfer,
+                        )
+                        buy_margin_response = self.buy_margin_order(pair, supress_notation(transfer_diff_qty, qty_precision))
+                        repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
+                        pass
+                    if error.code == -2010:
+                        # There is already money in the base asset
+                        qty = round_numbers_ceiling(repay_amount - free, qty_precision)
+                        price = float(self.matching_engine(pair, True, qty))
+                        usdt_notional = price * qty
+                        if usdt_notional < 15:
+                            qty = round_numbers_ceiling(15 / price)
+
+                        buy_margin_response = self.buy_margin_order(pair, supress_notation(qty, qty_precision))
+                        repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
+                        pass
+
+            self.repay_margin_loan(
+                asset=base,
+                symbol=pair,
+                amount=repay_amount,
+                isIsolated="TRUE",
+            )
+
+            # get new balance
+            isolated_balance = self.get_isolated_balance(pair)
+
+        if float(isolated_balance[0]["quoteAsset"]["free"]) != 0:
+            # transfer back to SPOT account
+            self.transfer_isolated_margin_to_spot(
+                asset=quote,
+                symbol=pair,
+                amount=isolated_balance[0]["quoteAsset"]["free"],
+            )
+        if float(isolated_balance[0]["baseAsset"]["free"]) != 0:
+            self.transfer_isolated_margin_to_spot(
+                asset=base,
+                symbol=pair,
+                amount=isolated_balance[0]["baseAsset"]["free"],
+            )
+                
+        self.disable_isolated_margin_account(symbol=pair)
+
+        return json_response_message(f"Successfully liquidated {pair}")

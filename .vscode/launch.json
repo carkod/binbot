@@ -18,7 +18,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/api/market_updates.py",
       "console": "internalConsole",
-      "justMyCode": true
+      "justMyCode": false
     },
     {
       "type": "chrome",

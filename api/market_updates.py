@@ -3,7 +3,7 @@ import os
 import logging
 import time
 
-from apscheduler.schedulers.background import BlockingScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from streaming.streaming_controller import StreamingController
 from account.assets import Assets
 from websocket import (
@@ -22,13 +22,14 @@ logging.basicConfig(
 
 if os.getenv("ENV") != "ci":
 
-    scheduler = BlockingScheduler()
+    scheduler = BackgroundScheduler()
     assets = Assets()
+    timezone = "Europe/London"
 
     scheduler.add_job(
         func=assets.store_balance,
         trigger="cron",
-        timezone="Europe/London",
+        timezone=timezone,
         hour=1,
         minute=1,
         id="store_balance",
@@ -37,7 +38,7 @@ if os.getenv("ENV") != "ci":
     scheduler.add_job(
         func=assets.disable_isolated_accounts,
         trigger="cron",
-        timezone="Europe/London",
+        timezone=timezone,
         hour=2,
         minute=1,
         id="disable_isolated_accounts",
@@ -46,16 +47,16 @@ if os.getenv("ENV") != "ci":
     scheduler.add_job(
         func=assets.clean_balance_assets,
         trigger="cron",
-        timezone="Europe/London",
+        timezone=timezone,
         hour=3,
         minute=1,
         id="clean_balance_assets",
     )
+    scheduler.start()
 
 try:
     mu = StreamingController()
     mu.get_klines()
-    scheduler.start()
 
 except WebSocketException as e:
     if isinstance(e, WebSocketConnectionClosedException):
