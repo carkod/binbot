@@ -289,20 +289,13 @@ class BaseDeal(OrderController):
         base = isolated_balance[0]["baseAsset"]["asset"]
         quote = isolated_balance[0]["quoteAsset"]["asset"]
         # Check margin account balance first
+        balance = float(isolated_balance[0]["quoteAsset"]["free"])
         borrowed_amount = float(isolated_balance[0]["baseAsset"]["borrowed"])
         free = float(isolated_balance[0]["baseAsset"]["free"])
         buy_margin_response = None
-        if not qty_precision:
-            qty_precision = self.get_qty_precision(pair)
+        qty_precision = self.get_qty_precision(pair)
 
         if borrowed_amount > 0:
-            # Check if there is a loan
-            # Binance may reject loans if they don't have asset
-            # or binbot errors may transfer funds but no loan is created
-            query_loan = self.signed_request(
-                url=self.loan_record_url,
-                payload={"asset": base, "isolatedSymbol": pair},
-            )
             # repay_amount contains total borrowed_amount + interests + commissions for buying back
             # borrow amount is only the loan
             repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
@@ -311,9 +304,10 @@ class BaseDeal(OrderController):
             if free == 0 or free < repay_amount:
                 try:
                     # lot_size_by_symbol = self.lot_size_by_symbol(pair, "stepSize")
+                    qty = round_numbers_ceiling(repay_amount - free, qty_precision)
                     buy_margin_response = self.buy_margin_order(
                         symbol=pair,
-                        qty=repay_amount,
+                        qty=qty,
                     )
                     repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
                 except BinanceErrors as error:
@@ -333,13 +327,14 @@ class BaseDeal(OrderController):
                         buy_margin_response = self.buy_margin_order(pair, supress_notation(transfer_diff_qty, qty_precision))
                         repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
                         pass
-                    if error.code == -2010 and error.code == -1013:
+                    if error.code == -2010:
                         # There is already money in the base asset
                         qty = round_numbers_ceiling(repay_amount - free, qty_precision)
                         price = float(self.matching_engine(pair, True, qty))
                         usdt_notional = price * qty
                         if usdt_notional < 15:
                             qty = round_numbers_ceiling(15 / price)
+
                         buy_margin_response = self.buy_margin_order(pair, supress_notation(qty, qty_precision))
                         repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
                         pass
@@ -351,9 +346,9 @@ class BaseDeal(OrderController):
                 isIsolated="TRUE",
             )
 
-        # get new balance
-        isolated_balance = self.get_isolated_balance(pair)
-        logging.info(f"Transfering leftover isolated assets back to Spot")
+            # get new balance
+            isolated_balance = self.get_isolated_balance(pair)
+
         if float(isolated_balance[0]["quoteAsset"]["free"]) != 0:
             # transfer back to SPOT account
             self.transfer_isolated_margin_to_spot(
