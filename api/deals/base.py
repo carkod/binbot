@@ -10,9 +10,10 @@ from bots.schemas import BotSchema
 from pymongo import ReturnDocument
 from tools.round_numbers import round_numbers, supress_notation
 from tools.handle_error import handle_binance_errors, encode_json
-from tools.exceptions import BinanceErrors
+from tools.exceptions import BinanceErrors, MarginLoanNotFound
 from scipy.stats import linregress
 from tools.round_numbers import round_numbers_ceiling
+from tools.enum_definitions import Status
 
 
 # To be removed one day when commission endpoint found that provides this value
@@ -195,7 +196,7 @@ class BaseDeal(OrderController):
             if "_id" in bot:
                 bot.pop("_id")
 
-            bot = self.db_collection.find_one_and_update(
+            response = self.db_collection.find_one_and_update(
                 {"id": self.active_bot.id},
                 {
                     "$set": bot,
@@ -207,7 +208,33 @@ class BaseDeal(OrderController):
             self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
             raise StreamingSaveError(error)
 
-        return bot
+        return response
+
+    def create_new_bot_streaming(self):
+        """
+        MongoDB query to save bot using Pydantic
+
+        This function differs from usual save query in that
+        it returns the saved bot, thus called streaming, it's
+        specifically for streaming saves
+        """
+
+        try:
+
+            bot = encode_json(self.active_bot)
+            if "_id" in bot:
+                bot.pop("_id")
+
+            bot_response = self.db_collection.insert_one(
+                bot,
+                return_document=ReturnDocument.AFTER,
+            )
+
+        except Exception as error:
+            self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
+            raise StreamingSaveError(error)
+
+        return bot_response.inserted_id
 
     def dynamic_take_profit(self, current_bot, close_price):
 
@@ -289,7 +316,6 @@ class BaseDeal(OrderController):
         base = isolated_balance[0]["baseAsset"]["asset"]
         quote = isolated_balance[0]["quoteAsset"]["asset"]
         # Check margin account balance first
-        balance = float(isolated_balance[0]["quoteAsset"]["free"])
         borrowed_amount = float(isolated_balance[0]["baseAsset"]["borrowed"])
         free = float(isolated_balance[0]["baseAsset"]["free"])
         buy_margin_response = None
@@ -363,6 +389,12 @@ class BaseDeal(OrderController):
                 amount=isolated_balance[0]["baseAsset"]["free"],
             )
                 
-        self.disable_isolated_margin_account(symbol=pair)
+        if borrowed_amount == 0:
+            # Funds are transferred back by now,
+            # disabling pair should be done by cronjob,
+            # therefore no reason not to complete the bot
+            self.active_bot.status = Status.completed
+            raise MarginLoanNotFound("Isolated margin loan already liquidated")
+
         return buy_margin_response
 

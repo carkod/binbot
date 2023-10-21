@@ -42,6 +42,11 @@ class QuantityTooLow(BinbotErrors):
 
     pass
 
+
+class MarginLoanNotFound(BinbotErrors):
+    pass
+
+
 class OpenDealError(Exception):
     pass
 
@@ -66,7 +71,6 @@ class ShortStrategyError(OpenDealError):
     pass
 
 
-
 class TerminateStreaming(Exception):
     """
     This is required sometimes
@@ -77,4 +81,5 @@ class TerminateStreaming(Exception):
     On the other hand, we want to minimize number of times this exception is raised to avoid
     overloading the server with reloads
     """
+
     pass

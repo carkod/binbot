@@ -391,7 +391,7 @@ class Assets(BaseDeal):
         """
         
         try:
-            self.margin_liquidation()
+            self.margin_liquidation(pair)
             return json_response_message(f"Successfully liquidated {pair}")
         except BinanceErrors as error:
             return json_response_error(f"Error liquidating {pair}: {error.message}")

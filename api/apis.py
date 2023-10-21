@@ -95,6 +95,12 @@ class BinanceApi:
         return self.signed_request(self.isolated_account_url, method="POST", payload={"symbol": symbol})
     
     def disable_isolated_margin_account(self, symbol):
+        """
+        Very high weight, use as little as possible
+
+        There is a cronjob that disables all margin isolated accounts everyday
+        check market_updates
+        """
         return self.signed_request(self.isolated_account_url, method="DELETE", payload={"symbol": symbol})
 
     def transfer_isolated_margin_to_spot(self, asset, symbol, amount):

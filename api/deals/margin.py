@@ -10,7 +10,7 @@ from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
-from tools.exceptions import QuantityTooLow, BinanceErrors
+from tools.exceptions import BinbotErrors, MarginLoanNotFound, QuantityTooLow, BinanceErrors
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 
 
@@ -124,18 +124,6 @@ class MarginDeal(BaseDeal):
             symbol=self.active_bot.pair,
             amount=qty,
         )
-        try:
-            self.disable_isolated_margin_account(symbol=self.active_bot.pair)
-        except BinanceErrors as error:
-            if error.code == -1003:
-                self._append_errors(
-                    "Isolated margin account can't be disabled within 24hrs, please disable manually"
-                )
-                all_errors = ". ".join(self.active_bot.errors)
-                # save error so it's available in the bot logs
-                self.save_bot_streaming()
-                # raise error so that it returns to the JSON response
-                raise MarginShortError(all_errors)
 
     def init_margin_short(self, initial_price):
         """
@@ -381,18 +369,6 @@ class MarginDeal(BaseDeal):
                 self.active_bot.errors.append(error_msg)
                 return
 
-            # Disable isolated pair to avoid reaching the 15 pair limit
-            # this is not always possible, sometimes there are small quantities
-            # that can't be cleaned out completely, need to do it manually
-            # this is ok, since this is not a hard requirement to complete the deal
-            try:
-                self.disable_isolated_margin_account(symbol=self.active_bot.pair)
-            except BinanceErrors as error:
-                logging.error(error)
-                if error.code == -3051:
-                    self._append_errors(error.message)
-                    pass
-
             completion_msg = f"{self.active_bot.pair} ISOLATED margin funds transferred back to SPOT."
             self.active_bot.status = Status.completed
             self.active_bot.errors.append(completion_msg)
@@ -525,7 +501,11 @@ class MarginDeal(BaseDeal):
             logging.info(
                 f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}"
             )
-            self.execute_stop_loss()
+            try:
+                self.execute_stop_loss()
+            except MarginLoanNotFound:
+                pass
+
             if (
                 hasattr(self.active_bot, "margin_short_reversal")
                 and self.active_bot.margin_short_reversal
@@ -724,6 +704,9 @@ class MarginDeal(BaseDeal):
         3. Create deal
         """
         self.update_deal_logs("Resetting bot for long strategy...")
+        new_id = self.create_new_bot_streaming()
+        self.active_bot.id = new_id
+
         # Reset bot to prepare for new activation
         base_order = next(
             (

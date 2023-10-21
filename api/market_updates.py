@@ -34,7 +34,6 @@ if os.getenv("ENV") != "ci":
         minute=1,
         id="store_balance",
     )
-    
     scheduler.add_job(
         func=assets.disable_isolated_accounts,
         trigger="cron",
@@ -43,7 +42,6 @@ if os.getenv("ENV") != "ci":
         minute=1,
         id="disable_isolated_accounts",
     )
-
     scheduler.add_job(
         func=assets.clean_balance_assets,
         trigger="cron",
@@ -52,6 +50,7 @@ if os.getenv("ENV") != "ci":
         minute=1,
         id="clean_balance_assets",
     )
+
     scheduler.start()
 
 try:
