@@ -20,6 +20,7 @@ export const bot = {
   baseOrderSizeError: false,
   balance_to_use: "USDT",
   bot_profit: 0,
+  errors: [],
   mode: "manual",
   max_so_count: "0",
   maxSOCountError: false,

@@ -6,10 +6,9 @@ from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 
 from account.account import Account
-from deals.margin import MarginShortError
 from deals.controllers import CreateDealController
 from tools.enum_definitions import BinbotEnums
-from tools.exceptions import OpenDealError, NotEnoughFunds, QuantityTooLow, IsolateBalanceError
+from tools.exceptions import BinanceErrors, BinbotErrors, QuantityTooLow
 from tools.handle_error import (
     handle_binance_errors,
     json_response,
@@ -184,14 +183,11 @@ class Bot(Account):
                     bot, db_collection=self.db_collection.name
                 ).open_deal()
                 return json_response_message("Successfully activated bot!")
-            except OpenDealError as error:
-                return json_response_error(error.args[0])
-            except NotEnoughFunds as e:
-                return json_response_error(e.args[0])
-            except MarginShortError as error:
-                message = str("Unable to create margin_short bot: ".join(error.args))
-                return json_response_error(message)
-            except IsolateBalanceError as error:
+            except BinanceErrors as error:
+                self.post_errors_by_id(botId, error.message)
+                return json_response_error(error.message)
+            except BinbotErrors as error:
+                self.post_errors_by_id(botId, error.message)
                 return json_response_error(error.message)
             except Exception as error:
                 resp = json_response_error(f"Unable to activate bot: {error}")
@@ -353,5 +349,22 @@ class Bot(Account):
             return resp
         except Exception as error:
             resp = json_response({"message": f"Failed to archive bot {error}"})
+            
+        return resp
+
+    def post_errors_by_id(self, bot_id: str, reported_error: str):
+        """
+        Directly post errors to Bot
+        which should show in the BotForm page in Web
+        """
+        try:
+            self.db_collection.update_one(
+                {"id": bot_id}, {"$push": {"errors": reported_error}}
+            )
+            return json_response(
+                {"message": "Successfully submitted bot errors", "botId": bot_id}
+            )
+        except Exception as error:
+            resp = json_response({"message": f"Failed to submit bot errors: {error}"})
             
         return resp

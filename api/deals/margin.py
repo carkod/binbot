@@ -156,8 +156,13 @@ class MarginDeal(BaseDeal):
             self.qty_precision,
         )
 
+        # transfer quantity is base order size (what we want to invest) + stop loss to cover losses
+        stop_loss_price_inc = float(initial_price) * (
+            1 + (self.active_bot.stop_loss / 100)
+        )
+        final_qty = float(stop_loss_price_inc * qty)
         transfer_qty = round_numbers_ceiling(
-            float(qty),
+            final_qty,
             self.qty_precision,
         )
 
@@ -185,41 +190,32 @@ class MarginDeal(BaseDeal):
                     raise MarginShortError("Isolated margin not available")
 
         asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-        try:
-            self.create_margin_loan(
-                asset=asset, symbol=self.active_bot.pair, amount=qty
-            )
-            loan_details = self.get_margin_loan_details(
-                asset=asset, isolatedSymbol=self.active_bot.pair
-            )
+        self.create_margin_loan(
+            asset=asset, symbol=self.active_bot.pair, amount=qty
+        )
+        loan_details = self.get_margin_loan_details(
+            asset=asset, isolatedSymbol=self.active_bot.pair
+        )
 
-            self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0][
-                "timestamp"
-            ]
-            self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0][
-                "principal"
-            ]
-            self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
-            self.active_bot.deal.margin_short_base_order = qty
+        self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0][
+            "timestamp"
+        ]
+        self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0][
+            "principal"
+        ]
+        self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
+        self.active_bot.deal.margin_short_base_order = qty
 
-            # Estimate interest to add to total cost
-            asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
-            # This interest rate is much more accurate than any of the others
-            hourly_fees = self.signed_request(
-                url=self.isolated_hourly_interest,
-                payload={"assets": asset, "isIsolated": "TRUE"},
-            )
-            self.active_bot.deal.hourly_interest_rate = float(
-                hourly_fees[0]["nextHourlyInterestRate"]
-            )
-
-        except BinanceErrors as error:
-            if error.args[1] == -3045:
-                self._append_errors(error.message)
-                self.terminate_failed_transactions()
-                raise MarginShortError(error.message)
-        except Exception as error:
-            logging.error(error)
+        # Estimate interest to add to total cost
+        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
+        # This interest rate is much more accurate than any of the others
+        hourly_fees = self.signed_request(
+            url=self.isolated_hourly_interest,
+            payload={"assets": asset, "isIsolated": "TRUE"},
+        )
+        self.active_bot.deal.hourly_interest_rate = float(
+            hourly_fees[0]["nextHourlyInterestRate"]
+        )
 
         return
 
@@ -389,7 +385,7 @@ class MarginDeal(BaseDeal):
             self.init_margin_short(initial_price)
             order_res = self.sell_margin_order(
                 symbol=self.active_bot.pair,
-                qty=self.active_bot.deal.margin_short_base_order,
+                qty=self.active_bot.base_order_size,
             )
         else:
             # Simulate Margin sell
