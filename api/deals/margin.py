@@ -155,18 +155,15 @@ class MarginDeal(BaseDeal):
             (float(self.active_bot.base_order_size) / float(initial_price)),
             self.qty_precision,
         )
-        if qty == 0:
-            raise QuantityTooLow("Margin short quantity is too low")
 
-        # transfer quantity is base order size (what we want to invest) + stop loss to cover losses
-        stop_loss_price_inc = float(initial_price) * (
-            1 + (self.active_bot.stop_loss / 100)
-        )
-        final_qty = float(stop_loss_price_inc * qty)
         transfer_qty = round_numbers_ceiling(
-            final_qty,
+            float(qty),
             self.qty_precision,
         )
+
+        if transfer_qty == 0:
+            raise QuantityTooLow("Margin short quantity is too low")
+
 
         # For leftover values
         # or transfers to activate isolated pair
@@ -218,10 +215,9 @@ class MarginDeal(BaseDeal):
 
         except BinanceErrors as error:
             if error.args[1] == -3045:
-                msg = "Binance doesn't have any money to lend"
-                self._append_errors(msg)
+                self._append_errors(error.message)
                 self.terminate_failed_transactions()
-                raise MarginShortError(msg)
+                raise MarginShortError(error.message)
         except Exception as error:
             logging.error(error)
 

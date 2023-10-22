@@ -9,8 +9,13 @@ from requests import Response, put
 from requests.exceptions import HTTPError
 from fastapi.encoders import jsonable_encoder
 from copy import deepcopy
-from tools.exceptions import BinanceErrors, BinbotErrors, InvalidSymbol, NotEnoughFunds, QuantityTooLow
-
+from tools.exceptions import (
+    BinanceErrors,
+    BinbotErrors,
+    InvalidSymbol,
+    NotEnoughFunds,
+    QuantityTooLow,
+)
 
 
 def post_error(msg):
@@ -21,7 +26,7 @@ def post_error(msg):
 
 
 def json_response(content, status=200):
-    content = json.loads(json_util.dumps(content)) # Objectid serialization
+    content = json.loads(json_util.dumps(content))  # Objectid serialization
     response = JSONResponse(
         status_code=status,
         content=content,
@@ -40,7 +45,7 @@ def json_response_error(message):
     return json_response(body)
 
 
-def handle_binance_errors(response: Response) -> str | None:
+def handle_binance_errors(response: Response) -> Response:
     """
     Handles:
     - HTTP codes, not authorized, rate limits...
@@ -98,8 +103,8 @@ def handle_binance_errors(response: Response) -> str | None:
             sleep(60)
 
         if content["code"] == -1121:
-            raise InvalidSymbol(f'Binance error: {content["msg"]}', content["msg"])
-    
+            raise InvalidSymbol(f'Binance error: {content["msg"]}', content["code"])
+
     return content
 
 
@@ -113,9 +118,9 @@ def encode_json(raw):
         content = deepcopy(raw)
         del content._id
         content = jsonable_encoder(content)
-        content["_id"]= id
+        content["_id"] = id
     else:
-        content = jsonable_encoder(raw) 
+        content = jsonable_encoder(raw)
     return content
 
 

@@ -327,18 +327,6 @@ class CreateDealController(BaseDeal):
 
         - If base order deal is not executed, bot is not activated
         """
-        # Short strategy checks
-        if self.active_bot.strategy == "short":
-            if (
-                not hasattr(self.active_bot, "short_buy_price")
-                or float(self.active_bot.short_buy_price) == 0
-            ):
-                raise ShortStrategyError(
-                    "Short strategy requires short_buy_price to be set, or it will never trigger"
-                )
-            else:
-                pass
-
         # If there is already a base order do not execute
         base_order_deal = next(
             (
