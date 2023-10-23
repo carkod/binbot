@@ -29,7 +29,7 @@ class BinbotErrors(Exception):
         return None
 
     def __str__(self) -> str:
-        return f"Binbot custome error: {self.message}"
+        return f"Binbot error: {self.message}"
 
 
 class QuantityTooLow(BinbotErrors):

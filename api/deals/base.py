@@ -353,7 +353,7 @@ class BaseDeal(OrderController):
                         buy_margin_response = self.buy_margin_order(pair, supress_notation(transfer_diff_qty, qty_precision))
                         repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
                         pass
-                    if error.code == -2010:
+                    if error.code == -2010 or error.code == -1013:
                         # There is already money in the base asset
                         qty = round_numbers_ceiling(repay_amount - free, qty_precision)
                         price = float(self.matching_engine(pair, True, qty))
@@ -393,7 +393,9 @@ class BaseDeal(OrderController):
             # Funds are transferred back by now,
             # disabling pair should be done by cronjob,
             # therefore no reason not to complete the bot
-            self.active_bot.status = Status.completed
+            if hasattr(self, "active_bot"):
+                self.active_bot.status = Status.completed
+
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
         return buy_margin_response

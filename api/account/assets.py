@@ -8,8 +8,8 @@ from charts.models import CandlestickParams
 from charts.models import Candlestick
 from db import setup_db
 from tools.handle_error import json_response, json_response_error, json_response_message
-from tools.round_numbers import round_numbers, round_numbers_ceiling, supress_notation
-from tools.exceptions import BinanceErrors, InvalidSymbol
+from tools.round_numbers import round_numbers
+from tools.exceptions import BinanceErrors, InvalidSymbol, MarginLoanNotFound
 from deals.base import BaseDeal
 
 class Assets(BaseDeal):
@@ -393,6 +393,8 @@ class Assets(BaseDeal):
         try:
             self.margin_liquidation(pair)
             return json_response_message(f"Successfully liquidated {pair}")
+        except MarginLoanNotFound as error:
+            return json_response_message(f"{error}. Successfully cleared isolated pair {pair}")
         except BinanceErrors as error:
             return json_response_error(f"Error liquidating {pair}: {error.message}")
 
