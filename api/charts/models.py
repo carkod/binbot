@@ -315,6 +315,25 @@ class Candlestick(BinbotApi):
 
         return ma_100, ma_25, ma_7
 
+    def macd(self, df):
+        """
+        Moving Average Convergence Divergence (MACD) indicator
+        https://www.alpharithms.com/calculate-macd-python-272222/
+        """
+
+        k = df[4].ewm(span=12, adjust=False, min_periods=12).mean()
+        # Get the 12-day EMA of the closing price
+        d = df[4].ewm(span=26, adjust=False, min_periods=26).mean()
+        # Subtract the 26-day EMA from the 12-Day EMA to get the MACD
+        macd = k - d
+        # Get the 9-Day EMA of the MACD for the Trigger line
+        # Get the 9-Day EMA of the MACD for the Trigger line
+        macd_s = macd.ewm(span=9, adjust=False, min_periods=9).mean()
+        # Calculate the difference between the MACD - Trigger for the Convergence/Divergence value
+        macd_h = macd - macd_s
+
+        return macd, macd_s
+
     def get(self, symbol, interval="15m", limit=500, start_time: float | None=None, end_time: float | None=None, stats = False):
         """
         Get candlestick graph data
@@ -351,6 +370,7 @@ class Candlestick(BinbotApi):
 
         trace = self.candlestick_trace(df, dates)
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
+        macd, macd_signal = self.macd(df)
 
         if stats:
             high_price = max(df[2])
@@ -380,12 +400,14 @@ class Candlestick(BinbotApi):
                 "high_price": high_price_r,
                 "low_price": low_price_r,
                 "close_price": close_price_r,
-                "volume": volume_r
+                "volume": volume_r,
             }
 
             resp = json_response(
                 {
                     "trace": [trace, ma_100, ma_25, ma_7],
+                    "macd": macd,
+                    "macd_signal": macd_signal,
                     "interval": interval,
                     "volumes": volumes,
                     "amplitude": amplitude,

@@ -16,7 +16,6 @@ class Assets(BaseDeal):
     def __init__(self):
         self.db = setup_db()
         self.usd_balance = 0
-        self.isolated_balance = None
 
     def get_raw_balance(self, asset=None):
         """
@@ -363,6 +362,7 @@ class Assets(BaseDeal):
         Check and disable isolated accounts
         """
         info = self.signed_request(url=self.isolated_account_url, payload={})
+        msg = "Disabling isolated margin account not required yet."
         for item in info["assets"]:
             # Liquidate price = 0 guarantees there is no loan unpaid
             if float(item["liquidatePrice"]) == 0:
@@ -374,11 +374,8 @@ class Assets(BaseDeal):
 
                 self.disable_isolated_margin_account(item["symbol"])
                 msg = "Sucessfully finished disabling isolated margin accounts."
-        else:
-            msg = "Disabling isolated margin account not required yet."
 
-        resp = json_response_message(msg)
-        return resp
+        return json_response_message(msg)
 
     def one_click_liquidation(self, pair: str):
         """
@@ -389,13 +386,13 @@ class Assets(BaseDeal):
         in that it contains some clean up functionality in the cases
         where there are are still funds in the isolated pair
         """
-        
+
         try:
-            self.margin_liquidation(pair)
+            self.symbol = pair
+            self.margin_liquidation(pair, self.qty_precision)
             return json_response_message(f"Successfully liquidated {pair}")
         except MarginLoanNotFound as error:
             return json_response_message(f"{error}. Successfully cleared isolated pair {pair}")
         except BinanceErrors as error:
             return json_response_error(f"Error liquidating {pair}: {error.message}")
 
-        

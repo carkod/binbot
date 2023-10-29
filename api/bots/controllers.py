@@ -116,6 +116,14 @@ class Bot(Account):
             bot = data.dict()
             bot["id"] = str(ObjectId())
 
+            # if bot["strategy"] == "margin_short":
+            #     asset = bot["pair"].replace(bot["balance_to_use"], "")
+            #     # price = self.matching_engine(bot["pair"], True)
+            #     total = float(bot["base_order_size"])
+            #     check_max_borrow = self.get_max_borrow(asset, isolated_symbol=bot["pair"])
+            #     if total > check_max_borrow["borrowLimit"]:
+            #         return json_response_error(f"Max margin account borrow limit reached")
+
             self.db_collection.insert_one(bot)
             resp = json_response(
                 {

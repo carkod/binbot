@@ -53,6 +53,7 @@ class BinanceApi:
     margin_repay_url = f"{BASE}/sapi/v1/margin/repay"
     isolated_hourly_interest = f"{BASE}/sapi/v1/margin/next-hourly-interest-rate"
     margin_order = f"{BASE}/sapi/v1/margin/order"
+    max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
 
     def signed_request(self, url, method="GET", payload={}, params={}):
         """
@@ -116,6 +117,9 @@ class BinanceApi:
             isIsolated = "TRUE"
 
         return self.signed_request(self.loan_record_url, method="POST", payload={"asset": asset, "symbol": symbol, "amount": amount, "isIsolated": isIsolated})
+
+    def get_max_borrow(self, asset, isolated_symbol:str | None = None):
+        return self.signed_request(self.max_borrow_url, payload={"asset": asset, "isolatedSymbol":  isolated_symbol })
 
     def get_margin_loan_details(self, asset: str, isolatedSymbol: str):
         return self.signed_request(self.loan_record_url, payload={"asset": asset, "isolatedSymbol": isolatedSymbol})

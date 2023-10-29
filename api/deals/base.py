@@ -1,3 +1,4 @@
+from typing import List
 import uuid
 import requests
 import numpy
@@ -32,9 +33,8 @@ class BaseDeal(OrderController):
 
     def __init__(self, bot, db_collection_name):
         self.active_bot = BotSchema.parse_obj(bot)
-        self.isolated_balance = None
-        self.qty_precision = None
-        super().__init__()
+        self.symbol = self.active_bot.pair
+        super().__init__(symbol=self.active_bot.pair)
         self.db_collection = self.db[db_collection_name]
 
     def __repr__(self) -> str:
@@ -45,6 +45,12 @@ class BaseDeal(OrderController):
 
     def generate_id(self):
         return uuid.uuid4().hex
+
+    @property
+    def isolated_balance(self):
+        if not hasattr(self, "_isolated_balance"):
+            self._isolated_balance = self.get_isolated_balance(self.symbol)
+        return self._isolated_balance
 
     def compute_qty(self, pair):
         """
@@ -60,7 +66,7 @@ class BaseDeal(OrderController):
         return qty
 
     def compute_margin_buy_back(
-        self, pair: str, qty_precision
+        self, pair: str
     ):
         """
         Same as compute_qty but with isolated margin balance
@@ -70,9 +76,6 @@ class BaseDeal(OrderController):
         Decimals have to be rounded up to avoid leaving
         "leftover" interests
         """
-        if not self.isolated_balance:
-            self.isolated_balance = self.get_isolated_balance(pair)
-
         if (
             self.isolated_balance[0]["quoteAsset"]["free"] == 0
             or self.isolated_balance[0]["baseAsset"]["borrowed"] == 0
@@ -80,12 +83,6 @@ class BaseDeal(OrderController):
             return None
 
         qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]) + float(self.isolated_balance[0]["baseAsset"]["borrowed"]) * ESTIMATED_COMMISSIONS_RATE
-
-        # Save API calls
-        self.qty_precision = qty_precision
-
-        if not self.qty_precision:
-            self.qty_precision = self.get_qty_precision(pair)
 
         qty = round_numbers_ceiling(qty, self.qty_precision)
         free = float(self.isolated_balance[0]["baseAsset"]["free"])
@@ -227,7 +224,6 @@ class BaseDeal(OrderController):
 
             bot_response = self.db_collection.insert_one(
                 bot,
-                return_document=ReturnDocument.AFTER,
             )
 
         except Exception as error:
@@ -309,22 +305,25 @@ class BaseDeal(OrderController):
 
     def margin_liquidation(self, pair: str, qty_precision=None):
         """
-        Emulate Binance Dashboard
-        One click liquidation function
+        Emulate Binance Dashboard One click liquidation function
+
+        Args:
+        - pair: a.k.a symbol, quote asset + base asset
+        - qty_precision: to round numbers for Binance API. Passed optionally to
+        reduce number of requests to avoid rate limit.
         """
-        isolated_balance = self.get_isolated_balance(pair)
+        isolated_balance = self.isolated_balance
         base = isolated_balance[0]["baseAsset"]["asset"]
         quote = isolated_balance[0]["quoteAsset"]["asset"]
         # Check margin account balance first
         borrowed_amount = float(isolated_balance[0]["baseAsset"]["borrowed"])
         free = float(isolated_balance[0]["baseAsset"]["free"])
         buy_margin_response = None
-        qty_precision = self.get_qty_precision(pair)
 
         if borrowed_amount > 0:
             # repay_amount contains total borrowed_amount + interests + commissions for buying back
             # borrow amount is only the loan
-            repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
+            repay_amount, free = self.compute_margin_buy_back(pair)
             repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
 
             if free == 0 or free < repay_amount:
@@ -335,7 +334,7 @@ class BaseDeal(OrderController):
                         symbol=pair,
                         qty=qty,
                     )
-                    repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
+                    repay_amount, free = self.compute_margin_buy_back(pair)
                 except BinanceErrors as error:
                     if error.code == -3041:
                         # Not enough funds in isolated pair
@@ -351,7 +350,7 @@ class BaseDeal(OrderController):
                             amount=amount_to_transfer,
                         )
                         buy_margin_response = self.buy_margin_order(pair, supress_notation(transfer_diff_qty, qty_precision))
-                        repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
+                        repay_amount, free = self.compute_margin_buy_back(pair)
                         pass
                     if error.code == -2010 or error.code == -1013:
                         # There is already money in the base asset
@@ -362,7 +361,7 @@ class BaseDeal(OrderController):
                             qty = round_numbers_ceiling(15 / price)
 
                         buy_margin_response = self.buy_margin_order(pair, supress_notation(qty, qty_precision))
-                        repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
+                        repay_amount, free = self.compute_margin_buy_back(pair)
                         pass
 
             self.repay_margin_loan(

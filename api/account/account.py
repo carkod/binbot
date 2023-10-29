@@ -220,15 +220,6 @@ class Account(BinbotApi):
         )
         return min_notional_filter[min_notional_limit]
 
-    def get_qty_precision(self, pair):
-        lot_size_by_symbol = self.lot_size_by_symbol(pair, "stepSize")
-        qty_precision = -(
-            Decimal(str(lot_size_by_symbol))
-            .as_tuple()
-            .exponent
-        )
-        return qty_precision
-    
     def get_one_balance(self, symbol="BTC"):
         # Response after request
         data = self.bb_request(url=self.bb_balance_url)

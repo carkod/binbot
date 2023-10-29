@@ -22,7 +22,6 @@ class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection_name: str) -> None:
         # Inherit from parent class
         super().__init__(bot, db_collection_name)
-        self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
 
     def _append_errors(self, error):
         """
@@ -141,7 +140,7 @@ class MarginDeal(BaseDeal):
         try:
             self.enable_isolated_margin_account(symbol=self.active_bot.pair)
         except BinanceErrors as error:
-            if error.code == -11001:
+            if error.code == -11001 or error.code == -3052:
                 # Isolated margin account needs to be activated with a transfer
                 self.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
@@ -149,26 +148,14 @@ class MarginDeal(BaseDeal):
                     amount="1",
                 )
 
+        transfer_qty = float(self.active_bot.base_order_size)
+
         # Given USDT amount we want to buy,
         # how much can we buy?
         qty = round_numbers_ceiling(
             (float(self.active_bot.base_order_size) / float(initial_price)),
             self.qty_precision,
         )
-
-        # transfer quantity is base order size (what we want to invest) + stop loss to cover losses
-        stop_loss_price_inc = float(initial_price) * (
-            1 + (self.active_bot.stop_loss / 100)
-        )
-        final_qty = float(stop_loss_price_inc * qty)
-        transfer_qty = round_numbers_ceiling(
-            final_qty,
-            self.qty_precision,
-        )
-
-        if transfer_qty == 0:
-            raise QuantityTooLow("Margin short quantity is too low")
-
 
         # For leftover values
         # or transfers to activate isolated pair
@@ -385,7 +372,7 @@ class MarginDeal(BaseDeal):
             self.init_margin_short(initial_price)
             order_res = self.sell_margin_order(
                 symbol=self.active_bot.pair,
-                qty=self.active_bot.base_order_size,
+                qty=self.active_bot.deal.margin_short_base_order,
             )
         else:
             # Simulate Margin sell
@@ -495,8 +482,12 @@ class MarginDeal(BaseDeal):
             )
             try:
                 self.execute_stop_loss()
-            except MarginLoanNotFound:
-                pass
+            except MarginLoanNotFound as error:
+                self.update_deal_logs(
+                    f"{error.message}"
+                )
+                self.active_bot.status = Status.error
+                return
 
             if (
                 hasattr(self.active_bot, "margin_short_reversal")
@@ -573,14 +564,6 @@ class MarginDeal(BaseDeal):
                     self.update_deal_logs(error.message)
                     return
 
-            except Exception as error:
-                self.update_deal_logs(
-                    f"Error trying to open new stop_limit order {error}"
-                )
-                # Continue in case of error to execute long bot
-                # to avoid losses
-                return
-
         stop_loss_order = MarginOrderSchema(
             timestamp=res["transactTime"],
             deal_type="stop_loss",
@@ -624,9 +607,7 @@ class MarginDeal(BaseDeal):
 
         - Buy back asset sold
         """
-        qty = 1
         if self.db_collection.name == "bots":
-            qty, free = self.compute_margin_buy_back(self.active_bot.pair, self.qty_precision)
             self.cancel_open_orders("take_profit")
 
         # Margin buy (buy back)

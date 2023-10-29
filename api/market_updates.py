@@ -24,16 +24,24 @@ if os.getenv("ENV") != "ci":
 
     scheduler = BackgroundScheduler()
     assets = Assets()
-    timezone = "Europe/London"
+    timezone = "Europe/Madrid"
 
     scheduler.add_job(
         func=assets.store_balance,
-        trigger="cron",
+        trigger="interval",
         timezone=timezone,
-        hour=1,
-        minute=1,
+        # hour=5,
+        minutes=10,
         id="store_balance",
     )
+    # scheduler.add_job(
+    #     func=assets.store_balance,
+    #     trigger="cron",
+    #     timezone=timezone,
+    #     hour=5,
+    #     minute=21,
+    #     id="store_balance",
+    # )
     scheduler.add_job(
         func=assets.disable_isolated_accounts,
         trigger="cron",
@@ -57,19 +65,16 @@ try:
     mu = StreamingController()
     mu.get_klines()
 
-except WebSocketException as e:
-    if isinstance(e, WebSocketConnectionClosedException):
-        logging.error("Lost websocket connection")
-        mu = StreamingController()
-        mu.get_klines()
-    else:
-        logging.error(f"Websocket exception: {e}")
+except WebSocketConnectionClosedException as e:
+    logging.error("Lost websocket connection")
+    mu = StreamingController()
+    mu.get_klines()
     
-    atexit.register(lambda: scheduler.shutdown(wait=False))
+    # atexit.register(lambda: scheduler.shutdown(wait=False))
 
 except Exception as error:
     logging.error(f"Streaming controller error: {error}")
     mu = StreamingController()
     mu.get_klines()
 
-    atexit.register(lambda: scheduler.shutdown(wait=False))
+    # atexit.register(lambda: scheduler.shutdown(wait=False))
