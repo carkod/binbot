@@ -337,7 +337,7 @@ class Assets(BaseDeal):
         )
         return resp
 
-    async def clean_balance_assets(self):
+    def clean_balance_assets(self):
         """
         Check if there are many small assets (0.000.. BTC)
         if there are more than 5 (number of bots)
@@ -357,7 +357,7 @@ class Assets(BaseDeal):
 
         return resp
 
-    async def disable_isolated_accounts(self, symbol=None):
+    def disable_isolated_accounts(self, symbol=None):
         """
         Check and disable isolated accounts
         """

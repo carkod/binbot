@@ -370,10 +370,15 @@ class MarginDeal(BaseDeal):
 
         if self.db_collection.name == "bots":
             self.init_margin_short(initial_price)
-            order_res = self.sell_margin_order(
-                symbol=self.active_bot.pair,
-                qty=self.active_bot.deal.margin_short_base_order,
-            )
+            try:
+                order_res = self.sell_margin_order(
+                    symbol=self.active_bot.pair,
+                    qty=self.active_bot.deal.margin_short_base_order,
+                )
+            except BinanceErrors as error:
+                if error.code == -3052:
+                    print(error)
+                    return
         else:
             # Simulate Margin sell
             # qty doesn't matter in paper bots

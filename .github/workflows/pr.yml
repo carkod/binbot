@@ -97,6 +97,35 @@ jobs:
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker push carloswufei/binbot_streaming
 
+  deploy_cronjobs:
+    name: Deploy cronjobs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Build image
+        run: docker build --tag binbot_cronjobs -f Dockerfile.cronjobs .
+      - name: Test run script
+        run: |
+          docker run --network host --name binbot_cronjobs \
+          -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
+          -e MONGO_PORT=${{ env.MONGO_PORT }} \
+          -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
+          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
+          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
+          -e PYTHONUNBUFFERED=TRUE \
+          -e ENV=ci -d binbot_cronjobs
+      - name: Tag image
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: |
+          docker commit binbot_cronjobs carloswufei/binbot_cronjobs &
+          docker tag binbot_cronjobs carloswufei/binbot_cronjobs
+      - name: Push to Docker Hub
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push carloswufei/binbot_cronjobs
+
 
   python_tests:
     name: Python code tests

@@ -21,6 +21,14 @@
       "justMyCode": false
     },
     {
+      "name": "Python: cronjobs",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/api/cronjobs.py",
+      "console": "internalConsole",
+      "justMyCode": true
+    },
+    {
       "type": "chrome",
       "request": "launch",
       "name": "Web",
@@ -56,14 +64,6 @@
       "program": "binquant/consumer/__init__.py",
       "console": "internalConsole",
       "justMyCode": true
-    },
-    {
-      "name": "Python: Test Producer",
-      "type": "python",
-      "request": "launch",
-      "program": "binquant/kafka_producer.py",
-      "console": "internalConsole",
-      "justMyCode": true
-    },
+    }
   ]
 }

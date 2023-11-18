@@ -40,5 +40,19 @@ services:
   #     - api
   #     - db
 
+
+  # crobjobs:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.cronjobs
+  #   image: binbot_cronjobs
+  #   env_file:
+  #     - .env
+  #   restart: on-failure
+  #   container_name: binbot_cronjobs
+  #   depends_on:
+  #     # - api
+  #     - db
+
 volumes:
   mongo_data:
