@@ -329,10 +329,33 @@ class Candlestick(BinbotApi):
         # Get the 9-Day EMA of the MACD for the Trigger line
         # Get the 9-Day EMA of the MACD for the Trigger line
         macd_s = macd.ewm(span=9, adjust=False, min_periods=9).mean()
-        # Calculate the difference between the MACD - Trigger for the Convergence/Divergence value
-        macd_h = macd - macd_s
 
         return macd, macd_s
+
+    def rsi(self, df):
+        """
+        Relative Strength Index (RSI) indicator
+        https://www.qmr.ai/relative-strength-index-rsi-in-python/
+        """
+
+        change = df[4].astype(float).diff()
+        change.dropna(inplace=True)
+        # Create two copies of the Closing price Series
+        change_up = change.copy()
+        change_down = change.copy()
+
+        change_up[change_up<0] = 0
+        change_down[change_down>0] = 0
+
+        # Verify that we did not make any mistakes
+        change.equals(change_up+change_down)
+
+        # Calculate the rolling average of average up and average down
+        avg_up = change_up.rolling(14).mean()
+        avg_down = change_down.rolling(14).mean().abs()
+
+        rsi = 100 * avg_up / (avg_up + avg_down)
+        return rsi
 
     def get(self, symbol, interval="15m", limit=500, start_time: float | None=None, end_time: float | None=None, stats = False):
         """
@@ -371,6 +394,7 @@ class Candlestick(BinbotApi):
         trace = self.candlestick_trace(df, dates)
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
         macd, macd_signal = self.macd(df)
+        rsi = self.rsi(df)
 
         if stats:
             high_price = max(df[2])
@@ -408,6 +432,7 @@ class Candlestick(BinbotApi):
                     "trace": [trace, ma_100, ma_25, ma_7],
                     "macd": macd,
                     "macd_signal": macd_signal,
+                    "rsi": rsi,
                     "interval": interval,
                     "volumes": volumes,
                     "amplitude": amplitude,
