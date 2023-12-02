@@ -63,3 +63,8 @@ def deactivate(id: str):
 @bot_blueprint.put("/bot/archive/{id}", tags=["bots"])
 def archive(id: str):
     return Bot(collection_name="bots").put_archive(id)
+
+
+@bot_blueprint.post("/bot/errors/{bot_id}", tags=["bots"])
+def bot_errors(bot_id: str, bot_errors: str):
+    return Bot(collection_name="bots").post_errors_by_id(bot_id, bot_errors)

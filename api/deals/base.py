@@ -1,3 +1,4 @@
+from typing import List
 import uuid
 import requests
 import numpy
@@ -10,9 +11,10 @@ from bots.schemas import BotSchema
 from pymongo import ReturnDocument
 from tools.round_numbers import round_numbers, supress_notation
 from tools.handle_error import handle_binance_errors, encode_json
-from tools.exceptions import QuantityTooLow
+from tools.exceptions import BinanceErrors, MarginLoanNotFound
 from scipy.stats import linregress
 from tools.round_numbers import round_numbers_ceiling
+from tools.enum_definitions import Status
 
 
 # To be removed one day when commission endpoint found that provides this value
@@ -31,9 +33,8 @@ class BaseDeal(OrderController):
 
     def __init__(self, bot, db_collection_name):
         self.active_bot = BotSchema.parse_obj(bot)
-        self.isolated_balance = None
-        self.qty_precision = None
-        super().__init__()
+        self.symbol = self.active_bot.pair
+        super().__init__(symbol=self.active_bot.pair)
         self.db_collection = self.db[db_collection_name]
 
     def __repr__(self) -> str:
@@ -44,6 +45,12 @@ class BaseDeal(OrderController):
 
     def generate_id(self):
         return uuid.uuid4().hex
+
+    @property
+    def isolated_balance(self):
+        if not hasattr(self, "_isolated_balance"):
+            self._isolated_balance = self.get_isolated_balance(self.symbol)
+        return self._isolated_balance
 
     def compute_qty(self, pair):
         """
@@ -59,7 +66,7 @@ class BaseDeal(OrderController):
         return qty
 
     def compute_margin_buy_back(
-        self, pair: str, qty_precision
+        self, pair: str
     ):
         """
         Same as compute_qty but with isolated margin balance
@@ -69,9 +76,6 @@ class BaseDeal(OrderController):
         Decimals have to be rounded up to avoid leaving
         "leftover" interests
         """
-        if not self.isolated_balance:
-            self.isolated_balance = self.get_isolated_balance(pair)
-
         if (
             self.isolated_balance[0]["quoteAsset"]["free"] == 0
             or self.isolated_balance[0]["baseAsset"]["borrowed"] == 0
@@ -79,12 +83,6 @@ class BaseDeal(OrderController):
             return None
 
         qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]) + float(self.isolated_balance[0]["baseAsset"]["borrowed"]) * ESTIMATED_COMMISSIONS_RATE
-
-        # Save API calls
-        self.qty_precision = qty_precision
-
-        if not self.qty_precision:
-            self.qty_precision = self.get_qty_precision(pair)
 
         qty = round_numbers_ceiling(qty, self.qty_precision)
         free = float(self.isolated_balance[0]["baseAsset"]["free"])
@@ -195,7 +193,7 @@ class BaseDeal(OrderController):
             if "_id" in bot:
                 bot.pop("_id")
 
-            bot = self.db_collection.find_one_and_update(
+            response = self.db_collection.find_one_and_update(
                 {"id": self.active_bot.id},
                 {
                     "$set": bot,
@@ -207,7 +205,32 @@ class BaseDeal(OrderController):
             self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
             raise StreamingSaveError(error)
 
-        return bot
+        return response
+
+    def create_new_bot_streaming(self):
+        """
+        MongoDB query to save bot using Pydantic
+
+        This function differs from usual save query in that
+        it returns the saved bot, thus called streaming, it's
+        specifically for streaming saves
+        """
+
+        try:
+
+            bot = encode_json(self.active_bot)
+            if "_id" in bot:
+                bot.pop("_id")
+
+            bot_response = self.db_collection.insert_one(
+                bot,
+            )
+
+        except Exception as error:
+            self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
+            raise StreamingSaveError(error)
+
+        return bot_response.inserted_id
 
     def dynamic_take_profit(self, current_bot, close_price):
 
@@ -282,67 +305,97 @@ class BaseDeal(OrderController):
 
     def margin_liquidation(self, pair: str, qty_precision=None):
         """
-        Emulate Binance Dashboard
-        One click liquidation function
+        Emulate Binance Dashboard One click liquidation function
+
+        Args:
+        - pair: a.k.a symbol, quote asset + base asset
+        - qty_precision: to round numbers for Binance API. Passed optionally to
+        reduce number of requests to avoid rate limit.
         """
-        isolated_balance = self.get_isolated_balance(pair)
+        isolated_balance = self.isolated_balance
         base = isolated_balance[0]["baseAsset"]["asset"]
         quote = isolated_balance[0]["quoteAsset"]["asset"]
         # Check margin account balance first
-        balance = float(isolated_balance[0]["quoteAsset"]["free"])
-        borrowed_amount = float(isolated_balance[0]["baseAsset"]["free"])
+        borrowed_amount = float(isolated_balance[0]["baseAsset"]["borrowed"])
+        free = float(isolated_balance[0]["baseAsset"]["free"])
         buy_margin_response = None
-        if not qty_precision:
-            qty_precision = self.get_qty_precision(pair)
 
         if borrowed_amount > 0:
-            # repay
-            repay_amount, free = self.compute_margin_buy_back(pair, qty_precision)
-            if repay_amount == 0 or not repay_amount:
-                raise QuantityTooLow(f"Liquidation amount {repay_amount}")
-            # Check if there is a loan
-            # Binance may reject loans if they don't have asset
-            # or binbot errors may transfer funds but no loan is created
-            query_loan = self.signed_request(
-                url=self.loan_record_url,
-                payload={"asset": base, "isolatedSymbol": pair},
-            )
-            if query_loan["total"] > 0 and repay_amount > 0:
-                # Only supress trailling 0s, so that everything is paid
-                repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
+            # repay_amount contains total borrowed_amount + interests + commissions for buying back
+            # borrow amount is only the loan
+            repay_amount, free = self.compute_margin_buy_back(pair)
+            repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
 
-                if free == 0 or free <= repay_amount:
+            if free == 0 or free < repay_amount:
+                try:
+                    # lot_size_by_symbol = self.lot_size_by_symbol(pair, "stepSize")
+                    qty = round_numbers_ceiling(repay_amount - free, qty_precision)
                     buy_margin_response = self.buy_margin_order(
                         symbol=pair,
-                        qty=supress_notation(repay_amount, qty_precision),
+                        qty=qty,
                     )
-                    repay_amount = float(buy_margin_response["origQty"])
+                    repay_amount, free = self.compute_margin_buy_back(pair)
+                except BinanceErrors as error:
+                    if error.code == -3041:
+                        # Not enough funds in isolated pair
+                        # transfer from wallet
+                        transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
+                        available_balance = self.get_one_balance(quote)
+                        amount_to_transfer = 15 # Min amount
+                        if available_balance < 15:
+                            amount_to_transfer = available_balance
+                        self.transfer_spot_to_isolated_margin(
+                            asset=quote,
+                            symbol=pair,
+                            amount=amount_to_transfer,
+                        )
+                        buy_margin_response = self.buy_margin_order(pair, supress_notation(transfer_diff_qty, qty_precision))
+                        repay_amount, free = self.compute_margin_buy_back(pair)
+                        pass
+                    if error.code == -2010 or error.code == -1013:
+                        # There is already money in the base asset
+                        qty = round_numbers_ceiling(repay_amount - free, qty_precision)
+                        price = float(self.matching_engine(pair, True, qty))
+                        usdt_notional = price * qty
+                        if usdt_notional < 15:
+                            qty = round_numbers_ceiling(15 / price)
 
-                if free >= repay_amount:
-                    self.repay_margin_loan(
-                        asset=base,
-                        symbol=pair,
-                        amount=repay_amount,
-                        isIsolated="TRUE",
-                    )
+                        buy_margin_response = self.buy_margin_order(pair, supress_notation(qty, qty_precision))
+                        repay_amount, free = self.compute_margin_buy_back(pair)
+                        pass
 
-                # get new balance
-                isolated_balance = self.get_isolated_balance(pair)
-                logging.info(f"Transfering leftover isolated assets back to Spot")
-                if float(isolated_balance[0]["quoteAsset"]["free"]) != 0:
-                    # transfer back to SPOT account
-                    self.transfer_isolated_margin_to_spot(
-                        asset=quote,
-                        symbol=pair,
-                        amount=isolated_balance[0]["quoteAsset"]["free"],
-                    )
-                if float(isolated_balance[0]["baseAsset"]["free"]) != 0:
-                    self.transfer_isolated_margin_to_spot(
-                        asset=base,
-                        symbol=pair,
-                        amount=isolated_balance[0]["baseAsset"]["free"],
-                    )
-                        
-                self.disable_isolated_margin_account(symbol=pair)
-                return buy_margin_response
+            self.repay_margin_loan(
+                asset=base,
+                symbol=pair,
+                amount=repay_amount,
+                isIsolated="TRUE",
+            )
+
+            # get new balance
+            isolated_balance = self.get_isolated_balance(pair)
+
+        if float(isolated_balance[0]["quoteAsset"]["free"]) != 0:
+            # transfer back to SPOT account
+            self.transfer_isolated_margin_to_spot(
+                asset=quote,
+                symbol=pair,
+                amount=isolated_balance[0]["quoteAsset"]["free"],
+            )
+        if float(isolated_balance[0]["baseAsset"]["free"]) != 0:
+            self.transfer_isolated_margin_to_spot(
+                asset=base,
+                symbol=pair,
+                amount=isolated_balance[0]["baseAsset"]["free"],
+            )
+                
+        if borrowed_amount == 0:
+            # Funds are transferred back by now,
+            # disabling pair should be done by cronjob,
+            # therefore no reason not to complete the bot
+            if hasattr(self, "active_bot"):
+                self.active_bot.status = Status.completed
+
+            raise MarginLoanNotFound("Isolated margin loan already liquidated")
+
+        return buy_margin_response
 

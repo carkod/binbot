@@ -21,6 +21,7 @@ export const ControllerTab = ({
   addToBlacklist,
   removeFromBlacklist,
   triggerGbpHedge,
+  subscribedSymbols,
 }) => {
   const [addBlacklist, setAddBlacklist] = useImmer({ reason: "", pair: "" });
   const [removeBlacklist, setRemoveBlacklist] = useState("");
@@ -123,6 +124,29 @@ export const ControllerTab = ({
                       Add
                     </Button>{" "}
                   </Col>
+                </Row>
+                <br />
+                <h3>Subscribed</h3>
+                <Row>
+                  {subscribedSymbols && subscribedSymbols.length > 0 && (
+                    <Col md="6">
+                      <FormGroup>
+                        <Label for="subscribed">Following list of cryptos are listened on by websockets</Label>
+                        <Input
+                          type="select"
+                          name="subscribed"
+                          id="blacklisted"
+                        >
+                          <option value={""}> </option>
+                          {subscribedSymbols.map((x, i) => (
+                            <option key={i} value={x._id}>
+                              {x.pair} ({x.reason})
+                            </option>
+                          ))}
+                        </Input>
+                      </FormGroup>
+                    </Col>
+                  )}
                 </Row>
               </>
             </Col>

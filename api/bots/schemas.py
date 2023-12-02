@@ -1,5 +1,5 @@
 from time import time
-from typing import Literal
+from typing import List, Literal
 
 from bson.objectid import ObjectId
 from tools.enum_definitions import Status
@@ -40,7 +40,7 @@ class BotSchema(BaseModel):
     created_at: float = time() * 1000
     deal: DealSchema = Field(default_factory=DealSchema)
     dynamic_trailling: bool = False
-    errors: list[str] = []
+    errors: list[str] = [] # Event logs
     locked_so_funds: float = 0  # funds locked by Safety orders
     mode: str = "manual"  # Manual is triggered by the terminal dashboard, autotrade by research app
     name: str = "Default bot"
@@ -90,12 +90,18 @@ class BotSchema(BaseModel):
             return False
         return True
 
+    @validator("errors")
+    def check_errors_format(cls, v: list[str]):
+        if isinstance(v, list):
+            return []
+        return []
+
     class Config:
         use_enum_values = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
         schema_extra = {
-            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Binance and",
+            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Binance",
             "example": {
                 "pair": "BNBUSDT",
                 "balance_size_to_use": 0,

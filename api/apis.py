@@ -53,6 +53,7 @@ class BinanceApi:
     margin_repay_url = f"{BASE}/sapi/v1/margin/repay"
     isolated_hourly_interest = f"{BASE}/sapi/v1/margin/next-hourly-interest-rate"
     margin_order = f"{BASE}/sapi/v1/margin/order"
+    max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
 
     def signed_request(self, url, method="GET", payload={}, params={}):
         """
@@ -95,6 +96,12 @@ class BinanceApi:
         return self.signed_request(self.isolated_account_url, method="POST", payload={"symbol": symbol})
     
     def disable_isolated_margin_account(self, symbol):
+        """
+        Very high weight, use as little as possible
+
+        There is a cronjob that disables all margin isolated accounts everyday
+        check market_updates
+        """
         return self.signed_request(self.isolated_account_url, method="DELETE", payload={"symbol": symbol})
 
     def transfer_isolated_margin_to_spot(self, asset, symbol, amount):
@@ -110,6 +117,9 @@ class BinanceApi:
             isIsolated = "TRUE"
 
         return self.signed_request(self.loan_record_url, method="POST", payload={"asset": asset, "symbol": symbol, "amount": amount, "isIsolated": isIsolated})
+
+    def get_max_borrow(self, asset, isolated_symbol:str | None = None):
+        return self.signed_request(self.max_borrow_url, payload={"asset": asset, "isolatedSymbol":  isolated_symbol })
 
     def get_margin_loan_details(self, asset: str, isolatedSymbol: str):
         return self.signed_request(self.loan_record_url, payload={"asset": asset, "isolatedSymbol": isolatedSymbol})

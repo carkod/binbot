@@ -555,11 +555,7 @@ class BotForm extends React.Component {
               <Col md="7" sm="12">
                 <BotInfo bot={this.props.bot} />
               </Col>
-              {this.props.bot.errors.length > 0 && (
-                <Col md="4" sm="12">
-                  <LogsInfo info={this.props.bot.errors} />
-                </Col>
-              )}
+              
             </>
           ) : (
             ""
@@ -753,6 +749,9 @@ class BotForm extends React.Component {
             <Col md="5" sm="12">
               {this.props.balance_estimate && (
                 <BalanceAnalysis balance={this.props.balance_estimate} />
+              )}
+              {this.props.bot.errors?.length > 0 && (
+                <LogsInfo events={this.props.bot.errors} />
               )}
             </Col>
           </Row>

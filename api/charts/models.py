@@ -315,6 +315,48 @@ class Candlestick(BinbotApi):
 
         return ma_100, ma_25, ma_7
 
+    def macd(self, df):
+        """
+        Moving Average Convergence Divergence (MACD) indicator
+        https://www.alpharithms.com/calculate-macd-python-272222/
+        """
+
+        k = df[4].ewm(span=12, adjust=False, min_periods=12).mean()
+        # Get the 12-day EMA of the closing price
+        d = df[4].ewm(span=26, adjust=False, min_periods=26).mean()
+        # Subtract the 26-day EMA from the 12-Day EMA to get the MACD
+        macd = k - d
+        # Get the 9-Day EMA of the MACD for the Trigger line
+        # Get the 9-Day EMA of the MACD for the Trigger line
+        macd_s = macd.ewm(span=9, adjust=False, min_periods=9).mean()
+
+        return macd, macd_s
+
+    def rsi(self, df):
+        """
+        Relative Strength Index (RSI) indicator
+        https://www.qmr.ai/relative-strength-index-rsi-in-python/
+        """
+
+        change = df[4].astype(float).diff()
+        change.dropna(inplace=True)
+        # Create two copies of the Closing price Series
+        change_up = change.copy()
+        change_down = change.copy()
+
+        change_up[change_up<0] = 0
+        change_down[change_down>0] = 0
+
+        # Verify that we did not make any mistakes
+        change.equals(change_up+change_down)
+
+        # Calculate the rolling average of average up and average down
+        avg_up = change_up.rolling(14).mean()
+        avg_down = change_down.rolling(14).mean().abs()
+
+        rsi = 100 * avg_up / (avg_up + avg_down)
+        return rsi
+
     def get(self, symbol, interval="15m", limit=500, start_time: float | None=None, end_time: float | None=None, stats = False):
         """
         Get candlestick graph data
@@ -351,6 +393,8 @@ class Candlestick(BinbotApi):
 
         trace = self.candlestick_trace(df, dates)
         ma_100, ma_25, ma_7 = self.bollinguer_bands(df, dates)
+        macd, macd_signal = self.macd(df)
+        rsi = self.rsi(df)
 
         if stats:
             high_price = max(df[2])
@@ -372,18 +416,23 @@ class Candlestick(BinbotApi):
             close_price_r = df[4].astype(float).corr(btc_df[4].astype(float))
             volume_r = df[5].astype(float).corr(btc_df[5].astype(float))
 
+            close_price_cov = df[4].astype(float).cov(btc_df[4].astype(float))
+
             # collection of correlations
             p_btc = {
                 "open_price": open_price_r,
                 "high_price": high_price_r,
                 "low_price": low_price_r,
                 "close_price": close_price_r,
-                "volume": volume_r
+                "volume": volume_r,
             }
 
             resp = json_response(
                 {
                     "trace": [trace, ma_100, ma_25, ma_7],
+                    "macd": macd,
+                    "macd_signal": macd_signal,
+                    "rsi": rsi,
                     "interval": interval,
                     "volumes": volumes,
                     "amplitude": amplitude,

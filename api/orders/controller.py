@@ -8,22 +8,31 @@ from decimal import Decimal
 poll_percentage = 0
 
 class OrderController(Account):
-    def __init__(self) -> None:
+    def __init__(self, symbol) -> None:
         super().__init__()
         # Always GTC and limit orders
         # limit/market orders will be decided by matching_engine
         # PRICE_FILTER decimals
-        self.price_precision = -1 * (
-            Decimal(str(self.price_filter_by_symbol(self.active_bot.pair, "tickSize")))
-            .as_tuple()
-            .exponent
-        )
-        self.qty_precision = -1 * (
-            Decimal(str(self.lot_size_by_symbol(self.active_bot.pair, "stepSize")))
-            .as_tuple()
-            .exponent
-        )
+        self.symbol = symbol
         pass
+
+    @property
+    def price_precision(self):
+        self._price_precision = -1 * (
+            Decimal(str(self.price_filter_by_symbol(self.symbol, "tickSize")))
+            .as_tuple()
+            .exponent
+        )
+        return self._price_precision
+
+    @property
+    def qty_precision(self):
+        self._qty_precision = -1 * (
+            Decimal(str(self.lot_size_by_symbol(self.symbol, "stepSize")))
+            .as_tuple()
+            .exponent
+        )
+        return self._qty_precision
 
     def sell_order(self, symbol, qty, price=None):
         """

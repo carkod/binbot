@@ -1,11 +1,12 @@
 from db import setup_db
 from datetime import datetime
 from time import sleep
-from tools.handle_error import json_response, json_response_error
+from tools.handle_error import json_response, json_response_error, json_response_message
 from pymongo.errors import DuplicateKeyError
 from apis import ThreeCommasApi
 from tools.round_numbers import round_numbers
 from pymongo import ASCENDING
+from fastapi.encoders import jsonable_encoder
 
 class Controller:
     """
@@ -134,4 +135,50 @@ class Controller:
 
         return json_response({"message": "Successfully retrieved profitable 3commas signals", "data": signals})
 
+    """
+    Get pairs that binbot-research signals are subscribed to
+    receive cryptodata
 
+    To merge with blacklist
+    """
+    def get_subscribed_symbols(self):
+        query_result = self.db.subscribed_symbols.find({}).sort("pair", ASCENDING)
+        all_symbols = list(query_result)
+        return json_response(
+            {"message": "Successfully retrieved blacklist", "data": all_symbols}
+        )
+
+    def delete_all_subscribed_symbols(self):
+        query_result = self.db.subscribed_symbols.delete_many({})
+
+        return json_response(
+            {"message": "Successfully deleted all symbols", "data": {
+                "total": 0
+            }}
+        )
+
+    def bulk_upsert_all(self, data):
+        symbols = jsonable_encoder(data)
+        self.db.subscribed_symbols.delete_many({})
+        try:
+            query_result = self.db.subscribed_symbols.insert_many(
+                symbols,
+            )
+            return json_response(
+                {"message": "Successfully created new susbcribed list", "data": {
+                    "total": len(query_result.inserted_ids) + 1
+                }}
+            )
+        except Exception as error:
+            return json_response_error(f"Failed to update symbol in the subscribed list {error}")
+
+    def edit_subscribed_symbol(self, symbol):
+        symbol = jsonable_encoder(symbol)
+        try:
+            self.db.subscribed_symbols.update_one(
+                symbol,
+                upsert=True,
+            )
+            return json_response_message("Successfully update symbol in the subscribed list")
+        except Exception as error:
+            return json_response_error(f"Failed to update symbol in the subscribed list {error}")

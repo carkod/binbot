@@ -101,3 +101,4 @@ export function* deleteBlacklistApi({ pair }) {
 export function* watchDeleteBlackListApi() {
   yield takeLatest(DELETE_BLACKLIST, deleteBlacklistApi);
 }
+

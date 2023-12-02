@@ -23,10 +23,16 @@ class NotEnoughFunds(BinanceErrors):
 
 
 class BinbotErrors(Exception):
-    pass
+    def __init__(self, msg, code=None):
+        self.message = msg
+        super().__init__(self.message)
+        return None
+
+    def __str__(self) -> str:
+        return f"Binbot error: {self.message}"
 
 
-class QuantityTooLow(BinanceErrors):
+class QuantityTooLow(BinbotErrors):
     """
     Raised when LOT_SIZE filter error triggers
     This error should happen in the least cases,
@@ -34,6 +40,10 @@ class QuantityTooLow(BinanceErrors):
     e.g. BTC = 0.0001 amounts are usually so small that it's hard to see if it's nothing or a considerable amount compared to others
     """
 
+    pass
+
+
+class MarginLoanNotFound(BinbotErrors):
     pass
 
 
@@ -61,7 +71,6 @@ class ShortStrategyError(OpenDealError):
     pass
 
 
-
 class TerminateStreaming(Exception):
     """
     This is required sometimes
@@ -72,4 +81,5 @@ class TerminateStreaming(Exception):
     On the other hand, we want to minimize number of times this exception is raised to avoid
     overloading the server with reloads
     """
+
     pass

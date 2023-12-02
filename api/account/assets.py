@@ -9,14 +9,13 @@ from charts.models import Candlestick
 from db import setup_db
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
-from tools.exceptions import BinanceErrors, InvalidSymbol
+from tools.exceptions import BinanceErrors, InvalidSymbol, MarginLoanNotFound
 from deals.base import BaseDeal
 
 class Assets(BaseDeal):
     def __init__(self):
         self.db = setup_db()
         self.usd_balance = 0
-        self.isolated_balance = None
 
     def get_raw_balance(self, asset=None):
         """
@@ -338,7 +337,7 @@ class Assets(BaseDeal):
         )
         return resp
 
-    async def clean_balance_assets(self):
+    def clean_balance_assets(self):
         """
         Check if there are many small assets (0.000.. BTC)
         if there are more than 5 (number of bots)
@@ -358,37 +357,42 @@ class Assets(BaseDeal):
 
         return resp
 
-    async def disable_isolated_accounts(self):
+    def disable_isolated_accounts(self, symbol=None):
         """
         Check and disable isolated accounts
         """
         info = self.signed_request(url=self.isolated_account_url, payload={})
+        msg = "Disabling isolated margin account not required yet."
         for item in info["assets"]:
+            # Liquidate price = 0 guarantees there is no loan unpaid
             if float(item["liquidatePrice"]) == 0:
+                if float(item["baseAsset"]["free"]) > 0:
+                    self.transfer_isolated_margin_to_spot(asset=item["baseAsset"]["asset"], symbol=item["symbol"], amount=float(item["baseAsset"]["free"]))
+                
+                if float(item["quoteAsset"]["free"]) > 0:
+                    self.transfer_isolated_margin_to_spot(asset=item["quoteAsset"]["asset"], symbol=item["symbol"], amount=float(item["quoteAsset"]["free"]))
+
                 self.disable_isolated_margin_account(item["symbol"])
                 msg = "Sucessfully finished disabling isolated margin accounts."
-        else:
-            msg = "Disabling isolated margin account not required yet."
 
-        resp = json_response_message(msg)
-        return resp
+        return json_response_message(msg)
 
     def one_click_liquidation(self, pair: str):
         """
         Emulate Binance Dashboard
         One click liquidation function
-        """
-        
-        try:
-            self.margin_liquidation(pair)
 
+        This endpoint is different than the margin_liquidation function
+        in that it contains some clean up functionality in the cases
+        where there are are still funds in the isolated pair
+        """
+
+        try:
+            self.symbol = pair
+            self.margin_liquidation(pair, self.qty_precision)
+            return json_response_message(f"Successfully liquidated {pair}")
+        except MarginLoanNotFound as error:
+            return json_response_message(f"{error}. Successfully cleared isolated pair {pair}")
         except BinanceErrors as error:
-            if error.code == -3041:
-                # Most likely not enough funds to pay back
-                # Get fiat (USDT) to pay back
-                return json_response_error(error.message)
-            if error.code == -3015:
-                # false alarm
-                pass
-            if error.code == -3051:
-                return json_response_error(error.message)
+            return json_response_error(f"Error liquidating {pair}: {error.message}")
+

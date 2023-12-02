@@ -18,6 +18,14 @@
       "request": "launch",
       "program": "${workspaceFolder}/api/market_updates.py",
       "console": "internalConsole",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: cronjobs",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/api/cronjobs.py",
+      "console": "internalConsole",
       "justMyCode": true
     },
     {
@@ -56,14 +64,6 @@
       "program": "binquant/consumer/__init__.py",
       "console": "internalConsole",
       "justMyCode": true
-    },
-    {
-      "name": "Python: Test Producer",
-      "type": "python",
-      "request": "launch",
-      "program": "binquant/kafka_producer.py",
-      "console": "internalConsole",
-      "justMyCode": true
-    },
+    }
   ]
 }

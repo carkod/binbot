@@ -8,7 +8,6 @@ from deals.schema import DealSchema, OrderSchema
 from pymongo import ReturnDocument
 from tools.enum_definitions import Status
 from tools.exceptions import (
-    ShortStrategyError,
     TakeProfitError,
 )
 from tools.handle_error import (
@@ -38,7 +37,6 @@ class CreateDealController(BaseDeal):
     def __init__(self, bot, db_collection="paper_trading"):
         # Inherit from parent class
         super().__init__(bot, db_collection)
-        self.active_bot = BotSchema.parse_obj(bot)
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
@@ -90,7 +88,11 @@ class CreateDealController(BaseDeal):
                 pair, supress_notation(price, self.price_precision), qty, "BUY"
             )
         else:
-            res = self.buy_order(symbol=pair, qty=qty, price=supress_notation(price, self.price_precision))
+            res = self.buy_order(
+                symbol=pair,
+                qty=qty,
+                price=supress_notation(price, self.price_precision),
+            )
 
         order_data = OrderSchema(
             timestamp=res["transactTime"],
@@ -280,7 +282,11 @@ class CreateDealController(BaseDeal):
                     print("Old take profit order cancelled")
 
                 qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
-                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=supress_notation(new_tp_price, self.price_precision))
+                res = self.sell_order(
+                    symbol=self.active_bot.pair,
+                    qty=qty,
+                    price=supress_notation(new_tp_price, self.price_precision),
+                )
 
                 # New take profit order successfully created
                 order = handle_binance_errors(res)
@@ -320,25 +326,12 @@ class CreateDealController(BaseDeal):
         else:
             self.update_deal_logs("Error: Bot does not contain a base order deal")
 
-
     def open_deal(self):
         """
         Mandatory deals section
 
         - If base order deal is not executed, bot is not activated
         """
-        # Short strategy checks
-        if self.active_bot.strategy == "short":
-            if (
-                not hasattr(self.active_bot, "short_buy_price")
-                or float(self.active_bot.short_buy_price) == 0
-            ):
-                raise ShortStrategyError(
-                    "Short strategy requires short_buy_price to be set, or it will never trigger"
-                )
-            else:
-                pass
-
         # If there is already a base order do not execute
         base_order_deal = next(
             (
@@ -394,13 +387,10 @@ class CreateDealController(BaseDeal):
 
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
         # if we don't do this, the trailling stop loss will trigger
-        if (
-            self.active_bot.deal
-            and (
-                self.active_bot.deal.trailling_stop_loss_price > 0
-                or self.active_bot.deal.trailling_stop_loss_price
-                < self.active_bot.deal.buy_price
-            )
+        if self.active_bot.deal and (
+            self.active_bot.deal.trailling_stop_loss_price > 0
+            or self.active_bot.deal.trailling_stop_loss_price
+            < self.active_bot.deal.buy_price
         ):
             take_profit_price = float(self.active_bot.deal.buy_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
