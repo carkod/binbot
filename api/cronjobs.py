@@ -1,7 +1,5 @@
-import atexit
 import logging
 import time
-import asyncio
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.assets import Assets
@@ -44,6 +42,14 @@ def main():
         hour=3,
         minute=1,
         id="clean_balance_assets",
+    )
+    scheduler.add_job(
+        func=assets.store_market_domination,
+        trigger="cron",
+        timezone=timezone,
+        hour=4,
+        minute=1,
+        id="market_domination",
     )
     scheduler.start()
 
