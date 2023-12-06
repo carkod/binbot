@@ -5,13 +5,19 @@ import { Col, Row } from "react-bootstrap";
 import { connect } from "react-redux";
 import { Card, CardBody, CardFooter, CardTitle } from "reactstrap";
 import GainersLosers from "../../components/GainersLosers";
+import GainersLosersGraph from "../../components/GainersLosersGraph";
 import { loading } from "../../containers/spinner/actions";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
 import { checkValue, listCssColors, roundDecimals } from "../../validations";
 import { NetWorthChart } from "./NetWorthChart";
 import { PortfolioBenchmarkChart } from "./PortfolioBenchmarkChart";
 import { ProfitLossBars } from "./ProfitLossBars";
-import { getBenchmarkData, getBenchmarkUsdt, getGainersLosers } from "./saga";
+import {
+  getBenchmarkData,
+  getBenchmarkUsdt,
+  getGainersLosers,
+  getGainersLosersSeries,
+} from "./saga";
 
 class Dashboard extends React.Component {
   constructor(props) {
@@ -54,6 +60,7 @@ class Dashboard extends React.Component {
     this.props.getBalanceRaw();
     this.props.getEstimate();
     this.props.getGainersLosers();
+    this.props.getGainersLosersSeries();
     this.props.getBenchmarkData();
   };
 
@@ -345,6 +352,14 @@ class Dashboard extends React.Component {
                     <GainersLosers data={this.props.gainersLosersData} />
                   )}
                 </Col>
+                <Col lg="6" md="12">
+                  {this.props.gainersLosersSeries && (
+                    <GainersLosersGraph
+                      data={this.props.gainersLosersSeries}
+                      legend={this.state.lineChartLegend}
+                    />
+                  )}
+                </Col>
               </Row>
               <Row>
                 <Col md="12">
@@ -375,6 +390,7 @@ const mapStateToProps = (s) => {
   const { data: balanceEstimate } = s.estimateReducer;
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
+  const { data: gainersLosersSeries } = s.gainersLosersSeriesReducer;
   const {
     data: benchmarkData,
     btcPrices,
@@ -393,6 +409,7 @@ const mapStateToProps = (s) => {
     assetList: balance_raw,
     balanceEstimate: balanceEstimate,
     gainersLosersData: gainersLosersData,
+    gainersLosersSeries: gainersLosersSeries,
     benchmarkData: {
       usdt: usdtBalanceSeries,
       btc: btcPrices,
@@ -408,6 +425,7 @@ export default connect(mapStateToProps, {
   getEstimate,
   getBalanceRaw,
   getGainersLosers,
+  getGainersLosersSeries,
   getBenchmarkData,
   getBenchmarkUsdt,
 })(Dashboard);

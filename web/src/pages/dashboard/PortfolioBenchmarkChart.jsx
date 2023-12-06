@@ -1,68 +1,11 @@
 import React from "react";
-import Plot from "react-plotly.js";
+import DashboardLineChart from "../../components/DashboardLineChart";
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "reactstrap";
 import { Row, Col, Container } from "react-bootstrap";
-import { listCssColors } from "../../validations";
-
-function LineChart({ data, width = "100%", height = "100%" }) {
-  const layout = {
-    dragmode: "zoom",
-    autosize: true,
-    line_width: 50,
-    margin: {
-      r: 6,
-      t: 2,
-      b: 35,
-      l: 35,
-    },
-    showlegend: true,
-    legend: {
-      x: 0,
-      xanchor: 'left',
-      y: 1
-    },
-    xaxis: {
-      autorange: true,
-      type: "date",
-    },
-    yaxis: {
-      type: "linear",
-      maxPoints: 50,
-    },
-  };
-
-  return (
-    <>
-      <Plot
-        data={[
-          {
-            x: data.dates,
-            y: data.btc,
-            type: 'scatter',
-            mode: 'lines',
-            marker: {color: "#F2A900"},
-            name: 'BTC prices',
-          },
-          {
-            x: data.dates,
-            y: data.usdt,
-            type: 'scatter',
-            mode: 'lines',
-            marker: {color: listCssColors[4]},
-            name: "USDT balance"
-          }
-        ]}
-        layout={layout}
-        useResizeHandler={true}
-        style={{ width: width, height: height }}
-      />
-    </>
-  );
-}
 
 export function PortfolioBenchmarkChart({ data, legend }) {
-  const lastUsdt = data.usdt[0];
-  const lastBtc = data.btc[0];
+  const lastUsdt = data.usdt[data.usdt.length - 1];
+  const lastBtc = data.btc[data.btc.length - 1];
   return (
     <Card className="card-chart">
       <CardHeader>
@@ -84,7 +27,7 @@ export function PortfolioBenchmarkChart({ data, legend }) {
       </CardHeader>
       {data && 
         <CardBody>
-          <LineChart data={data} />
+          <DashboardLineChart data={data} />
         </CardBody>
       }
       <CardFooter>
@@ -102,10 +45,11 @@ export function PortfolioBenchmarkChart({ data, legend }) {
         <hr />
         {data.dates &&
           <div className="card-stats">
-            <i className="fa fa-check" /> Last updated {data.dates[0]}
+            <i className="fa fa-check" /> Last updated {data.dates[data.dates.length - 1]}
           </div>
         }
       </CardFooter>
     </Card>
   );
 }
+
