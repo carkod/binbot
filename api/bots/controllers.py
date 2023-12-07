@@ -18,7 +18,7 @@ from tools.handle_error import (
 from tools.round_numbers import supress_notation
 from typing import List
 from fastapi import Query
-from bots.schemas import BotSchema
+from bots.schemas import BotSchema, ErrorsRequestBody
 
 class Bot(Account):
     def __init__(self, collection_name="paper_trading"):
@@ -115,14 +115,6 @@ class Bot(Account):
         try:
             bot = data.dict()
             bot["id"] = str(ObjectId())
-
-            # if bot["strategy"] == "margin_short":
-            #     asset = bot["pair"].replace(bot["balance_to_use"], "")
-            #     # price = self.matching_engine(bot["pair"], True)
-            #     total = float(bot["base_order_size"])
-            #     check_max_borrow = self.get_max_borrow(asset, isolated_symbol=bot["pair"])
-            #     if total > check_max_borrow["borrowLimit"]:
-            #         return json_response_error(f"Max margin account borrow limit reached")
 
             self.db_collection.insert_one(bot)
             resp = json_response(
@@ -360,14 +352,17 @@ class Bot(Account):
             
         return resp
 
-    def post_errors_by_id(self, bot_id: str, reported_error: str):
+    def post_errors_by_id(self, bot_id: str, reported_error: ErrorsRequestBody):
         """
         Directly post errors to Bot
         which should show in the BotForm page in Web
         """
         try:
+            operation = {"$push": {"errors": reported_error}}
+            if isinstance(reported_error, list):
+                operation = {"$push": {"errors": { "$each": reported_error }}}
             self.db_collection.update_one(
-                {"id": bot_id}, {"$push": {"errors": reported_error}}
+                {"id": bot_id}, operation
             )
             return json_response(
                 {"message": "Successfully submitted bot errors", "botId": bot_id}

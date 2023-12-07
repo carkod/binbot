@@ -62,7 +62,7 @@ const gainersLosersSeriesReducer = produce((draft, action) => {
       }
       break;
     }
-    
+
     default:
       return draft;
   }

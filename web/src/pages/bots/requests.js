@@ -20,4 +20,3 @@ export async function convertGBP(symbol) {
   const data = await request(requestURL);
   return data;
 }
-
