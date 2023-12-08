@@ -411,8 +411,10 @@ class Assets(BaseDeal):
         try:
             current_time = datetime.now()
             self.db.market_domination.insert_one(
-                {"time": current_time.strftime("%Y-%m-%d")},
-                {"$set": {"data": all_coins}},
+                {
+                    "time": current_time.strftime("%Y-%m-%d"),
+                    "data": all_coins
+                }
             )
             return json_response_message("Successfully stored market domination data.")
         except Exception as error:
@@ -441,6 +443,6 @@ class Assets(BaseDeal):
                 market_domination_series["gainers_percent"].append(gainers_percent)
                 market_domination_series["losers_percent"].append(losers_percent)
 
-            return json_response({ "data": market_domination_series, "message": "Successfully stored market domination data.", "error": 0 })
+            return json_response({ "data": market_domination_series, "message": "Successfully retrieved market domination data.", "error": 0 })
         except Exception as error:
             return json_response_error(f"Failed to store market domination data: {error}")

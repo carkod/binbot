@@ -47,8 +47,8 @@ def main():
         func=assets.store_market_domination,
         trigger="cron",
         timezone=timezone,
-        hour=4,
-        minute=1,
+        hour=0,
+        minute=9,
         id="market_domination",
     )
     scheduler.start()

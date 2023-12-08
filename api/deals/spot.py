@@ -68,6 +68,7 @@ class SpotLongDeal(BaseDeal):
     def execute_stop_loss(self, price):
         """
         Update stop limit after websocket
+
         - Hard sell (order status="FILLED" immediately) initial amount crypto in deal
         - Close current opened take profit order
         - Deactivate bot

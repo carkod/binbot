@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query
-from flask import request
 from bots.controllers import Bot
 from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
 from typing import List
