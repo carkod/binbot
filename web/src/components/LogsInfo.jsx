@@ -1,12 +1,15 @@
-import React from "react";
-import { Card, CardBody, CardHeader, CardTitle } from "reactstrap";
+import React, { useState } from "react";
+import { Card, CardBody, CardHeader, CardTitle, Button } from "reactstrap";
 
 export default function LogInfo({ events }) {
+  const [logInfo, toggleLogInfo] = useState(true)
   return (
     <Card>
-      <CardHeader>
-        <CardTitle tag="h5">Event logs</CardTitle>
+      <CardHeader className="u-space-between">
+        <CardTitle tag="h5">Event logs{" "}</CardTitle>
+        <Button onClick={() => toggleLogInfo(!logInfo)} className="u-float-right u-space-bottom">Hide</Button>
       </CardHeader>
+      {logInfo && 
       <CardBody>
         {events.map((item, i) => (
           <div key={i}>
@@ -15,6 +18,7 @@ export default function LogInfo({ events }) {
           </div>
 				))}
       </CardBody>
+      }
     </Card>
   );
 }

@@ -32,7 +32,7 @@ export default function BotInfo({ bot }) {
     <Card>
       <CardHeader className="u-space-between">
         <CardTitle tag="h5">Orders information{" "}</CardTitle>
-        <Button onClick={() => toggleOrderInfo(!showOrderInfo)} className="u-float-right">Hide</Button>
+        <Button onClick={() => toggleOrderInfo(!showOrderInfo)} className="u-float-right u-space-bottom">Hide</Button>
       </CardHeader>
       {showOrderInfo && 
       <CardBody>

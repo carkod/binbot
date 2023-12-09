@@ -4,8 +4,6 @@ env:
   ACTIONS_RUNNER_DEBUG: true
   SECRET_KEY: test
   ENV: ci
-  FLASK_DIRECTORY: /api/
-  FLASK_DOMAIN: http://localhost
   FRONTEND_DOMAIN: http://localhost
   MONGO_AUTH_USERNAME: root
   MONGO_AUTH_PASSWORD: rootPassXXX

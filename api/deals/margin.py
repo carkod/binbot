@@ -64,13 +64,13 @@ class MarginDeal(BaseDeal):
 
         """
         if float(self.isolated_balance[0]["quoteAsset"]["borrowed"]) > 0:
-            self._append_errors(
+            self.update_deal_logs(
                 f'Borrowed {self.isolated_balance[0]["quoteAsset"]["asset"]} still remaining, please clear out manually'
             )
             self.active_bot.status = Status.error
 
         if float(self.isolated_balance[0]["baseAsset"]["borrowed"]) > 0:
-            self._append_errors(
+            self.update_deal_logs(
                 f'Borrowed {self.isolated_balance[0]["baseAsset"]["asset"]} still remaining, please clear out manually'
             )
             self.active_bot.status = Status.error

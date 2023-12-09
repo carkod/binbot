@@ -131,3 +131,17 @@ class BotSchema(BaseModel):
 
 class BotListResponse(StandardResponse):
     data: list[BotSchema]
+
+
+class ErrorsRequestBody(BaseModel):
+    errors: str | list[str]
+
+    @validator("errors")
+    def check_names_not_empty(cls, v):
+        if isinstance(v, list):
+            assert len(v) != 0, "List of errors is empty."
+        if isinstance(v, str):
+            assert v != "", "Empty pair field."
+            return v
+
+        return v

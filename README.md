@@ -9,7 +9,7 @@
 
 1. Run `pipenv shell` to activate the virtual environment
 2. Comment out api service and `docker-compose up -d`
-3. Run vscode debugger to start the Flask application
+3. Run vscode debugger to start the FastAPI application
 
 New packages or installing from scratch:
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
 from bots.controllers import Bot
-from bots.schemas import BotSchema, BotListResponse
+from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
 from typing import List
 
 bot_blueprint = APIRouter()
@@ -66,5 +66,13 @@ def archive(id: str):
 
 
 @bot_blueprint.post("/bot/errors/{bot_id}", tags=["bots"])
-def bot_errors(bot_id: str, bot_errors: str):
+def bot_errors(bot_id: str, bot_errors: ErrorsRequestBody):
+    """
+    POST errors to a bot
+
+    - If error(s) is received from endpoint, get it from request body
+    - Else use `post_errors_by_id` method for internal calls
+    """
+    request_body = bot_errors.dict()
+    bot_errors = request_body.get("errors", None)
     return Bot(collection_name="bots").post_errors_by_id(bot_id, bot_errors)

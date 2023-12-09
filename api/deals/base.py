@@ -128,11 +128,11 @@ class BaseDeal(OrderController):
         return response_order
 
     def update_deal_logs(self, msg):
-        self.db_collection.update_one(
+        response = self.db_collection.update_one(
             {"id": self.active_bot.id},
             {"$push": {"errors": msg}},
         )
-        return msg
+        return response
 
     def replace_order(self, cancel_order_id):
         payload = [

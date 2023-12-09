@@ -81,3 +81,17 @@ class BalanceSeries(StandardResponse):
 
 class BalanceSeriesResponse(StandardResponse):
     data: list[BalanceSeries]
+
+class MarketDominationSeries(BaseModel):
+    symbol: str
+    priceChangePercent: float
+
+class MarketDomination(BaseModel):
+    time: str
+    data: list[MarketDominationSeries]
+
+class MarketDominationResponse(BaseModel):
+    data: list[MarketDominationSeries]
+    message: str
+    error: int = 0
+

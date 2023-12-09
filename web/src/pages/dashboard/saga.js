@@ -1,12 +1,23 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import request from "../../request";
-import { GET_GAINERS_LOSERS, GET_GAINERS_LOSERS_SUCESS, GET_GAINERS_LOSERS_ERROR, GET_BTC_BENCHMARK, GET_BTC_BENCHMARK_SUCESS, GET_BTC_BENCHMARK_ERROR, GET_USDT_BENCHMARK } from "./reducer";
+import {
+  GET_GAINERS_LOSERS,
+  GET_GAINERS_LOSERS_SUCESS,
+  GET_GAINERS_LOSERS_ERROR,
+  GET_BTC_BENCHMARK,
+  GET_BTC_BENCHMARK_SUCESS,
+  GET_BTC_BENCHMARK_ERROR,
+  GET_USDT_BENCHMARK,
+  GET_GAINERS_LOSERS_SERIES,
+  GET_GAINERS_LOSERS_SERIES_SUCCESS,
+  GET_GAINERS_LOSERS_SERIES_ERROR,
+} from "./reducer";
 import { addNotification } from "../../validations";
 
 export function getGainersLosers() {
-    return {
-        type: GET_GAINERS_LOSERS
-    }
+  return {
+    type: GET_GAINERS_LOSERS,
+  };
 }
 
 function getGainersLosersSucceeded(res) {
@@ -19,6 +30,25 @@ function getGainersLosersSucceeded(res) {
 function getGainersLosersFailed(err) {
   return {
     type: GET_GAINERS_LOSERS_ERROR,
+  };
+}
+
+export function getGainersLosersSeries() {
+  return {
+    type: GET_GAINERS_LOSERS_SERIES,
+  };
+}
+
+function getGainersLosersSeriesSucceeded(res) {
+  return {
+    type: GET_GAINERS_LOSERS_SERIES_SUCCESS,
+    data: res.data,
+  };
+}
+
+function getGainersLosersSeriesFailed(err) {
+  return {
+    type: GET_GAINERS_LOSERS_SERIES_ERROR,
   };
 }
 
@@ -39,10 +69,23 @@ export function* watchGetGainersLosers() {
   yield takeLatest(GET_GAINERS_LOSERS, getGainersLosersApi);
 }
 
+export function* getGainersLosersSeriesApi() {
+  const requestURL = `${process.env.REACT_APP_GAINERS_LOSERS_SERIES}`;
+  try {
+    const res = yield call(request, requestURL, "GET");
+    yield put(getGainersLosersSeriesSucceeded(res));
+  } catch (err) {
+    yield put(getGainersLosersSeriesFailed(err));
+  }
+}
+export function* watchGetGainersLosersSeries() {
+  yield takeLatest(GET_GAINERS_LOSERS_SERIES, getGainersLosersSeriesApi);
+}
+
 export function getBenchmarkData() {
   return {
-      type: GET_BTC_BENCHMARK
-  }
+    type: GET_BTC_BENCHMARK,
+  };
 }
 
 function getBenchmarkDataSucceeded(res) {
@@ -53,7 +96,7 @@ function getBenchmarkDataSucceeded(res) {
   }
   return {
     type: GET_BTC_BENCHMARK_SUCESS,
-    data: res.data
+    data: res.data,
   };
 }
 
