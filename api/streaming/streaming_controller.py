@@ -6,7 +6,6 @@ from deals.spot import SpotLongDeal
 from time import time
 from streaming.socket_client import SpotWebsocketStreamClient
 
-
 class StreamingController:
     def __init__(self):
         # For some reason, db connections internally only work with
@@ -39,7 +38,6 @@ class StreamingController:
         self.streaming_db.research_controller.update_one(
             {"_id": "settings"}, {"$set": {"update_required": time()}}
         )
-        return
 
     def execute_strategies(
         self,
@@ -63,17 +61,24 @@ class StreamingController:
             except Exception as error:
                 logging.info(error)
                 margin_deal.update_deal_logs(error)
+                # Go to _update_required
                 pass
-            return
 
         else:
             # Long strategy starts
             if current_bot["strategy"] == "long":
-                SpotLongDeal(
+                spot_long_deal = SpotLongDeal(
                     current_bot, db_collection_name=db_collection_name
-                ).streaming_updates(close_price, open_price)
-                self._update_required()
+                )
+                try:
+                    spot_long_deal.streaming_updates(close_price, open_price)
+                except Exception as error:
+                    logging.info(error)
+                    spot_long_deal.update_deal_logs(error)
+                    # Go to _update_required
+                    pass
 
+        self._update_required()
         pass
 
     def on_error(self, socket, msg):

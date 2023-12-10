@@ -365,7 +365,7 @@ class MarginDeal(BaseDeal):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        logging.info(f"Opening margin_short_base_order")
+        self.update_deal_logs(f"Opening margin_short_base_order")
         initial_price = float(self.matching_engine(self.active_bot.pair, False))
 
         if self.db_collection.name == "bots":

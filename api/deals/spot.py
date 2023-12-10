@@ -28,7 +28,7 @@ class SpotLongDeal(BaseDeal):
         # Inherit from parent class
         super().__init__(bot, db_collection_name)
 
-    def switch_margin_short(self, new_base_order_price):
+    def switch_margin_short(self, new_base_order_price: float):
         msg = "Resetting bot for margin_short strategy..."
         self.update_deal_logs(msg)
         base_order = next(
@@ -40,19 +40,19 @@ class SpotLongDeal(BaseDeal):
             None,
         )
         # start from current stop_loss_price which is where the bot switched to long strategy
-        tp_price = new_base_order_price * (
+        tp_price = float(new_base_order_price) * (
             1 + (float(self.active_bot.take_profit) / 100)
         )
         if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = new_base_order_price - (
-                new_base_order_price * (float(self.active_bot.stop_loss) / 100)
+            stop_loss_price = float(new_base_order_price) - (
+                float(new_base_order_price) * (float(self.active_bot.stop_loss) / 100)
             )
         else:
             stop_loss_price = 0
 
         self.active_bot.deal = DealSchema(
             buy_timestamp=base_order.timestamp,
-            buy_price=new_base_order_price,
+            buy_price=float(new_base_order_price),
             buy_total_qty=base_order.qty,
             take_profit_price=tp_price,
             stop_loss_price=stop_loss_price,
@@ -380,10 +380,7 @@ class SpotLongDeal(BaseDeal):
         ) > float(close_price):
             self.execute_stop_loss(close_price)
             if self.active_bot.margin_short_reversal:
-                self.switch_margin_short(close_price)
-                raise TerminateStreaming(
-                    "Streaming update needs to restart for autoswitched bot"
-                )
+                self.switch_margin_short(float(close_price))
             return
 
         # Take profit trailling
