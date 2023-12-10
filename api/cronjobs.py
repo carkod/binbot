@@ -45,10 +45,10 @@ def main():
     )
     scheduler.add_job(
         func=assets.store_market_domination,
-        trigger="cron",
+        trigger="interval",
         timezone=timezone,
-        hour=0,
-        minute=9,
+        hours=4,
+        # minutes=1,
         id="market_domination",
     )
     scheduler.start()

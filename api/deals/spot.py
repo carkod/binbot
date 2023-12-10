@@ -182,10 +182,10 @@ class SpotLongDeal(BaseDeal):
         # Dispatch real order
         else:
             try:
+                # No price means market order
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
-                    price=supress_notation(price, self.price_precision),
                 )
             except Exception as err:
                 raise TraillingProfitError(err)

@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 
 import pandas as pd
-from account.schemas import BalanceSchema, MarketDomination
+from account.schemas import BalanceSchema, MarketDomination, MarketDominationSeries
 from bson.objectid import ObjectId
 from charts.models import CandlestickParams
 from charts.models import Candlestick
@@ -412,7 +412,7 @@ class Assets(BaseDeal):
             current_time = datetime.now()
             self.db.market_domination.insert_one(
                 {
-                    "time": current_time.strftime("%Y-%m-%d"),
+                    "time": current_time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
                     "data": all_coins
                 }
             )
@@ -420,14 +420,20 @@ class Assets(BaseDeal):
         except Exception as error:
             print(f"Failed to store balance: {error}")
 
-    def get_market_domination(self):
+    def get_market_domination(self, size=7):
+        """
+        Get gainers vs losers historical data
+
+        Args:
+            size (int, optional): Number of data points to retrieve. Defaults to 7 (1 week).
+
+        Returns:
+            dict: A dictionary containing the market domination data, including gainers and losers counts, percentages, and dates.
+        """
         try:
             data = list(self.db.market_domination.find({}))
-            market_domination_series = {
-                "dates": [],
-                "gainers_percent": [],
-                "losers_percent": [],
-            }
+            market_domination_series = MarketDominationSeries()
+            
             for item in data:
                 gainers_percent = 0
                 losers_percent = 0
@@ -435,14 +441,22 @@ class Assets(BaseDeal):
                     for crypto in item["data"]:
                         if float(crypto['priceChangePercent']) > 0:
                             gainers_percent += float(crypto['priceChangePercent'])
+                            market_domination_series.gainers_count += 1
 
                         if float(crypto['priceChangePercent']) < 0:
-                            losers_percent += float(crypto['priceChangePercent'])
+                            losers_percent += abs(float(crypto['priceChangePercent']))
+                            market_domination_series.losers_count += 1
 
-                market_domination_series["dates"].append(item["time"])
-                market_domination_series["gainers_percent"].append(gainers_percent)
-                market_domination_series["losers_percent"].append(losers_percent)
+                market_domination_series.dates.append(item["time"])
+                market_domination_series.gainers_percent.append(gainers_percent)
+                market_domination_series.losers_percent.append(losers_percent)
 
-            return json_response({ "data": market_domination_series, "message": "Successfully retrieved market domination data.", "error": 0 })
+            market_domination_series.dates = market_domination_series.dates[-size:]
+            market_domination_series.gainers_percent = market_domination_series.gainers_percent[-size:]
+            market_domination_series.losers_percent = market_domination_series.losers_percent[-size:]
+
+            data = market_domination_series.dict()
+
+            return json_response({ "data": data, "message": "Successfully retrieved market domination data.", "error": 0 })
         except Exception as error:
             return json_response_error(f"Failed to store market domination data: {error}")

@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from datetime import datetime, timedelta
 from account.account import Account
 from account.assets import Assets
-from account.schemas import BalanceResponse, GainersLosersResponse, BalanceSeriesResponse, MarketDominationResponse
+from account.schemas import BalanceResponse, GainersLosersResponse, BalanceSeriesResponse, GetMarketDominationResponse, MarketDominationResponse
 
 account_blueprint = APIRouter()
 
@@ -96,6 +96,6 @@ def one_click_liquidation(asset):
 def market_domination():
     return Assets().get_market_domination()
 
-@account_blueprint.get("/store-market-domination", tags=["assets"])
-def market_domination():
+@account_blueprint.get("/store-market-domination", tags=["assets"], response_model=GetMarketDominationResponse)
+def store_market_domination():
     return Assets().store_market_domination()

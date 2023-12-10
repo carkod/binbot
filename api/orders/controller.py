@@ -181,16 +181,6 @@ class OrderController(Account):
         data = self.signed_request(
             url=self.margin_order, method="POST", payload=payload
         )
-        if data["status"] != "FILLED":
-            delete_payload = {
-                "symbol": symbol,
-                "isIsolated": "TRUE",
-                "orderId": data["orderId"],
-            }
-        self.signed_request(
-            url=self.margin_order, method="DELETE", payload=delete_payload
-        )
-        self.buy_margin_order(symbol, qty)
 
         return data
 

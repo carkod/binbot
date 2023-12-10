@@ -390,7 +390,7 @@ const mapStateToProps = (s) => {
   const { data: balanceEstimate } = s.estimateReducer;
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
-  const { data: gainersLosersSeries } = s.gainersLosersSeriesReducer;
+  let { data: gainersLosersSeries } = s.gainersLosersSeriesReducer;
   const {
     data: benchmarkData,
     btcPrices,

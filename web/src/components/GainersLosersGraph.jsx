@@ -1,6 +1,6 @@
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "reactstrap";
 import { Row, Col, Container } from "react-bootstrap";
-import DashboardLineChart from "./DashboardLineChart";
+import BarChart from "./BarChart";
 
 
 export default function GainersLosersGraph({ data, legend }) {
@@ -35,7 +35,7 @@ export default function GainersLosersGraph({ data, legend }) {
       </CardHeader>
       {data && (
         <CardBody>
-          <DashboardLineChart data={data} line1name="Gainers" line2name="Losers" />
+          <BarChart data={data} line1name="Gainers" line2name="Losers" />
         </CardBody>
       )}
       <CardFooter>

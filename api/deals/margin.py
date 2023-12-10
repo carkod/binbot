@@ -472,7 +472,7 @@ class MarginDeal(BaseDeal):
                 f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}"
             )
             # since price is given by matching engine
-            self.execute_take_profit(float(close_price))
+            self.execute_take_profit()
             self.update_required()
 
         # Direction 1.3: upward trend (short)
@@ -597,10 +597,11 @@ class MarginDeal(BaseDeal):
 
         msg = f"Completed Stop loss order"
         self.active_bot.errors.append(msg)
+        bot = self.save_bot_streaming()
 
         return
 
-    def execute_take_profit(self, price=None):
+    def execute_take_profit(self):
         """
         Execute take profit when price is hit.
         This can be a simple take_profit order when take_profit_price is hit or

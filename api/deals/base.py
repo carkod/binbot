@@ -36,6 +36,7 @@ class BaseDeal(OrderController):
         self.symbol = self.active_bot.pair
         super().__init__(symbol=self.active_bot.pair)
         self.db_collection = self.db[db_collection_name]
+        self.isolated_balance: float = self.get_isolated_balance(self.symbol)
 
     def __repr__(self) -> str:
         """
@@ -45,12 +46,6 @@ class BaseDeal(OrderController):
 
     def generate_id(self):
         return uuid.uuid4().hex
-
-    @property
-    def isolated_balance(self):
-        if not hasattr(self, "_isolated_balance"):
-            self._isolated_balance = self.get_isolated_balance(self.symbol)
-        return self._isolated_balance
 
     def compute_qty(self, pair):
         """
@@ -132,6 +127,7 @@ class BaseDeal(OrderController):
             {"id": self.active_bot.id},
             {"$push": {"errors": msg}},
         )
+        self.save_bot_streaming()
         return response
 
     def replace_order(self, cancel_order_id):
@@ -312,12 +308,12 @@ class BaseDeal(OrderController):
         - qty_precision: to round numbers for Binance API. Passed optionally to
         reduce number of requests to avoid rate limit.
         """
-        isolated_balance = self.isolated_balance
-        base = isolated_balance[0]["baseAsset"]["asset"]
-        quote = isolated_balance[0]["quoteAsset"]["asset"]
+        self.isolated_balance = self.get_isolated_balance(pair)
+        base = self.isolated_balance[0]["baseAsset"]["asset"]
+        quote = self.isolated_balance[0]["quoteAsset"]["asset"]
         # Check margin account balance first
-        borrowed_amount = float(isolated_balance[0]["baseAsset"]["borrowed"])
-        free = float(isolated_balance[0]["baseAsset"]["free"])
+        borrowed_amount = float(self.isolated_balance[0]["baseAsset"]["borrowed"])
+        free = float(self.isolated_balance[0]["baseAsset"]["free"])
         buy_margin_response = None
 
         if borrowed_amount > 0:
@@ -372,20 +368,20 @@ class BaseDeal(OrderController):
             )
 
             # get new balance
-            isolated_balance = self.get_isolated_balance(pair)
+            self.isolated_balance = self.get_isolated_balance(pair)
 
-        if float(isolated_balance[0]["quoteAsset"]["free"]) != 0:
+        if float(self.isolated_balance[0]["quoteAsset"]["free"]) != 0:
             # transfer back to SPOT account
             self.transfer_isolated_margin_to_spot(
                 asset=quote,
                 symbol=pair,
-                amount=isolated_balance[0]["quoteAsset"]["free"],
+                amount=self.isolated_balance[0]["quoteAsset"]["free"],
             )
-        if float(isolated_balance[0]["baseAsset"]["free"]) != 0:
+        if float(self.isolated_balance[0]["baseAsset"]["free"]) != 0:
             self.transfer_isolated_margin_to_spot(
                 asset=base,
                 symbol=pair,
-                amount=isolated_balance[0]["baseAsset"]["free"],
+                amount=self.isolated_balance[0]["baseAsset"]["free"],
             )
                 
         if borrowed_amount == 0:

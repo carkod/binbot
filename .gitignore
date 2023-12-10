@@ -8,6 +8,7 @@
 .venv/
 binbot-research/
 binquant/
+*.log
 
 ##
 #
