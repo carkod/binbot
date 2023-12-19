@@ -103,8 +103,8 @@ class MarketDominationSeries(BaseModel):
     dates: list[str] = []
     gainers_percent: list[float] = []
     losers_percent: list[float] = []
-    gainers_count: int = 0
-    losers_count: int = 0
+    gainers_count: list[int] = []
+    losers_count: list[int] = []
 
 
 class GetMarketDominationResponse(StandardResponse):

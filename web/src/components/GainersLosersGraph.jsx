@@ -4,8 +4,8 @@ import BarChart from "./BarChart";
 
 
 export default function GainersLosersGraph({ data, legend }) {
-  const gainers = parseFloat(data.gainers_percent[data.gainers_percent.length - 1]);
-  const losers = parseFloat(data.losers_percent[data.losers_percent.length - 1]);
+  const gainers = parseFloat(data.gainers_count);
+  const losers = parseFloat(data.losers_count);
   return (
     <Card className="card-chart">
       <CardHeader>

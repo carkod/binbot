@@ -437,23 +437,29 @@ class Assets(BaseDeal):
             for item in data:
                 gainers_percent = 0
                 losers_percent = 0
+                gainers_count = 0
+                losers_count = 0
                 if "data" in item:
                     for crypto in item["data"]:
                         if float(crypto['priceChangePercent']) > 0:
                             gainers_percent += float(crypto['priceChangePercent'])
-                            market_domination_series.gainers_count += 1
+                            gainers_count += 1
 
                         if float(crypto['priceChangePercent']) < 0:
                             losers_percent += abs(float(crypto['priceChangePercent']))
-                            market_domination_series.losers_count += 1
+                            losers_count += 1
 
                 market_domination_series.dates.append(item["time"])
                 market_domination_series.gainers_percent.append(gainers_percent)
                 market_domination_series.losers_percent.append(losers_percent)
+                market_domination_series.gainers_count.append(gainers_count)
+                market_domination_series.losers_count.append(losers_count)
 
             market_domination_series.dates = market_domination_series.dates[-size:]
             market_domination_series.gainers_percent = market_domination_series.gainers_percent[-size:]
             market_domination_series.losers_percent = market_domination_series.losers_percent[-size:]
+            market_domination_series.gainers_count = market_domination_series.gainers_count[-size:]
+            market_domination_series.losers_count = market_domination_series.losers_count[-size:]
 
             data = market_domination_series.dict()
 

@@ -29,8 +29,22 @@ class SpotLongDeal(BaseDeal):
         super().__init__(bot, db_collection_name)
 
     def switch_margin_short(self, new_base_order_price: float):
-        msg = "Resetting bot for margin_short strategy..."
-        self.update_deal_logs(msg)
+        """
+        Switch to short strategy.
+        Doing some parts of open_deal from scratch
+        this will allow us to skip one base_order and lower
+        the initial buy_price.
+
+        Because we need to create a new deal:
+        1. Find base_order in the orders list as in open_deal
+        2. Calculate take_profit_price and stop_loss_price as usual
+        3. Create deal
+        """
+        self.update_deal_logs("Resetting bot for margin_short strategy...")
+        new_id = self.create_new_bot_streaming()
+        self.active_bot.id = new_id
+
+        # Reset bot to prepare for new activation
         base_order = next(
             (
                 bo_deal
@@ -57,13 +71,11 @@ class SpotLongDeal(BaseDeal):
             take_profit_price=tp_price,
             stop_loss_price=stop_loss_price,
         )
-        self.active_bot.strategy = Strategy.long
+        self.active_bot.strategy = Strategy.margin_short
         self.active_bot.status = Status.active
 
-        self.active_bot = MarginDeal(
-            self.active_bot, db_collection_name="bots"
-        ).margin_short_base_order()
         self.save_bot_streaming()
+        return self.active_bot
 
     def execute_stop_loss(self, price):
         """

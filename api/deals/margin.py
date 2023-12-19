@@ -670,7 +670,7 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def switch_to_long_bot(self, current_price):
+    def switch_to_long_bot(self, new_base_order_price):
         """
         Switch to long strategy.
         Doing some parts of open_deal from scratch
@@ -696,7 +696,6 @@ class MarginDeal(BaseDeal):
             None,
         )
         # start from current stop_loss_price which is where the bot switched to long strategy
-        new_base_order_price = current_price
         tp_price = new_base_order_price * (
             1 + (float(self.active_bot.take_profit) / 100)
         )
@@ -716,12 +715,10 @@ class MarginDeal(BaseDeal):
         )
         self.active_bot.strategy = Strategy.long
         self.active_bot.status = Status.active
-        self.active_bot.margin_short_reversal = False
 
         # Keep bot up to date in the DB
         # this avoid unsyched bots when errors ocurr in other functions
         self.save_bot_streaming()
-
         return self.active_bot
 
     def update_trailling_profit(self, close_price):

@@ -1,6 +1,19 @@
 import Plot from "react-plotly.js";
 import { listCssColors } from "../validations";
 
+function computerPercent(data) {
+  const gainers = [];
+  const losers = [];
+  for (let i = 0; i < data.gainers_percent.length; i++) {
+    const totalCount = data.gainers_count[i] + data.losers_count[i];
+    const gainersCount = ((data.gainers_count[i] / totalCount) * 100).toFixed(2) + "%";
+    const losersCount = ((data.losers_count[i] / totalCount) * 100).toFixed(2) + "%";
+    gainers.push(gainersCount);
+    losers.push(losersCount);
+  }
+  return { gainers, losers };
+}
+
 export default function BarChart({ data, width = "100%", height = "100%", line1name='BTC prices', line2name="USDT balance"}) {
 
   const layout = {
@@ -30,9 +43,7 @@ export default function BarChart({ data, width = "100%", height = "100%", line1n
     },
   };
 
-  const dataTotal = `${data.gainers_count + data.losers_count}`;
-  const gainersCount = `${((data.gainers_count / dataTotal) * 100).toFixed(2)}%`;
-  const losersCount = `${((data.losers_count / dataTotal) * 100).toFixed(2)}%`;
+  const { gainers, losers } = computerPercent(data);
 
   return (
     <>
@@ -44,7 +55,7 @@ export default function BarChart({ data, width = "100%", height = "100%", line1n
             type: 'bar',
             marker: {color: listCssColors[8]},
             name: line1name,
-            text: gainersCount,
+            text: gainers,
           },
           {
             x: data.dates,
@@ -52,7 +63,7 @@ export default function BarChart({ data, width = "100%", height = "100%", line1n
             type: 'bar',
             marker: {color: listCssColors[2]},
             name: line2name,
-            text: losersCount,
+            text: losers,
           }
         ]}
         layout={layout}
