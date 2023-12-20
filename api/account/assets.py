@@ -11,7 +11,7 @@ from tools.handle_error import json_response, json_response_error, json_response
 from tools.round_numbers import round_numbers
 from tools.exceptions import BinanceErrors, InvalidSymbol, MarginLoanNotFound
 from deals.base import BaseDeal
-from pymongo import ReturnDocument
+from tools.enum_definitions import Status
 
 class Assets(BaseDeal):
     def __init__(self):
@@ -346,8 +346,15 @@ class Assets(BaseDeal):
         """
         data = self.signed_request(url=self.account_url)
         assets = []
+        exception_list = ["USDT", "NFT", "BNB"]
+
+        active_bots = list(self.db.bots.find({"status": Status.active}))
+        for bot in active_bots:
+            quote_asset = bot["pair"].replace(bot["balance_to_use"], "")
+            exception_list.append(quote_asset)
+
         for item in data["balances"]:
-            if item["asset"] not in ["USDT", "NFT", "BNB"] and float(item["free"]) > 0:
+            if item["asset"] not in exception_list and float(item["free"]) > 0:
                 assets.append(item["asset"])
 
         if len(assets) > 5:
@@ -405,6 +412,8 @@ class Assets(BaseDeal):
                 all_coins.append({
                     "symbol": item["symbol"],
                     "priceChangePercent": item["priceChangePercent"],
+                    "volume": item["volume"],
+                    "price": item["lastPrice"]
                 })
 
         all_coins = sorted(all_coins, key=lambda item: float(item["priceChangePercent"]), reverse=True)

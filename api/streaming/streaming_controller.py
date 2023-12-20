@@ -89,7 +89,7 @@ class StreamingController:
         # If fails to connect, this will cancel loop
         res = json.loads(message)
 
-        if "result" in res:
+        if "result" in res and res["result"]:
             logging.info(f'Subscriptions: {res["result"]}')
 
         if "data" in res:

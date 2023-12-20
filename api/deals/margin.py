@@ -10,7 +10,7 @@ from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
-from tools.exceptions import BinbotErrors, MarginLoanNotFound, QuantityTooLow, BinanceErrors
+from tools.exceptions import MarginLoanNotFound, QuantityTooLow, BinanceErrors
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 
 

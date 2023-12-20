@@ -1,3 +1,5 @@
+import logging
+
 from account.account import Account
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_error, json_response_message
@@ -74,6 +76,7 @@ class OrderController(Account):
                 "quantity": supress_notation(qty, self.qty_precision),
             }
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        logging.info(f'Sell transaction: {data["price"]}')
 
         return data
 
