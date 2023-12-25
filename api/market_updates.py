@@ -1,11 +1,9 @@
-import atexit
+import asyncio
 import os
 import logging
 import time
 
-from apscheduler.schedulers.background import BackgroundScheduler
 from streaming.streaming_controller import StreamingController
-from account.assets import Assets
 from websocket import WebSocketConnectionClosedException
 
 
@@ -17,17 +15,15 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+async def streaming_main():
+    mu = StreamingController()
+    await asyncio.gather(
+        mu.get_klines(),
+        # mu.get_user_data()
+    )
+
 try:
-
-    mu = StreamingController()
-    mu.get_klines()
-
-except WebSocketConnectionClosedException as e:
-    logging.error("Lost websocket connection")
-    mu = StreamingController()
-    mu.get_klines()
-
+    asyncio.run(streaming_main())
 except Exception as error:
     logging.error(f"Streaming controller error: {error}")
-    mu = StreamingController()
-    mu.get_klines()
+    asyncio.run(streaming_main())

@@ -60,3 +60,7 @@ class SpotWebsocketStreamClient(BinanceWebsocketClient):
             params.append(f"{market.lower()}@kline_{interval}")
 
         self.send_message_to_server(params, action=action, id=id)
+
+    def user_data(self, listen_key: str, id=None, action=None, **kwargs):
+        """Listen to user data by using the provided listen_key"""
+        self.send_message_to_server(listen_key, action=action, id=id)

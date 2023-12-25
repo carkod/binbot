@@ -89,6 +89,14 @@ class BinanceApi:
         data = handle_binance_errors(res)
         return data
 
+    def get_listen_key(self):
+        """
+        Get user data websocket stream
+        """
+        headers = {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
+        data = self.request("POST", url=self.user_data_stream, headers=headers)
+        return data["listenKey"]
+
     def cancel_margin_order(self, symbol, order_id):
         return self.signed_request(self.margin_order, method="DELETE", payload={"symbol": symbol, "orderId": order_id})
 
@@ -166,6 +174,14 @@ class BinanceApi:
         list_assets = ",".join(assets)
         response = self.signed_request(url=self.dust_transfer_url, method="POST", payload={"asset": list_assets})
         return response
+
+    def get_all_orders(self, symbol, order_id):
+        """
+        Get all orders given symbol and order_id
+
+        https://binance-docs.github.io/apidocs/spot/en/#current-open-orders-user_data
+        """
+        return self.signed_request(self.all_orders_url, payload={"symbol": symbol, "orderId": order_id})
 
 class BinbotApi(BinanceApi):
     """

@@ -76,7 +76,7 @@ class OrderController(Account):
                 "quantity": supress_notation(qty, self.qty_precision),
             }
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
-        logging.info(f'Sell transaction: {data["price"]}')
+        logging.info(f'Sell transaction: {data}')
 
         return data
 

@@ -14,7 +14,7 @@ from tools.handle_error import handle_binance_errors, encode_json
 from tools.exceptions import BinanceErrors, MarginLoanNotFound
 from scipy.stats import linregress
 from tools.round_numbers import round_numbers_ceiling
-from tools.enum_definitions import Status
+from tools.enum_definitions import Status, Strategy
 
 
 # To be removed one day when commission endpoint found that provides this value
@@ -36,7 +36,8 @@ class BaseDeal(OrderController):
         self.symbol = self.active_bot.pair
         super().__init__(symbol=self.active_bot.pair)
         self.db_collection = self.db[db_collection_name]
-        self.isolated_balance: float = self.get_isolated_balance(self.symbol)
+        if self.active_bot.strategy == Strategy.margin_short:
+            self.isolated_balance: float = self.get_isolated_balance(self.symbol)
 
     def __repr__(self) -> str:
         """

@@ -1,12 +1,13 @@
 import json
 import logging
+from apis import BinanceApi
 from db import setup_db
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from time import time
 from streaming.socket_client import SpotWebsocketStreamClient
 
-class StreamingController:
+class StreamingController(BinanceApi):
     def __init__(self):
         # For some reason, db connections internally only work with
         # db:27017 instead of localhost=:2018
@@ -44,7 +45,6 @@ class StreamingController:
         current_bot,
         close_price: str,
         open_price: str,
-        symbol: str,
         db_collection_name,
     ):
         """
@@ -82,7 +82,7 @@ class StreamingController:
         pass
 
     def on_error(self, socket, msg):
-        logging.error(msg)
+        logging.error(f'Streaming_Controller error:{msg}')
         self.get_klines()
 
     def on_message(self, socket, message):
@@ -124,7 +124,6 @@ class StreamingController:
                     current_bot,
                     close_price,
                     open_price,
-                    symbol,
                     "bots",
                 )
             if current_test_bot:
@@ -132,7 +131,6 @@ class StreamingController:
                     current_test_bot,
                     close_price,
                     open_price,
-                    symbol,
                     "paper_trading",
                 )
 
@@ -150,7 +148,7 @@ class StreamingController:
                 self.get_klines()
         return
 
-    def get_klines(self):
+    async def get_klines(self):
         interval = self.settings["candlestick_interval"]
         self.list_bots = list(
             self.streaming_db.bots.distinct("pair", {"status": "active"})
@@ -235,28 +233,33 @@ class StreamingController:
                 return
         return
 
-    async def get_user_data(self):
+    def get_user_data(self):
+        listen_key = self.get_listen_key()
+        self.user_data_client = SpotWebsocketStreamClient(
+            on_message=self.on_user_data_message, on_error=self.on_error
+        )
+        self.user_data_client.user_data(listen_key=listen_key, action=SpotWebsocketStreamClient.subscribe)
+
+    def on_user_data_message(self, socket, message):
         logging.info("Streaming user data")
-        socket, client = await self.setup_client()
-        user_data = socket.user_socket()
-        async with user_data as ud:
-            while True:
-                try:
-                    res = await ud.recv()
+        res = json.loads(message)
 
-                    if "e" in res:
-                        if "executionReport" in res["e"]:
-                            self.process_user_data(res)
-                        elif "outboundAccountPosition" in res["e"]:
-                            logging.info(f'Assets changed {res["e"]}')
-                        elif "balanceUpdate" in res["e"]:
-                            logging.info(f'Funds transferred {res["e"]}')
-                    else:
-                        logging.info(f"Unrecognized user data: {res}")
+        if "result" in res and res["result"]:
+            logging.info(f'Subscriptions: {res["result"]}')
 
-                    pass
-                except Exception as error:
-                    logging.info(f"get_user_data sockets error: {error}")
-                    pass
-
-                await client.close_connection()
+        # if "data" in res:
+        #     if "e" in res["data"] and res["data"]["e"] == "kline":
+        #         self.process_klines(res["data"])
+        #         self.process_user_data(res["data"])
+        #     else:
+        #         logging.error(f'Error: {res["data"]}')
+        #         self.client.stop()
+        if "data" in res:
+            if "e" in res:
+                if "executionReport" in res["e"]:
+                    logging.info(f'User data {res}')
+                    self.process_user_data(res)
+                elif "outboundAccountPosition" in res["e"]:
+                    logging.info(f'Assets changed {res["e"]}')
+                elif "balanceUpdate" in res["e"]:
+                    logging.info(f'Funds transferred {res["e"]}')

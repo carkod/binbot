@@ -222,8 +222,7 @@ class Dashboard extends React.Component {
   };
 
   render() {
-    const { balanceEstimate, load } = this.props;
-
+    const { balanceEstimate, load, gainersLosersSeries } = this.props;
     return (
       <>
         <div className="content">
@@ -353,9 +352,9 @@ class Dashboard extends React.Component {
                   )}
                 </Col>
                 <Col lg="6" md="12">
-                  {this.props.gainersLosersSeries && (
+                  {gainersLosersSeries && (
                     <GainersLosersGraph
-                      data={this.props.gainersLosersSeries}
+                      data={gainersLosersSeries}
                       legend={this.state.lineChartLegend}
                     />
                   )}
@@ -370,6 +369,21 @@ class Dashboard extends React.Component {
                     <ProfitLossBars data={this.state.dailyPnL} />
                   )}
                 </Col>
+              </Row>
+              <Row>
+                <Col lg="6" md="12">
+                  {this.props.gainersLosersData?.length > 0 && (
+                    <GainersLosers data={this.props.gainersLosersData} />
+                  )}
+                </Col>
+                {/* <Col lg="6" md="12">
+                  {gainersLosersSeries && (
+                    <GainersLosersGraph
+                      data={gainersLosersSeries}
+                      legend={this.state.lineChartLegend}
+                    />
+                  )}
+                </Col> */}
               </Row>
             </>
           ) : (
@@ -390,7 +404,8 @@ const mapStateToProps = (s) => {
   const { data: balanceEstimate } = s.estimateReducer;
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
-  let { data: gainersLosersSeries } = s.gainersLosersSeriesReducer;
+  const { data: gainersLosersSeries } = s.gainersLosersSeriesReducer;
+
   const {
     data: benchmarkData,
     btcPrices,
@@ -399,6 +414,7 @@ const mapStateToProps = (s) => {
   } = s.btcBenchmarkReducer;
   let percentageRevenue = 0;
   let revenue = 0;
+
   if (benchmarkData && balanceEstimate) {
     revenue = balanceEstimate.total_fiat - benchmarkData.usdt[0];
     percentageRevenue = (revenue / balanceEstimate.total_fiat) * 100;
