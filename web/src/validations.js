@@ -77,6 +77,7 @@ const listCssColors = [
   "#c178c1",
   "#dcb285",
   "#f96332",
+  "#6bd098",
 ];
 
 const addNotification = (name, message, type = "success") => {

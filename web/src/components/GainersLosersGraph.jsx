@@ -1,11 +1,11 @@
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "reactstrap";
 import { Row, Col, Container } from "react-bootstrap";
-import DashboardLineChart from "./DashboardLineChart";
+import BarChart from "./BarChart";
 
 
 export default function GainersLosersGraph({ data, legend }) {
-  const gainers = parseFloat(data.gainers_percent[data.gainers_percent.length - 1]);
-  const losers = parseFloat(data.losers_percent[data.losers_percent.length - 1]);
+  const gainers = parseFloat(data.gainers_count);
+  const losers = parseFloat(data.losers_count);
   return (
     <Card className="card-chart">
       <CardHeader>
@@ -35,7 +35,7 @@ export default function GainersLosersGraph({ data, legend }) {
       </CardHeader>
       {data && (
         <CardBody>
-          <DashboardLineChart data={data} line1name="Gainers" line2name="Losers" />
+          <BarChart data={data} line1name="Gainers" line2name="Losers" />
         </CardBody>
       )}
       <CardFooter>

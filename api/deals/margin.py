@@ -10,7 +10,7 @@ from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
 from pydantic import ValidationError
-from tools.exceptions import BinbotErrors, MarginLoanNotFound, QuantityTooLow, BinanceErrors
+from tools.exceptions import MarginLoanNotFound, QuantityTooLow, BinanceErrors
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 
 
@@ -365,7 +365,7 @@ class MarginDeal(BaseDeal):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        logging.info(f"Opening margin_short_base_order")
+        self.update_deal_logs(f"Opening margin_short_base_order")
         initial_price = float(self.matching_engine(self.active_bot.pair, False))
 
         if self.db_collection.name == "bots":
@@ -472,7 +472,7 @@ class MarginDeal(BaseDeal):
                 f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}"
             )
             # since price is given by matching engine
-            self.execute_take_profit(float(close_price))
+            self.execute_take_profit()
             self.update_required()
 
         # Direction 1.3: upward trend (short)
@@ -597,10 +597,11 @@ class MarginDeal(BaseDeal):
 
         msg = f"Completed Stop loss order"
         self.active_bot.errors.append(msg)
+        bot = self.save_bot_streaming()
 
         return
 
-    def execute_take_profit(self, price=None):
+    def execute_take_profit(self):
         """
         Execute take profit when price is hit.
         This can be a simple take_profit order when take_profit_price is hit or
@@ -669,7 +670,7 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def switch_to_long_bot(self, current_price):
+    def switch_to_long_bot(self, new_base_order_price):
         """
         Switch to long strategy.
         Doing some parts of open_deal from scratch
@@ -695,7 +696,6 @@ class MarginDeal(BaseDeal):
             None,
         )
         # start from current stop_loss_price which is where the bot switched to long strategy
-        new_base_order_price = current_price
         tp_price = new_base_order_price * (
             1 + (float(self.active_bot.take_profit) / 100)
         )
@@ -715,12 +715,10 @@ class MarginDeal(BaseDeal):
         )
         self.active_bot.strategy = Strategy.long
         self.active_bot.status = Status.active
-        self.active_bot.margin_short_reversal = False
 
         # Keep bot up to date in the DB
         # this avoid unsyched bots when errors ocurr in other functions
         self.save_bot_streaming()
-
         return self.active_bot
 
     def update_trailling_profit(self, close_price):

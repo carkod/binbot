@@ -28,9 +28,23 @@ class SpotLongDeal(BaseDeal):
         # Inherit from parent class
         super().__init__(bot, db_collection_name)
 
-    def switch_margin_short(self, new_base_order_price):
-        msg = "Resetting bot for margin_short strategy..."
-        self.update_deal_logs(msg)
+    def switch_margin_short(self, new_base_order_price: float):
+        """
+        Switch to short strategy.
+        Doing some parts of open_deal from scratch
+        this will allow us to skip one base_order and lower
+        the initial buy_price.
+
+        Because we need to create a new deal:
+        1. Find base_order in the orders list as in open_deal
+        2. Calculate take_profit_price and stop_loss_price as usual
+        3. Create deal
+        """
+        self.update_deal_logs("Resetting bot for margin_short strategy...")
+        new_id = self.create_new_bot_streaming()
+        self.active_bot.id = new_id
+
+        # Reset bot to prepare for new activation
         base_order = next(
             (
                 bo_deal
@@ -40,30 +54,28 @@ class SpotLongDeal(BaseDeal):
             None,
         )
         # start from current stop_loss_price which is where the bot switched to long strategy
-        tp_price = new_base_order_price * (
+        tp_price = float(new_base_order_price) * (
             1 + (float(self.active_bot.take_profit) / 100)
         )
         if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = new_base_order_price - (
-                new_base_order_price * (float(self.active_bot.stop_loss) / 100)
+            stop_loss_price = float(new_base_order_price) - (
+                float(new_base_order_price) * (float(self.active_bot.stop_loss) / 100)
             )
         else:
             stop_loss_price = 0
 
         self.active_bot.deal = DealSchema(
             buy_timestamp=base_order.timestamp,
-            buy_price=new_base_order_price,
+            buy_price=float(new_base_order_price),
             buy_total_qty=base_order.qty,
             take_profit_price=tp_price,
             stop_loss_price=stop_loss_price,
         )
-        self.active_bot.strategy = Strategy.long
+        self.active_bot.strategy = Strategy.margin_short
         self.active_bot.status = Status.active
 
-        self.active_bot = MarginDeal(
-            self.active_bot, db_collection_name="bots"
-        ).margin_short_base_order()
         self.save_bot_streaming()
+        return self.active_bot
 
     def execute_stop_loss(self, price):
         """
@@ -182,10 +194,10 @@ class SpotLongDeal(BaseDeal):
         # Dispatch real order
         else:
             try:
+                # No price means market order
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
-                    price=supress_notation(price, self.price_precision),
                 )
             except Exception as err:
                 raise TraillingProfitError(err)
@@ -380,10 +392,7 @@ class SpotLongDeal(BaseDeal):
         ) > float(close_price):
             self.execute_stop_loss(close_price)
             if self.active_bot.margin_short_reversal:
-                self.switch_margin_short(close_price)
-                raise TerminateStreaming(
-                    "Streaming update needs to restart for autoswitched bot"
-                )
+                self.switch_margin_short(float(close_price))
             return
 
         # Take profit trailling

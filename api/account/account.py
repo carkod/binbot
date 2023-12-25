@@ -239,9 +239,8 @@ class Account(BinbotApi):
         @param: qty - quantity wanted to be bought/sold
         """
 
-        url = self.order_book_url
         params = [("symbol", symbol)]
-        res = requests.get(url=url, params=params)
+        res = requests.get(url=self.order_book_url, params=params)
         data = handle_binance_errors(res)
         
         if order_side:
@@ -262,11 +261,7 @@ class Account(BinbotApi):
         if not condition.any():
             # force market order
             return None
-        try:
-            match_qty["price"].iloc[0]
-        except IndexError as e:
-            print(e)
-            print(f'Matching engine error {match_qty["price"]}')
+        match_qty["price"].iloc[0]
 
         final_qty = match_qty["price"].iloc[0]
         return final_qty

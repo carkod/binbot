@@ -19,7 +19,7 @@ const computeProportions = (data) => {
       return total;
     } else {
       total.loserAccumulator =
-        parseFloat(a.priceChangePercent) + c.loserAccumulator;
+      c.loserAccumulator + parseFloat(a.priceChangePercent);
       total.loserCount++;
       return total;
     }

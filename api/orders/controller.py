@@ -1,3 +1,5 @@
+import logging
+
 from account.account import Account
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_error, json_response_message
@@ -6,6 +8,7 @@ from decimal import Decimal
 
 
 poll_percentage = 0
+
 
 class OrderController(Account):
     def __init__(self, symbol) -> None:
@@ -34,13 +37,22 @@ class OrderController(Account):
         )
         return self._qty_precision
 
+    def zero_remainder(self, x):
+        number = x
+
+        while True:
+            if number % x == 0:
+                return number
+            else:
+                number += x
+
     def sell_order(self, symbol, qty, price=None):
         """
         If price is not provided by matching engine,
         sell at market price
         """
         if price:
-            price = float(self.matching_engine(symbol, False, qty))
+            book_price = float(self.matching_engine(symbol, False, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
@@ -49,6 +61,13 @@ class OrderController(Account):
                 "price": supress_notation(price, self.price_precision),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
+
+            # If price is not provided by matching engine,
+            # create iceberg orders
+            if not book_price:
+                payload["iceberg_qty"] = self.zero_remainder(qty)
+                payload["price"] = supress_notation(book_price, self.price_precision)
+            
         else:
             payload = {
                 "symbol": symbol,
@@ -56,23 +75,28 @@ class OrderController(Account):
                 "type": OrderType.market,
                 "quantity": supress_notation(qty, self.qty_precision),
             }
-        data = self.signed_request(
-            url=self.order_url, method="POST", payload=payload
-        )
+        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        logging.info(f'Sell transaction: {data["price"]}')
+
         return data
 
     def buy_order(self, symbol, qty, price=None):
-
         if price:
-            price = float(self.matching_engine(symbol, True, qty))
+            book_price = float(self.matching_engine(symbol, True, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
                 "type": OrderType.limit,
                 "timeInForce": TimeInForce.gtc,
-                "price": supress_notation(price, self.price_precision),
+                "price": supress_notation(book_price, self.price_precision),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
+            # If price is not provided by matching engine,
+            # create iceberg orders
+            if not book_price:
+                payload["iceberg_qty"] = self.zero_remainder(qty)
+                payload["price"] = supress_notation(book_price, self.price_precision)
+
         else:
             payload = {
                 "symbol": symbol,
@@ -108,7 +132,9 @@ class OrderController(Account):
             "orderId": orderId,
         }
         try:
-            data = self.signed_request(url=f'{self.order_url}', method="DELETE", payload=payload)
+            data = self.signed_request(
+                url=f"{self.order_url}", method="DELETE", payload=payload
+            )
             resp = json_response({"message": "Order deleted!", "data": data})
         except Exception as e:
             resp = json_response_error(e)
@@ -155,20 +181,10 @@ class OrderController(Account):
                 "isIsolated": "TRUE",
             }
 
-        data = self.signed_request(url=self.margin_order, method="POST", payload=payload)
-        if data["status"] != "FILLED":
-            delete_payload = {
-                "symbol": symbol,
-                "isIsolated": "TRUE",
-                "orderId": data["orderId"]
-            }
-            try:
-                self.signed_request(url=self.margin_order, method="DELETE", payload=delete_payload)                
-            except Exception as error:
-                return
-            
-            self.buy_margin_order(symbol, qty)
-            
+        data = self.signed_request(
+            url=self.margin_order, method="POST", payload=payload
+        )
+
         return data
 
     def sell_margin_order(self, symbol, qty, price=None):
@@ -195,7 +211,9 @@ class OrderController(Account):
                 "isIsolated": "TRUE",
             }
 
-        data = self.signed_request(url=self.margin_order, method="POST", payload=payload)
+        data = self.signed_request(
+            url=self.margin_order, method="POST", payload=payload
+        )
 
         if float(data["price"]) == 0:
             data["price"] = data["fills"][0]["price"]
