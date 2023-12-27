@@ -6,6 +6,7 @@ from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from time import time
 from streaming.socket_client import SpotWebsocketStreamClient
+from tools.exceptions import TerminateStreaming
 
 class StreamingController(BinanceApi):
     def __init__(self):
@@ -145,6 +146,7 @@ class StreamingController(BinanceApi):
                     {"_id": "settings"}, {"$set": {"update_required": time()}}
                 )
                 logging.info(f"Restarting streaming_controller {self.list_bots}")
+                raise TerminateStreaming()
                 self.get_klines()
         return
 
