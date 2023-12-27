@@ -140,11 +140,11 @@ class StreamingController(BinanceApi):
             logging.debug(
                 f'Time elapsed for update_required: {time() - local_settings["update_required"]}'
             )
-            if (time() - local_settings["update_required"]) > 20:
+            if (time() - local_settings["update_required"]) > 40:
                 self.streaming_db.research_controller.update_one(
                     {"_id": "settings"}, {"$set": {"update_required": time()}}
                 )
-                logging.info("Restarting streaming_controller")
+                logging.info(f"Restarting streaming_controller {self.list_bots}")
                 self.get_klines()
         return
 
