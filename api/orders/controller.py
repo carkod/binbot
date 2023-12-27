@@ -75,7 +75,19 @@ class OrderController(Account):
                 "type": OrderType.market,
                 "quantity": supress_notation(qty, self.qty_precision),
             }
+            # Because market orders don't have price
+            # get it from fills
+
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+
+        total_qty = 0
+        weighted_avg = 0
+        for item in data["fills"]:
+            weighted_avg += float(item["price"]) * float(item["qty"])
+            total_qty += float(item["qty"])
+
+        weighted_avg_price = weighted_avg / total_qty
+        data["price"] = weighted_avg_price
         logging.info(f'Sell transaction: {data}')
 
         return data

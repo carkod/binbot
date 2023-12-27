@@ -18,6 +18,7 @@ import {
   getGainersLosers,
   getGainersLosersSeries,
 } from "./saga";
+import VolumesRanking from "../../components/VolumesRanking";
 
 class Dashboard extends React.Component {
   constructor(props) {
@@ -373,7 +374,7 @@ class Dashboard extends React.Component {
               <Row>
                 <Col lg="6" md="12">
                   {this.props.gainersLosersData?.length > 0 && (
-                    <GainersLosers data={this.props.gainersLosersData} />
+                    <VolumesRanking data={this.props.gainersLosersData} />
                   )}
                 </Col>
                 {/* <Col lg="6" md="12">

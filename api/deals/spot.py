@@ -474,8 +474,7 @@ class SpotLongDeal(BaseDeal):
                     return
 
         # Update unfilled orders
-        logging.info("Updating unfilled orders")
-        unfilled_order = next(
+        unupdated_order = next(
             (
                 deal
                 for deal in self.active_bot.orders
@@ -483,10 +482,10 @@ class SpotLongDeal(BaseDeal):
             ),
             None,
         )
-        if unfilled_order:
-            order_response = self.get_all_orders(self.active_bot.pair, unfilled_order.order_id)
+        if unupdated_order:
+            order_response = self.get_all_orders(self.active_bot.pair, unupdated_order.order_id)
             logging.info(f"Unfilled orders response{order_response}")
-            if order_response["status"] == "FILLED" or float(order_response["price"]) > 0:
+            if order_response[0]["status"] == "FILLED":
                 for i, order in enumerate(self.active_bot.orders):
                     if order.order_id == order_response["orderId"]:
                         self.active_bot.orders[i].price = order_response["price"]

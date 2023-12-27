@@ -4,32 +4,43 @@ import ListGroup from "react-bootstrap/ListGroup";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 
-const computeProportions = (data) => {
+const computeTotalVolume = (data) => {
   let total = {
     gainerCount: 0,
     gainerAccumulator: 0,
     loserAccumulator: 0,
     loserCount: 0,
   };
+	let average, totalVolume;
+	const totalCount = data.length;
   data.reduce((c, a) => {
     if (parseFloat(a.volume) > 0) {
-      total.gainerAccumulator =
-        c.gainerAccumulator + parseFloat(a.volume);
-      total.gainerCount++;
-      return total;
-    } else {
-      total.loserAccumulator =
-      c.loserAccumulator + parseFloat(a.volume);
-      total.loserCount++;
-      return total;
+			totalVolume = c.gainerAccumulator + parseFloat(a.volume);
+			average = totalVolume / totalCount;
     }
+		return total;
   }, total);
 
-  return total;
+	const sortedData = data.toSorted((a, b) => {
+		if (parseFloat(a.volume) > average) {
+			total.gainerAccumulator = total.gainerAccumulator + parseFloat(a.volume);
+			total.gainerCount++;
+			console.log(a.gainerAccumulator)
+			return -1;
+		} else {
+			total.loserAccumulator = total.loserAccumulator + parseFloat(a.volume);
+			total.loserCount++;
+			return 1;
+		}
+	});
+
+  return {
+		total, sortedData
+	};
 };
 
 
-const GainersLosersCard = ({ data, title }) => {
+const VolumesRankingCard = ({ data, title }) => {
   return (
     <>
       <Card.Body>
@@ -55,13 +66,13 @@ const GainersLosersCard = ({ data, title }) => {
 };
 
 export default function VolumesRanking({ data }) {
-  const totalVolume = computeTotalVolume(data);
+  const { total: {gainerAccumulator, gainerCount, loserAccumulator, loserCount}, sortedData } = computeTotalVolume(data);
   // Top 10
-  const gainersData = data.slice(0, 10);
-  const perGainers = ((gainerCount / data.length) * 100).toFixed(2) + "%";
+  const gainersData = sortedData.slice(0, 10);
+  const perGainers = ((gainerCount / sortedData.length) * 100).toFixed(2) + "%";
   // Bottom 10
-  const losersData = data.slice(-10).reverse();
-  const perLosers = ((loserCount / data.length) * 100).toFixed(2) + "%";
+  const losersData = sortedData.slice(-10).reverse();
+  const perLosers = ((loserCount / sortedData.length) * 100).toFixed(2) + "%";
   return (
     <div>
       <Card border="success">
@@ -76,25 +87,25 @@ export default function VolumesRanking({ data }) {
           </div>
           <div className="p-line-chart--legend">
             <div>
-              Gainers: <span>{perGainers}</span>
+              Top: <span>{perGainers}</span>
             </div>
             <div>
-              Losers: <span>{perLosers}</span>
+              Bottom: <span>{perLosers}</span>
             </div>
           </div>
         </div>
 
         <Row>
           <Col>
-            <GainersLosersCard
+            <VolumesRankingCard
               data={gainersData}
-              title="Today's gainers in USDT market"
+              title="Today's highest volumes in USDT market"
             />
           </Col>
           <Col>
-            <GainersLosersCard
+            <VolumesRankingCard
               data={losersData}
-              title="Today's losers in USDT market"
+              title="Today's low volume in USDT market"
             />
           </Col>
         </Row>

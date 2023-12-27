@@ -146,11 +146,11 @@ class StreamingController(BinanceApi):
                     {"_id": "settings"}, {"$set": {"update_required": time()}}
                 )
                 logging.info(f"Restarting streaming_controller {self.list_bots}")
-                raise TerminateStreaming()
+                # raise TerminateStreaming()
                 self.get_klines()
         return
 
-    async def get_klines(self):
+    def get_klines(self):
         interval = self.settings["candlestick_interval"]
         self.list_bots = list(
             self.streaming_db.bots.distinct("pair", {"status": "active"})

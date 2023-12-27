@@ -23,7 +23,10 @@ async def streaming_main():
     )
 
 try:
-    asyncio.run(streaming_main())
+    # asyncio.run(streaming_main())
+    mu = StreamingController()
+    mu.get_klines()
 except Exception as error:
     logging.error(f"Streaming controller error: {error}")
-    asyncio.run(streaming_main())
+    mu = StreamingController()
+    mu.get_klines()
