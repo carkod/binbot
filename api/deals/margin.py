@@ -772,9 +772,9 @@ class MarginDeal(BaseDeal):
 
             # Reset stop_loss_price to avoid confusion in front-end
             self.active_bot.deal.stop_loss_price = 0
-            logging.info(
-                f"{self.active_bot.pair} Updating after broken first trailling_profit (short)"
-            )
+            milestone_msg = f"{self.active_bot.pair} Updating after broken first trailling_profit (short)"
+            logging.info(milestone_msg)
+            self.update_deal_logs(milestone_msg)
 
         # Direction 1 (downward): breaking the current trailling
         if float(close_price) <= float(self.active_bot.deal.trailling_profit_price):

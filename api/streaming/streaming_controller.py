@@ -256,10 +256,11 @@ class StreamingController(BinanceApi):
         #     else:
         #         logging.error(f'Error: {res["data"]}')
         #         self.client.stop()
+        logging.info(f'User data {res}')
         if "data" in res:
             if "e" in res:
                 if "executionReport" in res["e"]:
-                    logging.info(f'User data {res}')
+                    logging.info(f'executionReport {res}')
                     self.process_user_data(res)
                 elif "outboundAccountPosition" in res["e"]:
                     logging.info(f'Assets changed {res["e"]}')
