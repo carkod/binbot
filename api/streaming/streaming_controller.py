@@ -184,28 +184,8 @@ class StreamingController(BinanceApi):
             {"orders": {"$elemMatch": {"order_id": order_id}}},
             {
                 "$set": {
-                    "status": {
-                        "$or": [
-                            {
-                                "$eq": [
-                                    (result["X"] == "FILLED"),
-                                    "$deal_type",
-                                    "take_profit",
-                                ]
-                            },
-                            {
-                                "$eq": [
-                                    (result["X"] == "FILLED"),
-                                    "$deal_type",
-                                    "stop_loss",
-                                ]
-                            },
-                        ]
-                    },
-                    "deal.current_price": result["p"],
-                    "deal.sell_price": result["p"],
                     "orders.$.status": result["X"],
-                    "orders.$.price": result["p"],
+                    "orders.$.price": result["p"] if result["p"] else result["p"],
                     "orders.$.qty": result["q"],
                     "orders.$.order_side": result["S"],
                     "orders.$.order_type": result["o"],
@@ -256,13 +236,11 @@ class StreamingController(BinanceApi):
         #     else:
         #         logging.error(f'Error: {res["data"]}')
         #         self.client.stop()
-        logging.info(f'User data {res}')
-        if "data" in res:
-            if "e" in res:
-                if "executionReport" in res["e"]:
-                    logging.info(f'executionReport {res}')
-                    self.process_user_data(res)
-                elif "outboundAccountPosition" in res["e"]:
-                    logging.info(f'Assets changed {res["e"]}')
-                elif "balanceUpdate" in res["e"]:
-                    logging.info(f'Funds transferred {res["e"]}')
+        if "e" in res:
+            if "executionReport" in res["e"]:
+                logging.info(f'executionReport {res}')
+                self.process_user_data(res)
+            elif "outboundAccountPosition" in res["e"]:
+                logging.info(f'Assets changed {res["e"]}')
+            elif "balanceUpdate" in res["e"]:
+                logging.info(f'Funds transferred {res["e"]}')

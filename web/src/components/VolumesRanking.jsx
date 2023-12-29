@@ -17,6 +17,14 @@ const computeTotalVolume = (data) => {
   return sortedData.reverse(-1).slice(0, 10);
 };
 
+const average = (data) => {
+  const total = data.reduce((acc, x) => {
+    return (acc + parseFloat(x.quoteVolume) + parseFloat(x.volume));
+  }, 0);
+
+  return total / data.length - 1;
+}
+
 export default function VolumesRankingCard({ data, title }) {
   const sortedData = computeTotalVolume(data);
   return (
@@ -26,6 +34,7 @@ export default function VolumesRankingCard({ data, title }) {
         <Row>
           <Col>
             <Card.Body>
+              <Card.Title>{`Volume market average: ${average(data)}`}</Card.Title>
               <Card.Title>{title}</Card.Title>
               <ListGroup className="list-group-flush">
                 {sortedData.map((x, i) => (
