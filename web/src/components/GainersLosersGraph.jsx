@@ -25,9 +25,9 @@ export default function GainersLosersGraph({ data, legend }) {
               </div>
             </Col>
             <Col lg="11" md="11" sm="11">
-              <CardTitle tag="h5">Gainers vs. Losers</CardTitle>
+              <CardTitle tag="h5">Gainers vs. Losers by Volume</CardTitle>
               <p className="card-category u-text-left">
-                Market evolution of gainers vs losers.
+                Market evolution of gainers vs losers by volume.
               </p>
             </Col>
           </Row>

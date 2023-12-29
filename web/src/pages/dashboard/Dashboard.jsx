@@ -18,6 +18,7 @@ import {
   getGainersLosers,
   getGainersLosersSeries,
 } from "./saga";
+import VolumesRankingCard from "../../components/VolumesRanking";
 
 class Dashboard extends React.Component {
   constructor(props) {
@@ -222,8 +223,7 @@ class Dashboard extends React.Component {
   };
 
   render() {
-    const { balanceEstimate, load } = this.props;
-
+    const { balanceEstimate, load, gainersLosersSeries } = this.props;
     return (
       <>
         <div className="content">
@@ -338,7 +338,7 @@ class Dashboard extends React.Component {
                   </div>
                 </Col>
                 <Col lg="9">
-                  {this.props.benchmarkData && (
+                  {this.props.benchmarkData.dates?.btc && (
                     <PortfolioBenchmarkChart
                       data={this.props.benchmarkData}
                       legend={this.state.lineChartLegend}
@@ -353,9 +353,9 @@ class Dashboard extends React.Component {
                   )}
                 </Col>
                 <Col lg="6" md="12">
-                  {this.props.gainersLosersSeries && (
+                  {gainersLosersSeries && (
                     <GainersLosersGraph
-                      data={this.props.gainersLosersSeries}
+                      data={gainersLosersSeries}
                       legend={this.state.lineChartLegend}
                     />
                   )}
@@ -368,6 +368,13 @@ class Dashboard extends React.Component {
                   )}
                   {this.state.dailyPnL && (
                     <ProfitLossBars data={this.state.dailyPnL} />
+                  )}
+                </Col>
+              </Row>
+              <Row>
+                <Col lg="6" md="12">
+                  {this.props.gainersLosersData && this.props.gainersLosersData.length > 0 && (
+                    <VolumesRankingCard data={this.props.gainersLosersData} title="Today's highest volumes in USDT market"/>
                   )}
                 </Col>
               </Row>
@@ -390,7 +397,8 @@ const mapStateToProps = (s) => {
   const { data: balanceEstimate } = s.estimateReducer;
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
-  let { data: gainersLosersSeries } = s.gainersLosersSeriesReducer;
+  const { data: gainersLosersSeries } = s.gainersLosersSeriesReducer;
+
   const {
     data: benchmarkData,
     btcPrices,
@@ -399,6 +407,7 @@ const mapStateToProps = (s) => {
   } = s.btcBenchmarkReducer;
   let percentageRevenue = 0;
   let revenue = 0;
+
   if (benchmarkData && balanceEstimate) {
     revenue = balanceEstimate.total_fiat - benchmarkData.usdt[0];
     percentageRevenue = (revenue / balanceEstimate.total_fiat) * 100;

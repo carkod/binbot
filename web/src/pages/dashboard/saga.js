@@ -70,7 +70,7 @@ export function* watchGetGainersLosers() {
 }
 
 export function* getGainersLosersSeriesApi() {
-  const requestURL = `${process.env.REACT_APP_GAINERS_LOSERS_SERIES}`;
+  const requestURL = `${process.env.REACT_APP_GAINERS_LOSERS_SERIES}?size=7`;
   try {
     const res = yield call(request, requestURL, "GET");
     yield put(getGainersLosersSeriesSucceeded(res));

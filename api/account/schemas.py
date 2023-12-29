@@ -105,6 +105,7 @@ class MarketDominationSeries(BaseModel):
     losers_percent: list[float] = []
     gainers_count: list[int] = []
     losers_count: list[int] = []
+    total_volume: list[float] = []
 
 
 class GetMarketDominationResponse(StandardResponse):

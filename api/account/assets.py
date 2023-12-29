@@ -440,7 +440,9 @@ class Assets(BaseDeal):
             dict: A dictionary containing the market domination data, including gainers and losers counts, percentages, and dates.
         """
         try:
-            data = list(self.db.market_domination.find({}))
+            data = list(self.db.market_domination.find(
+                { "$query": {}, "$orderby": { "_id" : -1 } }
+            ).limit(size))
             market_domination_series = MarketDominationSeries()
             
             for item in data:
@@ -448,27 +450,33 @@ class Assets(BaseDeal):
                 losers_percent = 0
                 gainers_count = 0
                 losers_count = 0
+                total_volume = 0
                 if "data" in item:
                     for crypto in item["data"]:
                         if float(crypto['priceChangePercent']) > 0:
-                            gainers_percent += float(crypto['priceChangePercent'])
+                            gainers_percent += float(crypto['volume'])
                             gainers_count += 1
 
                         if float(crypto['priceChangePercent']) < 0:
-                            losers_percent += abs(float(crypto['priceChangePercent']))
+                            losers_percent += abs(float(crypto['volume']))
                             losers_count += 1
+
+                        if float(crypto['volume']) > 0:
+                            total_volume += float(crypto['volume'])
 
                 market_domination_series.dates.append(item["time"])
                 market_domination_series.gainers_percent.append(gainers_percent)
                 market_domination_series.losers_percent.append(losers_percent)
                 market_domination_series.gainers_count.append(gainers_count)
                 market_domination_series.losers_count.append(losers_count)
+                market_domination_series.total_volume.append(total_volume)
 
             market_domination_series.dates = market_domination_series.dates[-size:]
             market_domination_series.gainers_percent = market_domination_series.gainers_percent[-size:]
             market_domination_series.losers_percent = market_domination_series.losers_percent[-size:]
             market_domination_series.gainers_count = market_domination_series.gainers_count[-size:]
             market_domination_series.losers_count = market_domination_series.losers_count[-size:]
+            market_domination_series.total_volume = market_domination_series.total_volume[-size:]
 
             data = market_domination_series.dict()
 

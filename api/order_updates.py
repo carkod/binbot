@@ -11,11 +11,10 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-
 try:
     mu = StreamingController()
-    mu.get_klines()
+    mu.get_user_data()
 except Exception as error:
-    logging.error(f"Streaming controller error: {error}")
+    logging.error(f"User data streaming error: {error}")
     mu = StreamingController()
-    mu.get_klines()
+    mu.get_user_data()
