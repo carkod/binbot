@@ -18,7 +18,7 @@ import {
   getGainersLosers,
   getGainersLosersSeries,
 } from "./saga";
-import VolumesRanking from "../../components/VolumesRanking";
+import VolumesRankingCard from "../../components/VolumesRanking";
 
 class Dashboard extends React.Component {
   constructor(props) {
@@ -338,7 +338,7 @@ class Dashboard extends React.Component {
                   </div>
                 </Col>
                 <Col lg="9">
-                  {this.props.benchmarkData && (
+                  {this.props.benchmarkData.dates?.btc && (
                     <PortfolioBenchmarkChart
                       data={this.props.benchmarkData}
                       legend={this.state.lineChartLegend}
@@ -373,18 +373,10 @@ class Dashboard extends React.Component {
               </Row>
               <Row>
                 <Col lg="6" md="12">
-                  {this.props.gainersLosersData?.length > 0 && (
-                    <VolumesRanking data={this.props.gainersLosersData} />
+                  {this.props.gainersLosersData && this.props.gainersLosersData.length > 0 && (
+                    <VolumesRankingCard data={this.props.gainersLosersData} title="Today's highest volumes in USDT market"/>
                   )}
                 </Col>
-                {/* <Col lg="6" md="12">
-                  {gainersLosersSeries && (
-                    <GainersLosersGraph
-                      data={gainersLosersSeries}
-                      legend={this.state.lineChartLegend}
-                    />
-                  )}
-                </Col> */}
               </Row>
             </>
           ) : (

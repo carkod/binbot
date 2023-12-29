@@ -5,108 +5,50 @@ import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 
 const computeTotalVolume = (data) => {
-  let total = {
-    gainerCount: 0,
-    gainerAccumulator: 0,
-    loserAccumulator: 0,
-    loserCount: 0,
-  };
-	let average, totalVolume;
-	const totalCount = data.length;
-  data.reduce((c, a) => {
-    if (parseFloat(a.volume) > 0) {
-			totalVolume = c.gainerAccumulator + parseFloat(a.volume);
-			average = totalVolume / totalCount;
+  const sortedData = data.toSorted((a, b) => {
+    if (parseFloat(a.volume) > 0 && parseFloat(a.quoteVolume) > 0) {
+      const totalVolumeA = parseFloat(a.volume) + parseFloat(a.quoteVolume);
+      const totalVolumeB = parseFloat(b.volume) + parseFloat(b.quoteVolume);
+      return totalVolumeA - totalVolumeB;
     }
-		return total;
-  }, total);
+    return 0;
+  });
 
-	const sortedData = data.toSorted((a, b) => {
-		if (parseFloat(a.volume) > average) {
-			total.gainerAccumulator = total.gainerAccumulator + parseFloat(a.volume);
-			total.gainerCount++;
-			console.log(a.gainerAccumulator)
-			return -1;
-		} else {
-			total.loserAccumulator = total.loserAccumulator + parseFloat(a.volume);
-			total.loserCount++;
-			return 1;
-		}
-	});
-
-  return {
-		total, sortedData
-	};
+  return sortedData.reverse(-1).slice(0, 10);
 };
 
-
-const VolumesRankingCard = ({ data, title }) => {
-  return (
-    <>
-      <Card.Body>
-        <Card.Title>{title}</Card.Title>
-        <ListGroup className="list-group-flush">
-          {data.map((x, i) => (
-            <ListGroup.Item key={i}>
-              <Card.Link href={`/admin/bots/new/${x.symbol}`}>
-                {x.symbol}
-              </Card.Link>
-              <Badge
-                bg={parseFloat(x.priceChangePercent) > 0 ? "success" : "danger"}
-                className="u-float-right"
-              >
-                {x.priceChangePercent + "%"}
-              </Badge>
-            </ListGroup.Item>
-          ))}
-        </ListGroup>
-      </Card.Body>
-    </>
-  );
-};
-
-export default function VolumesRanking({ data }) {
-  const { total: {gainerAccumulator, gainerCount, loserAccumulator, loserCount}, sortedData } = computeTotalVolume(data);
-  // Top 10
-  const gainersData = sortedData.slice(0, 10);
-  const perGainers = ((gainerCount / sortedData.length) * 100).toFixed(2) + "%";
-  // Bottom 10
-  const losersData = sortedData.slice(-10).reverse();
-  const perLosers = ((loserCount / sortedData.length) * 100).toFixed(2) + "%";
+export default function VolumesRankingCard({ data, title }) {
+  const sortedData = computeTotalVolume(data);
   return (
     <div>
       <Card border="success">
-        <div className="p-line-chart">
-          <div className="p-line-chart__box">
-            <div className="p-line-chart--left" style={{ width: perGainers }}>
-              <span>{gainerAccumulator.toFixed(2)}</span>
-            </div>
-            <div className="p-line-chart--right" style={{ width: perLosers }}>
-              <span>{loserAccumulator.toFixed(2)}</span>
-            </div>
-          </div>
-          <div className="p-line-chart--legend">
-            <div>
-              Top: <span>{perGainers}</span>
-            </div>
-            <div>
-              Bottom: <span>{perLosers}</span>
-            </div>
-          </div>
-        </div>
-
+        <div className="p-line-chart"></div>
         <Row>
           <Col>
-            <VolumesRankingCard
-              data={gainersData}
-              title="Today's highest volumes in USDT market"
-            />
-          </Col>
-          <Col>
-            <VolumesRankingCard
-              data={losersData}
-              title="Today's low volume in USDT market"
-            />
+            <Card.Body>
+              <Card.Title>{title}</Card.Title>
+              <ListGroup className="list-group-flush">
+                {sortedData.map((x, i) => (
+                  <ListGroup.Item key={i}>
+                    <Row>
+                      <Col>
+                        <Card.Link href={`/admin/bots/new/${x.symbol}`}>
+                          {x.symbol}
+                        </Card.Link>
+                      </Col>
+                      <Col>
+                        <Badge
+                          bg="success"
+                          className="u-float-right"
+                        >
+                          {(parseFloat(x.quoteVolume) + parseFloat(x.volume)).toFixed(2)}
+                        </Badge>
+                      </Col>
+                    </Row>
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            </Card.Body>
           </Col>
         </Row>
       </Card>

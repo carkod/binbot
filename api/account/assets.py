@@ -454,11 +454,11 @@ class Assets(BaseDeal):
                 if "data" in item:
                     for crypto in item["data"]:
                         if float(crypto['priceChangePercent']) > 0:
-                            gainers_percent += float(crypto['priceChangePercent'])
+                            gainers_percent += float(crypto['volume'])
                             gainers_count += 1
 
                         if float(crypto['priceChangePercent']) < 0:
-                            losers_percent += abs(float(crypto['priceChangePercent']))
+                            losers_percent += abs(float(crypto['volume']))
                             losers_count += 1
 
                         if float(crypto['volume']) > 0:
