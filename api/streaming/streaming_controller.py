@@ -167,53 +167,49 @@ class StreamingController(BinanceApi):
         logging.info(f"Streaming updates: {markets}")
         self.client.klines(markets=markets, interval=interval)
 
-    def close_trailling_orders(self, result, db_collection: str = "bots"):
+    def update_order_data(self, result, db_collection: str = "bots"):
         """
-        This database query closes any orders found that are trailling orders i.e.
-        stop_loss, take_profit, trailling_profit, margin_short_stop_loss, margin_short_trailling_profit
-        the two latter also denoted as stop_loss and take_profit for simplification purposes
+        Keep order data up to date
 
-        If no order is found with the given order_id, then try with the paper_trading collection
-        as it could be a test bot
+        When buy_order or sell_order is executed, they are often in
+        status NEW, and it takes time to update to FILLED.
+        This keeps order data up to date as they are executed
+        throught the executionReport websocket
 
-        Finally, if paper_trading doesn't match that order_id either, then try any order in the DB
+        Args:
+            result (dict): executionReport websocket result
+            db_collection (str, optional): Defaults to "bots".
+
         """
         order_id = result["i"]
-        # Close successful take_profit
+        update = {
+            "$set": {
+                "orders.$.status": result["X"],
+                "orders.$.qty": result["q"],
+                "orders.$.order_side": result["S"],
+                "orders.$.order_type": result["o"],
+                "orders.$.timestamp": result["T"],
+            },
+            "$inc": {"total_commission": float(result["n"])},
+            "$push": {"errors": "Order status updated"},
+        }
+        if float(result["p"]) > 0:
+            update["$set"]["orders.$.price"] = float(result["p"])
+        else:
+            total_qty = 0
+            weighted_avg = 0
+            for item in result["fills"]:
+                weighted_avg += float(item["price"]) * float(item["qty"])
+                total_qty += float(item["qty"])
+
+            weighted_avg_price = weighted_avg / total_qty
+            result["p"] = weighted_avg_price
+
         query = self.streaming_db[db_collection].update_one(
             {"orders": {"$elemMatch": {"order_id": order_id}}},
-            {
-                "$set": {
-                    "orders.$.status": result["X"],
-                    "orders.$.price": result["p"] if result["p"] else result["p"],
-                    "orders.$.qty": result["q"],
-                    "orders.$.order_side": result["S"],
-                    "orders.$.order_type": result["o"],
-                    "orders.$.timestamp": result["T"],
-                },
-                "$inc": {"total_commission": float(result["n"])},
-                "$push": {"errors": "Bot completed!"},
-            },
+            update,
         )
         return query
-
-    def process_user_data(self, result):
-        # Parse result. Print result for raw result from Binance
-        order_id = result["i"]
-        # Example of real update
-        # {'e': 'executionReport', 'E': 1676750256695, 's': 'UNFIUSDT', 'c': 'web_86e55fed9bad494fba5e213dbe5b2cfc', 'S': 'SELL', 'o': 'LIMIT', 'f': 'GTC', 'q': '8.20000000', 'p': '6.23700000', 'P': '0.00000000', 'F': '0.00000000', 'g': -1, 'C': 'KrHPY4jWdWwFBHUMtBBfJl', 'x': 'CANCELED', ...}
-        query = self.close_trailling_orders(result)
-        logging.debug(f'Order updates modified: {query.raw_result["nModified"]}')
-        if query.raw_result["nModified"] == 0:
-            # Order not found in bots, so try paper_trading collection
-            query = self.close_trailling_orders(result, db_collection="paper_trading")
-            logging.debug(f'Order updates modified: {query.raw_result["nModified"]}')
-            if query.raw_result["nModified"] == 0:
-                logging.debug(
-                    f"No bot found with order client order id: {order_id}. Order status: {result['X']}"
-                )
-                return
-        return
 
     def get_user_data(self):
         listen_key = self.get_listen_key()
@@ -226,20 +222,16 @@ class StreamingController(BinanceApi):
         logging.info("Streaming user data")
         res = json.loads(message)
 
-        if "result" in res and res["result"]:
-            logging.info(f'Subscriptions: {res["result"]}')
-
-        # if "data" in res:
-        #     if "e" in res["data"] and res["data"]["e"] == "kline":
-        #         self.process_klines(res["data"])
-        #         self.process_user_data(res["data"])
-        #     else:
-        #         logging.error(f'Error: {res["data"]}')
-        #         self.client.stop()
         if "e" in res:
             if "executionReport" in res["e"]:
                 logging.info(f'executionReport {res}')
-                self.process_user_data(res)
+                query = self.update_order_data(res)
+                if query.raw_result["nModified"] == 0:
+                    logging.debug(
+                        f'No bot found with order client order id: {res["i"]}. Order status: {res["X"]}'
+                    )
+                return
+
             elif "outboundAccountPosition" in res["e"]:
                 logging.info(f'Assets changed {res["e"]}')
             elif "balanceUpdate" in res["e"]:

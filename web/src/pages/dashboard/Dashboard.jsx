@@ -338,7 +338,7 @@ class Dashboard extends React.Component {
                   </div>
                 </Col>
                 <Col lg="9">
-                  {this.props.benchmarkData.dates?.btc && (
+                  {this.props.benchmarkData?.dates && (
                     <PortfolioBenchmarkChart
                       data={this.props.benchmarkData}
                       legend={this.state.lineChartLegend}
@@ -398,13 +398,13 @@ const mapStateToProps = (s) => {
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
   const { data: gainersLosersSeries } = s.gainersLosersSeriesReducer;
-
   const {
     data: benchmarkData,
     btcPrices,
     usdtBalanceSeries,
     dates,
   } = s.btcBenchmarkReducer;
+
   let percentageRevenue = 0;
   let revenue = 0;
 

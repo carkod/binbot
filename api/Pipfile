@@ -28,6 +28,7 @@ mypy = "*"
 pytest = "*"
 unittest = "*"
 httpx = "*"
+mongomock = "*"
 
 [requires]
 python_version = "3.10.8"

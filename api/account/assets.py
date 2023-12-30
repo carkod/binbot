@@ -444,7 +444,7 @@ class Assets(BaseDeal):
                 { "$query": {}, "$orderby": { "_id" : -1 } }
             ).limit(size))
             market_domination_series = MarketDominationSeries()
-            
+
             for item in data:
                 gainers_percent = 0
                 losers_percent = 0
@@ -482,4 +482,4 @@ class Assets(BaseDeal):
 
             return json_response({ "data": data, "message": "Successfully retrieved market domination data.", "error": 0 })
         except Exception as error:
-            return json_response_error(f"Failed to store market domination data: {error}")
+            return json_response_error(f"Failed to retrieve market domination data: {error}")
