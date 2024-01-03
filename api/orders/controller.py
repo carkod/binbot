@@ -80,7 +80,7 @@ class OrderController(Account):
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
 
-        if data["price"] == 0:
+        if float(data["price"]) == 0:
             total_qty = 0
             weighted_avg = 0
             for item in data["fills"]:

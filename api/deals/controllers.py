@@ -332,6 +332,15 @@ class CreateDealController(BaseDeal):
 
         - If base order deal is not executed, bot is not activated
         """
+        # Check if bot with same pair is already active
+        active_bot = self.db_collection.find_one(
+            {"pair": self.active_bot.pair, "status": Status.active}
+        )
+        if active_bot:
+            raise CreateDealControllerError(
+                f"Bot with pair {self.active_bot.pair} is already active"
+            )
+
         # If there is already a base order do not execute
         base_order_deal = next(
             (

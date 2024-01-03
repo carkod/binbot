@@ -22,7 +22,7 @@ const average = (data) => {
     return (acc + parseFloat(x.quoteVolume) + parseFloat(x.volume));
   }, 0);
 
-  return total / data.length - 1;
+  return (total / data.length - 1).toLocaleString();
 }
 
 export default function VolumesRankingCard({ data, title }) {
@@ -50,7 +50,7 @@ export default function VolumesRankingCard({ data, title }) {
                           bg="success"
                           className="u-float-right"
                         >
-                          {(parseFloat(x.quoteVolume) + parseFloat(x.volume)).toFixed(2)}
+                          {(parseFloat(x.quoteVolume) + parseFloat(x.volume)).toLocaleString()}
                         </Badge>
                       </Col>
                     </Row>
