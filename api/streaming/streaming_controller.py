@@ -196,14 +196,7 @@ class StreamingController(BinanceApi):
         if float(result["p"]) > 0:
             update["$set"]["orders.$.price"] = float(result["p"])
         else:
-            total_qty = 0
-            weighted_avg = 0
-            for item in result["fills"]:
-                weighted_avg += float(item["price"]) * float(item["qty"])
-                total_qty += float(item["qty"])
-
-            weighted_avg_price = weighted_avg / total_qty
-            result["p"] = weighted_avg_price
+            update["$set"]["orders.$.price"] = float(result["L"])
 
         query = self.streaming_db[db_collection].update_one(
             {"orders": {"$elemMatch": {"order_id": order_id}}},
@@ -224,7 +217,6 @@ class StreamingController(BinanceApi):
 
         if "e" in res:
             if "executionReport" in res["e"]:
-                logging.info(f'executionReport {res}')
                 query = self.update_order_data(res)
                 if query.raw_result["nModified"] == 0:
                     logging.debug(

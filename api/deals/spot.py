@@ -153,7 +153,7 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
-        msg = f"Completed Stop loss"
+        msg = f"Completed Stop loss. Will it reverse? {self.active_bot.margin_short_reversal}"
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
 

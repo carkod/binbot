@@ -11,5 +11,4 @@ def setup_db():
         password=os.getenv("MONGO_AUTH_PASSWORD"),
     )
     db = mongo[os.getenv("MONGO_APP_DATABASE")]
-    db.bots.create_index("id", unique=True)
     return db

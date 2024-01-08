@@ -184,23 +184,17 @@ class BaseDeal(OrderController):
         specifically for streaming saves
         """
 
-        try:
+        bot = encode_json(self.active_bot)
+        if "_id" in bot:
+            bot.pop("_id")
 
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")
-
-            response = self.db_collection.find_one_and_update(
-                {"id": self.active_bot.id},
-                {
-                    "$set": bot,
-                },
-                return_document=ReturnDocument.AFTER,
-            )
-
-        except Exception as error:
-            self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
-            raise StreamingSaveError(error)
+        response = self.db_collection.find_one_and_update(
+            {"id": self.active_bot.id},
+            {
+                "$set": bot,
+            },
+            return_document=ReturnDocument.AFTER,
+        )
 
         return response
 
@@ -213,19 +207,14 @@ class BaseDeal(OrderController):
         specifically for streaming saves
         """
 
-        try:
+        bot = encode_json(self.active_bot)
+        bot["id"] = self.generate_id()
+        if "_id" in bot:
+            bot.pop("_id")
 
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")
-
-            bot_response = self.db_collection.insert_one(
-                bot,
-            )
-
-        except Exception as error:
-            self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
-            raise StreamingSaveError(error)
+        bot_response = self.db_collection.insert_one(
+            bot,
+        )
 
         return bot_response.inserted_id
 

@@ -17,6 +17,7 @@ class Assets(BaseDeal):
     def __init__(self):
         self.db = setup_db()
         self.usd_balance = 0
+        self.exception_list = []
 
     def get_raw_balance(self, asset=None):
         """
@@ -346,20 +347,33 @@ class Assets(BaseDeal):
         """
         data = self.signed_request(url=self.account_url)
         assets = []
-        exception_list = ["USDT", "NFT", "BNB"]
+        self.exception_list = ["USDT", "NFT", "BNB"]
 
         active_bots = list(self.db.bots.find({"status": Status.active}))
         for bot in active_bots:
             quote_asset = bot["pair"].replace(bot["balance_to_use"], "")
-            exception_list.append(quote_asset)
+            self.exception_list.append(quote_asset)
 
         for item in data["balances"]:
-            if item["asset"] not in exception_list and float(item["free"]) > 0:
+            if item["asset"] not in self.exception_list and float(item["free"]) > 0:
                 assets.append(item["asset"])
 
         if len(assets) > 5:
-            self.transfer_dust(assets)
-            resp = json_response_message("Sucessfully cleaned balance.")
+            try:
+                self.transfer_dust(assets)
+                resp = json_response_message("Sucessfully cleaned balance.")
+            except BinanceErrors as error:
+                msg, code = error
+                if code == -5005:
+                    for item in assets:
+                        for string in msg:
+                            if string in item:
+                                self.exception_list = item
+                                break
+
+                    self.clean_balance_assets()
+                else:
+                    resp = json_response_error(f"Failed to clean balance: {error}")
         else:
             resp = json_response_error("Amount of assets in balance is low. Transfer not needed.")
 
