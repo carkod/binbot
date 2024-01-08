@@ -26,6 +26,9 @@ class Bot(Account):
         self.db_collection = self.db[collection_name]
     
     def _update_required(self):
+        """
+        Streaming controller requires reload
+        """
         self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": time()}})
         return
 

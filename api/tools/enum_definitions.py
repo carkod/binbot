@@ -86,3 +86,10 @@ class OrderSide(str, Enum):
 
     def __str__(self):
         return str(self.str)
+
+class CloseCondition(str, Enum):
+    dynamic = "dynamic" # Dynamic trailling, stop_loss, take_profit or trailling_profit
+    timestamp = "timestamp" # Market domination timestamp in milliseconds
+
+    def __str__(self):
+        return str(self.str)

@@ -136,7 +136,6 @@ class Candlestick(BinbotApi):
         @params
         - df [Pandas dataframe]
         """
-        logging.warning(f"Checking gaps in the kline data for {params.symbol}")
         kline_df = df.copy(deep=True)
         df["gaps_check"] = df[0].diff()[1:]
         df = df.dropna()
@@ -146,17 +145,14 @@ class Candlestick(BinbotApi):
         gaps_check = df["gaps_check"].to_numpy()
 
         # Check difference between now and last kline
-        try:
-            check_latest = ((time() * 1000) - df[0].to_numpy()[-1]) > gaps_check[-1]
-        except Exception as e:
-            print(e)
+        check_latest = ((time() * 1000) - df[0].to_numpy()[-1]) > gaps_check[-1]
         # If true, no gaps
         try:
             no_gaps = gaps_check.all()
             if not bool(no_gaps) or check_latest:
                 kline_df = self.delete_and_create_klines(params)
         except IndexError as e:
-            print("Check gaps Index Error", e)
+            logging.error("Check gaps Index Error", e)
             kline_df = self.delete_and_create_klines(params)
 
         return kline_df
