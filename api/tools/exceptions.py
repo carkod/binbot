@@ -71,6 +71,9 @@ class ShortStrategyError(OpenDealError):
     pass
 
 
+class DealCreationError(Exception):
+    pass
+
 class TerminateStreaming(Exception):
     """
     This is required sometimes

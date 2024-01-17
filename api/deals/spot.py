@@ -9,7 +9,6 @@ from tools.handle_error import encode_json
 from tools.exceptions import (
     TraillingProfitError,
     NotEnoughFunds,
-    TerminateStreaming
 )
 from tools.enum_definitions import Status, Strategy
 from tools.round_numbers import round_numbers, supress_notation
@@ -41,38 +40,12 @@ class SpotLongDeal(BaseDeal):
         3. Create deal
         """
         self.update_deal_logs("Resetting bot for margin_short strategy...")
-        new_id = self.create_new_bot_streaming()
-        self.active_bot.id = new_id
-
-        # Reset bot to prepare for new activation
-        base_order = next(
-            (
-                bo_deal
-                for bo_deal in self.active_bot.orders
-                if bo_deal.deal_type == "base_order"
-            ),
-            None,
-        )
-        # start from current stop_loss_price which is where the bot switched to long strategy
-        tp_price = float(new_base_order_price) * (
-            1 + (float(self.active_bot.take_profit) / 100)
-        )
-        if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = float(new_base_order_price) - (
-                float(new_base_order_price) * (float(self.active_bot.stop_loss) / 100)
-            )
-        else:
-            stop_loss_price = 0
-
-        self.active_bot.deal = DealSchema(
-            buy_timestamp=base_order.timestamp,
-            buy_price=float(new_base_order_price),
-            buy_total_qty=base_order.qty,
-            take_profit_price=tp_price,
-            stop_loss_price=stop_loss_price,
-        )
         self.active_bot.strategy = Strategy.margin_short
-        self.active_bot.status = Status.active
+        self.active_bot = self.create_new_bot_streaming()
+
+        self.active_bot = MarginDeal(
+            bot=self.active_bot, db_collection_name=self.db_collection.name
+        ).margin_short_base_order()
 
         self.save_bot_streaming()
         return self.active_bot

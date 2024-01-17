@@ -683,38 +683,11 @@ class MarginDeal(BaseDeal):
         3. Create deal
         """
         self.update_deal_logs("Resetting bot for long strategy...")
-        new_id = self.create_new_bot_streaming()
-        self.active_bot.id = new_id
-
-        # Reset bot to prepare for new activation
-        base_order = next(
-            (
-                bo_deal
-                for bo_deal in self.active_bot.orders
-                if bo_deal.deal_type == "base_order"
-            ),
-            None,
-        )
-        # start from current stop_loss_price which is where the bot switched to long strategy
-        tp_price = new_base_order_price * (
-            1 + (float(self.active_bot.take_profit) / 100)
-        )
-        if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = new_base_order_price - (
-                new_base_order_price * (float(self.active_bot.stop_loss) / 100)
-            )
-        else:
-            stop_loss_price = 0
-
-        self.active_bot.deal = DealSchema(
-            buy_timestamp=base_order.timestamp,
-            buy_price=new_base_order_price,
-            buy_total_qty=base_order.qty,
-            take_profit_price=tp_price,
-            stop_loss_price=stop_loss_price,
-        )
         self.active_bot.strategy = Strategy.long
-        self.active_bot.status = Status.active
+        self.active_bot = self.create_new_bot_streaming()
+
+        bot = self.base_order()
+        self.active_bot = BotSchema.parse_obj(bot)
 
         # Keep bot up to date in the DB
         # this avoid unsyched bots when errors ocurr in other functions
