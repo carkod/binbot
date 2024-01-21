@@ -1,4 +1,3 @@
-from typing import List
 import uuid
 import requests
 import numpy
@@ -11,20 +10,16 @@ from bots.schemas import BotSchema
 from pymongo import ReturnDocument
 from tools.round_numbers import round_numbers, supress_notation
 from tools.handle_error import handle_binance_errors, encode_json
-from tools.exceptions import BinanceErrors, MarginLoanNotFound
+from tools.exceptions import BinanceErrors, DealCreationError, MarginLoanNotFound
 from scipy.stats import linregress
 from tools.round_numbers import round_numbers_ceiling
 from tools.enum_definitions import Status, Strategy
+from bson.objectid import ObjectId
+from deals.schema import DealSchema, OrderSchema
 
 
 # To be removed one day when commission endpoint found that provides this value
 ESTIMATED_COMMISSIONS_RATE = 0.0075
-
-class DealCreationError(Exception):
-    pass
-
-class StreamingSaveError(Exception):
-    pass
 
 class BaseDeal(OrderController):
     """
@@ -61,9 +56,7 @@ class BaseDeal(OrderController):
         qty = round_numbers(balance, self.qty_precision)
         return qty
 
-    def compute_margin_buy_back(
-        self, pair: str
-    ):
+    def compute_margin_buy_back(self, pair: str):
         """
         Same as compute_qty but with isolated margin balance
 
@@ -78,7 +71,12 @@ class BaseDeal(OrderController):
         ):
             return None
 
-        qty = float(self.isolated_balance[0]["baseAsset"]["borrowed"]) + float(self.isolated_balance[0]["baseAsset"]["interest"]) + float(self.isolated_balance[0]["baseAsset"]["borrowed"]) * ESTIMATED_COMMISSIONS_RATE
+        qty = (
+            float(self.isolated_balance[0]["baseAsset"]["borrowed"])
+            + float(self.isolated_balance[0]["baseAsset"]["interest"])
+            + float(self.isolated_balance[0]["baseAsset"]["borrowed"])
+            * ESTIMATED_COMMISSIONS_RATE
+        )
 
         qty = round_numbers_ceiling(qty, self.qty_precision)
         free = float(self.isolated_balance[0]["baseAsset"]["free"])
@@ -128,7 +126,6 @@ class BaseDeal(OrderController):
             {"id": self.active_bot.id},
             {"$push": {"errors": msg}},
         )
-        self.save_bot_streaming()
         return response
 
     def replace_order(self, cancel_order_id):
@@ -155,7 +152,11 @@ class BaseDeal(OrderController):
         open_orders = self.signed_request(self.open_orders, payload={"symbol": symbol})
         for order in open_orders:
             if order["status"] == "NEW":
-                self.signed_request(self.order_url, method="DELETE", payload={"symbol": symbol, "orderId": order["orderId"]})
+                self.signed_request(
+                    self.order_url,
+                    method="DELETE",
+                    payload={"symbol": symbol, "orderId": order["orderId"]},
+                )
                 return True
         return False
 
@@ -184,53 +185,125 @@ class BaseDeal(OrderController):
         specifically for streaming saves
         """
 
-        try:
+        bot = encode_json(self.active_bot)
+        if "_id" in bot:
+            bot.pop("_id")
 
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")
-
-            response = self.db_collection.find_one_and_update(
-                {"id": self.active_bot.id},
-                {
-                    "$set": bot,
-                },
-                return_document=ReturnDocument.AFTER,
-            )
-
-        except Exception as error:
-            self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
-            raise StreamingSaveError(error)
+        response = self.db_collection.find_one_and_update(
+            {"id": self.active_bot.id},
+            {
+                "$set": bot,
+            },
+            return_document=ReturnDocument.AFTER,
+        )
 
         return response
 
     def create_new_bot_streaming(self):
         """
-        MongoDB query to save bot using Pydantic
+        Resets bot to initial state and saves it to DB
 
-        This function differs from usual save query in that
-        it returns the saved bot, thus called streaming, it's
-        specifically for streaming saves
+        This function differs from usual create_bot in that
+        it needs to set strategy first (reversal)
+        clear orders, deal and errors,
+        which are not required in new bots,
+        as they initialize with empty values
+        """
+        self.active_bot.id = str(ObjectId())
+        self.active_bot.orders = []
+        self.active_bot.errors = []
+        self.active_bot.created_at = time() * 1000
+        self.active_bot.updated_at = time() * 1000
+        self.active_bot.status = Status.inactive
+        self.active_bot.deal = DealSchema()
+
+        bot = encode_json(self.active_bot)
+        self.db_collection.insert_one(bot)
+        new_bot = self.db_collection.find_one({"id": bot["id"]})
+        bot_class = BotSchema.parse_obj(new_bot)
+
+        # notify the system to update streaming as usual bot actions
+        self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": time()}})
+
+        return bot_class
+
+    def base_order(self):
+        """
+        Required initial order to trigger long strategy bot.
+        Other orders require this to execute,
+        therefore should fail if not successful
+
+        1. Initial base purchase
+        2. Set take_profit
         """
 
-        try:
+        pair = self.active_bot.pair
 
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")
+        # Long position does not need qty in take_profit
+        # initial price with 1 qty should return first match
+        price = float(self.matching_engine(pair, True))
+        qty = round_numbers(
+            (float(self.active_bot.base_order_size) / float(price)),
+            self.qty_precision,
+        )
+        # setup stop_loss_price
+        stop_loss_price = 0
+        if float(self.active_bot.stop_loss) > 0:
+            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
-            bot_response = self.db_collection.insert_one(
-                bot,
+        if self.db_collection.name == "paper_trading":
+            res = self.simulate_order(
+                pair, supress_notation(price, self.price_precision), qty, "BUY"
+            )
+        else:
+            res = self.buy_order(
+                symbol=pair,
+                qty=qty,
+                price=supress_notation(price, self.price_precision),
             )
 
-        except Exception as error:
-            self.update_deal_logs(f"Failed to save bot during streaming updates: {error}")
-            raise StreamingSaveError(error)
+        order_data = OrderSchema(
+            timestamp=res["transactTime"],
+            order_id=res["orderId"],
+            deal_type="base_order",
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=res["price"],
+            qty=res["origQty"],
+            fills=res["fills"],
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
 
-        return bot_response.inserted_id
+        self.active_bot.orders.append(order_data)
+        tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
+
+        self.active_bot.deal = DealSchema(
+            buy_timestamp=res["transactTime"],
+            buy_price=res["price"],
+            buy_total_qty=res["origQty"],
+            current_price=res["price"],
+            take_profit_price=tp_price,
+            stop_loss_price=stop_loss_price,
+        )
+
+        # Activate bot
+        self.active_bot.status = Status.active
+
+        bot = encode_json(self.active_bot)
+        if "_id" in bot:
+            bot.pop("_id")  # _id is what causes conflict not id
+
+        document = self.db_collection.find_one_and_update(
+            {"id": self.active_bot.id},
+            {"$set": bot},
+            return_document=ReturnDocument.AFTER,
+        )
+
+        return document
 
     def dynamic_take_profit(self, current_bot, close_price):
-
         self.active_bot = BotSchema.parse_obj(current_bot)
 
         params = {
@@ -256,8 +329,7 @@ class BaseDeal(OrderController):
                 self.active_bot.deal.trailling_stop_loss_price > 0
                 and self.active_bot.deal.trailling_stop_loss_price
                 > self.active_bot.deal.base_order_price
-                and float(close_price)
-                > self.active_bot.deal.trailling_stop_loss_price
+                and float(close_price) > self.active_bot.deal.trailling_stop_loss_price
                 and (
                     (self.active_bot.strategy == "long" and slope > 0)
                     or (self.active_bot.strategy == "margin_short" and slope < 0)
@@ -278,9 +350,11 @@ class BaseDeal(OrderController):
                 )
                 # deal.sd comparison will prevent it from making trailling_stop_loss too big
                 # and thus losing all the gains
-                if new_trailling_stop_loss_price > float(
-                    self.active_bot.deal.buy_price
-                ) and sd < self.active_bot.deal.sd:
+                if (
+                    new_trailling_stop_loss_price
+                    > float(self.active_bot.deal.buy_price)
+                    and sd < self.active_bot.deal.sd
+                ):
                     self.active_bot.trailling_deviation = volatility * 100
                     self.active_bot.deal.trailling_stop_loss_price = float(
                         close_price
@@ -338,7 +412,7 @@ class BaseDeal(OrderController):
                         # transfer from wallet
                         transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
                         available_balance = self.get_one_balance(quote)
-                        amount_to_transfer = 15 # Min amount
+                        amount_to_transfer = 15  # Min amount
                         if available_balance < 15:
                             amount_to_transfer = available_balance
                         self.transfer_spot_to_isolated_margin(
@@ -346,7 +420,9 @@ class BaseDeal(OrderController):
                             symbol=pair,
                             amount=amount_to_transfer,
                         )
-                        buy_margin_response = self.buy_margin_order(pair, supress_notation(transfer_diff_qty, qty_precision))
+                        buy_margin_response = self.buy_margin_order(
+                            pair, supress_notation(transfer_diff_qty, qty_precision)
+                        )
                         repay_amount, free = self.compute_margin_buy_back(pair)
                         pass
                     if error.code == -2010 or error.code == -1013:
@@ -357,7 +433,9 @@ class BaseDeal(OrderController):
                         if usdt_notional < 15:
                             qty = round_numbers_ceiling(15 / price)
 
-                        buy_margin_response = self.buy_margin_order(pair, supress_notation(qty, qty_precision))
+                        buy_margin_response = self.buy_margin_order(
+                            pair, supress_notation(qty, qty_precision)
+                        )
                         repay_amount, free = self.compute_margin_buy_back(pair)
                         pass
 
@@ -384,7 +462,7 @@ class BaseDeal(OrderController):
                 symbol=pair,
                 amount=self.isolated_balance[0]["baseAsset"]["free"],
             )
-                
+
         if borrowed_amount == 0:
             # Funds are transferred back by now,
             # disabling pair should be done by cronjob,
@@ -395,4 +473,3 @@ class BaseDeal(OrderController):
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
         return buy_margin_response
-

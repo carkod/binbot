@@ -4,7 +4,6 @@ from bots.schemas import BotSchema
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
-from deals.schema import DealSchema, OrderSchema
 from pymongo import ReturnDocument
 from tools.enum_definitions import Status
 from tools.exceptions import (
@@ -58,82 +57,6 @@ class CreateDealController(BaseDeal):
             return None
         qty = round_numbers(balance, self.qty_precision)
         return qty
-
-    def base_order(self):
-        """
-        Required initial order to trigger bot.
-        Other orders require this to execute,
-        therefore should fail if not successful
-
-        1. Initial base purchase
-        2. Set take_profit
-        """
-
-        pair = self.active_bot.pair
-
-        # Long position does not need qty in take_profit
-        # initial price with 1 qty should return first match
-        price = float(self.matching_engine(pair, True))
-        qty = round_numbers(
-            (float(self.active_bot.base_order_size) / float(price)),
-            self.qty_precision,
-        )
-        # setup stop_loss_price
-        stop_loss_price = 0
-        if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
-
-        if self.db_collection.name == "paper_trading":
-            res = self.simulate_order(
-                pair, supress_notation(price, self.price_precision), qty, "BUY"
-            )
-        else:
-            res = self.buy_order(
-                symbol=pair,
-                qty=qty,
-                price=supress_notation(price, self.price_precision),
-            )
-
-        order_data = OrderSchema(
-            timestamp=res["transactTime"],
-            order_id=res["orderId"],
-            deal_type="base_order",
-            pair=res["symbol"],
-            order_side=res["side"],
-            order_type=res["type"],
-            price=res["price"],
-            qty=res["origQty"],
-            fills=res["fills"],
-            time_in_force=res["timeInForce"],
-            status=res["status"],
-        )
-
-        self.active_bot.orders.append(order_data)
-        tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
-
-        self.active_bot.deal = DealSchema(
-            buy_timestamp=res["transactTime"],
-            buy_price=res["price"],
-            buy_total_qty=res["origQty"],
-            current_price=res["price"],
-            take_profit_price=tp_price,
-            stop_loss_price=stop_loss_price,
-        )
-
-        # Activate bot
-        self.active_bot.status = Status.active
-
-        bot = encode_json(self.active_bot)
-        if "_id" in bot:
-            bot.pop("_id")  # _id is what causes conflict not id
-
-        document = self.db_collection.find_one_and_update(
-            {"id": self.active_bot.id},
-            {"$set": bot},
-            return_document=ReturnDocument.AFTER,
-        )
-
-        return document
 
     def take_profit_order(self) -> BotSchema:
         """
@@ -332,6 +255,15 @@ class CreateDealController(BaseDeal):
 
         - If base order deal is not executed, bot is not activated
         """
+        # Check if bot with same pair is already active
+        active_bot = self.db_collection.find_one(
+            {"pair": self.active_bot.pair, "status": Status.active}
+        )
+        if active_bot:
+            raise CreateDealControllerError(
+                f"Bot with pair {self.active_bot.pair} is already active"
+            )
+
         # If there is already a base order do not execute
         base_order_deal = next(
             (

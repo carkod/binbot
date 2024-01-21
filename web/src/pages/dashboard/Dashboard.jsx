@@ -338,7 +338,7 @@ class Dashboard extends React.Component {
                   </div>
                 </Col>
                 <Col lg="9">
-                  {this.props.benchmarkData.dates?.btc && (
+                  {this.props.benchmarkData?.dates && (
                     <PortfolioBenchmarkChart
                       data={this.props.benchmarkData}
                       legend={this.state.lineChartLegend}
@@ -363,19 +363,21 @@ class Dashboard extends React.Component {
               </Row>
               <Row>
                 <Col md="12">
-                  {this.state.netWorth && (
-                    <NetWorthChart data={this.state.netWorth} />
-                  )}
-                  {this.state.dailyPnL && (
-                    <ProfitLossBars data={this.state.dailyPnL} />
-                  )}
-                </Col>
-              </Row>
-              <Row>
-                <Col lg="6" md="12">
-                  {this.props.gainersLosersData && this.props.gainersLosersData.length > 0 && (
-                    <VolumesRankingCard data={this.props.gainersLosersData} title="Today's highest volumes in USDT market"/>
-                  )}
+                  <Row>
+                    <Col md="6">
+                      {this.state.netWorth && (
+                        <NetWorthChart data={this.state.netWorth} />
+                      )}
+                      {this.props.gainersLosersData && this.props.gainersLosersData.length > 0 && (
+                        <VolumesRankingCard data={this.props.gainersLosersData} title="Today's highest volumes in USDT market"/>
+                      )}
+                    </Col>
+                    <Col md="6">
+                      {this.state.dailyPnL && (
+                        <ProfitLossBars data={this.state.dailyPnL} />
+                      )}
+                    </Col>
+                  </Row>
                 </Col>
               </Row>
             </>
@@ -398,13 +400,13 @@ const mapStateToProps = (s) => {
   const { data: balance_raw } = s.balanceRawReducer;
   const { data: gainersLosersData } = s.gainersLosersReducer;
   const { data: gainersLosersSeries } = s.gainersLosersSeriesReducer;
-
   const {
     data: benchmarkData,
     btcPrices,
     usdtBalanceSeries,
     dates,
   } = s.btcBenchmarkReducer;
+
   let percentageRevenue = 0;
   let revenue = 0;
 
