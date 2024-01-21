@@ -86,3 +86,6 @@ class TerminateStreaming(Exception):
     """
 
     pass
+
+class MaxBorrowLimit(BinbotErrors):
+    pass

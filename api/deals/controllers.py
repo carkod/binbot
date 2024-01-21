@@ -5,7 +5,7 @@ from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
 from pymongo import ReturnDocument
-from tools.enum_definitions import Status
+from tools.enum_definitions import Status, Strategy
 from tools.exceptions import (
     TakeProfitError,
 )
@@ -275,7 +275,7 @@ class CreateDealController(BaseDeal):
         )
 
         if not base_order_deal:
-            if self.active_bot.strategy == "margin_short":
+            if self.active_bot.strategy == Strategy.margin_short:
                 self.active_bot = MarginDeal(
                     bot=self.active_bot, db_collection_name=self.db_collection.name
                 ).margin_short_base_order()

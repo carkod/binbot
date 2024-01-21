@@ -1,14 +1,15 @@
 import json
 import logging
-from apis import BinanceApi
+from deals.base import BaseDeal
+from tools.enum_definitions import Status
 from db import setup_db
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from time import time
 from streaming.socket_client import SpotWebsocketStreamClient
-from tools.exceptions import TerminateStreaming
+from tools.exceptions import BinanceErrors
 
-class StreamingController(BinanceApi):
+class StreamingController(BaseDeal):
     def __init__(self):
         # For some reason, db connections internally only work with
         # db:27017 instead of localhost=:2018
@@ -59,6 +60,9 @@ class StreamingController(BinanceApi):
             margin_deal = MarginDeal(current_bot, db_collection_name=db_collection_name)
             try:
                 margin_deal.streaming_updates(close_price)
+            except BinanceErrors as error:
+                if error.code in (-2010, -1013):
+                    margin_deal.update_deal_logs(error.message)
             except Exception as error:
                 logging.info(error)
                 margin_deal.update_deal_logs(error)
@@ -73,6 +77,11 @@ class StreamingController(BinanceApi):
                 )
                 try:
                     spot_long_deal.streaming_updates(close_price, open_price)
+                except BinanceErrors as error:
+                    if error.code in (-2010, -1013):
+                        spot_long_deal.update_deal_logs(error.message)
+                        current_bot["status"] = Status.error
+                        self.save_bot_streaming()
                 except Exception as error:
                     logging.info(error)
                     spot_long_deal.update_deal_logs(error)
@@ -115,10 +124,10 @@ class StreamingController(BinanceApi):
             open_price = result["k"]["o"]
             symbol = result["k"]["s"]
             current_bot = self.streaming_db.bots.find_one(
-                {"pair": symbol, "status": "active"}
+                {"pair": symbol, "status": Status.active}
             )
             current_test_bot = self.streaming_db.paper_trading.find_one(
-                {"pair": symbol, "status": "active"}
+                {"pair": symbol, "status": Status.active}
             )
             if current_bot:
                 self.execute_strategies(

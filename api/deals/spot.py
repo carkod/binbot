@@ -58,6 +58,7 @@ class SpotLongDeal(BaseDeal):
         - Close current opened take profit order
         - Deactivate bot
         """
+        self.update_deal_logs("Executing stop loss...")
         if self.db_collection.name == "paper_trading":
             qty = self.active_bot.deal.buy_total_qty
         else:
@@ -97,13 +98,7 @@ class SpotLongDeal(BaseDeal):
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
         else:
-            try:
-                res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
-            except Exception as error:
-                self.update_deal_logs(
-                    f"Error trying to open new stop_limit order {error}"
-                )
-                return
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         stop_loss_order = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -166,14 +161,11 @@ class SpotLongDeal(BaseDeal):
 
         # Dispatch real order
         else:
-            try:
-                # No price means market order
-                res = self.sell_order(
-                    symbol=self.active_bot.pair,
-                    qty=qty,
-                )
-            except Exception as err:
-                raise TraillingProfitError(err)
+            # No price means market order
+            res = self.sell_order(
+                symbol=self.active_bot.pair,
+                qty=qty,
+            )
 
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -199,7 +191,6 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.status = Status.completed
         msg = f"Completed take profit after failing to break trailling {self.active_bot.pair}"
         self.active_bot.errors.append(msg)
-        print(msg)
 
         bot = self.save_bot_streaming()
         return bot
@@ -366,6 +357,8 @@ class SpotLongDeal(BaseDeal):
             self.execute_stop_loss(close_price)
             if self.active_bot.margin_short_reversal:
                 self.switch_margin_short(float(close_price))
+            
+            self.update_required()
             return
 
         # Take profit trailling
@@ -421,7 +414,7 @@ class SpotLongDeal(BaseDeal):
                         f"{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
                     )
 
-            self.save_bot_streaming()
+                self.save_bot_streaming()
 
             # Direction 2 (downward): breaking the trailling_stop_loss
             # Make sure it's red candlestick, to avoid slippage loss

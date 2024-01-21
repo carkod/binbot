@@ -3,14 +3,12 @@ import logging
 from time import time
 from datetime import datetime
 from urllib.error import HTTPError
-from deals.schema import DealSchema
 from tools.enum_definitions import Strategy
 from bots.schemas import BotSchema
 from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
-from pydantic import ValidationError
-from tools.exceptions import MarginLoanNotFound, QuantityTooLow, BinanceErrors
+from tools.exceptions import BinanceErrors, MaxBorrowLimit
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 
 
@@ -136,9 +134,20 @@ class MarginDeal(BaseDeal):
         logging.info("Initializating margin_short tasks for real bots trading")
         # Check margin account balance first
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
+        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
         # always enable, it doesn't cause errors
         try:
             self.enable_isolated_margin_account(symbol=self.active_bot.pair)
+            borrow_res = self.get_max_borrow(asset=asset, isolated_symbol=self.active_bot.pair)
+            error_msg = f"Checking borrowable amount: {borrow_res['amount']},  {borrow_res['borrowLimit']}"
+            self.update_deal_logs(error_msg)
+            logging.error(error_msg)
+
+            if borrow_res["amount"] < self.active_bot.base_order_size:
+                self.update_deal_logs(
+                    f"Binance doesn't provide {asset} to borrow"
+                )
+                raise MaxBorrowLimit("Hit Binance's max loan limit due to demand")
         except BinanceErrors as error:
             if error.code == -11001 or error.code == -3052:
                 # Isolated margin account needs to be activated with a transfer
@@ -147,8 +156,6 @@ class MarginDeal(BaseDeal):
                     symbol=self.active_bot.pair,
                     amount="1",
                 )
-
-        transfer_qty = float(self.active_bot.base_order_size)
 
         # Given USDT amount we want to buy,
         # how much can we buy?
@@ -166,7 +173,7 @@ class MarginDeal(BaseDeal):
                 self.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
-                    amount=transfer_qty,
+                    amount=self.active_bot.base_order_size,
                 )
             except BinanceErrors as error:
                 if error.code == -3041:
@@ -176,7 +183,6 @@ class MarginDeal(BaseDeal):
                     self.terminate_failed_transactions()
                     raise MarginShortError("Isolated margin not available")
 
-        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
         self.create_margin_loan(
             asset=asset, symbol=self.active_bot.pair, amount=qty
         )
@@ -194,7 +200,6 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.margin_short_base_order = qty
 
         # Estimate interest to add to total cost
-        asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
         # This interest rate is much more accurate than any of the others
         hourly_fees = self.signed_request(
             url=self.isolated_hourly_interest,
@@ -435,6 +440,8 @@ class MarginDeal(BaseDeal):
             f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}"
         )
 
+        self.save_bot_streaming()
+
         # Direction 1.1: downward trend (short)
         # Breaking trailling
         if (
@@ -485,36 +492,11 @@ class MarginDeal(BaseDeal):
             logging.info(
                 f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}"
             )
-            try:
-                self.execute_stop_loss()
-            except MarginLoanNotFound as error:
-                self.update_deal_logs(
-                    f"{error.message}"
-                )
-                self.active_bot.status = Status.error
-                return
+            self.execute_stop_loss()
+            if self.active_bot.margin_short_reversal:
+                self.switch_to_long_bot()
 
-            if (
-                hasattr(self.active_bot, "margin_short_reversal")
-                and self.active_bot.margin_short_reversal
-            ):
-                self.switch_to_long_bot(price)
-
-        try:
-            self.save_bot_streaming()
-            self.update_required()
-
-        except ValidationError as error:
-            self._append_errors(f"margin_short steaming update error: {error}")
-            return
-        except (TypeError, AttributeError) as error:
-            message = str(";".join(error.args))
-            self._append_errors(f"margin_short steaming update error: {message}")
-            return
-        except Exception as error:
-            self._append_errors(f"margin_short steaming update error: {error}")
-            return
-
+        self.update_required()
         return
 
     def set_margin_short_stop_loss(self):
@@ -557,17 +539,10 @@ class MarginDeal(BaseDeal):
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
-            try:
-
-                # Cancel orders first
-                # paper_trading doesn't have real orders so no need to check
-                self.cancel_open_orders("stop_loss")
-                res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
-
-            except BinanceErrors as error:
-                if error.code in (-2010, -1013):
-                    self.update_deal_logs(error.message)
-                    return
+            # Cancel orders first
+            # paper_trading doesn't have real orders so no need to check
+            self.cancel_open_orders("stop_loss")
+            res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
 
         stop_loss_order = MarginOrderSchema(
             timestamp=res["transactTime"],
@@ -597,6 +572,7 @@ class MarginDeal(BaseDeal):
 
         msg = f"Completed Stop loss order"
         self.active_bot.errors.append(msg)
+        self.active_bot.status = Status.completed
         bot = self.save_bot_streaming()
 
         return
@@ -620,20 +596,8 @@ class MarginDeal(BaseDeal):
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
-            try:
-                res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
-            except QuantityTooLow as error:
-                # Delete incorrectly activated or old bots
-                logging.info(f"Deleted obsolete bot {self.active_bot.pair}")
-            except BinanceErrors as error:
-                if error.code == -2010:
-                    self.update_deal_logs(error.message)
-                
-            except Exception as error:
-                self._append_errors(
-                    f"Error trying to open new stop_limit order {error}"
-                )
-                return
+            res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
+
         if res:
         # No res means it wasn't properly closed/completed
 
@@ -670,7 +634,7 @@ class MarginDeal(BaseDeal):
 
         return
 
-    def switch_to_long_bot(self, new_base_order_price):
+    def switch_to_long_bot(self):
         """
         Switch to long strategy.
         Doing some parts of open_deal from scratch
@@ -682,7 +646,7 @@ class MarginDeal(BaseDeal):
         2. Calculate take_profit_price and stop_loss_price as usual
         3. Create deal
         """
-        self.update_deal_logs("Resetting bot for long strategy...")
+        self.update_deal_logs("Switching margin_short to long strategy")
         self.active_bot.strategy = Strategy.long
         self.active_bot = self.create_new_bot_streaming()
 
