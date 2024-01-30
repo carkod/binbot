@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 from time import sleep
 
 from bson import json_util
@@ -55,8 +56,22 @@ def handle_binance_errors(response: Response) -> Response:
     """
     content = response.json()
 
+    # Binance doesn't seem to reach 418 or 429 even after 2000 weight requests
+    if (
+        response.headers.get("x-mbx-used-weight-1m")
+        and int(response.headers.get("x-mbx-used-weight-1m")) > 2000
+    ):
+        logging.warning("Request weight limit prevention pause, waiting 1 min")
+        sleep(120)
+
+    if response.status_code == 418 or response.status_code == 429:
+        print("Request weight limit hit, ban will come soon, waiting 1 hour")
+        sleep(3600)
+
     if response.status_code == 404:
-        raise HTTPError()
+        error = response.json()
+        raise HTTPError(error)
+    
     # Show error message for bad requests
     if response.status_code >= 400:
         error = response.json()
@@ -64,18 +79,6 @@ def handle_binance_errors(response: Response) -> Response:
             raise BinanceErrors(error["msg"], error["code"])
         if "error" in error:
             raise BinbotErrors(error["message"])
-
-    if response.status_code == 418 or response.status_code == 429:
-        print("Request weight limit hit, ban will come soon, waiting 1 hour")
-        sleep(3600)
-
-    # Calculate request weights and pause half of the way (1200/2=600)
-    if (
-        "x-mbx-used-weight-1m" in response.headers
-        and int(response.headers["x-mbx-used-weight-1m"]) > 600
-    ):
-        print("Request weight limit prevention pause, waiting 1 min")
-        sleep(120)
 
     # Binbot errors
     if content and "error" in content and content["error"] == 1:
