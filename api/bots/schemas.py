@@ -92,9 +92,9 @@ class BotSchema(BaseModel):
 
     @validator("errors")
     def check_errors_format(cls, v: list[str]):
-        if isinstance(v, list):
-            return []
-        return []
+        if not isinstance(v, list):
+            raise ValueError(f'Errors must be a list of strings')
+        return v
 
     class Config:
         use_enum_values = True

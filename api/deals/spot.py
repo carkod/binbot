@@ -25,9 +25,10 @@ class SpotLongDeal(BaseDeal):
 
     def __init__(self, bot, db_collection_name: str) -> None:
         # Inherit from parent class
+        self.db_collection_name = db_collection_name
         super().__init__(bot, db_collection_name)
 
-    def switch_margin_short(self, new_base_order_price: float):
+    def switch_margin_short(self):
         """
         Switch to short strategy.
         Doing some parts of open_deal from scratch
@@ -44,7 +45,7 @@ class SpotLongDeal(BaseDeal):
         self.active_bot = self.create_new_bot_streaming()
 
         self.active_bot = MarginDeal(
-            bot=self.active_bot, db_collection_name=self.db_collection.name
+            bot=self.active_bot, db_collection_name=self.db_collection_name
         ).margin_short_base_order()
 
         self.save_bot_streaming()
@@ -356,7 +357,7 @@ class SpotLongDeal(BaseDeal):
         ) > float(close_price):
             self.execute_stop_loss(close_price)
             if self.active_bot.margin_short_reversal:
-                self.switch_margin_short(float(close_price))
+                self.switch_margin_short()
             
             self.update_required()
             return

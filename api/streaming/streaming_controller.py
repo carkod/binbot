@@ -7,7 +7,7 @@ from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from time import time
 from streaming.socket_client import SpotWebsocketStreamClient
-from tools.exceptions import BinanceErrors
+from tools.exceptions import BinanceErrors, TerminateStreaming
 
 class StreamingController(BaseDeal):
     def __init__(self):
@@ -57,7 +57,7 @@ class StreamingController(BaseDeal):
         """
         # Margin short
         if current_bot["strategy"] == "margin_short":
-            margin_deal = MarginDeal(current_bot, db_collection_name=db_collection_name)
+            margin_deal = MarginDeal(current_bot, db_collection_name)
             try:
                 margin_deal.streaming_updates(close_price)
             except BinanceErrors as error:
@@ -67,13 +67,14 @@ class StreamingController(BaseDeal):
                 logging.info(error)
                 margin_deal.update_deal_logs(error)
                 # Go to _update_required
+                self._update_required()
                 pass
 
         else:
             # Long strategy starts
             if current_bot["strategy"] == "long":
                 spot_long_deal = SpotLongDeal(
-                    current_bot, db_collection_name=db_collection_name
+                    current_bot, db_collection_name
                 )
                 try:
                     spot_long_deal.streaming_updates(close_price, open_price)
@@ -86,9 +87,9 @@ class StreamingController(BaseDeal):
                     logging.info(error)
                     spot_long_deal.update_deal_logs(error)
                     # Go to _update_required
+                    self._update_required()
                     pass
 
-        self._update_required()
         pass
 
     def on_error(self, socket, msg):

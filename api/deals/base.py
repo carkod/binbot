@@ -4,7 +4,7 @@ import numpy
 import logging
 
 from time import time
-
+from db import setup_db
 from orders.controller import OrderController
 from bots.schemas import BotSchema
 from pymongo import ReturnDocument
@@ -30,6 +30,7 @@ class BaseDeal(OrderController):
         self.active_bot = BotSchema.parse_obj(bot)
         self.symbol = self.active_bot.pair
         super().__init__(symbol=self.active_bot.pair)
+        self.db = setup_db()
         self.db_collection = self.db[db_collection_name]
         if self.active_bot.strategy == Strategy.margin_short:
             self.isolated_balance: float = self.get_isolated_balance(self.symbol)
@@ -42,6 +43,15 @@ class BaseDeal(OrderController):
 
     def generate_id(self):
         return uuid.uuid4().hex
+
+    def update_deal_logs(self, msg):
+        result = self.db_collection.find_one_and_update(
+            {"id": self.active_bot.id},
+            {"$push": {"errors": str(msg)}},
+            return_document=ReturnDocument.AFTER,
+        )
+        self.active_bot.errors = result["errors"]
+        return result
 
     def compute_qty(self, pair):
         """
@@ -120,13 +130,6 @@ class BaseDeal(OrderController):
             "fills": [],
         }
         return response_order
-
-    def update_deal_logs(self, msg):
-        response = self.db_collection.update_one(
-            {"id": self.active_bot.id},
-            {"$push": {"errors": msg}},
-        )
-        return response
 
     def replace_order(self, cancel_order_id):
         payload = [

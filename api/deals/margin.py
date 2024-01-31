@@ -17,18 +17,9 @@ class MarginShortError(Exception):
 
 
 class MarginDeal(BaseDeal):
-    def __init__(self, bot, db_collection_name: str) -> None:
+    def __init__(self, bot, db_collection_name) -> None:
         # Inherit from parent class
-        super().__init__(bot, db_collection_name)
-
-    def _append_errors(self, error):
-        """
-        Sets errors to be stored later with save_bot
-        as opposed to update_deal_errors which immediately saves
-
-        This option consumes less memory, as we don't make a DB transaction
-        """
-        self.active_bot.errors.append(error)
+        super().__init__(bot, db_collection_name=db_collection_name)
 
     def simulate_margin_order(self, qty, side):
         price = float(self.matching_engine(self.active_bot.pair, True, qty))
@@ -97,9 +88,9 @@ class MarginDeal(BaseDeal):
             try:
                 # First cancel old order to unlock balance
                 self.cancel_margin_order(symbol=self.active_bot.pair, order_id=order_id)
-                self._append_errors("Old take profit order cancelled")
+                self.update_deal_logs("Old take profit order cancelled")
             except HTTPError as error:
-                self._append_errors("Take profit order not found, no need to cancel")
+                self.update_deal_logs("Take profit order not found, no need to cancel")
                 return
 
             except Exception as error:
@@ -681,9 +672,7 @@ class MarginDeal(BaseDeal):
                 )
                 bot = self.save_bot_streaming()
                 self.active_bot = BotSchema.parse_obj(bot)
-                logging.info(
-                    f"{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB"
-                )
+                self.update_deal_logs(f"{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB")
 
         if self.active_bot.deal.trailling_profit_price == 0:
             # Current take profit + next take_profit
@@ -693,7 +682,7 @@ class MarginDeal(BaseDeal):
             )
             self.active_bot.deal.trailling_profit_price = trailling_price
             logging.info(
-                f"{self.active_bot.pair} Updated (Didn't break trailling), updating trailling price points (short)"
+                f"{self.active_bot.pair} Updated (Didn't break trailling), updating trailling price (short)"
             )
 
         # Keep trailling_stop_loss up to date
@@ -710,7 +699,6 @@ class MarginDeal(BaseDeal):
             # Reset stop_loss_price to avoid confusion in front-end
             self.active_bot.deal.stop_loss_price = 0
             milestone_msg = f"{self.active_bot.pair} Updating after broken first trailling_profit (short)"
-            logging.info(milestone_msg)
             self.update_deal_logs(milestone_msg)
 
         # Direction 1 (downward): breaking the current trailling
