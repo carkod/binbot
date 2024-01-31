@@ -59,7 +59,7 @@ def handle_binance_errors(response: Response) -> Response:
     # Binance doesn't seem to reach 418 or 429 even after 2000 weight requests
     if (
         response.headers.get("x-mbx-used-weight-1m")
-        and int(response.headers.get("x-mbx-used-weight-1m")) > 2000
+        and int(response.headers.get("x-mbx-used-weight-1m")) > 4000
     ):
         logging.warning("Request weight limit prevention pause, waiting 1 min")
         sleep(120)

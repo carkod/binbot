@@ -1,4 +1,5 @@
 import requests
+import logging
 
 from time import time
 from datetime import datetime
@@ -187,12 +188,15 @@ class Bot(Account):
                 ).open_deal()
                 return json_response_message("Successfully activated bot!")
             except BinanceErrors as error:
+                logging.info(error)
                 self.post_errors_by_id(botId, error.message)
                 return json_response_error(error.message)
             except BinbotErrors as error:
+                logging.info(error)
                 self.post_errors_by_id(botId, error.message)
                 return json_response_error(error.message)
             except Exception as error:
+                self.post_errors_by_id(botId, error)
                 resp = json_response_error(f"Unable to activate bot: {error}")
                 return resp
         else:
@@ -360,17 +364,10 @@ class Bot(Account):
         Directly post errors to Bot
         which should show in the BotForm page in Web
         """
-        try:
-            operation = {"$push": {"errors": reported_error}}
-            if isinstance(reported_error, list):
-                operation = {"$push": {"errors": { "$each": reported_error }}}
-            self.db_collection.update_one(
-                {"id": bot_id}, operation
-            )
-            return json_response(
-                {"message": "Successfully submitted bot errors", "botId": bot_id}
-            )
-        except Exception as error:
-            resp = json_response({"message": f"Failed to submit bot errors: {error}"})
-            
-        return resp
+        operation = {"$push": {"errors": reported_error}}
+        if isinstance(reported_error, list):
+            operation = {"$push": {"errors": { "$each": reported_error }}}
+        self.db_collection.update_one(
+            {"id": bot_id}, operation
+        )
+        pass

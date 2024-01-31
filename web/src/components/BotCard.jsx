@@ -217,15 +217,6 @@ export default function BotCard({
               </Row>
               <Row>
                 <Col md="7" xs="7">
-                  <p className="card-category"># Safety Orders</p>
-                </Col>
-                <Col md="5" xs="5">
-                  <p className="card-category">{x.safety_orders.length}</p>
-                </Col>
-              </Row>
-
-              <Row>
-                <Col md="7" xs="7">
                   <p className="card-category">Open @</p>
                 </Col>
                 <Col md="5" xs="5">
