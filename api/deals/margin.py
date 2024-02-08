@@ -122,7 +122,7 @@ class MarginDeal(BaseDeal):
         2. create loan with qty given by market
         3. borrow 2.5x to do base order
         """
-        logging.info("Initializating margin_short tasks for real bots trading")
+        self.update_deal_logs("Initializating margin_short tasks for real bots trading")
         # Check margin account balance first
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
         asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
@@ -132,13 +132,6 @@ class MarginDeal(BaseDeal):
             borrow_res = self.get_max_borrow(asset=asset, isolated_symbol=self.active_bot.pair)
             error_msg = f"Checking borrowable amount: {borrow_res['amount']},  {borrow_res['borrowLimit']}"
             self.update_deal_logs(error_msg)
-            logging.error(error_msg)
-
-            if borrow_res["amount"] < self.active_bot.base_order_size:
-                self.update_deal_logs(
-                    f"Binance doesn't provide {asset} to borrow"
-                )
-                raise MaxBorrowLimit("Hit Binance's max loan limit due to demand")
         except BinanceErrors as error:
             if error.code == -11001 or error.code == -3052:
                 # Isolated margin account needs to be activated with a transfer
@@ -361,7 +354,6 @@ class MarginDeal(BaseDeal):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        self.update_deal_logs(f"Opening margin_short_base_order")
         initial_price = float(self.matching_engine(self.active_bot.pair, False))
 
         if self.db_collection.name == "bots":

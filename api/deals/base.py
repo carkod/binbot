@@ -473,6 +473,7 @@ class BaseDeal(OrderController):
             if hasattr(self, "active_bot"):
                 self.active_bot.status = Status.completed
 
+            self.disable_isolated_margin_account(pair)
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
         return buy_margin_response
