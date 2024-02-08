@@ -19,6 +19,7 @@ import {
   getGainersLosersSeries,
 } from "./saga";
 import VolumesRankingCard from "../../components/VolumesRanking";
+import { getBots } from "../bots/actions";
 
 class Dashboard extends React.Component {
   constructor(props) {
@@ -63,6 +64,9 @@ class Dashboard extends React.Component {
     this.props.getGainersLosers();
     this.props.getGainersLosersSeries();
     this.props.getBenchmarkData();
+    this.props.getBots({
+      status: "active"
+    });
   };
 
   componentDidUpdate = (p, s) => {
@@ -223,7 +227,7 @@ class Dashboard extends React.Component {
   };
 
   render() {
-    const { balanceEstimate, load, gainersLosersSeries } = this.props;
+    const { balanceEstimate, load, gainersLosersSeries, activeBots } = this.props;
     return (
       <>
         <div className="content">
@@ -335,6 +339,53 @@ class Dashboard extends React.Component {
                         </Row>
                       </CardFooter>
                     </Card>
+                    <Card className="card-stats">
+                      <CardBody>
+                        <Row>
+                          <Col md="12">
+                            {activeBots && (
+                              <div className="stats">
+                                <Row>
+                                  <Col md="4" xs="5">
+                                    <div className="icon-big text-center icon-warning">
+                                    <i className="nc-icon nc-laptop text-success" />
+                                    </div>
+                                  </Col>
+                                  <Col md="8" xs="7">
+                                    <p className="card-category u-text-right">
+                                      Active bots
+                                    </p>
+                                    <CardTitle
+                                      tag="h3"
+                                      className="card-title numbers"
+                                    >
+                                      {activeBots.length}{" "}
+                                      <br />
+                                    </CardTitle>
+                                  </Col>
+                                </Row>
+                              </div>
+                            )}
+                          </Col>
+                        </Row>
+                      </CardBody>
+                      {balanceEstimate && (
+                        <CardFooter>
+                          <hr />
+                          <Row>
+                            <Col>
+                              <p className="card-category">Left to allocate:</p>
+                            </Col>
+                            <Col>
+                              <p className="card-category u-text-right">
+                                {balanceEstimate.fiat_left}{" "}
+                                {balanceEstimate.asset}
+                              </p>
+                            </Col>
+                          </Row>
+                        </CardFooter>
+                      )}
+                    </Card>
                   </div>
                 </Col>
                 <Col lg="9">
@@ -406,6 +457,7 @@ const mapStateToProps = (s) => {
     usdtBalanceSeries,
     dates,
   } = s.btcBenchmarkReducer;
+  const { bots } = s.botReducer;
 
   let percentageRevenue = 0;
   let revenue = 0;
@@ -428,6 +480,7 @@ const mapStateToProps = (s) => {
     },
     percentageRevenue: percentageRevenue,
     revenue: revenue,
+    activeBots: bots,
   };
 };
 
@@ -439,4 +492,5 @@ export default connect(mapStateToProps, {
   getGainersLosersSeries,
   getBenchmarkData,
   getBenchmarkUsdt,
+  getBots,
 })(Dashboard);
