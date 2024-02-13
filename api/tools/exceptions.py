@@ -1,7 +1,3 @@
-class IsolateBalanceError(Exception):
-    def __init__(self, message) -> None:
-        self.message = message
-
 
 class BinanceErrors(Exception):
     def __init__(self, msg, code):
@@ -12,8 +8,6 @@ class BinanceErrors(Exception):
 
     def __str__(self) -> str:
         return f"Binance Error: {self.code} {self.message}"
-
-
 class InvalidSymbol(BinanceErrors):
     pass
 
@@ -30,6 +24,10 @@ class BinbotErrors(Exception):
 
     def __str__(self) -> str:
         return f"Binbot error: {self.message}"
+
+
+class IsolateBalanceError(BinbotErrors):
+    pass
 
 
 class QuantityTooLow(BinbotErrors):
@@ -85,4 +83,7 @@ class TerminateStreaming(Exception):
     overloading the server with reloads
     """
 
+    pass
+
+class MaxBorrowLimit(BinbotErrors):
     pass

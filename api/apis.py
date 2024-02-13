@@ -115,7 +115,7 @@ class BinanceApi:
     def transfer_isolated_margin_to_spot(self, asset, symbol, amount):
         return self.signed_request(self.margin_isolated_transfer_url, method="POST", payload={"transFrom": "ISOLATED_MARGIN", "transTo": "SPOT", "asset": asset, "symbol": symbol, "amount": amount})
 
-    def transfer_spot_to_isolated_margin(self, asset, symbol, amount):
+    def transfer_spot_to_isolated_margin(self, asset: str, symbol: str, amount: str):
         return self.signed_request(self.margin_isolated_transfer_url, method="POST", payload={"transFrom": "SPOT", "transTo": "ISOLATED_MARGIN", "asset": asset, "symbol": symbol, "amount": amount})
 
     def create_margin_loan(self, asset, symbol, amount, isIsolated=True):

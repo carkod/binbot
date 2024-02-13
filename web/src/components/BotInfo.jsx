@@ -27,7 +27,7 @@ const renderSellTimestamp = (bot) => {
 };
 
 export default function BotInfo({ bot }) {
-  const [showOrderInfo, toggleOrderInfo] = useState(true)
+  const [showOrderInfo, toggleOrderInfo] = useState(bot.orders?.length > 0)
   return (
     <Card>
       <CardHeader className="u-space-between">

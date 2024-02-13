@@ -347,7 +347,10 @@ class Assets(BaseDeal):
         """
         data = self.signed_request(url=self.account_url)
         assets = []
-        self.exception_list = ["USDT", "NFT", "BNB"]
+        resp = json_response_error("Amount of assets in balance is low. Transfer not needed.")
+
+        if len(self.exception_list) == 0:
+            self.exception_list = ["USDT", "NFT", "BNB"]
 
         active_bots = list(self.db.bots.find({"status": Status.active}))
         for bot in active_bots:
@@ -363,19 +366,7 @@ class Assets(BaseDeal):
                 self.transfer_dust(assets)
                 resp = json_response_message("Sucessfully cleaned balance.")
             except BinanceErrors as error:
-                msg, code = error
-                if code == -5005:
-                    for item in assets:
-                        for string in msg:
-                            if string in item:
-                                self.exception_list = item
-                                break
-
-                    self.clean_balance_assets()
-                else:
-                    resp = json_response_error(f"Failed to clean balance: {error}")
-        else:
-            resp = json_response_error("Amount of assets in balance is low. Transfer not needed.")
+                resp = json_response_error(f"Failed to clean balance: {error}")
 
         return resp
 
@@ -476,7 +467,7 @@ class Assets(BaseDeal):
                             losers_count += 1
 
                         if float(crypto['volume']) > 0:
-                            total_volume += float(crypto['volume'])
+                            total_volume += float(crypto['volume']) * float(crypto['price'])
 
                 market_domination_series.dates.append(item["time"])
                 market_domination_series.gainers_percent.append(gainers_percent)

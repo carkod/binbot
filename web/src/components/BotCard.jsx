@@ -198,37 +198,28 @@ export default function BotCard({
           <Col md="12" xs="12">
             <div className="stats">
               <Row>
-                <Col md="7">
+                <Col md="7" xs="7">
                   <p className="card-category">Mode</p>
                 </Col>
-                <Col md="5">
+                <Col md="5" xs="5">
                   <p className="card-category capitalize">
                     {!checkValue(x.mode) ? x.mode : "Unknown"}
                   </p>
                 </Col>
               </Row>
               <Row>
-                <Col md="7">
+                <Col md="7" xs="7">
                   <p className="card-category">Strategy</p>
                 </Col>
-                <Col md="5">
+                <Col md="5" xs="5">
                   <p className="card-category capitalize">{x.strategy}</p>
                 </Col>
               </Row>
               <Row>
-                <Col md="7">
-                  <p className="card-category"># Safety Orders</p>
-                </Col>
-                <Col md="5">
-                  <p className="card-category">{x.safety_orders.length}</p>
-                </Col>
-              </Row>
-
-              <Row>
-                <Col md="7">
+                <Col md="7" xs="7">
                   <p className="card-category">Open @</p>
                 </Col>
-                <Col md="5">
+                <Col md="5" xs="5">
                   <p className="card-category">
                     {(x.deal?.buy_price && x.deal.buy_price.toFixed(6)) || (x.deal?.buy_total_qty)}
                   </p>
@@ -236,20 +227,20 @@ export default function BotCard({
               </Row>
 
               <Row>
-                <Col md="7">
+                <Col md="7" xs="7">
                   <p className="card-category">Take profit</p>
                 </Col>
-                <Col md="5">
+                <Col md="5" xs="5">
                   <p className="card-category">{x.take_profit + "%"}</p>
                 </Col>
               </Row>
 
               {x.trailling && (
                 <Row>
-                  <Col md="7">
+                  <Col md="7" xs="7">
                     <p className="card-category">Trailling loss</p>
                   </Col>
-                  <Col md="5">
+                  <Col md="5" xs="5">
                     <p className="card-category">
                       {roundDecimals(x.trailling_deviation) + "%"}
                     </p>
@@ -259,10 +250,10 @@ export default function BotCard({
 
               {parseInt(x.stop_loss) > 0 && (
                 <Row>
-                  <Col md="7">
+                  <Col md="7" xs="7">
                     <p className="card-category">Stop loss</p>
                   </Col>
-                  <Col md="5">
+                  <Col md="5" xs="5">
                     <p className="card-category">{x.stop_loss + "%"}</p>
                   </Col>
                 </Row>
@@ -270,10 +261,10 @@ export default function BotCard({
 
               {parseFloat(x.commissions) > 0 && (
                 <Row>
-                  <Col md="7">
+                  <Col md="7" xs="7">
                     <p className="card-category">Comissions</p>
                   </Col>
-                  <Col md="5">
+                  <Col md="5" xs="5">
                     <p className="card-category">{`${x.commissions} BNB`}</p>
                   </Col>
                 </Row>
@@ -283,10 +274,10 @@ export default function BotCard({
             {!checkValue(x.deal?.buy_timestamp) &&
             !checkValue(x.deal?.sell_timestamp) ? (
               <Row>
-                <Col md="7">
+                <Col md="7" xs="7">
                   <p className="card-category">Duration</p>
                 </Col>
-                <Col md="5">
+                <Col md="5" xs="5">
                   <p className="card-category">{renderSellTimestamp(x)}</p>
                 </Col>
               </Row>
