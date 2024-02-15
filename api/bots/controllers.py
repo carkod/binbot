@@ -131,8 +131,8 @@ class Bot(Account):
 
         except RequestValidationError as error:
             resp = json_response_error(f"Failed to create new bot: {error}")
-        except Exception as e:
-            resp = json_response_error(f"Failed to create new bot: {e}")
+            pass
+
         return resp
 
     def edit(self, botId, data: BotSchema):
@@ -156,9 +156,8 @@ class Bot(Account):
             )
         except RequestValidationError as e:
             resp = json_response_error(f"Failed validation: {e}")
-        except Exception as e:
-            resp = json_response_error(f"Failed to create new bot: {e}")
-        
+            pass
+
         self._update_required()
         return resp
 
