@@ -227,7 +227,7 @@ class Dashboard extends React.Component {
   };
 
   render() {
-    const { balanceEstimate, load, gainersLosersSeries, activeBots } = this.props;
+    const { balanceEstimate, load, gainersLosersSeries, activeBots, errorBots } = this.props;
     return (
       <>
         <div className="content">
@@ -369,22 +369,19 @@ class Dashboard extends React.Component {
                           </Col>
                         </Row>
                       </CardBody>
-                      {balanceEstimate && (
-                        <CardFooter>
-                          <hr />
-                          <Row>
-                            <Col>
-                              <p className="card-category">Left to allocate:</p>
-                            </Col>
-                            <Col>
-                              <p className="card-category u-text-right">
-                                {balanceEstimate.fiat_left}{" "}
-                                {balanceEstimate.asset}
-                              </p>
-                            </Col>
-                          </Row>
-                        </CardFooter>
-                      )}
+                      <CardFooter>
+                        <hr />
+                        <Row>
+                          <Col>
+                            <p className="card-category">Errors:</p>
+                          </Col>
+                          <Col>
+                            <p className="card-category u-text-right">
+                            {errorBots.length}{" "}
+                            </p>
+                          </Col>
+                        </Row>
+                      </CardFooter>
                     </Card>
                   </div>
                 </Col>
@@ -457,7 +454,7 @@ const mapStateToProps = (s) => {
     usdtBalanceSeries,
     dates,
   } = s.btcBenchmarkReducer;
-  const { bots } = s.botReducer;
+  const { bots, errorBots } = s.botReducer;
 
   let percentageRevenue = 0;
   let revenue = 0;
@@ -481,6 +478,7 @@ const mapStateToProps = (s) => {
     percentageRevenue: percentageRevenue,
     revenue: revenue,
     activeBots: bots,
+    errorBots: errorBots,
   };
 };
 
