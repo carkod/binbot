@@ -3,7 +3,7 @@ import logging
 from time import time
 from datetime import datetime
 from urllib.error import HTTPError
-from tools.enum_definitions import Strategy
+from tools.enum_definitions import CloseConditions, Strategy
 from bots.schemas import BotSchema
 from tools.enum_definitions import Status
 from deals.base import BaseDeal
@@ -403,6 +403,8 @@ class MarginDeal(BaseDeal):
         Margin_short streaming updates
         """
 
+        self.close_conditions()
+
         price = float(close_price)
         self.active_bot.deal.current_price = price
         self.active_bot.deal.stop_loss_price = (
@@ -720,3 +722,17 @@ class MarginDeal(BaseDeal):
                 logging.info(
                     f"{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
                 )
+
+    
+    def close_conditions(self):
+        """
+
+        Check if there is a market reversal
+        and close bot if so
+        Get data from gainers and losers endpoint to analyze market trends
+        """
+        if self.active_bot.close_condition == CloseConditions.market_reversal:
+            self.render_market_domination_reversal()
+            print(self.market_domination_reversal)
+
+        pass

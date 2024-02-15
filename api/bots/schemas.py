@@ -2,7 +2,7 @@ from time import time
 from typing import List, Literal
 
 from bson.objectid import ObjectId
-from tools.enum_definitions import CloseCondition, CloseConditions, Status
+from tools.enum_definitions import CloseConditions, Status
 from deals.schema import DealSchema, OrderSchema
 from pydantic import BaseModel, Field, validator
 from tools.enum_definitions import BinbotEnums

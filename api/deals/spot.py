@@ -7,10 +7,9 @@ from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
 from tools.handle_error import encode_json
 from tools.exceptions import (
-    TraillingProfitError,
     NotEnoughFunds,
 )
-from tools.enum_definitions import Status, Strategy
+from tools.enum_definitions import CloseConditions, Status, Strategy
 from tools.round_numbers import round_numbers, supress_notation
 from pydantic import ValidationError
 from datetime import datetime
@@ -349,6 +348,9 @@ class SpotLongDeal(BaseDeal):
         pass
 
     def streaming_updates(self, close_price, open_price):
+
+        self.close_conditions()
+
         self.active_bot.deal.current_price = close_price
         self.save_bot_streaming()
         # Stop loss
@@ -483,3 +485,17 @@ class SpotLongDeal(BaseDeal):
         if self.active_bot.trailling and self.active_bot.dynamic_trailling:
             # Returns bot, to keep modifying in subsequent checks
             bot = self.dynamic_take_profit(self.active_bot, close_price)
+
+
+    def close_conditions(self):
+        """
+
+        Check if there is a market reversal
+        and close bot if so
+        Get data from gainers and losers endpoint to analyze market trends
+        """
+        if self.active_bot.close_condition == CloseConditions.market_reversal:
+            self.render_market_domination_reversal()
+            print(self.market_domination_reversal)
+
+        pass

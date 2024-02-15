@@ -16,7 +16,7 @@ from tools.round_numbers import round_numbers_ceiling
 from tools.enum_definitions import Status, Strategy
 from bson.objectid import ObjectId
 from deals.schema import DealSchema, OrderSchema
-
+from datetime import datetime, timedelta
 
 # To be removed one day when commission endpoint found that provides this value
 ESTIMATED_COMMISSIONS_RATE = 0.0075
@@ -32,6 +32,7 @@ class BaseDeal(OrderController):
         super().__init__(symbol=self.active_bot.pair)
         self.db = setup_db()
         self.db_collection = self.db[db_collection_name]
+        self.market_domination_reversal = None
         if self.active_bot.strategy == Strategy.margin_short:
             self.isolated_balance: float = self.get_isolated_balance(self.symbol)
 
@@ -477,3 +478,41 @@ class BaseDeal(OrderController):
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
         return buy_margin_response
+
+    def render_market_domination_reversal(self):
+        """
+        We want to know when it's more suitable to do long positions
+        when it's more suitable to do short positions
+        For now setting threshold to 70% i.e.
+        if > 70% of assets in a given market (USDT) dominated by gainers
+        if < 70% of assets in a given market dominated by losers
+        Establish the timing
+        """
+        now = datetime.now()
+        if (
+            now.minute == 0
+        ):
+            data = self.get_market_domination_series()
+            # reverse to make latest series more important
+            data["data"]["gainers_count"].reverse()
+            data["data"]["losers_count"].reverse()
+            gainers_count = data["data"]["gainers_count"]
+            losers_count = data["data"]["losers_count"]
+            self.market_domination_trend = None
+            if gainers_count[-1] > losers_count[-1]:
+                self.market_domination_trend = "gainers"
+
+                # Check reversal
+                if gainers_count[-2] < losers_count[-2]:
+                    # Positive reversal
+                    self.market_domination_reversal = True
+
+            else:
+                self.market_domination_trend = "losers"
+
+                if gainers_count[-2] > losers_count[-2]:
+                    # Negative reversal
+                    self.market_domination_reversal = False
+
+
+        pass

@@ -183,6 +183,7 @@ class BinanceApi:
         """
         return self.signed_request(self.all_orders_url, payload={"symbol": symbol, "orderId": order_id})
 
+
 class BinbotApi(BinanceApi):
     """
     API endpoints on this project itself
@@ -217,6 +218,7 @@ class BinbotApi(BinanceApi):
     # research
     bb_autotrade_settings_url = f"{bb_base_url}/autotrade-settings/bots"
     bb_blacklist_url = f"{bb_base_url}/research/blacklist"
+    bb_market_domination = f"{bb_base_url}/research/market-domination"
 
     def bb_request(self, url, method="GET", params=None, payload=None):
         """
@@ -224,6 +226,11 @@ class BinbotApi(BinanceApi):
         Authentication required in the future
         """
         res = request(method, url=url, params=params, json=payload)
+        data = handle_binance_errors(res)
+        return data
+
+    def get_market_domination_series(self):
+        res = self.bb_request(url=self.bb_market_domination, params={"size": 7})
         data = handle_binance_errors(res)
         return data
 
