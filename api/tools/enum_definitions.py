@@ -93,3 +93,12 @@ class CloseCondition(str, Enum):
 
     def __str__(self):
         return str(self.str)
+
+
+class CloseConditions(str, Enum):
+    dynamic_trailling = "dynamic_trailling"
+    stop_loss = "stop_loss" # No trailling, standard stop loss
+    market_reversal = "market_reversal" # binbot-research param (self.market_trend_reversal)
+
+    def __str__(self):
+        return str(self.str)
