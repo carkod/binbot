@@ -403,7 +403,7 @@ class MarginDeal(BaseDeal):
         Margin_short streaming updates
         """
 
-        self.close_conditions()
+        self.close_conditions(float(close_price))
 
         price = float(close_price)
         self.active_bot.deal.current_price = price
@@ -724,7 +724,7 @@ class MarginDeal(BaseDeal):
                 )
 
     
-    def close_conditions(self):
+    def close_conditions(self, current_price):
         """
 
         Check if there is a market reversal
@@ -733,6 +733,7 @@ class MarginDeal(BaseDeal):
         """
         if self.active_bot.close_condition == CloseConditions.market_reversal:
             self.render_market_domination_reversal()
-            print(self.market_domination_reversal)
+            if self.market_domination_reversal and current_price > self.active_bot.deal.buy_price:
+                self.execute_stop_loss()
 
         pass

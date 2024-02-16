@@ -26,6 +26,13 @@ class BinbotErrors(Exception):
         return f"Binbot error: {self.message}"
 
 
+class CreateDealControllerError(BinbotErrors):
+    """
+    Code: 1
+    Message: "Bot already active"
+    """
+    pass
+
 class IsolateBalanceError(BinbotErrors):
     pass
 

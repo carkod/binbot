@@ -121,7 +121,9 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
-        msg = f"Completed Stop loss. Will it reverse? {self.active_bot.margin_short_reversal}"
+        msg = f"Completed Stop loss. "
+        if self.active_bot.margin_short_reversal:
+            msg += f"Scheduled to switch strategy"
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
 
@@ -349,7 +351,7 @@ class SpotLongDeal(BaseDeal):
 
     def streaming_updates(self, close_price, open_price):
 
-        self.close_conditions()
+        self.close_conditions(float(close_price))
 
         self.active_bot.deal.current_price = close_price
         self.save_bot_streaming()
@@ -487,7 +489,7 @@ class SpotLongDeal(BaseDeal):
             bot = self.dynamic_take_profit(self.active_bot, close_price)
 
 
-    def close_conditions(self):
+    def close_conditions(self, current_price):
         """
 
         Check if there is a market reversal
@@ -496,6 +498,7 @@ class SpotLongDeal(BaseDeal):
         """
         if self.active_bot.close_condition == CloseConditions.market_reversal:
             self.render_market_domination_reversal()
-            print(self.market_domination_reversal)
+            if self.market_domination_reversal and current_price < self.active_bot.deal.buy_price:
+                self.execute_stop_loss()
 
         pass

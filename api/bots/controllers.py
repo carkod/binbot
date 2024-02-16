@@ -194,6 +194,9 @@ class Bot(Account):
                 logging.info(error)
                 self.post_errors_by_id(botId, error.message)
                 return json_response_error(error.message)
+            except CreateDealController as error:
+                self.post_errors_by_id(botId, f"Code error {error.code}: {error.message}")
+                return json_response_error(error.message)
             except Exception as error:
                 self.post_errors_by_id(botId, error)
                 resp = json_response_error(f"Unable to activate bot: {error}")
