@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from account.account import Account
 from deals.controllers import CreateDealController
 from tools.enum_definitions import BinbotEnums
-from tools.exceptions import BinanceErrors, BinbotErrors, QuantityTooLow
+from tools.exceptions import BinanceErrors, BinbotErrors, DealCreationError, QuantityTooLow
 from tools.handle_error import (
     handle_binance_errors,
     json_response,
@@ -193,9 +193,6 @@ class Bot(Account):
             except BinbotErrors as error:
                 logging.info(error)
                 self.post_errors_by_id(botId, error.message)
-                return json_response_error(error.message)
-            except CreateDealController as error:
-                self.post_errors_by_id(botId, f"Code error {error.code}: {error.message}")
                 return json_response_error(error.message)
             except Exception as error:
                 self.post_errors_by_id(botId, error)

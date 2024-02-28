@@ -76,7 +76,7 @@ class ShortStrategyError(OpenDealError):
     pass
 
 
-class DealCreationError(Exception):
+class DealCreationError(BinbotErrors):
     pass
 
 class TerminateStreaming(Exception):

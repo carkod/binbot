@@ -54,7 +54,6 @@ def handle_binance_errors(response: Response) -> Response:
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-    response.raise_for_status()
     content = response.json()
 
     # Binance doesn't seem to reach 418 or 429 even after 2000 weight requests
