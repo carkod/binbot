@@ -276,7 +276,8 @@ class BotForm extends React.Component {
         short_buy_price: this.props.bot.short_buy_price,
         short_sell_price: this.props.bot.short_sell_price,
         margin_short_reversal: this.props.bot.margin_short_reversal,
-        dynamic_trailling: this.props.bot.dynamic_trailling
+        dynamic_trailling: this.props.bot.dynamic_trailling,
+        close_condition: this.props.bot.close_condition,
       };
       if (this.state.id === null) {
         this.props.createBot(form);

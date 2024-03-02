@@ -2,7 +2,7 @@ from time import time
 from typing import List, Literal
 
 from bson.objectid import ObjectId
-from tools.enum_definitions import CloseCondition, Status
+from tools.enum_definitions import CloseConditions, Status
 from deals.schema import DealSchema, OrderSchema
 from pydantic import BaseModel, Field, validator
 from tools.enum_definitions import BinbotEnums
@@ -36,6 +36,7 @@ class BotSchema(BaseModel):
     balance_to_use: str = "1"
     base_order_size: str = "15"  # Min Binance 0.0001 BNB
     candlestick_interval: str = "15m"
+    close_condition: CloseConditions = CloseConditions.dynamic_trailling
     cooldown: int = 0  # cooldown period in minutes before opening next bot with same pair
     created_at: float = time() * 1000
     deal: DealSchema = Field(default_factory=DealSchema)

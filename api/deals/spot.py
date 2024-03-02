@@ -7,10 +7,9 @@ from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
 from tools.handle_error import encode_json
 from tools.exceptions import (
-    TraillingProfitError,
     NotEnoughFunds,
 )
-from tools.enum_definitions import Status, Strategy
+from tools.enum_definitions import CloseConditions, Status, Strategy
 from tools.round_numbers import round_numbers, supress_notation
 from pydantic import ValidationError
 from datetime import datetime
@@ -122,7 +121,9 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
-        msg = f"Completed Stop loss. Will it reverse? {self.active_bot.margin_short_reversal}"
+        msg = f"Completed Stop loss. "
+        if self.active_bot.margin_short_reversal:
+            msg += f"Scheduled to switch strategy"
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
 
@@ -349,6 +350,9 @@ class SpotLongDeal(BaseDeal):
         pass
 
     def streaming_updates(self, close_price, open_price):
+
+        self.close_conditions(float(close_price))
+
         self.active_bot.deal.current_price = close_price
         self.save_bot_streaming()
         # Stop loss
@@ -483,3 +487,18 @@ class SpotLongDeal(BaseDeal):
         if self.active_bot.trailling and self.active_bot.dynamic_trailling:
             # Returns bot, to keep modifying in subsequent checks
             bot = self.dynamic_take_profit(self.active_bot, close_price)
+
+
+    def close_conditions(self, current_price):
+        """
+
+        Check if there is a market reversal
+        and close bot if so
+        Get data from gainers and losers endpoint to analyze market trends
+        """
+        if self.active_bot.close_condition == CloseConditions.market_reversal:
+            self.render_market_domination_reversal()
+            if self.market_domination_reversal and current_price < self.active_bot.deal.buy_price:
+                self.execute_stop_loss()
+
+        pass

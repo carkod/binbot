@@ -7,6 +7,7 @@ from deals.models import BinanceOrderModel
 from pymongo import ReturnDocument
 from tools.enum_definitions import Status, Strategy
 from tools.exceptions import (
+    CreateDealControllerError,
     TakeProfitError,
 )
 from tools.handle_error import (
@@ -14,10 +15,6 @@ from tools.handle_error import (
     handle_binance_errors,
 )
 from tools.round_numbers import round_numbers, supress_notation
-
-
-class CreateDealControllerError(Exception):
-    pass
 
 
 class CreateDealController(BaseDeal):
@@ -260,8 +257,9 @@ class CreateDealController(BaseDeal):
             {"pair": self.active_bot.pair, "status": Status.active}
         )
         if active_bot:
+            self.save_bot_streaming()
             raise CreateDealControllerError(
-                f"Bot with pair {self.active_bot.pair} is already active"
+                f"Bot with pair {self.active_bot.pair} is already active. Bot saved!", 1
             )
 
         # If there is already a base order do not execute

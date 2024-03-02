@@ -152,6 +152,28 @@ export default function MainTab({
             />
           </FormGroup>
         </Col>
+        <Col md="6" sm="12">
+          <FormGroup>
+            <BotFormTooltip
+              htmlFor="close_condition"
+              name="close_condition"
+              text="Overrides stop_loss and take_profit"
+            >
+              Close condition
+            </BotFormTooltip>
+            <Input
+              id="close_condition"
+              name="close_condition"
+              type="select"
+              value={bot.close_condition}
+              onChange={handleChange}
+              onBlur={handleBlur}
+            >
+              <option value="dynamic_trailling">Dynamic trailing (standard)</option>
+              <option value="market_reversal">Market reversal</option>
+            </Input>
+          </FormGroup>
+        </Col>
       </Row>
       <Row>
         <Col md="6" sm="12">
