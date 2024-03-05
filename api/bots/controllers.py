@@ -362,6 +362,9 @@ class Bot(Account):
         """
         Directly post errors to Bot
         which should show in the BotForm page in Web
+
+        Similar to update_deal_errors
+        but without a bot instance.
         """
         operation = {"$push": {"errors": reported_error}}
         if isinstance(reported_error, list):

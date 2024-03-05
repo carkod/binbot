@@ -443,9 +443,7 @@ class MarginDeal(BaseDeal):
 
             else:
                 # Execute the usual non-trailling take_profit
-                logging.debug(
-                    f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}"
-                )
+                self.update_deal_logs(f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}")
                 self.execute_take_profit()
                 self.update_required()
 
@@ -692,8 +690,7 @@ class MarginDeal(BaseDeal):
 
             # Reset stop_loss_price to avoid confusion in front-end
             self.active_bot.deal.stop_loss_price = 0
-            milestone_msg = f"{self.active_bot.pair} Updating after broken first trailling_profit (short)"
-            self.update_deal_logs(milestone_msg)
+            self.update_deal_logs(f"{self.active_bot.pair} Updating after broken first trailling_profit (short)")
 
         # Direction 1 (downward): breaking the current trailling
         if float(close_price) <= float(self.active_bot.deal.trailling_profit_price):
@@ -734,6 +731,7 @@ class MarginDeal(BaseDeal):
         if self.active_bot.close_condition == CloseConditions.market_reversal:
             self.render_market_domination_reversal()
             if self.market_domination_reversal and current_price > self.active_bot.deal.buy_price:
+                self.update_deal_logs(f"Closing bot according to close_condition: {self.active_bot.close_condition}")
                 self.execute_stop_loss()
 
         pass

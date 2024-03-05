@@ -225,7 +225,18 @@ export default function BotCard({
                   </p>
                 </Col>
               </Row>
-
+              {x.close_condition && (
+                <Row>
+                  <Col md="7" xs="7">
+                    <p className="card-category">Close condition</p>
+                  </Col>
+                  <Col md="5" xs="5">
+                    <p className="card-category">
+                      {x.close_condition}
+                    </p>
+                  </Col>
+                </Row>
+              )}
               <Row>
                 <Col md="7" xs="7">
                   <p className="card-category">Take profit</p>
