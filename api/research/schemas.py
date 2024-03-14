@@ -6,7 +6,7 @@ class BlacklistSchema(BaseModel):
     reason: str
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "pair": "BNBBTC",
                 "reason": "Overtraded",
@@ -29,7 +29,7 @@ class SubscribedSymbolsSchema(BaseModel):
     blacklisted_reason: str = ""
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "_id": "BNBBTC",
                 "pair": "BNBBTC",

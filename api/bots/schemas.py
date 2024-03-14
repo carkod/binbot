@@ -101,7 +101,7 @@ class BotSchema(BaseModel):
         use_enum_values = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
-        schema_extra = {
+        json_schema_extra = {
             "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Binance",
             "example": {
                 "pair": "BNBUSDT",

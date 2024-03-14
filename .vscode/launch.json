@@ -3,18 +3,17 @@
   "configurations": [
     {
       "name": "Python: FastAPI",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
       "cwd": "${workspaceFolder}/api",
       "args": ["main:app", "--port", "8008"],
-      "jinja": true,
       "justMyCode": true,
       "console": "internalConsole"
     },
     {
       "name": "Python: streaming",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/api/market_updates.py",
       "console": "internalConsole",
@@ -22,7 +21,7 @@
     },
     {
       "name": "Python: cronjobs",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/api/cronjobs.py",
       "console": "internalConsole",
@@ -44,14 +43,14 @@
     },
     {
       "name": "Python: Research",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "binbot-research/__init__.py",
       "console": "internalConsole"
     },
     {
       "name": "Python: Producer",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "binquant/producer.py",
       "console": "internalConsole",
@@ -59,7 +58,7 @@
     },
     {
       "name": "Python: Consumer",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "binquant/consumer/__init__.py",
       "console": "internalConsole",
