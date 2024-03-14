@@ -5,7 +5,7 @@ verify_ssl = false
 
 [packages]
 uvicorn = "*"
-fastapi = "==0.88.0"
+fastapi = "==0.109.1"
 pymongo = "==4.3.3"
 python-jose = "*"
 passlib = "*"
