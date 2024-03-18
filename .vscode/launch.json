@@ -12,6 +12,15 @@
       "console": "internalConsole"
     },
     {
+      "name": "Binquant: Producer",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "binquant/producer.py",
+      "console": "internalConsole",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
       "name": "Python: streaming",
       "type": "debugpy",
       "request": "launch",
@@ -49,20 +58,13 @@
       "console": "internalConsole"
     },
     {
-      "name": "Binquant: Producer",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "binquant/producer.py",
-      "console": "internalConsole",
-      "justMyCode": true
-    },
-    {
       "name": "Binquant: Consumer",
       "type": "debugpy",
       "request": "launch",
       "program": "binquant/consumer.py",
+
       "console": "internalConsole",
       "justMyCode": true
-    },
+    }
   ]
 }
