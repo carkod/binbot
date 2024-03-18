@@ -252,15 +252,6 @@ class CreateDealController(BaseDeal):
 
         - If base order deal is not executed, bot is not activated
         """
-        # Check if bot with same pair is already active
-        active_bot = self.db_collection.find_one(
-            {"pair": self.active_bot.pair, "status": Status.active}
-        )
-        if active_bot:
-            self.save_bot_streaming()
-            raise CreateDealControllerError(
-                f"Bot with pair {self.active_bot.pair} is already active. Bot saved!", 1
-            )
 
         # If there is already a base order do not execute
         base_order_deal = next(
@@ -327,7 +318,6 @@ class CreateDealController(BaseDeal):
             )
             self.active_bot.deal.take_profit_price = take_profit_price
             # Update trailling_stop_loss
-            # an update of the
             self.active_bot.deal.trailling_stop_loss_price = 0
 
         self.active_bot.status = Status.active
