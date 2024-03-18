@@ -1,9 +1,16 @@
 version: "3.8"
+
+networks:
+  kafka_network:
+    driver: bridge
+
 services:
   db:
     image: mongo:latest
     container_name: binbot_db
     restart: on-failure
+    networks:
+      - kafka_network
     env_file: .env
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_AUTH_USERNAME}
@@ -14,18 +21,84 @@ services:
     volumes:
       - ./mongo_data:/data/db
 
-  # api:
-  #   build: .
-  #   image: binbot_api
+  kafka_bitnami:
+    image: docker.io/bitnami/kafka:3.4
+    hostname: kafka_network
+    container_name: kafka_bitnami
+    networks:
+      - kafka_network
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    volumes:
+      - "kafka_data:/kafka_data"
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092,EXTERNAL://kafka_b:9094
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@127.0.0.1:9093
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+      - BITNAMI_DEBUG=yes
+      - KAFKA_CFG_NUM_PARTITIONS=2
+
+  kafka_producer:
+    build: ./binquant
+    image: binquant_producer
+    container_name: binquant_producer
+    restart: on-failure
+    networks:
+      - kafka_network
+    depends_on:
+      - kafka_bitnami
+      - api
+    env_file:
+      - .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS="http://kafka_bitnami:9092"
+      # - KAFKA_TOPIC=${KAFKA_TOPIC}
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    command: ["python3", "-m", "producer"]
+
+  # kafka_consumer:
+  #   build: ./binquant
+  #   image: binquant_consumer
+  #   container_name: binquant_consumer
   #   restart: on-failure
-  #   container_name: binbot
+  #   networks:
+  #     - kafka_network
   #   depends_on:
-  #     - db
+  #     - kafka_bitnami
+  #     - api
   #   env_file:
   #     - .env
-  #   ports:
-  #     - 8007:80
-  #     - 8008:8006
+  #   # environment:
+  #   #   - BOOTSTRAP_SERVERS=${BOOTSTRAP_SERVERS}
+  #     # - KAFKA_TOPIC=${KAFKA_TOPIC}
+  #     # - EVENT_TOPIC=${EVENT_TOPIC}
+  #     # - QUEUE_URL=${QUEUE_URL}
+  #   command: ["python3", "-m", "consumer"]
+
+  api:
+    build: .
+    image: binbot_api
+    networks:
+      - kafka_network
+    restart: on-failure
+    container_name: binbot
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - 8007:80
+      - 8008:8006
 
   # streaming:
   #   build:
@@ -56,3 +129,4 @@ services:
 
 volumes:
   mongo_data:
+  kafka_data:
