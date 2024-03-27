@@ -21,6 +21,15 @@
       "envFile": "${workspaceFolder}/.env"
     },
     {
+      "name": "Binquant: Consumer",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "binquant/consumer.py",
+
+      "console": "internalConsole",
+      "justMyCode": true
+    },
+    {
       "name": "Python: streaming",
       "type": "debugpy",
       "request": "launch",
@@ -56,15 +65,6 @@
       "request": "launch",
       "program": "binbot-research/__init__.py",
       "console": "internalConsole"
-    },
-    {
-      "name": "Binquant: Consumer",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "binquant/consumer.py",
-
-      "console": "internalConsole",
-      "justMyCode": true
     }
   ]
 }
