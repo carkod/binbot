@@ -5,7 +5,7 @@ verify_ssl = false
 
 [packages]
 uvicorn = "*"
-fastapi = "==0.88.0"
+fastapi = "==0.110.0"
 pymongo = "==4.3.3"
 python-jose = "*"
 passlib = "*"
@@ -17,7 +17,7 @@ requests-html = "==0.10.0"
 py3cw = "==0.0.39"
 numpy = "==1.23.5"
 apscheduler = "==3.6.3"
-requests-cache = "==0.9.7"
+requests-cache = "==1.2.0"
 python-multipart = "*"
 
 [dev-packages]
