@@ -4,7 +4,7 @@ from typing import List, Literal
 from bson.objectid import ObjectId
 from tools.enum_definitions import CloseConditions, Status
 from deals.schema import DealSchema, OrderSchema
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from tools.enum_definitions import BinbotEnums
 from tools.handle_error import StandardResponse
 from tools.enum_definitions import BinbotEnums
@@ -61,37 +61,43 @@ class BotSchema(BaseModel):
     total_commission: float = 0
     updated_at: float = time() * 1000
 
-    @validator("pair", "base_order_size", "candlestick_interval")
+    @field_validator("pair", "base_order_size", "candlestick_interval")
+    @classmethod
     def check_names_not_empty(cls, v):
         assert v != "", "Empty pair field."
         return v
 
-    @validator("stop_loss", "take_profit", "trailling_deviation", "trailling_profit")
+    @field_validator("stop_loss", "take_profit", "trailling_deviation", "trailling_profit")
+    @classmethod
     def check_percentage(cls, v):
         if 0 <= float(v) < 100:
             return v
         else:
             raise ValueError(f"{v} must be a percentage")
 
-    @validator("mode")
+    @field_validator("mode")
+    @classmethod
     def check_mode(cls, v: str):
         if v not in BinbotEnums.mode:
             raise ValueError(f'Status must be one of {", ".join(BinbotEnums.mode)}')
         return v
 
-    @validator("strategy")
+    @field_validator("strategy")
+    @classmethod
     def check_strategy(cls, v: str):
         if v not in BinbotEnums.strategy:
             raise ValueError(f'Status must be one of {", ".join(BinbotEnums.strategy)}')
         return v
 
-    @validator("trailling")
+    @field_validator("trailling")
+    @classmethod
     def check_trailling(cls, v: str | bool):
         if isinstance(v, str) and v.lower() == "false":
             return False
         return True
 
-    @validator("errors")
+    @field_validator("errors")
+    @classmethod
     def check_errors_format(cls, v: list[str]):
         if not isinstance(v, list):
             raise ValueError(f'Errors must be a list of strings')
@@ -137,7 +143,8 @@ class BotListResponse(StandardResponse):
 class ErrorsRequestBody(BaseModel):
     errors: str | list[str]
 
-    @validator("errors")
+    @field_validator("errors")
+    @classmethod
     def check_names_not_empty(cls, v):
         if isinstance(v, list):
             assert len(v) != 0, "List of errors is empty."
