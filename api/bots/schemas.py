@@ -5,7 +5,6 @@ from bson.objectid import ObjectId
 from tools.enum_definitions import CloseConditions, Status
 from deals.schema import DealSchema, OrderSchema
 from pydantic import BaseModel, Field, field_validator
-from tools.enum_definitions import BinbotEnums
 from tools.handle_error import StandardResponse
 from tools.enum_definitions import BinbotEnums
 

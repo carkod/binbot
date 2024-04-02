@@ -30,8 +30,6 @@ services:
       - "9092:9092"
       - "9093:9093"
       - "9094:9094"
-    volumes:
-      - ./kafka_data:/bitnami/kafka
     environment:
       - KAFKA_ENABLE_KRAFT=yes
       - KAFKA_CFG_PROCESS_ROLES=broker,controller
@@ -139,4 +137,3 @@ services:
 
 volumes:
   mongo_data:
-  kafka_data:
