@@ -19,7 +19,7 @@
     "binbot-charts": "^0.4.1",
     "bootstrap": "5.2.2",
     "history": "^5.0.0",
-    "immer": "^9.0.21",
+    "immer": "^10.0.4",
     "moment": "^2.29.1",
     "nanoid": "^4.0.0",
     "plotly.js": "^2.25.2",
