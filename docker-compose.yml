@@ -43,7 +43,6 @@ services:
       - KAFKA_CFG_NODE_ID=1
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
       - BITNAMI_DEBUG=yes
-      - KAFKA_CFG_NUM_PARTITIONS=950 # max websockets
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --topic hc --create --if-not-exists", "kafka-topics
 .sh --bootstrap-server kafka:9092 --topic hc --describe"]
