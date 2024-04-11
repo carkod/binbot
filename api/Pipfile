@@ -19,6 +19,10 @@ numpy = "==1.23.5"
 apscheduler = "==3.6.3"
 requests-cache = "==1.2.0"
 python-multipart = "*"
+kafka-python= "==2.0.2"
+aiokafka= "==0.10.0"
+pyarrow= "==15.0.2"
+py4j= "==0.10.9"
 
 [dev-packages]
 autopep8 = "==2.0.0"

@@ -1,5 +1,3 @@
-version: "3.8"
-
 networks:
   kafka_network:
     driver: bridge
@@ -44,8 +42,7 @@ services:
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
       - BITNAMI_DEBUG=yes
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --topic hc --create --if-not-exists", "kafka-topics
-.sh --bootstrap-server kafka:9092 --topic hc --describe"]
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --topic hc --describe"]
       start_period: 10s
       interval: 5s
       timeout: 10s

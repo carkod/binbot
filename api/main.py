@@ -24,8 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Fix issue with curl returning method not allowed (https://github.com/tiangolo/fastapi/issues/1773)
+@app.head("/")
 # Routes
-@app.head("/") # Fix issue with curl returning method not allowed (https://github.com/tiangolo/fastapi/issues/1773)
 @app.get("/")
 def root():
     """

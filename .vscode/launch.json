@@ -30,15 +30,6 @@
       "justMyCode": true
     },
     {
-      "name": "Binquant: Signals consumer",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "binquant/signals.py",
-
-      "console": "internalConsole",
-      "justMyCode": true
-    },
-    {
       "name": "Python: streaming",
       "type": "debugpy",
       "request": "launch",
