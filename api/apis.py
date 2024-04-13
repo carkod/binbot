@@ -55,6 +55,17 @@ class BinanceApi:
     margin_order = f"{BASE}/sapi/v1/margin/order"
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
 
+    def request(self, url, method="GET", payload={}, **kwargs):
+        """
+        Standard request
+        - No signed
+        - No authorization
+        """
+        print(f"Requesting {url}")
+        res = request(method, url, json=payload, **kwargs)
+        data = handle_binance_errors(res)
+        return data
+
     def signed_request(self, url, method="GET", payload={}, params={}):
         """
         USER_DATA, TRADE signed requests
@@ -76,17 +87,7 @@ class BinanceApi:
             hashlib.sha256,
         ).hexdigest()
         url = f"{url}?{query_string}&signature={signature}"
-        data = self.request(method, url=url, headers=headers, params=params)
-        return data
-
-    def request(self, method="GET", **args):
-        """
-        Standard request
-        - No signed
-        - No authorization
-        """
-        res = request(method, **args)
-        data = handle_binance_errors(res)
+        data = self.request(url=url, method=method, headers=headers, params=params)
         return data
 
     def get_listen_key(self):
@@ -96,6 +97,26 @@ class BinanceApi:
         headers = {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
         data = self.request("POST", url=self.user_data_stream, headers=headers)
         return data["listenKey"]
+
+    
+    def ticker_24(self, type: str = "FULL", symbol: str | None = None):
+        """
+        Weight 40 without symbol
+        https://github.com/carkod/binbot/issues/438
+
+        Using cache
+        """
+        params = {
+            "type": type
+        }
+        if symbol:
+            params["symbol"] = symbol
+        
+        # mongo_cache = self.setup_mongocache()
+        # expire_after = 15m because candlesticks are 15m
+        # session = CachedSession('ticker_24_cache', backend=mongo_cache, expire_after=15)
+        data = self.request(url=self.ticker24_url, params=params)
+        return data
 
     def cancel_margin_order(self, symbol, order_id):
         return self.signed_request(self.margin_order, method="DELETE", payload={"symbol": symbol, "orderId": order_id})

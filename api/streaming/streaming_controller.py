@@ -1,46 +1,31 @@
 import json
 import logging
+
 from deals.base import BaseDeal
 from tools.enum_definitions import Status
-from db import setup_db
+from db import Database
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
-from time import time
-from streaming.socket_client import SpotWebsocketStreamClient
-from tools.exceptions import BinanceErrors, TerminateStreaming
+from tools.exceptions import BinanceErrors
+
 
 class StreamingController(BaseDeal):
-    def __init__(self):
-        # For some reason, db connections internally only work with
-        # db:27017 instead of localhost=:2018
-        self.streaming_db = setup_db()
-        self.socket = None
-        # test wss://data-stream.binance.com
-        self.client = SpotWebsocketStreamClient(
-            on_message=self.on_message, on_error=self.on_error, is_combined=True
-        )
-        self.conn_key = None
-        self.list_bots = []
-        self.list_paper_trading_bots = []
-        self.settings = self.streaming_db.research_controller.find_one(
-            {"_id": "settings"}
-        )
-        self.test_settings = self.streaming_db.research_controller.find_one(
-            {"_id": "test_autotrade_settings"}
-        )
+    def __init__(self, consumer):
+        self.streaming_db = Database()
+        # Gets any signal to restart streaming
+        self.consumer = consumer
+        self.load_data_on_start()
 
-    def _update_required(self):
+    def load_data_on_start(self):
         """
-        Terminate streaming and restart list of bots required
+        New function to replace get_klines without websockets
 
-        This will count and store number of times update is required,
-        so that we can add a condition to restart when it hits certain threshold
-
-        This is to avoid excess memory consumption
+        After each "update_required" restart, this function will reload bots and settings
         """
-        self.streaming_db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": {"update_required": time()}}
-        )
+        self.settings = self.streaming_db.get_autotrade_settings()
+        self.test_settings = self.streaming_db.get_test_autotrade_settings()
+        self.list_bots = self.streaming_db.get_active_bots()
+        self.list_paper_trading_bots = self.streaming_db.get_active_paper_trading_bots()
 
     def execute_strategies(
         self,
@@ -66,16 +51,12 @@ class StreamingController(BaseDeal):
             except Exception as error:
                 logging.info(error)
                 margin_deal.update_deal_logs(error)
-                # Go to _update_required
-                self._update_required()
                 pass
 
         else:
             # Long strategy starts
             if current_bot["strategy"] == "long":
-                spot_long_deal = SpotLongDeal(
-                    current_bot, db_collection_name
-                )
+                spot_long_deal = SpotLongDeal(current_bot, db_collection_name)
                 try:
                     spot_long_deal.streaming_updates(close_price, open_price)
                 except BinanceErrors as error:
@@ -86,50 +67,25 @@ class StreamingController(BaseDeal):
                 except Exception as error:
                     logging.info(error)
                     spot_long_deal.update_deal_logs(error)
-                    # Go to _update_required
-                    self._update_required()
                     pass
 
         pass
-
-    def on_error(self, socket, msg):
-        logging.error(f'Streaming_Controller error:{msg}')
-        self.get_klines()
-
-    def on_message(self, socket, message):
-        # If fails to connect, this will cancel loop
-        res = json.loads(message)
-
-        if "result" in res and res["result"]:
-            logging.info(f'Subscriptions: {res["result"]}')
-
-        if "data" in res:
-            if "e" in res["data"] and res["data"]["e"] == "kline":
-                self.process_klines(res["data"])
-            else:
-                logging.error(f'Error: {res["data"]}')
-                self.client.stop()
 
     def process_klines(self, result):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        # Re-retrieve settings in the middle of streaming
-        local_settings = self.streaming_db.research_controller.find_one(
-            {"_id": "settings"}
-        )
 
         if "k" in result:
             close_price = result["k"]["c"]
             open_price = result["k"]["o"]
             symbol = result["k"]["s"]
-            current_bot = self.streaming_db.bots.find_one(
-                {"pair": symbol, "status": Status.active}
+            current_bot = self.streaming_db.get_active_bot_by_symbol(symbol)
+            current_test_bot = self.streaming_db.get_active_paper_trading_bot_by_symbol(
+                symbol
             )
-            current_test_bot = self.streaming_db.paper_trading.find_one(
-                {"pair": symbol, "status": Status.active}
-            )
+
             if current_bot:
                 self.execute_strategies(
                     current_bot,
@@ -145,96 +101,4 @@ class StreamingController(BaseDeal):
                     "paper_trading",
                 )
 
-        # Add margin time to update_required signal to avoid restarting constantly
-        # About 1000 seconds (16.6 minutes) - similar to candlestick ticks of 15m
-        if local_settings["update_required"]:
-            logging.debug(
-                f'Time elapsed for update_required: {time() - local_settings["update_required"]}'
-            )
-            if (time() - local_settings["update_required"]) > 40:
-                self.streaming_db.research_controller.update_one(
-                    {"_id": "settings"}, {"$set": {"update_required": time()}}
-                )
-                logging.info(f"Restarting streaming_controller {self.list_bots}")
-                # raise TerminateStreaming()
-                self.get_klines()
         return
-
-    def get_klines(self):
-        interval = self.settings["candlestick_interval"]
-        self.list_bots = list(
-            self.streaming_db.bots.distinct("pair", {"status": "active"})
-        )
-        self.list_paper_trading_bots = list(
-            self.streaming_db.paper_trading.distinct("pair", {"status": "active"})
-        )
-        # Reset to new update_required system
-        self.streaming_db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": {"update_required": time()}}
-        )
-
-        markets = self.list_bots + self.list_paper_trading_bots
-        logging.info(f"Streaming updates: {markets}")
-        self.client.klines(markets=markets, interval=interval)
-
-    def update_order_data(self, result, db_collection: str = "bots"):
-        """
-        Keep order data up to date
-
-        When buy_order or sell_order is executed, they are often in
-        status NEW, and it takes time to update to FILLED.
-        This keeps order data up to date as they are executed
-        throught the executionReport websocket
-
-        Args:
-            result (dict): executionReport websocket result
-            db_collection (str, optional): Defaults to "bots".
-
-        """
-        order_id = result["i"]
-        update = {
-            "$set": {
-                "orders.$.status": result["X"],
-                "orders.$.qty": result["q"],
-                "orders.$.order_side": result["S"],
-                "orders.$.order_type": result["o"],
-                "orders.$.timestamp": result["T"],
-            },
-            "$inc": {"total_commission": float(result["n"])},
-            "$push": {"errors": "Order status updated"},
-        }
-        if float(result["p"]) > 0:
-            update["$set"]["orders.$.price"] = float(result["p"])
-        else:
-            update["$set"]["orders.$.price"] = float(result["L"])
-
-        query = self.streaming_db[db_collection].update_one(
-            {"orders": {"$elemMatch": {"order_id": order_id}}},
-            update,
-        )
-        return query
-
-    def get_user_data(self):
-        listen_key = self.get_listen_key()
-        self.user_data_client = SpotWebsocketStreamClient(
-            on_message=self.on_user_data_message, on_error=self.on_error
-        )
-        self.user_data_client.user_data(listen_key=listen_key, action=SpotWebsocketStreamClient.subscribe)
-
-    def on_user_data_message(self, socket, message):
-        logging.info("Streaming user data")
-        res = json.loads(message)
-
-        if "e" in res:
-            if "executionReport" in res["e"]:
-                query = self.update_order_data(res)
-                if query.raw_result["nModified"] == 0:
-                    logging.debug(
-                        f'No bot found with order client order id: {res["i"]}. Order status: {res["X"]}'
-                    )
-                return
-
-            elif "outboundAccountPosition" in res["e"]:
-                logging.info(f'Assets changed {res["e"]}')
-            elif "balanceUpdate" in res["e"]:
-                logging.info(f'Funds transferred {res["e"]}')

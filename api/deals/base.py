@@ -217,7 +217,7 @@ class BaseDeal(OrderController):
         bot = encode_json(self.active_bot)
         self.db_collection.insert_one(bot)
         new_bot = self.db_collection.find_one({"id": bot["id"]})
-        bot_class = BotSchema(**new_bot)
+        bot_class = BotSchema.model_validate(new_bot)
 
         return bot_class
 

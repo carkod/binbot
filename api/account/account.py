@@ -73,26 +73,6 @@ class Account(BinbotApi):
         data = handle_binance_errors(res)
         return data["price"]
 
-    def ticker_24(self, type: str = "FULL", symbol: str | None = None):
-        """
-        Weight 40 without symbol
-        https://github.com/carkod/binbot/issues/438
-
-        Using cache
-        """
-        url = self.ticker24_url
-        params = {
-            "type": type
-        }
-        if symbol:
-            params["symbol"] = symbol
-        
-        # mongo_cache = self.setup_mongocache()
-        # expire_after = 15m because candlesticks are 15m
-        # session = CachedSession('ticker_24_cache', backend=mongo_cache, expire_after=15)
-        res = requests.get(url=url, params=params)
-        data = handle_binance_errors(res)
-        return data
 
     def find_quoteAsset(self, symbol):
         """

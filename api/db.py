@@ -1,5 +1,6 @@
 import os
 from pymongo import MongoClient
+from tools.enum_definitions import Status
 
 
 def setup_db():
@@ -32,4 +33,3 @@ class Database:
     # def get_active_paper_trading_bots(self):
     #     bots = list(self._db.paper_trading.distinct("pair", {"status": "active"}))
     #     return bots
-
