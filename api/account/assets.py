@@ -2,11 +2,11 @@ import json
 from datetime import datetime, timedelta
 
 import pandas as pd
-from account.schemas import BalanceSchema, MarketDomination, MarketDominationSeries
+from account.schemas import BalanceSchema, MarketDominationSeries
 from bson.objectid import ObjectId
 from charts.models import CandlestickParams
 from charts.models import Candlestick
-from db import setup_db
+from db import Database, setup_db
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
 from tools.exceptions import BinanceErrors, InvalidSymbol, MarginLoanNotFound
@@ -15,7 +15,7 @@ from tools.enum_definitions import Status
 
 class Assets(BaseDeal):
     def __init__(self):
-        self.db = setup_db()
+        self.db = Database()
         self.usd_balance = 0
         self.exception_list = []
 
@@ -445,9 +445,7 @@ class Assets(BaseDeal):
             dict: A dictionary containing the market domination data, including gainers and losers counts, percentages, and dates.
         """
         try:
-            data = list(self.db.market_domination.find(
-                { "$query": {}, "$orderby": { "_id" : -1 } }
-            ).limit(size))
+            data = self.db.query_market_domination(size=size)
             market_domination_series = MarketDominationSeries()
 
             for item in data:
@@ -483,7 +481,7 @@ class Assets(BaseDeal):
             market_domination_series.losers_count = market_domination_series.losers_count[-size:]
             market_domination_series.total_volume = market_domination_series.total_volume[-size:]
 
-            data = market_domination_series.dict()
+            data = market_domination_series.model_dump(mode="json")
 
             return json_response({ "data": data, "message": "Successfully retrieved market domination data.", "error": 0 })
         except Exception as error:

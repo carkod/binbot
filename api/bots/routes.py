@@ -73,6 +73,6 @@ def bot_errors(bot_id: str, bot_errors: ErrorsRequestBody):
     - If error(s) is received from endpoint, get it from request body
     - Else use `post_errors_by_id` method for internal calls
     """
-    request_body = bot_errors.dict()
+    request_body = bot_errors.model_dump(mode="python")
     bot_errors = request_body.get("errors", None)
     return Bot(collection_name="bots").post_errors_by_id(bot_id, bot_errors)

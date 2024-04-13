@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 
 class OrderSchema(BaseModel):
@@ -50,7 +50,7 @@ class DealSchema(BaseModel):
     margin_short_buy_back_timestamp: float = 0
     hourly_interest_rate: float = 0
 
-    @validator(
+    @field_validator(
         "buy_price",
         "current_price",
         "avg_buy_price",
@@ -59,6 +59,7 @@ class DealSchema(BaseModel):
         "sell_price",
         "short_sell_price",
     )
+    @classmethod
     def check_prices(cls, v):
         if float(v) < 0:
             raise ValueError("Price must be a positive number")
