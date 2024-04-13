@@ -1,72 +1,84 @@
+from fastapi.encoders import jsonable_encoder
+from fastapi.testclient import TestClient
+import pytest
 from account.assets import Assets
+from db import Database, setup_db
 from main import app
-from db import setup_db
-
 import mongomock
 
-test_client = mongomock.MongoClient()
 
-async def get_test_client():
-    return test_client
+client = mongomock.MongoClient()
+db = client.db
 
-app.dependency_overrides[setup_db] = get_test_client
+app_client = TestClient(app)
 
-class TestAccount:
 
-    def __init__(self) -> None:
-        self.db = test_client["bots"]["market_domination"]
-        pass
-
-    def test_get_market_domination(self):
-        # Mock the database and its find method
-        data = [
-            {
-                "data": [
-                    {"priceChangePercent": "0.5"},
-                    {"priceChangePercent": "-0.3"},
-                    {"priceChangePercent": "0.2"},
-                    {"priceChangePercent": "-0.1"},
-                ],
-                "time": "2022-01-01",
-            },
-            {
-                "data": [
-                    {"priceChangePercent": "0.1"},
-                    {"priceChangePercent": "-0.2"},
-                    {"priceChangePercent": "0.3"},
-                    {"priceChangePercent": "-0.4"},
-                ],
-                "time": "2022-01-02",
-            },
-            {
-                "data": [
-                    {"priceChangePercent": "0.4"},
-                    {"priceChangePercent": "-0.5"},
-                    {"priceChangePercent": "0.6"},
-                    {"priceChangePercent": "-0.7"},
-                ],
-                "time": "2022-01-03",
-            },
-        ]
-
-        self.db.insert_one(data)
-
-        # Create an instance of AccountAssets and set the mock database
-        assets = Assets()
-
-        # Call the get_market_domination method
-        result = assets.get_market_domination()
-
-        # Assert the expected result
-        expected_result = {
-            "data": {
-                "dates": ["2022-01-01", "2022-01-02", "2022-01-03"],
-                "gainers_percent": [0.5, 0.1, 0.4],
-                "losers_percent": [0.3, 0.2, 0.5],
-                "gainers_count": 3,
-                "losers_count": 3,
-            },
-            "message": "Successfully retrieved market domination data.",
-            "error": 0,
+@pytest.fixture()
+def patch_database(monkeypatch):
+    data = [
+        {
+            '_id': '65d39b44a7ff2a5e843b1e0b',
+            'time': '2024-02-19 18:17:40.479',
+            'data': [
+                {   
+                    'symbol': 'PIXELUSDT',
+                    'priceChangePercent': '15.000',
+                    'volume': '1235816253.30000000',
+                    'price': '0.64880000'
+                },
+                {
+                    'symbol': 'PERPUSDT',
+                    'priceChangePercent': '20.596',
+                    'volume': '24276162.79000000',
+                    'price': '1.48359000'
+                },
+            ]
+        },
+        {
+            '_id': '65d39b44a7ff2a5e843b1e0b',
+            'time': '2024-02-19 18:17:40.479',
+            'data': [
+                {   
+                    'symbol': 'PIXELUSDT',
+                    'priceChangePercent': '1522.000',
+                    'volume': '1235816253.30000000',
+                    'price': '0.64880000'
+                },
+                {
+                    'symbol': 'PERPUSDT',
+                    'priceChangePercent': '20.596',
+                    'volume': '24276162.79000000',
+                    'price': '1.48359000'
+                },
+            ]
         }
-        assert result == expected_result
+    ]
+
+    def new_init(self):
+        self._db = db
+
+    monkeypatch.setattr(Database, "__init__", new_init)
+    monkeypatch.setattr(Database, "query_market_domination", lambda a, size, *arg: data)
+    return data
+
+
+def test_get_market_domination(monkeypatch, patch_database):
+
+    response = app_client.get("/account/market-domination")
+
+    # Assert the expected result
+    expected_result = {
+        "data": {
+            "dates": ['2024-02-19 18:17:40.479'
+, "2024-02-19 18:17:40.479"],
+            "gainers_percent": [1260092416.09, 1260092416.09],
+            "losers_percent": [0.0, 0.0],
+            "gainers_count": [2, 2],
+            "losers_count": [0, 0],
+            "total_volume": [837813457.4946561, 837813457.4946561]
+        },
+        "message": "Successfully retrieved market domination data.",
+        "error": 0,
+    }
+    assert response.status_code == 200
+    assert response.json() == expected_result

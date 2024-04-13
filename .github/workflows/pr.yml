@@ -125,9 +125,12 @@ jobs:
           docker push carloswufei/binbot_cronjobs
 
 
-  python_tests:
+  python-tests:
     name: Python code tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -138,11 +141,9 @@ jobs:
           python-version: "3.10.8"
       - name: Install pipenv
         run: |
-          python3 -m pip install --upgrade pipenv wheel
+          python3 -m pip install --upgrade pipenv wheel httpx
       - name: Install dependencies
         run: |
           pipenv install --dev --system --deploy --ignore-pipfile --clear
-        working-directory: api
       - name: Run tests
         run: pipenv run pytest -v
-        working-directory: api
