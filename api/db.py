@@ -1,8 +1,7 @@
 import os
-from pymongo import MongoClient, database
-from pymongo.typings import _DocumentType
+from pymongo import MongoClient
 
-def setup_db() ->  database.Database[_DocumentType]:
+def setup_db():
     # Database
     mongo = MongoClient(
         host=os.getenv("MONGO_HOSTNAME"),

@@ -26,6 +26,7 @@ mongo_db
 db.dump
 __pycache__
 .pytest_cache
+kafka_data
 
 # Fix vscode linting bug
 .envFile
