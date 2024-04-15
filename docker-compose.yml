@@ -40,7 +40,7 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_CFG_NODE_ID=1
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
-      - KAFKA_CFG_NUM_PARTITIONS=20
+      - KAFKA_CFG_NUM_PARTITIONS=950
       - BITNAMI_DEBUG=yes
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines_store_topic --create --if-not-exists", "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines_store_topic --describe"]

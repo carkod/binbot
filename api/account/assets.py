@@ -15,7 +15,8 @@ from tools.enum_definitions import Status
 
 class Assets(BaseDeal):
     def __init__(self):
-        self.db = Database()
+        self.database = Database()
+        self.db = database._db
         self.usd_balance = 0
         self.exception_list = []
 
