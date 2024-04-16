@@ -1,4 +1,4 @@
-from db import setup_db
+from db import Database, setup_db
 from datetime import datetime
 from time import sleep
 from tools.handle_error import json_response, json_response_error, json_response_message
@@ -8,7 +8,7 @@ from tools.round_numbers import round_numbers
 from pymongo import ASCENDING
 from fastapi.encoders import jsonable_encoder
 
-class Controller:
+class Controller(Database):
     """
     Research app settings
     - Get: get single document with settings
@@ -16,24 +16,22 @@ class Controller:
     """
 
     def __init__(self):
-        self.db = setup_db()
+        super().__init__()
 
     def get_blacklist(self):
         """
         Get list of blacklisted symbols
         """
-        query_result = self.db.blacklist.find({ "pair": { "$exists": True } }).sort("pair", ASCENDING)
+        query_result = self._db.blacklist.find({ "pair": { "$exists": True } }).sort("pair", ASCENDING)
         blacklist = list(query_result)
-        return json_response(
-            {"message": "Successfully retrieved blacklist", "data": blacklist}
-        )
+        return blacklist
 
     def create_blacklist_item(self, data):
 
         try:
             blacklist_item = data.dict()
             blacklist_item["_id"] = data.pair
-            self.db.blacklist.insert_one(blacklist_item)
+            self._db.blacklist.insert_one(blacklist_item)
             return json_response(
                 {"message": "Successfully updated blacklist"}
             )
@@ -45,7 +43,7 @@ class Controller:
 
     def delete_blacklist_item(self, pair):
 
-        blacklist = self.db.blacklist.delete_one({"_id": pair})
+        blacklist = self._db.blacklist.delete_one({"_id": pair})
 
         if blacklist.acknowledged:
             resp = json_response({"message": "Successfully deleted item from blacklist", "data": str(pair)})
@@ -58,7 +56,7 @@ class Controller:
         if "pair" not in data:
             return json_response({"message": "Missing required field 'pair'.", "error": 1})
 
-        blacklist = self.db.blacklist.update_one(
+        blacklist = self._db.blacklist.update_one(
             {"_id": data["pair"]}, {"$set": data}
         )
 
@@ -118,8 +116,8 @@ class Controller:
             })
 
         try:
-            self.db.three_commas_signals.delete_many({})    
-            self.db.three_commas_signals.insert_many(consolidated_signals)
+            self._db.three_commas_signals.delete_many({})    
+            self._db.three_commas_signals.insert_many(consolidated_signals)
         except Exception as err:
             print(err)
 
@@ -131,7 +129,7 @@ class Controller:
         per week
         """
         query = {}
-        signals = list(self.db.three_commas_signals.find(query))
+        signals = list(self._db.three_commas_signals.find(query))
 
         return json_response({"message": "Successfully retrieved profitable 3commas signals", "data": signals})
 
@@ -142,14 +140,14 @@ class Controller:
     To merge with blacklist
     """
     def get_subscribed_symbols(self):
-        query_result = self.db.subscribed_symbols.find({}).sort("pair", ASCENDING)
+        query_result = self._db.subscribed_symbols.find({}).sort("pair", ASCENDING)
         all_symbols = list(query_result)
         return json_response(
             {"message": "Successfully retrieved blacklist", "data": all_symbols}
         )
 
     def delete_all_subscribed_symbols(self):
-        query_result = self.db.subscribed_symbols.delete_many({})
+        query_result = self._db.subscribed_symbols.delete_many({})
 
         return json_response(
             {"message": "Successfully deleted all symbols", "data": {
@@ -159,9 +157,9 @@ class Controller:
 
     def bulk_upsert_all(self, data):
         symbols = jsonable_encoder(data)
-        self.db.subscribed_symbols.delete_many({})
+        self._db.subscribed_symbols.delete_many({})
         try:
-            query_result = self.db.subscribed_symbols.insert_many(
+            query_result = self._db.subscribed_symbols.insert_many(
                 symbols,
             )
             return json_response(
@@ -175,7 +173,7 @@ class Controller:
     def edit_subscribed_symbol(self, symbol):
         symbol = jsonable_encoder(symbol)
         try:
-            self.db.subscribed_symbols.update_one(
+            self._db.subscribed_symbols.update_one(
                 symbol,
                 upsert=True,
             )

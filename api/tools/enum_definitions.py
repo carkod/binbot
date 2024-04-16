@@ -94,3 +94,9 @@ class CloseConditions(str, Enum):
 
     def __str__(self):
         return str(self.str)
+    
+
+class TrendEnum(str, Enum):
+    up_trend = "uptrend"
+    down_trend = "downtrend"
+    neutral = None

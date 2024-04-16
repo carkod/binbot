@@ -4,7 +4,7 @@ import numpy
 import logging
 
 from time import time
-from db import setup_db
+from db import Database, setup_db
 from orders.controller import OrderController
 from bots.schemas import BotSchema
 from pymongo import ReturnDocument
@@ -16,7 +16,7 @@ from tools.round_numbers import round_numbers_ceiling
 from tools.enum_definitions import Status, Strategy
 from bson.objectid import ObjectId
 from deals.schema import DealSchema, OrderSchema
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # To be removed one day when commission endpoint found that provides this value
 ESTIMATED_COMMISSIONS_RATE = 0.0075
@@ -27,11 +27,10 @@ class BaseDeal(OrderController):
     """
 
     def __init__(self, bot, db_collection_name):
-        self.active_bot = BotSchema.parse_obj(bot)
+        self.active_bot = BotSchema(**bot)
         self.symbol = self.active_bot.pair
         super().__init__(symbol=self.active_bot.pair)
-        self.db = setup_db()
-        self.db_collection = self.db[db_collection_name]
+        self.db_collection = self._db[db_collection_name]
         self.market_domination_reversal = None
         if self.active_bot.strategy == Strategy.margin_short:
             self.isolated_balance: float = self.get_isolated_balance(self.symbol)
@@ -174,22 +173,6 @@ class BaseDeal(OrderController):
                 return True
         return False
 
-    def update_required(self):
-        """
-        Terminate streaming and restart list of bots required
-
-        This will queue up a timer to restart streaming_controller when timer is reached
-        This timer is added, so that update_required petitions can be accumulated and
-        avoid successively restarting streaming_controller, which consumes a lot of memory
-
-        This means that everytime there is an update in the list of active bots,
-        it will reset the timer
-        """
-        self.db.research_controller.update_one(
-            {"_id": "settings"}, {"$set": {"update_required": time()}}
-        )
-        return
-
     def save_bot_streaming(self):
         """
         MongoDB query to save bot using Pydantic
@@ -234,10 +217,7 @@ class BaseDeal(OrderController):
         bot = encode_json(self.active_bot)
         self.db_collection.insert_one(bot)
         new_bot = self.db_collection.find_one({"id": bot["id"]})
-        bot_class = BotSchema.parse_obj(new_bot)
-
-        # notify the system to update streaming as usual bot actions
-        self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": time()}})
+        bot_class = BotSchema(**new_bot)
 
         return bot_class
 
@@ -318,7 +298,7 @@ class BaseDeal(OrderController):
         return document
 
     def dynamic_take_profit(self, current_bot, close_price):
-        self.active_bot = BotSchema.parse_obj(current_bot)
+        self.active_bot = BotSchema(**current_bot)
 
         params = {
             "symbol": self.active_bot.pair,
