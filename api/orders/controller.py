@@ -1,6 +1,7 @@
 import logging
 
 from account.account import Account
+from db import Database
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import supress_notation
@@ -10,12 +11,15 @@ from decimal import Decimal
 poll_percentage = 0
 
 
-class OrderController(Account):
+class OrderController(Database, Account):
+    """
+    Always GTC and limit orders
+    limit/market orders will be decided by matching_engine
+    PRICE_FILTER decimals
+    """
+
     def __init__(self, symbol) -> None:
         super().__init__()
-        # Always GTC and limit orders
-        # limit/market orders will be decided by matching_engine
-        # PRICE_FILTER decimals
         self.symbol = symbol
         pass
 

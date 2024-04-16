@@ -2,7 +2,15 @@ from fastapi import APIRouter
 from datetime import datetime, timedelta
 from account.account import Account
 from account.assets import Assets
-from account.schemas import BalanceResponse, GainersLosersResponse, BalanceSeriesResponse, GetMarketDominationResponse, MarketDominationResponse
+from account.schemas import (
+    BalanceResponse,
+    GainersLosersResponse,
+    BalanceSeriesResponse,
+    GetMarketDominationResponse,
+    MarketDominationResponse,
+    MarketDominationSeries,
+)
+from tools.handle_error import json_response, json_response_error
 
 account_blueprint = APIRouter()
 
@@ -70,32 +78,112 @@ def store_balance():
     return Assets().store_balance()
 
 
-@account_blueprint.get("/gainers-losers", response_model=GainersLosersResponse, tags=["assets"])
+@account_blueprint.get(
+    "/gainers-losers", response_model=GainersLosersResponse, tags=["assets"]
+)
 async def retrieve_gainers_losers():
     return await Assets().retrieve_gainers_losers()
 
-@account_blueprint.get("/balance-series", response_model=BalanceSeriesResponse, tags=["assets"])
+
+@account_blueprint.get(
+    "/balance-series", response_model=BalanceSeriesResponse, tags=["assets"]
+)
 async def get_balance_series():
     today = datetime.now()
     month_ago = today - timedelta(30)
-    return await Assets().get_balance_series(start_date=datetime.timestamp(month_ago), end_date=datetime.timestamp(today))
+    return await Assets().get_balance_series(
+        start_date=datetime.timestamp(month_ago), end_date=datetime.timestamp(today)
+    )
+
 
 @account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
 def clean_balance():
     return Assets().clean_balance_assets()
 
-@account_blueprint.get("/disable-isolated", response_model=BalanceSeriesResponse, tags=["assets"])
+
+@account_blueprint.get(
+    "/disable-isolated", response_model=BalanceSeriesResponse, tags=["assets"]
+)
 def disable_isolated():
     return Assets().disable_isolated_accounts()
+
 
 @account_blueprint.get("/one-click-liquidation/{asset}", tags=["assets"])
 def one_click_liquidation(asset):
     return Assets().one_click_liquidation(asset)
 
-@account_blueprint.get("/market-domination", tags=["assets"], response_model=MarketDominationResponse)
-def market_domination(size: int=7):
-    return Assets().get_market_domination(size)
 
-@account_blueprint.get("/store-market-domination", tags=["assets"], response_model=GetMarketDominationResponse)
+@account_blueprint.get(
+    "/market-domination", tags=["assets"], response_model=MarketDominationResponse
+)
+def market_domination(size: int = 7):
+
+    data = Assets().get_market_domination(size)
+    market_domination_series = MarketDominationSeries()
+
+    try:
+        for item in data:
+            gainers_percent = 0
+            losers_percent = 0
+            gainers_count = 0
+            losers_count = 0
+            total_volume = 0
+            if "data" in item:
+                for crypto in item["data"]:
+                    if float(crypto['priceChangePercent']) > 0:
+                        gainers_percent += float(crypto['volume'])
+                        gainers_count += 1
+
+                    if float(crypto['priceChangePercent']) < 0:
+                        losers_percent += abs(float(crypto['volume']))
+                        losers_count += 1
+
+                    if float(crypto['volume']) > 0:
+                        total_volume += float(crypto['volume']) * float(crypto['price'])
+
+            market_domination_series.dates.append(item["time"])
+            market_domination_series.gainers_percent.append(gainers_percent)
+            market_domination_series.losers_percent.append(losers_percent)
+            market_domination_series.gainers_count.append(gainers_count)
+            market_domination_series.losers_count.append(losers_count)
+            market_domination_series.total_volume.append(total_volume)
+
+        market_domination_series.dates = market_domination_series.dates[-size:]
+        market_domination_series.gainers_percent = (
+            market_domination_series.gainers_percent[-size:]
+        )
+        market_domination_series.losers_percent = (
+            market_domination_series.losers_percent[-size:]
+        )
+        market_domination_series.gainers_count = market_domination_series.gainers_count[
+            -size:
+        ]
+        market_domination_series.losers_count = market_domination_series.losers_count[
+            -size:
+        ]
+        market_domination_series.total_volume = market_domination_series.total_volume[
+            -size:
+        ]
+
+        data = market_domination_series.model_dump(mode="json")
+
+        return json_response(
+            {
+                "data": data,
+                "message": "Successfully retrieved market domination data.",
+                "error": 0,
+            }
+        )
+    except Exception as error:
+        return json_response_error(
+            f"Failed to retrieve market domination data: {error}"
+        )
+
+
+@account_blueprint.get(
+    "/store-market-domination",
+    tags=["assets"],
+    response_model=GetMarketDominationResponse,
+)
 def store_market_domination():
     return Assets().store_market_domination()
