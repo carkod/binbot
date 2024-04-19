@@ -22,22 +22,16 @@ class Assets(BaseDeal):
         """
         Unrestricted balance
         """
-        data = self.signed_request(url=self.account_url)
-        df = pd.DataFrame(data["balances"])
-        df["free"] = pd.to_numeric(df["free"])
-        df["locked"] = pd.to_numeric(df["locked"])
-        df["asset"] = df["asset"].astype(str)
-        # Get table with > 0
-        balances = df[(df["free"] > 0) | (df["locked"] > 0)].to_dict("records")
-
-        if asset:
-            balances = df[
-                ((df["free"] > 0) | (df["locked"] > 0)) & (df["asset"] == asset)
-            ].to_dict("records")
-        # filter out empty
-        # Return response
-        resp = json_response({"data": balances})
-        return resp
+        data = self.get_account_balance()
+        balances = []
+        for item in data["balances"]:
+            if float(item["free"]) > 0 or float(item["locked"]) > 0:
+                if asset:
+                    if item["asset"] == asset:
+                        balances.append(item)
+                else:
+                    balances.append(item)
+        return balances
 
     def get_pnl(self, days=7):
         current_time = datetime.now()
@@ -71,7 +65,7 @@ class Assets(BaseDeal):
         # Store balance works outside of context as cronjob
         balances_response = self.get_raw_balance()
         bin_balance = json.loads(balances_response.body)
-        current_time = datetime.utcnow()
+        current_time = datetime.now()
         total_usdt: float = 0
         rate: float = 0
         for b in bin_balance["data"]:

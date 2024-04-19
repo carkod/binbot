@@ -54,8 +54,6 @@ def handle_binance_errors(response: Response) -> Response:
     - Binbot internal errors - bot errors, returns "errored"
 
     """
-    content = response.json()
-
     # Binance doesn't seem to reach 418 or 429 even after 2000 weight requests
     if (
         response.headers.get("x-mbx-used-weight-1m")
@@ -68,17 +66,21 @@ def handle_binance_errors(response: Response) -> Response:
         print("Request weight limit hit, ban will come soon, waiting 1 hour")
         sleep(3600)
 
+    # Cloudfront 403 error
+    if response.status_code == 403 and response.reason:
+        raise HTTPError(response.reason)
+
+    content = response.json()
+
     if response.status_code == 404:
-        error = response.json()
-        raise HTTPError(error)
+        raise HTTPError(content)
     
-    # Show error message for bad requests
+    # Show error messsage for bad requests
     if response.status_code >= 400:
-        error = response.json()
-        if "msg" in error:
-            raise BinanceErrors(error["msg"], error["code"])
-        if "error" in error:
-            raise BinbotErrors(error["message"])
+        if "msg" in content:
+            raise BinanceErrors(content["msg"], content["code"])
+        if "error" in content:
+            raise BinbotErrors(content["message"])
 
     # Binbot errors
     if content and "error" in content and content["error"] == 1:

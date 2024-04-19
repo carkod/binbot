@@ -17,7 +17,8 @@ account_blueprint = APIRouter()
 
 @account_blueprint.get("/balance/raw", response_model=BalanceResponse, tags=["account"])
 def raw_balance():
-    return Assets().get_raw_balance()
+    data = Assets().get_raw_balance()
+    return json_response({"data": data}) 
 
 
 @account_blueprint.get("/symbols", tags=["account"])
