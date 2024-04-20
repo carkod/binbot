@@ -4,17 +4,25 @@ from pydantic import BaseModel, field_validator
 
 
 class OrderSchema(BaseModel):
+    """
+    No need for validation,
+    order coming from Binance
+
+    """
     order_type: str | None = None
     time_in_force: str | None = None
     timestamp: float = 0
     pair: str | None = None
-    qty: str | None = None
+    qty: str | float | int | None = None
     order_side: str | None = None
-    order_id: str | None = None
+    order_id: int | None = None
     fills: Any = None
     price: float | None = None
     status: str | None = None
     deal_type: str | None = None  # [base_order, take_profit, so_{x}, short_sell, short_buy, margin_short]
+
+    class Config:
+        use_enum_values = True
 
 
 class DealSchema(BaseModel):

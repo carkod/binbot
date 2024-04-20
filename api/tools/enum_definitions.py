@@ -120,3 +120,14 @@ class KafkaTopics(str, Enum):
 
     def __str__(self):
         return str(self.str)
+
+
+class DealType(str, Enum):
+    base_order = "base_order"
+    take_profit = "take_profit"
+    short_sell = "short_sell"
+    short_buy = "short_buy"
+    margin_short = "margin_short"
+
+    def __str__(self):
+        return str(self.str)

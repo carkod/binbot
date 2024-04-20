@@ -66,6 +66,16 @@ class BotSchema(BaseModel):
         assert v != "", "Empty pair field."
         return v
 
+    @field_validator("balance_size_to_use", "base_order_size")
+    @classmethod
+    def validate_str_numbers(cls, v):
+        if isinstance(v, float):
+            return str(v)
+        elif isinstance(v, int):
+            return str(v)
+        else:
+            return v
+
     @field_validator("stop_loss", "take_profit", "trailling_deviation", "trailling_profit")
     @classmethod
     def check_percentage(cls, v):
@@ -110,9 +120,9 @@ class BotSchema(BaseModel):
             "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Binance",
             "example": {
                 "pair": "BNBUSDT",
-                "balance_size_to_use": 0,
-                "balance_to_use": 0,
-                "base_order_size": 15,
+                "balance_size_to_use": "0",
+                "balance_to_use": "USDT",
+                "base_order_size": "15",
                 "candlestick_interval": "15m",
                 "cooldown": 0,
                 "errors": [],

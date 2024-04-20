@@ -4,7 +4,6 @@ import hashlib
 import hmac
 import os
 from urllib.parse import urlencode
-from time import time
 from requests import Session, request
 from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from tools.exceptions import IsolateBalanceError
@@ -39,6 +38,7 @@ class BinanceApi:
     cancel_replace_url = f"{BASE}/api/v3/order/cancelReplace"
     user_data_stream = f"{BASE}/api/v3/userDataStream"
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
+    wallet_balance_url = f"{BASE}/sapi/v1/asset/wallet/balance"
 
     withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
     withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"
@@ -135,6 +135,14 @@ class BinanceApi:
         Get account balance
         """
         data = self.signed_request(self.account_url)
+        return data
+
+    def get_wallet_balance(self):
+        """
+        Balance by wallet (SPOT, FUNDING, CROSS MARGIN...)
+        https://binance-docs.github.io/apidocs/spot/en/#query-user-wallet-balance-user_data
+        """
+        data = self.signed_request(self.wallet_balance_url)
         return data
 
     def cancel_margin_order(self, symbol, order_id):

@@ -1,9 +1,6 @@
-from urllib import response
-from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 import pytest
 from account.assets import Assets
-from db import Database, setup_db
 from main import app
 import mongomock
 
@@ -54,14 +51,38 @@ def patch_raw_balances(monkeypatch):
         "balances": [
             {"asset": "BTC", "free": 6.51e-06, "locked": 0.0},
             {"asset": "BNB", "free": 9.341e-05, "locked": 0.0},
-            {"asset": "USDT", "free": 160.7613619, "locked": 0.0},
-            {"asset": "NFT", "free": 31205.975795, "locked": 0.0},
+            {"asset": "USDT", "free": 5.2, "locked": 0.0},
+            {"asset": "NFT", "free": 1, "locked": 0.0},
         ],
         "permissions": ["LEVERAGED", "TRD_GRP_002", "TRD_GRP_009"],
     }
 
     monkeypatch.setattr(
         Assets, "get_account_balance", lambda a, asset=None: account_data
+    )
+
+
+@pytest.fixture()
+def patch_total_fiat(monkeypatch):
+    """
+    Input data from API
+    Confidential data has been removed
+    """
+    account_data = [
+        {"activate": True, "balance": "0.001", "walletName": "Spot"},
+        {"activate": True, "balance": "0", "walletName": "Funding"},
+        {"activate": True, "balance": "0", "walletName": "Cross Margin"},
+        {"activate": True, "balance": "0", "walletName": "Isolated Margin"},
+        {"activate": True, "balance": "0", "walletName": "USDⓈ-M Futures"},
+        {"activate": True, "balance": "0", "walletName": "COIN-M Futures"},
+        {"activate": True, "balance": "0", "walletName": "Earn"},
+        {"activate": False, "balance": "0", "walletName": "Options"},
+        {"activate": False, "balance": "0", "walletName": "Trading Bots"},
+    ]
+
+    monkeypatch.setattr(Assets, "get_wallet_balance", lambda self: account_data)
+    monkeypatch.setattr(
+        Assets, "ticker", lambda self, symbol="BTCUSDT", json=False: {"price": "20000"}
     )
 
 
@@ -95,10 +116,34 @@ def test_get_raw_balance(patch_raw_balances):
     expected_result = [
         {"asset": "BTC", "free": 6.51e-06, "locked": 0.0},
         {"asset": "BNB", "free": 9.341e-05, "locked": 0.0},
-        {"asset": "USDT", "free": 160.7613619, "locked": 0.0},
-        {"asset": "NFT", "free": 31205.975795, "locked": 0.0},
+        {"asset": "USDT", "free": 5.2, "locked": 0.0},
+        {"asset": "NFT", "free": 1, "locked": 0.0},
     ]
 
     assert response.status_code == 200
     content = response.json()
     assert content["data"] == expected_result
+
+
+def test_total_fiat(patch_total_fiat):
+    """
+    Test get balance estimates
+    """
+
+    response = app_client.get("/account/fiat")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["data"] == 20
+
+
+def test_available_fiat(patch_raw_balances):
+    """
+    Test available fiat
+    """
+
+    response = app_client.get("/account/fiat/available")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["data"] == 5.2

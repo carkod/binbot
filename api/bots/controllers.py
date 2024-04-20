@@ -179,27 +179,7 @@ class Bot(Account):
 
     def activate(self, botId: str):
         bot = self.db_collection.find_one({"id": botId})
-        if bot:
-
-            try:
-                CreateDealController(
-                    bot, db_collection=self.db_collection.name
-                ).open_deal()
-                return json_response_message("Successfully activated bot!")
-            except BinanceErrors as error:
-                logging.info(error)
-                self.post_errors_by_id(botId, error.message)
-                return json_response_error(error.message)
-            except BinbotErrors as error:
-                logging.info(error)
-                self.post_errors_by_id(botId, error.message)
-                return json_response_error(error.message)
-            except Exception as error:
-                self.post_errors_by_id(botId, error)
-                resp = json_response_error(f"Unable to activate bot: {error}")
-                return resp
-        else:
-            return json_response_error("Bot not found.")
+        return bot
 
     def deactivate(self, findId):
         """

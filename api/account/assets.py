@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -6,7 +5,7 @@ from account.schemas import BalanceSchema, MarketDominationSeries
 from bson.objectid import ObjectId
 from charts.models import CandlestickParams
 from charts.models import Candlestick
-from db import Database, setup_db
+from db import setup_db
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
 from tools.exceptions import BinanceErrors, InvalidSymbol, MarginLoanNotFound
@@ -38,7 +37,7 @@ class Assets(BaseDeal):
         start = current_time - timedelta(days=days)
         dummy_id = ObjectId.from_datetime(start)
         data = list(
-            self.db.balances.find(
+            self._db.balances.find(
                 {
                     "_id": {
                         "$gte": dummy_id,
@@ -52,9 +51,9 @@ class Assets(BaseDeal):
     def _check_locked(self, b):
         qty = 0
         if "locked" in b:
-            qty = b["free"] + b["locked"]
+            qty = float(b["free"]) + float(b["locked"])
         else:
-            qty = b["free"]
+            qty = float(b["free"])
         return qty
 
     def store_balance(self) -> dict:
@@ -63,8 +62,7 @@ class Assets(BaseDeal):
         Store current balance in Db
         """
         # Store balance works outside of context as cronjob
-        balances_response = self.get_raw_balance()
-        bin_balance = json.loads(balances_response.body)
+        bin_balance = self.get_raw_balance()
         current_time = datetime.now()
         total_usdt: float = 0
         rate: float = 0
@@ -98,7 +96,7 @@ class Assets(BaseDeal):
         try:
             balance_schema = BalanceSchema(**total_balance)
             balances = balance_schema.dict()
-            self.db.balances.update_one(
+            self._db.balances.update_one(
                 {"time": current_time.strftime("%Y-%m-%d")},
                 {"$set": balances},
                 upsert=True,
@@ -113,7 +111,7 @@ class Assets(BaseDeal):
         """
         Estimated balance in given fiat coin
         """
-        balances_response = self.get_raw_balance()
+        balances = self.get_raw_balance()
         # Isolated m
         isolated_margin = self.signed_request(url=self.isolated_account_url)
         get_usdt_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
@@ -121,11 +119,10 @@ class Assets(BaseDeal):
             get_usdt_btc_rate["price"]
         )
 
-        balances = json.loads(balances_response.body)
         total_fiat = 0
         rate = 0
         left_to_allocate = 0
-        for b in balances["data"]:
+        for b in balances:
             # Transform tethers/stablecoins
             if "USD" in b["asset"] or fiat == b["asset"]:
                 if fiat == b["asset"]:
@@ -143,7 +140,7 @@ class Assets(BaseDeal):
                 total_fiat += float(qty) * float(rate)
 
         balance = {
-            "balances": balances["data"],
+            "balances": balances,
             "total_fiat": total_fiat + total_isolated_margin,
             "total_isolated_margin": total_isolated_margin,
             "fiat_left": left_to_allocate,
@@ -193,7 +190,7 @@ class Assets(BaseDeal):
         """
         db = setup_db()
         print("Store account snapshot starting...")
-        current_time = datetime.utcnow()
+        current_time = datetime.now()
         data = self.signed_request(self.account_snapshot_url, payload={"type": "SPOT"})
         spot_data = next(
             (item for item in data["snapshotVos"] if item["type"] == "spot"), None
@@ -293,7 +290,7 @@ class Assets(BaseDeal):
             lte_tp_id = ObjectId.from_datetime(obj_end_date)
             params["_id"]["$lte"] = lte_tp_id
 
-        balance_series = list(self.db.balances.find(params).sort([("time", -1)]))
+        balance_series = list(self._db.balances.find(params).sort([("time", -1)]))
 
         # btc candlestick data series
         params = CandlestickParams(
@@ -345,7 +342,7 @@ class Assets(BaseDeal):
         if len(self.exception_list) == 0:
             self.exception_list = ["USDT", "NFT", "BNB"]
 
-        active_bots = list(self.db.bots.find({"status": Status.active}))
+        active_bots = list(self._db.bots.find({"status": Status.active}))
         for bot in active_bots:
             quote_asset = bot["pair"].replace(bot["balance_to_use"], "")
             self.exception_list.append(quote_asset)
@@ -362,6 +359,49 @@ class Assets(BaseDeal):
                 resp = json_response_error(f"Failed to clean balance: {error}")
 
         return resp
+
+    def get_total_fiat(self, fiat="USDT"):
+        """
+        Simplified version of balance_estimate
+
+        Returns:
+            float: total BTC estimated in the SPOT wallet
+            then converted into USDT
+        """
+        wallet_balance = self.get_wallet_balance()
+        get_usdt_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
+        total_balance = 0
+        rate = float(get_usdt_btc_rate["price"])
+        for item in wallet_balance:
+            if item["activate"]:
+                total_balance += float(item["balance"])
+
+        total_fiat = total_balance * rate
+        return total_fiat
+
+    def get_available_fiat(self, fiat="USDT"):
+        """
+        Simplified version of balance_estimate
+        to get free/avaliable USDT.
+
+        Getting the total USDT directly
+        from the balances because if it were e.g.
+        Margin trading, it would not be available for use.
+        The only available fiat is the unused USDT in the SPOT wallet.
+
+        Balance not used in Margin trading should be
+        transferred back to the SPOT wallet.
+
+        Returns:
+            str: total USDT available to 
+        """
+        total_balance = self.get_raw_balance()
+        for item in total_balance:
+            if item["asset"] == fiat:
+                return float(item["free"])
+        else:
+            return 0
+
 
     def disable_isolated_accounts(self, symbol=None):
         """
@@ -417,7 +457,7 @@ class Assets(BaseDeal):
         all_coins = sorted(all_coins, key=lambda item: float(item["priceChangePercent"]), reverse=True)
         try:
             current_time = datetime.now()
-            self.db.market_domination.insert_one(
+            self._db.market_domination.insert_one(
                 {
                     "time": current_time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
                     "data": all_coins
@@ -433,11 +473,9 @@ class Assets(BaseDeal):
 
         Args:
             size (int, optional): Number of data points to retrieve. Defaults to 7 (1 week).
-
         Returns:
             dict: A dictionary containing the market domination data, including gainers and losers counts, percentages, and dates.
         """
         query = {"$query": {}, "$orderby": {"_id": -1}}
         result = self._db.market_domination.find(query).limit(size)
         return list(result)
-
