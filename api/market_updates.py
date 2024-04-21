@@ -1,21 +1,34 @@
+from enum import auto
+import json
 import logging
-import time
+import os
 
+from click import group
+from kafka import KafkaConsumer
 from streaming.streaming_controller import StreamingController
+from tools.enum_definitions import KafkaTopics
 
-logging.Formatter.converter = time.gmtime  # date time in GMT/UTC
-logging.basicConfig(
-    level=logging.INFO,
-    filename=None,
-    format="%(asctime)s.%(msecs)03d UTC %(levelname)s %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+def main():
+    try:
+        consumer = KafkaConsumer(
+            KafkaTopics.klines_store_topic.value,
+            KafkaTopics.restart_streaming.value,
+            bootstrap_servers=f'{os.environ["KAFKA_HOST"]}:{os.environ["KAFKA_PORT"]}',
+            value_deserializer=lambda m: json.loads(m),
+            auto_offset_reset="latest",
+            autocommit_enable=True,
+        )
+        mu = StreamingController(consumer)
+        for message in consumer:
+            if message.topic == KafkaTopics.restart_streaming.value:
+                mu.load_data_on_start()
+            if message.topic == KafkaTopics.klines_store_topic.value:
+                mu.process_klines(message.value)
 
+    except Exception as error:
+        logging.error(f"Streaming controller error: {error}")
+        main()
 
-try:
-    mu = StreamingController()
-    mu.get_klines()
-except Exception as error:
-    logging.error(f"Streaming controller error: {error}")
-    mu = StreamingController()
-    mu.get_klines()
+if __name__ == "__main__":
+    while True:
+        main()

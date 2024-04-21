@@ -1,9 +1,11 @@
 from enum import Enum
 
+
 class EnumDefinitions:
     """
     Enums established by Binance API
     """
+
     symbol_status = (
         "PRE_TRADING",
         "TRADING",
@@ -48,6 +50,7 @@ class BinbotEnums:
     mode = ("manual", "autotrade")
     strategy = ("long", "short", "margin_long", "margin_short")
 
+
 class Status(str, Enum):
     inactive = "inactive"
     active = "active"
@@ -55,13 +58,15 @@ class Status(str, Enum):
     error = "error"
     archived = "archived"
 
+
 class Strategy(str, Enum):
     long = "long"
     margin_short = "margin_short"
 
+
 class OrderType(str, Enum):
     limit = "LIMIT"
-    market= "MARKET"
+    market = "MARKET"
     stop_loss = "STOP_LOSS"
     stop_loss_limit = "STOP_LOSS_LIMIT"
     take_profit = "TAKE_PROFIT"
@@ -80,6 +85,7 @@ class TimeInForce(str, Enum):
     def __str__(self):
         return str(self.str)
 
+
 class OrderSide(str, Enum):
     buy = "BUY"
     sell = "SELL"
@@ -87,16 +93,41 @@ class OrderSide(str, Enum):
     def __str__(self):
         return str(self.str)
 
+
 class CloseConditions(str, Enum):
     dynamic_trailling = "dynamic_trailling"
-    timestamp = "timestamp" # No trailling, standard stop loss
-    market_reversal = "market_reversal" # binbot-research param (self.market_trend_reversal)
+    timestamp = "timestamp"  # No trailling, standard stop loss
+    market_reversal = (
+        "market_reversal"  # binbot-research param (self.market_trend_reversal)
+    )
 
     def __str__(self):
         return str(self.str)
-    
+
 
 class TrendEnum(str, Enum):
     up_trend = "uptrend"
     down_trend = "downtrend"
     neutral = None
+
+
+class KafkaTopics(str, Enum):
+    klines_store_topic = "klines_store_topic"
+    processed_klines_topic = "processed_klines_topic"
+    technical_indicators = "technical_indicators"
+    signals = "signals"
+    restart_streaming = "restart_streaming"
+
+    def __str__(self):
+        return str(self.str)
+
+
+class DealType(str, Enum):
+    base_order = "base_order"
+    take_profit = "take_profit"
+    short_sell = "short_sell"
+    short_buy = "short_buy"
+    margin_short = "margin_short"
+
+    def __str__(self):
+        return str(self.str)

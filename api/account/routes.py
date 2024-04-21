@@ -17,7 +17,8 @@ account_blueprint = APIRouter()
 
 @account_blueprint.get("/balance/raw", response_model=BalanceResponse, tags=["account"])
 def raw_balance():
-    return Assets().get_raw_balance()
+    data = Assets().get_raw_balance()
+    return json_response({"data": data}) 
 
 
 @account_blueprint.get("/symbols", tags=["account"])
@@ -100,6 +101,23 @@ async def get_balance_series():
 def clean_balance():
     return Assets().clean_balance_assets()
 
+@account_blueprint.get("/fiat/available", response_model=BalanceSeriesResponse, tags=["assets"])
+def total_balance():
+    """
+    Total USDT in balance
+    Calculated by Binance
+    """
+    total_fiat = Assets().get_available_fiat()
+    return json_response({"data": total_fiat})
+
+@account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["assets"])
+def total_balance():
+    """
+    Total USDT in balance
+    Calculated by Binance
+    """
+    total_fiat = Assets().get_total_fiat()
+    return json_response({"data": total_fiat})
 
 @account_blueprint.get(
     "/disable-isolated", response_model=BalanceSeriesResponse, tags=["assets"]

@@ -1,10 +1,10 @@
+from random import randrange
 from typing import List
 import hashlib
 import hmac
 import os
 from urllib.parse import urlencode
-from time import time
-from requests import request
+from requests import Session, request
 from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from tools.exceptions import IsolateBalanceError
 from py3cw.request import Py3CW
@@ -15,19 +15,21 @@ class BinanceApi:
     https://binance.github.io/binance-api-swagger/
     """
 
-    BASE = "https://api.binance.com"
+    api_servers = ["https://api.binance.com", "https://api3.binance.com", "https://api-gcp.binance.com"]
+    BASE = api_servers[randrange(3) - 1]
+    MARKET_DATA_BASE = "https://data-api.binance.vision"
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
     recvWindow = 9000
     secret = os.getenv("BINANCE_SECRET")
     key = os.getenv("BINANCE_KEY")
-    server_time_url = f"{BASE}/api/v3/time"
+    server_time_url = f"{MARKET_DATA_BASE}/api/v3/time"
     account_url = f"{BASE}/api/v3/account"
-    exchangeinfo_url = f"{BASE}/api/v3/exchangeInfo"
-    ticker_price_url = f"{BASE}/api/v3/ticker/price"
-    ticker24_url = f"{BASE}/api/v3/ticker/24hr"
-    candlestick_url = f"{BASE}/api/v3/uiKlines"
+    exchangeinfo_url = f"{MARKET_DATA_BASE}/api/v3/exchangeInfo"
+    ticker_price_url = f"{MARKET_DATA_BASE}/api/v3/ticker/price"
+    ticker24_url = f"{MARKET_DATA_BASE}/api/v3/ticker/24hr"
+    candlestick_url = f"{MARKET_DATA_BASE}/api/v3/uiKlines"
     order_url = f"{BASE}/api/v3/order"
     order_book_url = f"{BASE}/api/v3/depth"
     avg_price = f"{BASE}/api/v3/avgPrice"
@@ -36,6 +38,7 @@ class BinanceApi:
     cancel_replace_url = f"{BASE}/api/v3/order/cancelReplace"
     user_data_stream = f"{BASE}/api/v3/userDataStream"
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
+    wallet_balance_url = f"{BASE}/sapi/v1/asset/wallet/balance"
 
     withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
     withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"
@@ -55,13 +58,33 @@ class BinanceApi:
     margin_order = f"{BASE}/sapi/v1/margin/order"
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
 
-    def signed_request(self, url, method="GET", payload={}, params={}):
+    def request(self, url, method="GET", session: Session=None, payload={}, **kwargs):
+        """
+        Standard request
+        - No signed
+        - No authorization
+        """
+        if session:
+            res = session.request(method=method, url=url, **kwargs)
+        else:
+            res = request(method=method, url=url, json=payload, **kwargs)
+        data = handle_binance_errors(res)
+        return data
+
+    def get_server_time(self):
+        data = self.request(url=self.server_time_url)
+        return data["serverTime"]
+
+    def signed_request(self, url, method="GET", payload={}):
         """
         USER_DATA, TRADE signed requests
         """
+        session = Session()
         query_string = urlencode(payload, True)
-        timestamp = round(time() * 1000)
-        headers = {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
+        timestamp = self.get_server_time()
+        session.headers.update(
+            {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
+        )
 
         if query_string:
             query_string = (
@@ -76,17 +99,7 @@ class BinanceApi:
             hashlib.sha256,
         ).hexdigest()
         url = f"{url}?{query_string}&signature={signature}"
-        data = self.request(method, url=url, headers=headers, params=params)
-        return data
-
-    def request(self, method="GET", **args):
-        """
-        Standard request
-        - No signed
-        - No authorization
-        """
-        res = request(method, **args)
-        data = handle_binance_errors(res)
+        data = self.request(url, method, session)
         return data
 
     def get_listen_key(self):
@@ -96,6 +109,41 @@ class BinanceApi:
         headers = {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
         data = self.request("POST", url=self.user_data_stream, headers=headers)
         return data["listenKey"]
+
+    
+    def ticker_24(self, type: str = "FULL", symbol: str | None = None):
+        """
+        Weight 40 without symbol
+        https://github.com/carkod/binbot/issues/438
+
+        Using cache
+        """
+        params = {
+            "type": type
+        }
+        if symbol:
+            params["symbol"] = symbol
+        
+        # mongo_cache = self.setup_mongocache()
+        # expire_after = 15m because candlesticks are 15m
+        # session = CachedSession('ticker_24_cache', backend=mongo_cache, expire_after=15)
+        data = self.request(url=self.ticker24_url, params=params)
+        return data
+
+    def get_account_balance(self):
+        """
+        Get account balance
+        """
+        data = self.signed_request(self.account_url)
+        return data
+
+    def get_wallet_balance(self):
+        """
+        Balance by wallet (SPOT, FUNDING, CROSS MARGIN...)
+        https://binance-docs.github.io/apidocs/spot/en/#query-user-wallet-balance-user_data
+        """
+        data = self.signed_request(self.wallet_balance_url)
+        return data
 
     def cancel_margin_order(self, symbol, order_id):
         return self.signed_request(self.margin_order, method="DELETE", payload={"symbol": symbol, "orderId": order_id})

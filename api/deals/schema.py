@@ -4,17 +4,25 @@ from pydantic import BaseModel, field_validator
 
 
 class OrderSchema(BaseModel):
+    """
+    No need for validation,
+    order coming from Binance
+
+    """
     order_type: str | None = None
     time_in_force: str | None = None
     timestamp: float = 0
     pair: str | None = None
-    qty: str | None = None
+    qty: str | float | int | None = None
     order_side: str | None = None
-    order_id: str | None = None
+    order_id: int | None = None
     fills: Any = None
     price: float | None = None
     status: str | None = None
     deal_type: str | None = None  # [base_order, take_profit, so_{x}, short_sell, short_buy, margin_short]
+
+    class Config:
+        use_enum_values = True
 
 
 class DealSchema(BaseModel):
@@ -31,7 +39,6 @@ class DealSchema(BaseModel):
     sell_timestamp: float = 0
     sell_price: float = 0
     sell_qty: float = 0
-    post_closure_current_price: float = 0
     trailling_stop_loss_price: float = 0
     trailling_profit_price: float = 0
     short_sell_price: float = 0
@@ -63,8 +70,9 @@ class DealSchema(BaseModel):
     def check_prices(cls, v):
         if float(v) < 0:
             raise ValueError("Price must be a positive number")
+        if isinstance(v, str):
+            return float(v)
         return v
-
 
 class MarginOrderSchema(OrderSchema):
     margin_buy_borrow_amount: int = 0
