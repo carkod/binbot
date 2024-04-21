@@ -125,9 +125,30 @@ class KafkaTopics(str, Enum):
 class DealType(str, Enum):
     base_order = "base_order"
     take_profit = "take_profit"
+    stop_loss = "stop_loss"
     short_sell = "short_sell"
     short_buy = "short_buy"
     margin_short = "margin_short"
+
+    def __str__(self):
+        return str(self.str)
+
+class BinanceKlineIntervals(str, Enum):
+    one_minute = "1m"
+    three_minutes = "3m"
+    five_minutes = "5m"
+    fifteen_minutes = "15m"
+    thirty_minutes = "30m"
+    one_hour = "1h"
+    two_hours = "2h"
+    four_hours = "4h"
+    six_hours = "6h"
+    eight_hours = "8h"
+    twelve_hours = "12h"
+    one_day = "1d"
+    three_days = "3d"
+    one_week = "1w"
+    one_month = "1M"
 
     def __str__(self):
         return str(self.str)

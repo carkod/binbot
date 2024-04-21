@@ -3,7 +3,7 @@
 .env.prod
 .env.development.local
 .env.test.local
-/.env
+.env
 .vscode/settings.json
 .venv/
 binbot-research/

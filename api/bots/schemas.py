@@ -1,10 +1,10 @@
 from time import time
-from typing import List, Literal
+from typing import Literal
 
 from bson.objectid import ObjectId
-from tools.enum_definitions import CloseConditions, Status
+from tools.enum_definitions import BinanceKlineIntervals, CloseConditions, Status
 from deals.schema import DealSchema, OrderSchema
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from tools.handle_error import StandardResponse
 from tools.enum_definitions import BinbotEnums
 
@@ -31,10 +31,10 @@ class SafetyOrderSchema(BaseModel):
 class BotSchema(BaseModel):
     id: str = ""
     pair: str
-    balance_size_to_use: float = 0
+    balance_size_to_use: str | float = 1
     balance_to_use: str = "1"
     base_order_size: str = "15"  # Min Binance 0.0001 BNB
-    candlestick_interval: str = "15m"
+    candlestick_interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes
     close_condition: CloseConditions = CloseConditions.dynamic_trailling
     cooldown: int = 0  # cooldown period in minutes before opening next bot with same pair
     created_at: float = time() * 1000
@@ -59,6 +59,40 @@ class BotSchema(BaseModel):
     # Deal and orders are internal, should never be updated by outside data
     total_commission: float = 0
     updated_at: float = time() * 1000
+
+    model_config = {
+        "arbitrary_types_allowed": True,
+        "use_enum_values": True,
+        "json_encoders": {ObjectId: str},
+        "json_schema_extra": {
+            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Binance",
+            "examples": [{
+                "pair": "BNBUSDT",
+                "balance_size_to_use": "0",
+                "balance_to_use": "USDT",
+                "base_order_size": "15",
+                "candlestick_interval": "15m",
+                "cooldown": 0,
+                "errors": [],
+                "locked_so_funds": 0,
+                "mode": "manual",  # Manual is triggered by the terminal dashboard, autotrade by research app,
+                "name": "Default bot",
+                "orders": [],
+                "status": "inactive",
+                "stop_loss": 0,
+                "take_profit": 2.3,
+                "trailling": "true",
+                "trailling_deviation": 0.63,
+                "trailling_profit": 2.3,
+                "safety_orders": [],
+                "strategy": "long",
+                "short_buy_price": 0,
+                "short_sell_price": 0,
+                "total_commission": 0,
+            }],
+        }
+    }
+
 
     @field_validator("pair", "base_order_size", "candlestick_interval")
     @classmethod
@@ -111,38 +145,6 @@ class BotSchema(BaseModel):
         if not isinstance(v, list):
             raise ValueError(f'Errors must be a list of strings')
         return v
-
-    class Config:
-        use_enum_values = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
-        json_schema_extra = {
-            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Binance",
-            "example": {
-                "pair": "BNBUSDT",
-                "balance_size_to_use": "0",
-                "balance_to_use": "USDT",
-                "base_order_size": "15",
-                "candlestick_interval": "15m",
-                "cooldown": 0,
-                "errors": [],
-                "locked_so_funds": 0,
-                "mode": "manual",  # Manual is triggered by the terminal dashboard, autotrade by research app,
-                "name": "Default bot",
-                "orders": [],
-                "status": "inactive",
-                "stop_loss": 0,
-                "take_profit": 2.3,
-                "trailling": "true",
-                "trailling_deviation": 0.63,
-                "trailling_profit": 2.3,
-                "safety_orders": [],
-                "strategy": "long",
-                "short_buy_price": 0,
-                "short_sell_price": 0,
-                "total_commission": 0,
-            },
-        }
 
 
 class BotListResponse(StandardResponse):

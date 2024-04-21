@@ -1,17 +1,21 @@
 from pydantic import BaseModel, Field
 from tools.handle_error import StandardResponse
 
+
 class BlacklistSchema(BaseModel):
     pair: str
     reason: str
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "pair": "BNBBTC",
-                "reason": "Overtraded",
-            }
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "pair": "BNBBTC",
+                    "reason": "Overtraded",
+                }
+            ]
         }
+    }
 
 
 class BlacklistResponse(StandardResponse):
@@ -22,21 +26,26 @@ class BlacklistResponse(StandardResponse):
 Database control for symbols that are used
 in signals.
 """
+
+
 class SubscribedSymbolsSchema(BaseModel):
     _id: str
     pair: str
     blacklisted: bool = False
     blacklisted_reason: str = ""
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "_id": "BNBBTC",
-                "pair": "BNBBTC",
-                "blacklisted": False,
-                "blacklisted_reason": "Overtraded"
-            }
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "_id": "BNBBTC",
+                    "pair": "BNBBTC",
+                    "blacklisted": False,
+                    "blacklisted_reason": "Overtraded",
+                }
+            ]
         }
+    }
 
 
 class SubscribedSymbolsResponse(StandardResponse):

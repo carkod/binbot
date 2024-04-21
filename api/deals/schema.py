@@ -2,6 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, field_validator
 
+from tools.enum_definitions import DealType
+
 
 class OrderSchema(BaseModel):
     """
@@ -9,6 +11,7 @@ class OrderSchema(BaseModel):
     order coming from Binance
 
     """
+
     order_type: str | None = None
     time_in_force: str | None = None
     timestamp: float = 0
@@ -19,22 +22,35 @@ class OrderSchema(BaseModel):
     fills: Any = None
     price: float | None = None
     status: str | None = None
-    deal_type: str | None = None  # [base_order, take_profit, so_{x}, short_sell, short_buy, margin_short]
+    deal_type: DealType
 
-    class Config:
-        use_enum_values = True
+    @field_validator("order_id")
+    @classmethod
+    def check_order_id(cls, v):
+        if isinstance(v, str):
+            return int(v)
+        elif isinstance(v, int):
+            return v
+        else:
+            raise ValueError("must be an integer")
 
 
 class DealSchema(BaseModel):
     buy_price: float = 0  # base currency quantity e.g. 3000 USDT in BTCUSDT
-    base_order_price: float = 0 # To replace buy_price - better naming for both long and short positions
+    base_order_price: float = (
+        0  # To replace buy_price - better naming for both long and short positions
+    )
     buy_timestamp: float = 0
     buy_total_qty: float = 0
     current_price: float = 0
     sd: float = 0
     avg_buy_price: float = 0  # depricated - replaced with buy_price
-    original_buy_price: float = 0  # historical buy_price after so executed. avg_buy_price = buy_price
-    take_profit_price: float = 0  # quote currency quantity e.g. 0.00003 BTC in BTCUSDT (sell price)
+    original_buy_price: float = (
+        0  # historical buy_price after so executed. avg_buy_price = buy_price
+    )
+    take_profit_price: float = (
+        0  # quote currency quantity e.g. 0.00003 BTC in BTCUSDT (sell price)
+    )
     so_prices: float = 0
     sell_timestamp: float = 0
     sell_price: float = 0
@@ -73,6 +89,7 @@ class DealSchema(BaseModel):
         if isinstance(v, str):
             return float(v)
         return v
+
 
 class MarginOrderSchema(OrderSchema):
     margin_buy_borrow_amount: int = 0

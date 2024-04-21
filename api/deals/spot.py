@@ -1,7 +1,7 @@
 import logging
 
 from requests.exceptions import HTTPError
-from deals.schema import DealSchema
+from base_producer import BaseProducer
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
@@ -26,6 +26,8 @@ class SpotLongDeal(BaseDeal):
         # Inherit from parent class
         self.db_collection_name = db_collection_name
         super().__init__(bot, db_collection_name)
+        self.base_producer = BaseProducer()
+        self.producer = self.base_producer.start_producer()
 
     def switch_margin_short(self):
         """
@@ -360,10 +362,11 @@ class SpotLongDeal(BaseDeal):
             self.active_bot.deal.stop_loss_price
         ) > float(close_price):
             self.execute_stop_loss(close_price)
+            self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_SPOT_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
                 self.switch_margin_short()
+                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_SWITCH_MARGIN_SHORT")
             
-            # self.update_required()
             return
 
         # Take profit trailling
@@ -435,14 +438,8 @@ class SpotLongDeal(BaseDeal):
                 logging.info(
                     f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}"
                 )
-                try:
-                    self.trailling_profit()
-                    # This terminates the bot
-                    return
-
-                except Exception as error:
-                    logging.error(error)
-                    return
+                self.trailling_profit()
+                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_SPOT_TRAILLING_PROFIT")
 
         # Update unfilled orders
         unupdated_order = next(
@@ -477,5 +474,6 @@ class SpotLongDeal(BaseDeal):
             self.render_market_domination_reversal()
             if self.market_domination_reversal and current_price < self.active_bot.deal.buy_price:
                 self.execute_stop_loss()
+                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_SPOT_CLOSE_CONDITION_STOP_LOSS")
 
         pass

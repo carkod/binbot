@@ -1,19 +1,13 @@
 import uuid
-import requests
-import numpy
-import logging
-
 from time import time
-from db import Database, setup_db
 from orders.controller import OrderController
 from bots.schemas import BotSchema
 from pymongo import ReturnDocument
 from tools.round_numbers import round_numbers, supress_notation
-from tools.handle_error import handle_binance_errors, encode_json
+from tools.handle_error import encode_json
 from tools.exceptions import BinanceErrors, DealCreationError, MarginLoanNotFound
-from scipy.stats import linregress
 from tools.round_numbers import round_numbers_ceiling
-from tools.enum_definitions import Status, Strategy
+from tools.enum_definitions import DealType, Status, Strategy
 from bson.objectid import ObjectId
 from deals.schema import DealSchema, OrderSchema
 from datetime import datetime
@@ -45,7 +39,7 @@ class BaseDeal(OrderController):
         return f"BaseDeal({self.__dict__})"
 
     def generate_id(self):
-        return uuid.uuid4().hex
+        return uuid.uuid4()
 
     def update_deal_logs(self, msg):
         """
@@ -109,9 +103,9 @@ class BaseDeal(OrderController):
     def simulate_order(self, pair, price, qty, side):
         order = {
             "symbol": pair,
-            "orderId": self.generate_id(),
+            "orderId": self.generate_id().int,
             "orderListId": -1,
-            "clientOrderId": self.generate_id(),
+            "clientOrderId": self.generate_id().hex,
             "transactTime": time() * 1000,
             "price": price,
             "origQty": qty,
@@ -128,9 +122,9 @@ class BaseDeal(OrderController):
     def simulate_response_order(self, pair, price, qty, side):
         response_order = {
             "symbol": pair,
-            "orderId": id,
+            "orderId": self.generate_id().int,
             "orderListId": -1,
-            "clientOrderId": id,
+            "clientOrderId": self.generate_id().hex,
             "transactTime": time() * 1000,
             "price": price,
             "origQty": qty,
@@ -262,7 +256,7 @@ class BaseDeal(OrderController):
         order_data = OrderSchema(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
-            deal_type="base_order",
+            deal_type=DealType.base_order,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],

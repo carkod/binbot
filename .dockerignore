@@ -15,3 +15,11 @@ ecosystem.config.js
 .http
 mongo_data
 mongo_data.old
+.DS_Store
+*.pyc
+api/main/config/*.cfg
+.mypy_cache
+db.dump
+__pycache__
+.pytest_cache
+kafka_data
