@@ -27,7 +27,7 @@ py4j= "==0.10.9"
 [dev-packages]
 autopep8 = "==2.0.0"
 isort = "==5.9.2"
-black = "==24.2.0"
+black = "==24.3.0"
 pytest = "==8.1.1"
 mongomock = "==4.1.2"
 httpx = "*"
