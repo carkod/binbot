@@ -27,7 +27,10 @@ class BaseDeal(OrderController):
     """
 
     def __init__(self, bot, db_collection_name):
-        self.active_bot = BotSchema(**bot)
+        if not isinstance(bot, BotSchema):
+            self.active_bot = BotSchema(**bot)
+        else:
+            self.active_bot = bot
         self.symbol = self.active_bot.pair
         super().__init__(symbol=self.active_bot.pair)
         self.db_collection = self._db[db_collection_name]

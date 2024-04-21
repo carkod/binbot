@@ -1,7 +1,8 @@
 import logging
+import uuid
 from fastapi import APIRouter, Query
 from deals.controllers import CreateDealController
-from tools.handle_error import json_response_error, json_response_message
+from tools.handle_error import json_response, json_response_error, json_response_message
 from bots.controllers import Bot
 from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
 from typing import List
@@ -21,9 +22,20 @@ def get(
 
 
 @bot_blueprint.get("/bot/{id}", tags=["bots"])
-def get_one(id: str):
-    return Bot(collection_name="bots").get_one(id)
+def get_one_by_id(id: str):
+    try:
+        bot = Bot(collection_name="bots").get_one(bot_id=id, symbol=None)
+        return json_response({"message": "Bot found", "data": bot})
+    except ValueError as error:
+        return json_response_error(error)
 
+@bot_blueprint.get("/bot/{symbol}", tags=["bots"])
+def get_one_by_symbol(symbol: str):
+    try:
+        bot = Bot(collection_name="bots").get_one(bot_id=None, symbol=symbol)
+        return json_response({"message": "Bot found", "data": bot})
+    except ValueError as error:
+        return json_response_error(error)
 
 @bot_blueprint.post("/bot", tags=["bots"])
 def create(bot_item: BotSchema):
@@ -99,4 +111,8 @@ def bot_errors(bot_id: str, bot_errors: ErrorsRequestBody):
     """
     request_body = bot_errors.model_dump(mode="python")
     bot_errors = request_body.get("errors", None)
-    return Bot(collection_name="bots").post_errors_by_id(bot_id, bot_errors)
+    try:
+        Bot(collection_name="bots").post_errors_by_id(bot_id, bot_errors)
+    except Exception as error:
+        return json_response_error(f"Error posting errors: {error}")
+    return json_response_message("Errors posted successfully.")

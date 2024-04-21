@@ -1,32 +1,33 @@
-import asyncio
 import json
 import logging
 import os
 
+from click import group
+from kafka import KafkaConsumer
 from streaming.streaming_controller import StreamingController
-from aiokafka import AIOKafkaConsumer
 from tools.enum_definitions import KafkaTopics
 
-async def main():
+def main():
     try:
-        consumer = AIOKafkaConsumer(
+        consumer = KafkaConsumer(
             KafkaTopics.klines_store_topic.value,
             KafkaTopics.restart_streaming.value,
             bootstrap_servers=f'{os.environ["KAFKA_HOST"]}:{os.environ["KAFKA_PORT"]}',
-            group_id="restart_streaming",
+            group_id="streaming_controller",
             value_deserializer=lambda m: json.loads(m),
+            auto_offset_reset="latest",
         )
-        await consumer.start()
         mu = StreamingController(consumer)
-        async for result in consumer:
-            if result.topic == KafkaTopics.klines_store_topic.value:
-                mu.process_klines(result.value)
-            if result.topic == KafkaTopics.restart_streaming.value:
+        for message in consumer:
+            if message.topic == KafkaTopics.restart_streaming.value:
                 mu.load_data_on_start()
+            if message.topic == KafkaTopics.klines_store_topic.value:
+                mu.process_klines(message.value)
 
     except Exception as error:
         logging.error(f"Streaming controller error: {error}")
-        await main()
+        main()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    while True:
+        main()

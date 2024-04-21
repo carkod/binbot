@@ -7,9 +7,8 @@ from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 
 from account.account import Account
-from deals.controllers import CreateDealController
-from tools.enum_definitions import BinbotEnums
-from tools.exceptions import BinanceErrors, BinbotErrors, DealCreationError, QuantityTooLow
+from tools.enum_definitions import BinbotEnums, Status
+from tools.exceptions import QuantityTooLow
 from tools.handle_error import (
     handle_binance_errors,
     json_response,
@@ -33,7 +32,18 @@ class Bot(Account):
         self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": time()}})
         return
 
-    def get(self, status, start_date, end_date, no_cooldown):
+    def get_active_pairs(self, symbol: str = None):
+        """
+        Get distinct (non-repeating) bots by status active
+        """
+        params = {"status": Status.active}
+        if symbol:
+            params["pair"] = symbol
+
+        bots = list(self.db_collection.distinct("pair", params))
+        return bots
+
+    def get(self, status, start_date=None, end_date=None, no_cooldown=False):
         """
         Get all bots in the db except archived
         Args:
@@ -104,13 +114,19 @@ class Bot(Account):
 
         return resp
 
-    def get_one(self, findId):
-        bot = self.db_collection.find_one({"id": findId})
-        if bot:
-            resp = json_response({"message": "Bot found", "data": bot})
+    def get_one(self, bot_id=None, symbol=None):
+        if bot_id:
+            params = {"id": bot_id}
+        elif symbol:
+            params = {"pair": symbol}
         else:
-            resp = json_response({"message": "Bots not found"}, 404)
-        return resp
+            raise ValueError("id or symbol is required to find bot")
+
+        bot = self.db_collection.find_one(params)
+        if not bot:
+            raise ValueError("Bot not found")
+
+        return bot
 
     def create(self, data):
         """

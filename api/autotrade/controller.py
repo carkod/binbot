@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import ValidationError
 
-from db import setup_db
+from db import Database, setup_db
 from tools.handle_error import (
     json_response,
     json_response_error,
@@ -10,7 +10,7 @@ from tools.handle_error import (
 )
 from time import time
 
-class AutotradeSettingsController:
+class AutotradeSettingsController(Database):
     """
     Autotrade settings
     """
@@ -19,12 +19,11 @@ class AutotradeSettingsController:
         self, document_id: Literal["test_autotrade_settings", "settings"] = "settings"
     ):
         self.document_id = document_id
-        self.db = setup_db()
-        self.db_collection = self.db.research_controller
+        self.db = self._db
 
     def get_settings(self):
         try:
-            settings = self.db_collection.find_one({"_id": self.document_id})
+            settings = self.db.research_controller.find_one({"_id": self.document_id})
             resp = json_response(
                 {"message": "Successfully retrieved settings", "data": settings}
             )
@@ -41,7 +40,7 @@ class AutotradeSettingsController:
             if "update_required" in settings:
                 settings["update_required"] = time()
 
-            self.db_collection.update_one({"_id": self.document_id}, {"$set": settings})
+            self.research_controller.update_one({"_id": self.document_id}, {"$set": settings})
             resp = json_response_message("Successfully updated settings")
         except TypeError as e:
 
@@ -52,3 +51,10 @@ class AutotradeSettingsController:
                 msg += field + desc[0]
             resp = json_response_error(f"{msg}")
         return resp
+
+    def get_autotrade_settings(self):
+        return self._db.research_controller.find_one({"_id": "settings"})
+
+    def get_test_autotrade_settings(self):
+        return self._db.research_controller.find_one({"_id": "test_autotrade_settings"})
+

@@ -1,19 +1,23 @@
 import json
 import logging
 
-from deals.base import BaseDeal
-from tools.enum_definitions import Status
+from bots.schemas import BotSchema
+from autotrade.controller import AutotradeSettingsController
+from bots.controllers import Bot
+from tools.enum_definitions import Status, Strategy
 from db import Database
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from tools.exceptions import BinanceErrors
 
 
-class StreamingController(BaseDeal):
+class StreamingController(Database):
     def __init__(self, consumer):
-        self.streaming_db = Database()
+        super().__init__()
+        self.streaming_db = self._db
         # Gets any signal to restart streaming
         self.consumer = consumer
+        self.autotrade_controller = AutotradeSettingsController()
         self.load_data_on_start()
 
     def load_data_on_start(self):
@@ -22,10 +26,14 @@ class StreamingController(BaseDeal):
 
         After each "update_required" restart, this function will reload bots and settings
         """
-        self.settings = self.streaming_db.get_autotrade_settings()
-        self.test_settings = self.streaming_db.get_test_autotrade_settings()
-        self.list_bots = self.streaming_db.get_active_bots()
-        self.list_paper_trading_bots = self.streaming_db.get_active_paper_trading_bots()
+        self.settings = self.autotrade_controller.get_autotrade_settings()
+        self.test_settings = self.autotrade_controller.get_test_autotrade_settings()
+        # Load real bot settings
+        bot_controller = Bot(collection_name="bots")
+        self.list_bots = bot_controller.get_active_pairs()
+        # Load paper trading bot settings
+        paper_trading_controller_paper = Bot(collection_name="paper_trading")
+        self.list_paper_trading_bots = paper_trading_controller_paper.get_active_pairs()
 
     def execute_strategies(
         self,
@@ -40,9 +48,10 @@ class StreamingController(BaseDeal):
         It updates the bots deals, safety orders, trailling orders, stop loss
         for both paper trading test bots and real bots
         """
+        active_bot = BotSchema(**current_bot)
         # Margin short
-        if current_bot["strategy"] == "margin_short":
-            margin_deal = MarginDeal(current_bot, db_collection_name)
+        if active_bot.strategy == Strategy.margin_short:
+            margin_deal = MarginDeal(active_bot, db_collection_name)
             try:
                 margin_deal.streaming_updates(close_price)
             except BinanceErrors as error:
@@ -55,14 +64,14 @@ class StreamingController(BaseDeal):
 
         else:
             # Long strategy starts
-            if current_bot["strategy"] == "long":
-                spot_long_deal = SpotLongDeal(current_bot, db_collection_name)
+            if active_bot.strategy == Strategy.long:
+                spot_long_deal = SpotLongDeal(active_bot, db_collection_name)
                 try:
                     spot_long_deal.streaming_updates(close_price, open_price)
                 except BinanceErrors as error:
                     if error.code in (-2010, -1013):
                         spot_long_deal.update_deal_logs(error.message)
-                        current_bot["status"] = Status.error
+                        active_bot["status"] = Status.error
                         self.save_bot_streaming()
                 except Exception as error:
                     logging.info(error)
@@ -71,34 +80,31 @@ class StreamingController(BaseDeal):
 
         pass
 
-    def process_klines(self, result):
+    def process_klines(self, message):
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
+        data = json.loads(message)
+        close_price = data["close_price"]
+        open_price = data["open_price"]
+        symbol = data["symbol"]
+        current_bot = Bot(collection_name="bots").get_one(symbol=symbol)
+        current_test_bot = Bot(collection_name="paper_trading").get_one(symbol=symbol)
 
-        if "k" in result:
-            close_price = result["k"]["c"]
-            open_price = result["k"]["o"]
-            symbol = result["k"]["s"]
-            current_bot = self.streaming_db.get_active_bot_by_symbol(symbol)
-            current_test_bot = self.streaming_db.get_active_paper_trading_bot_by_symbol(
-                symbol
+        if current_bot:
+            self.execute_strategies(
+                current_bot,
+                close_price,
+                open_price,
+                "bots",
             )
-
-            if current_bot:
-                self.execute_strategies(
-                    current_bot,
-                    close_price,
-                    open_price,
-                    "bots",
-                )
-            if current_test_bot:
-                self.execute_strategies(
-                    current_test_bot,
-                    close_price,
-                    open_price,
-                    "paper_trading",
-                )
+        if current_test_bot:
+            self.execute_strategies(
+                current_test_bot,
+                close_price,
+                open_price,
+                "paper_trading",
+            )
 
         return
