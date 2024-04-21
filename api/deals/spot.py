@@ -466,14 +466,6 @@ class SpotLongDeal(BaseDeal):
             
             self.save_bot_streaming()
 
-        # Execute dynamic_take_profit at the end,
-        # so that trailling_take_profit and trailling_stop_loss can execute before
-        # else trailling_stop_loss could be hit but then changed because of dynamic_tp
-        if self.active_bot.trailling and self.active_bot.dynamic_trailling:
-            # Returns bot, to keep modifying in subsequent checks
-            bot = self.dynamic_take_profit(self.active_bot, close_price)
-
-
     def close_conditions(self, current_price):
         """
 

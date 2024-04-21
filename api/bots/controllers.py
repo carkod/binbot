@@ -196,6 +196,7 @@ class Bot(Account):
 
     def deactivate(self, findId):
         """
+        DO NOT USE, LEGACY CODE NEEDS TO BE REVAMPED
         Close all deals, sell pair and deactivate
         1. Close all deals
         2. Sell Coins
@@ -226,7 +227,7 @@ class Bot(Account):
             # Sell everything
             pair = bot["pair"]
             base_asset = self.find_baseAsset(pair)
-            bot = BotSchema.parse_obj(bot)
+            bot = BotSchema(**bot)
             precision = self.price_precision
             qty_precision = self.qty_precision
             balance = self.get_one_balance(base_asset)

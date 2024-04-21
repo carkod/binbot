@@ -41,7 +41,7 @@ class Database:
             dict: The saved bot
         """
 
-        bot = BotSchema.model_validate(active_bot)
+        bot = BotSchema.model_dump(active_bot)
         if "_id" in bot:
             bot.pop("_id")
 

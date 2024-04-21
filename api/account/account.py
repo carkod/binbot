@@ -6,7 +6,6 @@ from tools.handle_error import (
     json_response_message,
     json_response_error,
 )
-from decimal import Decimal
 from db import setup_db
 from requests_cache import CachedSession, MongoCache
 from pymongo import MongoClient

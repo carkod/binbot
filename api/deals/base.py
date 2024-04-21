@@ -220,9 +220,9 @@ class BaseDeal(OrderController):
         bot = encode_json(self.active_bot)
         self.db_collection.insert_one(bot)
         new_bot = self.db_collection.find_one({"id": bot["id"]})
-        bot_class = BotSchema.model_validate(new_bot)
+        new_bot_class = BotSchema(**new_bot)
 
-        return bot_class
+        return new_bot_class
 
     def base_order(self):
         """
@@ -300,76 +300,6 @@ class BaseDeal(OrderController):
 
         return document
 
-    def dynamic_take_profit(self, current_bot, close_price):
-        self.active_bot = BotSchema(**current_bot)
-
-        params = {
-            "symbol": self.active_bot.pair,
-            "interval": self.active_bot.candlestick_interval,
-        }
-        res = requests.get(url=self.bb_candlestick_url, params=params)
-        data = handle_binance_errors(res)
-        list_prices = numpy.array(data["trace"][0]["close"]).astype(numpy.single)
-        series_sd = numpy.std(list_prices.astype(numpy.single))
-        sd = series_sd / float(close_price)
-        dates = numpy.array(data["trace"][0]["x"])
-
-        # Calculate linear regression to get trend
-        slope, intercept, rvalue, pvalue, stderr = linregress(dates, list_prices)
-
-        if sd >= 0:
-            logging.debug(
-                f"dynamic profit for {self.active_bot.pair} sd: {sd}",
-                f'slope is {"positive" if slope > 0 else "negative"}',
-            )
-            if (
-                self.active_bot.deal.trailling_stop_loss_price > 0
-                and self.active_bot.deal.trailling_stop_loss_price
-                > self.active_bot.deal.base_order_price
-                and float(close_price) > self.active_bot.deal.trailling_stop_loss_price
-                and (
-                    (self.active_bot.strategy == "long" and slope > 0)
-                    or (self.active_bot.strategy == "margin_short" and slope < 0)
-                )
-                and self.active_bot.deal.sd > sd
-            ):
-                # Only do dynamic trailling if regression line confirms it
-                volatility = float(sd) / float(close_price)
-                if volatility < 0.018:
-                    volatility = 0.018
-                elif volatility > 0.088:
-                    volatility = 0.088
-
-                # sd is multiplied by 2 to increase the difference between take_profit and trailling_stop_loss
-                # this avoids closing too early
-                new_trailling_stop_loss_price = float(close_price) - (
-                    float(close_price) * volatility
-                )
-                # deal.sd comparison will prevent it from making trailling_stop_loss too big
-                # and thus losing all the gains
-                if (
-                    new_trailling_stop_loss_price
-                    > float(self.active_bot.deal.buy_price)
-                    and sd < self.active_bot.deal.sd
-                ):
-                    self.active_bot.trailling_deviation = volatility * 100
-                    self.active_bot.deal.trailling_stop_loss_price = float(
-                        close_price
-                    ) - (float(close_price) * volatility)
-                    # Update tralling_profit price
-                    logging.info(
-                        f"Updated trailling_deviation and take_profit {self.active_bot.deal.trailling_stop_loss_price}"
-                    )
-                    self.active_bot.deal.take_profit_price = float(close_price) + (
-                        float(close_price) * volatility
-                    )
-                    self.active_bot.deal.trailling_profit_price = float(close_price) + (
-                        float(close_price) * volatility
-                    )
-
-        self.active_bot.deal.sd = sd
-        bot = self.save_bot_streaming()
-        return bot
 
     def margin_liquidation(self, pair: str, qty_precision=None):
         """

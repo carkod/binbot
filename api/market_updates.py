@@ -1,3 +1,4 @@
+from enum import auto
 import json
 import logging
 import os
@@ -13,9 +14,9 @@ def main():
             KafkaTopics.klines_store_topic.value,
             KafkaTopics.restart_streaming.value,
             bootstrap_servers=f'{os.environ["KAFKA_HOST"]}:{os.environ["KAFKA_PORT"]}',
-            group_id="streaming_controller",
             value_deserializer=lambda m: json.loads(m),
             auto_offset_reset="latest",
+            autocommit_enable=True,
         )
         mu = StreamingController(consumer)
         for message in consumer:
