@@ -39,7 +39,6 @@ class DealSchema(BaseModel):
     sell_timestamp: float = 0
     sell_price: float = 0
     sell_qty: float = 0
-    post_closure_current_price: float = 0
     trailling_stop_loss_price: float = 0
     trailling_profit_price: float = 0
     short_sell_price: float = 0
@@ -71,8 +70,9 @@ class DealSchema(BaseModel):
     def check_prices(cls, v):
         if float(v) < 0:
             raise ValueError("Price must be a positive number")
+        if isinstance(v, str):
+            return float(v)
         return v
-
 
 class MarginOrderSchema(OrderSchema):
     margin_buy_borrow_amount: int = 0

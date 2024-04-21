@@ -123,9 +123,6 @@ class Bot(Account):
             raise ValueError("id or symbol is required to find bot")
 
         bot = self.db_collection.find_one(params)
-        if not bot:
-            raise ValueError("Bot not found")
-
         return bot
 
     def create(self, data):

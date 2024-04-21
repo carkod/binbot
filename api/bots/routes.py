@@ -25,7 +25,10 @@ def get(
 def get_one_by_id(id: str):
     try:
         bot = Bot(collection_name="bots").get_one(bot_id=id, symbol=None)
-        return json_response({"message": "Bot found", "data": bot})
+        if not bot:
+            return json_response_error("Bot not found.")
+        else:
+            return json_response({"message": "Bot found", "data": bot})
     except ValueError as error:
         return json_response_error(error)
 

@@ -350,7 +350,7 @@ class SpotLongDeal(BaseDeal):
         pass
 
     def streaming_updates(self, close_price, open_price):
-
+        close_price = float(close_price)
         self.close_conditions(float(close_price))
 
         self.active_bot.deal.current_price = close_price
@@ -363,7 +363,7 @@ class SpotLongDeal(BaseDeal):
             if self.active_bot.margin_short_reversal:
                 self.switch_margin_short()
             
-            self.update_required()
+            # self.update_required()
             return
 
         # Take profit trailling
@@ -465,21 +465,6 @@ class SpotLongDeal(BaseDeal):
                         self.active_bot.orders[i].status = order_response["status"]
             
             self.save_bot_streaming()
-
-        # Open safety orders
-        # When bot = None, when bot doesn't exist (unclosed websocket)
-        if (
-            hasattr(self.active_bot, "safety_orders")
-            and len(self.active_bot.safety_orders) > 0
-        ):
-            for key, so in enumerate(self.active_bot.safety_orders):
-                # Index is the ID of the safety order price that matches safety_orders list
-                if (
-                    hasattr(self.active_bot, "status")
-                    and self.active_bot.status == 0
-                    and so.buy_price >= float(close_price)
-                ):
-                    self.so_update_deal(key)
 
         # Execute dynamic_take_profit at the end,
         # so that trailling_take_profit and trailling_stop_loss can execute before
