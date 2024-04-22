@@ -16,8 +16,9 @@ class BinanceApi:
     """
 
     api_servers = ["https://api.binance.com", "https://api3.binance.com", "https://api-gcp.binance.com"]
-    BASE = api_servers[randrange(3) - 1]
-    MARKET_DATA_BASE = "https://data-api.binance.vision"
+    market_api_servers = ["https://data-api.binance.vision", "https://api3.binance.com"]
+    BASE = api_servers[randrange(2) - 1]
+    MARKET_DATA_BASE = market_api_servers[randrange(3) - 1]
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
