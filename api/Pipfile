@@ -7,7 +7,7 @@ verify_ssl = false
 uvicorn = "*"
 fastapi = "==0.110.0"
 pydantic = "==2.7.0"
-pymongo = "==4.3.3"
+pymongo = "==4.6.3"
 python-jose = "*"
 passlib = "*"
 pandas = "==1.5.2"
