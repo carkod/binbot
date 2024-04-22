@@ -1,6 +1,7 @@
 import json
 import logging
 
+from deals.schema import OrderSchema
 from bots.schemas import BotSchema
 from autotrade.controller import AutotradeSettingsController
 from bots.controllers import Bot
@@ -23,8 +24,6 @@ class StreamingController(Database):
     def load_data_on_start(self):
         """
         New function to replace get_klines without websockets
-
-        After each "update_required" restart, this function will reload bots and settings
         """
         self.settings = self.autotrade_controller.get_autotrade_settings()
         self.test_settings = self.autotrade_controller.get_test_autotrade_settings()
@@ -48,6 +47,12 @@ class StreamingController(Database):
         It updates the bots deals, safety orders, trailling orders, stop loss
         for both paper trading test bots and real bots
         """
+        if len(current_bot["orders"]) > 0:
+            try:
+                int(current_bot["orders"][0]["order_id"])
+            except Exception:
+                print(current_bot["orders"][0]["order_id"])
+                pass
         active_bot = BotSchema(**current_bot)
         # Margin short
         if active_bot.strategy == Strategy.margin_short:

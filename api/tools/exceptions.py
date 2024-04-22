@@ -48,6 +48,10 @@ class QuantityTooLow(BinbotErrors):
     pass
 
 
+class MarginShortError(BinbotErrors):
+    pass
+
+
 class MarginLoanNotFound(BinbotErrors):
     pass
 

@@ -1,12 +1,11 @@
 import requests
-import logging
-
 from time import time
 from datetime import datetime
 from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 
 from account.account import Account
+from base_producer import BaseProducer
 from tools.enum_definitions import BinbotEnums, Status
 from tools.exceptions import QuantityTooLow
 from tools.handle_error import (
@@ -24,13 +23,9 @@ class Bot(Account):
     def __init__(self, collection_name="paper_trading"):
         super().__init__()
         self.db_collection = self.db[collection_name]
-    
-    def _update_required(self):
-        """
-        Streaming controller requires reload
-        """
-        self.db.research_controller.update_one({"_id": "settings"}, {"$set": {"update_required": time()}})
-        return
+        self.base_producer = BaseProducer()
+        self.producer = self.base_producer.start_producer()
+
 
     def get_active_pairs(self, symbol: str = None):
         """
@@ -140,7 +135,7 @@ class Bot(Account):
                     "botId": str(bot["id"]),
                 }
             )
-            self._update_required()
+            self.base_producer.update_required(self, bot["id"], "CREATE_BOT")
 
         except RequestValidationError as error:
             resp = json_response_error(f"Failed to create new bot: {error}")
@@ -171,7 +166,7 @@ class Bot(Account):
             resp = json_response_error(f"Failed validation: {e}")
             pass
 
-        self._update_required()
+        self.base_producer.update_required(selfbotId, "EDIT_BOT")
         return resp
 
     def delete(self, bot_ids: List[str] = Query(...)):
@@ -184,7 +179,7 @@ class Bot(Account):
                 {"id": {"$in": [id for id in bot_ids]}}
             )
             resp = json_response_message("Successfully deleted bot(s)")
-            self._update_required()
+            self.base_producer.update_required(selfbot_ids[len(bot_ids) - 1], "DELETE_BOT")
         except Exception as error:
             resp = json_response_error(f"Failed to delete bot(s) {error}")
             
@@ -192,6 +187,7 @@ class Bot(Account):
 
     def activate(self, botId: str):
         bot = self.db_collection.find_one({"id": botId})
+        self.base_producer.update_required(selfbotId, "ACTIVATE_BOT")
         return bot
 
     def deactivate(self, findId):

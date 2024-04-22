@@ -6,6 +6,7 @@ verify_ssl = false
 [packages]
 uvicorn = "*"
 fastapi = "==0.110.0"
+pydantic = "==2.7.0"
 pymongo = "==4.3.3"
 python-jose = "*"
 passlib = "*"
@@ -20,7 +21,6 @@ apscheduler = "==3.6.3"
 requests-cache = "==1.2.0"
 python-multipart = "*"
 kafka-python= "==2.0.2"
-aiokafka= "==0.10.0"
 pyarrow= "==15.0.2"
 py4j= "==0.10.9"
 

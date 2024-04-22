@@ -3,31 +3,30 @@ import logging
 from time import time
 from datetime import datetime
 from urllib.error import HTTPError
-from tools.enum_definitions import CloseConditions, Strategy
+from base_producer import BaseProducer
+from tools.enum_definitions import CloseConditions, DealType, Strategy
 from bots.schemas import BotSchema
 from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from deals.schema import MarginOrderSchema
-from tools.exceptions import BinanceErrors, MaxBorrowLimit
+from tools.exceptions import BinanceErrors, MarginShortError
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
-
-
-class MarginShortError(Exception):
-    pass
 
 
 class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection_name) -> None:
         # Inherit from parent class
         super().__init__(bot, db_collection_name=db_collection_name)
+        self.base_producer = BaseProducer()
+        self.producer = self.base_producer.start_producer()
 
     def simulate_margin_order(self, qty, side):
         price = float(self.matching_engine(self.active_bot.pair, True, qty))
         order = {
             "symbol": self.active_bot.pair,
-            "orderId": self.generate_id(),
+            "orderId": self.generate_id().int,
             "orderListId": -1,
-            "clientOrderId": self.generate_id(),
+            "clientOrderId": self.generate_id().hex,
             "transactTime": time() * 1000,
             "price": price,
             "origQty": qty,
@@ -280,7 +279,7 @@ class MarginDeal(BaseDeal):
                     )
                     sell_back_order = MarginOrderSchema(
                         timestamp=res["transactTime"],
-                        deal_type="take_profit",
+                        deal_type=DealType.take_profit,
                         order_id=res["orderId"],
                         pair=res["symbol"],
                         order_side=res["side"],
@@ -375,7 +374,7 @@ class MarginDeal(BaseDeal):
         order_data = MarginOrderSchema(
             timestamp=order_res["transactTime"],
             order_id=order_res["orderId"],
-            deal_type="base_order",
+            deal_type=DealType.base_order,
             pair=order_res["symbol"],
             order_side=order_res["side"],
             order_type=order_res["type"],
@@ -439,13 +438,13 @@ class MarginDeal(BaseDeal):
             ) and self.active_bot.deal.margin_short_sell_price > 0:
                 self.update_trailling_profit(price)
                 bot = self.save_bot_streaming()
-                self.active_bot = BotSchema.parse_obj(bot)
+                self.active_bot = BotSchema(**bot)
 
             else:
                 # Execute the usual non-trailling take_profit
                 self.update_deal_logs(f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}")
                 self.execute_take_profit()
-                self.update_required()
+                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_MARGIN_TAKE_PROFIT")
 
         # Direction 2: upward trend (short). breaking the trailling_stop_loss
         # Make sure it's red candlestick, to avoid slippage loss
@@ -463,7 +462,7 @@ class MarginDeal(BaseDeal):
             )
             # since price is given by matching engine
             self.execute_take_profit()
-            self.update_required()
+            self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_MARGIN_TRAILLING_PROFIT")
 
         # Direction 1.3: upward trend (short)
         # Breaking trailling_stop_loss, completing trailling
@@ -476,10 +475,12 @@ class MarginDeal(BaseDeal):
                 f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}"
             )
             self.execute_stop_loss()
+            self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_MARGIN_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
                 self.switch_to_long_bot()
+                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_MARGIN_SWITCH_TO_LONG")
 
-        self.update_required()
+            
         return
 
     def set_margin_short_stop_loss(self):
@@ -524,12 +525,12 @@ class MarginDeal(BaseDeal):
         else:
             # Cancel orders first
             # paper_trading doesn't have real orders so no need to check
-            self.cancel_open_orders("stop_loss")
+            self.cancel_open_orders(DealType.stop_loss)
             res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
 
         stop_loss_order = MarginOrderSchema(
             timestamp=res["transactTime"],
-            deal_type="stop_loss",
+            deal_type=DealType.stop_loss,
             order_id=res["orderId"],
             pair=res["symbol"],
             order_side=res["side"],
@@ -586,7 +587,7 @@ class MarginDeal(BaseDeal):
 
             take_profit_order = MarginOrderSchema(
                 timestamp=res["transactTime"],
-                deal_type="take_profit",
+                deal_type=DealType.take_profit,
                 order_id=res["orderId"],
                 pair=res["symbol"],
                 order_side=res["side"],
@@ -634,7 +635,7 @@ class MarginDeal(BaseDeal):
         self.active_bot = self.create_new_bot_streaming()
 
         bot = self.base_order()
-        self.active_bot = BotSchema.parse_obj(bot)
+        self.active_bot = BotSchema(**bot)
 
         # Keep bot up to date in the DB
         # this avoid unsyched bots when errors ocurr in other functions
@@ -717,7 +718,7 @@ class MarginDeal(BaseDeal):
                 # Update trailling_stop_loss
                 self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss
                 logging.info(
-                    f"{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
+                    f"{datetime.now()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
                 )
 
     
@@ -733,5 +734,6 @@ class MarginDeal(BaseDeal):
             if self.market_domination_reversal and current_price > self.active_bot.deal.buy_price:
                 self.update_deal_logs(f"Closing bot according to close_condition: {self.active_bot.close_condition}")
                 self.execute_stop_loss()
+                self.base_producer(self.active_bot.id, "EXECUTE_CLOSE_CONDITION_STOP_LOSS")
 
         pass
