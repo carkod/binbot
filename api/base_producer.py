@@ -17,8 +17,8 @@ class BaseProducer:
     def close_producer(self, producer: KafkaProducer):
         producer.close()
 
-    @classmethod
-    def update_required(cls, botId: str, action: str):
+    @staticmethod
+    def update_required(producer, botId: str, action: str):
         """
         Streaming controller requires reload.
         Use Kafka to send signals to Binquant to restart streams
@@ -26,6 +26,6 @@ class BaseProducer:
 
         value = {"botId": botId, "action": action}
 
-        cls.producer.send(KafkaTopics.restart_streaming.value, value=json.dumps(value))
+        producer.send(KafkaTopics.restart_streaming.value, value=json.dumps(value))
 
         return

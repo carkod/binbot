@@ -1,8 +1,7 @@
-FROM ubuntu:latest
-RUN apt-get update && apt-get install -y --no-install-recommends python3-pip build-essential python3-dev python-setuptools
+FROM python:3.10-slim
 COPY api api
 WORKDIR api
-RUN pip3 install pipenv --no-cache-dir --upgrade
+RUN pip3 install pipenv
 RUN pipenv install --system --deploy --ignore-pipfile --clear
 ENTRYPOINT ["python3", "-u", "cronjobs.py"]
 
