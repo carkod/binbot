@@ -1,12 +1,14 @@
 import logging
 
 from requests.exceptions import HTTPError
+from orders.controller import OrderController
 from base_producer import BaseProducer
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
 from tools.handle_error import encode_json
 from tools.exceptions import (
+    BinbotErrors,
     NotEnoughFunds,
 )
 from tools.enum_definitions import CloseConditions, Status, Strategy
@@ -88,10 +90,12 @@ class SpotLongDeal(BaseDeal):
         if order_id:
             try:
                 # First cancel old order to unlock balance
-                self.bb_request(
-                    f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}",
-                    "DELETE",
-                )
+                try:
+                    data = OrderController(symbol=self.active_bot.pair).delete_order(self.active_bot.pair, order_id)
+                except BinbotErrors as error:
+                    print(error.message)
+                    pass
+
                 self.update_deal_logs("Old take profit order cancelled")
             except HTTPError as error:
                 self.update_deal_logs("Take profit order not found, no need to cancel")
@@ -306,15 +310,13 @@ class SpotLongDeal(BaseDeal):
         if order_id and self.db_collection.name != "paper_trading":
             # First cancel old order to unlock balance
             try:
-                self.bb_request(
-                    f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}",
-                    "DELETE",
-                )
+                data = OrderController(symbol=self.active_bot.pair).delete_order(self.active_bot.pair, order_id)
                 self.update_deal_logs("Old take profit order cancelled")
-            except HTTPError as error:
+            except BinbotErrors as error:
                 self.update_deal_logs(
-                    f"Take profit order not found, no need to cancel, {error}"
-                )
+                f"Take profit order not found, no need to cancel, {error}"
+            )
+                pass
 
         # Because buy_price = avg_buy_price after so executed
         # we can use this to update take_profit_price

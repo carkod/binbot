@@ -56,6 +56,9 @@ class MarginLoanNotFound(BinbotErrors):
     pass
 
 
+class DeleteOrderError(BinbotErrors):
+    pass
+
 class OpenDealError(Exception):
     pass
 

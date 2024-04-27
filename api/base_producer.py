@@ -10,7 +10,6 @@ class BaseProducer:
         kafka_producer = KafkaProducer(
             bootstrap_servers=f'{os.environ["KAFKA_HOST"]}:{os.environ["KAFKA_PORT"]}',
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-            acks=1,
         )
         return kafka_producer
 
@@ -26,6 +25,6 @@ class BaseProducer:
 
         value = {"botId": botId, "action": action}
 
-        producer.send(KafkaTopics.restart_streaming.value, value=json.dumps(value))
+        producer.send(KafkaTopics.restart_streaming.value, value=json.dumps(value), partition=0, auto_offset_reset="latest")
 
         return
