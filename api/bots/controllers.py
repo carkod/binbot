@@ -166,7 +166,7 @@ class Bot(Account):
             resp = json_response_error(f"Failed validation: {e}")
             pass
 
-        self.base_producer.update_required(self.producer, "EDIT_BOT")
+        self.base_producer.update_required(self.producer, botId, "EDIT_BOT")
         return resp
 
     def delete(self, bot_ids: List[str] = Query(...)):
