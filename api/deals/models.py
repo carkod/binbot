@@ -7,8 +7,8 @@ from pydantic import BaseModel
 class BinanceOrderModel(BaseModel):
     order_type: str
     time_in_force: str
-    timestamp: str
-    order_id: str
+    timestamp: str | int
+    order_id: str | int
     order_side: str
     pair: str
     fills: list

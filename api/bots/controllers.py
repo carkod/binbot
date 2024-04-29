@@ -109,13 +109,16 @@ class Bot(Account):
 
         return resp
 
-    def get_one(self, bot_id=None, symbol=None):
+    def get_one(self, bot_id=None, symbol=None, status: Status=None):
         if bot_id:
             params = {"id": bot_id}
         elif symbol:
             params = {"pair": symbol}
         else:
             raise ValueError("id or symbol is required to find bot")
+    
+        if status:
+            params["status"] = status
 
         bot = self.db_collection.find_one(params)
         return bot

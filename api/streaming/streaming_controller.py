@@ -33,6 +33,7 @@ class StreamingController(Database):
         # Load paper trading bot settings
         paper_trading_controller_paper = Bot(collection_name="paper_trading")
         self.list_paper_trading_bots = paper_trading_controller_paper.get_active_pairs()
+        return
 
     def execute_strategies(
         self,
@@ -53,7 +54,12 @@ class StreamingController(Database):
             except Exception:
                 print(current_bot["orders"][0]["order_id"])
                 pass
-        active_bot = BotSchema(**current_bot)
+        try:
+            active_bot = BotSchema(**current_bot)
+            pass
+        except Exception as error:
+            logging.info(error)
+            return
         # Margin short
         if active_bot.strategy == Strategy.margin_short:
             margin_deal = MarginDeal(active_bot, db_collection_name)
@@ -76,7 +82,7 @@ class StreamingController(Database):
                 except BinanceErrors as error:
                     if error.code in (-2010, -1013):
                         spot_long_deal.update_deal_logs(error.message)
-                        active_bot["status"] = Status.error
+                        active_bot.status = Status.error
                         self.save_bot_streaming()
                 except Exception as error:
                     logging.info(error)
@@ -94,8 +100,8 @@ class StreamingController(Database):
         close_price = data["close_price"]
         open_price = data["open_price"]
         symbol = data["symbol"]
-        current_bot = Bot(collection_name="bots").get_one(symbol=symbol)
-        current_test_bot = Bot(collection_name="paper_trading").get_one(symbol=symbol)
+        current_bot = Bot(collection_name="bots").get_one(symbol=symbol, status=Status.active)
+        current_test_bot = Bot(collection_name="paper_trading").get_one(symbol=symbol, status=Status.active)
 
         if current_bot:
             self.execute_strategies(

@@ -35,6 +35,6 @@ class BaseProducer:
 
         value = {"type": "restart", "botId": botId, "action": action}
 
-        producer.send(KafkaTopics.signals.value, value=json.dumps(value), partition=0)
+        producer.send(KafkaTopics.restart_streaming.value, value=json.dumps(value), partition=0)
 
         return
