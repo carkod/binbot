@@ -83,7 +83,7 @@ class StreamingController(Database):
                     if error.code in (-2010, -1013):
                         spot_long_deal.update_deal_logs(error.message)
                         active_bot.status = Status.error
-                        self.save_bot_streaming()
+                        active_bot = self.save_bot_streaming(active_bot)
                 except Exception as error:
                     logging.info(error)
                     spot_long_deal.update_deal_logs(error)

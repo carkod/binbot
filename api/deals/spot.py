@@ -51,7 +51,7 @@ class SpotLongDeal(BaseDeal):
             bot=self.active_bot, db_collection_name=self.db_collection_name
         ).margin_short_base_order()
 
-        self.save_bot_streaming()
+        self.active_bot = self.save_bot_streaming(self.active_bot)
         return self.active_bot
 
     def execute_stop_loss(self, price):
@@ -77,7 +77,7 @@ class SpotLongDeal(BaseDeal):
                     f"No quantity in balance, no closed orders. Cannot execute update stop limit."
                 )
                 self.active_bot.status = Status.error
-                self.save_bot_streaming()
+                self.active_bot = self.save_bot_streaming(self.active_bot)
                 return
 
         order_id = None
@@ -133,8 +133,8 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
 
-        bot = self.save_bot_streaming()
-        return bot
+        self.active_bot = self.save_bot_streaming(self.active_bot)
+        return self.active_bot
 
     def trailling_profit(self) -> BotSchema | None:
         """
@@ -155,8 +155,8 @@ class SpotLongDeal(BaseDeal):
                         f"No quantity in balance, no closed orders. Cannot execute update trailling profit."
                     )
                     self.active_bot.status = Status.error
-                    bot = self.save_bot_streaming()
-                    return bot
+                    self.active_bot = self.save_bot_streaming(self.active_bot)
+                    return self.active_bot
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":
@@ -200,8 +200,8 @@ class SpotLongDeal(BaseDeal):
         msg = f"Completed take profit after failing to break trailling {self.active_bot.pair}"
         self.active_bot.errors.append(msg)
 
-        bot = self.save_bot_streaming()
-        return bot
+        self.active_bot = self.save_bot_streaming(self.active_bot)
+        return self.active_bot
 
     def so_update_deal(self, so_index):
         """
@@ -358,7 +358,7 @@ class SpotLongDeal(BaseDeal):
         self.close_conditions(float(close_price))
 
         self.active_bot.deal.current_price = close_price
-        self.save_bot_streaming()
+        self.active_bot = self.save_bot_streaming(self.active_bot)
         # Stop loss
         if float(self.active_bot.stop_loss) > 0 and float(
             self.active_bot.deal.stop_loss_price
@@ -424,7 +424,7 @@ class SpotLongDeal(BaseDeal):
                         f"{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
                     )
 
-                self.save_bot_streaming()
+                self.active_bot = self.save_bot_streaming(self.active_bot)
 
             # Direction 2 (downward): breaking the trailling_stop_loss
             # Make sure it's red candlestick, to avoid slippage loss
@@ -463,7 +463,7 @@ class SpotLongDeal(BaseDeal):
                         self.active_bot.orders[i].fills = order_response["fills"]
                         self.active_bot.orders[i].status = order_response["status"]
             
-            self.save_bot_streaming()
+            self.active_bot = self.save_bot_streaming(self.active_bot)
 
     def close_conditions(self, current_price):
         """
