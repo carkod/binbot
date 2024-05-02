@@ -37,8 +37,6 @@ class AutotradeSettingsController(Database):
             settings = data.dict()
             if "_id" in settings:
                 settings.pop("_id")
-            if "update_required" in settings:
-                settings["update_required"] = time()
 
             self.research_controller.update_one({"_id": self.document_id}, {"$set": settings})
             resp = json_response_message("Successfully updated settings")

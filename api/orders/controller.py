@@ -1,6 +1,5 @@
-import logging
-
 from account.account import Account
+from tools.exceptions import DeleteOrderError
 from db import Database
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_error, json_response_message
@@ -150,23 +149,18 @@ class OrderController(Database, Account):
         - Optimal for open orders table
         """
         if not symbol:
-            resp = json_response_error("Missing symbol parameter")
+            raise DeleteOrderError("Missing symbol parameter")
         if not orderId:
-            resp = json_response_error("Missing orderid parameter")
+            raise DeleteOrderError("Missing orderid parameter")
 
         payload = {
             "symbol": symbol,
             "orderId": orderId,
         }
-        try:
-            data = self.signed_request(
-                url=f"{self.order_url}", method="DELETE", payload=payload
-            )
-            resp = json_response({"message": "Order deleted!", "data": data})
-        except Exception as e:
-            resp = json_response_error(e)
-
-        return resp
+        data = self.signed_request(
+            url=f"{self.order_url}", method="DELETE", payload=payload
+        )
+        return data
 
     def delete_all_orders(self, symbol):
         """

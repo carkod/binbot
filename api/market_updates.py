@@ -12,8 +12,6 @@ def main():
         KafkaTopics.restart_streaming.value,
         bootstrap_servers=f'{os.environ["KAFKA_HOST"]}:{os.environ["KAFKA_PORT"]}',
         value_deserializer=lambda m: json.loads(m),
-        auto_offset_reset="latest",
-        enable_auto_commit=True,
     )
     mu = StreamingController(consumer)
     for message in consumer:
@@ -22,7 +20,7 @@ def main():
         if message.topic == KafkaTopics.klines_store_topic.value:
             mu.process_klines(message.value)
 
-       
+
 if __name__ == "__main__":
     while True:
         try:

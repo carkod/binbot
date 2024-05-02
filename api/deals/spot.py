@@ -1,15 +1,17 @@
 import logging
 
 from requests.exceptions import HTTPError
+from orders.controller import OrderController
 from base_producer import BaseProducer
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
 from tools.handle_error import encode_json
 from tools.exceptions import (
+    BinbotErrors,
     NotEnoughFunds,
 )
-from tools.enum_definitions import CloseConditions, Status, Strategy
+from tools.enum_definitions import CloseConditions, DealType, Status, Strategy
 from tools.round_numbers import round_numbers, supress_notation
 from pydantic import ValidationError
 from datetime import datetime
@@ -49,7 +51,7 @@ class SpotLongDeal(BaseDeal):
             bot=self.active_bot, db_collection_name=self.db_collection_name
         ).margin_short_base_order()
 
-        self.save_bot_streaming()
+        self.active_bot = self.save_bot_streaming(self.active_bot)
         return self.active_bot
 
     def execute_stop_loss(self, price):
@@ -75,7 +77,7 @@ class SpotLongDeal(BaseDeal):
                     f"No quantity in balance, no closed orders. Cannot execute update stop limit."
                 )
                 self.active_bot.status = Status.error
-                self.save_bot_streaming()
+                self.active_bot = self.save_bot_streaming(self.active_bot)
                 return
 
         order_id = None
@@ -88,10 +90,12 @@ class SpotLongDeal(BaseDeal):
         if order_id:
             try:
                 # First cancel old order to unlock balance
-                self.bb_request(
-                    f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}",
-                    "DELETE",
-                )
+                try:
+                    data = OrderController(symbol=self.active_bot.pair).delete_order(self.active_bot.pair, order_id)
+                except BinbotErrors as error:
+                    print(error.message)
+                    pass
+
                 self.update_deal_logs("Old take profit order cancelled")
             except HTTPError as error:
                 self.update_deal_logs("Take profit order not found, no need to cancel")
@@ -129,8 +133,8 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
 
-        bot = self.save_bot_streaming()
-        return bot
+        self.active_bot = self.save_bot_streaming(self.active_bot)
+        return self.active_bot
 
     def trailling_profit(self) -> BotSchema | None:
         """
@@ -151,8 +155,8 @@ class SpotLongDeal(BaseDeal):
                         f"No quantity in balance, no closed orders. Cannot execute update trailling profit."
                     )
                     self.active_bot.status = Status.error
-                    bot = self.save_bot_streaming()
-                    return bot
+                    self.active_bot = self.save_bot_streaming(self.active_bot)
+                    return self.active_bot
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":
@@ -174,7 +178,7 @@ class SpotLongDeal(BaseDeal):
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
-            deal_type="take_profit",
+            deal_type=DealType.take_profit,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
@@ -196,8 +200,8 @@ class SpotLongDeal(BaseDeal):
         msg = f"Completed take profit after failing to break trailling {self.active_bot.pair}"
         self.active_bot.errors.append(msg)
 
-        bot = self.save_bot_streaming()
-        return bot
+        self.active_bot = self.save_bot_streaming(self.active_bot)
+        return self.active_bot
 
     def so_update_deal(self, so_index):
         """
@@ -306,15 +310,13 @@ class SpotLongDeal(BaseDeal):
         if order_id and self.db_collection.name != "paper_trading":
             # First cancel old order to unlock balance
             try:
-                self.bb_request(
-                    f"{self.bb_close_order_url}/{self.active_bot.pair}/{order_id}",
-                    "DELETE",
-                )
+                data = OrderController(symbol=self.active_bot.pair).delete_order(self.active_bot.pair, order_id)
                 self.update_deal_logs("Old take profit order cancelled")
-            except HTTPError as error:
+            except BinbotErrors as error:
                 self.update_deal_logs(
-                    f"Take profit order not found, no need to cancel, {error}"
-                )
+                f"Take profit order not found, no need to cancel, {error}"
+            )
+                pass
 
         # Because buy_price = avg_buy_price after so executed
         # we can use this to update take_profit_price
@@ -356,16 +358,16 @@ class SpotLongDeal(BaseDeal):
         self.close_conditions(float(close_price))
 
         self.active_bot.deal.current_price = close_price
-        self.save_bot_streaming()
+        self.active_bot = self.save_bot_streaming(self.active_bot)
         # Stop loss
         if float(self.active_bot.stop_loss) > 0 and float(
             self.active_bot.deal.stop_loss_price
         ) > float(close_price):
             self.execute_stop_loss(close_price)
-            self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_SPOT_STOP_LOSS")
+            self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_SPOT_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
                 self.switch_margin_short()
-                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_SWITCH_MARGIN_SHORT")
+                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_SWITCH_MARGIN_SHORT")
             
             return
 
@@ -422,7 +424,7 @@ class SpotLongDeal(BaseDeal):
                         f"{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
                     )
 
-                self.save_bot_streaming()
+                self.active_bot = self.save_bot_streaming(self.active_bot)
 
             # Direction 2 (downward): breaking the trailling_stop_loss
             # Make sure it's red candlestick, to avoid slippage loss
@@ -439,7 +441,7 @@ class SpotLongDeal(BaseDeal):
                     f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}"
                 )
                 self.trailling_profit()
-                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_SPOT_TRAILLING_PROFIT")
+                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_SPOT_TRAILLING_PROFIT")
 
         # Update unfilled orders
         unupdated_order = next(
@@ -461,7 +463,7 @@ class SpotLongDeal(BaseDeal):
                         self.active_bot.orders[i].fills = order_response["fills"]
                         self.active_bot.orders[i].status = order_response["status"]
             
-            self.save_bot_streaming()
+            self.active_bot = self.save_bot_streaming(self.active_bot)
 
     def close_conditions(self, current_price):
         """
@@ -474,6 +476,6 @@ class SpotLongDeal(BaseDeal):
             self.render_market_domination_reversal()
             if self.market_domination_reversal and current_price < self.active_bot.deal.buy_price:
                 self.execute_stop_loss()
-                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_SPOT_CLOSE_CONDITION_STOP_LOSS")
+                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_SPOT_CLOSE_CONDITION_STOP_LOSS")
 
         pass

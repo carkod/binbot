@@ -310,8 +310,7 @@ class MarginDeal(BaseDeal):
                 self.active_bot.errors.append("Loan not found for this bot.")
 
             # Save in two steps, because it takes time for Binance to process repayments
-            bot = self.save_bot_streaming()
-            self.active_bot: BotSchema = BotSchema.parse_obj(bot)
+            self.active_bot = self.save_bot_streaming(self.active_bot)
 
             try:
                 # get new balance
@@ -340,9 +339,7 @@ class MarginDeal(BaseDeal):
             self.active_bot.status = Status.completed
             self.active_bot.errors.append(completion_msg)
 
-        bot = self.save_bot_streaming()
-        self.active_bot = BotSchema.parse_obj(bot)
-
+        self.active_bot = self.save_bot_streaming(self.active_bot)
         return self.active_bot
 
     def margin_short_base_order(self):
@@ -424,7 +421,7 @@ class MarginDeal(BaseDeal):
             f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}"
         )
 
-        self.save_bot_streaming()
+        self.save_bot_streaming(self.active_bot)
 
         # Direction 1.1: downward trend (short)
         # Breaking trailling
@@ -437,14 +434,13 @@ class MarginDeal(BaseDeal):
                 self.active_bot.trailling == "true" or self.active_bot.trailling
             ) and self.active_bot.deal.margin_short_sell_price > 0:
                 self.update_trailling_profit(price)
-                bot = self.save_bot_streaming()
-                self.active_bot = BotSchema(**bot)
+                self.active_bot = self.save_bot_streaming(self.active_bot)
 
             else:
                 # Execute the usual non-trailling take_profit
                 self.update_deal_logs(f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}")
                 self.execute_take_profit()
-                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_MARGIN_TAKE_PROFIT")
+                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_MARGIN_TAKE_PROFIT")
 
         # Direction 2: upward trend (short). breaking the trailling_stop_loss
         # Make sure it's red candlestick, to avoid slippage loss
@@ -462,7 +458,7 @@ class MarginDeal(BaseDeal):
             )
             # since price is given by matching engine
             self.execute_take_profit()
-            self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_MARGIN_TRAILLING_PROFIT")
+            self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_MARGIN_TRAILLING_PROFIT")
 
         # Direction 1.3: upward trend (short)
         # Breaking trailling_stop_loss, completing trailling
@@ -475,10 +471,10 @@ class MarginDeal(BaseDeal):
                 f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}"
             )
             self.execute_stop_loss()
-            self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_MARGIN_STOP_LOSS")
+            self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_MARGIN_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
                 self.switch_to_long_bot()
-                self.base_producer.update_required(selfself.active_bot.id, "EXECUTE_MARGIN_SWITCH_TO_LONG")
+                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_MARGIN_SWITCH_TO_LONG")
 
             
         return
@@ -557,7 +553,7 @@ class MarginDeal(BaseDeal):
         msg = f"Completed Stop loss order"
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
-        bot = self.save_bot_streaming()
+        self.active_bot = self.save_bot_streaming(self.active_bot)
 
         return
 
@@ -614,7 +610,7 @@ class MarginDeal(BaseDeal):
         
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
-        self.save_bot_streaming()
+        self.active_bot = self.save_bot_streaming(self.active_bot)
 
         return
 
@@ -639,7 +635,7 @@ class MarginDeal(BaseDeal):
 
         # Keep bot up to date in the DB
         # this avoid unsyched bots when errors ocurr in other functions
-        self.save_bot_streaming()
+        self.active_bot = self.save_bot_streaming(self.active_bot)
         return self.active_bot
 
     def update_trailling_profit(self, close_price):
@@ -663,8 +659,7 @@ class MarginDeal(BaseDeal):
                 self.active_bot.deal.trailling_stop_loss_price = (
                     stop_loss_trailling_price
                 )
-                bot = self.save_bot_streaming()
-                self.active_bot = BotSchema.parse_obj(bot)
+                self.active_bot = self.save_bot_streaming(self.active_bot)
                 self.update_deal_logs(f"{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB")
 
         if self.active_bot.deal.trailling_profit_price == 0:

@@ -238,22 +238,25 @@ class Assets(BaseDeal):
             }
         )
 
-    def match_series_dates(
-        self, dates, balance_date, i: int = 0
+    """
+    In order to create benchmark charts,
+    gaps in the balances' dates need to match with BTC dates
+    """
+    def consolidate_dates(
+        self, klines, balance_date, i: int = 0
     ) -> int | None:
-        if i == len(dates):
+        
+        if i == len(klines):
             return None
 
-
-        for idx, d in enumerate(dates):
-            dt_obj = datetime.fromtimestamp(d / 1000)
+        for idx, d in enumerate(klines):
+            dt_obj = datetime.fromtimestamp(d[0] / 1000)
             str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
             
             # Match balance store dates with btc price dates
             if str_date == balance_date:
                 return idx
         else:
-            print("Not able to match any BTC dates for this balance store date")
             return None
 
     async def get_balance_series(self, end_date, start_date):
@@ -292,27 +295,25 @@ class Assets(BaseDeal):
 
         balance_series = list(self._db.balances.find(params).sort([("time", -1)]))
 
+        end_time = int(datetime.strptime(balance_series[0]["time"], "%Y-%m-%d").timestamp() * 1000)
         # btc candlestick data series
-        params = CandlestickParams(
-            limit=31, # One month - 1 (calculating percentages) worth of data to display
+        klines = self.get_raw_klines(
+            limit=len(balance_series), # One month - 1 (calculating percentages) worth of data to display
             symbol="BTCUSDT",
             interval="1d",
+            end_time=str(end_time),
         )
-
-        cs = Candlestick()
-        df, dates = cs.get_klines(params)
-        trace = cs.candlestick_trace(df, dates)
 
         balances_series_diff = []
         balances_series_dates = []
         balance_btc_diff = []
 
         for index, item in enumerate(balance_series):
-            btc_index = self.match_series_dates(dates, item["time"], index)
-            if btc_index:
+            btc_index = self.consolidate_dates(klines, item["time"], index)
+            if btc_index is not None:
                 balances_series_diff.append(float(balance_series[index]["estimated_total_usdt"]))
                 balances_series_dates.append(item["time"])
-                balance_btc_diff.append(float(trace["close"][btc_index]))
+                balance_btc_diff.append(float(klines[btc_index][4]))
             else:
                 continue
 

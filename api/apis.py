@@ -16,8 +16,9 @@ class BinanceApi:
     """
 
     api_servers = ["https://api.binance.com", "https://api3.binance.com", "https://api-gcp.binance.com"]
-    BASE = api_servers[randrange(3) - 1]
-    MARKET_DATA_BASE = "https://data-api.binance.vision"
+    market_api_servers = ["https://data-api.binance.vision", "https://api3.binance.com"]
+    BASE = api_servers[randrange(2) - 1]
+    MARKET_DATA_BASE = market_api_servers[randrange(3) - 1]
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
@@ -110,7 +111,9 @@ class BinanceApi:
         data = self.request("POST", url=self.user_data_stream, headers=headers)
         return data["listenKey"]
 
-    
+    """
+    No security endpoints
+    """
     def ticker_24(self, type: str = "FULL", symbol: str | None = None):
         """
         Weight 40 without symbol
@@ -130,6 +133,26 @@ class BinanceApi:
         data = self.request(url=self.ticker24_url, params=params)
         return data
 
+    def get_raw_klines(self, symbol, interval, limit=500, start_time=None, end_time=None):
+        """
+        Get raw klines
+        """
+        params = {
+            "symbol": symbol,
+            "interval": interval,
+            "limit": limit,
+        }
+        if start_time:
+            params["startTime"] = start_time
+        if end_time:
+            params["endTime"] = end_time
+
+        data = self.request(url=self.candlestick_url, params=params)
+        return data
+
+    """
+    USER_DATA endpoints
+    """
     def get_account_balance(self):
         """
         Get account balance

@@ -62,7 +62,7 @@ class DealSchema(BaseModel):
     short_sell_timestamp: float = 0
     stop_loss_price: float = 0
     margin_short_base_order: float = 0  # borrowed amount
-    margin_loan_id: str = ""
+    margin_loan_id: str | int = ""
     margin_short_loan_interest: float = 0
     margin_short_loan_principal: float = 0
     margin_short_loan_timestamp: float = 0

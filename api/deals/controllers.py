@@ -1,5 +1,4 @@
-import requests
-
+from orders.controller import OrderController
 from bots.schemas import BotSchema
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
@@ -7,7 +6,7 @@ from deals.models import BinanceOrderModel
 from pymongo import ReturnDocument
 from tools.enum_definitions import Status, Strategy
 from tools.exceptions import (
-    CreateDealControllerError,
+    BinbotErrors,
     TakeProfitError,
 )
 from tools.handle_error import (
@@ -192,14 +191,11 @@ class CreateDealController(BaseDeal):
                 asset = self.find_baseAsset(bot.pair)
 
                 # First cancel old order to unlock balance
-                close_order_params = {"symbol": bot.pair, "orderId": order_id}
-                cancel_response = requests.post(
-                    url=self.bb_close_order_url, params=close_order_params
-                )
-                if cancel_response.status_code != 200:
-                    print("Take profit order not found, no need to cancel")
-                else:
-                    print("Old take profit order cancelled")
+                try:
+                    data = OrderController(symbol=bot.pair).delete_order(bot.pair, order_id)
+                except BinbotErrors as error:
+                    print(error.message)
+                    pass
 
                 qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
                 res = self.sell_order(

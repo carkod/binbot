@@ -170,28 +170,6 @@ class BaseDeal(OrderController):
                 return True
         return False
 
-    def save_bot_streaming(self):
-        """
-        MongoDB query to save bot using Pydantic
-
-        This function differs from usual save query in that
-        it returns the saved bot, thus called streaming, it's
-        specifically for streaming saves
-        """
-
-        bot = encode_json(self.active_bot)
-        if "_id" in bot:
-            bot.pop("_id")
-
-        response = self.db_collection.find_one_and_update(
-            {"id": self.active_bot.id},
-            {
-                "$set": bot,
-            },
-            return_document=ReturnDocument.AFTER,
-        )
-
-        return response
 
     def create_new_bot_streaming(self):
         """

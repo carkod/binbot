@@ -1,10 +1,14 @@
 from time import time
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class BinanceOrderModel(BaseModel):
+    """
+    Data model given by Binance,
+    therefore it should be strings
+    """
     order_type: str
     time_in_force: str
     timestamp: str
@@ -16,6 +20,18 @@ class BinanceOrderModel(BaseModel):
     status: str
     price: str
     deal_type: str
+
+    @field_validator("timestamp", "order_id", "price", "qty", "order_id")
+    @classmethod
+    def validate_str_numbers(cls, v):
+        if isinstance(v, float):
+            return str(v)
+        elif isinstance(v, int):
+            return str(v)
+        elif isinstance(v, str):
+            return v
+        else:
+            raise ValueError(f"{v} must be a number")
 
 
 class BinanceRepayRecord(BaseModel):
@@ -35,6 +51,10 @@ class BinanceRepayRecords(BaseModel):
 
 
 class DealModel(BaseModel):
+    """
+    Data model that is used for operations,
+    so it should all be numbers (int or float)
+    """
     buy_price: float = 0
     buy_total_qty: float = 0
     buy_timestamp: float = time() * 1000
