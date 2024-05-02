@@ -11,7 +11,7 @@ from tools.exceptions import (
     BinbotErrors,
     NotEnoughFunds,
 )
-from tools.enum_definitions import CloseConditions, Status, Strategy
+from tools.enum_definitions import CloseConditions, DealType, Status, Strategy
 from tools.round_numbers import round_numbers, supress_notation
 from pydantic import ValidationError
 from datetime import datetime
@@ -178,7 +178,7 @@ class SpotLongDeal(BaseDeal):
         order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
-            deal_type="take_profit",
+            deal_type=DealType.take_profit,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],

@@ -53,7 +53,7 @@ class Database:
             return_document=ReturnDocument.AFTER,
         )
 
-        active_bot = BotSchema(**response)
+        active_bot = BotSchema.model_validate(response)
         return active_bot
 
     def update_deal_logs(self, msg, active_bot: BotSchema, db_collection_name: str="bots"):
