@@ -75,16 +75,3 @@ class Database:
         active_bot.errors = result["errors"]
         return result
 
-    # def get_autotrade_settings(self):
-    #     return self._db.research_controller.find_one({"_id": "settings"})
-
-    # def get_test_autotrade_settings(self):
-    #     return self._db.research_controller.find_one({"_id": "test_autotrade_settings"})
-
-    # def get_active_bots(self):
-    #     bots = list(self._db.bots.distinct("pair", {"status": "active"}))
-    #     return bots
-
-    # def get_active_paper_trading_bots(self):
-    #     bots = list(self._db.paper_trading.distinct("pair", {"status": "active"}))
-    #     return bots

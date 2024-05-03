@@ -43,7 +43,7 @@ def json_response_message(message):
 
 def json_response_error(message):
     body = {"message": message, "error": 1}
-    return json_response(body)
+    return json_response(body, status=422)
 
 
 def handle_binance_errors(response: Response) -> Response:

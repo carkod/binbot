@@ -67,10 +67,10 @@ class StreamingController(Database):
                 margin_deal.streaming_updates(close_price)
             except BinanceErrors as error:
                 if error.code in (-2010, -1013):
-                    margin_deal.update_deal_logs(error.message)
+                    margin_deal.update_deal_logs(error.message, active_bot)
             except Exception as error:
                 logging.info(error)
-                margin_deal.update_deal_logs(error)
+                margin_deal.update_deal_logs(error, active_bot)
                 pass
 
         else:
@@ -81,12 +81,12 @@ class StreamingController(Database):
                     spot_long_deal.streaming_updates(close_price, open_price)
                 except BinanceErrors as error:
                     if error.code in (-2010, -1013):
-                        spot_long_deal.update_deal_logs(error.message)
+                        spot_long_deal.update_deal_logs(error.message, active_bot)
                         active_bot.status = Status.error
                         active_bot = self.save_bot_streaming(active_bot)
                 except Exception as error:
                     logging.info(error)
-                    spot_long_deal.update_deal_logs(error)
+                    spot_long_deal.update_deal_logs(error, active_bot)
                     pass
 
         pass

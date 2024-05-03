@@ -53,13 +53,15 @@ class MarginDeal(BaseDeal):
         """
         if float(self.isolated_balance[0]["quoteAsset"]["borrowed"]) > 0:
             self.update_deal_logs(
-                f'Borrowed {self.isolated_balance[0]["quoteAsset"]["asset"]} still remaining, please clear out manually'
+                f'Borrowed {self.isolated_balance[0]["quoteAsset"]["asset"]} still remaining, please clear out manually',
+                self.active_bot
             )
             self.active_bot.status = Status.error
 
         if float(self.isolated_balance[0]["baseAsset"]["borrowed"]) > 0:
             self.update_deal_logs(
-                f'Borrowed {self.isolated_balance[0]["baseAsset"]["asset"]} still remaining, please clear out manually'
+                f'Borrowed {self.isolated_balance[0]["baseAsset"]["asset"]} still remaining, please clear out manually',
+                self.active_bot
             )
             self.active_bot.status = Status.error
 
@@ -87,9 +89,9 @@ class MarginDeal(BaseDeal):
             try:
                 # First cancel old order to unlock balance
                 self.cancel_margin_order(symbol=self.active_bot.pair, order_id=order_id)
-                self.update_deal_logs("Old take profit order cancelled")
+                self.update_deal_logs("Old take profit order cancelled", self.active_bot)
             except HTTPError as error:
-                self.update_deal_logs("Take profit order not found, no need to cancel")
+                self.update_deal_logs("Take profit order not found, no need to cancel", self.active_bot)
                 return
 
             except Exception as error:
@@ -121,7 +123,7 @@ class MarginDeal(BaseDeal):
         2. create loan with qty given by market
         3. borrow 2.5x to do base order
         """
-        self.update_deal_logs("Initializating margin_short tasks for real bots trading")
+        self.update_deal_logs("Initializating margin_short tasks for real bots trading", self.active_bot)
         # Check margin account balance first
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
         asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
@@ -130,7 +132,7 @@ class MarginDeal(BaseDeal):
             self.enable_isolated_margin_account(symbol=self.active_bot.pair)
             borrow_res = self.get_max_borrow(asset=asset, isolated_symbol=self.active_bot.pair)
             error_msg = f"Checking borrowable amount: {borrow_res['amount']},  {borrow_res['borrowLimit']}"
-            self.update_deal_logs(error_msg)
+            self.update_deal_logs(error_msg, self.active_bot)
         except BinanceErrors as error:
             if error.code == -11001 or error.code == -3052:
                 # Isolated margin account needs to be activated with a transfer
@@ -243,7 +245,7 @@ class MarginDeal(BaseDeal):
                         # false alarm
                         pass
                 except Exception as error:
-                    self.update_deal_logs(error)
+                    self.update_deal_logs(error, self.active_bot)
                     # Continue despite errors to avoid losses
                     # most likely it is still possible to update bot
                     pass
@@ -438,7 +440,7 @@ class MarginDeal(BaseDeal):
 
             else:
                 # Execute the usual non-trailling take_profit
-                self.update_deal_logs(f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}")
+                self.update_deal_logs(f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}", self.active_bot)
                 self.execute_take_profit()
                 self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_MARGIN_TAKE_PROFIT")
 
@@ -626,7 +628,7 @@ class MarginDeal(BaseDeal):
         2. Calculate take_profit_price and stop_loss_price as usual
         3. Create deal
         """
-        self.update_deal_logs("Switching margin_short to long strategy")
+        self.update_deal_logs("Switching margin_short to long strategy", self.active_bot)
         self.active_bot.strategy = Strategy.long
         self.active_bot = self.create_new_bot_streaming()
 
@@ -660,7 +662,7 @@ class MarginDeal(BaseDeal):
                     stop_loss_trailling_price
                 )
                 self.active_bot = self.save_bot_streaming(self.active_bot)
-                self.update_deal_logs(f"{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB")
+                self.update_deal_logs(f"{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB", self.active_bot)
 
         if self.active_bot.deal.trailling_profit_price == 0:
             # Current take profit + next take_profit
@@ -686,7 +688,7 @@ class MarginDeal(BaseDeal):
 
             # Reset stop_loss_price to avoid confusion in front-end
             self.active_bot.deal.stop_loss_price = 0
-            self.update_deal_logs(f"{self.active_bot.pair} Updating after broken first trailling_profit (short)")
+            self.update_deal_logs(f"{self.active_bot.pair} Updating after broken first trailling_profit (short)", self.active_bot)
 
         # Direction 1 (downward): breaking the current trailling
         if float(close_price) <= float(self.active_bot.deal.trailling_profit_price):
@@ -727,7 +729,7 @@ class MarginDeal(BaseDeal):
         if self.active_bot.close_condition == CloseConditions.market_reversal:
             self.render_market_domination_reversal()
             if self.market_domination_reversal and current_price > self.active_bot.deal.buy_price:
-                self.update_deal_logs(f"Closing bot according to close_condition: {self.active_bot.close_condition}")
+                self.update_deal_logs(f"Closing bot according to close_condition: {self.active_bot.close_condition}", self.active_bot)
                 self.execute_stop_loss()
                 self.base_producer(self.active_bot.id, "EXECUTE_CLOSE_CONDITION_STOP_LOSS")
 

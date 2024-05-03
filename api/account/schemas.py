@@ -10,7 +10,6 @@ class BalanceSchema(BaseModel):
     All validation and database fields new or old handled here
     """
 
-    time: str = datetime.utcnow().strftime("%Y-%m-%d")
     balances: list = []
     estimated_total_usdt: float = 0
 
