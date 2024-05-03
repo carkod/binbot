@@ -164,6 +164,9 @@ class BinanceApi:
         """
         Balance by wallet (SPOT, FUNDING, CROSS MARGIN...)
         https://binance-docs.github.io/apidocs/spot/en/#query-user-wallet-balance-user_data
+
+        This is a consolidated balance across all account
+        so it doesn't require us to retrieve isolated margin, cross margin, etc, separately.
         """
         data = self.signed_request(self.wallet_balance_url)
         return data

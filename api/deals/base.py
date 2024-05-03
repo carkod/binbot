@@ -1,5 +1,6 @@
 import uuid
 from time import time
+
 from orders.controller import OrderController
 from bots.schemas import BotSchema
 from pymongo import ReturnDocument
@@ -8,7 +9,7 @@ from tools.handle_error import encode_json
 from tools.exceptions import BinanceErrors, DealCreationError, MarginLoanNotFound
 from tools.round_numbers import round_numbers_ceiling
 from tools.enum_definitions import DealType, Status, Strategy
-from bson.objectid import ObjectId
+
 from deals.schema import DealSchema, OrderSchema
 from datetime import datetime
 
@@ -40,25 +41,6 @@ class BaseDeal(OrderController):
 
     def generate_id(self):
         return uuid.uuid4()
-
-    def update_deal_logs(self, msg):
-        """
-        Use this function if independently updating Event logs (deal.errors list)
-        especially useful if a certain operation might fail in an exception
-        and the error needs to be stored in the logs
-
-        However, if save_bot_streaming is used later,
-        and there is almost no chance of failure,
-        best to this.active_bot.errors.append(str(msg)) so we can save
-        some DB calls.
-        """
-        result = self.db_collection.find_one_and_update(
-            {"id": self.active_bot.id},
-            {"$push": {"errors": str(msg)}},
-            return_document=ReturnDocument.AFTER,
-        )
-        self.active_bot.errors = result["errors"]
-        return result
 
     def compute_qty(self, pair):
         """
@@ -169,32 +151,6 @@ class BaseDeal(OrderController):
                 )
                 return True
         return False
-
-
-    def create_new_bot_streaming(self):
-        """
-        Resets bot to initial state and saves it to DB
-
-        This function differs from usual create_bot in that
-        it needs to set strategy first (reversal)
-        clear orders, deal and errors,
-        which are not required in new bots,
-        as they initialize with empty values
-        """
-        self.active_bot.id = str(ObjectId())
-        self.active_bot.orders = []
-        self.active_bot.errors = []
-        self.active_bot.created_at = time() * 1000
-        self.active_bot.updated_at = time() * 1000
-        self.active_bot.status = Status.inactive
-        self.active_bot.deal = DealSchema()
-
-        bot = encode_json(self.active_bot)
-        self.db_collection.insert_one(bot)
-        new_bot = self.db_collection.find_one({"id": bot["id"]})
-        new_bot_class = BotSchema(**new_bot)
-
-        return new_bot_class
 
     def base_order(self):
         """

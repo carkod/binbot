@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 import pytest
 from account.assets import Assets
+from account.controller import AssetsController
+from account.account import Account
 from main import app
 import mongomock
 
@@ -86,6 +88,32 @@ def patch_total_fiat(monkeypatch):
     )
 
 
+@pytest.fixture()
+def patch_store_balance(monkeypatch):
+    """
+    Input data from API
+    Confidential data has been removed
+    """
+    wallet_balance = [{
+        "activate": True,
+        "balance": "0.001",
+        "walletName": "Spot"
+    }]
+
+    bin_balance = [{'asset': 'BNB', 'free': '0.00000241', 'locked': '0.00000000'}, {'asset': 'ADX', 'free': '0.50558327', 'locked': '0.00000000'}]
+
+    monkeypatch.setattr(Assets, "get_wallet_balance", lambda self: wallet_balance)
+    monkeypatch.setattr(
+        Assets, "get_raw_balance", lambda self, asset=None: bin_balance
+    )
+    monkeypatch.setattr(
+        Assets, "get_ticker_price", lambda self, pair: '59095.79000000'
+    )
+    monkeypatch.setattr(
+        Assets, "create_balance_series", lambda self, total_balance, total_estimated_fiat: None
+    )
+
+
 def test_get_market_domination(monkeypatch, patch_database):
 
     response = app_client.get("/account/market-domination")
@@ -147,3 +175,16 @@ def test_available_fiat(patch_raw_balances):
     assert response.status_code == 200
     content = response.json()
     assert content["data"] == 5.2
+
+
+def test_store_balance(patch_store_balance):
+    """
+    Test store balance as an endpoint
+    This runs as a cron job in production
+    """
+
+    response = app_client.get("/account/store-balance")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["message"] == "Successfully stored balance."

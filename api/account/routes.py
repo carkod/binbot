@@ -10,7 +10,7 @@ from account.schemas import (
     MarketDominationResponse,
     MarketDominationSeries,
 )
-from tools.handle_error import json_response, json_response_error
+from tools.handle_error import json_response, json_response_error, json_response_message
 
 account_blueprint = APIRouter()
 
@@ -76,7 +76,12 @@ def get_pnl():
 
 @account_blueprint.get("/store-balance", tags=["assets"])
 def store_balance():
-    return Assets().store_balance()
+    try:
+        Assets().store_balance()
+        response = json_response_message("Successfully stored balance.")
+    except Exception as error:
+        response = json_response_error(f"Failed to store balance: {error}")
+    return response
 
 
 @account_blueprint.get(

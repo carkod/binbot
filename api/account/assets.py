@@ -1,18 +1,13 @@
 from datetime import datetime, timedelta
-
-import pandas as pd
-from account.schemas import BalanceSchema, MarketDominationSeries
 from bson.objectid import ObjectId
-from charts.models import CandlestickParams
-from charts.models import Candlestick
-from db import setup_db
+from account.controller import AssetsController
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
 from tools.exceptions import BinanceErrors, InvalidSymbol, MarginLoanNotFound
 from deals.base import BaseDeal
 from tools.enum_definitions import Status
 
-class Assets(BaseDeal):
+class Assets(AssetsController):
     def __init__(self):
         self.usd_balance = 0
         self.exception_list = []
@@ -58,54 +53,25 @@ class Assets(BaseDeal):
 
     def store_balance(self) -> dict:
         """
-        Alternative PnL data that runs as a cronjob everyday once at 1200
-        Store current balance in Db
+        Alternative PnL data that runs as a cronjob everyday once at 12:00. Stores current balance in DB and estimated
+        total balance in fiat (USDT) for the day.
+
+        Better than deprecated store_balance_snapshot
+        - it doesn't required high weight
+        - it can be tweaked to have our needed format
+        - the result of total_usdt is pretty much the same, the difference is in 0.001 USDT
+        - however we don't need a loop and we decreased one network request (also added one, because we still need the raw_balance to display charts)
         """
         # Store balance works outside of context as cronjob
+        wallet_balance = self.get_wallet_balance()
         bin_balance = self.get_raw_balance()
-        current_time = datetime.now()
-        total_usdt: float = 0
-        rate: float = 0
-        for b in bin_balance["data"]:
-            # Only tether coins for hedging
-            if b["asset"] == "NFT":
-                continue
-            elif b["asset"] in ["USD", "USDT"]:
-                qty = self._check_locked(b)
-                total_usdt += qty
-            else:
-                try:
-                    qty = self._check_locked(b)
-                    rate = self.get_ticker_price(f'{b["asset"]}USDT')
-                    total_usdt += float(qty) * float(rate)
-                except InvalidSymbol:
-                    print(b["asset"])
-                    # Some coins like NFT are air dropped and cannot be traded
-                    break
+        rate = self.get_ticker_price('BTCUSDT')
 
-        isolated_balance_total = self.get_isolated_balance_total()
-        rate = self.get_ticker_price("BTCUSDT")
-        total_usdt += float(isolated_balance_total) * float(rate)
+        total_wallet_balance = next((float(item["balance"]) for item in wallet_balance if float(item["balance"]) > 0), 0)
+        total_usdt = total_wallet_balance * float(rate)
+        response  = self.create_balance_series(bin_balance, round_numbers(total_usdt, 4))
+        return response
 
-        total_balance = {
-            "time": current_time.strftime("%Y-%m-%d"),
-            "balances": bin_balance["data"],
-            "estimated_total_usdt": round_numbers(total_usdt),
-        }
-
-        try:
-            balance_schema = BalanceSchema(**total_balance)
-            balances = balance_schema.dict()
-            self._db.balances.update_one(
-                {"time": current_time.strftime("%Y-%m-%d")},
-                {"$set": balances},
-                upsert=True,
-            )
-        except Exception as error:
-            print(f"Failed to store balance: {error}")
-
-        print("Successfully stored balance!")
-        return json_response_message("Successfully stored balance!")
 
     def balance_estimate(self, fiat="USDT"):
         """
@@ -152,7 +118,7 @@ class Assets(BaseDeal):
             resp = json_response({"data": [], "error": 1})
         return resp
 
-    def balance_series(self, fiat="GBP", start_time=None, end_time=None, limit=5):
+    def balance_series(self, fiat="USDT", start_time=None, end_time=None, limit=5):
         """
         Get series for graph.
 
@@ -179,45 +145,6 @@ class Assets(BaseDeal):
         else:
             resp = json_response({"data": [], "error": 1})
         return resp
-
-    def store_balance_snapshot(self):
-        """
-        Alternative to storing balance,
-        use Binance new snapshot endpoint to store
-        with a very high rate limit weight
-
-        Because this is a cronjob, it doesn't have application context
-        """
-        db = setup_db()
-        print("Store account snapshot starting...")
-        current_time = datetime.now()
-        data = self.signed_request(self.account_snapshot_url, payload={"type": "SPOT"})
-        spot_data = next(
-            (item for item in data["snapshotVos"] if item["type"] == "spot"), None
-        )
-        balances = [
-            balance
-            for balance in spot_data["data"]["balances"]
-            if (balance["free"] != "0" or balance["locked"] != "0")
-        ]
-        total_btc = spot_data["data"]["totalAssetOfBtc"]
-        fiat_rate = self.get_ticker_price("BTCGBP")
-        total_usdt = float(total_btc) * float(fiat_rate)
-        balanceId = db.balances.insert_one(
-            {
-                "_id": spot_data["updateTime"],
-                "time": datetime.fromtimestamp(
-                    spot_data["updateTime"] / 1000.0
-                ).strftime("%Y-%m-%d"),
-                "balances": balances,
-                "estimated_total_btc": total_btc,
-                "estimated_total_usdt": total_usdt,
-            }
-        )
-        if balanceId:
-            print(f"{current_time} Balance stored!")
-        else:
-            print(f"{current_time} Unable to store balance! Error: {balanceId}")
 
     async def retrieve_gainers_losers(self, market_asset="USDT"):
         """
@@ -260,40 +187,8 @@ class Assets(BaseDeal):
             return None
 
     async def get_balance_series(self, end_date, start_date):
-        params = {}
 
-        if start_date:
-            start_date = start_date * 1000
-            try:
-                float(start_date)
-            except ValueError:
-                resp = json_response(
-                    {"message": f"start_date must be a timestamp float", "data": []}
-                )
-                return resp
-
-            obj_start_date = datetime.fromtimestamp(int(float(start_date) / 1000))
-            gte_tp_id = ObjectId.from_datetime(obj_start_date)
-            try:
-                params["_id"]["$gte"] = gte_tp_id
-            except KeyError:
-                params["_id"] = {"$gte": gte_tp_id}
-
-        if end_date:
-            end_date = end_date * 1000
-            try:
-                float(end_date)
-            except ValueError as e:
-                resp = json_response(
-                    {"message": f"end_date must be a timestamp float: {e}", "data": []}
-                )
-                return resp
-
-            obj_end_date = datetime.fromtimestamp(int(float(end_date) / 1000))
-            lte_tp_id = ObjectId.from_datetime(obj_end_date)
-            params["_id"]["$lte"] = lte_tp_id
-
-        balance_series = list(self._db.balances.find(params).sort([("time", -1)]))
+        balance_series = self.query_balance_series(start_date, end_date)
 
         end_time = int(datetime.strptime(balance_series[0]["time"], "%Y-%m-%d").timestamp() * 1000)
         # btc candlestick data series
