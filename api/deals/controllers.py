@@ -240,7 +240,7 @@ class CreateDealController(BaseDeal):
                 )
                 return
         else:
-            self.update_deal_logs("Error: Bot does not contain a base order deal")
+            self.update_deal_logs("Error: Bot does not contain a base order deal", self.active_bot)
 
     def open_deal(self):
         """

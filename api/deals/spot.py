@@ -43,7 +43,7 @@ class SpotLongDeal(BaseDeal):
         2. Calculate take_profit_price and stop_loss_price as usual
         3. Create deal
         """
-        self.update_deal_logs("Resetting bot for margin_short strategy...")
+        self.update_deal_logs("Resetting bot for margin_short strategy...", self.active_bot)
         self.active_bot.strategy = Strategy.margin_short
         self.active_bot = self.create_new_bot_streaming()
 
@@ -62,7 +62,7 @@ class SpotLongDeal(BaseDeal):
         - Close current opened take profit order
         - Deactivate bot
         """
-        self.update_deal_logs("Executing stop loss...")
+        self.update_deal_logs("Executing stop loss...", self.active_bot)
         if self.db_collection.name == "paper_trading":
             qty = self.active_bot.deal.buy_total_qty
         else:
@@ -74,7 +74,8 @@ class SpotLongDeal(BaseDeal):
             closed_orders = self.close_open_orders(self.active_bot.pair)
             if not closed_orders:
                 self.update_deal_logs(
-                    f"No quantity in balance, no closed orders. Cannot execute update stop limit."
+                    f"No quantity in balance, no closed orders. Cannot execute update stop limit.",
+                    self.active_bot
                 )
                 self.active_bot.status = Status.error
                 self.active_bot = self.save_bot_streaming(self.active_bot)
@@ -96,9 +97,9 @@ class SpotLongDeal(BaseDeal):
                     print(error.message)
                     pass
 
-                self.update_deal_logs("Old take profit order cancelled")
+                self.update_deal_logs("Old take profit order cancelled", self.active_bot)
             except HTTPError as error:
-                self.update_deal_logs("Take profit order not found, no need to cancel")
+                self.update_deal_logs("Take profit order not found, no need to cancel", self.active_bot)
                 return
 
         if self.db_collection.name == "paper_trading":
@@ -152,7 +153,8 @@ class SpotLongDeal(BaseDeal):
                 closed_orders = self.close_open_orders(self.active_bot.pair)
                 if not closed_orders:
                     self.update_deal_logs(
-                        f"No quantity in balance, no closed orders. Cannot execute update trailling profit."
+                        f"No quantity in balance, no closed orders. Cannot execute update trailling profit.",
+                        self.active_bot
                     )
                     self.active_bot.status = Status.error
                     self.active_bot = self.save_bot_streaming(self.active_bot)
@@ -311,10 +313,11 @@ class SpotLongDeal(BaseDeal):
             # First cancel old order to unlock balance
             try:
                 data = OrderController(symbol=self.active_bot.pair).delete_order(self.active_bot.pair, order_id)
-                self.update_deal_logs("Old take profit order cancelled")
+                self.update_deal_logs("Old take profit order cancelled", self.active_bot)
             except BinbotErrors as error:
                 self.update_deal_logs(
-                f"Take profit order not found, no need to cancel, {error}"
+                f"Take profit order not found, no need to cancel, {error}",
+                self.active_bot
             )
                 pass
 
@@ -337,18 +340,17 @@ class SpotLongDeal(BaseDeal):
                 {"id": self.active_bot.id},
                 {"$set": bot},
             )
-            self.update_deal_logs("Safety order triggered!")
-            print("Safety order triggered!")
+            self.update_deal_logs("Safety order triggered!", self.active_bot)
 
         except ValidationError as error:
-            self.update_deal_logs(f"Safety orders error: {error}")
+            self.update_deal_logs(f"Safety orders error: {error}", self.active_bot)
             return
         except (TypeError, AttributeError) as error:
             message = str(";".join(error.args))
-            self.update_deal_logs(f"Safety orders error: {message}")
+            self.update_deal_logs(f"Safety orders error: {message}", self.active_bot)
             return
         except Exception as error:
-            self.update_deal_logs(f"Safety orders error: {error}")
+            self.update_deal_logs(f"Safety orders error: {error}", self.active_bot)
             return
 
         pass
