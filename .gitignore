@@ -27,6 +27,8 @@ db.dump
 __pycache__
 .pytest_cache
 kafka_data
+pg_data
+pgadmin_data
 
 # Fix vscode linting bug
 .envFile
