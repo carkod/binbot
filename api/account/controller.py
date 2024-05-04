@@ -1,6 +1,6 @@
 from pymongo import ReturnDocument
+from deals.models import DealModel
 from bots.schemas import BotSchema
-from deals.schema import DealSchema
 from tools.enum_definitions import Status
 from tools.handle_error import encode_json, json_response
 from deals.base import BaseDeal
@@ -32,7 +32,7 @@ class AssetsController(BaseDeal):
         self.active_bot.created_at = time() * 1000
         self.active_bot.updated_at = time() * 1000
         self.active_bot.status = Status.inactive
-        self.active_bot.deal = DealSchema()
+        self.active_bot.deal = DealModel()
 
         bot = encode_json(self.active_bot)
         self.db_collection.insert_one(bot)
