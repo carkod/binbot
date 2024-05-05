@@ -1,7 +1,7 @@
 from time import time
 from typing import List
-
 from pydantic import BaseModel, field_validator
+from tools.enum_definitions import DealType
 
 
 class BinanceOrderModel(BaseModel):
@@ -19,7 +19,7 @@ class BinanceOrderModel(BaseModel):
     qty: str | float
     status: str
     price: str | float
-    deal_type: str
+    deal_type: DealType
 
     @field_validator("timestamp", "order_id", "price", "qty", "order_id")
     @classmethod

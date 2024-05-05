@@ -1,4 +1,4 @@
-from api.deals.models import BinanceOrderModel
+from deals.models import BinanceOrderModel
 
 class MarginOrderSchema(BinanceOrderModel):
     margin_buy_borrow_amount: int = 0
