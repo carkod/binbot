@@ -1,7 +1,6 @@
 import json
 import logging
 
-from deals.schema import OrderSchema
 from bots.schemas import BotSchema
 from autotrade.controller import AutotradeSettingsController
 from bots.controllers import Bot

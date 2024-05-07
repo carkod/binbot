@@ -2,9 +2,9 @@ from time import time
 from typing import Literal
 
 from bson.objectid import ObjectId
+from deals.models import BinanceOrderModel, DealModel
 from tools.enum_definitions import BinanceKlineIntervals, CloseConditions, Status
-from deals.schema import DealSchema, OrderSchema
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator
 from tools.handle_error import StandardResponse
 from tools.enum_definitions import BinbotEnums
 
@@ -38,13 +38,13 @@ class BotSchema(BaseModel):
     close_condition: CloseConditions = CloseConditions.dynamic_trailling
     cooldown: int = 0  # cooldown period in minutes before opening next bot with same pair
     created_at: float = time() * 1000
-    deal: DealSchema = Field(default_factory=DealSchema)
+    deal: DealModel = Field(default_factory=DealModel)
     dynamic_trailling: bool = False
     errors: list[str] = [] # Event logs
     locked_so_funds: float = 0  # funds locked by Safety orders
     mode: str = "manual"  # Manual is triggered by the terminal dashboard, autotrade by research app
     name: str = "Default bot"
-    orders: list[OrderSchema] = []  # Internal
+    orders: list[BinanceOrderModel] = []  # Internal
     status: Status = Status.inactive
     stop_loss: float = 0
     margin_short_reversal: bool = False # If stop_loss > 0, allow for reversal

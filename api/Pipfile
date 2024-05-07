@@ -23,6 +23,7 @@ python-multipart = "*"
 kafka-python= "==2.0.2"
 pyarrow= "==15.0.2"
 py4j= "==0.10.9"
+confluent-kafka = "==2.3.0"
 
 [dev-packages]
 autopep8 = "==2.0.0"
