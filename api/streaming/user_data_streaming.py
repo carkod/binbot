@@ -1,5 +1,5 @@
 import logging
-from api.streaming.socket_client import SpotWebsocketStreamClient
+from streaming.socket_client import SpotWebsocketStreamClient
 
 
 class UserDataStreaming:

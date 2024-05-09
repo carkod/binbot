@@ -11,14 +11,14 @@ class BinanceOrderModel(BaseModel):
     """
     order_type: str
     time_in_force: str
-    timestamp: str
-    order_id: str
+    timestamp: str | int
+    order_id: str | int
     order_side: str
     pair: str
     fills: list
-    qty: str
+    qty: str | float
     status: str
-    price: str
+    price: str | float
     deal_type: str
 
     @field_validator("timestamp", "order_id", "price", "qty", "order_id")
@@ -76,6 +76,22 @@ class DealModel(BaseModel):
     short_sell_qty: float = 0
     short_sell_timestamp: float = time() * 1000
 
+    @field_validator(
+        "buy_price",
+        "current_price",
+        "avg_buy_price",
+        "original_buy_price",
+        "take_profit_price",
+        "sell_price",
+        "short_sell_price",
+    )
+    @classmethod
+    def check_prices(cls, v):
+        if float(v) < 0:
+            raise ValueError("Price must be a positive number")
+        if isinstance(v, str):
+            return float(v)
+        return v
 
 class SafetyOrderModel(BaseModel):
     buy_price: float

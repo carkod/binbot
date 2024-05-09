@@ -1,20 +1,19 @@
 import uuid
 from time import time
-
+from pymongo import ReturnDocument
+from datetime import datetime
+from deals.models import BinanceOrderModel, DealModel
 from orders.controller import OrderController
 from bots.schemas import BotSchema
-from pymongo import ReturnDocument
-from tools.round_numbers import round_numbers, supress_notation
+from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 from tools.handle_error import encode_json
 from tools.exceptions import BinanceErrors, DealCreationError, MarginLoanNotFound
-from tools.round_numbers import round_numbers_ceiling
 from tools.enum_definitions import DealType, Status, Strategy
 
-from deals.schema import DealSchema, OrderSchema
-from datetime import datetime
 
-# To be removed one day when commission endpoint found that provides this value
+# To be removed one day en commission endpoint found that provides this value
 ESTIMATED_COMMISSIONS_RATE = 0.0075
+
 
 class BaseDeal(OrderController):
     """
@@ -187,7 +186,7 @@ class BaseDeal(OrderController):
                 price=supress_notation(price, self.price_precision),
             )
 
-        order_data = OrderSchema(
+        order_data = BinanceOrderModel(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
             deal_type=DealType.base_order,
@@ -204,7 +203,7 @@ class BaseDeal(OrderController):
         self.active_bot.orders.append(order_data)
         tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
 
-        self.active_bot.deal = DealSchema(
+        self.active_bot.deal = DealModel(
             buy_timestamp=res["transactTime"],
             buy_price=res["price"],
             buy_total_qty=res["origQty"],
@@ -227,7 +226,6 @@ class BaseDeal(OrderController):
         )
 
         return document
-
 
     def margin_liquidation(self, pair: str, qty_precision=None):
         """
@@ -340,9 +338,7 @@ class BaseDeal(OrderController):
         Establish the timing
         """
         now = datetime.now()
-        if (
-            now.minute == 0
-        ):
+        if now.minute == 0:
             data = self.get_market_domination_series()
             # reverse to make latest series more important
             data["data"]["gainers_count"].reverse()
@@ -364,6 +360,5 @@ class BaseDeal(OrderController):
                 if gainers_count[-2] > losers_count[-2]:
                     # Negative reversal
                     self.market_domination_reversal = False
-
 
         pass
