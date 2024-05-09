@@ -23,6 +23,7 @@ api/main/config/*.cfg
 mongo_data
 mongo_data.old
 mongo_db
+pg_data
 db.dump
 __pycache__
 .pytest_cache
