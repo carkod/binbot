@@ -1,5 +1,9 @@
 import os
+from time import time
+from bson import ObjectId
 from pymongo import MongoClient, ReturnDocument
+from tools.handle_error import encode_json
+from deals.models import DealModel
 from bots.schemas import BotSchema
 from tools.enum_definitions import Status
 
@@ -74,4 +78,29 @@ class Database:
         )
         active_bot.errors = result["errors"]
         return result
+
+    def create_new_bot_streaming(self, active_bot: BotSchema, db_collection_name: str="bots"):
+        """
+        Resets bot to initial state and saves it to DB
+
+        This function differs from usual create_bot in that
+        it needs to set strategy first (reversal)
+        clear orders, deal and errors,
+        which are not required in new bots,
+        as they initialize with empty values
+        """
+        active_bot.id = str(ObjectId())
+        active_bot.orders = []
+        active_bot.errors = []
+        active_bot.created_at = time() * 1000
+        active_bot.updated_at = time() * 1000
+        active_bot.status = Status.inactive
+        active_bot.deal = DealModel()
+
+        bot = encode_json(active_bot)
+        self._db[db_collection_name].insert_one(bot)
+        new_bot = self._db[db_collection_name].find_one({"id": bot["id"]})
+        new_bot_class = BotSchema(**new_bot)
+
+        return new_bot_class
 

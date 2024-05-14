@@ -16,31 +16,6 @@ class AssetsController(BaseDeal):
     def __init__(self):
         super().__init__()
 
-    def create_new_bot_streaming(self):
-        """
-        Resets bot to initial state and saves it to DB
-
-        This function differs from usual create_bot in that
-        it needs to set strategy first (reversal)
-        clear orders, deal and errors,
-        which are not required in new bots,
-        as they initialize with empty values
-        """
-        self.active_bot.id = str(ObjectId())
-        self.active_bot.orders = []
-        self.active_bot.errors = []
-        self.active_bot.created_at = time() * 1000
-        self.active_bot.updated_at = time() * 1000
-        self.active_bot.status = Status.inactive
-        self.active_bot.deal = DealModel()
-
-        bot = encode_json(self.active_bot)
-        self.db_collection.insert_one(bot)
-        new_bot = self.db_collection.find_one({"id": bot["id"]})
-        new_bot_class = BotSchema(**new_bot)
-
-        return new_bot_class
-
     def create_balance_series(self, total_balance, total_estimated_fiat: float):
         """
         Abstraction to reduce complexity

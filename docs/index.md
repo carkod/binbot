@@ -12,8 +12,6 @@ PLOTTING DOES NOT WORK WITH DEBUGGER
 
 - Get list of crypto currencies in funds
 - run sell algo with this list
-
-
 - functionality on increasing intervals
 
 

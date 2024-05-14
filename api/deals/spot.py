@@ -45,7 +45,7 @@ class SpotLongDeal(BaseDeal):
         """
         self.update_deal_logs("Resetting bot for margin_short strategy...", self.active_bot)
         self.active_bot.strategy = Strategy.margin_short
-        self.active_bot = self.create_new_bot_streaming()
+        self.active_bot = self.create_new_bot_streaming(active_bot=self.active_bot)
 
         self.active_bot = MarginDeal(
             bot=self.active_bot, db_collection_name=self.db_collection_name

@@ -54,7 +54,7 @@ class BaseDeal(OrderController):
         qty = round_numbers(balance, self.qty_precision)
         return qty
 
-    def compute_margin_buy_back(self, pair: str):
+    def compute_margin_buy_back(self):
         """
         Same as compute_qty but with isolated margin balance
 

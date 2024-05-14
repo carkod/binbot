@@ -20,6 +20,7 @@ class OrderController(Database, Account):
     def __init__(self, symbol) -> None:
         super().__init__()
         self.symbol = symbol
+        self.save_bot_streaming = self.save_bot_streaming
         pass
 
     @property
