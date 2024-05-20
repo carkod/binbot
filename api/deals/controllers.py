@@ -266,7 +266,7 @@ class CreateDealController(BaseDeal):
                 ).margin_short_base_order()
             else:
                 bot = self.base_order()
-                self.active_bot = BotSchema.parse_obj(bot)
+                self.active_bot = BotSchema(**bot)
 
         """
         Optional deals section

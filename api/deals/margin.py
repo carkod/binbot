@@ -175,14 +175,10 @@ class MarginDeal(BaseDeal):
             asset=asset, isolatedSymbol=self.active_bot.pair
         )
 
-        self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0][
-            "timestamp"
-        ]
         self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0][
             "principal"
         ]
         self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
-        self.active_bot.deal.margin_short_base_order = qty
 
         # Estimate interest to add to total cost
         # This interest rate is much more accurate than any of the others

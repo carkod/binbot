@@ -3,8 +3,7 @@ from bson.objectid import ObjectId
 from account.controller import AssetsController
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
-from tools.exceptions import BinanceErrors, InvalidSymbol, MarginLoanNotFound
-from deals.base import BaseDeal
+from tools.exceptions import BinanceErrors, InvalidSymbol, LowBalanceCleanupError, MarginLoanNotFound
 from tools.enum_definitions import Status
 
 class Assets(AssetsController):
@@ -231,9 +230,8 @@ class Assets(AssetsController):
         if there are more than 5 (number of bots)
         transfer to BNB
         """
-        data = self.signed_request(url=self.account_url)
+        data = self.get_account_balance()
         assets = []
-        resp = json_response_error("Amount of assets in balance is low. Transfer not needed.")
 
         if len(self.exception_list) == 0:
             self.exception_list = ["USDT", "NFT", "BNB"]
@@ -247,14 +245,22 @@ class Assets(AssetsController):
             if item["asset"] not in self.exception_list and float(item["free"]) > 0:
                 assets.append(item["asset"])
 
-        if len(assets) > 5:
+        if len(assets) < 5:
+            raise LowBalanceCleanupError("Amount of assets in balance is low. Transfer not needed.")
+        else:
             try:
                 self.transfer_dust(assets)
-                resp = json_response_message("Sucessfully cleaned balance.")
             except BinanceErrors as error:
-                resp = json_response_error(f"Failed to clean balance: {error}")
+                if error.code == -5005:
+                    for asset in assets:
+                        for string in error.message.split():
+                            if asset == string:
+                                self.exception_list.append(asset)
+                                break
+                    self.clean_balance_assets()
+                    pass
 
-        return resp
+        return assets
 
     def get_total_fiat(self, fiat="USDT"):
         """

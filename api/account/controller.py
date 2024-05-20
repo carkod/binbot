@@ -1,12 +1,7 @@
-from pymongo import ReturnDocument
-from deals.models import DealModel
-from bots.schemas import BotSchema
-from tools.enum_definitions import Status
-from tools.handle_error import encode_json, json_response
+from tools.handle_error import json_response
 from deals.base import BaseDeal
 from account.schemas import BalanceSchema
 from bson.objectid import ObjectId
-from time import time
 from datetime import datetime
 
 class AssetsController(BaseDeal):

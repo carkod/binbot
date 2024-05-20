@@ -10,6 +10,7 @@ from account.schemas import (
     MarketDominationResponse,
     MarketDominationSeries,
 )
+from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.handle_error import json_response, json_response_error, json_response_message
 
 account_blueprint = APIRouter()
@@ -104,7 +105,14 @@ async def get_balance_series():
 
 @account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
 def clean_balance():
-    return Assets().clean_balance_assets()
+    
+    try:
+        assets = Assets().clean_balance_assets()
+        return json_response_message("Sucessfully cleaned balance.")
+    except LowBalanceCleanupError as error:
+        return json_response_error(f"Failed to clean balance: {error}")
+    except BinanceErrors as error:
+        return json_response_error(f"Failed to clean balance: {error}")
 
 @account_blueprint.get("/fiat/available", response_model=BalanceSeriesResponse, tags=["assets"])
 def total_balance():
