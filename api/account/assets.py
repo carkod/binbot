@@ -224,7 +224,7 @@ class Assets(AssetsController):
         )
         return resp
 
-    def clean_balance_assets(self):
+    def clean_balance_assets(self, bypass=False):
         """
         Check if there are many small assets (0.000.. BTC)
         if there are more than 5 (number of bots)
@@ -245,7 +245,7 @@ class Assets(AssetsController):
             if item["asset"] not in self.exception_list and float(item["free"]) > 0:
                 assets.append(item["asset"])
 
-        if len(assets) < 5:
+        if len(assets) < 5 and not bypass:
             raise LowBalanceCleanupError("Amount of assets in balance is low. Transfer not needed.")
         else:
             try:
@@ -257,7 +257,7 @@ class Assets(AssetsController):
                             if asset == string:
                                 self.exception_list.append(asset)
                                 break
-                    self.clean_balance_assets()
+                    self.clean_balance_assets(bypass=bypass)
                     pass
 
         return assets

@@ -102,6 +102,9 @@ class StreamingController(Database):
         current_bot = Bot(collection_name="bots").get_one(symbol=symbol, status=Status.active)
         current_test_bot = Bot(collection_name="paper_trading").get_one(symbol=symbol, status=Status.active)
 
+        # temporary test that we get enough streaming update signals
+        logging.info(f"Streaming update for {symbol}")
+
         if current_bot:
             self.execute_strategies(
                 current_bot,
