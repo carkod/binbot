@@ -157,7 +157,8 @@ class CreateDealController(BaseDeal):
                     d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
                 ):
                     self.update_deal_logs(
-                        "Failed to close all active orders (status NEW), retrying..."
+                        "Failed to close all active orders (status NEW), retrying...",
+                        self.active_bot,
                     )
                     res = self.replace_order(d["orderId"])
 

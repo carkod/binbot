@@ -131,9 +131,10 @@ class MarginDeal(BaseDeal):
         try:
             self.enable_isolated_margin_account(symbol=self.active_bot.pair)
             borrow_res = self.get_max_borrow(asset=asset, isolated_symbol=self.active_bot.pair)
-            error_msg = f"Checking borrowable amount: {borrow_res['amount']},  {borrow_res['borrowLimit']}"
+            error_msg = f"Checking borrowable amount: {borrow_res['amount']} (amount), {borrow_res['borrowLimit']} (limit)"
             self.update_deal_logs(error_msg, self.active_bot)
         except BinanceErrors as error:
+            self.update_deal_logs(error.message, self.active_bot)
             if error.code == -11001 or error.code == -3052:
                 # Isolated margin account needs to be activated with a transfer
                 self.transfer_spot_to_isolated_margin(

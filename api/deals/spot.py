@@ -411,13 +411,13 @@ class SpotLongDeal(BaseDeal):
                     self.active_bot.deal.trailling_stop_loss_price = (
                         new_trailling_stop_loss
                     )
-                    self.update_deal_logs(active_bot=self.active_bot, message=f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
+                    self.update_deal_logs(f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}", self.active_bot)
                 else:
                     # Protect against drops by selling at buy price + 0.75% commission
                     self.active_bot.deal.trailling_stop_loss_price = (
                         float(self.active_bot.deal.buy_price) * 1.075
                     )
-                    self.update_deal_logs(active_bot=self.active_bot, message=f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
+                    self.update_deal_logs(f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}", self.active_bot)
 
                 self.active_bot = self.save_bot_streaming(self.active_bot)
 

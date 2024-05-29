@@ -7,19 +7,27 @@ from deals.models import DealModel
 from bots.schemas import BotSchema
 from tools.enum_definitions import Status
 
-
-def setup_db():
-    # Database
-    mongo = MongoClient(
+def get_mongo_client():
+    client = MongoClient(
         host=os.getenv("MONGO_HOSTNAME"),
         port=int(os.getenv("MONGO_PORT")),
         authSource="admin",
         username=os.getenv("MONGO_AUTH_USERNAME"),
         password=os.getenv("MONGO_AUTH_PASSWORD"),
     )
+    return client
+
+def setup_db():
+    # Database
+    mongo = get_mongo_client()
     db = mongo[os.getenv("MONGO_APP_DATABASE")]
     return db
 
+def setup_kafka_db():
+    # Database
+    mongo = get_mongo_client()
+    db = mongo[os.getenv("MONGO_KAFKA_DATABASE")]
+    return db
 
 class Database:
     """
@@ -60,7 +68,7 @@ class Database:
         active_bot = BotSchema.model_validate(response)
         return active_bot
 
-    def update_deal_logs(self, msg, active_bot: BotSchema, db_collection_name: str="bots"):
+    def update_deal_logs(self, message, active_bot: BotSchema, db_collection_name: str="bots"):
         """
         Use this function if independently updating Event logs (deal.errors list)
         especially useful if a certain operation might fail in an exception
@@ -73,7 +81,7 @@ class Database:
         """
         result = self._db[db_collection_name].find_one_and_update(
             {"id": active_bot.id},
-            {"$push": {"errors": str(msg)}},
+            {"$push": {"errors": str(message)}},
             return_document=ReturnDocument.AFTER,
         )
         active_bot.errors = result["errors"]
