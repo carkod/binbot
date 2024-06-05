@@ -1,4 +1,3 @@
-import moment from "moment";
 import PropTypes from "prop-types";
 import { Button } from "react-bootstrap";
 import { useHistory } from "react-router-dom";
@@ -14,6 +13,7 @@ import {
 import { computeSingleBotProfit } from "../state/bots/actions";
 import { checkValue, roundDecimals } from "../validations";
 import renderTimestamp from "./services/bot-duration";
+import { RenderTimestamps } from "./BotCardTs";
 
 
 const renderSellTimestamp = (bot) => {
@@ -36,103 +36,6 @@ const getNetProfit = (bot) => {
   if (!netProfit) netProfit = 0;
   return netProfit
 };
-
-/**
- * Render deal bot opening and closing timestamp
- * based on strategy. Timestamps short position bots
- * are flipped compared to long positions.
- * 
- * @param {Bot} bot 
- */
-const renderTimestamps = (bot) => {
-
-  if (bot.strategy === "long") {
-    if (bot.deal?.buy_timestamp > 0 && bot.deal?.sell_timestamp > 0) {
-      return (
-        <>
-          <Row>
-            <Col md="7">
-              <p className="card-category">Open time</p>
-            </Col>
-            <Col md="5">
-              <p className="card-category">
-                {moment(bot.deal?.buy_timestamp).format("D, MMM, hh:mm")}
-              </p>
-            </Col>
-          </Row>
-          <Row>
-            <Col md="7">
-              <p className="card-category">Close time</p>
-            </Col>
-            <Col md="5">
-              <p className="card-category">
-                {moment(bot.deal?.sell_timestamp).format("D, MMM, hh:mm")}
-              </p>
-            </Col>
-          </Row>
-        </>
-      )
-      
-    } else if (bot.deal?.buy_timestamp > 0) {
-      return (
-        <Row>
-          <Col md="7">
-            <p className="card-category">Open time</p>
-          </Col>
-          <Col md="5">
-            <p className="card-category">
-              {moment(bot.deal?.buy_timestamp).format("D, MMM, hh:mm")}
-            </p>
-          </Col>
-        </Row>
-      )
-    }
-  }
-
-  // margin bots
-  if (bot.strategy === "margin_short") {
-    if (bot.deal?.margin_short_sell_timestamp > 0 && bot.deal?.margin_short_buy_back_timestamp > 0) {
-      return (
-        <>
-          <Row>
-            <Col md="7">
-              <p className="card-category">Open time</p>
-            </Col>
-            <Col md="5">
-              <p className="card-category">
-                {moment(bot.deal?.margin_short_sell_timestamp).format("D, MMM, hh:mm")}
-              </p>
-            </Col>
-          </Row>
-          <Row>
-            <Col md="7">
-              <p className="card-category">Close time</p>
-            </Col>
-            <Col md="5">
-              <p className="card-category">
-                {moment(bot.deal?.sell_timestamp).format("D, MMM, hh:mm")}
-              </p>
-            </Col>
-          </Row>
-        </>
-      )
-    } else if (bot.deal?.margin_short_sell_timestamp > 0) {
-      return (
-        <Row>
-          <Col md="7">
-            <p className="card-category">Open time</p>
-          </Col>
-          <Col md="5">
-            <p className="card-category">
-              {moment(bot.deal?.margin_short_sell_timestamp).format("D, MMM, hh:mm")}
-            </p>
-          </Col>
-        </Row>
-      )
-    }
-    
-  }
-}
 
 export default function BotCard({
   tabIndex,
@@ -221,7 +124,7 @@ export default function BotCard({
                 </Col>
                 <Col md="5" xs="5">
                   <p className="card-category">
-                    {(x.deal?.buy_price && x.deal.buy_price.toFixed(6)) || (x.deal?.buy_total_qty)}
+                    {(x.deal?.buy_price && roundDecimals(x.deal.buy_price.toFixed(6))) || (x.deal?.buy_total_qty)}
                   </p>
                 </Col>
               </Row>
@@ -242,7 +145,7 @@ export default function BotCard({
                   <p className="card-category">Take profit</p>
                 </Col>
                 <Col md="5" xs="5">
-                  <p className="card-category">{x.take_profit + "%"}</p>
+                  <p className="card-category">{roundDecimals(x.take_profit) + "%"}</p>
                 </Col>
               </Row>
 
@@ -265,7 +168,7 @@ export default function BotCard({
                     <p className="card-category">Stop loss</p>
                   </Col>
                   <Col md="5" xs="5">
-                    <p className="card-category">{x.stop_loss + "%"}</p>
+                    <p className="card-category">{roundDecimals(x.stop_loss) + "%"}</p>
                   </Col>
                 </Row>
               )}
@@ -281,7 +184,9 @@ export default function BotCard({
                 </Row>
               )}
             </div>
-            {renderTimestamps(x)}
+            <div className="stats">
+              {RenderTimestamps(x)}
+            </div>
             {!checkValue(x.deal?.buy_timestamp) &&
             !checkValue(x.deal?.sell_timestamp) ? (
               <Row>

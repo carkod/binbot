@@ -4,7 +4,7 @@ from time import time
 
 import pandas as pd
 from pydantic import BaseModel
-from pymongo import ReturnDocument
+from pymongo import DESCENDING, ReturnDocument
 
 from apis import BinbotApi
 from tools.handle_error import (
@@ -14,10 +14,7 @@ from tools.handle_error import (
     json_response_message
 )
 from tools.round_numbers import interval_to_millisecs
-from db import setup_db
-from fastapi.encoders import jsonable_encoder
-
-
+from db import Database, setup_kafka_db, setup_db
 
 class CandlestickItemRequest(BaseModel):
     data: list[list]
@@ -35,7 +32,7 @@ class CandlestickParams(BaseModel):
     endTime: float | None = None
 
 
-class KlinesSchema:
+class KlinesSchema(Database):
     def __init__(self, pair, interval=None, limit=500) -> None:
         self._id = pair  # pair
         self.interval = interval
@@ -442,3 +439,22 @@ class Candlestick(BinbotApi):
                 {"trace": [trace, ma_100, ma_25, ma_7], "interval": interval}, 200
             )
             return resp
+
+    def get_timeseries(self, symbol, limit=200, offset=0):
+        """
+        Query specifically for display or analytics,
+        returns klines ordered by close_time, from oldest to newest
+
+        Returns:
+            list: 15m Klines
+        """
+        kafka_db = setup_kafka_db()
+        query = kafka_db.kline.find(
+            {"symbol": symbol},
+            {"_id": 0, "candle_closed": 0},
+            limit=limit,
+            skip=offset,
+            sort=[("_id", DESCENDING)],
+        )
+        data = list(query)
+        return data

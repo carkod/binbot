@@ -131,9 +131,10 @@ class MarginDeal(BaseDeal):
         try:
             self.enable_isolated_margin_account(symbol=self.active_bot.pair)
             borrow_res = self.get_max_borrow(asset=asset, isolated_symbol=self.active_bot.pair)
-            error_msg = f"Checking borrowable amount: {borrow_res['amount']},  {borrow_res['borrowLimit']}"
+            error_msg = f"Checking borrowable amount: {borrow_res['amount']} (amount), {borrow_res['borrowLimit']} (limit)"
             self.update_deal_logs(error_msg, self.active_bot)
         except BinanceErrors as error:
+            self.update_deal_logs(error.message, self.active_bot)
             if error.code == -11001 or error.code == -3052:
                 # Isolated margin account needs to be activated with a transfer
                 self.transfer_spot_to_isolated_margin(
@@ -175,14 +176,10 @@ class MarginDeal(BaseDeal):
             asset=asset, isolatedSymbol=self.active_bot.pair
         )
 
-        self.active_bot.deal.margin_short_loan_timestamp = loan_details["rows"][0][
-            "timestamp"
-        ]
         self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0][
             "principal"
         ]
         self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
-        self.active_bot.deal.margin_short_base_order = qty
 
         # Estimate interest to add to total cost
         # This interest rate is much more accurate than any of the others
@@ -298,11 +295,7 @@ class MarginDeal(BaseDeal):
                         self.active_bot.total_commission += float(chunk["commission"])
 
                     self.active_bot.orders.append(sell_back_order)
-                    self.active_bot.deal.margin_short_buy_back_price = res["price"]
                     self.active_bot.deal.buy_total_qty = res["origQty"]
-                    self.active_bot.deal.margin_short_buy_back_timestamp = res[
-                        "transactTime"
-                    ]
                     self.active_bot.status = Status.completed
                     self.active_bot.errors.append(
                         "Margin_short bot repaid, deal completed."
@@ -630,7 +623,7 @@ class MarginDeal(BaseDeal):
         """
         self.update_deal_logs("Switching margin_short to long strategy", self.active_bot)
         self.active_bot.strategy = Strategy.long
-        self.active_bot = self.create_new_bot_streaming()
+        self.active_bot = self.create_new_bot_streaming(active_bot=self.active_bot)
 
         bot = self.base_order()
         self.active_bot = BotSchema(**bot)

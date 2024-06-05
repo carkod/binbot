@@ -1,5 +1,4 @@
 import logging
-import uuid
 from fastapi import APIRouter, Query
 from deals.controllers import CreateDealController
 from tools.handle_error import json_response, json_response_error, json_response_message

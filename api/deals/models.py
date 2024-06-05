@@ -1,6 +1,5 @@
 from time import time
 from typing import List
-
 from pydantic import BaseModel, field_validator
 
 
@@ -75,6 +74,18 @@ class DealModel(BaseModel):
     short_sell_price: float = 0
     short_sell_qty: float = 0
     short_sell_timestamp: float = time() * 1000
+
+    # fields for margin trading
+    margin_short_loan_principal: float | str = 0
+    margin_loan_id: float | str = 0
+    hourly_interest_rate: float | str = 0
+    margin_short_sell_price: float | str = 0
+    margin_short_loan_interest: float | str = 0
+    margin_short_buy_back_price: float | str = 0
+    margin_short_sell_qty: float | str = 0
+    margin_short_buy_back_timestamp: int | str = 0
+    margin_short_base_order: float | str = 0
+    margin_short_sell_timestamp: int | str = 0
 
     @field_validator(
         "buy_price",

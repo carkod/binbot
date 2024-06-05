@@ -3,6 +3,37 @@ networks:
     driver: bridge
 
 services:
+  client_db_ui:
+    image: dpage/pgadmin4
+    container_name: pgadmin4
+    restart: on-failure
+    ports:
+      - 5050:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: carkodw@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: 12345
+    volumes:
+      - ./pgadmin_data:/var/lib/pgadmin
+
+  client_db:
+    image: postgres:latest
+    container_name: binbot_pg
+    restart: on-failure
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${MONGO_AUTH_USERNAME}
+      POSTGRES_PASSWORD: ${MONGO_AUTH_PASSWORD}
+      POSTGRES_DB: ${MONGO_APP_DATABASE}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "$POSTGRES_USER"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s  
+
   db:
     image: mongo:latest
     container_name: binbot_db
@@ -47,6 +78,15 @@ services:
       start_period: 10s
       timeout: 10s
       retries: 5
+  
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana-storage:/var/lib/grafana
 
   # kafka_producer:
   #   build: ./binquant
@@ -133,3 +173,5 @@ services:
 
 volumes:
   mongo_data:
+  pg_data:
+

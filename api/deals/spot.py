@@ -1,3 +1,4 @@
+from email import message
 import logging
 
 from requests.exceptions import HTTPError
@@ -14,7 +15,6 @@ from tools.exceptions import (
 from tools.enum_definitions import CloseConditions, DealType, Status, Strategy
 from tools.round_numbers import round_numbers, supress_notation
 from pydantic import ValidationError
-from datetime import datetime
 from bots.schemas import BotSchema
 
 
@@ -45,7 +45,7 @@ class SpotLongDeal(BaseDeal):
         """
         self.update_deal_logs("Resetting bot for margin_short strategy...", self.active_bot)
         self.active_bot.strategy = Strategy.margin_short
-        self.active_bot = self.create_new_bot_streaming()
+        self.active_bot = self.create_new_bot_streaming(active_bot=self.active_bot)
 
         self.active_bot = MarginDeal(
             bot=self.active_bot, db_collection_name=self.db_collection_name
@@ -407,24 +407,17 @@ class SpotLongDeal(BaseDeal):
                 if new_trailling_stop_loss > self.active_bot.deal.buy_price:
                     # Selling below buy_price will cause a loss
                     # instead let it drop until it hits safety order or stop loss
-                    logging.info(
-                        f"{self.active_bot.pair} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
-                    )
                     # Update trailling_stop_loss
                     self.active_bot.deal.trailling_stop_loss_price = (
                         new_trailling_stop_loss
                     )
-                    logging.info(
-                        f"{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
-                    )
+                    self.update_deal_logs(f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}", self.active_bot)
                 else:
                     # Protect against drops by selling at buy price + 0.75% commission
                     self.active_bot.deal.trailling_stop_loss_price = (
                         float(self.active_bot.deal.buy_price) * 1.075
                     )
-                    logging.info(
-                        f"{datetime.utcnow()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
-                    )
+                    self.update_deal_logs(f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}", self.active_bot)
 
                 self.active_bot = self.save_bot_streaming(self.active_bot)
 

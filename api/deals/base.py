@@ -54,7 +54,7 @@ class BaseDeal(OrderController):
         qty = round_numbers(balance, self.qty_precision)
         return qty
 
-    def compute_margin_buy_back(self, pair: str):
+    def compute_margin_buy_back(self):
         """
         Same as compute_qty but with isolated margin balance
 
@@ -247,7 +247,7 @@ class BaseDeal(OrderController):
         if borrowed_amount > 0:
             # repay_amount contains total borrowed_amount + interests + commissions for buying back
             # borrow amount is only the loan
-            repay_amount, free = self.compute_margin_buy_back(pair)
+            repay_amount, free = self.compute_margin_buy_back()
             repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
 
             if free == 0 or free < repay_amount:
@@ -258,7 +258,7 @@ class BaseDeal(OrderController):
                         symbol=pair,
                         qty=qty,
                     )
-                    repay_amount, free = self.compute_margin_buy_back(pair)
+                    repay_amount, free = self.compute_margin_buy_back()
                 except BinanceErrors as error:
                     if error.code == -3041:
                         # Not enough funds in isolated pair
@@ -276,7 +276,7 @@ class BaseDeal(OrderController):
                         buy_margin_response = self.buy_margin_order(
                             pair, supress_notation(transfer_diff_qty, qty_precision)
                         )
-                        repay_amount, free = self.compute_margin_buy_back(pair)
+                        repay_amount, free = self.compute_margin_buy_back()
                         pass
                     if error.code == -2010 or error.code == -1013:
                         # There is already money in the base asset
@@ -289,7 +289,7 @@ class BaseDeal(OrderController):
                         buy_margin_response = self.buy_margin_order(
                             pair, supress_notation(qty, qty_precision)
                         )
-                        repay_amount, free = self.compute_margin_buy_back(pair)
+                        repay_amount, free = self.compute_margin_buy_back()
                         pass
 
             self.repay_margin_loan(

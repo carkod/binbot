@@ -35,3 +35,12 @@ def get(symbol: str, interval: str="15m", limit: int=500, start_time: float | No
     Retrieve existing candlestick data stored in DB from Binance
     """
     return Candlestick().get(symbol, interval, limit, start_time, end_time, stats)
+
+
+@charts_blueprint.get("/timeseries", summary="Retrieve timeseries data", tags=["charts"])
+def get_timeseries(symbol: str, limit: int=500):
+    """
+    Retrieve candlesticks data stored in DB from Binance
+    in a timeseries format by Binquant
+    """
+    return Candlestick().get_timeseries(symbol, limit)

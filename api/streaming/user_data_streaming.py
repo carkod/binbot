@@ -1,4 +1,5 @@
 import logging
+import json
 from streaming.socket_client import SpotWebsocketStreamClient
 
 

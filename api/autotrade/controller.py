@@ -2,13 +2,13 @@ from typing import Literal
 
 from pydantic import ValidationError
 
-from db import Database, setup_db
+from base_producer import BaseProducer
+from db import Database
 from tools.handle_error import (
     json_response,
     json_response_error,
     json_response_message,
 )
-from time import time
 
 class AutotradeSettingsController(Database):
     """
@@ -20,6 +20,9 @@ class AutotradeSettingsController(Database):
     ):
         self.document_id = document_id
         self.db = self._db
+        self.base_producer = BaseProducer()
+        self.producer = self.base_producer.start_producer()
+
 
     def get_settings(self):
         try:
@@ -34,11 +37,11 @@ class AutotradeSettingsController(Database):
 
     def edit_settings(self, data):
         try:
-            settings = data.dict()
+            settings = data.model_dump()
             if "_id" in settings:
                 settings.pop("_id")
 
-            self.research_controller.update_one({"_id": self.document_id}, {"$set": settings})
+            self.base_producer.update_required(self.producer, self.active_bot.id, "UPDATE_AUTOTRADE_SETTINGS")
             resp = json_response_message("Successfully updated settings")
         except TypeError as e:
 
