@@ -154,6 +154,8 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
     } else {
       return 0;
     }
+  } else {
+    return 0;
   }
 }
 
