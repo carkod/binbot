@@ -493,12 +493,12 @@ class BotForm extends React.Component {
                       {this.props.bot?.pair}{" "}
                       <Badge
                         color={
-                          parseFloat(this.props.bot.bot_profit) > 0
+                          parseFloat(this.props.bot_profit) > 0
                             ? "success"
                             : "danger"
                         }
                       >
-                        {this.props.bot.bot_profit ?this.props.bot.bot_profit + "%" : "0%"}
+                        {this.props.bot_profit ?this.props.bot_profit + "%" : "0%"}
                       </Badge>{" "}
                       {!checkValue(this.props.bot?.status) && (
                         <Badge
@@ -521,12 +521,12 @@ class BotForm extends React.Component {
                     </CardTitle>
                   </Col>
                   <Col>
-                    {!checkValue(this.props.bot.bot_profit) &&
-                      !isNaN(this.props.bot.bot_profit) && (
+                    {!checkValue(this.props.bot_profit) &&
+                      !isNaN(this.props.bot_profit) && (
                         <h4>
                           Earnings after commissions (est.):{" "}
                           {roundDecimals(
-                            parseFloat(this.props.bot.bot_profit) - 0.3
+                            parseFloat(this.props.bot_profit) - 0.3
                           ) + "%"}
                         </h4>
                       )}

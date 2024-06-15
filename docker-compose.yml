@@ -3,24 +3,24 @@ networks:
     driver: bridge
 
 services:
-  client_db:
-    image: postgres:latest
-    container_name: binbot_pg
-    restart: on-failure
-    volumes:
-      - ./pg_data:/var/lib/postgresql/data
-    env_file:
-      - .env
-    environment:
-      POSTGRES_USER: ${MONGO_AUTH_USERNAME}
-      POSTGRES_PASSWORD: ${MONGO_AUTH_PASSWORD}
-      POSTGRES_DB: ${MONGO_APP_DATABASE}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-U", "$POSTGRES_USER"]
-      interval: 30s
-      timeout: 60s
-      retries: 5
-      start_period: 80s  
+  # client_db:
+  #   image: postgres:latest
+  #   container_name: binbot_pg
+  #   restart: on-failure
+  #   volumes:
+  #     - ./pg_data:/var/lib/postgresql/data
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     POSTGRES_USER: ${MONGO_AUTH_USERNAME}
+  #     POSTGRES_PASSWORD: ${MONGO_AUTH_PASSWORD}
+  #     POSTGRES_DB: ${MONGO_APP_DATABASE}
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready", "-U", "$POSTGRES_USER"]
+  #     interval: 30s
+  #     timeout: 60s
+  #     retries: 5
+  #     start_period: 80s
 
   db:
     image: mongo:latest

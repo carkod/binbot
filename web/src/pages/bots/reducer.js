@@ -50,6 +50,7 @@ import {
 // The initial state of the App
 export const initialState = {
   bots: [],
+  bot_profit: 0, // separate state to avoid tick re-rendering
   errorBots: [],
   bot: bot,
   data: null,
@@ -185,7 +186,11 @@ const botReducer = produce((draft, action) => {
     case SET_BOT:
       {
         let { payload } = action;
-        draft.bot = { ...draft.bot, ...payload };
+        if (payload.bot_profit) {
+          draft.bot_profit = payload.bot_profit;
+        } else {
+          draft.bot = { ...draft.bot, ...payload };
+        }
       }
       return draft;
 
@@ -196,12 +201,12 @@ const botReducer = produce((draft, action) => {
 
     case GET_BOT_SUCCESS: {
       draft.bot = { ...draft.bot, ...action.bots };
-      draft.bot.bot_profit = computeSingleBotProfit(action.bots);
+      draft.bot_profit = computeSingleBotProfit(action.bots);
       return draft;
     }
 
     case CREATE_BOT: {
-      draft.bot.bot_profit = computeSingleBotProfit(draft.bot);
+      draft.bot_profit = computeSingleBotProfit(draft.bot);
       draft.bot = action.data;
       return draft;
     }

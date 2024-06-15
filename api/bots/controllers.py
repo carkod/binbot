@@ -158,7 +158,7 @@ class Bot(Account):
             data.created_at = initial_bot_data["created_at"]
             data.total_commission = initial_bot_data["total_commission"]
             data.updated_at = round(time() * 1000)
-            bot = data.dict()
+            bot = data.model_dump()
             if "id" in bot:
                 bot.pop("id")
             self.db_collection.update_one({"id": botId}, {"$set": bot})
