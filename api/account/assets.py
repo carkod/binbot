@@ -189,6 +189,9 @@ class Assets(AssetsController):
 
         balance_series = self.query_balance_series(start_date, end_date)
 
+        if len(balance_series) == 0:
+            return json_response_error("No balance series data found.")
+
         end_time = int(datetime.strptime(balance_series[0]["time"], "%Y-%m-%d").timestamp() * 1000)
         # btc candlestick data series
         klines = self.get_raw_klines(

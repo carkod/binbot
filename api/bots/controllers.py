@@ -362,6 +362,11 @@ class Bot(Account):
         operation = {"$push": {"errors": reported_error}}
         if isinstance(reported_error, list):
             operation = {"$push": {"errors": { "$each": reported_error }}}
+        elif isinstance(reported_error, str):
+            operation = {"$push": {"errors": reported_error}}
+        else:
+            raise ValueError("reported_error must be a list")
+
         self.db_collection.update_one(
             {"id": bot_id}, operation
         )

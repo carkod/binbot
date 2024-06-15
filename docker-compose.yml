@@ -3,18 +3,6 @@ networks:
     driver: bridge
 
 services:
-  client_db_ui:
-    image: dpage/pgadmin4
-    container_name: pgadmin4
-    restart: on-failure
-    ports:
-      - 5050:80
-    environment:
-      PGADMIN_DEFAULT_EMAIL: carkodw@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: 12345
-    volumes:
-      - ./pgadmin_data:/var/lib/pgadmin
-
   client_db:
     image: postgres:latest
     container_name: binbot_pg
@@ -70,23 +58,14 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_BROKER_ID=1
       - KAFKA_CFG_NODE_ID=1
-      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
-      - KAFKA_CFG_NUM_PARTITIONS=950
+      - KAFKA_CFG_NUM_PARTITIONS=50 # Keep the same as prod (as low as possible to minimize disk space consumption)
+      - KAFKA_CFG_ENABLE_AUTO_CREATE_TOPICS=true
       - BITNAMI_DEBUG=yes
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines_store_topic --create --if-not-exists", "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines_store_topic --describe"]
       start_period: 10s
       timeout: 10s
       retries: 5
-  
-  grafana:
-    image: grafana/grafana-enterprise
-    container_name: grafana
-    restart: unless-stopped
-    ports:
-      - '3000:3000'
-    volumes:
-      - grafana-storage:/var/lib/grafana
 
   # kafka_producer:
   #   build: ./binquant

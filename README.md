@@ -1,9 +1,5 @@
 [![Test Production](https://github.com/carkod/binbot/actions/workflows/pr.yml/badge.svg)](https://github.com/carkod/binbot/actions/workflows/pr.yml)
 
-## Architecture
-![image](https://github.com/carkod/binbot/assets/14939793/fbfde06b-1dba-4183-9c4e-26e68a48fa10)
-
-
 ## Requirements
 
 - Docker and docker-compose

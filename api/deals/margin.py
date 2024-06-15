@@ -123,7 +123,7 @@ class MarginDeal(BaseDeal):
         2. create loan with qty given by market
         3. borrow 2.5x to do base order
         """
-        self.update_deal_logs("Initializating margin_short tasks for real bots trading", self.active_bot)
+        self.update_deal_logs("Initializating margin_short tasks", self.active_bot)
         # Check margin account balance first
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
         asset = self.active_bot.pair.replace(self.active_bot.balance_to_use, "")
@@ -190,6 +190,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.hourly_interest_rate = float(
             hourly_fees[0]["nextHourlyInterestRate"]
         )
+        self.active_bot.deal.margin_short_base_order = qty
 
         return
 

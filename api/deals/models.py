@@ -86,6 +86,7 @@ class DealModel(BaseModel):
     margin_short_buy_back_timestamp: int | str = 0
     margin_short_base_order: float | str = 0
     margin_short_sell_timestamp: int | str = 0
+    margin_short_loan_timestamp: int | str = 0
 
     @field_validator(
         "buy_price",
