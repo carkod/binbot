@@ -765,7 +765,7 @@ class BotForm extends React.Component {
 const mapStateToProps = (state) => {
   const { data: balance_raw } = state.balanceRawReducer;
   const { data: symbols } = state.symbolReducer;
-  const { botId, botActive, bot } = state.botReducer;
+  const { botId, botActive, bot, bot_profit } = state.botReducer;
   const { loading } = state.loadingReducer;
   const { data: balanceEstimate } = state.estimateReducer;
 
@@ -774,6 +774,7 @@ const mapStateToProps = (state) => {
     balance_raw: balance_raw,
     symbols: symbols,
     bot: bot,
+    bot_profit: bot_profit,
     newBotId: botId,
     botActive: botActive,
     loading: loading,
