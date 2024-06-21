@@ -413,6 +413,11 @@ class MarginDeal(BaseDeal):
         self.active_bot.total_commission += float(
             self.active_bot.deal.margin_short_loan_principal
         ) * float(self.active_bot.deal.hourly_interest_rate)
+
+        # bugs, normally this should be set at deal opening
+        if self.active_bot.deal.take_profit_price == 0:
+            self.set_margin_take_profit()
+
         logging.debug(
             f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}"
         )

@@ -20,6 +20,15 @@ def get(
     return Bot(collection_name="bots").get(status, start_date, end_date, no_cooldown)
 
 
+@bot_blueprint.get("/bot/active-pairs", tags=["bots"])
+def get_active_pairs():
+    try:
+        bot = Bot(collection_name="bots").get_active_pairs()
+        return json_response({"message": "Active pairs found!", "data": bot})
+    except ValueError as error:
+        return json_response_error(error)
+
+
 @bot_blueprint.get("/bot/{id}", tags=["bots"])
 def get_one_by_id(id: str):
     try:
@@ -31,6 +40,7 @@ def get_one_by_id(id: str):
     except ValueError as error:
         return json_response_error(error)
 
+
 @bot_blueprint.get("/bot/{symbol}", tags=["bots"])
 def get_one_by_symbol(symbol: str):
     try:
@@ -38,6 +48,7 @@ def get_one_by_symbol(symbol: str):
         return json_response({"message": "Bot found", "data": bot})
     except ValueError as error:
         return json_response_error(error)
+
 
 @bot_blueprint.post("/bot", tags=["bots"])
 def create(bot_item: BotSchema):
