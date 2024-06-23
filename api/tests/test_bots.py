@@ -63,6 +63,19 @@ def patch_bot(monkeypatch):
 
     return bot
 
+@pytest.fixture()
+def patch_active_pairs(monkeypatch):
+    active_pairs = ["BNBUSDT", "BTCUSDT"]
+
+    def new_init(self, collection_name="bots"):
+        mongo_client = mongomock.MongoClient()
+        self.db = mongo_client.db
+        self.db_collection = self.db[collection_name]
+
+    monkeypatch.setattr(Bot, "__init__", new_init)
+    monkeypatch.setattr(Bot, "get_active_pairs", lambda self: active_pairs)
+
+    return active_pairs
 
 def test_get_one_by_id(patch_bot):
     client = TestClient(app)
@@ -83,6 +96,17 @@ def test_get_one_by_symbol(patch_bot):
 
     # Assert the expected result
     expected_result = patch_bot
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["data"] == expected_result
+
+def test_active_pairs(patch_active_pairs):
+    client = TestClient(app)
+    response = client.get(f"/bot/active-pairs")
+
+    # Assert the expected result
+    expected_result = patch_active_pairs
 
     assert response.status_code == 200
     content = response.json()
