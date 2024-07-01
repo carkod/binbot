@@ -58,13 +58,6 @@
         "${workspaceFolder}/web/**/*.js",
         "${workspaceFolder}/web/src/node_modules/**"
       ]
-    },
-    {
-      "name": "Python: Research",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "binbot-research/__init__.py",
-      "console": "internalConsole"
     }
   ]
 }
