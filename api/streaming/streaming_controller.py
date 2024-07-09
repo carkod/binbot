@@ -1,6 +1,8 @@
 import json
 import logging
 
+from tools.round_numbers import round_numbers
+from streaming.models import SignalsConsumer
 from bots.schemas import BotSchema
 from autotrade.controller import AutotradeSettingsController
 from bots.controllers import Bot
@@ -11,7 +13,18 @@ from deals.spot import SpotLongDeal
 from tools.exceptions import BinanceErrors
 
 
-class StreamingController(Database):
+class BaseStreaming(Database):
+
+    def get_current_bot(self, symbol):
+        current_bot = Bot(collection_name="bots").get_one(symbol=symbol, status=Status.active)
+        return current_bot
+
+    def get_current_test_bot(self, symbol):
+        current_test_bot = Bot(collection_name="paper_trading").get_one(symbol=symbol, status=Status.active)
+        current_test_bot = current_test_bot
+        return current_test_bot
+
+class StreamingController(BaseStreaming):
     def __init__(self, consumer):
         super().__init__()
         self.streaming_db = self._db
@@ -19,8 +32,6 @@ class StreamingController(Database):
         self.consumer = consumer
         self.autotrade_controller = AutotradeSettingsController()
         self.load_data_on_start()
-        self.current_bot = None
-        self.current_test_bot = None
 
     def load_data_on_start(self):
         """
@@ -35,22 +46,6 @@ class StreamingController(Database):
         paper_trading_controller_paper = Bot(collection_name="paper_trading")
         self.list_paper_trading_bots = paper_trading_controller_paper.get_active_pairs()
         return
-
-    def get_current_bot(self, symbol):
-        if self.current_bot:
-            return self.current_bot
-        else:
-            current_bot = Bot(collection_name="bots").get_one(symbol=symbol, status=Status.active)
-            self.current_bot = current_bot
-        return self.current_bot
-
-    def get_current_test_bot(self, symbol):
-        if self.current_test_bot:
-            return self.current_test_bot
-        else:
-            current_test_bot = Bot(collection_name="paper_trading").get_one(symbol=symbol, status=Status.active)
-            self.current_test_bot = current_test_bot
-            return self.current_test_bot
 
     def execute_strategies(
         self,
@@ -140,6 +135,55 @@ class StreamingController(Database):
 
         return
 
+class BbspreadsUpdater(BaseStreaming):
+    def __init__(self):
+        self.current_bot: BotSchema | None = None
+        self.current_test_bot: BotSchema | None = None
+
+    def load_current_bots(self, symbol):
+        current_bot_payload = self.get_current_bot(symbol)
+        if current_bot_payload:
+            self.current_bot = BotSchema(**current_bot_payload)
+
+        current_test_bot_payload = self.get_current_test_bot(symbol)
+        if current_test_bot_payload:
+            self.current_test_bot = BotSchema(**current_test_bot_payload)
+
+    def reactivate_bot(self, bot, collection_name="bots"):
+        bot_instance = Bot(collection_name=collection_name)
+        bot = bot_instance.activate(bot.id)
+        return bot
+
+    def update_bots_parameters(self, bot: BotSchema, bb_spreads, collection_name="bots"):
+
+        # multiplied by 1000 to get to the same scale stop_loss
+        top_spread = round_numbers(abs((bb_spreads["bb_high"] - bb_spreads["bb_mid"]) / bb_spreads["bb_high"]) * 100, 2)
+        whole_spread = round_numbers(abs((bb_spreads["bb_high"] - bb_spreads["bb_low"]) / bb_spreads["bb_high"]) * 100, 2)
+        bottom_spread = round_numbers(abs((bb_spreads["bb_mid"] - bb_spreads["bb_low"]) / bb_spreads["bb_mid"]) * 100, 2)
+
+        # Otherwise it'll close too soon
+        if 8 > whole_spread > 1:
+
+            bot.trailling = True
+            if bot.strategy == Strategy.long:
+                bot.stop_loss = whole_spread
+                bot.take_profit = top_spread
+                # too much risk, reduce stop loss
+                bot.trailling_deviation = bottom_spread
+
+            if bot.strategy == Strategy.margin_short:
+                bot.stop_loss = whole_spread
+                bot.take_profit = bottom_spread
+                bot.trailling_deviation = top_spread
+            
+            bot.errors.append(f"Updated bot with new bb_spread parameters: {top_spread}, {whole_spread}, {bottom_spread}")
+
+            self.save_bot_streaming(bot)
+            self.reactivate_bot(bot, collection_name=collection_name)
+        else:
+            bot.errors.append(f"Bot bb_spread too low/high, not updated: {top_spread}, {whole_spread}, {bottom_spread}")
+            self.save_bot_streaming(bot)
+
     def update_close_conditions(self, message):
         """
         Update bot with dynamic trailling enabled to update
@@ -147,25 +191,15 @@ class StreamingController(Database):
         dynamic movements in the market
         """
         data = json.loads(message)
-        bb_spreads = data.bb_spreads
-        if bb_spreads["bb_high"] and bb_spreads["bb_low"] and bb_spreads["bb_mid"]:
-            top_spread = abs((bb_spreads["bb_high"] - bb_spreads["bb_mid"]) / bb_spreads["bb_high"]) * 100
-            whole_spread = abs((bb_spreads["bb_high"] - bb_spreads["bb_low"]) / bb_spreads["bb_high"]) * 100
-            bottom_spread = abs((bb_spreads["bb_mid"] - bb_spreads["bb_low"]) / bb_spreads["bb_mid"]) * 100
+        signalsData = SignalsConsumer(**data)
 
-            # current_bot = self.get_current_bot(symbol)
-            # current_test_bot = self.get_current_test_bot(symbol)
+        # Check if it matches any active bots
+        self.load_current_bots(signalsData.symbol)
 
-            # Otherwise it'll close too soon
-            if whole_spread > 1.2:
-                self.default_bot.trailling = True
-                if self.default_bot.strategy == Strategy.long:
-                    self.default_bot.stop_loss = whole_spread
-                    self.default_bot.take_profit = top_spread
-                    # too much risk, reduce stop loss
-                    self.default_bot.trailling_deviation = bottom_spread
+        bb_spreads = signalsData.bb_spreads
+        if (self.current_bot or self.current_test_bot) and bb_spreads["bb_high"] and bb_spreads["bb_low"] and bb_spreads["bb_mid"]:
+            if self.current_bot:
+                self.update_bots_parameters(self.current_bot, bb_spreads)
+            if self.current_test_bot:
+                self.update_bots_parameters(self.current_test_bot, bb_spreads, collection_name="paper_trading")
 
-                if self.default_bot.strategy == Strategy.margin_short:
-                    self.default_bot.stop_loss = whole_spread
-                    self.default_bot.take_profit = bottom_spread
-                    self.default_bot.trailling_deviation = top_spread
