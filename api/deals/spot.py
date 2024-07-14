@@ -371,7 +371,7 @@ class SpotLongDeal(BaseDeal):
                 self.switch_margin_short()
                 self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_SWITCH_MARGIN_SHORT")
                 self.update_deal_logs("Completed switch to margin short bot", self.active_bot)
-            
+
             return
 
         # Take profit trailling

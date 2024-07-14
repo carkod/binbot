@@ -162,6 +162,7 @@ class BbspreadsUpdater(BaseStreaming):
         bottom_spread = round_numbers(abs((bb_spreads["bb_mid"] - bb_spreads["bb_low"]) / bb_spreads["bb_mid"]) * 100, 2)
 
         # Otherwise it'll close too soon
+        print("update_bot_paramters (whole_spread): ", whole_spread)
         if 8 > whole_spread > 1:
 
             bot.trailling = True
