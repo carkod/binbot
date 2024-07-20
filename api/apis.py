@@ -249,13 +249,40 @@ class BinanceApi:
         response = self.signed_request(url=self.dust_transfer_url, method="POST", payload={"asset": list_assets})
         return response
 
-    def get_all_orders(self, symbol, order_id):
+    def get_open_orders(self, symbol):
+        """
+        Get current open orders
+
+        This is a high weight endpoint IP Weight: 20
+        https://binance-docs.github.io/apidocs/spot/en/#current-open-orders-user_data
+        """
+        open_orders = self.signed_request(self.open_orders, payload={"symbol": symbol})
+        return open_orders
+
+    def get_all_orders(self, symbol, order_id : int=None, start_time=None):
         """
         Get all orders given symbol and order_id
 
-        https://binance-docs.github.io/apidocs/spot/en/#current-open-orders-user_data
+        This is a high weight endpoint IP Weight: 20
+        https://binance-docs.github.io/apidocs/spot/en/#all-orders-user_data
+
+        Args:
+        - symbol: str
+        - order_id: int
+        - start_time
+        - end_time
+
+        At least one of order_id or (start_time and end_time) must be sent
         """
-        return self.signed_request(self.all_orders_url, payload={"symbol": symbol, "orderId": order_id})
+        if order_id > 0:
+            return self.signed_request(self.all_orders_url, payload={"symbol": symbol, "orderId": order_id})
+        
+        elif start_time:
+            return self.signed_request(self.all_orders_url, payload={"symbol": symbol, "startTime": start_time})
+
+        else:
+            raise ValueError("At least one of order_id or (start_time and end_time) must be sent")
+
 
 
 class BinbotApi(BinanceApi):
