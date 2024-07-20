@@ -140,7 +140,7 @@ class BaseDeal(OrderController):
         """
         Check open orders and replace with new
         """
-        open_orders = self.get_open_orders(symbol)
+        open_orders = self.query_open_orders(symbol)
         for order in open_orders:
             if order["status"] == "NEW":
                 self.signed_request(
@@ -158,7 +158,7 @@ class BaseDeal(OrderController):
                 return True
         return False
 
-    def verify_deal_close_order(self, symbol):
+    def verify_deal_close_order(self):
         """
         Check if deal is closed by checking
         if there are any SELL orders

@@ -19,12 +19,6 @@ def create_sell_order(item: OrderParams):
     return OrderController(symbol=item.pair).sell_order(item)
 
 
-@order_blueprint.get("/open", tags=["orders"])
-def get_open_orders():
-    # Symbol not required
-    return OrderController(symbol=None).get_open_orders()
-
-
 @order_blueprint.delete("/close/{symbol}/{orderid}", tags=["orders"])
 def delete_order(symbol, orderid):
     try:

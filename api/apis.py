@@ -249,7 +249,7 @@ class BinanceApi:
         response = self.signed_request(url=self.dust_transfer_url, method="POST", payload={"asset": list_assets})
         return response
 
-    def get_open_orders(self, symbol):
+    def query_open_orders(self, symbol):
         """
         Get current open orders
 

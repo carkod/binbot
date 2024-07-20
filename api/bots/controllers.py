@@ -18,6 +18,8 @@ from tools.round_numbers import supress_notation
 from typing import List
 from fastapi import Query
 from bots.schemas import BotSchema, ErrorsRequestBody
+from deals.controllers import CreateDealController
+
 
 class Bot(Account):
     def __init__(self, collection_name="paper_trading"):
@@ -188,9 +190,9 @@ class Bot(Account):
             
         return resp
 
-    def activate(self, botId: str):
-        bot = self.db_collection.find_one({"id": botId})
-        self.base_producer.update_required(self.producer, botId, "ACTIVATE_BOT")
+    def activate(self, bot: str):
+        CreateDealController(bot, db_collection="bots").open_deal()
+        self.base_producer.update_required(self.producer, bot, "ACTIVATE_BOT")
         return bot
 
     def deactivate(self, findId):

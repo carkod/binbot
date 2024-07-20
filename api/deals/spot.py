@@ -68,7 +68,7 @@ class SpotLongDeal(BaseDeal):
         if not qty:
             closed_orders = self.close_open_orders(self.active_bot.pair)
             if not closed_orders:
-                order = self.verify_deal_close_order(self.active_bot.pair, self.active_bot.deal.buy_timestamp)
+                order = self.verify_deal_close_order()
                 if order:
                     self.active_bot.errors.append("Execute stop loss previous order found! Appending...")
                     self.active_bot.orders.append(order)
@@ -135,7 +135,7 @@ class SpotLongDeal(BaseDeal):
             if not qty:
                 closed_orders = self.close_open_orders(self.active_bot.pair)
                 if not closed_orders:
-                    order = self.verify_deal_close_order(self.active_bot.pair, self.active_bot.deal.buy_timestamp)
+                    order = self.verify_deal_close_order()
                     if order:
                         self.active_bot.errors.append("Execute trailling profit previous order found! Appending...")
                         self.active_bot.orders.append(order)
