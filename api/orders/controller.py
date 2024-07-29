@@ -135,15 +135,6 @@ class OrderController(Database, Account):
 
         return data
 
-    def get_open_orders(self):
-        data = self.signed_request(url=self.order_url)
-
-        if data and len(data) > 0:
-            resp = json_response({"message": "Open orders found!", "data": data})
-        else:
-            resp = json_response_error("No open orders found!")
-        return resp
-
     def delete_order(self, symbol: str, orderId: str):
         """
         Cancels single order by symbol

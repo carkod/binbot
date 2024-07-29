@@ -140,7 +140,7 @@ class BaseDeal(OrderController):
         """
         Check open orders and replace with new
         """
-        open_orders = self.signed_request(self.open_orders, payload={"symbol": symbol})
+        open_orders = self.query_open_orders(symbol)
         for order in open_orders:
             if order["status"] == "NEW":
                 self.signed_request(
@@ -148,8 +148,27 @@ class BaseDeal(OrderController):
                     method="DELETE",
                     payload={"symbol": symbol, "orderId": order["orderId"]},
                 )
+                for order in self.active_bot.orders:
+                    if order.order_id == order["orderId"]:
+                        self.active_bot.orders.remove(self.active_bot.orders)
+                        self.active_bot.errors.append("base_order not executed, therefore cancelled")
+                        self.active_bot.status = Status.error
+                        break
+
                 return True
         return False
+
+    def verify_deal_close_order(self):
+        """
+        Check if deal is closed by checking
+        if there are any SELL orders
+        """
+        all_orders = self.get_all_orders(self.active_bot.pair, int(self.active_bot.deal.buy_timestamp))
+        for order in all_orders:
+            if order["side"] == "SELL" and order["price"] == self.active_bot.deal.take_profit_price and order["origQty"] == self.active_bot.deal.buy_total_qty:
+                return order
+
+        return None
 
     def base_order(self):
         """

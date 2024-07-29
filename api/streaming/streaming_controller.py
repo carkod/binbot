@@ -162,7 +162,11 @@ class BbspreadsUpdater(BaseStreaming):
         bottom_spread = round_numbers(abs((bb_spreads["bb_mid"] - bb_spreads["bb_low"]) / bb_spreads["bb_mid"]) * 100, 2)
 
         # Otherwise it'll close too soon
-        if 8 > whole_spread > 1:
+        if 8 > whole_spread > 2:
+
+            # check we are not duplicating the update
+            if bot.take_profit == top_spread and bot.stop_loss == whole_spread and bot.trailling_deviation == bottom_spread:
+                return
 
             bot.trailling = True
             if bot.strategy == Strategy.long:

@@ -1,6 +1,4 @@
-import logging
 from fastapi import APIRouter, Query
-from deals.controllers import CreateDealController
 from tools.handle_error import json_response, json_response_error, json_response_message
 from bots.controllers import Bot
 from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
@@ -78,18 +76,15 @@ def activate(id: str):
     - Because botId is received from endpoint, it will be a str not a PyObjectId
     """
     bot_instance = Bot(collection_name="bots")
-    bot = bot_instance.activate(id)
+    bot = bot_instance.get_one(id)
     if bot:
-
         try:
-            CreateDealController(bot, db_collection="bots").open_deal()
+            bot_instance.activate(bot)
             return json_response_message("Successfully activated bot!")
-        except BinanceErrors as error:
-            logging.info(error)
+        except BinbotErrors as error:
             bot_instance.post_errors_by_id(id, error.message)
             return json_response_error(error.message)
-        except BinbotErrors as error:
-            logging.info(error)
+        except BinanceErrors as error:
             bot_instance.post_errors_by_id(id, error.message)
             return json_response_error(error.message)
         except Exception as error:
