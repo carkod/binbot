@@ -77,14 +77,13 @@ def handle_binance_errors(response: Response) -> Response:
     
     # Show error messsage for bad requests
     if response.status_code >= 400:
-        if "msg" in content:
+        # Binance errors
+        if "msg" in content and "code" in content:
             raise BinanceErrors(content["msg"], content["code"])
-        if "error" in content:
-            raise BinbotErrors(content["message"])
 
-    # Binbot errors
-    if content and "error" in content and content["error"] == 1:
-        raise BinanceErrors(content["message"], content["error"])
+        # Binbot errors
+        if content and "error" in content and content["error"] == 1:
+            raise BinbotErrors(content["message"], content["error"])
 
     # Binance errors
     if content and "code" in content:

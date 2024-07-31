@@ -150,20 +150,20 @@ services:
   #     # - api
   #     - db
 
-  grafana:
-    build:
-      context: grafana-mongodb-docker
-      dockerfile: Dockerfile
-    container_name: binquant_grafana
-    networks:
-      - kafka_network
-    restart: on-failure
-    volumes:
-     - ./grafana-mongodb-docker/data:/var/lib/grafana
-     - /var/lib/grafana/plugins
-    ports:
-     - 4000:3000
-     - 3333:3333
+  # grafana:
+  #   build:
+  #     context: grafana-mongodb-docker
+  #     dockerfile: Dockerfile
+  #   container_name: binquant_grafana
+  #   networks:
+  #     - kafka_network
+  #   restart: on-failure
+  #   volumes:
+  #    - ./grafana-mongodb-docker/data:/var/lib/grafana
+  #    - /var/lib/grafana/plugins
+  #   ports:
+  #    - 4000:3000
+  #    - 3333:3333
 
 volumes:
   mongo_data:
