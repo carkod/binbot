@@ -117,7 +117,7 @@ def clean_balance(bypass: bool = False):
 @account_blueprint.get("/fiat/available", response_model=BalanceSeriesResponse, tags=["assets"])
 def total_balance():
     """
-    Total USDT in balance
+    Total USDC in balance
     Calculated by Binance
     """
     total_fiat = Assets().get_available_fiat()
@@ -126,7 +126,7 @@ def total_balance():
 @account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["assets"])
 def total_balance():
     """
-    Total USDT in balance
+    Total USDC in balance
     Calculated by Binance
     """
     total_fiat = Assets().get_total_fiat()

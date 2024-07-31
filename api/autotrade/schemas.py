@@ -16,14 +16,14 @@ class AutotradeSettingsSchema(BaseModel):
     trailling_profit: float = 2.4
     stop_loss: float = 0
     take_profit: float = 2.3
-    balance_to_use: str = "USDT"
+    balance_to_use: str = "USDC"
     balance_size_to_use: str = "100"
     max_request: int = 950
     system_logs: list[str] = []
     update_required: float | None = 0 # Number of times update is requested
     telegram_signals: int = 1
     max_active_autotrade_bots: int = 1
-    base_order_size: str = "15"  # Assuming 10 USDT is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
+    base_order_size: str = "15"  # Assuming 10 USDC is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
 
 
 class AutotradeSettingsResponse(StandardResponse):

@@ -12,9 +12,9 @@ const GET_BTC_BENCHMARK = "GET_BTC_BENCHMARK";
 const GET_BTC_BENCHMARK_SUCESS = "GET_BTC_BENCHMARK_SUCESS";
 const GET_BTC_BENCHMARK_ERROR = "GET_BTC_BENCHMARK_ERROR";
 
-const GET_USDT_BENCHMARK_SUCCESS = "GET_USDT_BENCHMARK_SUCCESS";
-const GET_USDT_BENCHMARK_ERROR = "GET_USDT_BENCHMARK_ERROR";
-const GET_USDT_BENCHMARK = "GET_USDT_BENCHMARK";
+const GET_USDC_BENCHMARK_SUCCESS = "GET_USDC_BENCHMARK_SUCCESS";
+const GET_USDC_BENCHMARK_ERROR = "GET_USDC_BENCHMARK_ERROR";
+const GET_USDC_BENCHMARK = "GET_USDC_BENCHMARK";
 
 const initialState = {
   data: []
@@ -27,9 +27,9 @@ const gainersLosersReducer = produce((draft, action) => {
 
     case GET_GAINERS_LOSERS_SUCESS: {
       if (action.data) {
-        const filterUSDTmarket = action.data.filter(item => item.symbol.endsWith("USDT"))
-        const usdtData = filterUSDTmarket.sort((a,b) => parseFloat(a.priceChangePercent) - parseFloat(b.priceChangePercent)).reverse()
-        draft.data = usdtData;
+        const filterUSDCmarket = action.data.filter(item => item.symbol.endsWith("USDC"))
+        const usdcData = filterUSDCmarket.sort((a,b) => parseFloat(a.priceChangePercent) - parseFloat(b.priceChangePercent)).reverse()
+        draft.data = usdcData;
       }
       return draft;
     }
@@ -69,7 +69,7 @@ const gainersLosersSeriesReducer = produce((draft, action) => {
 }, {});
 
 /**
- * Data to compare BTC vs USDT
+ * Data to compare BTC vs USDC
  */
 const btcBenchmarkReducer = produce((draft, action) => {
   switch (action.type) {
@@ -85,11 +85,11 @@ const btcBenchmarkReducer = produce((draft, action) => {
             draft.btcPrices.push(diff * 100);
           }
         });
-        action.data.usdt.forEach((element, index) => {
+        action.data.usdc.forEach((element, index) => {
           if (index > 0) {
-            const previousQty = action.data.usdt[index - 1];
+            const previousQty = action.data.usdc[index - 1];
             const diff = (previousQty - element) / previousQty
-            draft.usdtBalanceSeries.push(diff * 100);
+            draft.usdcBalanceSeries.push(diff * 100);
           }
         });
         // Match dates with diff series
@@ -109,7 +109,7 @@ const btcBenchmarkReducer = produce((draft, action) => {
     default:
       return draft;
   }
-}, {data: null, btcPrices: [], usdtBalanceSeries: []});
+}, {data: null, btcPrices: [], usdcBalanceSeries: []});
 
 export {
   gainersLosersSeriesReducer,
@@ -124,7 +124,7 @@ export {
   GET_BTC_BENCHMARK,
   GET_BTC_BENCHMARK_SUCESS,
   GET_BTC_BENCHMARK_ERROR,
-  GET_USDT_BENCHMARK_SUCCESS,
-  GET_USDT_BENCHMARK_ERROR,
-  GET_USDT_BENCHMARK
+  GET_USDC_BENCHMARK_SUCCESS,
+  GET_USDC_BENCHMARK_ERROR,
+  GET_USDC_BENCHMARK
 };

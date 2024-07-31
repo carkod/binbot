@@ -1,7 +1,7 @@
 import Plot from "react-plotly.js";
 import { listCssColors } from "../validations";
 
-export default function DashboardLineChart({ data, width = "100%", height = "100%", line1name='BTC prices', line2name="USDT balance", }) {
+export default function DashboardLineChart({ data, width = "100%", height = "100%", line1name='BTC prices', line2name="USDC balance", }) {
     const layout = {
       dragmode: "zoom",
       autosize: true,
@@ -42,7 +42,7 @@ export default function DashboardLineChart({ data, width = "100%", height = "100
             },
             {
               x: data.dates,
-              y: data.usdt,
+              y: data.usdc,
               type: 'scatter',
               mode: 'lines',
               marker: {color: listCssColors[4]},

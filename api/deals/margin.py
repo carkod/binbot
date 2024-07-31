@@ -143,7 +143,7 @@ class MarginDeal(BaseDeal):
                     amount="1",
                 )
 
-        # Given USDT amount we want to buy,
+        # Given USDC amount we want to buy,
         # how much can we buy?
         qty = round_numbers_ceiling(
             (float(self.active_bot.base_order_size) / float(initial_price)),
@@ -198,13 +198,13 @@ class MarginDeal(BaseDeal):
         """
 
         Args:
-        - buy_back_fiat. By default it will buy back USDT (sell asset and transform into USDT)
+        - buy_back_fiat. By default it will buy back USDC (sell asset and transform into USDC)
 
         In the case of reversal, we don't want to do this additional transaction, as it will incur
         in an additional cost. So this is added to skip that section
 
         1. Repay loan
-        2. Exchange asset to quote asset (USDT)
+        2. Exchange asset to quote asset (USDC)
         3. Transfer back to spot
         """
         logging.info(
@@ -270,7 +270,7 @@ class MarginDeal(BaseDeal):
                 )
 
                 if buy_back_fiat and float(sell_back_qty):
-                    # Sell quote and get base asset (USDT)
+                    # Sell quote and get base asset (USDC)
                     # In theory, we should sell self.active_bot.base_order
                     # but this can be out of sync
 

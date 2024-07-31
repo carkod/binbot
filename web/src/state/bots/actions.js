@@ -18,7 +18,7 @@ export const bot = {
   balance_size_to_use: 0, // Centralized
   base_order_size: 50,
   baseOrderSizeError: false,
-  balance_to_use: "USDT",
+  balance_to_use: "USDC",
   errors: [],
   mode: "manual",
   max_so_count: "0",

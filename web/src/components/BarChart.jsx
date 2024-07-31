@@ -22,7 +22,7 @@ export default function BarChart({
   width = "100%",
   height = "100%",
   line1name = "BTC prices",
-  line2name = "USDT balance",
+  line2name = "USDC balance",
 }) {
   const layout = {
     dragmode: "zoom",

@@ -48,7 +48,7 @@ class Dashboard extends React.Component {
       cache: "no-cache",
     };
     const response = await fetch(
-      `https://api.cryptowat.ch/markets/binance/BTCUSDT/ohlc?periods=${periods}&value=${startDate}`,
+      `https://api.cryptowat.ch/markets/binance/BTCUSDC/ohlc?periods=${periods}&value=${startDate}`,
       options
     );
     const data = response.json();
@@ -333,7 +333,7 @@ class Dashboard extends React.Component {
                             <p className="card-category u-text-right">
                               {typeof this.props.revenue === "number" &&
                                 this.props.revenue.toFixed(4)}{" "}
-                              USDT
+                              USDC
                             </p>
                           </Col>
                         </Row>
@@ -417,7 +417,7 @@ class Dashboard extends React.Component {
                         <NetWorthChart data={this.state.netWorth} />
                       )}
                       {this.props.gainersLosersData && this.props.gainersLosersData.length > 0 && (
-                        <VolumesRankingCard data={this.props.gainersLosersData} title="Today's highest volumes in USDT market"/>
+                        <VolumesRankingCard data={this.props.gainersLosersData} title="Today's highest volumes in USDC market"/>
                       )}
                     </Col>
                     <Col md="6">
@@ -451,7 +451,7 @@ const mapStateToProps = (s) => {
   const {
     data: benchmarkData,
     btcPrices,
-    usdtBalanceSeries,
+    usdcBalanceSeries,
     dates,
   } = s.btcBenchmarkReducer;
   const { bots, errorBots } = s.botReducer;
@@ -459,8 +459,8 @@ const mapStateToProps = (s) => {
   let percentageRevenue = 0;
   let revenue = 0;
 
-  if (benchmarkData && benchmarkData.usdt[0] && balanceEstimate) {
-    revenue = balanceEstimate.total_fiat - benchmarkData.usdt[0];
+  if (benchmarkData && benchmarkData.usdc[0] && balanceEstimate) {
+    revenue = balanceEstimate.total_fiat - benchmarkData.usdc[0];
     percentageRevenue = (revenue / balanceEstimate.total_fiat) * 100;
   }
 
@@ -471,7 +471,7 @@ const mapStateToProps = (s) => {
     gainersLosersData: gainersLosersData,
     gainersLosersSeries: gainersLosersSeries,
     benchmarkData: {
-      usdt: usdtBalanceSeries,
+      usdc: usdcBalanceSeries,
       btc: btcPrices,
       dates: dates,
     },

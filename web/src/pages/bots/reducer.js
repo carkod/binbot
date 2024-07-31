@@ -67,7 +67,7 @@ export const settingsReducerInitial = {
   autotrade: 0,
   max_request: 950,
   telegram_signals: 1,
-  balance_to_use: "USDT",
+  balance_to_use: "USDC",
   balance_size_to_use: 0,
   trailling: "true",
   take_profit: 0,

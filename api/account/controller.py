@@ -17,11 +17,11 @@ class AssetsController(BaseDeal):
         updates balances DB collection
         """
         balance_schema = BalanceSchema(
-            balances=total_balance, estimated_total_usdt=total_estimated_fiat
+            balances=total_balance, estimated_total_usdc=total_estimated_fiat
         )
         response = self._db.balances.insert_one({
             "balances": balance_schema.balances,
-            "estimated_total_usdt": balance_schema.estimated_total_usdt
+            "estimated_total_usdc": balance_schema.estimated_total_usdc
         })
         return response
 
@@ -66,7 +66,7 @@ class AssetsController(BaseDeal):
         query = self._db.balances.find(params, projection={
             "time": {"$dateToString": {"format": "%Y-%m-%d", "date": {"$toDate": "$_id"}}},
             "balances": 1,
-            "estimated_total_usdt": 1,
+            "estimated_total_usdc": 1,
             "_id": 0
         }).sort([("_id", -1)])
         balance_series = list(query)

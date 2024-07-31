@@ -13,7 +13,7 @@ def patch_bot(monkeypatch):
         "id": "6624255433c3cf9806d0a70e",
         "pair": "ADXUSDT",
         "balance_size_to_use": "0.0",
-        "balance_to_use": "USDT",
+        "balance_to_use": "USDC",
         "base_order_size": "50",
         "candlestick_interval": "15m",
         "close_condition": "dynamic_trailling",
