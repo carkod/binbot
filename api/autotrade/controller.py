@@ -1,8 +1,5 @@
 from typing import Literal
-
 from pydantic import ValidationError
-
-from autotrade.schemas import AutotradeSettingsSchema
 from base_producer import BaseProducer
 from db import Database
 from tools.handle_error import (
@@ -38,16 +35,10 @@ class AutotradeSettingsController(Database):
 
     def edit_settings(self, data):
         try:
-            settings = AutotradeSettingsSchema(**settings)
-            
-            id = settings["_id"]
-            if "_id" in settings:
-                settings.pop("_id")
-
+            self.db.research_controller.update_one({"_id": self.document_id}, {"$set": data.model_dump()})
             self.base_producer.update_required(self.producer, "UPDATE_AUTOTRADE_SETTINGS")
             resp = json_response_message("Successfully updated settings")
         except TypeError as e:
-
             resp = json_response_error(f"Data validation error: {e}")
         except ValidationError as error:
             msg = ""

@@ -107,7 +107,7 @@ async def get_balance_series():
 def clean_balance(bypass: bool = False):
 
     try:
-        assets = Assets().clean_balance_assets(bypass=bypass)
+        Assets().clean_balance_assets(bypass=bypass)
         return json_response_message("Sucessfully cleaned balance.")
     except LowBalanceCleanupError as error:
         return json_response_error(f"Failed to clean balance: {error}")
