@@ -193,7 +193,10 @@ class Assets(AssetsController):
         for index, item in enumerate(balance_series):
             btc_index = self.consolidate_dates(klines, item["time"], index)
             if btc_index is not None:
-                balances_series_diff.append(float(balance_series[index]["estimated_total_usdc"]))
+                if "estimated_total_usdc" in balance_series[index]:
+                    balances_series_diff.append(float(balance_series[index]["estimated_total_usdc"]))
+                else:
+                    balances_series_diff.append(float(balance_series[index]["estimated_total_usdt"]))
                 balances_series_dates.append(item["time"])
                 balance_btc_diff.append(float(klines[btc_index][4]))
             else:
