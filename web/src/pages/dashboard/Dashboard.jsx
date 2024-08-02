@@ -458,9 +458,10 @@ const mapStateToProps = (s) => {
 
   let percentageRevenue = 0;
   let revenue = 0;
-
-  if (benchmarkData && benchmarkData.usdc[0] && balanceEstimate) {
-    revenue = balanceEstimate.total_fiat - benchmarkData.usdc[0];
+  
+  if (benchmarkData && balanceEstimate) {
+    let benchamarkUsdc = benchmarkData.usdc ? benchmarkData.usdc[0] : benchmarkData.usdt[0];
+    revenue = balanceEstimate.total_fiat - benchamarkUsdc;
     percentageRevenue = (revenue / balanceEstimate.total_fiat) * 100;
   }
 

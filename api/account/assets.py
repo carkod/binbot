@@ -206,7 +206,7 @@ class Assets(AssetsController):
             {
                 "message": "Sucessfully rendered benchmark data.",
                 "data": {
-                    "USDC": balances_series_diff,
+                    "usdc": balances_series_diff,
                     "btc": balance_btc_diff,
                     "dates": balances_series_dates,
                 },

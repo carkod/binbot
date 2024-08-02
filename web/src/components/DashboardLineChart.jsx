@@ -42,7 +42,7 @@ export default function DashboardLineChart({ data, width = "100%", height = "100
             },
             {
               x: data.dates,
-              y: data.usdc,
+              y: data.usdc ? data.usdc : data.usdt,
               type: 'scatter',
               mode: 'lines',
               marker: {color: listCssColors[4]},

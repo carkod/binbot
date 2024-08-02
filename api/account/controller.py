@@ -66,6 +66,7 @@ class AssetsController(BaseDeal):
         query = self._db.balances.find(params, projection={
             "time": {"$dateToString": {"format": "%Y-%m-%d", "date": {"$toDate": "$_id"}}},
             "balances": 1,
+            "estimated_total_usdt": 1,
             "estimated_total_usdc": 1,
             "_id": 0
         }).sort([("_id", -1)])
