@@ -61,8 +61,13 @@ def ticker_24(pair=None):
 
 
 @account_blueprint.get("/balance/estimate", tags=["assets"])
-async def balance_estimated():
-    return Assets().balance_estimate()
+def balance_estimated():
+    try:
+        balance = Assets().balance_estimate()
+        if balance:
+            return json_response({"data": balance, "message": "Successfully retrieved estimated balance."})
+    except BinanceErrors as error:
+        return json_response_error(f"Failed to estimate balance: {error}")    
 
 
 @account_blueprint.get("/balance/series", tags=["assets"])

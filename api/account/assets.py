@@ -77,32 +77,21 @@ class Assets(AssetsController):
         Estimated balance in given fiat coin
         """
         balances = self.get_raw_balance()
-        # Isolated m
-        isolated_margin = self.signed_request(url=self.isolated_account_url)
-        get_usdc_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
-        total_isolated_margin = float(isolated_margin["totalNetAssetOfBtc"]) * float(
-            get_usdc_btc_rate["price"]
-        )
-
         total_fiat = 0
-        rate = 0
         left_to_allocate = 0
+        total_isolated_margin = 0
+        btc_rate = self.get_ticker_price(f'BTC{fiat}')
+        wallet_balance = self.get_wallet_balance()
+        for item in wallet_balance:
+            if item["walletName"] == "Spot":
+                total_fiat += float(item["balance"]) * float(btc_rate)
+            if item["walletName"] == "Isolated Margin":
+                total_isolated_margin += float(item["balance"]) * float(btc_rate)
+
         for b in balances:
-            # Transform tethers/stablecoins
-            if "USD" in b["asset"] or fiat == b["asset"]:
-                if fiat == b["asset"]:
-                    left_to_allocate = b["free"]
-                total_fiat += self._check_locked(b)
-            # Transform market assets/alt coins
-            elif b["asset"] == "NFT":
-                continue
-            else:
-                qty = self._check_locked(b)
-                try:
-                    rate = self.get_ticker_price(f'{b["asset"]}{fiat}')
-                except InvalidSymbol:
-                    print(f"Invalid symbol {b['asset'] + fiat}")
-                total_fiat += float(qty) * float(rate)
+            if b["asset"] == fiat:
+                left_to_allocate = float(b["free"])
+                break
 
         balance = {
             "balances": balances,
@@ -111,11 +100,7 @@ class Assets(AssetsController):
             "fiat_left": left_to_allocate,
             "asset": fiat,
         }
-        if balance:
-            resp = json_response({"data": balance})
-        else:
-            resp = json_response({"data": [], "error": 1})
-        return resp
+        return balance
 
     def balance_series(self, fiat="USDC", start_time=None, end_time=None, limit=5):
         """
@@ -237,7 +222,7 @@ class Assets(AssetsController):
         assets = []
 
         if len(self.exception_list) == 0:
-            self.exception_list = ["USDC", "USDC", "NFT", "BNB"]
+            self.exception_list = ["USDT", "USDC", "NFT", "BNB"]
 
         active_bots = list(self._db.bots.find({"status": Status.active}))
         for bot in active_bots:
