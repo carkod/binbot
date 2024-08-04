@@ -143,6 +143,11 @@ def total_balance():
 def disable_isolated():
     return Assets().disable_isolated_accounts()
 
+@account_blueprint.get("/isolated", tags=["assets"])
+def check_isolated_symbol(symbol: str):
+    isolated_account = Assets().get_isolated_account(symbol)
+    return isolated_account
+
 
 @account_blueprint.get("/one-click-liquidation/{asset}", tags=["assets"])
 def one_click_liquidation(asset):

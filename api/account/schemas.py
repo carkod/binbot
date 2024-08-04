@@ -57,7 +57,6 @@ class BinanceBalance(BaseModel):
     free: float
     locked: float
 
-
 class GainersLosersResponse(StandardResponse):
     data: list[Binance24Ticker]
 

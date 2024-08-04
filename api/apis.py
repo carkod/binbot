@@ -186,6 +186,13 @@ class BinanceApi:
         """
         return self.signed_request(self.isolated_account_url, method="DELETE", payload={"symbol": symbol})
 
+    def get_isolated_account(self, symbol):
+        """
+        https://developers.binance.com/docs/margin_trading/account/Query-Isolated-Margin-Account-Info
+        Request weight: 10(IP)
+        """
+        return self.signed_request(self.isolated_account_url, payload={"symbol": symbol})
+
     def transfer_isolated_margin_to_spot(self, asset, symbol, amount):
         return self.signed_request(self.margin_isolated_transfer_url, method="POST", payload={"transFrom": "ISOLATED_MARGIN", "transTo": "SPOT", "asset": asset, "symbol": symbol, "amount": amount})
 
