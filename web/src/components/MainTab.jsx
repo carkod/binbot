@@ -82,7 +82,7 @@ export default function MainTab({
                   ? 0.001
                   : bot.quoteAsset === "BNB"
                   ? 0.051
-                  : bot.quoteAsset === "USDT"
+                  : bot.quoteAsset === "USDC"
                   ? 15
                   : ""}
               </Badge>{" "}

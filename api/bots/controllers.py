@@ -140,7 +140,7 @@ class Bot(Account):
                     "botId": str(bot["id"]),
                 }
             )
-            self.base_producer.update_required(self.producer, bot["id"], "CREATE_BOT")
+            self.base_producer.update_required(self.producer, "CREATE_BOT")
 
         except RequestValidationError as error:
             resp = json_response_error(f"Failed to create new bot: {error}")
@@ -171,7 +171,7 @@ class Bot(Account):
             resp = json_response_error(f"Failed validation: {e}")
             pass
 
-        self.base_producer.update_required(self.producer, botId, "EDIT_BOT")
+        self.base_producer.update_required(self.producer, "EDIT_BOT")
         return resp
 
     def delete(self, bot_ids: List[str] = Query(...)):
@@ -184,7 +184,7 @@ class Bot(Account):
                 {"id": {"$in": [id for id in bot_ids]}}
             )
             resp = json_response_message("Successfully deleted bot(s)")
-            self.base_producer.update_required(self.producer, bot_ids[len(bot_ids) - 1], "DELETE_BOT")
+            self.base_producer.update_required(self.producer, "DELETE_BOT")
         except Exception as error:
             resp = json_response_error(f"Failed to delete bot(s) {error}")
             
@@ -192,7 +192,7 @@ class Bot(Account):
 
     def activate(self, bot: str):
         CreateDealController(bot, db_collection="bots").open_deal()
-        self.base_producer.update_required(self.producer, bot, "ACTIVATE_BOT")
+        self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
         return bot
 
     def deactivate(self, findId):

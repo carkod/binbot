@@ -12,7 +12,7 @@ export default function BalanceAnalysis({
       <CardBody>
         <Row className="u-margin-bottom">
           <Col md="8" sm="12">
-            Total balance in USDT<br />
+            Total balance in USDC<br />
             (estimated)
           </Col>
           <Col md="4" sm="12">
@@ -21,7 +21,7 @@ export default function BalanceAnalysis({
                 parseFloat(balance?.total_fiat) > 0
                   ? balance.total_fiat.toFixed(2)
                   : 0
-              } USDT`}</strong>
+              } USDC`}</strong>
             </div>
           </Col>
         </Row>

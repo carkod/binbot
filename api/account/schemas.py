@@ -11,7 +11,7 @@ class BalanceSchema(BaseModel):
     """
 
     balances: list = []
-    estimated_total_usdt: float = 0
+    estimated_total_usdc: float = 0
 
 
 class BalanceResponse(StandardResponse):
@@ -57,7 +57,6 @@ class BinanceBalance(BaseModel):
     free: float
     locked: float
 
-
 class GainersLosersResponse(StandardResponse):
     data: list[Binance24Ticker]
 
@@ -65,7 +64,7 @@ class GainersLosersResponse(StandardResponse):
 class EstimatedBalance(BaseModel):
     time: str
     assets: list
-    estimated_total_usdt: float
+    estimated_total_usdc: float
 
 
 class EstimatedBalancesResponse(StandardResponse):
@@ -73,7 +72,7 @@ class EstimatedBalancesResponse(StandardResponse):
 
 
 class BalanceSeries(StandardResponse):
-    usdt: list[float]
+    usdc: list[float]
     btc: list[float]
     dates: list[str]
 

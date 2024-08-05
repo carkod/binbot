@@ -301,8 +301,8 @@ class BaseDeal(OrderController):
                         # There is already money in the base asset
                         qty = round_numbers_ceiling(repay_amount - free, qty_precision)
                         price = float(self.matching_engine(pair, True, qty))
-                        usdt_notional = price * qty
-                        if usdt_notional < 15:
+                        usdc_notional = price * qty
+                        if usdc_notional < 15:
                             qty = round_numbers_ceiling(15 / price)
 
                         buy_margin_response = self.buy_margin_order(
@@ -352,7 +352,7 @@ class BaseDeal(OrderController):
         We want to know when it's more suitable to do long positions
         when it's more suitable to do short positions
         For now setting threshold to 70% i.e.
-        if > 70% of assets in a given market (USDT) dominated by gainers
+        if > 70% of assets in a given market (USDC) dominated by gainers
         if < 70% of assets in a given market dominated by losers
         Establish the timing
         """

@@ -4,7 +4,7 @@ import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "reactstrap";
 import { Row, Col, Container } from "react-bootstrap";
 
 export function PortfolioBenchmarkChart({ data, legend }) {
-  const lastUsdt = data.usdt[data.usdt.length - 1];
+  const lastUsdt = data.usdc ? data.usdc[data.usdc.length - 1] : data.usdt[data.usdt.length - 1];
   const lastBtc = data.btc[data.btc.length - 1];
   return (
     <Card className="card-chart">

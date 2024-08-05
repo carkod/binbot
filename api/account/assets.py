@@ -53,56 +53,45 @@ class Assets(AssetsController):
     def store_balance(self) -> dict:
         """
         Alternative PnL data that runs as a cronjob everyday once at 12:00. Stores current balance in DB and estimated
-        total balance in fiat (USDT) for the day.
+        total balance in fiat (USDC) for the day.
 
         Better than deprecated store_balance_snapshot
         - it doesn't required high weight
         - it can be tweaked to have our needed format
-        - the result of total_usdt is pretty much the same, the difference is in 0.001 USDT
+        - the result of total_usdc is pretty much the same, the difference is in 0.001 USDC
         - however we don't need a loop and we decreased one network request (also added one, because we still need the raw_balance to display charts)
         """
         # Store balance works outside of context as cronjob
         wallet_balance = self.get_wallet_balance()
         bin_balance = self.get_raw_balance()
-        rate = self.get_ticker_price('BTCUSDT')
+        rate = self.get_ticker_price('BTCUSDC')
 
         total_wallet_balance = next((float(item["balance"]) for item in wallet_balance if float(item["balance"]) > 0), 0)
-        total_usdt = total_wallet_balance * float(rate)
-        response  = self.create_balance_series(bin_balance, round_numbers(total_usdt, 4))
+        total_usdc = total_wallet_balance * float(rate)
+        response  = self.create_balance_series(bin_balance, round_numbers(total_usdc, 4))
         return response
 
 
-    def balance_estimate(self, fiat="USDT"):
+    def balance_estimate(self, fiat="USDC"):
         """
         Estimated balance in given fiat coin
         """
         balances = self.get_raw_balance()
-        # Isolated m
-        isolated_margin = self.signed_request(url=self.isolated_account_url)
-        get_usdt_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
-        total_isolated_margin = float(isolated_margin["totalNetAssetOfBtc"]) * float(
-            get_usdt_btc_rate["price"]
-        )
-
         total_fiat = 0
-        rate = 0
         left_to_allocate = 0
+        total_isolated_margin = 0
+        btc_rate = self.get_ticker_price(f'BTC{fiat}')
+        wallet_balance = self.get_wallet_balance()
+        for item in wallet_balance:
+            if item["walletName"] == "Spot":
+                total_fiat += float(item["balance"]) * float(btc_rate)
+            if item["walletName"] == "Isolated Margin":
+                total_isolated_margin += float(item["balance"]) * float(btc_rate)
+
         for b in balances:
-            # Transform tethers/stablecoins
-            if "USD" in b["asset"] or fiat == b["asset"]:
-                if fiat == b["asset"]:
-                    left_to_allocate = b["free"]
-                total_fiat += self._check_locked(b)
-            # Transform market assets/alt coins
-            elif b["asset"] == "NFT":
-                continue
-            else:
-                qty = self._check_locked(b)
-                try:
-                    rate = self.get_ticker_price(f'{b["asset"]}{fiat}')
-                except InvalidSymbol:
-                    print(f"Invalid symbol {b['asset'] + fiat}")
-                total_fiat += float(qty) * float(rate)
+            if b["asset"] == fiat:
+                left_to_allocate = float(b["free"])
+                break
 
         balance = {
             "balances": balances,
@@ -111,13 +100,9 @@ class Assets(AssetsController):
             "fiat_left": left_to_allocate,
             "asset": fiat,
         }
-        if balance:
-            resp = json_response({"data": balance})
-        else:
-            resp = json_response({"data": [], "error": 1})
-        return resp
+        return balance
 
-    def balance_series(self, fiat="USDT", start_time=None, end_time=None, limit=5):
+    def balance_series(self, fiat="USDC", start_time=None, end_time=None, limit=5):
         """
         Get series for graph.
 
@@ -145,7 +130,7 @@ class Assets(AssetsController):
             resp = json_response({"data": [], "error": 1})
         return resp
 
-    async def retrieve_gainers_losers(self, market_asset="USDT"):
+    async def retrieve_gainers_losers(self, market_asset="USDC"):
         """
         Create and return a ranking with gainers vs losers data
         """
@@ -196,7 +181,7 @@ class Assets(AssetsController):
         # btc candlestick data series
         klines = self.get_raw_klines(
             limit=len(balance_series), # One month - 1 (calculating percentages) worth of data to display
-            symbol="BTCUSDT",
+            symbol="BTCUSDC",
             interval="1d",
             end_time=str(end_time),
         )
@@ -208,7 +193,10 @@ class Assets(AssetsController):
         for index, item in enumerate(balance_series):
             btc_index = self.consolidate_dates(klines, item["time"], index)
             if btc_index is not None:
-                balances_series_diff.append(float(balance_series[index]["estimated_total_usdt"]))
+                if "estimated_total_usdc" in balance_series[index]:
+                    balances_series_diff.append(float(balance_series[index]["estimated_total_usdc"]))
+                else:
+                    balances_series_diff.append(float(balance_series[index]["estimated_total_usdt"]))
                 balances_series_dates.append(item["time"])
                 balance_btc_diff.append(float(klines[btc_index][4]))
             else:
@@ -218,7 +206,7 @@ class Assets(AssetsController):
             {
                 "message": "Sucessfully rendered benchmark data.",
                 "data": {
-                    "usdt": balances_series_diff,
+                    "usdc": balances_series_diff,
                     "btc": balance_btc_diff,
                     "dates": balances_series_dates,
                 },
@@ -237,7 +225,7 @@ class Assets(AssetsController):
         assets = []
 
         if len(self.exception_list) == 0:
-            self.exception_list = ["USDT", "NFT", "BNB"]
+            self.exception_list = ["USDT", "USDC", "NFT", "BNB"]
 
         active_bots = list(self._db.bots.find({"status": Status.active}))
         for bot in active_bots:
@@ -265,18 +253,18 @@ class Assets(AssetsController):
 
         return assets
 
-    def get_total_fiat(self, fiat="USDT"):
+    def get_total_fiat(self, fiat="USDC"):
         """
         Simplified version of balance_estimate
 
         Returns:
             float: total BTC estimated in the SPOT wallet
-            then converted into USDT
+            then converted into USDC
         """
         wallet_balance = self.get_wallet_balance()
-        get_usdt_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
+        get_usdc_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
         total_balance = 0
-        rate = float(get_usdt_btc_rate["price"])
+        rate = float(get_usdc_btc_rate["price"])
         for item in wallet_balance:
             if item["activate"]:
                 total_balance += float(item["balance"])
@@ -284,21 +272,21 @@ class Assets(AssetsController):
         total_fiat = total_balance * rate
         return total_fiat
 
-    def get_available_fiat(self, fiat="USDT"):
+    def get_available_fiat(self, fiat="USDC"):
         """
         Simplified version of balance_estimate
-        to get free/avaliable USDT.
+        to get free/avaliable USDC.
 
-        Getting the total USDT directly
+        Getting the total USDC directly
         from the balances because if it were e.g.
         Margin trading, it would not be available for use.
-        The only available fiat is the unused USDT in the SPOT wallet.
+        The only available fiat is the unused USDC in the SPOT wallet.
 
         Balance not used in Margin trading should be
         transferred back to the SPOT wallet.
 
         Returns:
-            str: total USDT available to 
+            str: total USDC available to 
         """
         total_balance = self.get_raw_balance()
         for item in total_balance:
@@ -351,7 +339,7 @@ class Assets(AssetsController):
         get_ticker_data = self.ticker_24()
         all_coins = []
         for item in get_ticker_data:
-             if item["symbol"].endswith("USDT"):
+             if item["symbol"].endswith("USDC"):
                 all_coins.append({
                     "symbol": item["symbol"],
                     "priceChangePercent": item["priceChangePercent"],

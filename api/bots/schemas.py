@@ -17,13 +17,13 @@ class SafetyOrderSchema(BaseModel):
     order_id: str | None = None
     created_at: float = time() * 1000
     updated_at: float = time() * 1000
-    buy_price: float = 0  # base currency quantity e.g. 3000 USDT in BTCUSDT
+    buy_price: float = 0  # base currency quantity e.g. 3000 USDC in BTCUSDT
     buy_timestamp: float = 0
     so_size: float = 0  # quote currency quantity e.g. 0.00003 BTC in BTCUSDT
     max_active_so: float = 0
     so_volume_scale: float = 0
     so_step_scale: float = 0
-    so_asset: str = "USDT"
+    so_asset: str = "USDC"
     errors: list[str] = []
     total_commission: float = 0
 
@@ -69,7 +69,7 @@ class BotSchema(BaseModel):
             "examples": [{
                 "pair": "BNBUSDT",
                 "balance_size_to_use": "0",
-                "balance_to_use": "USDT",
+                "balance_to_use": "USDC",
                 "base_order_size": "15",
                 "candlestick_interval": "15m",
                 "cooldown": 0,

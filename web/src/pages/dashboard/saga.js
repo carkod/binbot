@@ -7,7 +7,7 @@ import {
   GET_BTC_BENCHMARK,
   GET_BTC_BENCHMARK_SUCESS,
   GET_BTC_BENCHMARK_ERROR,
-  GET_USDT_BENCHMARK,
+  GET_USDC_BENCHMARK,
   GET_GAINERS_LOSERS_SERIES,
   GET_GAINERS_LOSERS_SERIES_SUCCESS,
   GET_GAINERS_LOSERS_SERIES_ERROR,
@@ -109,7 +109,7 @@ function getBenchmarkDataFailed(err) {
 
 export function getBenchmarkUsdt(err) {
   return {
-    type: GET_USDT_BENCHMARK,
+    type: GET_USDC_BENCHMARK,
   };
 }
 

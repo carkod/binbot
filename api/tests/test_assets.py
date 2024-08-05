@@ -53,7 +53,7 @@ def patch_raw_balances(monkeypatch):
         "balances": [
             {"asset": "BTC", "free": 6.51e-06, "locked": 0.0},
             {"asset": "BNB", "free": 9.341e-05, "locked": 0.0},
-            {"asset": "USDT", "free": 5.2, "locked": 0.0},
+            {"asset": "USDC", "free": 5.2, "locked": 0.0},
             {"asset": "NFT", "free": 1, "locked": 0.0},
         ],
         "permissions": ["LEVERAGED", "TRD_GRP_002", "TRD_GRP_009"],
@@ -144,7 +144,7 @@ def test_get_raw_balance(patch_raw_balances):
     expected_result = [
         {"asset": "BTC", "free": 6.51e-06, "locked": 0.0},
         {"asset": "BNB", "free": 9.341e-05, "locked": 0.0},
-        {"asset": "USDT", "free": 5.2, "locked": 0.0},
+        {"asset": "USDC", "free": 5.2, "locked": 0.0},
         {"asset": "NFT", "free": 1, "locked": 0.0},
     ]
 

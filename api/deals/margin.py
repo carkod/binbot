@@ -143,7 +143,7 @@ class MarginDeal(BaseDeal):
                     amount="1",
                 )
 
-        # Given USDT amount we want to buy,
+        # Given USDC amount we want to buy,
         # how much can we buy?
         qty = round_numbers_ceiling(
             (float(self.active_bot.base_order_size) / float(initial_price)),
@@ -198,13 +198,13 @@ class MarginDeal(BaseDeal):
         """
 
         Args:
-        - buy_back_fiat. By default it will buy back USDT (sell asset and transform into USDT)
+        - buy_back_fiat. By default it will buy back USDC (sell asset and transform into USDC)
 
         In the case of reversal, we don't want to do this additional transaction, as it will incur
         in an additional cost. So this is added to skip that section
 
         1. Repay loan
-        2. Exchange asset to quote asset (USDT)
+        2. Exchange asset to quote asset (USDC)
         3. Transfer back to spot
         """
         logging.info(
@@ -270,7 +270,7 @@ class MarginDeal(BaseDeal):
                 )
 
                 if buy_back_fiat and float(sell_back_qty):
-                    # Sell quote and get base asset (USDT)
+                    # Sell quote and get base asset (USDC)
                     # In theory, we should sell self.active_bot.base_order
                     # but this can be out of sync
 
@@ -441,7 +441,7 @@ class MarginDeal(BaseDeal):
                 # Execute the usual non-trailling take_profit
                 self.update_deal_logs(f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}", self.active_bot)
                 self.execute_take_profit()
-                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_MARGIN_TAKE_PROFIT")
+                self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_TAKE_PROFIT")
 
         # Direction 2: upward trend (short). breaking the trailling_stop_loss
         # Make sure it's red candlestick, to avoid slippage loss
@@ -459,7 +459,7 @@ class MarginDeal(BaseDeal):
             )
             # since price is given by matching engine
             self.execute_take_profit()
-            self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_MARGIN_TRAILLING_PROFIT")
+            self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_TRAILLING_PROFIT")
 
         # Direction 1.3: upward trend (short)
         # Breaking trailling_stop_loss, completing trailling
@@ -472,10 +472,10 @@ class MarginDeal(BaseDeal):
                 f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}"
             )
             self.execute_stop_loss()
-            self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_MARGIN_STOP_LOSS")
+            self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
                 self.switch_to_long_bot()
-                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_MARGIN_SWITCH_TO_LONG")
+                self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_SWITCH_TO_LONG")
 
             
         return

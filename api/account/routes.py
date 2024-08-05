@@ -61,8 +61,13 @@ def ticker_24(pair=None):
 
 
 @account_blueprint.get("/balance/estimate", tags=["assets"])
-async def balance_estimated():
-    return Assets().balance_estimate()
+def balance_estimated():
+    try:
+        balance = Assets().balance_estimate()
+        if balance:
+            return json_response({"data": balance, "message": "Successfully retrieved estimated balance."})
+    except BinanceErrors as error:
+        return json_response_error(f"Failed to estimate balance: {error}")    
 
 
 @account_blueprint.get("/balance/series", tags=["assets"])
@@ -107,7 +112,7 @@ async def get_balance_series():
 def clean_balance(bypass: bool = False):
 
     try:
-        assets = Assets().clean_balance_assets(bypass=bypass)
+        Assets().clean_balance_assets(bypass=bypass)
         return json_response_message("Sucessfully cleaned balance.")
     except LowBalanceCleanupError as error:
         return json_response_error(f"Failed to clean balance: {error}")
@@ -117,7 +122,7 @@ def clean_balance(bypass: bool = False):
 @account_blueprint.get("/fiat/available", response_model=BalanceSeriesResponse, tags=["assets"])
 def total_balance():
     """
-    Total USDT in balance
+    Total USDC in balance
     Calculated by Binance
     """
     total_fiat = Assets().get_available_fiat()
@@ -126,7 +131,7 @@ def total_balance():
 @account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["assets"])
 def total_balance():
     """
-    Total USDT in balance
+    Total USDC in balance
     Calculated by Binance
     """
     total_fiat = Assets().get_total_fiat()
@@ -137,6 +142,11 @@ def total_balance():
 )
 def disable_isolated():
     return Assets().disable_isolated_accounts()
+
+@account_blueprint.get("/isolated", tags=["assets"])
+def check_isolated_symbol(symbol: str):
+    isolated_account = Assets().get_isolated_account(symbol)
+    return isolated_account
 
 
 @account_blueprint.get("/one-click-liquidation/{asset}", tags=["assets"])

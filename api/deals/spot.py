@@ -223,10 +223,10 @@ class SpotLongDeal(BaseDeal):
             self.active_bot.deal.stop_loss_price
         ) > float(close_price):
             self.execute_stop_loss(close_price)
-            self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_SPOT_STOP_LOSS")
+            self.base_producer.update_required(self.producer, "EXECUTE_SPOT_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
                 self.switch_margin_short()
-                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_SWITCH_MARGIN_SHORT")
+                self.base_producer.update_required(self.producer, "EXECUTE_SWITCH_MARGIN_SHORT")
                 self.update_deal_logs("Completed switch to margin short bot", self.active_bot)
 
             return
@@ -293,7 +293,7 @@ class SpotLongDeal(BaseDeal):
                     f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}"
                 )
                 self.trailling_profit()
-                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_SPOT_TRAILLING_PROFIT")
+                self.base_producer.update_required(self.producer, "EXECUTE_SPOT_TRAILLING_PROFIT")
 
         # Update unfilled orders
         unupdated_order = next(
@@ -328,6 +328,6 @@ class SpotLongDeal(BaseDeal):
             self.render_market_domination_reversal()
             if self.market_domination_reversal and current_price < self.active_bot.deal.buy_price:
                 self.execute_stop_loss()
-                self.base_producer.update_required(self.producer, self.active_bot.id, "EXECUTE_SPOT_CLOSE_CONDITION_STOP_LOSS")
+                self.base_producer.update_required(self.producer, "EXECUTE_SPOT_CLOSE_CONDITION_STOP_LOSS")
 
         pass
