@@ -1,7 +1,7 @@
 import logging
 import time
 
-from streaming.streaming_controller import StreamingController
+from streaming.user_data_streaming import UserDataStreaming
 
 logging.Formatter.converter = time.gmtime  # date time in GMT/UTC
 logging.basicConfig(
@@ -12,9 +12,9 @@ logging.basicConfig(
 )
 
 try:
-    mu = StreamingController()
+    mu = UserDataStreaming()
     mu.get_user_data()
 except Exception as error:
     logging.error(f"User data streaming error: {error}")
-    mu = StreamingController()
+    mu = UserDataStreaming()
     mu.get_user_data()
