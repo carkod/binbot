@@ -190,8 +190,12 @@ class Bot(Account):
             
         return resp
 
-    def activate(self, bot: str):
-        CreateDealController(bot, db_collection="bots").open_deal()
+    def activate(self, bot: str | BotSchema):
+        if isinstance(bot, str):
+            self.active_bot = BotSchema(**bot)
+        else:
+            self.active_bot = bot
+        CreateDealController(self.active_bot, db_collection="bots").open_deal()
         self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
         return bot
 

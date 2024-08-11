@@ -33,6 +33,14 @@
       "name": "Python: streaming",
       "type": "debugpy",
       "request": "launch",
+      "program": "${workspaceFolder}/api/market_updates.py",
+      "console": "internalConsole",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: order updates",
+      "type": "debugpy",
+      "request": "launch",
       "program": "${workspaceFolder}/api/order_updates.py",
       "console": "internalConsole",
       "justMyCode": false

@@ -318,7 +318,7 @@ class CreateDealController(BaseDeal):
             self.active_bot.deal.trailling_stop_loss_price = 0
 
         self.active_bot.status = Status.active
-        bot = encode_json(self.active_bot)
+        bot = self.active_bot.model_dump()
         if "_id" in bot:
             bot.pop("_id")
 
