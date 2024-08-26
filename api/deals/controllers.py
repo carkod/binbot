@@ -276,10 +276,7 @@ class CreateDealController(BaseDeal):
         """
 
         # Update stop loss regarless of base order
-        if (
-            hasattr(self.active_bot, "stop_loss")
-            and float(self.active_bot.stop_loss) > 0
-        ):
+        if float(self.active_bot.stop_loss) > 0:
             if self.active_bot.strategy == "margin_short":
                 self.active_bot = MarginDeal(
                     bot=self.active_bot, db_collection_name=self.db_collection.name
@@ -294,11 +291,7 @@ class CreateDealController(BaseDeal):
                 )
 
         # Margin short Take profit
-        if (
-            hasattr(self.active_bot, "take_profit")
-            and float(self.active_bot.take_profit) > 0
-            and self.active_bot.strategy == "margin_short"
-        ):
+        if float(self.active_bot.take_profit) > 0 and self.active_bot.strategy == "margin_short":
             self.active_bot = MarginDeal(
                 bot=self.active_bot, db_collection_name=self.db_collection.name
             ).set_margin_take_profit()

@@ -691,12 +691,12 @@ class MarginDeal(BaseDeal):
 
         # Direction 1 (downward): breaking the current trailling
         if float(close_price) <= float(self.active_bot.deal.trailling_profit_price):
-            new_take_profit = float(self.active_bot.deal.trailling_profit_price) - (
-                float(self.active_bot.deal.trailling_profit_price)
+            new_take_profit = float(close_price) - (
+                float(close_price)
                 * (float(self.active_bot.take_profit) / 100)
             )
             new_trailling_stop_loss = float(
-                self.active_bot.deal.trailling_profit_price
+                close_price
             ) * (1 + (float(self.active_bot.trailling_deviation) / 100))
             # Update deal take_profit
             self.active_bot.deal.take_profit_price = new_take_profit

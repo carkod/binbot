@@ -185,12 +185,9 @@ class BbspreadsUpdater(BaseStreaming):
                 if bot.trailling_deviation > bottom_spread:
                     bot.trailling_deviation = top_spread
             
-            bot.errors.append(f"Updated bot with new bb_spread parameters: {top_spread}, {whole_spread}, {bottom_spread}")
-
             self.save_bot_streaming(bot)
             self.reactivate_bot(bot, collection_name=collection_name)
         else:
-            bot.errors.append(f"Bot bb_spread too low/high, not updated: {top_spread}, {whole_spread}, {bottom_spread}")
             self.save_bot_streaming(bot)
 
     def update_close_conditions(self, message):

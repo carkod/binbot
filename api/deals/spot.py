@@ -197,26 +197,12 @@ class SpotLongDeal(BaseDeal):
         self.active_bot = self.save_bot_streaming(self.active_bot)
         return self.active_bot
 
-    def update_orders(self):
-        """
-        Updates orders
-
-        this is necessary especially for those bots that
-        are not FILLED immediately
-
-        """
-        pass
-       
-
     def streaming_updates(self, close_price, open_price):
         close_price = float(close_price)
         self.close_conditions(float(close_price))
 
         self.active_bot.deal.current_price = close_price
         self.active_bot = self.save_bot_streaming(self.active_bot)
-
-        # Update orders
-        self.update_orders()
 
         # Stop loss
         if float(self.active_bot.stop_loss) > 0 and float(
@@ -232,7 +218,7 @@ class SpotLongDeal(BaseDeal):
             return
 
         # Take profit trailling
-        if (self.active_bot.trailling == "true" or self.active_bot.trailling) and float(
+        if (self.active_bot.trailling) and float(
             self.active_bot.deal.buy_price
         ) > 0:
             # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
@@ -249,11 +235,11 @@ class SpotLongDeal(BaseDeal):
             self.active_bot.deal.trailling_profit_price = trailling_price
             # Direction 1 (upward): breaking the current trailling
             if float(close_price) >= float(trailling_price):
-                new_take_profit = float(trailling_price) * (
+                new_take_profit = float(close_price) * (
                     1 + (float(self.active_bot.take_profit) / 100)
                 )
-                new_trailling_stop_loss = float(trailling_price) - (
-                    float(trailling_price)
+                new_trailling_stop_loss = float(close_price) - (
+                    float(close_price)
                     * (float(self.active_bot.trailling_deviation) / 100)
                 )
                 # Update deal take_profit
