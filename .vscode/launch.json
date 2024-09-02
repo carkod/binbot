@@ -38,6 +38,14 @@
       "justMyCode": false
     },
     {
+      "name": "Python: order updates",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/api/order_updates.py",
+      "console": "internalConsole",
+      "justMyCode": false
+    },
+    {
       "name": "Python: cronjobs",
       "type": "debugpy",
       "request": "launch",

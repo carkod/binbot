@@ -1,10 +1,15 @@
 import logging
 import json
+from apis import BinanceApi
 from streaming.socket_client import SpotWebsocketStreamClient
-
-
-class UserDataStreaming:
+from db import Database
+class UserDataStreaming(Database, BinanceApi):
     def __init__(self) -> None:
+        self.streaming_db = self._db
+        pass
+
+    def on_error(self, socket, error):
+        logging.error(f"User data streaming error: {error}")
         pass
 
     def update_order_data(self, result, db_collection: str = "bots"):

@@ -67,7 +67,7 @@ def delete(id: List[str] = Query(...)):
 
 
 @bot_blueprint.get("/bot/activate/{id}", tags=["bots"])
-def activate(id: str):
+def activate_by_id(id: str):
     """
     Activate bot
 

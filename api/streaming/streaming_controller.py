@@ -149,10 +149,10 @@ class BbspreadsUpdater(BaseStreaming):
         if current_test_bot_payload:
             self.current_test_bot = BotSchema(**current_test_bot_payload)
 
-    def reactivate_bot(self, bot, collection_name="bots"):
+    def reactivate_bot(self, bot: BotSchema, collection_name="bots"):
         bot_instance = Bot(collection_name=collection_name)
-        bot = bot_instance.activate(bot.id)
-        return bot
+        activated_bot = bot_instance.activate(bot)
+        return activated_bot
 
     def update_bots_parameters(self, bot: BotSchema, bb_spreads, collection_name="bots"):
 
@@ -176,16 +176,18 @@ class BbspreadsUpdater(BaseStreaming):
                 bot.trailling_deviation = bottom_spread
 
             if bot.strategy == Strategy.margin_short:
+                # Decrease risk for margin shorts
+                # as volatility is higher, we want to keep parameters tighter
+                # also over time we'll be paying more interest, so better to liquidate sooner
+                # that means smaller trailing deviation to close deal earlier
                 bot.stop_loss = whole_spread
                 bot.take_profit = bottom_spread
-                bot.trailling_deviation = top_spread
+                if bot.trailling_deviation > bottom_spread:
+                    bot.trailling_deviation = top_spread
             
-            bot.errors.append(f"Updated bot with new bb_spread parameters: {top_spread}, {whole_spread}, {bottom_spread}")
-
             self.save_bot_streaming(bot)
             self.reactivate_bot(bot, collection_name=collection_name)
         else:
-            bot.errors.append(f"Bot bb_spread too low/high, not updated: {top_spread}, {whole_spread}, {bottom_spread}")
             self.save_bot_streaming(bot)
 
     def update_close_conditions(self, message):

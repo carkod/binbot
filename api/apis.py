@@ -37,9 +37,11 @@ class BinanceApi:
     open_orders = f"{BASE}/api/v3/openOrders"
     all_orders_url = f"{BASE}/api/v3/allOrders"
     cancel_replace_url = f"{BASE}/api/v3/order/cancelReplace"
-    user_data_stream = f"{BASE}/api/v3/userDataStream"
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
     wallet_balance_url = f"{BASE}/sapi/v1/asset/wallet/balance"
+
+    # order, user data, only works with api.binance host
+    user_data_stream = f"https://api.binance.com/api/v3/userDataStream"
 
     withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
     withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"
@@ -108,7 +110,8 @@ class BinanceApi:
         Get user data websocket stream
         """
         headers = {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
-        data = self.request("POST", url=self.user_data_stream, headers=headers)
+        res = request(method="POST", url=self.user_data_stream, headers=headers)
+        data = handle_binance_errors(res)
         return data["listenKey"]
 
     """
