@@ -12,7 +12,7 @@ import {
 import moment from "moment";
 import renderTimestamp from "./services/bot-duration";
 
-const renderSellTimestamp = (bot) => {
+const renderDuration = (bot) => {
   if (bot.deal) {
     return (
       <ListGroupItem className="d-flex justify-content-between align-items-start">
@@ -25,6 +25,15 @@ const renderSellTimestamp = (bot) => {
     return (<></>)
   }
 };
+
+/**
+ * Format timestamp by converting it to datetime format
+ * @param {string} timestamp in milliseconds
+ * @returns 
+ */
+const formatTimestamp = (timestamp) => {
+  return timestamp === 0 ? "N/A" : moment(timestamp).format("D MMM, HH:mm");
+}
 
 export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState(bot.orders?.length > 0)
@@ -40,6 +49,7 @@ export default function BotInfo({ bot }) {
           <thead>
             <tr>
               <th>Order Id</th>
+              <th>Timestamp</th>
               <th>Deal type</th>
               <th>Price</th>
               <th>Qty</th>
@@ -49,16 +59,17 @@ export default function BotInfo({ bot }) {
           </thead>
           {bot.orders.length > 0 && (
             <tbody>
-              {bot.orders.map((deal, i) => {
-                if (typeof deal === "object" && "deal_type" in deal) {
+              {bot.orders.map((order, i) => {
+                if (typeof order === "object" && "order_type" in order) {
                   return (
-                    <tr key={deal.order_id}>
-                      <th scope="row">{deal.order_id}</th>
-                      <td>{deal.deal_type}</td>
-                      <td>{deal.price}</td>
-                      <td>{parseFloat(deal.qty)}</td>
-                      <td>{deal.status}</td>
-                      <td>{deal.order_side}</td>
+                    <tr key={order.order_id}>
+                      <th scope="row">{order.order_id}</th>
+                      <td>{formatTimestamp(parseFloat(order.timestamp))}</td>
+                      <td>{order.order_type}</td>
+                      <td>{order.price}</td>
+                      <td>{parseFloat(order.qty)}</td>
+                      <td>{order.status}</td>
+                      <td>{order.order_side}</td>
                     </tr>
                   );
                 } else {
@@ -83,7 +94,7 @@ export default function BotInfo({ bot }) {
                   if (k === "buy_timestamp" || k === "sell_timestamp") {
                     dealData =
                       bot.deal[k] === 0 ||
-                      moment(bot.deal[k]).format("D MMM, HH:mm");
+                      formatTimestamp(bot.deal[k]);
                   }
                   return (
                     <ListGroupItem
@@ -105,7 +116,7 @@ export default function BotInfo({ bot }) {
                   );
                 }
               })}
-              {renderSellTimestamp(bot)}
+              {renderDuration(bot)}
             </ListGroup>
           </div>
         )}

@@ -454,9 +454,7 @@ class MarginDeal(BaseDeal):
             # Red candlestick
             # and (float(open_price) > float(close_price))
         ):
-            logging.info(
-                f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}"
-            )
+            self.update_deal_logs(f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}")
             # since price is given by matching engine
             self.execute_take_profit()
             self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_TRAILLING_PROFIT")
@@ -708,14 +706,8 @@ class MarginDeal(BaseDeal):
             if new_trailling_stop_loss < self.active_bot.deal.margin_short_sell_price:
                 # Selling below buy_price will cause a loss
                 # instead let it drop until it hits safety order or stop loss
-                logging.info(
-                    f"{self.active_bot.pair} Updating take_profit_price, trailling_profit and trailling_stop_loss_price! {new_take_profit}"
-                )
                 # Update trailling_stop_loss
                 self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss
-                logging.info(
-                    f"{datetime.now()} Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
-                )
 
     
     def close_conditions(self, current_price):

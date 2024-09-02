@@ -248,18 +248,11 @@ class SpotLongDeal(BaseDeal):
                 # trailling_profit_price always be > trailling_stop_loss_price
                 self.active_bot.deal.trailling_profit_price = new_take_profit
 
-                if new_trailling_stop_loss > self.active_bot.deal.buy_price:
+                if new_trailling_stop_loss > self.active_bot.deal.buy_price and new_trailling_stop_loss > self.active_bot.deal.trailling_stop_loss_price:
                     # Selling below buy_price will cause a loss
                     # instead let it drop until it hits safety order or stop loss
                     # Update trailling_stop_loss
-                    self.active_bot.deal.trailling_stop_loss_price = (
-                        new_trailling_stop_loss
-                    )
-                else:
-                    # Protect against drops by selling at buy price + 0.75% commission
-                    self.active_bot.deal.trailling_stop_loss_price = (
-                        float(self.active_bot.deal.buy_price) * 1.075
-                    )
+                    self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss
 
                 self.update_deal_logs(f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}", self.active_bot)
                 self.active_bot = self.save_bot_streaming(self.active_bot)
