@@ -169,11 +169,20 @@ class BbspreadsUpdater(BaseStreaming):
                 return
 
             bot.trailling = True
+            # when prices go up only
             if bot.strategy == Strategy.long:
-                bot.stop_loss = whole_spread
-                bot.take_profit = top_spread
-                # too much risk, reduce stop loss
-                bot.trailling_deviation = bottom_spread
+                # Only when TD_2 > TD_1
+                if bottom_spread > bot.trailling_deviation:
+                    bot.stop_loss = whole_spread
+                    bot.take_profit = top_spread
+                    # too much risk, reduce stop loss
+                    bot.trailling_deviation = bottom_spread
+                    # reactivate includes saving
+                    self.reactivate_bot(bot, collection_name=collection_name)
+
+                # No need to continue
+                # Bots can only be either long or short
+                return
 
             if bot.strategy == Strategy.margin_short:
                 # Decrease risk for margin shorts
@@ -184,11 +193,9 @@ class BbspreadsUpdater(BaseStreaming):
                 bot.take_profit = bottom_spread
                 if bot.trailling_deviation > bottom_spread:
                     bot.trailling_deviation = top_spread
-            
-            self.save_bot_streaming(bot)
-            self.reactivate_bot(bot, collection_name=collection_name)
-        else:
-            self.save_bot_streaming(bot)
+                    # reactivate includes saving
+                    self.reactivate_bot(bot, collection_name=collection_name)
+
 
     def update_close_conditions(self, message):
         """
