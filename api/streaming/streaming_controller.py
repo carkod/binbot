@@ -173,7 +173,6 @@ class BbspreadsUpdater(BaseStreaming):
             if bot.strategy == Strategy.long:
                 # Only when TD_2 > TD_1
                 if bottom_spread > bot.trailling_deviation:
-                    bot.stop_loss = whole_spread
                     bot.take_profit = top_spread
                     # too much risk, reduce stop loss
                     bot.trailling_deviation = bottom_spread
@@ -189,7 +188,6 @@ class BbspreadsUpdater(BaseStreaming):
                 # as volatility is higher, we want to keep parameters tighter
                 # also over time we'll be paying more interest, so better to liquidate sooner
                 # that means smaller trailing deviation to close deal earlier
-                bot.stop_loss = whole_spread
                 bot.take_profit = bottom_spread
                 if bot.trailling_deviation > bottom_spread:
                     bot.trailling_deviation = top_spread
