@@ -498,7 +498,7 @@ class BotForm extends React.Component {
                             : "danger"
                         }
                       >
-                        {this.props.bot_profit ?this.props.bot_profit + "%" : "0%"}
+                        {this.props.bot_profit ? this.props.bot_profit + "%" : "0%"}
                       </Badge>{" "}
                       {!checkValue(this.props.bot?.status) && (
                         <Badge
