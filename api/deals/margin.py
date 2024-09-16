@@ -454,7 +454,7 @@ class MarginDeal(BaseDeal):
             # Red candlestick
             # and (float(open_price) > float(close_price))
         ):
-            self.update_deal_logs(f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}")
+            self.update_deal_logs(f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}", self.active_bot)
             # since price is given by matching engine
             self.execute_take_profit()
             self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_TRAILLING_PROFIT")
