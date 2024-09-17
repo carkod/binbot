@@ -98,8 +98,8 @@ def activate_by_id(id: str):
 @bot_blueprint.delete("/bot/deactivate/{id}", tags=["bots"])
 def deactivate(id: str):
     """
-    Deactivation means closing all deals and selling to GBP
-    Otherwise losses will be incurred
+    Deactivation means closing all deals and selling to
+    fiat. This is often used to prevent losses
     """
     return Bot(collection_name="bots").deactivate(id)
 

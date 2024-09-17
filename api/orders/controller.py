@@ -2,7 +2,7 @@ from account.account import Account
 from tools.exceptions import DeleteOrderError
 from db import Database
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
-from tools.handle_error import json_response, json_response_error, json_response_message
+from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation
 from decimal import Decimal
 

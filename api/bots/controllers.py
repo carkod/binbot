@@ -3,13 +3,10 @@ from time import time
 from datetime import datetime
 from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
-
-from account.account import Account
 from base_producer import BaseProducer
 from tools.enum_definitions import BinbotEnums, Status
 from tools.exceptions import QuantityTooLow
 from tools.handle_error import (
-    handle_binance_errors,
     json_response,
     json_response_message,
     json_response_error
@@ -19,15 +16,34 @@ from typing import List
 from fastapi import Query
 from bots.schemas import BotSchema, ErrorsRequestBody
 from deals.controllers import CreateDealController
+from decimal import Decimal
+from db import Database
+from account.account import Account
 
-
-class Bot(Account):
+class Bot(Database, Account):
     def __init__(self, collection_name="paper_trading"):
         super().__init__()
-        self.db_collection = self.db[collection_name]
+        self.db_collection = self._db[collection_name]
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
 
+    @property
+    def price_precision(self):
+        self._price_precision = -1 * (
+            Decimal(str(self.price_filter_by_symbol(self.symbol, "tickSize")))
+            .as_tuple()
+            .exponent
+        )
+        return self._price_precision
+
+    @property
+    def qty_precision(self):
+        self._qty_precision = -1 * (
+            Decimal(str(self.lot_size_by_symbol(self.symbol, "stepSize")))
+            .as_tuple()
+            .exponent
+        )
+        return self._qty_precision
 
     def get_active_pairs(self, symbol: str = None):
         """
@@ -125,12 +141,12 @@ class Bot(Account):
         bot = self.db_collection.find_one(params)
         return bot
 
-    def create(self, data):
+    def create(self, data: BotSchema):
         """
         Always creates new document
         """
         try:
-            bot = data.dict()
+            bot = data.model_dump()
             bot["id"] = str(ObjectId())
 
             self.db_collection.insert_one(bot)
@@ -207,10 +223,7 @@ class Bot(Account):
         2. Sell Coins
         3. Delete bot
         """
-        bot = self.db_collection.find_one({"id": findId })
-        resp = json_response_message(
-            "Not enough balance to close and sell. Please directly delete the bot."
-        )
+        bot = self.db_collection.find_one({"id": findId, "status": Status.active})
         if bot:
             orders = bot["orders"]
 
@@ -221,30 +234,25 @@ class Bot(Account):
                         d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
                     ):
                         order_id = d["order_id"]
-                        res = requests.delete(
+                        requests.delete(
                             url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
                         )
-                        error_msg = f"Failed to delete opened order {order_id}."
-                        print(error_msg)
-                        # Handle error and continue
-                        handle_binance_errors(res)
+                        self.update_deal_logs(f"Failed to delete opened order {order_id}.", self.active_bot)
 
             # Sell everything
             pair = bot["pair"]
             base_asset = self.find_baseAsset(pair)
             bot = BotSchema(**bot)
-            precision = self.price_precision
-            qty_precision = self.qty_precision
             balance = self.get_one_balance(base_asset)
             if balance:
                 qty = float(balance)
                 price = float(self.matching_engine(pair, False, qty))
 
-                if price and float(supress_notation(qty, qty_precision)) < 1:
+                if price and float(supress_notation(qty, self.qty_precision)) < 1:
                     order = {
                         "pair": pair,
-                        "qty": supress_notation(qty, qty_precision),
-                        "price": supress_notation(price, precision),
+                        "qty": supress_notation(qty, self.qty_precision),
+                        "price": supress_notation(price, self.price_precision),
                     }
                     order_res = self.request(
                         method="POST", url=self.bb_sell_order_url, json=order
@@ -253,19 +261,11 @@ class Bot(Account):
                 else:
                     order = {
                         "pair": pair,
-                        "qty": supress_notation(price, qty_precision),
+                        "qty": supress_notation(price, self.qty_precision),
                     }
-                    try:
-                        order_res = self.request(
-                            method="POST", url=self.bb_sell_market_order_url, json=order
-                        )
-                    except QuantityTooLow:
-                        bot["status"] = "closed"
-                        try:
-                            self.bot_schema.update(bot)
-                        except Exception as e:
-                            resp = json_response_message(e)
-                        return resp
+                    order_res = self.request(
+                        method="POST", url=self.bb_sell_market_order_url, json=order
+                    )
 
                 # Enforce that deactivation occurs
                 # If it doesn't, redo
@@ -324,10 +324,13 @@ class Bot(Account):
                     "Active orders closed, sold base asset, deactivated"
                 )
             else:
-                self.db_collection.update_one(
-                    {"id": findId}, {"$set": {"status": "error"}}
-                )
-                return json_response_message("Not enough balance to close and sell")
+                msg = "Not enough balance to close and sell"
+                self.update_deal_logs(msg, self.active_bot)
+                return json_response_message(msg)
+        else:
+            return json_response_message(
+                "Active bot not found to deactivate."
+            )
 
     def put_archive(self, botId):
         """
