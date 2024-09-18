@@ -6,11 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from base_producer import BaseProducer
 from tools.enum_definitions import BinbotEnums, Status
 from tools.exceptions import QuantityTooLow
-from tools.handle_error import (
-    json_response,
-    json_response_message,
-    json_response_error
-)
+from tools.handle_error import json_response, json_response_message, json_response_error
 from tools.round_numbers import supress_notation
 from typing import List
 from fastapi import Query
@@ -19,6 +15,7 @@ from deals.controllers import CreateDealController
 from decimal import Decimal
 from db import Database
 from account.account import Account
+
 
 class Bot(Database, Account):
     def __init__(self, collection_name="paper_trading"):
@@ -127,14 +124,14 @@ class Bot(Database, Account):
 
         return resp
 
-    def get_one(self, bot_id=None, symbol=None, status: Status=None):
+    def get_one(self, bot_id=None, symbol=None, status: Status = None):
         if bot_id:
             params = {"id": bot_id}
         elif symbol:
             params = {"pair": symbol}
         else:
             raise ValueError("id or symbol is required to find bot")
-    
+
         if status:
             params["status"] = status
 
@@ -196,14 +193,12 @@ class Bot(Database, Account):
             return json_response_error("At least one bot id is required")
 
         try:
-            self.db_collection.delete_many(
-                {"id": {"$in": [id for id in bot_ids]}}
-            )
+            self.db_collection.delete_many({"id": {"$in": [id for id in bot_ids]}})
             resp = json_response_message("Successfully deleted bot(s)")
             self.base_producer.update_required(self.producer, "DELETE_BOT")
         except Exception as error:
             resp = json_response_error(f"Failed to delete bot(s) {error}")
-            
+
         return resp
 
     def activate(self, bot: str | BotSchema):
@@ -224,119 +219,92 @@ class Bot(Database, Account):
         3. Delete bot
         """
         bot = self.db_collection.find_one({"id": findId, "status": Status.active})
-        if bot:
-            orders = bot["orders"]
+        if not bot:
+            return json_response_message("Active bot not found to deactivate.")
 
-            # Close all active orders
-            if len(orders) > 0:
-                for d in orders:
-                    if "deal_type" in d and (
-                        d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
-                    ):
-                        order_id = d["order_id"]
-                        requests.delete(
-                            url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
-                        )
-                        self.update_deal_logs(f"Failed to delete opened order {order_id}.", self.active_bot)
-
-            # Sell everything
-            pair = bot["pair"]
-            base_asset = self.find_baseAsset(pair)
-            bot = BotSchema(**bot)
-            balance = self.get_one_balance(base_asset)
-            if balance:
-                qty = float(balance)
-                price = float(self.matching_engine(pair, False, qty))
-
-                if price and float(supress_notation(qty, self.qty_precision)) < 1:
-                    order = {
-                        "pair": pair,
-                        "qty": supress_notation(qty, self.qty_precision),
-                        "price": supress_notation(price, self.price_precision),
-                    }
-                    order_res = self.request(
-                        method="POST", url=self.bb_sell_order_url, json=order
+        print("Validating BotSchema before deactivation...")
+        bot = BotSchema.model_validate(bot)
+        print("Finished BotSchema validation...")
+        # Close all active orders
+        if len(bot.orders) > 0:
+            for d in bot.orders:
+                if "deal_type" in d and (
+                    d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
+                ):
+                    order_id = d["order_id"]
+                    requests.delete(
+                        url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
                     )
-                    
-                else:
-                    order = {
-                        "pair": pair,
-                        "qty": supress_notation(price, self.qty_precision),
-                    }
-                    order_res = self.request(
-                        method="POST", url=self.bb_sell_market_order_url, json=order
+                    self.update_deal_logs(
+                        f"Failed to delete opened order {order_id}.", self.active_bot
                     )
 
-                # Enforce that deactivation occurs
-                # If it doesn't, redo
-                if "status" not in order_res and order_res["status"] == "NEW":
-                    deactivation_order = {
-                        "order_id": order_res["orderId"],
-                        "deal_type": "deactivate_order",
-                        "pair": order_res["symbol"],
-                        "order_side": order_res["side"],
-                        "order_type": order_res["type"],
-                        "price": order_res["price"],
-                        "qty": order_res["origQty"],
-                        "fills": order_res["fills"],
-                        "time_in_force": order_res["timeInForce"],
-                        "status": order_res["status"],
-                    }
-                    self.db_collection.update_one(
-                        {"id": findId},
-                        {
-                            "$push": {
-                                "orders": deactivation_order,
-                                "errors": "Order failed to close. Re-deactivating...",
-                            },
-                        },
-                    )
-                    self.deactivate()
+        # Sell everything
+        base_asset = self.find_baseAsset(bot.pair)
+        balance = self.get_one_balance(base_asset)
+        if balance:
+            qty = float(balance)
+            price = float(self.matching_engine(bot.pair, False, qty))
 
-                deactivation_order = {
-                    "order_id": order_res["orderId"],
-                    "deal_type": "deactivate_order",
-                    "pair": order_res["symbol"],
-                    "order_side": order_res["side"],
-                    "order_type": order_res["type"],
-                    "price": order_res["price"],
-                    "qty": order_res["origQty"],
-                    "fills": order_res["fills"],
-                    "time_in_force": order_res["timeInForce"],
-                    "status": order_res["status"],
+            if price and float(supress_notation(qty, self.qty_precision)) < 1:
+                order = {
+                    "pair": bot.pair,
+                    "qty": supress_notation(qty, self.qty_precision),
+                    "price": supress_notation(price, self.price_precision),
                 }
-                self.db_collection.update_one(
-                    {"id": findId},
-                    {
-                        "$set": {
-                            "status": "completed",
-                            "deal.sell_timestamp": time(),
-                            "deal.sell_price": order_res["price"],
-                        },
-                        "$push": {
-                            "orders": deactivation_order,
-                            "errors": "Orders updated. Trying to close bot...",
-                        },
-                    },
+                order_res = self.request(
+                    method="POST", url=self.bb_sell_order_url, json=order
                 )
 
-                return json_response_message(
-                    "Active orders closed, sold base asset, deactivated"
-                )
             else:
-                msg = "Not enough balance to close and sell"
-                self.update_deal_logs(msg, self.active_bot)
-                return json_response_message(msg)
-        else:
-            return json_response_message(
-                "Active bot not found to deactivate."
+                order = {
+                    "pair": bot.pair,
+                    "qty": supress_notation(price, self.qty_precision),
+                }
+                order_res = self.request(
+                    method="POST", url=self.bb_sell_market_order_url, json=order
+                )
+
+            deactivation_order = {
+                "order_id": order_res["orderId"],
+                "deal_type": "deactivate_order",
+                "pair": order_res["symbol"],
+                "order_side": order_res["side"],
+                "order_type": order_res["type"],
+                "price": order_res["price"],
+                "qty": order_res["origQty"],
+                "fills": order_res["fills"],
+                "time_in_force": order_res["timeInForce"],
+                "status": order_res["status"],
+            }
+            self.db_collection.update_one(
+                {"id": findId},
+                {
+                    "$set": {
+                        "status": Status.completed,
+                        "deal.sell_timestamp": time(),
+                        "deal.sell_price": float(order_res["price"]),
+                    },
+                    "$push": {
+                        "orders": deactivation_order,
+                        "errors": "Orders updated. Trying to close bot...",
+                    },
+                },
             )
+
+            return json_response_message(
+                "Active orders closed, sold base asset, deactivated"
+            )
+        else:
+            msg = "Not enough balance to close and sell"
+            self.update_deal_logs(msg, self.active_bot)
+            return json_response_message(msg)
 
     def put_archive(self, botId):
         """
         Change status to archived
         """
-        bot = self.db_collection.find_one({"id": botId })
+        bot = self.db_collection.find_one({"id": botId})
         if bot["status"] == "active":
             return json_response(
                 {"message": "Cannot archive an active bot!", "botId": botId}
@@ -348,16 +316,14 @@ class Bot(Database, Account):
             status = "archived"
 
         try:
-            self.db_collection.update_one(
-                {"id": botId}, {"$set": {"status": status}}
-            )
+            self.db_collection.update_one({"id": botId}, {"$set": {"status": status}})
             resp = json_response(
                 {"message": "Successfully archived bot", "botId": botId}
             )
             return resp
         except Exception as error:
             resp = json_response({"message": f"Failed to archive bot {error}"})
-            
+
         return resp
 
     def post_errors_by_id(self, bot_id: str, reported_error: ErrorsRequestBody):
@@ -370,13 +336,11 @@ class Bot(Database, Account):
         """
         operation = {"$push": {"errors": reported_error}}
         if isinstance(reported_error, list):
-            operation = {"$push": {"errors": { "$each": reported_error }}}
+            operation = {"$push": {"errors": {"$each": reported_error}}}
         elif isinstance(reported_error, str):
             operation = {"$push": {"errors": reported_error}}
         else:
             raise ValueError("reported_error must be a list")
 
-        self.db_collection.update_one(
-            {"id": bot_id}, operation
-        )
+        self.db_collection.update_one({"id": bot_id}, operation)
         pass
