@@ -5,7 +5,7 @@ from pymongo import MongoClient, ReturnDocument
 from tools.handle_error import encode_json
 from deals.models import DealModel
 from bots.schemas import BotSchema
-from tools.enum_definitions import Status
+from tools.enum_definitions import Status, AutotradeSettingsDocument
 
 def get_mongo_client():
     client = MongoClient(
@@ -40,6 +40,11 @@ class Database:
     only dependency is the _db instance
     """
     _db = setup_db()
+
+    def get_fiat_coin(self):
+        document_id = AutotradeSettingsDocument.settings
+        settings = self._db.research_controller.find_one({"_id": document_id})
+        return settings["balance_to_use"]
 
     def save_bot_streaming(self, active_bot: BotSchema, db_collection_name: str="bots"):
         """

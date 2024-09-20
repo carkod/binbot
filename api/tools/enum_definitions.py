@@ -152,3 +152,12 @@ class BinanceKlineIntervals(str, Enum):
 
     def __str__(self):
         return str(self.str)
+
+class AutotradeSettingsDocument(str, Enum):
+    # Autotrade settings for test bots
+    test_autotrade_settings = "test_autotrade_settings"
+    # Autotrade settings for real bots
+    settings = "settings"
+
+    def __str__(self):
+        return str(self.str)

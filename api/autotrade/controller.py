@@ -7,6 +7,7 @@ from tools.handle_error import (
     json_response_error,
     json_response_message,
 )
+from tools.enum_definitions import AutotradeSettingsDocument
 
 class AutotradeSettingsController(Database):
     """
@@ -14,7 +15,7 @@ class AutotradeSettingsController(Database):
     """
 
     def __init__(
-        self, document_id: Literal["test_autotrade_settings", "settings"] = "settings"
+        self, document_id: AutotradeSettingsDocument = AutotradeSettingsDocument.settings
     ):
         self.document_id = document_id
         self.db = self._db

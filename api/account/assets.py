@@ -52,7 +52,10 @@ class Assets(AssetsController):
 
     def store_balance(self) -> dict:
         """
-        Alternative PnL data that runs as a cronjob everyday once at 12:00. Stores current balance in DB and estimated
+        Alternative PnL data that runs as a cronjob everyday once at 12:00.
+        This works outside of context.
+
+        Stores current balance in DB and estimated
         total balance in fiat (USDC) for the day.
 
         Better than deprecated store_balance_snapshot
@@ -61,21 +64,27 @@ class Assets(AssetsController):
         - the result of total_usdc is pretty much the same, the difference is in 0.001 USDC
         - however we don't need a loop and we decreased one network request (also added one, because we still need the raw_balance to display charts)
         """
-        # Store balance works outside of context as cronjob
+        fiat = self.get_fiat_coin()
         wallet_balance = self.get_wallet_balance()
-        bin_balance = self.get_raw_balance()
-        rate = self.get_ticker_price('BTCUSDC')
+        itemized_balance = self.get_raw_balance()
 
-        total_wallet_balance = next((float(item["balance"]) for item in wallet_balance if float(item["balance"]) > 0), 0)
+        rate = self.get_ticker_price(f'BTC{fiat}')
+
+        total_wallet_balance = 0
+        for item in wallet_balance:
+            if item["balance"] and float(item["balance"]) > 0:
+                total_wallet_balance += float(item["balance"])
+
         total_usdc = total_wallet_balance * float(rate)
-        response  = self.create_balance_series(bin_balance, round_numbers(total_usdc, 4))
+        response  = self.create_balance_series(itemized_balance, round_numbers(total_usdc, 4))
         return response
 
 
-    def balance_estimate(self, fiat="USDC"):
+    def balance_estimate(self):
         """
         Estimated balance in given fiat coin
         """
+        fiat = self.get_fiat_coin()
         balances = self.get_raw_balance()
         total_fiat = 0
         left_to_allocate = 0
@@ -261,6 +270,7 @@ class Assets(AssetsController):
             float: total BTC estimated in the SPOT wallet
             then converted into USDC
         """
+        fiat = self.get_fiat_coin()
         wallet_balance = self.get_wallet_balance()
         get_usdc_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
         total_balance = 0
