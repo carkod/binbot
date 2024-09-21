@@ -50,7 +50,11 @@ class BaseDeal(OrderController):
         asset = self.find_baseAsset(pair)
         balance = self.get_one_balance(asset)
         if not balance:
-            return None
+            # If spot balance is not found
+            # try to get isolated margin balance
+            balance = self.get_margin_balance(asset)
+            if not balance:
+                return None
         qty = round_numbers(balance, self.qty_precision)
         return qty
 
@@ -346,6 +350,31 @@ class BaseDeal(OrderController):
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
         return buy_margin_response
+
+    def spot_liquidation(self, pair: str, qty_precision=None):
+        qty = self.compute_qty(pair)
+        if qty:
+            price = float(self.matching_engine(pair, False, qty))
+
+            if price and float(supress_notation(qty, self.qty_precision)) < 1:
+                order = {
+                    "pair": pair,
+                    "qty": supress_notation(qty, self.qty_precision),
+                    "price": supress_notation(price, self.price_precision),
+                }
+                order_res = self.request(
+                    method="POST", url=self.bb_sell_order_url, json=order
+                )
+
+            else:
+                order = {
+                    "pair": pair,
+                    "qty": supress_notation(price, self.qty_precision),
+                }
+                order_res = self.request(
+                    method="POST", url=self.bb_sell_market_order_url, json=order
+                )
+            return order_res
 
     def render_market_domination_reversal(self):
         """

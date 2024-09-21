@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
+from fastapi.responses import JSONResponse
 from account.controller import AssetsController
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
@@ -326,7 +327,7 @@ class Assets(AssetsController):
 
         return json_response_message(msg)
 
-    def one_click_liquidation(self, pair: str):
+    def one_click_liquidation(self, pair: str) -> JSONResponse:
         """
         Emulate Binance Dashboard
         One click liquidation function

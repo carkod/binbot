@@ -207,6 +207,14 @@ class Account(BinbotApi):
         )
         return symbol_balance
 
+    def get_margin_balance(self, symbol="BTC"):
+        # Response after request
+        data = self.get_isolated_balance(symbol)
+        symbol_balance = next(
+            (x["free"] for x in data["data"] if x["asset"] == symbol), None
+        )
+        return symbol_balance
+
     def matching_engine(self, symbol: str, order_side: bool, qty=None):
         """
         Match quantity with available 100% fill order price,
