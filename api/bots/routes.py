@@ -3,7 +3,7 @@ from tools.handle_error import json_response, json_response_error, json_response
 from bots.controllers import Bot
 from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
 from typing import List
-from tools.exceptions import BinanceErrors, BinbotErrors
+from tools.exceptions import BinanceErrors, BinbotErrors, InsufficientBalance
 
 bot_blueprint = APIRouter()
 
@@ -102,7 +102,13 @@ def deactivate(id: str):
     fiat. This is often used to prevent losses
     """
     try:
-        return Bot(collection_name="bots").deactivate(id)
+        document = Bot(collection_name="bots").deactivate(id)
+        if document:
+            return json_response_message("Active orders closed, sold base asset, deactivated")
+        else:
+            return json_response_error(f"Error deactivating bot: {error}")
+    except InsufficientBalance as error:
+        return json_response_error(f"Error deactivating bot: {error}")
     except Exception as error:
         return json_response_error(f"Error deactivating bot: {error}")
 

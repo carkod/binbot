@@ -105,3 +105,10 @@ class TerminateStreaming(Exception):
 
 class MaxBorrowLimit(BinbotErrors):
     pass
+
+
+class InsufficientBalance(BinbotErrors):
+    """
+    Insufficient total_buy_qty to deactivate
+    """
+    pass

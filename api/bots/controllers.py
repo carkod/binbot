@@ -1,46 +1,27 @@
+from pymongo import ReturnDocument
 import requests
 from time import time
 from datetime import datetime
 from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
+from account.assets import Assets
+from deals.schema import MarginOrderSchema
+from deals.models import BinanceOrderModel, DealModel
 from base_producer import BaseProducer
-from tools.enum_definitions import BinbotEnums, Status
-from tools.exceptions import QuantityTooLow
-from tools.handle_error import json_response, json_response_message, json_response_error
+from tools.enum_definitions import BinbotEnums, DealType, Status, Strategy
+from tools.handle_error import encode_json, json_response, json_response_message, json_response_error
 from tools.round_numbers import supress_notation
 from typing import List
 from fastapi import Query
 from bots.schemas import BotSchema, ErrorsRequestBody
 from deals.controllers import CreateDealController
-from decimal import Decimal
-from db import Database
-from account.account import Account
-
-
-class Bot(Database, Account):
+from tools.exceptions import InsufficientBalance
+class Bot(Assets):
     def __init__(self, collection_name="paper_trading"):
         super().__init__()
         self.db_collection = self._db[collection_name]
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
-
-    @property
-    def price_precision(self):
-        self._price_precision = -1 * (
-            Decimal(str(self.price_filter_by_symbol(self.symbol, "tickSize")))
-            .as_tuple()
-            .exponent
-        )
-        return self._price_precision
-
-    @property
-    def qty_precision(self):
-        self._qty_precision = -1 * (
-            Decimal(str(self.lot_size_by_symbol(self.symbol, "stepSize")))
-            .as_tuple()
-            .exponent
-        )
-        return self._qty_precision
 
     def get_active_pairs(self, symbol: str = None):
         """
@@ -228,77 +209,82 @@ class Bot(Database, Account):
         # Close all active orders
         if len(bot.orders) > 0:
             for d in bot.orders:
-                if "deal_type" in d and (
-                    d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
-                ):
+                if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
                     order_id = d["order_id"]
                     requests.delete(
                         url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
                     )
                     self.update_deal_logs(
-                        f"Failed to delete opened order {order_id}.", self.active_bot
+                        f"Failed to delete opened order {order_id}.", bot
                     )
 
-        # Sell everything
-        base_asset = self.find_baseAsset(bot.pair)
-        balance = self.get_one_balance(base_asset)
-        if balance:
-            qty = float(balance)
-            price = float(self.matching_engine(bot.pair, False, qty))
-
-            if price and float(supress_notation(qty, self.qty_precision)) < 1:
-                order = {
-                    "pair": bot.pair,
-                    "qty": supress_notation(qty, self.qty_precision),
-                    "price": supress_notation(price, self.price_precision),
-                }
-                order_res = self.request(
-                    method="POST", url=self.bb_sell_order_url, json=order
-                )
-
-            else:
-                order = {
-                    "pair": bot.pair,
-                    "qty": supress_notation(price, self.qty_precision),
-                }
-                order_res = self.request(
-                    method="POST", url=self.bb_sell_market_order_url, json=order
-                )
-
-            deactivation_order = {
-                "order_id": order_res["orderId"],
-                "deal_type": "deactivate_order",
-                "pair": order_res["symbol"],
-                "order_side": order_res["side"],
-                "order_type": order_res["type"],
-                "price": order_res["price"],
-                "qty": order_res["origQty"],
-                "fills": order_res["fills"],
-                "time_in_force": order_res["timeInForce"],
-                "status": order_res["status"],
-            }
-            self.db_collection.update_one(
-                {"id": findId},
-                {
-                    "$set": {
-                        "status": Status.completed,
-                        "deal.sell_timestamp": time(),
-                        "deal.sell_price": float(order_res["price"]),
-                    },
-                    "$push": {
-                        "orders": deactivation_order,
-                        "errors": "Orders updated. Trying to close bot...",
-                    },
-                },
-            )
-
-            return json_response_message(
-                "Active orders closed, sold base asset, deactivated"
-            )
-        else:
+        if not bot.deal.buy_total_qty or bot.deal.buy_total_qty == 0:
             msg = "Not enough balance to close and sell"
-            self.update_deal_logs(msg, self.active_bot)
-            return json_response_message(msg)
+            self.update_deal_logs(msg, bot)
+            raise InsufficientBalance(msg)
+
+        if bot.strategy == Strategy.margin_short:
+            order_res = self.margin_liquidation(bot.pair, self.qty_precision)
+            panic_close_order = MarginOrderSchema(
+                timestamp=order_res["transactTime"],
+                deal_type=DealType.panic_close,
+                order_id=order_res["orderId"],
+                pair=order_res["symbol"],
+                order_side=order_res["side"],
+                order_type=order_res["type"],
+                price=order_res["price"],
+                qty=order_res["origQty"],
+                fills=order_res["fills"],
+                time_in_force=order_res["timeInForce"],
+                status=order_res["status"],
+                is_isolated=order_res["isIsolated"],
+            )
+
+            for chunk in order_res["fills"]:
+                bot.total_commission += float(chunk["commission"])
+
+            bot.orders.append(panic_close_order)
+        else:
+            res = self.spot_liquidation(bot.pair, self.qty_precision)
+
+            panic_close_order = BinanceOrderModel(
+                timestamp=res["transactTime"],
+                order_id=res["orderId"],
+                deal_type=DealType.panic_close,
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=res["price"],
+                qty=res["origQty"],
+                fills=res["fills"],
+                time_in_force=res["timeInForce"],
+                status=res["status"],
+            )
+
+            for chunk in res["fills"]:
+                bot.total_commission += float(chunk["commission"])
+
+            bot.orders.append(panic_close_order)
+
+        bot.deal = DealModel(
+            buy_timestamp=panic_close_order["transactTime"],
+            buy_price=panic_close_order["price"],
+            buy_total_qty=panic_close_order["origQty"],
+            current_price=panic_close_order["price"],
+        )
+
+        bot.status = Status.completed
+        bot_obj = bot.model_dump()
+        if "_id" in bot_obj:
+            bot_obj.pop("_id")
+
+        document = self.db_collection.find_one_and_update(
+            {"id": self.active_bot.id},
+            {"$set": bot},
+            return_document=ReturnDocument.AFTER,
+        )
+
+        return document
 
     def put_archive(self, botId):
         """

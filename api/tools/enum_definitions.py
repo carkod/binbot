@@ -129,6 +129,7 @@ class DealType(str, Enum):
     short_sell = "short_sell"
     short_buy = "short_buy"
     margin_short = "margin_short"
+    panic_close = "panic_close"
 
     def __str__(self):
         return str(self.str)
