@@ -11,10 +11,14 @@ from requests_cache import CachedSession, MongoCache
 from pymongo import MongoClient
 import os
 import pandas
+from decimal import Decimal
+
 
 class Account(BinbotApi):
     def __init__(self):
         self.db = setup_db()
+        self.price_precision = 0
+        self.qty_precision = 0
         pass
 
     def setup_mongocache(self):
@@ -27,6 +31,22 @@ class Account(BinbotApi):
         )
         mongo_cache = MongoCache(connection=mongo)
         return mongo_cache
+
+    def calculate_price_precision(self, symbol):
+        self.price_precision = -1 * (
+            Decimal(str(self.price_filter_by_symbol(symbol, "tickSize")))
+            .as_tuple()
+            .exponent
+        )
+        return self.price_precision
+
+    def calculate_qty_precision(self, symbol):
+        self.qty_precision = -1 * (
+            Decimal(str(self.lot_size_by_symbol(symbol, "stepSize")))
+            .as_tuple()
+            .exponent
+        )
+        return self.qty_precision
 
     def _exchange_info(self, symbol=None):
         """
@@ -45,7 +65,7 @@ class Account(BinbotApi):
 
         mongo_cache = self.setup_mongocache()
         # set up a cache that expires in 1440'' (24hrs)
-        session = CachedSession('http_cache', backend=mongo_cache, expire_after=1440)
+        session = CachedSession("http_cache", backend=mongo_cache, expire_after=1440)
         exchange_info_res = session.get(url=f"{self.exchangeinfo_url}", params=params)
         exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info
@@ -71,7 +91,6 @@ class Account(BinbotApi):
         res = requests.get(url=self.ticker_price_url, params=params)
         data = handle_binance_errors(res)
         return data["price"]
-
 
     def find_quoteAsset(self, symbol):
         """
@@ -229,7 +248,7 @@ class Account(BinbotApi):
         params = [("symbol", symbol)]
         res = requests.get(url=self.order_book_url, params=params)
         data = handle_binance_errors(res)
-        
+
         if order_side:
             df = pandas.DataFrame(data["bids"], columns=["price", "qty"])
         else:

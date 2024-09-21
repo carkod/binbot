@@ -17,7 +17,12 @@ ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 class BaseDeal(OrderController):
     """
-    Base Deal class to share with CreateDealController and MarginDeal
+    Base Deal class to share with CreateDealController and MarginDeal.
+
+    Deals should always deal with the same symbol
+    at instance creation level, since it needs
+    an active_bot for instantiation. Thus,
+    self.symbol is always the same.
     """
 
     def __init__(self, bot, db_collection_name):
@@ -25,12 +30,31 @@ class BaseDeal(OrderController):
             self.active_bot = BotSchema(**bot)
         else:
             self.active_bot = bot
-        self.symbol = self.active_bot.pair
-        super().__init__(symbol=self.active_bot.pair)
+        super().__init__()
         self.db_collection = self._db[db_collection_name]
         self.market_domination_reversal = None
         if self.active_bot.strategy == Strategy.margin_short:
-            self.isolated_balance: float = self.get_isolated_balance(self.symbol)
+            self.isolated_balance: float = self.get_isolated_balance(
+                self.active_bot.pair
+            )
+
+        self._price_precision = 0
+        self._qty_precision = 0
+        self.symbol = bot.pair
+
+    @property
+    def price_precision(self):
+        if self._price_precision == 0:
+            self._price_precision = self.calculate_price_precision(self.symbol)
+
+        return self._price_precision
+
+    @property
+    def qty_precision(self):
+        if self._qty_precision == 0:
+            self._qty_precision = self.calculate_qty_precision(self.symbol)
+
+        return self._qty_precision
 
     def __repr__(self) -> str:
         """
@@ -55,7 +79,7 @@ class BaseDeal(OrderController):
             balance = self.get_margin_balance(asset)
             if not balance:
                 return None
-        qty = round_numbers(balance, self.qty_precision)
+        qty = round_numbers(balance, (self.qty_precision))
         return qty
 
     def compute_margin_buy_back(self):
@@ -155,7 +179,9 @@ class BaseDeal(OrderController):
                 for order in self.active_bot.orders:
                     if order.order_id == order["orderId"]:
                         self.active_bot.orders.remove(self.active_bot.orders)
-                        self.active_bot.errors.append("base_order not executed, therefore cancelled")
+                        self.active_bot.errors.append(
+                            "base_order not executed, therefore cancelled"
+                        )
                         self.active_bot.status = Status.error
                         break
 
@@ -167,9 +193,15 @@ class BaseDeal(OrderController):
         Check if deal is closed by checking
         if there are any SELL orders
         """
-        all_orders = self.get_all_orders(self.active_bot.pair, int(self.active_bot.deal.buy_timestamp))
+        all_orders = self.get_all_orders(
+            self.active_bot.pair, int(self.active_bot.deal.buy_timestamp)
+        )
         for order in all_orders:
-            if order["side"] == "SELL" and order["price"] == self.active_bot.deal.take_profit_price and order["origQty"] == self.active_bot.deal.buy_total_qty:
+            if (
+                order["side"] == "SELL"
+                and order["price"] == self.active_bot.deal.take_profit_price
+                and order["origQty"] == self.active_bot.deal.buy_total_qty
+            ):
                 return order
 
         return None
@@ -200,13 +232,18 @@ class BaseDeal(OrderController):
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(
-                pair, supress_notation(price, self.price_precision), qty, "BUY"
+                pair,
+                supress_notation(price, self.price_precision(self.active_bot.pair)),
+                qty,
+                "BUY",
             )
         else:
             res = self.buy_order(
                 symbol=pair,
                 qty=qty,
-                price=supress_notation(price, self.price_precision),
+                price=supress_notation(
+                    price, self.price_precision(self.active_bot.pair)
+                ),
             )
 
         order_data = BinanceOrderModel(
@@ -250,7 +287,7 @@ class BaseDeal(OrderController):
 
         return document
 
-    def margin_liquidation(self, pair: str, qty_precision=None):
+    def margin_liquidation(self, pair: str):
         """
         Emulate Binance Dashboard One click liquidation function
 
@@ -271,12 +308,12 @@ class BaseDeal(OrderController):
             # repay_amount contains total borrowed_amount + interests + commissions for buying back
             # borrow amount is only the loan
             repay_amount, free = self.compute_margin_buy_back()
-            repay_amount = round_numbers_ceiling(repay_amount, qty_precision)
+            repay_amount = round_numbers_ceiling(repay_amount, self.qty_precision)
 
             if free == 0 or free < repay_amount:
                 try:
                     # lot_size_by_symbol = self.lot_size_by_symbol(pair, "stepSize")
-                    qty = round_numbers_ceiling(repay_amount - free, qty_precision)
+                    qty = round_numbers_ceiling(repay_amount - free, self.qty_precision)
                     buy_margin_response = self.buy_margin_order(
                         symbol=pair,
                         qty=qty,
@@ -297,20 +334,23 @@ class BaseDeal(OrderController):
                             amount=amount_to_transfer,
                         )
                         buy_margin_response = self.buy_margin_order(
-                            pair, supress_notation(transfer_diff_qty, qty_precision)
+                            pair,
+                            supress_notation(transfer_diff_qty, self.qty_precision),
                         )
                         repay_amount, free = self.compute_margin_buy_back()
                         pass
                     if error.code == -2010 or error.code == -1013:
                         # There is already money in the base asset
-                        qty = round_numbers_ceiling(repay_amount - free, qty_precision)
+                        qty = round_numbers_ceiling(
+                            repay_amount - free, self.qty_precision
+                        )
                         price = float(self.matching_engine(pair, True, qty))
                         usdc_notional = price * qty
                         if usdc_notional < 15:
                             qty = round_numbers_ceiling(15 / price)
 
                         buy_margin_response = self.buy_margin_order(
-                            pair, supress_notation(qty, qty_precision)
+                            pair, supress_notation(qty, self.qty_precision)
                         )
                         repay_amount, free = self.compute_margin_buy_back()
                         pass
@@ -351,7 +391,7 @@ class BaseDeal(OrderController):
 
         return buy_margin_response
 
-    def spot_liquidation(self, pair: str, qty_precision=None):
+    def spot_liquidation(self, pair: str):
         qty = self.compute_qty(pair)
         if qty:
             price = float(self.matching_engine(pair, False, qty))

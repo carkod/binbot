@@ -4,24 +4,42 @@ from time import time
 from datetime import datetime
 from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
-from account.assets import Assets
+from account.account import Account
+from db import Database
 from deals.schema import MarginOrderSchema
 from deals.models import BinanceOrderModel, DealModel
 from base_producer import BaseProducer
 from tools.enum_definitions import BinbotEnums, DealType, Status, Strategy
-from tools.handle_error import encode_json, json_response, json_response_message, json_response_error
-from tools.round_numbers import supress_notation
+from tools.handle_error import json_response, json_response_message, json_response_error
 from typing import List
 from fastapi import Query
 from bots.schemas import BotSchema, ErrorsRequestBody
 from deals.controllers import CreateDealController
 from tools.exceptions import InsufficientBalance
-class Bot(Assets):
+
+
+class Bot(Database, Account):
     def __init__(self, collection_name="paper_trading"):
         super().__init__()
         self.db_collection = self._db[collection_name]
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
+        self._price_precision = 0
+        self._qty_precision = 0
+
+    @property
+    def price_precision(self, symbol):
+        if self._price_precision == 0:
+            self._price_precision = self.calculate_price_precision(symbol)
+
+        return self._price_precision
+
+    @property
+    def qty_precision(self, symbol):
+        if self._qty_precision == 0:
+            self._qty_precision = self.calculate_qty_precision(symbol)
+
+        return self._qty_precision
 
     def get_active_pairs(self, symbol: str = None):
         """
@@ -224,7 +242,7 @@ class Bot(Assets):
             raise InsufficientBalance(msg)
 
         if bot.strategy == Strategy.margin_short:
-            order_res = self.margin_liquidation(bot.pair, self.qty_precision)
+            order_res = self.margin_liquidation(bot.pair, self.qty_precision(bot.pair))
             panic_close_order = MarginOrderSchema(
                 timestamp=order_res["transactTime"],
                 deal_type=DealType.panic_close,
@@ -245,7 +263,7 @@ class Bot(Assets):
 
             bot.orders.append(panic_close_order)
         else:
-            res = self.spot_liquidation(bot.pair, self.qty_precision)
+            res = self.spot_liquidation(bot.pair, self.qty_precision(bot.pair))
 
             panic_close_order = BinanceOrderModel(
                 timestamp=res["transactTime"],

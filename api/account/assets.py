@@ -338,8 +338,7 @@ class Assets(AssetsController):
         """
 
         try:
-            self.symbol = pair
-            self.margin_liquidation(pair, self.qty_precision)
+            self.margin_liquidation(pair, self.qty_precision(pair))
             return json_response_message(f"Successfully liquidated {pair}")
         except MarginLoanNotFound as error:
             return json_response_message(f"{error}. Successfully cleared isolated pair {pair}")
