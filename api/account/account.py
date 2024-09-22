@@ -6,7 +6,7 @@ from tools.handle_error import (
     json_response_message,
     json_response_error,
 )
-from db import setup_db
+from database.mongodb.db import setup_db
 from requests_cache import CachedSession, MongoCache
 from pymongo import MongoClient
 import os
@@ -17,14 +17,14 @@ from decimal import Decimal
 class Account(BinbotApi):
     def __init__(self):
         self.db = setup_db()
-        self.price_precision = 0
-        self.qty_precision = 0
+        self._price_precision: int = 0
+        self._qty_precision: int = 0
         pass
 
     def setup_mongocache(self):
-        mongo = MongoClient(
+        mongo: MongoClient = MongoClient(
             host=os.getenv("MONGO_HOSTNAME"),
-            port=int(os.getenv("MONGO_PORT")),
+            port=int(os.getenv("MONGO_PORT", 2017)),
             authSource="admin",
             username=os.getenv("MONGO_AUTH_USERNAME"),
             password=os.getenv("MONGO_AUTH_PASSWORD"),
@@ -32,21 +32,23 @@ class Account(BinbotApi):
         mongo_cache = MongoCache(connection=mongo)
         return mongo_cache
 
-    def calculate_price_precision(self, symbol):
-        self.price_precision = -1 * (
+    def calculate_price_precision(self, symbol) -> int:
+        precision = -1 * (
             Decimal(str(self.price_filter_by_symbol(symbol, "tickSize")))
             .as_tuple()
             .exponent
         )
-        return self.price_precision
+        self._price_precision = int(precision)
+        return self._price_precision
 
-    def calculate_qty_precision(self, symbol):
-        self.qty_precision = -1 * (
+    def calculate_qty_precision(self, symbol) -> int:
+        precision = -1 * (
             Decimal(str(self.lot_size_by_symbol(symbol, "stepSize")))
             .as_tuple()
             .exponent
         )
-        return self.qty_precision
+        self._qty_precision = int(precision)
+        return self._qty_precision
 
     def _exchange_info(self, symbol=None):
         """

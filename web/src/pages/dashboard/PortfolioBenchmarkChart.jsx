@@ -20,7 +20,9 @@ export function PortfolioBenchmarkChart({ data, legend }) {
             <CardTitle tag="h5">
               Portfolio benchmarking
             </CardTitle>
-            <p className="card-category u-text-left">Compare portfolio against BTC.Values in % difference</p>
+            <div>
+              <p className="card-category u-text-left">Compare portfolio against BTC.<br />Values in % difference</p>
+            </div>
           </Col>
           </Row>
         </Container>

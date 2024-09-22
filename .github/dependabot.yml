@@ -12,7 +12,7 @@ updates:
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
 
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/api"
     schedule:
       interval: "monthly"
     # Include a list of updated dependencies

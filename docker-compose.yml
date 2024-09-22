@@ -23,7 +23,7 @@ services:
   #     start_period: 80s
 
   db:
-    image: mongo:latest
+    image: mongo:7.0
     container_name: binbot_db
     restart: on-failure
     networks:

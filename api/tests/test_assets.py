@@ -1,11 +1,11 @@
+from time import sleep
 from fastapi.testclient import TestClient
 import pytest
 from account.assets import Assets
 from main import app
-import mongomock
+from mongomock import MongoClient
 
-
-client = mongomock.MongoClient()
+client: MongoClient = MongoClient()
 db = client.db
 
 app_client = TestClient(app)
@@ -28,11 +28,22 @@ def patch_database(monkeypatch):
         }
     ]
 
+    itemized_balance = [
+        {"asset": "BTC", "free": 6.51e-06, "locked": 0.0},
+        {"asset": "BNB", "free": 9.341e-05, "locked": 0.0},
+        {"asset": "USDC", "free": 5.2, "locked": 0.0},
+        {"asset": "NFT", "free": 1, "locked": 0.0},
+    ]
+
     def new_init(self):
         self._db = db
 
     monkeypatch.setattr(Assets, "_db", new_init)
     monkeypatch.setattr(Assets, "get_market_domination", lambda a, size, *arg: data)
+    monkeypatch.setattr(Assets, "get_fiat_coin", lambda self: "USDC")
+    monkeypatch.setattr(
+        Assets, "get_raw_balance", lambda self, asset=None: itemized_balance
+    )
 
 
 @pytest.fixture()
@@ -45,6 +56,9 @@ def patch_raw_balances(monkeypatch):
         "makerCommission": 10,
         "commissionRates": {
             "maker": "0.00100000",
+            "taker": "0.00100000",
+            "buyer": "0.00100000",
+            "seller": "0.00100000",
         },
         "updateTime": 1713558823589,
         "accountType": "SPOT",
@@ -55,6 +69,7 @@ def patch_raw_balances(monkeypatch):
             {"asset": "NFT", "free": 1, "locked": 0.0},
         ],
         "permissions": ["LEVERAGED", "TRD_GRP_002", "TRD_GRP_009"],
+        "uid": 123456789,
     }
 
     monkeypatch.setattr(
@@ -95,16 +110,9 @@ def patch_store_balance(monkeypatch):
     """
     wallet_balance = [{"activate": True, "balance": "0.001", "walletName": "Spot"}]
 
-    itemized_balance = [
-        {"asset": "BNB", "free": "0.00000241", "locked": "0.00000000"},
-        {"asset": "ADX", "free": "0.50558327", "locked": "0.00000000"},
-    ]
-
     monkeypatch.setattr(Assets, "get_fiat_coin", lambda self: "USDC")
+    monkeypatch.setattr(Assets, "get_available_fiat", lambda self: 5.2)
     monkeypatch.setattr(Assets, "get_wallet_balance", lambda self: wallet_balance)
-    monkeypatch.setattr(
-        Assets, "get_raw_balance", lambda self, asset=None: itemized_balance
-    )
     monkeypatch.setattr(Assets, "get_ticker_price", lambda self, pair: "59095.79000000")
     monkeypatch.setattr(
         Assets,
@@ -113,7 +121,7 @@ def patch_store_balance(monkeypatch):
     )
 
 
-def test_get_market_domination(monkeypatch, patch_database):
+def test_get_market_domination(patch_database):
 
     response = app_client.get("/account/market-domination")
 
@@ -134,11 +142,10 @@ def test_get_market_domination(monkeypatch, patch_database):
     assert response.json() == expected_result
 
 
-def test_get_raw_balance(patch_raw_balances):
+def test_get_raw_balance(patch_database, patch_raw_balances):
     """
     Test get all raw_balances
     """
-
     response = app_client.get("/account/balance/raw")
     expected_result = [
         {"asset": "BTC", "free": 6.51e-06, "locked": 0.0},
@@ -152,7 +159,7 @@ def test_get_raw_balance(patch_raw_balances):
     assert content["data"] == expected_result
 
 
-def test_total_fiat(patch_total_fiat):
+def test_total_fiat(patch_database, patch_total_fiat):
     """
     Test get balance estimates
     """
@@ -164,7 +171,7 @@ def test_total_fiat(patch_total_fiat):
     assert content["data"] == 20
 
 
-def test_available_fiat(patch_raw_balances):
+def test_available_fiat(patch_database, patch_raw_balances):
     """
     Test available fiat
     """
@@ -176,7 +183,7 @@ def test_available_fiat(patch_raw_balances):
     assert content["data"] == 5.2
 
 
-def test_store_balance(patch_store_balance):
+def test_store_balance(patch_database, patch_store_balance):
     """
     Test store balance as an endpoint
     This runs as a cron job in production

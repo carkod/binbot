@@ -1,6 +1,6 @@
 from account.account import Account
 from tools.exceptions import DeleteOrderError
-from db import Database
+from database.mongodb.db import Database
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation
@@ -56,7 +56,7 @@ class OrderController(Database, Account):
                 "side": OrderSide.sell,
                 "type": OrderType.limit,
                 "timeInForce": TimeInForce.gtc,
-                "price": supress_notation(price, self.price_precision(symbol)),
+                "price": supress_notation(price, self.price_precision),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
 
@@ -64,7 +64,7 @@ class OrderController(Database, Account):
             # create iceberg orders
             if not book_price:
                 payload["iceberg_qty"] = self.zero_remainder(qty)
-                payload["price"] = supress_notation(book_price, self.price_precision(symbol))
+                payload["price"] = supress_notation(book_price, self.price_precision)
             
         else:
             payload = {
@@ -98,14 +98,14 @@ class OrderController(Database, Account):
                 "side": OrderSide.buy,
                 "type": OrderType.limit,
                 "timeInForce": TimeInForce.gtc,
-                "price": supress_notation(book_price, self.price_precision(symbol)),
+                "price": supress_notation(book_price, self.price_precision),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
             # If price is not provided by matching engine,
             # create iceberg orders
             if not book_price:
                 payload["iceberg_qty"] = self.zero_remainder(qty)
-                payload["price"] = supress_notation(book_price, self.price_precision(symbol))
+                payload["price"] = supress_notation(book_price, self.price_precision)
 
         else:
             payload = {

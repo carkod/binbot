@@ -34,22 +34,21 @@ class CreateDealController(BaseDeal):
         super().__init__(bot, db_collection)
         self._price_precision = 0
         self._qty_precision = 0
-        self.symbol = bot.pair
+        self.active_bot = bot
 
     @property
-    def price_precision(self, symbol):
+    def price_precision(self):
         if self._price_precision == 0:
-            self._price_precision = self.calculate_price_precision(symbol)
+            self._price_precision = self.calculate_price_precision(self.active_bot.pair)
 
         return self._price_precision
 
     @property
-    def qty_precision(self, symbol):
+    def qty_precision(self):
         if self._qty_precision == 0:
-            self._qty_precision = self.calculate_qty_precision(symbol)
+            self._qty_precision = self.calculate_qty_precision(self.active_bot.pair)
 
         return self._qty_precision
-
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request
@@ -89,7 +88,7 @@ class CreateDealController(BaseDeal):
             qty = self.compute_qty(self.active_bot.pair)
 
         qty = supress_notation(buy_total_qty, self.qty_precision)
-        price = supress_notation(price, self.price_precision(self.active_bot.pair))
+        price = supress_notation(price, self.price_precision)
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
@@ -112,7 +111,7 @@ class CreateDealController(BaseDeal):
                 )
         else:
             qty = supress_notation(qty, self.qty_precision)
-            price = supress_notation(price, self.price_precision(self.active_bot.pair))
+            price = supress_notation(price, self.price_precision)
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         # If error pass it up to parent function, can't continue
@@ -139,7 +138,7 @@ class CreateDealController(BaseDeal):
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
         self.active_bot.status = Status.completed
-        msg = f"Completed take profit"
+        msg = "Completed take profit"
         self.active_bot.errors.append(msg)
 
         try:
@@ -159,7 +158,7 @@ class CreateDealController(BaseDeal):
 
         return bot
 
-    def close_all(self):
+    def close_all(self) -> None:
         """
         Close all deals and sell pair
         1. Close all deals
@@ -178,7 +177,7 @@ class CreateDealController(BaseDeal):
                         "Failed to close all active orders (status NEW), retrying...",
                         self.active_bot,
                     )
-                    res = self.replace_order(d["orderId"])
+                    self.replace_order(d["orderId"])
 
         # Sell everything
         pair = self.active_bot.pair
@@ -187,12 +186,12 @@ class CreateDealController(BaseDeal):
         if balance:
             qty = round_numbers(balance, self.qty_precision)
             price = float(self.matching_engine(pair, True, qty))
-            price = supress_notation(price, self.price_precision(self.active_bot.pair))
+            price = supress_notation(price, self.price_precision)
             self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         return
 
-    def update_take_profit(self, order_id):
+    def update_take_profit(self, order_id) -> None:
         """
         Update take profit after websocket order endpoint triggered
         - Close current opened take profit order
@@ -211,7 +210,9 @@ class CreateDealController(BaseDeal):
 
                 # First cancel old order to unlock balance
                 try:
-                    data = OrderController(symbol=bot.pair).delete_order(bot.pair, order_id)
+                    OrderController(symbol=bot.pair).delete_order(
+                        bot.pair, order_id
+                    )
                 except BinbotErrors as error:
                     print(error.message)
                     pass
@@ -220,7 +221,9 @@ class CreateDealController(BaseDeal):
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
-                    price=supress_notation(new_tp_price, self.price_precision(self.active_bot.pair)),
+                    price=supress_notation(
+                        new_tp_price, self.price_precision
+                    ),
                 )
 
                 # New take profit order successfully created
@@ -241,7 +244,7 @@ class CreateDealController(BaseDeal):
                 }
                 # Build new deals list
                 new_deals = []
-                for d in bot.deals:
+                for d in bot.orders:
                     if d["deal_type"] != "take_profit":
                         new_deals.append(d)
 
@@ -259,9 +262,11 @@ class CreateDealController(BaseDeal):
                 )
                 return
         else:
-            self.update_deal_logs("Error: Bot does not contain a base order deal", self.active_bot)
+            self.update_deal_logs(
+                "Error: Bot does not contain a base order deal", self.active_bot
+            )
 
-    def open_deal(self):
+    def open_deal(self) -> None:
         """
         Mandatory deals section
 
@@ -305,11 +310,13 @@ class CreateDealController(BaseDeal):
                     buy_price * float(self.active_bot.stop_loss) / 100
                 )
                 self.active_bot.deal.stop_loss_price = supress_notation(
-                    stop_loss_price, self.price_precision(self.active_bot.pair)
+                    stop_loss_price, self.price_precision
                 )
 
         # Margin short Take profit
-        if float(self.active_bot.take_profit) > 0 and self.active_bot.strategy == "margin_short":
+        if (
+            float(self.active_bot.take_profit) > 0 and self.active_bot.strategy == "margin_short"
+        ):
             self.active_bot = MarginDeal(
                 bot=self.active_bot, db_collection_name=self.db_collection.name
             ).set_margin_take_profit()

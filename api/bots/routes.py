@@ -87,10 +87,7 @@ def activate_by_id(id: str):
         except BinanceErrors as error:
             bot_instance.post_errors_by_id(id, error.message)
             return json_response_error(error.message)
-        except Exception as error:
-            bot_instance.post_errors_by_id(id, error)
-            resp = json_response_error(f"Unable to activate bot: {error}")
-            return resp
+
     else:
         return json_response_error("Bot not found.")
 

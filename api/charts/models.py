@@ -1,20 +1,9 @@
-import logging
-from math import ceil
-from time import time
-
-import pandas as pd
 from pydantic import BaseModel
 from pymongo import DESCENDING, ReturnDocument
 
 from apis import BinbotApi
-from tools.handle_error import (
-    InvalidSymbol,
-    json_response,
-    json_response_error,
-    json_response_message
-)
-from tools.round_numbers import interval_to_millisecs
-from db import Database, setup_kafka_db, setup_db
+from database.mongodb.db import Database, setup_kafka_db, setup_db
+
 
 class CandlestickItemRequest(BaseModel):
     data: list[list]
@@ -28,7 +17,9 @@ class CandlestickParams(BaseModel):
     symbol: str
     interval: str  # See EnumDefinitions
     limit: int = 600
-    startTime: float | None = None  # starTime and endTime must be camel cased for the API
+    startTime: float | None = (
+        None  # starTime and endTime must be camel cased for the API
+    )
     endTime: float | None = None
 
 
@@ -93,7 +84,7 @@ class KlinesSchema(Database):
             return update_kline
         except Exception as e:
             return e
-    
+
     def delete_klines(self):
         result = self.db.klines.delete_one({"symbol": self._id})
         return result.acknowledged
@@ -104,6 +95,7 @@ class Candlestick(BinbotApi):
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
     """
+
     def __init__(self) -> None:
         self.db = setup_db()
 

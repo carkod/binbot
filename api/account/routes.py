@@ -19,7 +19,7 @@ account_blueprint = APIRouter()
 @account_blueprint.get("/balance/raw", response_model=BalanceResponse, tags=["account"])
 def raw_balance():
     data = Assets().get_raw_balance()
-    return json_response({"data": data}) 
+    return json_response({"data": data})
 
 
 @account_blueprint.get("/symbols", tags=["account"])
@@ -65,9 +65,14 @@ def balance_estimated():
     try:
         balance = Assets().balance_estimate()
         if balance:
-            return json_response({"data": balance, "message": "Successfully retrieved estimated balance."})
+            return json_response(
+                {
+                    "data": balance,
+                    "message": "Successfully retrieved estimated balance.",
+                }
+            )
     except BinanceErrors as error:
-        return json_response_error(f"Failed to estimate balance: {error}")    
+        return json_response_error(f"Failed to estimate balance: {error}")
 
 
 @account_blueprint.get("/balance/series", tags=["assets"])
@@ -119,8 +124,11 @@ def clean_balance(bypass: bool = False):
     except BinanceErrors as error:
         return json_response_error(f"Failed to clean balance: {error}")
 
-@account_blueprint.get("/fiat/available", response_model=BalanceSeriesResponse, tags=["assets"])
-def total_balance():
+
+@account_blueprint.get(
+    "/fiat/available", response_model=BalanceSeriesResponse, tags=["assets"]
+)
+def fiat_available():
     """
     Total USDC in balance
     Calculated by Binance
@@ -128,8 +136,9 @@ def total_balance():
     total_fiat = Assets().get_available_fiat()
     return json_response({"data": total_fiat})
 
+
 @account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["assets"])
-def total_balance():
+def fiat():
     """
     Total USDC in balance
     Calculated by Binance
@@ -137,11 +146,13 @@ def total_balance():
     total_fiat = Assets().get_total_fiat()
     return json_response({"data": total_fiat})
 
+
 @account_blueprint.get(
     "/disable-isolated", response_model=BalanceSeriesResponse, tags=["assets"]
 )
 def disable_isolated():
     return Assets().disable_isolated_accounts()
+
 
 @account_blueprint.get("/isolated", tags=["assets"])
 def check_isolated_symbol(symbol: str):
@@ -164,23 +175,23 @@ def market_domination(size: int = 7):
 
     try:
         for item in data:
-            gainers_percent = 0
-            losers_percent = 0
-            gainers_count = 0
-            losers_count = 0
-            total_volume = 0
+            gainers_percent: float = 0
+            losers_percent: float = 0
+            gainers_count: int = 0
+            losers_count: int = 0
+            total_volume: float = 0
             if "data" in item:
                 for crypto in item["data"]:
-                    if float(crypto['priceChangePercent']) > 0:
-                        gainers_percent += float(crypto['volume'])
+                    if float(crypto["priceChangePercent"]) > 0:
+                        gainers_percent += float(crypto["volume"])
                         gainers_count += 1
 
-                    if float(crypto['priceChangePercent']) < 0:
-                        losers_percent += abs(float(crypto['volume']))
+                    if float(crypto["priceChangePercent"]) < 0:
+                        losers_percent += abs(float(crypto["volume"]))
                         losers_count += 1
 
-                    if float(crypto['volume']) > 0:
-                        total_volume += float(crypto['volume']) * float(crypto['price'])
+                    if float(crypto["volume"]) > 0:
+                        total_volume += float(crypto["volume"]) * float(crypto["price"])
 
             market_domination_series.dates.append(item["time"])
             market_domination_series.gainers_percent.append(gainers_percent)
