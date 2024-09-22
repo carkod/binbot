@@ -43,7 +43,7 @@ class BaseDeal(OrderController):
         self.symbol = bot.pair
 
     @property
-    def price_precision(self):
+    def price_precision(self) -> int:
         if self._price_precision == 0:
             self._price_precision = self.calculate_price_precision(self.symbol)
 

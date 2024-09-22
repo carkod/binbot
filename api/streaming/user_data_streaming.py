@@ -2,7 +2,9 @@ import logging
 import json
 from apis import BinanceApi
 from streaming.socket_client import SpotWebsocketStreamClient
-from db import Database
+from database.mongodb.db import Database
+
+
 class UserDataStreaming(Database, BinanceApi):
     def __init__(self) -> None:
         self.streaming_db = self._db

@@ -1,4 +1,4 @@
-from db import Database, setup_db
+from database.mongodb.db import Database
 from datetime import datetime
 from time import sleep
 from tools.handle_error import json_response, json_response_error, json_response_message
@@ -7,6 +7,7 @@ from apis import ThreeCommasApi
 from tools.round_numbers import round_numbers
 from pymongo import ASCENDING
 from fastapi.encoders import jsonable_encoder
+
 
 class Controller(Database):
     """
@@ -22,7 +23,9 @@ class Controller(Database):
         """
         Get list of blacklisted symbols
         """
-        query_result = self._db.blacklist.find({ "pair": { "$exists": True } }).sort("pair", ASCENDING)
+        query_result = self._db.blacklist.find({"pair": {"$exists": True}}).sort(
+            "pair", ASCENDING
+        )
         blacklist = list(query_result)
         return blacklist
 
@@ -32,11 +35,11 @@ class Controller(Database):
             blacklist_item = data.dict()
             blacklist_item["_id"] = data.pair
             self._db.blacklist.insert_one(blacklist_item)
-            return json_response(
-                {"message": "Successfully updated blacklist"}
-            )
+            return json_response({"message": "Successfully updated blacklist"})
         except DuplicateKeyError:
-            return json_response({"message": "Pair already exists in blacklist", "error": 1})
+            return json_response(
+                {"message": "Pair already exists in blacklist", "error": 1}
+            )
         except Exception as error:
             print(error)
             return json_response_error(f"Failed to add pair to black list: {error}")
@@ -46,7 +49,12 @@ class Controller(Database):
         blacklist = self._db.blacklist.delete_one({"_id": pair})
 
         if blacklist.acknowledged:
-            resp = json_response({"message": "Successfully deleted item from blacklist", "data": str(pair)})
+            resp = json_response(
+                {
+                    "message": "Successfully deleted item from blacklist",
+                    "data": str(pair),
+                }
+            )
         else:
             resp = json_response_error("Item does not exist")
 
@@ -54,11 +62,11 @@ class Controller(Database):
 
     def edit_blacklist(self, data):
         if "pair" not in data:
-            return json_response({"message": "Missing required field 'pair'.", "error": 1})
+            return json_response(
+                {"message": "Missing required field 'pair'.", "error": 1}
+            )
 
-        blacklist = self._db.blacklist.update_one(
-            {"_id": data["pair"]}, {"$set": data}
-        )
+        blacklist = self._db.blacklist.update_one({"_id": data["pair"]}, {"$set": data})
 
         if not blacklist:
             resp = json_response_error("Blacklist item does not exist")
@@ -67,7 +75,7 @@ class Controller(Database):
             {"message": "Successfully updated blacklist", "blacklist": blacklist}
         )
         return resp
-    
+
     def store_profitable_signals(self):
         """
         3commas signals that are profitable
@@ -81,20 +89,25 @@ class Controller(Database):
         items = api.get_all_marketplace_item()
 
         for item in items:
-            signals = api.get_marketplace_item_signals(item
-            ["id"])
+            signals = api.get_marketplace_item_signals(item["id"])
             if hasattr(signals, "status"):
                 sleep(10)
-                signals = api.get_marketplace_item_signals(item
-            ["id"])
+                signals = api.get_marketplace_item_signals(item["id"])
             portfolio = []
-            total_ayp = 0
+            total_ayp: float = 0
             previous_ts = ""
             pairs = []
             for signal in signals:
-                if signal["exchange"] == "Binance" and signal["signal_type"] == "long" and signal["min"] and signal["max"]:
+                if (
+                    signal["exchange"] == "Binance"
+                    and signal["signal_type"] == "long"
+                    and signal["min"]
+                    and signal["max"]
+                ):
                     pairs.append(signal["pair"])
-                    current_ts = datetime.fromtimestamp(signal["timestamp"]).strftime("%Y-%m-%d")
+                    current_ts = datetime.fromtimestamp(signal["timestamp"]).strftime(
+                        "%Y-%m-%d"
+                    )
                     avg_return = float(signal["min"]) + float(signal["max"]) / 2
                     if current_ts == previous_ts:
                         total_ayp += avg_return
@@ -103,20 +116,24 @@ class Controller(Database):
                         asset = {
                             "time": current_ts,
                             "estimated_ayp": round_numbers(total_ayp, 4),
-                            "pairs": pairs
+                            "pairs": pairs,
                         }
                         portfolio.append(asset)
-                    
-                    previous_ts = datetime.fromtimestamp(signal["timestamp"]).strftime("%Y-%m-%d")
 
-            consolidated_signals.append({
-                "id": item["id"],
-                "name": item["name"],
-                "portfolio": portfolio,
-            })
+                    previous_ts = datetime.fromtimestamp(signal["timestamp"]).strftime(
+                        "%Y-%m-%d"
+                    )
+
+            consolidated_signals.append(
+                {
+                    "id": item["id"],
+                    "name": item["name"],
+                    "portfolio": portfolio,
+                }
+            )
 
         try:
-            self._db.three_commas_signals.delete_many({})    
+            self._db.three_commas_signals.delete_many({})
             self._db.three_commas_signals.insert_many(consolidated_signals)
         except Exception as err:
             print(err)
@@ -131,7 +148,12 @@ class Controller(Database):
         query = {}
         signals = list(self._db.three_commas_signals.find(query))
 
-        return json_response({"message": "Successfully retrieved profitable 3commas signals", "data": signals})
+        return json_response(
+            {
+                "message": "Successfully retrieved profitable 3commas signals",
+                "data": signals,
+            }
+        )
 
     """
     Get pairs that binbot-research signals are subscribed to
@@ -139,6 +161,7 @@ class Controller(Database):
 
     To merge with blacklist
     """
+
     def get_subscribed_symbols(self):
         query_result = self._db.subscribed_symbols.find({}).sort("pair", ASCENDING)
         all_symbols = list(query_result)
@@ -150,9 +173,7 @@ class Controller(Database):
         query_result = self._db.subscribed_symbols.delete_many({})
 
         return json_response(
-            {"message": "Successfully deleted all symbols", "data": {
-                "total": 0
-            }}
+            {"message": "Successfully deleted all symbols", "data": {"total": 0}}
         )
 
     def bulk_upsert_all(self, data):
@@ -163,12 +184,15 @@ class Controller(Database):
                 symbols,
             )
             return json_response(
-                {"message": "Successfully created new susbcribed list", "data": {
-                    "total": len(query_result.inserted_ids) + 1
-                }}
+                {
+                    "message": "Successfully created new susbcribed list",
+                    "data": {"total": len(query_result.inserted_ids) + 1},
+                }
             )
         except Exception as error:
-            return json_response_error(f"Failed to update symbol in the subscribed list {error}")
+            return json_response_error(
+                f"Failed to update symbol in the subscribed list {error}"
+            )
 
     def edit_subscribed_symbol(self, symbol):
         symbol = jsonable_encoder(symbol)
@@ -177,6 +201,10 @@ class Controller(Database):
                 symbol,
                 upsert=True,
             )
-            return json_response_message("Successfully update symbol in the subscribed list")
+            return json_response_message(
+                "Successfully update symbol in the subscribed list"
+            )
         except Exception as error:
-            return json_response_error(f"Failed to update symbol in the subscribed list {error}")
+            return json_response_error(
+                f"Failed to update symbol in the subscribed list {error}"
+            )

@@ -5,7 +5,7 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 from account.account import Account
-from db import Database
+from database.mongodb.db import Database
 from deals.schema import MarginOrderSchema
 from deals.models import BinanceOrderModel, DealModel
 from base_producer import BaseProducer
@@ -24,24 +24,13 @@ class Bot(Database, Account):
         self.db_collection = self._db[collection_name]
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
-        self._price_precision = 0
-        self._qty_precision = 0
+        self.deal: CreateDealController | None = None
 
-    @property
-    def price_precision(self, symbol):
-        if self._price_precision == 0:
-            self._price_precision = self.calculate_price_precision(symbol)
+    def set_deal_controller(self, bot: BotSchema, collection="bots"):
+        self.deal = CreateDealController(bot, db_collection=collection)
+        pass
 
-        return self._price_precision
-
-    @property
-    def qty_precision(self, symbol):
-        if self._qty_precision == 0:
-            self._qty_precision = self.calculate_qty_precision(symbol)
-
-        return self._qty_precision
-
-    def get_active_pairs(self, symbol: str = None):
+    def get_active_pairs(self, symbol: str | None = None):
         """
         Get distinct (non-repeating) bots by status active
         """
@@ -67,9 +56,9 @@ class Bot(Database, Account):
         if start_date:
             try:
                 float(start_date)
-            except ValueError as error:
+            except ValueError:
                 resp = json_response(
-                    {"message": f"start_date must be a timestamp float", "data": []}
+                    {"message": "start_date must be a timestamp float", "data": []}
                 )
                 return resp
 
@@ -209,7 +198,7 @@ class Bot(Database, Account):
         self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
         return bot
 
-    def deactivate(self, findId):
+    def deactivate(self, findId: str) -> dict:
         """
         DO NOT USE, LEGACY CODE NEEDS TO BE REVAMPED
         Close all deals, sell pair and deactivate
@@ -241,8 +230,12 @@ class Bot(Database, Account):
             self.update_deal_logs(msg, bot)
             raise InsufficientBalance(msg)
 
+        deal_controller = CreateDealController(bot, db_collection="bots")
+
         if bot.strategy == Strategy.margin_short:
-            order_res = self.margin_liquidation(bot.pair, self.qty_precision(bot.pair))
+            order_res = deal_controller.margin_liquidation(
+                bot.pair, self.qty_precision(bot.pair)
+            )
             panic_close_order = MarginOrderSchema(
                 timestamp=order_res["transactTime"],
                 deal_type=DealType.panic_close,
@@ -263,7 +256,7 @@ class Bot(Database, Account):
 
             bot.orders.append(panic_close_order)
         else:
-            res = self.spot_liquidation(bot.pair, self.qty_precision(bot.pair))
+            res = deal_controller.spot_liquidation(bot.pair, self.qty_precision(bot.pair))
 
             panic_close_order = BinanceOrderModel(
                 timestamp=res["transactTime"],

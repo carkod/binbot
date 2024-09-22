@@ -2,17 +2,20 @@ from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from fastapi.responses import JSONResponse
 from account.controller import AssetsController
+from deals.controllers import CreateDealController
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
-from tools.exceptions import BinanceErrors, InvalidSymbol, LowBalanceCleanupError, MarginLoanNotFound
+from tools.exceptions import BinanceErrors, LowBalanceCleanupError, MarginLoanNotFound
 from tools.enum_definitions import Status
+
 
 class Assets(AssetsController):
     def __init__(self):
         self.usd_balance = 0
         self.exception_list = []
+        self.fiat = self.get_fiat_coin()
 
-    def get_raw_balance(self, asset=None):
+    def get_raw_balance(self, asset=None) -> list:
         """
         Unrestricted balance
         """
@@ -44,7 +47,7 @@ class Assets(AssetsController):
         return resp
 
     def _check_locked(self, b):
-        qty = 0
+        qty: float = 0
         if "locked" in b:
             qty = float(b["free"]) + float(b["locked"])
         else:
@@ -65,32 +68,31 @@ class Assets(AssetsController):
         - the result of total_usdc is pretty much the same, the difference is in 0.001 USDC
         - however we don't need a loop and we decreased one network request (also added one, because we still need the raw_balance to display charts)
         """
-        fiat = self.get_fiat_coin()
         wallet_balance = self.get_wallet_balance()
         itemized_balance = self.get_raw_balance()
 
-        rate = self.get_ticker_price(f'BTC{fiat}')
+        rate = self.get_ticker_price(f"BTC{self.fiat}")
 
-        total_wallet_balance = 0
+        total_wallet_balance: float = 0
         for item in wallet_balance:
             if item["balance"] and float(item["balance"]) > 0:
                 total_wallet_balance += float(item["balance"])
 
         total_usdc = total_wallet_balance * float(rate)
-        response  = self.create_balance_series(itemized_balance, round_numbers(total_usdc, 4))
+        response = self.create_balance_series(
+            itemized_balance, round_numbers(total_usdc, 4)
+        )
         return response
-
 
     def balance_estimate(self):
         """
         Estimated balance in given fiat coin
         """
-        fiat = self.get_fiat_coin()
         balances = self.get_raw_balance()
-        total_fiat = 0
-        left_to_allocate = 0
-        total_isolated_margin = 0
-        btc_rate = self.get_ticker_price(f'BTC{fiat}')
+        total_fiat: float = 0
+        left_to_allocate: float = 0
+        total_isolated_margin: float = 0
+        btc_rate = self.get_ticker_price(f"BTC{self.fiat}")
         wallet_balance = self.get_wallet_balance()
         for item in wallet_balance:
             if item["walletName"] == "Spot":
@@ -99,7 +101,7 @@ class Assets(AssetsController):
                 total_isolated_margin += float(item["balance"]) * float(btc_rate)
 
         for b in balances:
-            if b["asset"] == fiat:
+            if b["asset"] == self.fiat:
                 left_to_allocate = float(b["free"])
                 break
 
@@ -108,11 +110,11 @@ class Assets(AssetsController):
             "total_fiat": total_fiat + total_isolated_margin,
             "total_isolated_margin": total_isolated_margin,
             "fiat_left": left_to_allocate,
-            "asset": fiat,
+            "asset": self.fiat,
         }
         return balance
 
-    def balance_series(self, fiat="USDC", start_time=None, end_time=None, limit=5):
+    def balance_series(self):
         """
         Get series for graph.
 
@@ -124,7 +126,7 @@ class Assets(AssetsController):
         )
         balances = []
         for datapoint in snapshot_account_data["snapshotVos"]:
-            fiat_rate = self.get_ticker_price(f"BTC{fiat}")
+            fiat_rate = self.get_ticker_price(f"BTC{self.fiat}")
             total_fiat = float(datapoint["data"]["totalAssetOfBtc"]) * float(fiat_rate)
             balance = {
                 "update_time": datapoint["updateTime"],
@@ -163,17 +165,16 @@ class Assets(AssetsController):
     In order to create benchmark charts,
     gaps in the balances' dates need to match with BTC dates
     """
-    def consolidate_dates(
-        self, klines, balance_date, i: int = 0
-    ) -> int | None:
-        
+
+    def consolidate_dates(self, klines, balance_date, i: int = 0) -> int | None:
+
         if i == len(klines):
             return None
 
         for idx, d in enumerate(klines):
             dt_obj = datetime.fromtimestamp(d[0] / 1000)
             str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
-            
+
             # Match balance store dates with btc price dates
             if str_date == balance_date:
                 return idx
@@ -187,10 +188,14 @@ class Assets(AssetsController):
         if len(balance_series) == 0:
             return json_response_error("No balance series data found.")
 
-        end_time = int(datetime.strptime(balance_series[0]["time"], "%Y-%m-%d").timestamp() * 1000)
+        end_time = int(
+            datetime.strptime(balance_series[0]["time"], "%Y-%m-%d").timestamp() * 1000
+        )
         # btc candlestick data series
         klines = self.get_raw_klines(
-            limit=len(balance_series), # One month - 1 (calculating percentages) worth of data to display
+            limit=len(
+                balance_series
+            ),  # One month - 1 (calculating percentages) worth of data to display
             symbol="BTCUSDC",
             interval="1d",
             end_time=str(end_time),
@@ -204,9 +209,13 @@ class Assets(AssetsController):
             btc_index = self.consolidate_dates(klines, item["time"], index)
             if btc_index is not None:
                 if "estimated_total_usdc" in balance_series[index]:
-                    balances_series_diff.append(float(balance_series[index]["estimated_total_usdc"]))
+                    balances_series_diff.append(
+                        float(balance_series[index]["estimated_total_usdc"])
+                    )
                 else:
-                    balances_series_diff.append(float(balance_series[index]["estimated_total_usdt"]))
+                    balances_series_diff.append(
+                        float(balance_series[index]["estimated_total_usdt"])
+                    )
                 balances_series_dates.append(item["time"])
                 balance_btc_diff.append(float(klines[btc_index][4]))
             else:
@@ -247,7 +256,9 @@ class Assets(AssetsController):
                 assets.append(item["asset"])
 
         if len(assets) < 5 and not bypass:
-            raise LowBalanceCleanupError("Amount of assets in balance is low. Transfer not needed.")
+            raise LowBalanceCleanupError(
+                "Amount of assets in balance is low. Transfer not needed."
+            )
         else:
             try:
                 self.transfer_dust(assets)
@@ -263,7 +274,7 @@ class Assets(AssetsController):
 
         return assets
 
-    def get_total_fiat(self, fiat="USDC"):
+    def get_total_fiat(self):
         """
         Simplified version of balance_estimate
 
@@ -271,10 +282,9 @@ class Assets(AssetsController):
             float: total BTC estimated in the SPOT wallet
             then converted into USDC
         """
-        fiat = self.get_fiat_coin()
         wallet_balance = self.get_wallet_balance()
-        get_usdc_btc_rate = self.ticker(symbol=f"BTC{fiat}", json=False)
-        total_balance = 0
+        get_usdc_btc_rate = self.ticker(symbol=f"BTC{self.fiat}", json=False)
+        total_balance: float = 0
         rate = float(get_usdc_btc_rate["price"])
         for item in wallet_balance:
             if item["activate"]:
@@ -283,7 +293,7 @@ class Assets(AssetsController):
         total_fiat = total_balance * rate
         return total_fiat
 
-    def get_available_fiat(self, fiat="USDC"):
+    def get_available_fiat(self):
         """
         Simplified version of balance_estimate
         to get free/avaliable USDC.
@@ -297,17 +307,16 @@ class Assets(AssetsController):
         transferred back to the SPOT wallet.
 
         Returns:
-            str: total USDC available to 
+            str: total USDC available to
         """
         total_balance = self.get_raw_balance()
         for item in total_balance:
-            if item["asset"] == fiat:
+            if item["asset"] == self.fiat:
                 return float(item["free"])
         else:
             return 0
 
-
-    def disable_isolated_accounts(self, symbol=None):
+    def disable_isolated_accounts(self):
         """
         Check and disable isolated accounts
         """
@@ -317,10 +326,18 @@ class Assets(AssetsController):
             # Liquidate price = 0 guarantees there is no loan unpaid
             if float(item["liquidatePrice"]) == 0:
                 if float(item["baseAsset"]["free"]) > 0:
-                    self.transfer_isolated_margin_to_spot(asset=item["baseAsset"]["asset"], symbol=item["symbol"], amount=float(item["baseAsset"]["free"]))
-                
+                    self.transfer_isolated_margin_to_spot(
+                        asset=item["baseAsset"]["asset"],
+                        symbol=item["symbol"],
+                        amount=float(item["baseAsset"]["free"]),
+                    )
+
                 if float(item["quoteAsset"]["free"]) > 0:
-                    self.transfer_isolated_margin_to_spot(asset=item["quoteAsset"]["asset"], symbol=item["symbol"], amount=float(item["quoteAsset"]["free"]))
+                    self.transfer_isolated_margin_to_spot(
+                        asset=item["quoteAsset"]["asset"],
+                        symbol=item["symbol"],
+                        amount=float(item["quoteAsset"]["free"]),
+                    )
 
                 self.disable_isolated_margin_account(item["symbol"])
                 msg = "Sucessfully finished disabling isolated margin accounts."
@@ -338,10 +355,17 @@ class Assets(AssetsController):
         """
 
         try:
-            self.margin_liquidation(pair, self.qty_precision(pair))
+            active_bot = self._db.bots.find_one({"status": Status.active, "pair": pair})
+            deal = CreateDealController(
+                active_bot,
+                db_collection="bots"
+            )
+            deal.margin_liquidation(pair)
             return json_response_message(f"Successfully liquidated {pair}")
         except MarginLoanNotFound as error:
-            return json_response_message(f"{error}. Successfully cleared isolated pair {pair}")
+            return json_response_message(
+                f"{error}. Successfully cleared isolated pair {pair}"
+            )
         except BinanceErrors as error:
             return json_response_error(f"Error liquidating {pair}: {error.message}")
 
@@ -349,21 +373,25 @@ class Assets(AssetsController):
         get_ticker_data = self.ticker_24()
         all_coins = []
         for item in get_ticker_data:
-             if item["symbol"].endswith("USDC"):
-                all_coins.append({
-                    "symbol": item["symbol"],
-                    "priceChangePercent": item["priceChangePercent"],
-                    "volume": item["volume"],
-                    "price": item["lastPrice"]
-                })
+            if item["symbol"].endswith("USDC"):
+                all_coins.append(
+                    {
+                        "symbol": item["symbol"],
+                        "priceChangePercent": item["priceChangePercent"],
+                        "volume": item["volume"],
+                        "price": item["lastPrice"],
+                    }
+                )
 
-        all_coins = sorted(all_coins, key=lambda item: float(item["priceChangePercent"]), reverse=True)
+        all_coins = sorted(
+            all_coins, key=lambda item: float(item["priceChangePercent"]), reverse=True
+        )
         try:
             current_time = datetime.now()
             self._db.market_domination.insert_one(
                 {
-                    "time": current_time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
-                    "data": all_coins
+                    "time": current_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                    "data": all_coins,
                 }
             )
             return json_response_message("Successfully stored market domination data.")

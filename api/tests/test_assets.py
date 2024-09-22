@@ -33,6 +33,7 @@ def patch_database(monkeypatch):
 
     monkeypatch.setattr(Assets, "_db", new_init)
     monkeypatch.setattr(Assets, "get_market_domination", lambda a, size, *arg: data)
+    monkeypatch.setattr(Assets, "get_fiat_coin", lambda self: "USDC")
 
 
 @pytest.fixture()
@@ -113,7 +114,7 @@ def patch_store_balance(monkeypatch):
     )
 
 
-def test_get_market_domination(monkeypatch, patch_database):
+def test_get_market_domination(patch_database):
 
     response = app_client.get("/account/market-domination")
 

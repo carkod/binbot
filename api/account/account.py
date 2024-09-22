@@ -6,7 +6,7 @@ from tools.handle_error import (
     json_response_message,
     json_response_error,
 )
-from db import setup_db
+from database.mongodb.db import setup_db
 from requests_cache import CachedSession, MongoCache
 from pymongo import MongoClient
 import os
@@ -17,14 +17,14 @@ from decimal import Decimal
 class Account(BinbotApi):
     def __init__(self):
         self.db = setup_db()
-        self.price_precision = 0
-        self.qty_precision = 0
+        self.price_precision: float = 0
+        self.qty_precision: float = 0
         pass
 
     def setup_mongocache(self):
-        mongo = MongoClient(
+        mongo: MongoClient = MongoClient(
             host=os.getenv("MONGO_HOSTNAME"),
-            port=int(os.getenv("MONGO_PORT")),
+            port=int(os.getenv("MONGO_PORT", 2017)),
             authSource="admin",
             username=os.getenv("MONGO_AUTH_USERNAME"),
             password=os.getenv("MONGO_AUTH_PASSWORD"),

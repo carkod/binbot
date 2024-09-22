@@ -7,6 +7,7 @@ from deals.models import DealModel
 from bots.schemas import BotSchema
 from tools.enum_definitions import Status, AutotradeSettingsDocument
 
+
 def get_mongo_client():
     client = MongoClient(
         host=os.getenv("MONGO_HOSTNAME"),
@@ -17,17 +18,20 @@ def get_mongo_client():
     )
     return client
 
+
 def setup_db():
     # Database
     mongo = get_mongo_client()
     db = mongo[os.getenv("MONGO_APP_DATABASE")]
     return db
 
+
 def setup_kafka_db():
     # Database
     mongo = get_mongo_client()
     db = mongo[os.getenv("MONGO_KAFKA_DATABASE")]
     return db
+
 
 class Database:
     """
@@ -39,6 +43,7 @@ class Database:
     that can be independently triggered, where
     only dependency is the _db instance
     """
+
     _db = setup_db()
 
     def get_fiat_coin(self):
@@ -46,7 +51,9 @@ class Database:
         settings = self._db.research_controller.find_one({"_id": document_id})
         return settings["balance_to_use"]
 
-    def save_bot_streaming(self, active_bot: BotSchema, db_collection_name: str="bots"):
+    def save_bot_streaming(
+        self, active_bot: BotSchema, db_collection_name: str = "bots"
+    ):
         """
         MongoDB query to save bot using Pydantic
 
@@ -73,7 +80,9 @@ class Database:
         active_bot = BotSchema.model_validate(response)
         return active_bot
 
-    def update_deal_logs(self, message, active_bot: BotSchema, db_collection_name: str="bots"):
+    def update_deal_logs(
+        self, message, active_bot: BotSchema, db_collection_name: str = "bots"
+    ):
         """
         Use this function if independently updating Event logs (deal.errors list)
         especially useful if a certain operation might fail in an exception
@@ -92,7 +101,9 @@ class Database:
         active_bot.errors = result["errors"]
         return result
 
-    def create_new_bot_streaming(self, active_bot: BotSchema, db_collection_name: str="bots"):
+    def create_new_bot_streaming(
+        self, active_bot: BotSchema, db_collection_name: str = "bots"
+    ):
         """
         Resets bot to initial state and saves it to DB
 
@@ -116,4 +127,3 @@ class Database:
         new_bot_class = BotSchema(**new_bot)
 
         return new_bot_class
-

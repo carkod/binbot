@@ -10,7 +10,7 @@ from tools.handle_error import (
 )
 from bson.objectid import ObjectId
 from auth import enconde_access_token
-from db import setup_db
+from database.mongodb.db import setup_db
 from user.schemas import UserSchema
 from fastapi.encoders import jsonable_encoder
 

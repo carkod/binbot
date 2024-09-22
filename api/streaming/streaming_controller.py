@@ -7,7 +7,7 @@ from bots.schemas import BotSchema
 from autotrade.controller import AutotradeSettingsController
 from bots.controllers import Bot
 from tools.enum_definitions import Status, Strategy
-from db import Database
+from database.mongodb.db import Database
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from tools.exceptions import BinanceErrors
@@ -16,13 +16,18 @@ from tools.exceptions import BinanceErrors
 class BaseStreaming(Database):
 
     def get_current_bot(self, symbol):
-        current_bot = Bot(collection_name="bots").get_one(symbol=symbol, status=Status.active)
+        current_bot = Bot(collection_name="bots").get_one(
+            symbol=symbol, status=Status.active
+        )
         return current_bot
 
     def get_current_test_bot(self, symbol):
-        current_test_bot = Bot(collection_name="paper_trading").get_one(symbol=symbol, status=Status.active)
+        current_test_bot = Bot(collection_name="paper_trading").get_one(
+            symbol=symbol, status=Status.active
+        )
         current_test_bot = current_test_bot
         return current_test_bot
+
 
 class StreamingController(BaseStreaming):
     def __init__(self, consumer):
@@ -135,6 +140,7 @@ class StreamingController(BaseStreaming):
 
         return
 
+
 class BbspreadsUpdater(BaseStreaming):
     def __init__(self):
         self.current_bot: BotSchema | None = None
@@ -154,18 +160,36 @@ class BbspreadsUpdater(BaseStreaming):
         activated_bot = bot_instance.activate(bot)
         return activated_bot
 
-    def update_bots_parameters(self, bot: BotSchema, bb_spreads, collection_name="bots"):
+    def update_bots_parameters(
+        self, bot: BotSchema, bb_spreads, collection_name="bots"
+    ):
 
         # multiplied by 1000 to get to the same scale stop_loss
-        top_spread = round_numbers(abs((bb_spreads["bb_high"] - bb_spreads["bb_mid"]) / bb_spreads["bb_high"]) * 100, 2)
-        whole_spread = round_numbers(abs((bb_spreads["bb_high"] - bb_spreads["bb_low"]) / bb_spreads["bb_high"]) * 100, 2)
-        bottom_spread = round_numbers(abs((bb_spreads["bb_mid"] - bb_spreads["bb_low"]) / bb_spreads["bb_mid"]) * 100, 2)
+        top_spread = round_numbers(
+            abs((bb_spreads["bb_high"] - bb_spreads["bb_mid"]) / bb_spreads["bb_high"])
+            * 100,
+            2,
+        )
+        whole_spread = round_numbers(
+            abs((bb_spreads["bb_high"] - bb_spreads["bb_low"]) / bb_spreads["bb_high"])
+            * 100,
+            2,
+        )
+        bottom_spread = round_numbers(
+            abs((bb_spreads["bb_mid"] - bb_spreads["bb_low"]) / bb_spreads["bb_mid"])
+            * 100,
+            2,
+        )
 
         # Otherwise it'll close too soon
         if 8 > whole_spread > 2:
 
             # check we are not duplicating the update
-            if bot.take_profit == top_spread and bot.stop_loss == whole_spread and bot.trailling_deviation == bottom_spread:
+            if (
+                bot.take_profit == top_spread
+                and bot.stop_loss == whole_spread
+                and bot.trailling_deviation == bottom_spread
+            ):
                 return
 
             bot.trailling = True
@@ -194,7 +218,6 @@ class BbspreadsUpdater(BaseStreaming):
                     # reactivate includes saving
                     self.reactivate_bot(bot, collection_name=collection_name)
 
-
     def update_close_conditions(self, message):
         """
         Update bot with dynamic trailling enabled to update
@@ -208,9 +231,15 @@ class BbspreadsUpdater(BaseStreaming):
         self.load_current_bots(signalsData.symbol)
 
         bb_spreads = signalsData.bb_spreads
-        if (self.current_bot or self.current_test_bot) and bb_spreads["bb_high"] and bb_spreads["bb_low"] and bb_spreads["bb_mid"]:
+        if (
+            (self.current_bot or self.current_test_bot)
+            and bb_spreads["bb_high"]
+            and bb_spreads["bb_low"]
+            and bb_spreads["bb_mid"]
+        ):
             if self.current_bot:
                 self.update_bots_parameters(self.current_bot, bb_spreads)
             if self.current_test_bot:
-                self.update_bots_parameters(self.current_test_bot, bb_spreads, collection_name="paper_trading")
-
+                self.update_bots_parameters(
+                    self.current_test_bot, bb_spreads, collection_name="paper_trading"
+                )

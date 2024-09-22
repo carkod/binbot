@@ -50,7 +50,6 @@ class CreateDealController(BaseDeal):
 
         return self._qty_precision
 
-
     def get_one_balance(self, symbol="BTC"):
         # Response after request
         data = self.bb_request(url=self.bb_balance_url)
@@ -139,7 +138,7 @@ class CreateDealController(BaseDeal):
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
         self.active_bot.status = Status.completed
-        msg = f"Completed take profit"
+        msg = "Completed take profit"
         self.active_bot.errors.append(msg)
 
         try:
@@ -159,7 +158,7 @@ class CreateDealController(BaseDeal):
 
         return bot
 
-    def close_all(self):
+    def close_all(self) -> None:
         """
         Close all deals and sell pair
         1. Close all deals
@@ -178,7 +177,7 @@ class CreateDealController(BaseDeal):
                         "Failed to close all active orders (status NEW), retrying...",
                         self.active_bot,
                     )
-                    res = self.replace_order(d["orderId"])
+                    self.replace_order(d["orderId"])
 
         # Sell everything
         pair = self.active_bot.pair
@@ -192,7 +191,7 @@ class CreateDealController(BaseDeal):
 
         return
 
-    def update_take_profit(self, order_id):
+    def update_take_profit(self, order_id) -> None:
         """
         Update take profit after websocket order endpoint triggered
         - Close current opened take profit order
@@ -211,7 +210,9 @@ class CreateDealController(BaseDeal):
 
                 # First cancel old order to unlock balance
                 try:
-                    data = OrderController(symbol=bot.pair).delete_order(bot.pair, order_id)
+                    OrderController(symbol=bot.pair).delete_order(
+                        bot.pair, order_id
+                    )
                 except BinbotErrors as error:
                     print(error.message)
                     pass
@@ -220,7 +221,9 @@ class CreateDealController(BaseDeal):
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
-                    price=supress_notation(new_tp_price, self.price_precision(self.active_bot.pair)),
+                    price=supress_notation(
+                        new_tp_price, self.price_precision(self.active_bot.pair)
+                    ),
                 )
 
                 # New take profit order successfully created
@@ -241,7 +244,7 @@ class CreateDealController(BaseDeal):
                 }
                 # Build new deals list
                 new_deals = []
-                for d in bot.deals:
+                for d in bot.orders:
                     if d["deal_type"] != "take_profit":
                         new_deals.append(d)
 
@@ -259,9 +262,11 @@ class CreateDealController(BaseDeal):
                 )
                 return
         else:
-            self.update_deal_logs("Error: Bot does not contain a base order deal", self.active_bot)
+            self.update_deal_logs(
+                "Error: Bot does not contain a base order deal", self.active_bot
+            )
 
-    def open_deal(self):
+    def open_deal(self) -> None:
         """
         Mandatory deals section
 
@@ -309,7 +314,9 @@ class CreateDealController(BaseDeal):
                 )
 
         # Margin short Take profit
-        if float(self.active_bot.take_profit) > 0 and self.active_bot.strategy == "margin_short":
+        if (
+            float(self.active_bot.take_profit) > 0 and self.active_bot.strategy == "margin_short"
+        ):
             self.active_bot = MarginDeal(
                 bot=self.active_bot, db_collection_name=self.db_collection.name
             ).set_margin_take_profit()
