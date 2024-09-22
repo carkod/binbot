@@ -234,7 +234,7 @@ class Bot(Database, Account):
 
         if bot.strategy == Strategy.margin_short:
             order_res = deal_controller.margin_liquidation(
-                bot.pair, self.qty_precision(bot.pair)
+                bot.pair, deal_controller.qty_precision
             )
             panic_close_order = MarginOrderSchema(
                 timestamp=order_res["transactTime"],
@@ -256,7 +256,7 @@ class Bot(Database, Account):
 
             bot.orders.append(panic_close_order)
         else:
-            res = deal_controller.spot_liquidation(bot.pair, self.qty_precision(bot.pair))
+            res = deal_controller.spot_liquidation(bot.pair, deal_controller.qty_precision)
 
             panic_close_order = BinanceOrderModel(
                 timestamp=res["transactTime"],
