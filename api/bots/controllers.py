@@ -189,8 +189,8 @@ class Bot(Database, Account):
 
         return resp
 
-    def activate(self, bot: str | BotSchema):
-        if isinstance(bot, str):
+    def activate(self, bot: dict | BotSchema):
+        if isinstance(bot, dict):
             self.active_bot = BotSchema(**bot)
         else:
             self.active_bot = bot

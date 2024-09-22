@@ -30,7 +30,6 @@ class BaseDeal(OrderController):
             self.active_bot = BotSchema(**bot)
         else:
             self.active_bot = bot
-        super().__init__()
         self.db_collection = self._db[db_collection_name]
         self.market_domination_reversal = None
         if self.active_bot.strategy == Strategy.margin_short:
@@ -38,29 +37,25 @@ class BaseDeal(OrderController):
                 self.active_bot.pair
             )
 
-        self._price_precision = 0
-        self._qty_precision = 0
-        self.symbol = bot.pair
+    def __repr__(self) -> str:
+        """
+        To check that BaseDeal works for all children classes
+        """
+        return f"BaseDeal({self.__dict__})"
 
     @property
-    def price_precision(self) -> int:
+    def price_precision(self):
         if self._price_precision == 0:
-            self._price_precision = self.calculate_price_precision(self.symbol)
+            self._price_precision = self.calculate_price_precision(self.active_bot.pair)
 
         return self._price_precision
 
     @property
     def qty_precision(self):
         if self._qty_precision == 0:
-            self._qty_precision = self.calculate_qty_precision(self.symbol)
+            self._qty_precision = self.calculate_qty_precision(self.active_bot.pair)
 
         return self._qty_precision
-
-    def __repr__(self) -> str:
-        """
-        To check that BaseDeal works for all children classes
-        """
-        return f"BaseDeal({self.__dict__})"
 
     def generate_id(self):
         return uuid.uuid4()
@@ -216,11 +211,9 @@ class BaseDeal(OrderController):
         2. Set take_profit
         """
 
-        pair = self.active_bot.pair
-
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
-        price = float(self.matching_engine(pair, True))
+        price = float(self.matching_engine(self.active_bot.pair, True))
         qty = round_numbers(
             (float(self.active_bot.base_order_size) / float(price)),
             self.qty_precision,
@@ -232,17 +225,17 @@ class BaseDeal(OrderController):
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(
-                pair,
-                supress_notation(price, self.price_precision(self.active_bot.pair)),
+                self.active_bot.pair,
+                supress_notation(price, self.price_precision),
                 qty,
                 "BUY",
             )
         else:
             res = self.buy_order(
-                symbol=pair,
+                symbol=self.active_bot.pair,
                 qty=qty,
                 price=supress_notation(
-                    price, self.price_precision(self.active_bot.pair)
+                    price, self.price_precision
                 ),
             )
 

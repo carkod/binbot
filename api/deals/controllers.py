@@ -34,19 +34,19 @@ class CreateDealController(BaseDeal):
         super().__init__(bot, db_collection)
         self._price_precision = 0
         self._qty_precision = 0
-        self.symbol = bot.pair
+        self.active_bot = bot
 
     @property
-    def price_precision(self, symbol):
+    def price_precision(self):
         if self._price_precision == 0:
-            self._price_precision = self.calculate_price_precision(symbol)
+            self._price_precision = self.calculate_price_precision(self.active_bot.pair)
 
         return self._price_precision
 
     @property
-    def qty_precision(self, symbol):
+    def qty_precision(self):
         if self._qty_precision == 0:
-            self._qty_precision = self.calculate_qty_precision(symbol)
+            self._qty_precision = self.calculate_qty_precision(self.active_bot.pair)
 
         return self._qty_precision
 
@@ -88,7 +88,7 @@ class CreateDealController(BaseDeal):
             qty = self.compute_qty(self.active_bot.pair)
 
         qty = supress_notation(buy_total_qty, self.qty_precision)
-        price = supress_notation(price, self.price_precision(self.active_bot.pair))
+        price = supress_notation(price, self.price_precision)
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
@@ -111,7 +111,7 @@ class CreateDealController(BaseDeal):
                 )
         else:
             qty = supress_notation(qty, self.qty_precision)
-            price = supress_notation(price, self.price_precision(self.active_bot.pair))
+            price = supress_notation(price, self.price_precision)
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         # If error pass it up to parent function, can't continue
@@ -186,7 +186,7 @@ class CreateDealController(BaseDeal):
         if balance:
             qty = round_numbers(balance, self.qty_precision)
             price = float(self.matching_engine(pair, True, qty))
-            price = supress_notation(price, self.price_precision(self.active_bot.pair))
+            price = supress_notation(price, self.price_precision)
             self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         return
@@ -222,7 +222,7 @@ class CreateDealController(BaseDeal):
                     symbol=self.active_bot.pair,
                     qty=qty,
                     price=supress_notation(
-                        new_tp_price, self.price_precision(self.active_bot.pair)
+                        new_tp_price, self.price_precision
                     ),
                 )
 
@@ -310,7 +310,7 @@ class CreateDealController(BaseDeal):
                     buy_price * float(self.active_bot.stop_loss) / 100
                 )
                 self.active_bot.deal.stop_loss_price = supress_notation(
-                    stop_loss_price, self.price_precision(self.active_bot.pair)
+                    stop_loss_price, self.price_precision
                 )
 
         # Margin short Take profit
