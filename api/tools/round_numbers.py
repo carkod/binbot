@@ -35,7 +35,7 @@ def round_numbers_ceiling(value, decimals=6):
     return float(result)
 
 
-def supress_notation(num: float, precision: int = 0):
+def supress_notation(num: float, precision: int = 0) -> str:
     """
     Supress scientific notation
     e.g. 8e-5 = "0.00008"

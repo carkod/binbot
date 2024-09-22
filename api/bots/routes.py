@@ -3,7 +3,7 @@ from tools.handle_error import json_response, json_response_error, json_response
 from bots.controllers import Bot
 from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
 from typing import List
-from tools.exceptions import BinanceErrors, BinbotErrors
+from tools.exceptions import BinanceErrors, BinbotErrors, InsufficientBalance
 
 bot_blueprint = APIRouter()
 
@@ -98,10 +98,19 @@ def activate_by_id(id: str):
 @bot_blueprint.delete("/bot/deactivate/{id}", tags=["bots"])
 def deactivate(id: str):
     """
-    Deactivation means closing all deals and selling to GBP
-    Otherwise losses will be incurred
+    Deactivation means closing all deals and selling to
+    fiat. This is often used to prevent losses
     """
-    return Bot(collection_name="bots").deactivate(id)
+    try:
+        document = Bot(collection_name="bots").deactivate(id)
+        if document:
+            return json_response_message("Active orders closed, sold base asset, deactivated")
+        else:
+            return json_response_error(f"Error deactivating bot: {error}")
+    except InsufficientBalance as error:
+        return json_response_error(f"Error deactivating bot: {error}")
+    except Exception as error:
+        return json_response_error(f"Error deactivating bot: {error}")
 
 
 @bot_blueprint.put("/bot/archive/{id}", tags=["bots"])

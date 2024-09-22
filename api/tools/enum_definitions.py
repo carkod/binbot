@@ -129,6 +129,7 @@ class DealType(str, Enum):
     short_sell = "short_sell"
     short_buy = "short_buy"
     margin_short = "margin_short"
+    panic_close = "panic_close"
 
     def __str__(self):
         return str(self.str)
@@ -149,6 +150,15 @@ class BinanceKlineIntervals(str, Enum):
     three_days = "3d"
     one_week = "1w"
     one_month = "1M"
+
+    def __str__(self):
+        return str(self.str)
+
+class AutotradeSettingsDocument(str, Enum):
+    # Autotrade settings for test bots
+    test_autotrade_settings = "test_autotrade_settings"
+    # Autotrade settings for real bots
+    settings = "settings"
 
     def __str__(self):
         return str(self.str)

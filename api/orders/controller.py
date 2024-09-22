@@ -2,9 +2,8 @@ from account.account import Account
 from tools.exceptions import DeleteOrderError
 from db import Database
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
-from tools.handle_error import json_response, json_response_error, json_response_message
+from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation
-from decimal import Decimal
 
 
 poll_percentage = 0
@@ -17,28 +16,23 @@ class OrderController(Database, Account):
     PRICE_FILTER decimals
     """
 
-    def __init__(self, symbol) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.symbol = symbol
         self.save_bot_streaming = self.save_bot_streaming
         pass
 
     @property
-    def price_precision(self):
-        self._price_precision = -1 * (
-            Decimal(str(self.price_filter_by_symbol(self.symbol, "tickSize")))
-            .as_tuple()
-            .exponent
-        )
+    def price_precision(self, symbol):
+        if self._price_precision == 0:
+            self._price_precision = self.calculate_price_precision(symbol)
+
         return self._price_precision
 
     @property
-    def qty_precision(self):
-        self._qty_precision = -1 * (
-            Decimal(str(self.lot_size_by_symbol(self.symbol, "stepSize")))
-            .as_tuple()
-            .exponent
-        )
+    def qty_precision(self, symbol):
+        if self._qty_precision == 0:
+            self._qty_precision = self.calculate_qty_precision(symbol)
+
         return self._qty_precision
 
     def zero_remainder(self, x):
@@ -62,7 +56,7 @@ class OrderController(Database, Account):
                 "side": OrderSide.sell,
                 "type": OrderType.limit,
                 "timeInForce": TimeInForce.gtc,
-                "price": supress_notation(price, self.price_precision),
+                "price": supress_notation(price, self.price_precision(symbol)),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
 
@@ -70,7 +64,7 @@ class OrderController(Database, Account):
             # create iceberg orders
             if not book_price:
                 payload["iceberg_qty"] = self.zero_remainder(qty)
-                payload["price"] = supress_notation(book_price, self.price_precision)
+                payload["price"] = supress_notation(book_price, self.price_precision(symbol))
             
         else:
             payload = {
@@ -104,14 +98,14 @@ class OrderController(Database, Account):
                 "side": OrderSide.buy,
                 "type": OrderType.limit,
                 "timeInForce": TimeInForce.gtc,
-                "price": supress_notation(book_price, self.price_precision),
+                "price": supress_notation(book_price, self.price_precision(symbol)),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
             # If price is not provided by matching engine,
             # create iceberg orders
             if not book_price:
                 payload["iceberg_qty"] = self.zero_remainder(qty)
-                payload["price"] = supress_notation(book_price, self.price_precision)
+                payload["price"] = supress_notation(book_price, self.price_precision(symbol))
 
         else:
             payload = {

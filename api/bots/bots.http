@@ -1,0 +1,4 @@
+### Test deactivation
+
+DELETE http://localhost:8008/bot/deactivate/66edb7789c9b682fbfcd53cf HTTP/1.1
+content-Type: application/json
