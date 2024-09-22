@@ -15,7 +15,7 @@ from typing import List
 from fastapi import Query
 from bots.schemas import BotSchema, ErrorsRequestBody
 from deals.controllers import CreateDealController
-from tools.exceptions import InsufficientBalance
+from tools.exceptions import BinanceErrors, InsufficientBalance
 
 
 class Bot(Database, Account):
@@ -217,13 +217,15 @@ class Bot(Database, Account):
         if len(bot.orders) > 0:
             for d in bot.orders:
                 if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
-                    order_id = d["order_id"]
-                    requests.delete(
-                        url=f'{self.bb_close_order_url}/{bot["pair"]}/{order_id}'
-                    )
-                    self.update_deal_logs(
-                        f"Failed to delete opened order {order_id}.", bot
-                    )
+                    order_id = d.order_id
+                    try:
+                        self.delete_opened_order(bot.pair, order_id)
+                    except BinanceErrors as error:
+                        if error.code == -2011:
+                            self.update_deal_logs(
+                                "Order not found. Most likely not completed", bot
+                            )
+                            pass
 
         if not bot.deal.buy_total_qty or bot.deal.buy_total_qty == 0:
             msg = "Not enough balance to close and sell"
@@ -233,9 +235,7 @@ class Bot(Database, Account):
         deal_controller = CreateDealController(bot, db_collection="bots")
 
         if bot.strategy == Strategy.margin_short:
-            order_res = deal_controller.margin_liquidation(
-                bot.pair, deal_controller.qty_precision
-            )
+            order_res = deal_controller.margin_liquidation(bot.pair)
             panic_close_order = MarginOrderSchema(
                 timestamp=order_res["transactTime"],
                 deal_type=DealType.panic_close,
@@ -256,7 +256,20 @@ class Bot(Database, Account):
 
             bot.orders.append(panic_close_order)
         else:
-            res = deal_controller.spot_liquidation(bot.pair, deal_controller.qty_precision)
+            try:
+                res = deal_controller.spot_liquidation(bot.pair)
+
+            except InsufficientBalance as error:
+                self.update_deal_logs(str(error), bot)
+                bot.status = Status.error
+
+                document = self.db_collection.find_one_and_update(
+                    {"id": self.active_bot.id},
+                    {"$set": bot},
+                    return_document=ReturnDocument.AFTER,
+                )
+
+                return document
 
             panic_close_order = BinanceOrderModel(
                 timestamp=res["transactTime"],

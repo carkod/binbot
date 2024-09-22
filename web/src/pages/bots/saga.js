@@ -217,7 +217,7 @@ export function* deactivateBot(payload) {
   const id = payload.data;
   const requestURL = `${process.env.REACT_APP_DEACTIVATE_BOT}/${id}`;
   try {
-    const res = yield call(request, requestURL);
+    const res = yield call(request, requestURL, "DELETE");
     yield put(deactivateBotSucceeded(res));
   } catch (err) {
     yield put(deactivateBotFailed(err));

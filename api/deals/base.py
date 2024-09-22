@@ -7,7 +7,7 @@ from orders.controller import OrderController
 from bots.schemas import BotSchema
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 from tools.handle_error import encode_json
-from tools.exceptions import BinanceErrors, DealCreationError, MarginLoanNotFound
+from tools.exceptions import BinanceErrors, DealCreationError, InsufficientBalance, MarginLoanNotFound
 from tools.enum_definitions import DealType, Status, Strategy
 
 
@@ -408,6 +408,7 @@ class BaseDeal(OrderController):
                     method="POST", url=self.bb_sell_market_order_url, json=order
                 )
             return order_res
+        raise InsufficientBalance("Not enough balance to liquidate. Most likely bot closed already")
 
     def render_market_domination_reversal(self):
         """

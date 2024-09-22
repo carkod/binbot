@@ -9,13 +9,18 @@ from tools.handle_error import handle_binance_errors, json_response, json_respon
 from tools.exceptions import IsolateBalanceError
 from py3cw.request import Py3CW
 
+
 class BinanceApi:
     """
     Binance API URLs
     https://binance.github.io/binance-api-swagger/
     """
 
-    api_servers = ["https://api.binance.com", "https://api3.binance.com", "https://api-gcp.binance.com"]
+    api_servers = [
+        "https://api.binance.com",
+        "https://api3.binance.com",
+        "https://api-gcp.binance.com",
+    ]
     market_api_servers = ["https://data-api.binance.vision", "https://api3.binance.com"]
     BASE = api_servers[randrange(2) - 1]
     MARKET_DATA_BASE = market_api_servers[randrange(3) - 1]
@@ -61,7 +66,7 @@ class BinanceApi:
     margin_order = f"{BASE}/sapi/v1/margin/order"
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
 
-    def request(self, url, method="GET", session: Session=None, payload={}, **kwargs):
+    def request(self, url, method="GET", session: Session = None, payload={}, **kwargs):
         """
         Standard request
         - No signed
@@ -117,6 +122,7 @@ class BinanceApi:
     """
     No security endpoints
     """
+
     def ticker_24(self, type: str = "FULL", symbol: str | None = None):
         """
         Weight 40 without symbol
@@ -124,19 +130,19 @@ class BinanceApi:
 
         Using cache
         """
-        params = {
-            "type": type
-        }
+        params = {"type": type}
         if symbol:
             params["symbol"] = symbol
-        
+
         # mongo_cache = self.setup_mongocache()
         # expire_after = 15m because candlesticks are 15m
         # session = CachedSession('ticker_24_cache', backend=mongo_cache, expire_after=15)
         data = self.request(url=self.ticker24_url, params=params)
         return data
 
-    def get_raw_klines(self, symbol, interval, limit=500, start_time=None, end_time=None):
+    def get_raw_klines(
+        self, symbol, interval, limit=500, start_time=None, end_time=None
+    ):
         """
         Get raw klines
         """
@@ -156,6 +162,7 @@ class BinanceApi:
     """
     USER_DATA endpoints
     """
+
     def get_account_balance(self):
         """
         Get account balance
@@ -175,11 +182,17 @@ class BinanceApi:
         return data
 
     def cancel_margin_order(self, symbol, order_id):
-        return self.signed_request(self.margin_order, method="DELETE", payload={"symbol": symbol, "orderId": order_id})
+        return self.signed_request(
+            self.margin_order,
+            method="DELETE",
+            payload={"symbol": symbol, "orderId": order_id},
+        )
 
     def enable_isolated_margin_account(self, symbol):
-        return self.signed_request(self.isolated_account_url, method="POST", payload={"symbol": symbol})
-    
+        return self.signed_request(
+            self.isolated_account_url, method="POST", payload={"symbol": symbol}
+        )
+
     def disable_isolated_margin_account(self, symbol):
         """
         Very high weight, use as little as possible
@@ -187,20 +200,44 @@ class BinanceApi:
         There is a cronjob that disables all margin isolated accounts everyday
         check market_updates
         """
-        return self.signed_request(self.isolated_account_url, method="DELETE", payload={"symbol": symbol})
+        return self.signed_request(
+            self.isolated_account_url, method="DELETE", payload={"symbol": symbol}
+        )
 
     def get_isolated_account(self, symbol):
         """
         https://developers.binance.com/docs/margin_trading/account/Query-Isolated-Margin-Account-Info
         Request weight: 10(IP)
         """
-        return self.signed_request(self.isolated_account_url, payload={"symbol": symbol})
+        return self.signed_request(
+            self.isolated_account_url, payload={"symbol": symbol}
+        )
 
     def transfer_isolated_margin_to_spot(self, asset, symbol, amount):
-        return self.signed_request(self.margin_isolated_transfer_url, method="POST", payload={"transFrom": "ISOLATED_MARGIN", "transTo": "SPOT", "asset": asset, "symbol": symbol, "amount": amount})
+        return self.signed_request(
+            self.margin_isolated_transfer_url,
+            method="POST",
+            payload={
+                "transFrom": "ISOLATED_MARGIN",
+                "transTo": "SPOT",
+                "asset": asset,
+                "symbol": symbol,
+                "amount": amount,
+            },
+        )
 
     def transfer_spot_to_isolated_margin(self, asset: str, symbol: str, amount: str):
-        return self.signed_request(self.margin_isolated_transfer_url, method="POST", payload={"transFrom": "SPOT", "transTo": "ISOLATED_MARGIN", "asset": asset, "symbol": symbol, "amount": amount})
+        return self.signed_request(
+            self.margin_isolated_transfer_url,
+            method="POST",
+            payload={
+                "transFrom": "SPOT",
+                "transTo": "ISOLATED_MARGIN",
+                "asset": asset,
+                "symbol": symbol,
+                "amount": amount,
+            },
+        )
 
     def create_margin_loan(self, asset, symbol, amount, isIsolated=True):
         if not isIsolated:
@@ -208,19 +245,48 @@ class BinanceApi:
         else:
             isIsolated = "TRUE"
 
-        return self.signed_request(self.loan_record_url, method="POST", payload={"asset": asset, "symbol": symbol, "amount": amount, "isIsolated": isIsolated})
+        return self.signed_request(
+            self.loan_record_url,
+            method="POST",
+            payload={
+                "asset": asset,
+                "symbol": symbol,
+                "amount": amount,
+                "isIsolated": isIsolated,
+            },
+        )
 
-    def get_max_borrow(self, asset, isolated_symbol:str | None = None):
-        return self.signed_request(self.max_borrow_url, payload={"asset": asset, "isolatedSymbol":  isolated_symbol })
+    def get_max_borrow(self, asset, isolated_symbol: str | None = None):
+        return self.signed_request(
+            self.max_borrow_url,
+            payload={"asset": asset, "isolatedSymbol": isolated_symbol},
+        )
 
     def get_margin_loan_details(self, asset: str, isolatedSymbol: str):
-        return self.signed_request(self.loan_record_url, payload={"asset": asset, "isolatedSymbol": isolatedSymbol})
+        return self.signed_request(
+            self.loan_record_url,
+            payload={"asset": asset, "isolatedSymbol": isolatedSymbol},
+        )
 
     def get_margin_repay_details(self, asset: str, isolatedSymbol: str):
-        return self.signed_request(self.margin_repay_url, payload={"asset": asset, "isolatedSymbol": isolatedSymbol})
+        return self.signed_request(
+            self.margin_repay_url,
+            payload={"asset": asset, "isolatedSymbol": isolatedSymbol},
+        )
 
-    def repay_margin_loan(self, asset: str, symbol: str, amount: float, isIsolated: str):
-        return self.signed_request(self.margin_repay_url, method="POST", payload={"asset": asset, "symbol": symbol, "amount": amount, "isIsolated": isIsolated})
+    def repay_margin_loan(
+        self, asset: str, symbol: str, amount: float, isIsolated: str
+    ):
+        return self.signed_request(
+            self.margin_repay_url,
+            method="POST",
+            payload={
+                "asset": asset,
+                "symbol": symbol,
+                "amount": amount,
+                "isIsolated": isIsolated,
+            },
+        )
 
     def get_isolated_balance(self, symbol=None) -> List:
         """
@@ -235,7 +301,9 @@ class BinanceApi:
         info = self.signed_request(url=self.isolated_account_url, payload=payload)
         assets = info["assets"]
         if len(assets) == 0:
-            raise IsolateBalanceError("Hit symbol 24hr restriction or not available (requires transfer in)")
+            raise IsolateBalanceError(
+                "Hit symbol 24hr restriction or not available (requires transfer in)"
+            )
         return assets
 
     def get_isolated_balance_total(self):
@@ -246,9 +314,11 @@ class BinanceApi:
         because this is the one that supports the most assets
         """
         info = self.signed_request(url=self.isolated_account_url, payload={})
-        assets = info['totalNetAssetOfBtc']
+        assets = info["totalNetAssetOfBtc"]
         if len(assets) == 0:
-            raise IsolateBalanceError("Hit symbol 24hr restriction or not available (requires transfer in)")
+            raise IsolateBalanceError(
+                "Hit symbol 24hr restriction or not available (requires transfer in)"
+            )
         return assets
 
     def transfer_dust(self, assets: List[str]):
@@ -256,7 +326,9 @@ class BinanceApi:
         Transform small balances to BNB
         """
         list_assets = ",".join(assets)
-        response = self.signed_request(url=self.dust_transfer_url, method="POST", payload={"asset": list_assets})
+        response = self.signed_request(
+            url=self.dust_transfer_url, method="POST", payload={"asset": list_assets}
+        )
         return response
 
     def query_open_orders(self, symbol):
@@ -269,7 +341,7 @@ class BinanceApi:
         open_orders = self.signed_request(self.open_orders, payload={"symbol": symbol})
         return open_orders
 
-    def get_all_orders(self, symbol, order_id : int=None, start_time=None):
+    def get_all_orders(self, symbol, order_id: int = None, start_time=None):
         """
         Get all orders given symbol and order_id
 
@@ -285,14 +357,27 @@ class BinanceApi:
         At least one of order_id or (start_time and end_time) must be sent
         """
         if order_id > 0:
-            return self.signed_request(self.all_orders_url, payload={"symbol": symbol, "orderId": order_id})
-        
+            return self.signed_request(
+                self.all_orders_url, payload={"symbol": symbol, "orderId": order_id}
+            )
+
         elif start_time:
-            return self.signed_request(self.all_orders_url, payload={"symbol": symbol, "startTime": start_time})
+            return self.signed_request(
+                self.all_orders_url, payload={"symbol": symbol, "startTime": start_time}
+            )
 
         else:
-            raise ValueError("At least one of order_id or (start_time and end_time) must be sent")
+            raise ValueError(
+                "At least one of order_id or (start_time and end_time) must be sent"
+            )
 
+    def delete_opened_order(self, symbol, order_id):
+        """
+        Cancel single order
+        """
+        return self.signed_request(
+            self.order_url, method="DELETE", payload={"symbol": symbol, "orderId": order_id}
+        )
 
 
 class BinbotApi(BinanceApi):

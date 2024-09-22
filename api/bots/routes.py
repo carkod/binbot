@@ -99,14 +99,9 @@ def deactivate(id: str):
     fiat. This is often used to prevent losses
     """
     try:
-        document = Bot(collection_name="bots").deactivate(id)
-        if document:
-            return json_response_message("Active orders closed, sold base asset, deactivated")
-        else:
-            return json_response_error(f"Error deactivating bot: {error}")
+        Bot(collection_name="bots").deactivate(id)
+        return json_response_message("Active orders closed, sold base asset, deactivated")
     except InsufficientBalance as error:
-        return json_response_error(f"Error deactivating bot: {error}")
-    except Exception as error:
         return json_response_error(f"Error deactivating bot: {error}")
 
 
