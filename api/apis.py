@@ -18,6 +18,7 @@ class BinanceApi:
 
     api_servers = [
         "https://api.binance.com",
+        "https://api1.binance.com",
         "https://api3.binance.com",
         "https://api-gcp.binance.com",
     ]
@@ -28,10 +29,11 @@ class BinanceApi:
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 
     recvWindow = 9000
-    secret = os.getenv("BINANCE_SECRET")
-    key = os.getenv("BINANCE_KEY")
+    secret: str = os.getenv("BINANCE_SECRET", "abc")
+    key: str = os.getenv("BINANCE_KEY", "abc")
     server_time_url = f"{MARKET_DATA_BASE}/api/v3/time"
-    account_url = f"{BASE}/api/v3/account"
+    # Binance always returning forbidden for other APIs
+    account_url = f"{api_servers[1]}/api/v3/account"
     exchangeinfo_url = f"{MARKET_DATA_BASE}/api/v3/exchangeInfo"
     ticker_price_url = f"{MARKET_DATA_BASE}/api/v3/ticker/price"
     ticker24_url = f"{MARKET_DATA_BASE}/api/v3/ticker/24hr"
@@ -46,7 +48,7 @@ class BinanceApi:
     wallet_balance_url = f"{BASE}/sapi/v1/asset/wallet/balance"
 
     # order, user data, only works with api.binance host
-    user_data_stream = f"https://api.binance.com/api/v3/userDataStream"
+    user_data_stream = "https://api.binance.com/api/v3/userDataStream"
 
     withdraw_url = f"{BASE}/wapi/v3/withdraw.html"
     withdraw_history_url = f"{BASE}/wapi/v3/withdrawHistory.html"
@@ -66,7 +68,9 @@ class BinanceApi:
     margin_order = f"{BASE}/sapi/v1/margin/order"
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
 
-    def request(self, url, method="GET", session: Session = None, payload={}, **kwargs):
+    def request(
+        self, url, method="GET", session: Session = None, payload: dict = {}, **kwargs
+    ):
         """
         Standard request
         - No signed
@@ -83,7 +87,7 @@ class BinanceApi:
         data = self.request(url=self.server_time_url)
         return data["serverTime"]
 
-    def signed_request(self, url, method="GET", payload={}):
+    def signed_request(self, url, method="GET", payload: dict = {}):
         """
         USER_DATA, TRADE signed requests
         """
@@ -376,7 +380,9 @@ class BinanceApi:
         Cancel single order
         """
         return self.signed_request(
-            self.order_url, method="DELETE", payload={"symbol": symbol, "orderId": order_id}
+            self.order_url,
+            method="DELETE",
+            payload={"symbol": symbol, "orderId": order_id},
         )
 
 

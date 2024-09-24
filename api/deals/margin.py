@@ -15,6 +15,7 @@ from tools.round_numbers import round_numbers, supress_notation, round_numbers_c
 
 class MarginDeal(BaseDeal):
     def __init__(self, bot, db_collection_name) -> None:
+        self.active_bot: BotSchema
         # Inherit from parent class
         super().__init__(bot, db_collection_name=db_collection_name)
         self.base_producer = BaseProducer()
@@ -92,15 +93,15 @@ class MarginDeal(BaseDeal):
                 self.update_deal_logs(
                     "Old take profit order cancelled", self.active_bot
                 )
-            except HTTPError as error:
+            except HTTPError:
                 self.update_deal_logs(
                     "Take profit order not found, no need to cancel", self.active_bot
                 )
                 return
 
-            except Exception as error:
+            except BinanceErrors as error:
                 # Most likely old error out of date orderId
-                if error.args[1] == -2011:
+                if error.code == -2011:
                     return
 
         return
@@ -317,7 +318,6 @@ class MarginDeal(BaseDeal):
             try:
                 # get new balance
                 self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-                print(f"Transfering leftover isolated assets back to Spot")
                 if float(self.isolated_balance[0]["quoteAsset"]["free"]) != 0:
                     # transfer back to SPOT account
                     self.transfer_isolated_margin_to_spot(
@@ -563,7 +563,7 @@ class MarginDeal(BaseDeal):
         self.active_bot.deal.buy_total_qty = res["origQty"]
         self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
 
-        msg = f"Completed Stop loss order"
+        msg = "Completed Stop loss order"
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
         self.active_bot = self.save_bot_streaming(self.active_bot)
@@ -616,10 +616,10 @@ class MarginDeal(BaseDeal):
             self.active_bot.deal.margin_short_buy_back_price = res["price"]
             self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
             self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
-            msg = f"Completed Take profit!"
+            msg = "Completed Take profit!"
 
         else:
-            msg = f"Re-completed take profit"
+            msg = "Re-completed take profit"
 
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed

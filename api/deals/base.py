@@ -396,7 +396,7 @@ class BaseDeal(OrderController):
                     "price": supress_notation(price, self.price_precision),
                 }
                 order_res = self.request(
-                    method="POST", url=self.bb_sell_order_url, json=order
+                    method="POST", url=self.bb_sell_order_url, payload=order
                 )
 
             else:
@@ -405,10 +405,11 @@ class BaseDeal(OrderController):
                     "qty": supress_notation(price, self.qty_precision),
                 }
                 order_res = self.request(
-                    method="POST", url=self.bb_sell_market_order_url, json=order
+                    method="POST", url=self.bb_sell_market_order_url, payload=order
                 )
             return order_res
-        raise InsufficientBalance("Not enough balance to liquidate. Most likely bot closed already")
+        else:
+            raise InsufficientBalance("Not enough balance to liquidate. Most likely bot closed already")
 
     def render_market_domination_reversal(self):
         """
