@@ -90,6 +90,10 @@ class BinanceApi:
     def signed_request(self, url, method="GET", payload: dict = {}):
         """
         USER_DATA, TRADE signed requests
+
+        Arguments are all the same as requests
+        except payload, which is centrally formatted
+        here to become a JSON
         """
         session = Session()
         query_string = urlencode(payload, True)
@@ -171,7 +175,8 @@ class BinanceApi:
         """
         Get account balance
         """
-        data = self.signed_request(self.account_url)
+        payload = {"omitZeroBalances": "true"}
+        data = self.signed_request(self.account_url, payload=payload)
         return data
 
     def get_wallet_balance(self):

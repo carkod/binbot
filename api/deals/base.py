@@ -387,26 +387,7 @@ class BaseDeal(OrderController):
     def spot_liquidation(self, pair: str):
         qty = self.compute_qty(pair)
         if qty:
-            price = float(self.matching_engine(pair, False, qty))
-
-            if price and float(supress_notation(qty, self.qty_precision)) < 1:
-                order = {
-                    "pair": pair,
-                    "qty": supress_notation(qty, self.qty_precision),
-                    "price": supress_notation(price, self.price_precision),
-                }
-                order_res = self.request(
-                    method="POST", url=self.bb_sell_order_url, payload=order
-                )
-
-            else:
-                order = {
-                    "pair": pair,
-                    "qty": supress_notation(price, self.qty_precision),
-                }
-                order_res = self.request(
-                    method="POST", url=self.bb_sell_market_order_url, payload=order
-                )
+            order_res = self.sell_order(pair, qty)
             return order_res
         else:
             raise InsufficientBalance("Not enough balance to liquidate. Most likely bot closed already")

@@ -479,10 +479,9 @@ class BotForm extends React.Component {
     this.props.setBot({ margin_short_reversal: value });
   };
 
-  handlePanicSell = () => {
-    this.props
-      .deactivateBot(this.props.bot.id)
-      .then(() => this.props.getBot(this.props.bot.id));
+  handlePanicSell = async () => {
+    await this.props.deactivateBot(this.props.bot.id);
+    await this.props.getBot(this.props.bot.id);
   };
 
   render() {

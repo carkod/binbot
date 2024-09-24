@@ -1,5 +1,4 @@
 from pymongo import ReturnDocument
-import requests
 from time import time
 from datetime import datetime
 from bson.objectid import ObjectId
@@ -198,7 +197,7 @@ class Bot(Database, Account):
         self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
         return bot
 
-    def deactivate(self, findId: str) -> dict:
+    def deactivate(self, bot: BotSchema) -> dict:
         """
         DO NOT USE, LEGACY CODE NEEDS TO BE REVAMPED
         Close all deals, sell pair and deactivate
@@ -206,13 +205,6 @@ class Bot(Database, Account):
         2. Sell Coins
         3. Delete bot
         """
-        bot = self.db_collection.find_one({"id": findId, "status": Status.active})
-        if not bot:
-            return json_response_message("Active bot not found to deactivate.")
-
-        print("Validating BotSchema before deactivation...")
-        bot = BotSchema.model_validate(bot)
-        print("Finished BotSchema validation...")
         # Close all active orders
         if len(bot.orders) > 0:
             for d in bot.orders:
@@ -258,18 +250,11 @@ class Bot(Database, Account):
         else:
             try:
                 res = deal_controller.spot_liquidation(bot.pair)
-
             except InsufficientBalance as error:
-                self.update_deal_logs(str(error), bot)
-                bot.status = Status.error
-
-                document = self.db_collection.find_one_and_update(
-                    {"id": self.active_bot.id},
-                    {"$set": bot},
-                    return_document=ReturnDocument.AFTER,
-                )
-
-                return document
+                self.update_deal_logs(error.message, bot)
+                bot.status = Status.completed
+                bot = self.save_bot_streaming(bot)
+                return bot
 
             panic_close_order = BinanceOrderModel(
                 timestamp=res["transactTime"],
@@ -291,10 +276,10 @@ class Bot(Database, Account):
             bot.orders.append(panic_close_order)
 
         bot.deal = DealModel(
-            buy_timestamp=panic_close_order["transactTime"],
-            buy_price=panic_close_order["price"],
-            buy_total_qty=panic_close_order["origQty"],
-            current_price=panic_close_order["price"],
+            buy_timestamp=res["transactTime"],
+            buy_price=res["price"],
+            buy_total_qty=res["origQty"],
+            current_price=res["price"],
         )
 
         bot.status = Status.completed
@@ -303,7 +288,7 @@ class Bot(Database, Account):
             bot_obj.pop("_id")
 
         document = self.db_collection.find_one_and_update(
-            {"id": self.active_bot.id},
+            {"id": bot.id},
             {"$set": bot},
             return_document=ReturnDocument.AFTER,
         )
