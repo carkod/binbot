@@ -69,7 +69,7 @@ def delete(id: List[str] = Query(...)):
 
 
 @bot_blueprint.get("/bot/activate/{id}", tags=["bots"])
-def activate_by_id(id: str):
+async def activate_by_id(id: str):
     """
     Activate bot
 
@@ -81,7 +81,7 @@ def activate_by_id(id: str):
     bot = bot_instance.get_one(id)
     if bot:
         try:
-            bot_instance.activate(bot)
+            await bot_instance.activate(bot)
             return json_response_message("Successfully activated bot!")
         except BinbotErrors as error:
             bot_instance.post_errors_by_id(id, error.message)

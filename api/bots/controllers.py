@@ -15,6 +15,7 @@ from fastapi import Query
 from bots.schemas import BotSchema, ErrorsRequestBody
 from deals.controllers import CreateDealController
 from tools.exceptions import BinanceErrors, InsufficientBalance
+import asyncio
 
 
 class Bot(Database, Account):
@@ -188,12 +189,13 @@ class Bot(Database, Account):
 
         return resp
 
-    def activate(self, bot: dict | BotSchema):
+    async def activate(self, bot: dict | BotSchema):
         if isinstance(bot, dict):
-            self.active_bot = BotSchema(**bot)
+            self.active_bot = BotSchema.model_validate(bot)
         else:
             self.active_bot = bot
-        CreateDealController(self.active_bot, db_collection="bots").open_deal()
+
+        await CreateDealController(self.active_bot, db_collection="bots").open_deal()
         self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
         return bot
 

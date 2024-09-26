@@ -21,20 +21,6 @@ class OrderController(Database, Account):
         self.save_bot_streaming = self.save_bot_streaming
         pass
 
-    @property
-    def price_precision(self, symbol):
-        if self._price_precision == 0:
-            self._price_precision = self.calculate_price_precision(symbol)
-
-        return self._price_precision
-
-    @property
-    def qty_precision(self, symbol):
-        if self._qty_precision == 0:
-            self._qty_precision = self.calculate_qty_precision(symbol)
-
-        return self._qty_precision
-
     def zero_remainder(self, x):
         number = x
 

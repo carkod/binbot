@@ -32,23 +32,7 @@ class CreateDealController(BaseDeal):
     def __init__(self, bot: BotSchema, db_collection="paper_trading"):
         # Inherit from parent class
         super().__init__(bot, db_collection)
-        self._price_precision = 0
-        self._qty_precision = 0
         self.active_bot = bot
-
-    @property
-    def price_precision(self):
-        if self._price_precision == 0:
-            self._price_precision = self.calculate_price_precision(self.active_bot.pair)
-
-        return self._price_precision
-
-    @property
-    def qty_precision(self):
-        if self._qty_precision == 0:
-            self._qty_precision = self.calculate_qty_precision(self.active_bot.pair)
-
-        return self._qty_precision
 
     def get_one_balance(self, symbol="BTC"):
         # Response after request

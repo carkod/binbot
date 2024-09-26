@@ -32,6 +32,9 @@ class BaseDeal(OrderController):
             self.active_bot = bot
         self.db_collection = self._db[db_collection_name]
         self.market_domination_reversal = None
+        self.price_precision = self.calculate_price_precision(bot.pair)
+        self.qty_precision = self.calculate_qty_precision(bot.pair)
+
         if self.active_bot.strategy == Strategy.margin_short:
             self.isolated_balance: float = self.get_isolated_balance(
                 self.active_bot.pair
@@ -42,20 +45,6 @@ class BaseDeal(OrderController):
         To check that BaseDeal works for all children classes
         """
         return f"BaseDeal({self.__dict__})"
-
-    @property
-    def price_precision(self):
-        if self._price_precision == 0:
-            self._price_precision = self.calculate_price_precision(self.active_bot.pair)
-
-        return self._price_precision
-
-    @property
-    def qty_precision(self):
-        if self._qty_precision == 0:
-            self._qty_precision = self.calculate_qty_precision(self.active_bot.pair)
-
-        return self._qty_precision
 
     def generate_id(self):
         return uuid.uuid4()
