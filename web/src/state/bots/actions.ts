@@ -1,86 +1,5 @@
-import { checkValue, intervalOptions } from "../../validations";
+import { checkValue } from "../../validations";
 import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../constants";
-
-/**
- * This file contains redux state
- * that is shared between bots views
- * at the time of writing: bots and paper trading (test bots)
- */
-
-export interface Bot {
-  id: string | null;
-  status: string;
-  balance_available: string;
-  balance_available_asset: string;
-  balanceAvailableError: boolean;
-  balanceUsageError: boolean;
-  balance_size_to_use: number;
-  max_so_count: string;
-  maxSOCountError: boolean;
-  name: string;
-  nameError: boolean;
-  pair: string;
-  price_deviation_so: string;
-  priceDevSoError: boolean;
-  so_size: string;
-  soSizeError: boolean;
-  take_profit: number;
-  takeProfitError: boolean;
-  trailling: string;
-  trailling_deviation: number;
-  dynamic_trailling: boolean;
-  traillingDeviationError: boolean;
-  formIsValid: boolean;
-  candlestick_interval: string;
-  deal: any;
-}
-
-// The initial state of the App
-export const bot: Bot = {
-  id: null,
-  status: "inactive",
-  balance_available: "0",
-  balance_available_asset: "",
-  balanceAvailableError: false,
-  balanceUsageError: false,
-  balance_size_to_use: 0, // Centralized
-  base_order_size: 50,
-  baseOrderSizeError: false,
-  balance_to_use: "USDC",
-  errors: [],
-  mode: "manual",
-  max_so_count: "0",
-  maxSOCountError: false,
-  name: "Default bot",
-  nameError: false,
-  pair: "",
-  price_deviation_so: "0.63",
-  priceDevSoError: false,
-  so_size: "0",
-  soSizeError: false,
-  take_profit: 2.3,
-  takeProfitError: false,
-  trailling: "false",
-  trailling_deviation: 2.8,
-  dynamic_trailling: false,
-  traillingDeviationError: false,
-  formIsValid: true,
-  candlestick_interval: intervalOptions[3],
-  deal: {},
-  orders: [],
-  quoteAsset: "",
-  baseAsset: "",
-  stop_loss: 3,
-  margin_short_reversal: true,
-  stopLossError: false,
-  safety_orders: [],
-  addAllError: "",
-  cooldown: 0,
-  strategy: "long",
-  marginShortError: null,
-  short_buy_price: 0,
-  short_sell_price: 0,
-};
 
 export function setFilterByWeek() {
   return {
@@ -94,7 +13,11 @@ export function setFilterByMonthState() {
   };
 }
 
-export function getProfit(base_price, current_price, strategy = "long") : number {
+export function getProfit(
+  base_price,
+  current_price,
+  strategy = "long"
+): number {
   if (!checkValue(base_price) && !checkValue(current_price)) {
     let percent =
       ((parseFloat(current_price) - parseFloat(base_price)) /
@@ -113,13 +36,17 @@ export function getProfit(base_price, current_price, strategy = "long") : number
  * @param {bot} bot object
  * @returns {float}
  */
-function getInterestsShortMargin(bot): { interests: number, openTotal: number, closeTotal: number } {
+function getInterestsShortMargin(bot): {
+  interests: number;
+  openTotal: number;
+  closeTotal: number;
+} {
   let closeTimestamp = bot.deal.margin_short_buy_back_timestamp;
   if (closeTimestamp === 0) {
-    closeTimestamp = new Date().getTime()
+    closeTimestamp = new Date().getTime();
   }
   const timeDelta = closeTimestamp - bot.deal.margin_short_sell_timestamp;
-  const durationHours = (timeDelta / 1000) / 3600
+  const durationHours = timeDelta / 1000 / 3600;
   const interests = parseFloat(bot.deal.hourly_interest_rate) * durationHours;
   const closeTotal = parseFloat(bot.deal.margin_short_buy_back_price);
   const openTotal = parseFloat(bot.deal.margin_short_sell_price);
@@ -127,7 +54,7 @@ function getInterestsShortMargin(bot): { interests: number, openTotal: number, c
     interests: interests,
     openTotal: openTotal,
     closeTotal: closeTotal,
-  }
+  };
 }
 
 /**
@@ -155,12 +82,11 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
     } else if (bot.deal.margin_short_sell_price > 0) {
       // Completed margin short
       if (bot.deal.margin_short_buy_back_price > 0) {
-        
-        const { interests, openTotal, closeTotal} = getInterestsShortMargin(bot);
-        let profitChange =
-          parseFloat(
-            (((openTotal - closeTotal) / openTotal) - interests) * 100
-          );
+        const { interests, openTotal, closeTotal } =
+          getInterestsShortMargin(bot);
+        let profitChange = parseFloat(
+          ((openTotal - closeTotal) / openTotal - interests) * 100
+        );
         return +profitChange.toFixed(2);
       } else {
         // Not completed margin_sho
@@ -172,10 +98,9 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
           return 0;
         }
         const { interests, openTotal } = getInterestsShortMargin(bot);
-        let profitChange =
-          parseFloat(
-            (((openTotal - closePrice) / openTotal) - interests) * 100
-          );
+        let profitChange = parseFloat(
+          ((openTotal - closePrice) / openTotal - interests) * 100
+        );
         return +profitChange.toFixed(2);
       }
     } else {
@@ -196,21 +121,20 @@ export function computeTotalProfit(bots) {
         !checkValue(bot.deal.take_profit_price) &&
         parseFloat(bot.deal.take_profit_price) > 0
       ) {
-
         let enterPositionPrice = 0;
         let exitPositionPrice = bot.deal.current_price;
 
         if (bot.deal.buy_price > 0) {
-            enterPositionPrice = bot.deal.buy_price
+          enterPositionPrice = bot.deal.buy_price;
         }
         if (bot.deal.margin_short_sell_price > 0) {
-            enterPositionPrice =  bot.deal.margin_short_sell_price
+          enterPositionPrice = bot.deal.margin_short_sell_price;
         }
         if (bot.deal.sell_price > 0) {
-            exitPositionPrice = bot.deal.sell_price
+          exitPositionPrice = bot.deal.sell_price;
         }
         if (bot.deal.margin_short_buy_back_price > 0) {
-          exitPositionPrice = bot.deal.margin_short_buy_back_price
+          exitPositionPrice = bot.deal.margin_short_buy_back_price;
         }
 
         if (exitPositionPrice === 0 || enterPositionPrice === 0) {
@@ -222,7 +146,6 @@ export function computeTotalProfit(bots) {
             bot.strategy
           );
         }
-        
       }
       return parseFloat(accumulator) + parseFloat(currTotalProfit);
     }, 0);

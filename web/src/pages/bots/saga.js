@@ -53,9 +53,11 @@ const baseUrl = buildBackUrl();
 export function* getBotsApi(payload) {
   let requestURL = `${process.env.REACT_APP_GET_BOTS}`;
   if (payload.params) {
-    const { startDate, endDate, status=null } = payload.params;
-    const params = `${startDate ? "start_date=" + startDate + "&" : ""}${endDate ? "end_date=" + endDate : ""}${status ? "&status=" + status : ""}`;
-    requestURL += `?${params}`
+    const { startDate, endDate, status = null } = payload.params;
+    const params = `${startDate ? "start_date=" + startDate + "&" : ""}${
+      endDate ? "end_date=" + endDate : ""
+    }${status ? "&status=" + status : ""}`;
+    requestURL += `?${params}`;
   }
 
   try {
@@ -132,7 +134,7 @@ export function* watchEditBot() {
  */
 export function* deleteBotApi(payload) {
   const ids = payload.removeId;
-  const params = new URLSearchParams(ids.map(s=>['id',s]))
+  const params = new URLSearchParams(ids.map((s) => ["id", s]));
   const requestURL = `${process.env.REACT_APP_GET_BOTS}?${params.toString()}`;
   try {
     const res = yield call(request, requestURL, "DELETE");
@@ -265,8 +267,8 @@ export function* watchArchiveBot() {
 /**
  * Settings (controller)
  */
- export function* getSettingsApi() {
-  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER, baseUrl)
+export function* getSettingsApi() {
+  const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER, baseUrl);
   try {
     const res = yield call(request, url);
     yield put(getSettingsSucceeded(res));
@@ -279,11 +281,10 @@ export function* watchGetSettingsApi() {
   yield takeLatest(GET_SETTINGS, getSettingsApi);
 }
 
-
 /**
  * Edit Settings (controller)
  */
- export function* editSettingsApi({ data }) {
+export function* editSettingsApi({ data }) {
   const url = new URL(process.env.REACT_APP_RESEARCH_CONTROLLER, baseUrl);
   try {
     const res = yield call(request, url, "PUT", data);

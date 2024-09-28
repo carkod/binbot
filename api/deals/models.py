@@ -67,7 +67,7 @@ class DealModel(BaseModel):
     sell_price: float = 0
     sell_qty: float = 0
     trailling_stop_loss_price: float = 0
-    trailling_profit_price: float = 0 # take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price
+    trailling_profit_price: float = 0  # take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price
     stop_loss_price: float = 0
     trailling_profit: float = 0
     so_prices: float = 0
@@ -106,6 +106,7 @@ class DealModel(BaseModel):
         if isinstance(v, str):
             return float(v)
         return v
+
 
 class SafetyOrderModel(BaseModel):
     buy_price: float

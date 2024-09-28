@@ -8,9 +8,9 @@ import {
   candlestickReducer,
   symbolInfoReducer,
   symbolReducer,
-} from "./pages/bots/reducer";
+  settingsReducer
+} from "./state/bots/reducer";
 import { testBotsReducer } from "./pages/paper-trading/reducer";
-import { settingsReducer } from "./pages/bots/reducer";
 import { blacklistReducer } from "./pages/research/reducer";
 import { balanceRawReducer, estimateReducer } from "./state/balances/reducer";
 import {
@@ -18,20 +18,25 @@ import {
   btcBenchmarkReducer,
   gainersLosersSeriesReducer,
 } from "./pages/dashboard/reducer";
+import { botsApi } from "./pages/bots/api";
 
 export const store = configureStore({
   reducer: {
+    // API slices
+    [botsApi.reducerPath]: botsApi.reducer,
+
+    // Reducer slices
+    botReducer: botReducer.reducer,
+    symbolInfoReducer: symbolInfoReducer.reducer,
+    symbolReducer: symbolReducer.reducer,
+    candlestickReducer: candlestickReducer.reducer,
+    settingsReducer: settingsReducer.reducer,
     registrationReducer,
     loginReducer,
     balanceRawReducer,
-    botReducer,
-    symbolInfoReducer,
-    symbolReducer,
-    candlestickReducer,
     toastr: toastrReducer,
     loadingReducer,
     blacklistReducer,
-    settingsReducer,
     estimateReducer,
     testBotsReducer,
     gainersLosersReducer,

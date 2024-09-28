@@ -40,14 +40,14 @@ class BotSchema(BaseModel):
     created_at: float = time() * 1000
     deal: DealModel = Field(default_factory=DealModel)
     dynamic_trailling: bool = False
-    errors: list[str] = [] # Event logs
+    errors: list[str] = []  # Event logs
     locked_so_funds: float = 0  # funds locked by Safety orders
     mode: str = "manual"  # Manual is triggered by the terminal dashboard, autotrade by research app
     name: str = "Default bot"
     orders: list[BinanceOrderModel] = []  # Internal
     status: Status = Status.inactive
     stop_loss: float = 0
-    margin_short_reversal: bool = False # If stop_loss > 0, allow for reversal
+    margin_short_reversal: bool = False  # If stop_loss > 0, allow for reversal
     take_profit: float = 0
     trailling: bool = True
     trailling_deviation: float = 0
@@ -92,7 +92,6 @@ class BotSchema(BaseModel):
             }],
         }
     }
-
 
     @field_validator("pair", "base_order_size", "candlestick_interval")
     @classmethod
