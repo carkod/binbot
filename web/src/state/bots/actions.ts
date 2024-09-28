@@ -7,8 +7,36 @@ import { FILTER_BY_MONTH, FILTER_BY_WEEK } from "../constants";
  * at the time of writing: bots and paper trading (test bots)
  */
 
+export interface Bot {
+  id: string | null;
+  status: string;
+  balance_available: string;
+  balance_available_asset: string;
+  balanceAvailableError: boolean;
+  balanceUsageError: boolean;
+  balance_size_to_use: number;
+  max_so_count: string;
+  maxSOCountError: boolean;
+  name: string;
+  nameError: boolean;
+  pair: string;
+  price_deviation_so: string;
+  priceDevSoError: boolean;
+  so_size: string;
+  soSizeError: boolean;
+  take_profit: number;
+  takeProfitError: boolean;
+  trailling: string;
+  trailling_deviation: number;
+  dynamic_trailling: boolean;
+  traillingDeviationError: boolean;
+  formIsValid: boolean;
+  candlestick_interval: string;
+  deal: any;
+}
+
 // The initial state of the App
-export const bot = {
+export const bot: Bot = {
   id: null,
   status: "inactive",
   balance_available: "0",
@@ -66,7 +94,7 @@ export function setFilterByMonthState() {
   };
 }
 
-export function getProfit(base_price, current_price, strategy = "long") {
+export function getProfit(base_price, current_price, strategy = "long") : number {
   if (!checkValue(base_price) && !checkValue(current_price)) {
     let percent =
       ((parseFloat(current_price) - parseFloat(base_price)) /
@@ -75,7 +103,7 @@ export function getProfit(base_price, current_price, strategy = "long") {
     if (strategy === "margin_short") {
       percent = percent * -1;
     }
-    return percent.toFixed(2);
+    return parseFloat(percent.toFixed(2));
   }
   return 0;
 }
@@ -85,7 +113,7 @@ export function getProfit(base_price, current_price, strategy = "long") {
  * @param {bot} bot object
  * @returns {float}
  */
-function getInterestsShortMargin(bot) {
+function getInterestsShortMargin(bot): { interests: number, openTotal: number, closeTotal: number } {
   let closeTimestamp = bot.deal.margin_short_buy_back_timestamp;
   if (closeTimestamp === 0) {
     closeTimestamp = new Date().getTime()
@@ -93,8 +121,8 @@ function getInterestsShortMargin(bot) {
   const timeDelta = closeTimestamp - bot.deal.margin_short_sell_timestamp;
   const durationHours = (timeDelta / 1000) / 3600
   const interests = parseFloat(bot.deal.hourly_interest_rate) * durationHours;
-  const closeTotal = bot.deal.margin_short_buy_back_price;
-  const openTotal = bot.deal.margin_short_sell_price;
+  const closeTotal = parseFloat(bot.deal.margin_short_buy_back_price);
+  const openTotal = parseFloat(bot.deal.margin_short_sell_price);
   return {
     interests: interests,
     openTotal: openTotal,
@@ -108,7 +136,7 @@ function getInterestsShortMargin(bot) {
  * by using input data from that individual bot as opposed to computeTotalProfit
  * function which uses an accumulator function to aggregate all profits of all bots
  *
- * @param { BotSchema } bot
+ * @param { Bot } bot
  * @param { number } realTimeCurrPrice
  * @returns { number }
  */
@@ -119,7 +147,7 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
         ? bot.deal.sell_price
         : realTimeCurrPrice || bot.deal.current_price;
       const buyPrice = bot.deal.buy_price;
-      let profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
+      let profitChange: number = ((currentPrice - buyPrice) / buyPrice) * 100;
       if (currentPrice === 0) {
         profitChange = 0;
       }
@@ -159,7 +187,7 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
 }
 
 export function computeTotalProfit(bots) {
-  let currTotalProfit = 0;
+  let currTotalProfit: number = 0;
   const totalProfit = bots
     .map((bot) => bot)
     .reduce((accumulator, bot) => {

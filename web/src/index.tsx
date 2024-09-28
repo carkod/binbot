@@ -5,9 +5,8 @@ import { Provider } from "react-redux";
 import { BrowserRouter, Switch } from "react-router-dom";
 import App from "./App.jsx";
 import "./assets/scss/paper-dashboard.scss";
-import configureStore from "./store";
+import { store } from "./store.js";
 
-const store = configureStore({});
 
 ReactDOM.render(
   <Provider store={store}>
