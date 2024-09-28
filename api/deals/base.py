@@ -7,7 +7,7 @@ from orders.controller import OrderController
 from bots.schemas import BotSchema
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 from tools.handle_error import encode_json
-from tools.exceptions import BinanceErrors, DealCreationError, MarginLoanNotFound
+from tools.exceptions import BinanceErrors, DealCreationError, InsufficientBalance, MarginLoanNotFound
 from tools.enum_definitions import DealType, Status, Strategy
 
 
@@ -32,6 +32,9 @@ class BaseDeal(OrderController):
             self.active_bot = bot
         self.db_collection = self._db[db_collection_name]
         self.market_domination_reversal = None
+        self.price_precision = self.calculate_price_precision(bot.pair)
+        self.qty_precision = self.calculate_qty_precision(bot.pair)
+
         if self.active_bot.strategy == Strategy.margin_short:
             self.isolated_balance: float = self.get_isolated_balance(
                 self.active_bot.pair
@@ -42,20 +45,6 @@ class BaseDeal(OrderController):
         To check that BaseDeal works for all children classes
         """
         return f"BaseDeal({self.__dict__})"
-
-    @property
-    def price_precision(self):
-        if self._price_precision == 0:
-            self._price_precision = self.calculate_price_precision(self.active_bot.pair)
-
-        return self._price_precision
-
-    @property
-    def qty_precision(self):
-        if self._qty_precision == 0:
-            self._qty_precision = self.calculate_qty_precision(self.active_bot.pair)
-
-        return self._qty_precision
 
     def generate_id(self):
         return uuid.uuid4()
@@ -387,27 +376,10 @@ class BaseDeal(OrderController):
     def spot_liquidation(self, pair: str):
         qty = self.compute_qty(pair)
         if qty:
-            price = float(self.matching_engine(pair, False, qty))
-
-            if price and float(supress_notation(qty, self.qty_precision)) < 1:
-                order = {
-                    "pair": pair,
-                    "qty": supress_notation(qty, self.qty_precision),
-                    "price": supress_notation(price, self.price_precision),
-                }
-                order_res = self.request(
-                    method="POST", url=self.bb_sell_order_url, json=order
-                )
-
-            else:
-                order = {
-                    "pair": pair,
-                    "qty": supress_notation(price, self.qty_precision),
-                }
-                order_res = self.request(
-                    method="POST", url=self.bb_sell_market_order_url, json=order
-                )
+            order_res = self.sell_order(pair, qty)
             return order_res
+        else:
+            raise InsufficientBalance("Not enough balance to liquidate. Most likely bot closed already")
 
     def render_market_domination_reversal(self):
         """

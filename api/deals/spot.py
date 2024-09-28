@@ -38,7 +38,9 @@ class SpotLongDeal(BaseDeal):
         2. Calculate take_profit_price and stop_loss_price as usual
         3. Create deal
         """
-        self.update_deal_logs("Resetting bot for margin_short strategy...", self.active_bot)
+        self.update_deal_logs(
+            "Resetting bot for margin_short strategy...", self.active_bot
+        )
         self.active_bot.strategy = Strategy.margin_short
         self.active_bot = self.create_new_bot_streaming(active_bot=self.active_bot)
 
@@ -70,12 +72,14 @@ class SpotLongDeal(BaseDeal):
             if not closed_orders:
                 order = self.verify_deal_close_order()
                 if order:
-                    self.active_bot.errors.append("Execute stop loss previous order found! Appending...")
+                    self.active_bot.errors.append(
+                        "Execute stop loss previous order found! Appending..."
+                    )
                     self.active_bot.orders.append(order)
                 else:
                     self.update_deal_logs(
-                        f"No quantity in balance, no closed orders. Cannot execute update stop limit.",
-                        self.active_bot
+                        "No quantity in balance, no closed orders. Cannot execute update stop limit.",
+                        self.active_bot,
                     )
                     self.active_bot.status = Status.error
                     self.active_bot = self.save_bot_streaming(self.active_bot)
@@ -86,7 +90,9 @@ class SpotLongDeal(BaseDeal):
             res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
 
         else:
-            self.active_bot.errors.append("Dispatching sell order for trailling profit...")
+            self.active_bot.errors.append(
+                "Dispatching sell order for trailling profit..."
+            )
             # Dispatch real order
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
@@ -137,12 +143,14 @@ class SpotLongDeal(BaseDeal):
                 if not closed_orders:
                     order = self.verify_deal_close_order()
                     if order:
-                        self.active_bot.errors.append("Execute trailling profit previous order found! Appending...")
+                        self.active_bot.errors.append(
+                            "Execute trailling profit previous order found! Appending..."
+                        )
                         self.active_bot.orders.append(order)
                     else:
                         self.update_deal_logs(
-                            f"No quantity in balance, no closed orders. Cannot execute update trailling profit.",
-                            self.active_bot
+                            "No quantity in balance, no closed orders. Cannot execute update trailling profit.",
+                            self.active_bot,
                         )
                         self.active_bot.status = Status.error
                         self.active_bot = self.save_bot_streaming(self.active_bot)
@@ -158,7 +166,9 @@ class SpotLongDeal(BaseDeal):
             )
 
         else:
-            self.active_bot.errors.append("Dispatching sell order for trailling profit...")
+            self.active_bot.errors.append(
+                "Dispatching sell order for trailling profit..."
+            )
             # Dispatch real order
             # No price means market order
             res = self.sell_order(
@@ -212,15 +222,17 @@ class SpotLongDeal(BaseDeal):
             self.base_producer.update_required(self.producer, "EXECUTE_SPOT_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
                 self.switch_margin_short()
-                self.base_producer.update_required(self.producer, "EXECUTE_SWITCH_MARGIN_SHORT")
-                self.update_deal_logs("Completed switch to margin short bot", self.active_bot)
+                self.base_producer.update_required(
+                    self.producer, "EXECUTE_SWITCH_MARGIN_SHORT"
+                )
+                self.update_deal_logs(
+                    "Completed switch to margin short bot", self.active_bot
+                )
 
             return
 
         # Take profit trailling
-        if (self.active_bot.trailling) and float(
-            self.active_bot.deal.buy_price
-        ) > 0:
+        if (self.active_bot.trailling) and float(self.active_bot.deal.buy_price) > 0:
             # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
             if self.active_bot.deal.trailling_stop_loss_price == 0:
                 trailling_price = float(self.active_bot.deal.buy_price) * (
@@ -248,13 +260,22 @@ class SpotLongDeal(BaseDeal):
                 # trailling_profit_price always be > trailling_stop_loss_price
                 self.active_bot.deal.trailling_profit_price = new_take_profit
 
-                if new_trailling_stop_loss > self.active_bot.deal.buy_price and new_trailling_stop_loss > self.active_bot.deal.trailling_stop_loss_price:
+                if (
+                    new_trailling_stop_loss > self.active_bot.deal.buy_price
+                    and new_trailling_stop_loss
+                    > self.active_bot.deal.trailling_stop_loss_price
+                ):
                     # Selling below buy_price will cause a loss
                     # instead let it drop until it hits safety order or stop loss
                     # Update trailling_stop_loss
-                    self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss
+                    self.active_bot.deal.trailling_stop_loss_price = (
+                        new_trailling_stop_loss
+                    )
 
-                self.update_deal_logs(f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}", self.active_bot)
+                self.update_deal_logs(
+                    f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}",
+                    self.active_bot,
+                )
                 self.active_bot = self.save_bot_streaming(self.active_bot)
 
             # Direction 2 (downward): breaking the trailling_stop_loss
@@ -269,10 +290,13 @@ class SpotLongDeal(BaseDeal):
                 and (float(open_price) > float(close_price))
             ):
                 self.update_deal_logs(
-                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}"
+                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}",
+                    self.active_bot,
                 )
                 self.trailling_profit()
-                self.base_producer.update_required(self.producer, "EXECUTE_SPOT_TRAILLING_PROFIT")
+                self.base_producer.update_required(
+                    self.producer, "EXECUTE_SPOT_TRAILLING_PROFIT"
+                )
 
         # Update unfilled orders
         unupdated_order = next(
@@ -284,7 +308,9 @@ class SpotLongDeal(BaseDeal):
             None,
         )
         if unupdated_order:
-            order_response = self.get_all_orders(self.active_bot.pair, unupdated_order.order_id)
+            order_response = self.get_all_orders(
+                self.active_bot.pair, unupdated_order.order_id
+            )
             logging.info(f"Unfilled orders response{order_response}")
             if order_response[0]["status"] == "FILLED":
                 for i, order in enumerate(self.active_bot.orders):
@@ -293,7 +319,7 @@ class SpotLongDeal(BaseDeal):
                         self.active_bot.orders[i].qty = order_response["origQty"]
                         self.active_bot.orders[i].fills = order_response["fills"]
                         self.active_bot.orders[i].status = order_response["status"]
-            
+
             self.active_bot = self.save_bot_streaming(self.active_bot)
 
     def close_conditions(self, current_price):
@@ -305,8 +331,13 @@ class SpotLongDeal(BaseDeal):
         """
         if self.active_bot.close_condition == CloseConditions.market_reversal:
             self.render_market_domination_reversal()
-            if self.market_domination_reversal and current_price < self.active_bot.deal.buy_price:
+            if (
+                self.market_domination_reversal
+                and current_price < self.active_bot.deal.buy_price
+            ):
                 self.execute_stop_loss()
-                self.base_producer.update_required(self.producer, "EXECUTE_SPOT_CLOSE_CONDITION_STOP_LOSS")
+                self.base_producer.update_required(
+                    self.producer, "EXECUTE_SPOT_CLOSE_CONDITION_STOP_LOSS"
+                )
 
         pass

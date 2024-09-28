@@ -22,9 +22,7 @@ import {
 import BalanceAnalysis from "../../components/BalanceAnalysis";
 import BotInfo from "../../components/BotInfo";
 import { getBalanceRaw, getEstimate } from "../../state/balances/actions";
-import {
-  computeSingleBotProfit,
-} from "../../state/bots/actions";
+import { computeSingleBotProfit } from "../../state/bots/actions";
 import { defaultSo } from "../../state/constants";
 import { checkBalance, checkValue, roundDecimals } from "../../validations.js";
 import SafetyOrdersTab from "../../components/SafetyOrdersTab";
@@ -73,7 +71,7 @@ class BotForm extends React.Component {
       this.props.getBot(this.props.match.params.id);
       this.computeAvailableBalance();
     } else {
-      this.props.resetBot()
+      this.props.resetBot();
     }
     if (!checkValue(this.props.match.params?.symbol)) {
       this.props.setBot(
@@ -139,7 +137,7 @@ class BotForm extends React.Component {
   };
 
   marginShortValidation = async () => {
-    return true
+    return true;
   };
 
   requiredinValidation = () => {
@@ -400,17 +398,18 @@ class BotForm extends React.Component {
     if (validation) {
       this.handleSubmit(e);
       this.props.activateBot(this.state.id);
-      this.props.getBot(this.props.match.params.id)
+      this.props.getBot(this.props.match.params.id);
     }
   };
 
   toggleTrailling = (prop) => {
-    const value = this.props.bot[prop] || this.props.bot[prop] === "true" ? false : true;
+    const value =
+      this.props.bot[prop] || this.props.bot[prop] === "true" ? false : true;
     this.props.setBot({
       [prop]: value,
     });
-  }
-    
+  };
+
   handleToggleIndicator = (value) => {
     this.setState({ toggleIndicators: value });
   };
@@ -476,9 +475,14 @@ class BotForm extends React.Component {
     }
   };
 
-  toggleAutoswitch = value => {
-    this.props.setBot({ margin_short_reversal: value })
-  }
+  toggleAutoswitch = (value) => {
+    this.props.setBot({ margin_short_reversal: value });
+  };
+
+  handlePanicSell = async () => {
+    await this.props.deactivateBot(this.props.bot.id);
+    await this.props.getBot(this.props.bot.id);
+  };
 
   render() {
     return (
@@ -498,7 +502,9 @@ class BotForm extends React.Component {
                             : "danger"
                         }
                       >
-                        {this.props.bot_profit ? this.props.bot_profit + "%" : "0%"}
+                        {this.props.bot_profit
+                          ? this.props.bot_profit + "%"
+                          : "0%"}
                       </Badge>{" "}
                       {!checkValue(this.props.bot?.status) && (
                         <Badge
@@ -660,7 +666,9 @@ class BotForm extends React.Component {
                     <StopLossTab
                       stop_loss={this.props.bot.stop_loss}
                       stopLossError={this.props.bot.stopLossError}
-                      margin_short_reversal={this.props.bot.margin_short_reversal}
+                      margin_short_reversal={
+                        this.props.bot.margin_short_reversal
+                      }
                       handleChange={this.handleChange}
                       handleBlur={this.handleBlur}
                       toggleAutoswitch={this.toggleAutoswitch}
@@ -678,7 +686,7 @@ class BotForm extends React.Component {
                     />
                   </TabContent>
                   <Row xs="2">
-                    <Col>
+                    <Col lg="3">
                       {this.props.bot.status !== "completed" && (
                         <ButtonToggle
                           className="btn-round"
@@ -693,7 +701,20 @@ class BotForm extends React.Component {
                         </ButtonToggle>
                       )}
                     </Col>
-                    <Col>
+                    <Col lg="3">
+                      {this.props.bot.status === "active" &&
+                        Object.keys(this.props.bot.deal).length > 0 && (
+                          <ButtonToggle
+                            className="btn-round"
+                            color="primary"
+                            onClick={this.handlePanicSell}
+                            disabled={checkValue(this.props.bot.id)}
+                          >
+                            Panic close
+                          </ButtonToggle>
+                        )}
+                    </Col>
+                    <Col lg="3">
                       {(this.props.bot.status !== "active" ||
                         Object.keys(this.props.bot.deal).length === 0) && (
                         <Button

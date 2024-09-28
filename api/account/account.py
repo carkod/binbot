@@ -17,8 +17,6 @@ from decimal import Decimal
 class Account(BinbotApi):
     def __init__(self):
         self.db = setup_db()
-        self._price_precision: int = 0
-        self._qty_precision: int = 0
         pass
 
     def setup_mongocache(self):
@@ -38,8 +36,8 @@ class Account(BinbotApi):
             .as_tuple()
             .exponent
         )
-        self._price_precision = int(precision)
-        return self._price_precision
+        price_precision = int(precision)
+        return price_precision
 
     def calculate_qty_precision(self, symbol) -> int:
         precision = -1 * (
@@ -47,8 +45,8 @@ class Account(BinbotApi):
             .as_tuple()
             .exponent
         )
-        self._qty_precision = int(precision)
-        return self._qty_precision
+        qty_precision = int(precision)
+        return qty_precision
 
     def _exchange_info(self, symbol=None):
         """

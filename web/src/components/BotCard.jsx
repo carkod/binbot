@@ -210,7 +210,7 @@ export default function BotCard({
             variant="info"
             title="Edit this bot"
             onClick={() =>
-              history.push(`${history.location.pathname}/edit/${x.id}`)
+              history.push(`/admin/bots/edit/${x.id}`)
             }
           >
             <i className="fa-solid fa-edit u-disable-events" />

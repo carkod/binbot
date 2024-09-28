@@ -4,6 +4,8 @@ from bots.controllers import Bot
 from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
 from typing import List
 from tools.exceptions import BinanceErrors, BinbotErrors, InsufficientBalance
+from tools.enum_definitions import Status
+
 
 bot_blueprint = APIRouter()
 
@@ -67,7 +69,7 @@ def delete(id: List[str] = Query(...)):
 
 
 @bot_blueprint.get("/bot/activate/{id}", tags=["bots"])
-def activate_by_id(id: str):
+async def activate_by_id(id: str):
     """
     Activate bot
 
@@ -79,7 +81,7 @@ def activate_by_id(id: str):
     bot = bot_instance.get_one(id)
     if bot:
         try:
-            bot_instance.activate(bot)
+            await bot_instance.activate(bot)
             return json_response_message("Successfully activated bot!")
         except BinbotErrors as error:
             bot_instance.post_errors_by_id(id, error.message)
@@ -93,21 +95,23 @@ def activate_by_id(id: str):
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", tags=["bots"])
-def deactivate(id: str):
+def deactivation(id: str):
     """
     Deactivation means closing all deals and selling to
     fiat. This is often used to prevent losses
     """
-    try:
-        document = Bot(collection_name="bots").deactivate(id)
-        if document:
+    botModel = Bot(collection_name="bots")
+    bot = botModel.db_collection.find_one({"id": id, "status": Status.active})
+    bot = BotSchema.model_validate(bot)
+    print("Finished BotSchema validation...")
+    if not bot:
+        return json_response_message("No active bot found.")
+    else:
+        response = botModel.deactivate(bot)
+        if response:
             return json_response_message("Active orders closed, sold base asset, deactivated")
         else:
-            return json_response_error(f"Error deactivating bot: {error}")
-    except InsufficientBalance as error:
-        return json_response_error(f"Error deactivating bot: {error}")
-    except Exception as error:
-        return json_response_error(f"Error deactivating bot: {error}")
+            return json_response_error("Error deactivating bot.")
 
 
 @bot_blueprint.put("/bot/archive/{id}", tags=["bots"])
