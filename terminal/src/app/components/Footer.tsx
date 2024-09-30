@@ -1,0 +1,21 @@
+import React from "react"
+import type { FC } from "react"
+import { Container, Row } from "reactstrap"
+
+export const Footer: FC<{}> = () => {
+  return (
+    <footer className={"footer footer-default"}>
+      <Container fluid={true}>
+        <Row>
+          <div className="credits ml-auto">
+            <div className="copyright">
+              &copy; {1900 + new Date().getFullYear()} Binbot
+            </div>
+          </div>
+        </Row>
+      </Container>
+    </footer>
+  )
+}
+
+export default Footer

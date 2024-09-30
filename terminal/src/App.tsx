@@ -1,67 +1,65 @@
+import { RouterProvider } from "react-router-dom"
 import "./App.css"
-import { Counter } from "./features/counter/Counter"
-import { Quotes } from "./features/quotes/Quotes"
-import logo from "./logo.svg"
+import { createBrowserRouter, redirect } from "react-router-dom"
+import LoginPage from "./app/pages/Login"
+import { loginAction, loginLoader } from "./app/routes"
+import DashboardPage from "./app/pages/Dashboard"
+import { Layout } from "./app/Layout"
+import BotsPage from "./app/pages/Bots"
 
-const App = () => {
+
+const routes = [
+  {
+    path: "login",
+    name: "Login",
+    icon: null,
+    Component: LoginPage,
+    index: true,
+    action: loginAction,
+    loader: loginLoader,
+  },
+  {
+    path: "dashboard",
+    name: "Dashboard",
+    icon: null,
+    Component: DashboardPage,
+    private: true,
+    // loader: loginLoader,
+  },
+  {
+    path: "bots",
+    name: "Bots",
+    icon: null,
+    Component: BotsPage,
+    private: true,
+    // loader: loginLoader,
+  },
+]
+
+const rootRouter = createBrowserRouter([
+  {
+    id: "root",
+    path: "/",
+    loader() {
+      // Our root route always provides the user, if logged in
+      return { loggedIn: true }
+    },
+    Component: Layout,
+    children: routes,
+  },
+  // {
+  //   path: "/logout",
+  //   async action() {
+  //     // We signout in a "resource route" that we can hit from a fetcher.Form
+  //     await fakeAuthProvider.signout()
+  //     return redirect("/")
+  //   },
+  // },
+])
+
+export const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <Counter />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <Quotes />
-        <span>
-          <span>Learn </span>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            React
-          </a>
-          <span>, </span>
-          <a
-            className="App-link"
-            href="https://redux.js.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Redux
-          </a>
-          <span>, </span>
-          <a
-            className="App-link"
-            href="https://redux-toolkit.js.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Redux Toolkit
-          </a>
-          <span>, </span>
-          <a
-            className="App-link"
-            href="https://react-redux.js.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            React Redux
-          </a>
-          ,<span> and </span>
-          <a
-            className="App-link"
-            href="https://reselect.js.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Reselect
-          </a>
-        </span>
-      </header>
-    </div>
+    <RouterProvider router={rootRouter} fallbackElement={<p>Initial Load...</p>} />
   )
 }
 

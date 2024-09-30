@@ -9,7 +9,7 @@ export default function App() {
   const token = getToken();
   return (
     <>
-    {!checkValue(token) ?
+    {token ?
       <>
         <Route exact path="/" render={() => <Redirect to="/admin/dashboard" /> } />
         <Route exact path="/admin" render={() => <Redirect to="/admin/dashboard" /> } />
