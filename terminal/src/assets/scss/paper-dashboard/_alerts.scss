@@ -7,23 +7,23 @@
   position: relative;
 
   &.alert-success {
-    background-color: lighten($success-color, 5%);
+    background-color: color.adjust($success-color, $lightness: 5%);
   }
 
   &.alert-danger {
-    background-color: lighten($danger-color, 5%);
+    background-color: color.adjust($danger-color, $lightness: 5%);
   }
 
   &.alert-warning {
-    background-color: lighten($warning-color, 5%);
+    background-color: color.adjust($warning-color, $lightness: 5%);
   }
 
   &.alert-info {
-    background-color: lighten($info-color, 5%);
+    background-color: color.adjust($info-color, $lightness: 5%);
   }
 
   &.alert-primary {
-    background-color: lighten($primary-color, 5%);
+    background-color: color.adjust($primary-color, $lightness: 5%);
   }
 
   .close {

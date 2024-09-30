@@ -13,9 +13,9 @@
   .show > &.dropdown-toggle,
   .show > &.dropdown-toggle:focus,
   .show > &.dropdown-toggle:hover {
-    background-color: $btn-states-color !important;
-    color: $white-color !important;
-    box-shadow: none !important;
+    background-color: $btn-states-color;
+    color: $white-color;
+    box-shadow: none;
   }
 
   &:not([data-action]):hover {
@@ -119,7 +119,10 @@
       }
     }
   } @else {
-    color: $white-color;
+    & {
+      color: $white-color;
+    }
+    
   }
 
   &.btn-simple {
@@ -206,4 +209,22 @@
   -webkit-transform: rotate(180deg);
   -ms-transform: rotate(180deg);
   transform: rotate(180deg);
+}
+
+@mixin box-shadow($shadow...) {
+  -webkit-box-shadow: $shadow; // iOS <4.3 & Android <4.1
+  box-shadow: $shadow;
+}
+
+@mixin icon-gradient($color, $bottomColor: #000) {
+  background: $color;
+  background: -webkit-linear-gradient($color 0%, $bottomColor 80%);
+  background: -o-linear-gradient($color 0%, $bottomColor 80%);
+  background: -moz-linear-gradient($color 0%, $bottomColor 80%);
+  background: linear-gradient($color 0%, $bottomColor 80%);
+}
+
+@mixin badge-color($color) {
+  border-color: $color;
+  background-color: $color;
 }

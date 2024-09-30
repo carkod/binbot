@@ -1,12 +1,10 @@
 import { RouterProvider } from "react-router-dom"
-import "./App.css"
 import { createBrowserRouter, redirect } from "react-router-dom"
 import LoginPage from "./app/pages/Login"
-import { loginAction, loginLoader } from "./app/routes"
+import { loginAction, loginLoader, protectedLoader } from "./app/routes"
 import DashboardPage from "./app/pages/Dashboard"
 import { Layout } from "./app/Layout"
 import BotsPage from "./app/pages/Bots"
-
 
 const routes = [
   {
@@ -23,16 +21,14 @@ const routes = [
     name: "Dashboard",
     icon: null,
     Component: DashboardPage,
-    private: true,
-    // loader: loginLoader,
+    loader: protectedLoader,
   },
   {
     path: "bots",
     name: "Bots",
     icon: null,
     Component: BotsPage,
-    private: true,
-    // loader: loginLoader,
+    loader: protectedLoader,
   },
 ]
 

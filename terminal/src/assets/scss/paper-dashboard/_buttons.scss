@@ -1,5 +1,11 @@
 .btn,
 .navbar .navbar-nav > a.btn {
+
+  & {
+    @include btn-styles($default-color, $default-states-color);
+    @include transition($fast-transition-time, linear);
+  }
+  
   border-width: $border-thick;
   font-weight: $font-weight-semi;
   font-size: $font-size-small;
@@ -9,9 +15,6 @@
   border-radius: $border-radius-small;
   padding: $padding-btn-vertical $padding-btn-horizontal;
   cursor: pointer;
-
-  @include btn-styles($default-color, $default-states-color);
-  @include transition($fast-transition-time, linear);
 
   &:hover,
   &:focus {
@@ -29,7 +32,10 @@
     margin: 0;
   }
 
-  .fa, .far, .fas, .nc-icon {
+  .fa,
+  .far,
+  .fas,
+  .nc-icon {
     &::before {
       pointer-events: none;
     }

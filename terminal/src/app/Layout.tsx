@@ -2,7 +2,6 @@ import React from "react"
 import type { FC } from "react"
 import { Outlet } from "react-router"
 import { Spinner } from "reactstrap"
-import 'react-redux-toastr/lib/css/react-redux-toastr.min.css'
 import { Slide, ToastContainer } from "react-toastify"
 import Header from "./components/Header"
 import Sidebar from "./components/Sidebar"

@@ -13,9 +13,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "type-check": "tsc --noEmit",
-    "install:clean": "rm -rf dist node_modules",
-    "compile-sass": "sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css",
-    "minify-sass": "sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.min.css --output-style compressed"
+    "install:clean": "rm -rf dist node_modules && npm install"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.0.1",
@@ -32,8 +30,7 @@
     "react-router": "^6.26.2",
     "react-router-dom": "^6.26.2",
     "react-toastify": "^10.0.5",
-    "reactstrap": "^9.2.3",
-    "sass": "^1.79.4"
+    "reactstrap": "^9.2.3"
   },
   "devDependencies": {
     "@testing-library/dom": "^9.3.4",
@@ -49,6 +46,7 @@
     "eslint-plugin-prettier": "^5.1.3",
     "jsdom": "^23.2.0",
     "prettier": "^3.2.1",
+    "sass-embedded": "^1.79.4",
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
     "vitest": "^1.2.0"

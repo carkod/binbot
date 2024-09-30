@@ -1,8 +1,10 @@
+@use "sass:color";
+
 @import "paper-dashboard/variables";
 @import "paper-dashboard/mixins";
 
 // Plugins CSS
-@import "react-redux-toastr/index";
+@import "react-toastify/dist/ReactToastify.css";
 
 // Core CSS
 @import "paper-dashboard/buttons";
