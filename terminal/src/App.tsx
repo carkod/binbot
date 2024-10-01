@@ -1,13 +1,15 @@
-import { RouterProvider } from "react-router-dom"
-import { createBrowserRouter, redirect } from "react-router-dom"
-import LoginPage from "./app/pages/Login"
-import { loginAction, loginLoader, protectedLoader } from "./app/routes"
-import DashboardPage from "./app/pages/Dashboard"
+import { Provider } from "react-redux"
+import { createBrowserRouter, redirect, RouterProvider } from "react-router-dom"
 import { Layout } from "./app/Layout"
 import BotsPage from "./app/pages/Bots"
-import { getToken, removeToken } from "./utils/login"
-import { Provider } from "react-redux"
+import DashboardPage from "./app/pages/Dashboard"
+import LoginPage from "./app/pages/Login"
+import {
+  loginAction,
+  loginLoader
+} from "./app/routes/auth"
 import { store } from "./app/store"
+import { getToken, removeToken } from "./utils/login"
 
 const routes = [
   {
@@ -16,22 +18,22 @@ const routes = [
     icon: null,
     Component: LoginPage,
     index: true,
-    // action: loginAction,
-    // loader: loginLoader,
+    action: loginAction,
+    loader: loginLoader,
   },
   {
     path: "dashboard",
     name: "Dashboard",
     icon: null,
     Component: DashboardPage,
-    loader: protectedLoader,
+    // loader: protectedLoader,
   },
   {
     path: "bots",
     name: "Bots",
     icon: null,
     Component: BotsPage,
-    loader: protectedLoader,
+    // loader: protectedLoader,
   },
 ]
 
@@ -42,9 +44,13 @@ const rootRouter = createBrowserRouter([
     loader() {
       const token = getToken()
       if (token) {
-        return token
+        return {
+          token: token
+        }
       } else {
-        return null
+        return {
+          token: null
+        }
       }
     },
     Component: Layout,

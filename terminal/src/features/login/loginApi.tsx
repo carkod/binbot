@@ -1,9 +1,6 @@
-// Need to use the React-specific entry point to import `createApi`
 import { createApi } from "@reduxjs/toolkit/query/react"
 import {
   baseQuery,
-  defaultResponseHandler,
-  defaultStatusValidator,
 } from "../../utils/api"
 
 interface LoginCredentials {
@@ -23,27 +20,20 @@ export const userApiSlice = createApi({
   baseQuery: baseQuery,
   reducerPath: "loginApi",
   // Tag types are used for caching and invalidation.
-  tagTypes: ["Login"],
+  tagTypes: ["login"],
   endpoints: build => ({
     postLogin: build.mutation<LoginResponse, LoginCredentials>({
-      query: body => {
-        console.log("body", JSON.stringify(body))
-        return {
+      query: body => ({
           url: import.meta.env.VITE_LOGIN || "/login",
           method: "POST",
           body: body,
-          responseHandler: defaultResponseHandler,
-          validateStatus: defaultStatusValidator,
-          invalidatesTags: ["Login"]
-        }
-      },
+          invalidatesTags: ["login"]
+      }),
     }),
     getUsers: build.query<LoginResponse, void>({
       query: () => ({
         url: import.meta.env.VITE_USERS || "/users",
         method: "GET",
-        responseHandler: defaultResponseHandler,
-        validateStatus: defaultStatusValidator,
       }),
     }),
     registerUser: build.mutation<LoginCredentials, Partial<LoginResponse>>({
@@ -51,9 +41,7 @@ export const userApiSlice = createApi({
         url: import.meta.env.VITE_REGISTER_USER || "/user/register",
         method: "POST",
         body: body,
-        responseHandler: defaultResponseHandler,
-        validateStatus: defaultStatusValidator,
-        invalidatesTags: ["Login"],
+        invalidatesTags: ["login"],
       }),
     }),
   }),

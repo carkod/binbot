@@ -5,8 +5,8 @@
       "type": "chrome",
       "request": "launch",
       "name": "Vite",
-      "url": "http://localhost:5174",
-      "webRoot": "${workspaceFolder}/terminal/src",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/terminal",
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/*"
       },
