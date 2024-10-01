@@ -1,24 +1,15 @@
-import { useEffect, type FC } from "react"
-import {
-  Button,
-  Container,
-  Form,
-} from "react-bootstrap"
-import { type SubmitHandler, useForm } from "react-hook-form"
-import { usePostLoginMutation } from "../../features/login/loginApi"
-import { setToken } from "../../utils/login"
+import React, { useEffect } from "react"
+import type { FC } from "react"
+import { useForm } from "react-hook-form"
+import { type LoginFormState } from "../components/LoginForm"
+import { Form } from "react-bootstrap"
 
-export type LoginFormState = {
-  email: string
-  password: string
-}
+export const BotDetail: FC<{}> = () => {
 
-export const LoginForm: FC<{}> = () => {
-
-  const [login, { data, error, isLoading }] = usePostLoginMutation()
-  const {
+	const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<LoginFormState>({
     mode: "onTouched",
@@ -29,19 +20,18 @@ export const LoginForm: FC<{}> = () => {
     },
   })
 
-  const onSubmit: SubmitHandler<LoginFormState> = (values) => {
-    login(values)
-  }
+	useEffect(() => {
+    const subscription = watch((value, { name, type }) => {
+      console.log(">>", value, name, type)
+    })
 
-  useEffect(() => {
-    if (data) {
-      setToken(data.token)
-    }
-  }, [data, error])
+    return () => subscription.unsubscribe()
+  }, [watch])
 
   return (
-    <Container className="my-4">
-      <Form onSubmit={handleSubmit(onSubmit)}>
+    <div>
+      <div className="content">
+        <h1>Bots</h1>
         <Form.Group className="mb-3" controlId="formBasicEmail">
           <Form.Label className="p-2">Email</Form.Label>
           <Form.Control
@@ -79,10 +69,9 @@ export const LoginForm: FC<{}> = () => {
           )}
         </Form.Group>
 
-        <Button variant="primary" type="submit">
-          Submit
-        </Button>
-      </Form>
-    </Container>
+      </div>
+    </div>
   )
 }
+
+export default BotDetail

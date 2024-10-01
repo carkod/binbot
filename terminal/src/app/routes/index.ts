@@ -5,14 +5,21 @@ import { getToken } from "../../utils/login"
 export async function loginAction({ request }: LoaderFunctionArgs) {
   let formData = await request.formData()
   let username = formData.get("username") as string | null
-  // return null
+  let password = formData.get("password") as string | null
+
+  console.log("username", username)
+  console.log("password", password)
+
 
   // Validate our form inputs and return validation errors via useActionData()
-  if (!username) {
-    return {
-      error: "You must provide a username to log in",
-    }
-  }
+  // if (!username) {
+  //   return {
+  //     error: "You must provide a username to log in",
+  //   }
+  // } else {
+  //   return null
+  // }
+  return null;
 
   // Sign in and redirect to the proper destination if successful.
   // try {
@@ -27,15 +34,15 @@ export async function loginAction({ request }: LoaderFunctionArgs) {
   // }
 
   // let redirectTo = formData.get("redirectTo") as string | null
-  return redirect("/dashboard")
 }
 
 export async function loginLoader() {
-  // if (fakeAuthProvider.isAuthenticated) {
-  //   return redirect("/")
-  // }
-  // return null
-  return redirect("/dashboard")
+  const token = getToken();
+  if (token) {
+    return redirect("/dashboard")
+  } else {
+    return null
+  }
 }
 
 export function protectedLoader({ request }: LoaderFunctionArgs) {

@@ -5,6 +5,9 @@ import { loginAction, loginLoader, protectedLoader } from "./app/routes"
 import DashboardPage from "./app/pages/Dashboard"
 import { Layout } from "./app/Layout"
 import BotsPage from "./app/pages/Bots"
+import { getToken, removeToken } from "./utils/login"
+import { Provider } from "react-redux"
+import { store } from "./app/store"
 
 const routes = [
   {
@@ -13,8 +16,8 @@ const routes = [
     icon: null,
     Component: LoginPage,
     index: true,
-    action: loginAction,
-    loader: loginLoader,
+    // action: loginAction,
+    // loader: loginLoader,
   },
   {
     path: "dashboard",
@@ -37,25 +40,33 @@ const rootRouter = createBrowserRouter([
     id: "root",
     path: "/",
     loader() {
-      // Our root route always provides the user, if logged in
-      return { loggedIn: true }
+      const token = getToken()
+      if (token) {
+        return token
+      } else {
+        return null
+      }
     },
     Component: Layout,
     children: routes,
   },
-  // {
-  //   path: "/logout",
-  //   async action() {
-  //     // We signout in a "resource route" that we can hit from a fetcher.Form
-  //     await fakeAuthProvider.signout()
-  //     return redirect("/")
-  //   },
-  // },
+  {
+    path: "/logout",
+    async action() {
+      removeToken()
+      return redirect("/login")
+    },
+  },
 ])
 
 export const App = () => {
   return (
-    <RouterProvider router={rootRouter} fallbackElement={<p>Initial Load...</p>} />
+    <Provider store={store}>
+      <RouterProvider
+        router={rootRouter}
+        fallbackElement={<p>Initial Load...</p>}
+      />
+    </Provider>
   )
 }
 

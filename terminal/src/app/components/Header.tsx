@@ -7,6 +7,7 @@ export const Header: FC<{}> = () => {
       <div className="content">
         <h1>Header</h1>
         <p>Content of the header</p>
+        <a href="/logout">Logout</a>
       </div>
     </div>
   )

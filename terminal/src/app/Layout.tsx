@@ -6,6 +6,7 @@ import { Slide, ToastContainer } from "react-toastify"
 import Header from "./components/Header"
 import Sidebar from "./components/Sidebar"
 import { getToken } from "../utils/login"
+import LoginPage from "./pages/Login"
 
 export const Layout: FC<{}> = () => {
 	const mainPanel = React.useRef<HTMLDivElement>(null)
@@ -32,12 +33,16 @@ export const Layout: FC<{}> = () => {
 					pauseOnHover
 					theme="colored"
 				/>
-				{token && <Sidebar />}
-        <div className="main-panel" ref={mainPanel}>
+        <LoginPage />
+				{token && <>
+          <Sidebar />
+          <div className="main-panel" ref={mainPanel}>
           <Header />
           <Outlet />
           {/* <Footer fluid /> */}
-        </div>
+          </div>
+        </>}
+        
       </div>
     </div>
   )
