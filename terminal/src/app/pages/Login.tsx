@@ -1,19 +1,8 @@
-import { useActionData, useLocation, useNavigation } from "react-router"
+import { type FC } from "react"
+import { Card } from "react-bootstrap"
 import { LoginForm } from "../components/LoginForm"
-import { getToken } from "../../utils/login"
-import { useState, type FC } from "react"
-import { SubmitHandler, useForm } from "react-hook-form"
-import { Button, Card, Container, Row, Col } from "react-bootstrap"
-
-interface LoginFormState {
-  email: string
-  password: string
-}
 
 export const LoginPage: FC<{}> = () => {
-  let location = useLocation()
-  let params = new URLSearchParams(location.search)
- 
 
   return (
     <div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>

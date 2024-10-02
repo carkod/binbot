@@ -2,10 +2,9 @@ import type { Action, ThunkAction } from "@reduxjs/toolkit"
 import { combineSlices, configureStore } from "@reduxjs/toolkit"
 import { setupListeners } from "@reduxjs/toolkit/query"
 import { quotesApiSlice } from "../features/quotes/quotesApiSlice"
-import { loginSlice } from "../features/login/loginSlice"
-import { userApiSlice } from "../features/login/LoginApi"
+import { userApiSlice } from "../features/userApiSlice"
 
-const rootReducer = combineSlices(loginSlice, userApiSlice, quotesApiSlice)
+const rootReducer = combineSlices(userApiSlice)
 
 export type RootState = ReturnType<typeof rootReducer>
 
@@ -17,7 +16,7 @@ export const makeStore = (preloadedState?: Partial<RootState>) => {
     // Adding the api middleware enables caching, invalidation, polling,
     // and other useful features of `rtk-query`.
     middleware: getDefaultMiddleware => {
-      return getDefaultMiddleware().concat(quotesApiSlice.middleware).concat(userApiSlice.middleware)
+      return getDefaultMiddleware().concat(userApiSlice.middleware)
     },
     preloadedState,
   })

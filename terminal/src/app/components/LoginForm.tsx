@@ -6,7 +6,7 @@ import {
 } from "react-bootstrap"
 import { useForm, type SubmitHandler } from "react-hook-form"
 import { useLocation, useNavigate, useRouteLoaderData } from "react-router"
-import { usePostLoginMutation } from "../../features/login/loginApi"
+import { usePostLoginMutation } from "../../features/userApiSlice"
 import { setToken } from "../../utils/login"
 
 export type LoginFormState = {
@@ -21,7 +21,6 @@ export const LoginForm: FC<{}> = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const from = params.get("from") || "/";
-  const { token } = useRouteLoaderData("root") as { token: string | null };
 
   const {
     register,
@@ -38,14 +37,15 @@ export const LoginForm: FC<{}> = () => {
 
   const onSubmit: SubmitHandler<LoginFormState> = (values) => {
     login(values)
-    navigate(from, { replace: true });
+    navigate("/dashboard", { replace: true });
   }
 
   useEffect(() => {
     if (isSuccess && data?.access_token) {
       setToken(data.access_token)
+      navigate("/dashboard", { replace: true });
     }
-  }, [isSuccess, data, token])
+  }, [isSuccess, data, navigate, from])
 
   return (
     <Container className="my-4">

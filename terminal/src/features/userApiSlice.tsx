@@ -1,7 +1,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react"
 import {
   baseQuery,
-} from "../../utils/api"
+} from "../utils/api"
 
 interface LoginCredentials {
   email: string
