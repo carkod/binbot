@@ -1,15 +1,29 @@
-import React from "react"
 import type { FC } from "react"
+import { Container, Navbar } from "react-bootstrap"
+import { useAppSelector } from "../hooks"
 
-export const Header: FC<{}> = () => {
+export const Header: FC<{}> = ({}) => {
+  const icon = useAppSelector(state => state.layout.icon)
+  const headerTitle = useAppSelector(state => state.layout.headerTitle)
+
   return (
-    <div>
-      <div className="content">
-        <h1>Header</h1>
-        <p>Content of the header</p>
-        <a href="/logout">Logout</a>
-      </div>
-    </div>
+    <Navbar className="bg-body-tertiary">
+      <Container>
+        <Navbar.Brand>
+          <i className={`${icon}`}></i> {headerTitle}
+        </Navbar.Brand>
+        <Navbar.Collapse className="justify-content-end">
+          <Navbar.Text>
+            <a href="#login">
+              <i
+                className="fa-solid fa-right-from-bracket"
+                style={{ color: "black" }}
+              />
+            </a>
+          </Navbar.Text>
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
   )
 }
 

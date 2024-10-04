@@ -1,14 +1,21 @@
-import React, { useEffect } from "react"
 import type { FC } from "react"
-import { useForm } from "react-hook-form"
-import { type LoginFormState } from "../components/LoginForm"
+import { useEffect } from "react"
 import { Form } from "react-bootstrap"
+import { useForm } from "react-hook-form"
+import { setHeaderContent } from "../../features/layoutSlice"
+import { type LoginFormState } from "../components/LoginForm"
+import { useAppDispatch } from "../hooks"
 
 export const BotDetail: FC<{}> = () => {
+  const dispatch = useAppDispatch()
+
+  dispatch(setHeaderContent({
+    icon: "fas fa-robot",
+    headerTitle: "Bot Details",
+  }))
 
 	const {
     register,
-    handleSubmit,
     watch,
     formState: { errors },
   } = useForm<LoginFormState>({
@@ -31,7 +38,6 @@ export const BotDetail: FC<{}> = () => {
   return (
     <div>
       <div className="content">
-        <h1>Bots</h1>
         <Form.Group className="mb-3" controlId="formBasicEmail">
           <Form.Label className="p-2">Email</Form.Label>
           <Form.Control

@@ -1,23 +1,22 @@
-import type { FC } from "react"
-import { useAppDispatch } from "../hooks"
+import { type FC } from "react"
 import { setHeaderContent } from "../../features/layoutSlice"
+import { useAppDispatch } from "../hooks"
 
-export const DashboardPage: FC<{}> = () => {
-
+export const AutotradePage: FC<{}> = () => {
   const dispatch = useAppDispatch()
 
   dispatch(setHeaderContent({
     icon: "fas fa-robot",
-    headerTitle: "Dashboard",
+    headerTitle: "Autotrade",
   }))
 
   return (
     <div>
       <div className="content">
-        <p>Content of the dashboard</p>
+        <p>Autotrade</p>
       </div>
     </div>
   )
 }
 
-export default DashboardPage
+export default AutotradePage

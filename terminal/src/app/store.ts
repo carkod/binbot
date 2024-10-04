@@ -1,10 +1,10 @@
 import type { Action, ThunkAction } from "@reduxjs/toolkit"
 import { combineSlices, configureStore } from "@reduxjs/toolkit"
 import { setupListeners } from "@reduxjs/toolkit/query"
-import { quotesApiSlice } from "../features/quotes/quotesApiSlice"
 import { userApiSlice } from "../features/userApiSlice"
+import { layoutSlice } from "../features/layoutSlice"
 
-const rootReducer = combineSlices(userApiSlice)
+const rootReducer = combineSlices(userApiSlice, layoutSlice)
 
 export type RootState = ReturnType<typeof rootReducer>
 

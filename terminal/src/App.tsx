@@ -5,6 +5,8 @@ import BotsPage from "./app/pages/Bots"
 import DashboardPage from "./app/pages/Dashboard"
 import LoginPage from "./app/pages/Login"
 import { store } from "./app/store"
+import BotDetail from "./app/pages/BotDetail"
+import AutotradePage from "./app/pages/Autotrade"
 
 export const routes = [
   {
@@ -18,6 +20,23 @@ export const routes = [
     name: "Bots",
     icon: "nc-icon nc-laptop",
     Component: BotsPage,
+    children: [
+      {
+        path: "new/:symbol?",
+        name: "New Bot",
+        Component: BotDetail,
+      },
+      {
+        path: "edit/:id",
+        name: "New Bot",
+        Component: BotDetail,
+      },
+      {
+        path: "autotrade",
+        name: "AutoTrade",
+        Component: AutotradePage,
+      }
+    ]
   },
 ]
 

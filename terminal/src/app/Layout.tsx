@@ -1,14 +1,20 @@
 import type { FC } from "react"
-import React from "react"
+import React, { useReducer } from "react"
 import { Navigate, Outlet } from "react-router"
 import { Slide, ToastContainer } from "react-toastify"
 import { getToken } from "../utils/login"
 import Footer from "./components/Footer"
 import Header from "./components/Header"
 import Sidebar from "./components/Sidebar"
+import {
+  layoutInitialState,
+  layoutSlice,
+  setHeaderTitle,
+} from "../features/layoutSlice"
+import { useAppDispatch, useAppSelector } from "./hooks"
+
 
 export const Layout: FC<{}> = () => {
-  const mainPanel = React.useRef<HTMLDivElement>(null)
   const token = getToken()
 
   if (token) {
@@ -35,7 +41,7 @@ export const Layout: FC<{}> = () => {
             theme="colored"
           />
           <Sidebar />
-          <div className="main-panel" ref={mainPanel}>
+          <div className="main-panel">
             <Header />
             <Outlet />
             <Footer />
