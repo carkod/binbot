@@ -1,8 +1,11 @@
-import { type FC } from "react"
+import { useState, type FC } from "react"
+import { Badge, Button, Col, Container, Form } from "react-bootstrap"
+import { Row } from "reactstrap"
 import { setHeaderContent } from "../../features/layoutSlice"
-import { useAppDispatch } from "../hooks"
+import BotsActions from "../components/BotsActions"
+import BotsDateFilter from "../components/BotsCalendar"
 import ConfirmModal from "../components/ConfirmModal"
-import { Container } from "react-bootstrap"
+import { useAppDispatch } from "../hooks"
 
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch()
@@ -13,6 +16,14 @@ export const BotsPage: FC<{}> = () => {
   const [startDate, setStartDate] = useState(null)
   const [endDate, setEndDate] = useState(null)
 
+  const handleChange = (e) => {}
+  const handleSelection = (id) => {}
+  const handleDelete = (id) => {}
+  const confirmDelete = () => {}
+  const onSubmitBulkAction = () => {}
+  const handleStartDate = (e) => {}
+  const handleEndDate = (e) => {}
+
 
   dispatch(setHeaderContent({
     icon: "fas fa-robot",
@@ -21,9 +32,10 @@ export const BotsPage: FC<{}> = () => {
 
   return (
     <Container>
-      <div className="content">
+      <Row>
+        <Col>
           <Form>
-            <FormGroup row>
+            <Form.Group>
               <Col sm={2}>
                 <h3>
                   <Badge
@@ -35,60 +47,28 @@ export const BotsPage: FC<{}> = () => {
                 </h3>
               </Col>
               <Col sm={2}>
-                <Input
-                  bsSize="sm"
-                  type="select"
-                  name="bulkActions"
-                  id="bulk-actions"
-                  onChange={this.handleChange}
-                >
-                  <option value="">Select bulk action</option>
-                  <option value="delete-selected">Delete selected</option>
-                  <option value="unselect-all">Unselect all</option>
-                  <option value="completed">Show completed only</option>
-                  <option value="active">Show active only</option>
-                  <option value="select-all">Select all</option>
-                </Input>
+                <BotsActions defaultValue={bulkActions} handleChange={setBulkActions} />
               </Col>
               <Col sm={2}>
-                <Button onClick={this.onSubmitBulkAction}>Apply bulk action</Button>
+                <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
               </Col>
               <Col sm={2}>
-                <label htmlFor="startDate">Filter by start date</label>
-                <Form.Control
-                  type="date"
-                  name="startDate"
-                  ref={(element) => (this.startDate = element)}
-                  onBlur={this.handleDateFilters}
-                  isInvalid={!checkValue(this.state.dateFilterError)}
-                />
+                <BotsDateFilter selectedDate={startDate} handleDateChange={handleStartDate} />
               </Col>
               <Col sm={2}>
-                <label htmlFor="endDate">Filter by end date</label>
-                <Form.Control
-                  type="date"
-                  name="endDate"
-                  onBlur={this.handleDateFilters}
-                  ref={(element) => (this.endDate = element)}
-                  isInvalid={!checkValue(this.state.dateFilterError)}
-                />
-                {!checkValue(this.state.dateFilterError) && (
-                  <Form.Control.Feedback type="invalid">
-                    {this.state.dateFilterError}
-                  </Form.Control.Feedback>
-                )}
+                <BotsDateFilter selectedDate={endDate} handleDateChange={handleEndDate} />
               </Col>
             </FormGroup>
           </Form>
-
+          </Col>
+          </Row>
           <Row>
-            {!checkValue(bots)
-              ? bots.map((x, i) => (
+            {bots?.map((x, i) => (
                   <Col key={i} sm="6" md="4" lg="3">
                     <BotCard
                       tabIndex={i}
                       x={x}
-                      selectedCards={this.state.selectedCards}
+                      selectedCards={selectedCards}
                       history={(url) => this.props.history.push(url)}
                       archiveBot={(id) => this.props.archiveBot(id)}
                       handleDelete={(id) => this.handleDelete(id)}
@@ -98,21 +78,15 @@ export const BotsPage: FC<{}> = () => {
                 ))
               : "No data available"}
           </Row>
-        </div>
         <ConfirmModal
-          show={() => useState({ confirmModal: null })}
-          modal={this.state.confirmModal}
-          handleActions={this.confirmDelete}
+          show={confirmModal !== null}
+          modal={confirmModal}
+          handleActions={confirmDelete}
           acceptText={"Close"}
           cancelText={"Delete"}
         >
           Closing deals will close outstanding orders, sell coins and delete bot
         </ConfirmModal>
-        {this.state.selectedCards.length > 0 && (
-          <ConfirmModal>
-            You did not select the items for bulk action
-          </ConfirmModal>
-        )}
     </Container>
   )
 }

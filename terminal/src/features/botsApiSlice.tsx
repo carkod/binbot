@@ -49,8 +49,8 @@ export const botsApiSlice = createApi({
           invalidatesTags: ["bots"]
       }),
     }),
-    deleteBot: build.mutation<BotsResponse, string>({
-      query: (id: string) => ({
+    deleteBot: build.mutation<BotsResponse, string[]>({
+      query: (id) => ({
           url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
           method: "DELETE",
           invalidatesTags: ["bots"]
