@@ -535,7 +535,7 @@ class MarginDeal(BaseDeal):
             # Cancel orders first
             # paper_trading doesn't have real orders so no need to check
             self.cancel_open_orders(DealType.stop_loss)
-            res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
+            res = self.margin_liquidation(self.active_bot.pair)
 
         stop_loss_order = MarginOrderSchema(
             timestamp=res["transactTime"],
@@ -589,7 +589,7 @@ class MarginDeal(BaseDeal):
         if self.db_collection.name == "paper_trading":
             res = self.simulate_margin_order(self.active_bot.deal.buy_total_qty, "BUY")
         else:
-            res = self.margin_liquidation(self.active_bot.pair, self.qty_precision)
+            res = self.margin_liquidation(self.active_bot.pair)
 
         if res:
             # No res means it wasn't properly closed/completed
