@@ -1,11 +1,10 @@
-import React from "react"
 import type { FC } from "react"
 import { Container, Row } from "reactstrap"
 
 export const Footer: FC<{}> = () => {
   return (
-    <footer className={"footer footer-default"}>
-      <Container fluid={true}>
+    <footer className="footer footer-default mt-auto">
+      <Container fluid>
         <Row>
           <div className="credits ml-auto">
             <div className="copyright">

@@ -33,135 +33,122 @@ const BotCard: FC<BotCardProps> = ({
   return (
     <Card
       tabIndex={botIndex}
-      className={
-        selectedCards.includes(bot.id) ? "border border-success" : "card-stats"
-      }
+      className={selectedCards.includes(bot.id) ? "border border-success" : ""}
     >
       <Card.Body>
-        <Container>
+        <Container fluid>
           <Row>
-            <Col md="8" xs="12">
+            <Col md="7" xs="12">
               <Card.Title as="h5">{bot.pair}</Card.Title>
-              <small className="mb-2 text-muted fw-lighter">{bot.name}</small>
+              <small className="text-muted fw-lighter">{bot.name}</small>
             </Col>
-            <Col md="4" xs="12">
+            <Col md="5" xs="12">
               <Badge bg={botProfit > 0 ? "success" : "danger"}>
                 {roundDecimals(botProfit)}%
               </Badge>
-              <div className="stats">
-                <Badge
-                  className="small"
-                  bg={
-                    bot.status === "active"
-                      ? "success"
-                      : bot.status === "error"
-                        ? "warning"
-                        : bot.status === "completed"
-                          ? "info"
-                          : "secondary"
-                  }
-                >
-                  <small>{bot.status && bot.status.toUpperCase()}</small>
-                </Badge>
-              </div>
+              <br />
+              <Badge
+                className="small"
+                bg={
+                  bot.status === "active"
+                    ? "success"
+                    : bot.status === "error"
+                      ? "warning"
+                      : bot.status === "completed"
+                        ? "info"
+                        : "secondary"
+                }
+              >
+                <small>{bot.status && bot.status.toUpperCase()}</small>
+              </Badge>
             </Col>
           </Row>
           <hr />
           <Row>
-            <Col md="12" xs="12">
-              <div className="stats">
-                <Row>
-                  <Col md="6" xs="7">
-                    <p className="small">Mode</p>
-                  </Col>
-                  <Col md="6" xs="5">
-                    <p className="small capitalize">
-                      {bot.mode ? bot.mode : "Unknown"}
-                    </p>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md="6" xs="7">
-                    <p className="small">Strategy</p>
-                  </Col>
-                  <Col md="6" xs="5">
-                    <p className="small capitalize">{bot.strategy}</p>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md="6" xs="7">
-                    <p className="small">Open @</p>
-                  </Col>
-                  <Col md="6" xs="5">
-                    <p className="small">
-                      {(bot.deal?.buy_price &&
-                        roundDecimals(bot.deal.buy_price.toFixed(6))) ||
-                        bot.deal?.buy_total_qty}
-                    </p>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md="6" xs="7">
-                    <p className="small">Take profit</p>
-                  </Col>
-                  <Col md="6" xs="5">
-                    <p className="small">
-                      {roundDecimals(bot.take_profit) + "%"}
-                    </p>
-                  </Col>
-                </Row>
-
-                {bot.trailling && (
-                  <Row>
-                    <Col md="6" xs="7">
-                      <p className="small">Trailling loss</p>
-                    </Col>
-                    <Col md="6" xs="5">
-                      <p className="small">
-                        {roundDecimals(bot.trailling_deviation) + "%"}
-                      </p>
-                    </Col>
-                  </Row>
-                )}
-
-                {bot.stop_loss > 0 && (
-                  <Row>
-                    <Col md="6" xs="7">
-                      <p className="small small">Stop loss</p>
-                    </Col>
-                    <Col md="6" xs="5">
-                      <p className="small">
-                        {roundDecimals(bot.stop_loss) + "%"}
-                      </p>
-                    </Col>
-                  </Row>
-                )}
-
-                {bot.commissions > 0 && (
-                  <Row>
-                    <Col md="6" xs="7">
-                      <p className="small">Comissions</p>
-                    </Col>
-                    <Col md="6" xs="5">
-                      <p className="small">{`${bot.commissions} BNB`}</p>
-                    </Col>
-                  </Row>
-                )}
-              </div>
-              {bot.deal?.buy_timestamp && bot.deal?.sell_timestamp ? (
-                <Row>
-                  <Col md="6" xs="7">
-                    <p className="small">Duration</p>
-                  </Col>
-                  <Col md="6" xs="5">
-                  {DurationTsComponent(bot)}
-                  </Col>
-                </Row>
-              ) : (
-                ""
-              )}
+            <Col md="6" xs="7">
+              <p className="small">Mode</p>
+            </Col>
+            <Col md="6" xs="5">
+              <p className="small capitalize">
+                {bot.mode ? bot.mode : "Unknown"}
+              </p>
             </Col>
           </Row>
+          <Row>
+            <Col md="6" xs="7">
+              <p className="small">Strategy</p>
+            </Col>
+            <Col md="6" xs="5">
+              <p className="small capitalize">{bot.strategy}</p>
+            </Col>
+          </Row>
+          <Row>
+            <Col md="6" xs="7">
+              <p className="small">Open @</p>
+            </Col>
+            <Col md="6" xs="5">
+              <p className="small">
+                {(bot.deal?.buy_price &&
+                  roundDecimals(bot.deal.buy_price.toFixed(6))) ||
+                  bot.deal?.buy_total_qty}
+              </p>
+            </Col>
+          </Row>
+          <Row>
+            <Col md="6" xs="7">
+              <p className="small">Take profit</p>
+            </Col>
+            <Col md="6" xs="5">
+              <p className="small">{roundDecimals(bot.take_profit) + "%"}</p>
+            </Col>
+          </Row>
+
+          {bot.trailling && (
+            <Row>
+              <Col md="6" xs="7">
+                <p className="small">Trailling loss</p>
+              </Col>
+              <Col md="6" xs="5">
+                <p className="small">
+                  {roundDecimals(bot.trailling_deviation) + "%"}
+                </p>
+              </Col>
+            </Row>
+          )}
+
+          {bot.stop_loss > 0 && (
+            <Row>
+              <Col md="6" xs="7">
+                <p className="small small">Stop loss</p>
+              </Col>
+              <Col md="6" xs="5">
+                <p className="small">{roundDecimals(bot.stop_loss) + "%"}</p>
+              </Col>
+            </Row>
+          )}
+
+          {bot.commissions > 0 && (
+            <Row>
+              <Col md="6" xs="7">
+                <p className="small">Comissions</p>
+              </Col>
+              <Col md="6" xs="5">
+                <p className="small">{`${bot.commissions} BNB`}</p>
+              </Col>
+            </Row>
+          )}
+          {bot.deal?.buy_timestamp && bot.deal?.sell_timestamp ? (
+            <Row>
+              <Col md="6" xs="7">
+                <p className="small">Duration</p>
+              </Col>
+              <Col md="6" xs="5">
+                {DurationTsComponent(bot)}
+              </Col>
+            </Row>
+          ) : (
+            ""
+          )}
         </Container>
       </Card.Body>
       <hr />

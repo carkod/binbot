@@ -123,10 +123,10 @@ export const BotsPage: FC<{}> = () => {
   }, [props, dispatch, isFetching])
 
   return (
-    <Container>
-      <Stack direction="horizontal" className="mt-3">
-        <div className="p-3 gx-10">
-          <h3>
+    <Container fluid>
+      <Stack direction="horizontal" className="mb-3 d-flex flex-row justify-content-between">
+        <div id="bot-profits">
+          <h4>
             {props?.bots?.ids.length > 0 && (
               <Badge bg={props?.totalProfit > 0 ? "success" : "danger"}>
                 <i className="fas fa-building-columns" />{" "}
@@ -134,38 +134,42 @@ export const BotsPage: FC<{}> = () => {
                 {(props?.totalProfit || 0) + "%"}
               </Badge>
             )}
-          </h3>
+          </h4>
         </div>
-        <div className="p-3">
-          <BotsActions
-            defaultValue={bulkActions}
-            handleChange={(e) => setBulkActions(e.target.value as BulkAction)}
-          />
-        </div>
-        <div className="p-3">
-          <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
-        </div>
-        <div className="p-3">
-          <BotsDateFilter
-            title="Filter by start date"
-            controlId="startDate"
-            selectedDate={startDate}
-            handleDateChange={handleStartDate}
-          />
-        </div>
-        <div className="p-3">
-          <BotsDateFilter
-            title="Filter by end date"
-            controlId="endDate"
-            selectedDate={endDate}
-            handleDateChange={handleEndDate}
-          />
+        <div id="filters">
+          <Stack direction="horizontal">
+            <div className="p-3">
+              <BotsActions
+                defaultValue={bulkActions}
+                handleChange={e => setBulkActions(e.target.value as BulkAction)}
+              />
+            </div>
+            <div className="p-3">
+              <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
+            </div>
+            <div className="p-3">
+              <BotsDateFilter
+                title="Filter by start date"
+                controlId="startDate"
+                selectedDate={startDate}
+                handleDateChange={handleStartDate}
+              />
+            </div>
+            <div className="p-3">
+              <BotsDateFilter
+                title="Filter by end date"
+                controlId="endDate"
+                selectedDate={endDate}
+                handleDateChange={handleEndDate}
+              />
+            </div>
+          </Stack>
         </div>
       </Stack>
-      <Row>
+      <Row xs="12" xxl="7">
         {props?.bots?.ids.length > 0
           ? Object.values(props?.bots?.entities).map((x, i) => (
-              <Col key={i} sm="6" md="4" lg="3">
+              <Col key={i}>
                 <BotCard
                   botIndex={i}
                   bot={x}

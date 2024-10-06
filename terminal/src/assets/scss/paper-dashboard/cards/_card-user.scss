@@ -28,10 +28,6 @@
     min-height: 240px;
   }
 
-  hr {
-    margin: 5px 15px 15px;
-  }
-
   .card-body + .card-footer {
     padding-top: 0;
   }
@@ -46,5 +42,10 @@
   .button-container {
     margin-bottom: 6px;
     text-align: center;
+  }
+
+  .inconspicious-text {
+    @extend .text-muted;
+    font-size: $font-size-xs;
   }
 }
