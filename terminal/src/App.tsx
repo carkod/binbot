@@ -20,20 +20,18 @@ export const routes = [
     name: "Bots",
     icon: "fas fa-robot",
     Component: BotsPage,
-    children: [
-      {
-        path: "new/:symbol?",
-        icon: null,
-        name: "New Bot",
-        Component: BotDetail,
-      },
-      {
-        path: "edit/:id",
-        icon: null,
-        name: "Edit Bot",
-        Component: BotDetail,
-      },
-    ]
+  },
+  {
+    path: "bots/new/:symbol?",
+    icon: null,
+    name: "New Bot",
+    element: <BotDetail />,
+  },
+  {
+    path: "bots/edit/:id",
+    icon: null,
+    name: "Edit Bot",
+    element: <BotDetail />,
   },
   {
     path: "autotrade",

@@ -110,7 +110,6 @@ export const BotsPage: FC<{}> = () => {
 
   const { data: props, isFetching } = useGetBotsQuery(
     { status: filterStatus, startDate, endDate },
-    { refetchOnMountOrArgChange: true },
   )
 
   useEffect(() => {
@@ -166,7 +165,7 @@ export const BotsPage: FC<{}> = () => {
           </Stack>
         </div>
       </Stack>
-      <Row xs="12" xxl="7">
+      <Row xs="12" xl="7" xxl="7">
         {props?.bots?.ids.length > 0
           ? Object.values(props?.bots?.entities).map((x, i) => (
               <Col key={i}>

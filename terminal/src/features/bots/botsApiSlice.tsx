@@ -1,15 +1,13 @@
 import {
   createEntityAdapter,
   type EntityId,
-  type EntityState,
-  type PayloadAction,
+  type EntityState
 } from "@reduxjs/toolkit"
-import { createAppSlice } from "../../app/createAppSlice"
+import { notifification } from "../../utils/api"
 import { weekAgo } from "../../utils/time"
 import { userApiSlice } from "../userApiSlice"
 import type { Bot } from "./botInitialState"
 import { computeTotalProfit } from "./profits"
-import { notifification } from "../../utils/api"
 
 interface DefaultBotsResponse {
   error: number
@@ -50,6 +48,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       query: ({ status, startDate, endDate }) => ({
         url: `${import.meta.env.VITE_GET_BOTS}` || "/bots",
         params: { status, start_date: startDate, end_date: endDate },
+        providesTags: ["bots"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -70,6 +69,14 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
         method: "GET",
       }),
+      transformResponse: ({ data, message, error }, meta, arg) => {
+        if (error && error === 1) {
+          notifification("error", message)
+        } else {
+          notifification("success", message)
+        }
+        return data
+      }
     }),
     createBot: build.mutation<DefaultBotsResponse, Bot>({
       query: body => ({
