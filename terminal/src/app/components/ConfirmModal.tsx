@@ -1,34 +1,38 @@
-import type { FC } from "react"
+import { useEffect, useState, type FC } from "react"
 import { Button, Modal } from "react-bootstrap"
 
 type ConfirmModalProps = {
-  modal: boolean
   handleActions: (value: number) => void
-  close: boolean
-  acceptText: string
-  cancelText: string
-  children: React.ReactNode
+  show: boolean
+  primary?: string | JSX.Element
+  secondary?: string | JSX.Element
+  children?: React.ReactNode
 }
 
 const ConfirmModal: FC<ConfirmModalProps> = ({
-  modal,
   handleActions,
-  close,
-  acceptText,
-  cancelText,
+  show,
+  secondary,
+  primary,
   children,
 }) => {
+  const [toggle, setToggle] = useState(show)
+
+  useEffect(() => {
+    setToggle(show)
+  }, [show])
+
   return (
-    <Modal show={close} onHide={() => !!modal}>
-      <Modal.Dialog>
-        <Modal.Header>Are you sure?</Modal.Header>
+    <Modal show={toggle} onHide={() => setToggle(false)} onEscapeKeyDown={() => setToggle(false)}>
+      <Modal.Dialog className="border-0 my-0">
+        <Modal.Header closeButton closeLabel="Cancel">Are you sure?</Modal.Header>
         <Modal.Body>{children}</Modal.Body>
-        <Modal.Footer>
-          <Button variant="primary" onClick={() => handleActions(0)}>
-            {acceptText}
-          </Button>{" "}
-          <Button variant="secondary" onClick={() => handleActions(1)}>
-            {cancelText}
+        <Modal.Footer className="d-flex flex-row justify-content-between border border-bottom-0">
+          <Button variant="danger" onClick={() => handleActions(1)}>
+            {primary}
+          </Button>
+          <Button variant="warning" onClick={() => handleActions(2)}>
+            {secondary}
           </Button>
         </Modal.Footer>
       </Modal.Dialog>

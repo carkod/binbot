@@ -4,8 +4,6 @@ import { useForm, type SubmitHandler } from "react-hook-form"
 import { useLocation, useNavigate } from "react-router"
 import { usePostLoginMutation } from "../../features/userApiSlice"
 import { setToken } from "../../utils/login"
-import { useAppDispatch } from "../hooks"
-import { toast } from "react-toastify"
 
 export type LoginFormState = {
   email: string
@@ -16,7 +14,6 @@ export const LoginForm: FC<{}> = () => {
   const [login, { data }] = usePostLoginMutation()
   const navigate = useNavigate()
   const location = useLocation()
-  const dispatch = useAppDispatch()
   const params = new URLSearchParams(location.search)
   const from = params.get("from") || "/"
 
@@ -41,9 +38,6 @@ export const LoginForm: FC<{}> = () => {
     if (data) {
       setToken(data.access_token)
       navigate("/dashboard" + from, { replace: true })
-    }
-    if (data?.error) {
-      toast.error("Login failed")
     }
   }, [data, navigate, from])
 

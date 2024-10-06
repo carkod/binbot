@@ -1,15 +1,15 @@
 import moment from "moment"
 import { Col, Row } from "reactstrap"
-import { renderChartTs } from "../../utils/time"
+import { renderDuration } from "../../utils/time"
 
 const TimestampComponent = ({ label, timestamp }) => {
   return (
     <Row>
-      <Col md="7" xs="7">
-        <p className="card-category">{label}</p>
+      <Col md="6" xs="7">
+        <p className="small">{label}</p>
       </Col>
-      <Col md="5" xs="5">
-        <p className="card-category">
+      <Col md="6" xs="5">
+        <p className="small">
           {moment(timestamp).format("D, MMM, hh:mm")}
         </p>
       </Col>
@@ -78,13 +78,13 @@ const RenderTimestamp = bot => {
   }
 }
 
-const RenderSellTimestamp = bot => {
+const DurationTsComponent = bot => {
   // Long positions
   if (bot.deal) {
-    return <>{renderChartTs(bot)}</>
+    return <p className="small">{renderDuration(bot)}</p>
   } else {
     return <></>
   }
 }
 
-export { RenderTimestamp, RenderSellTimestamp }
+export { RenderTimestamp, DurationTsComponent }

@@ -1,7 +1,7 @@
 import { intervalOptions } from "../../utils/validations"
 
 export interface Bot {
-  id: number
+  id: string
   name: string
   status: string
   balance_available: string
@@ -30,6 +30,7 @@ export interface Bot {
   strategy: string
   short_buy_price: number
   short_sell_price: number
+  commissions: number
 }
 
 /**

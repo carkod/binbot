@@ -43,7 +43,7 @@ export function botDuration(start, end) {
   return dateStringify
 }
 
-export function renderChartTs(bot) {
+export function renderDuration(bot) {
   let enterPositionTs = new Date().getTime()
   let exitPositionTs = new Date().getTime()
 

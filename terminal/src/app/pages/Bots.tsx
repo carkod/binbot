@@ -1,48 +1,55 @@
 import { useEffect, useState, type FC } from "react"
-import { Badge, Button, Col, Container, Form, Stack } from "react-bootstrap"
-import { Row } from "reactstrap"
-import { setHeaderContent, setSpinner } from "../../features/layoutSlice"
+import { Badge, Button, Container, Stack } from "react-bootstrap"
+import { Col, Row } from "reactstrap"
+import { botsApiSlice, useDeactivateBotMutation, useDeleteBotMutation, useGetBotsQuery } from "../../features/bots/botsApiSlice"
+import { setSpinner } from "../../features/layoutSlice"
+import { weekAgo } from "../../utils/time"
 import BotsActions from "../components/BotsActions"
 import BotsDateFilter from "../components/BotsCalendar"
-import ConfirmModal from "../components/ConfirmModal"
-import { useAppDispatch, useAppSelector } from "../hooks"
+import { useAppDispatch } from "../hooks"
 import BotCard from "../components/BotCard"
-import {
-  botsApiSlice,
-  botsSlice,
-  useDeleteBotMutation,
-  useGetBotsQuery,
-} from "../../features/bots/botsApiSlice"
-import { weekAgo } from "../../utils/time"
+import ConfirmModal from "../components/ConfirmModal"
 
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch()
   const currentTs = new Date().getTime()
   const oneWeekAgo = weekAgo()
-  // const [id, { isFetching, isSuccess: botDeleted }] = useDeleteBotMutation()
+  const [removeBot, { isSuccess: botDeleted }] = useDeleteBotMutation()
+  const [deactivateBot, { isSuccess: botDeactivated }] = useDeactivateBotMutation()
 
   // Component states
   const [selectedCards, selectCards] = useState([])
-  const [confirmModal, setConfirmModal] = useState(null)
+  const [botToDelete, setBotToDelete] = useState<string | null>(null)
   const [dateFilterError, setDateFilterError] = useState(null)
   const [bulkActions, setBulkActions] = useState(null)
   const [startDate, setStartDate] = useState(oneWeekAgo)
   const [endDate, setEndDate] = useState(currentTs)
   const [filterStatus, setFilterStatus] = useState("")
+  const [toDelete, addToDelete] = useState([])
 
   // const bots = useAppSelector(state => state.bots.bots)
 
   const handleSelection = id => {
-    const index = selectedCards.indexOf(id)
-    if (index > -1) {
-      selectedCards.splice(index, 1)
+    let newCards = []
+    if (selectedCards.includes(id)) {
+      newCards = selectedCards.filter(x => x !== id)
     } else {
-      selectedCards.push(id)
+      newCards = selectedCards.concat(id)
     }
-    selectCards(selectedCards)
+    selectCards(newCards)
   }
-  const handleDelete = id => {}
-  const confirmDelete = () => {}
+  const handleDelete = (botId: string) => {
+    setBotToDelete(botId)
+  }
+  const confirmDelete = (index) => {
+    if (index === 1) {
+      removeBot([botToDelete])
+    } else if (index === 2) {
+      deactivateBot(botToDelete)
+    }
+    setBotToDelete(null)
+    return false
+  }
   const onSubmitBulkAction = () => {}
   const handleStartDate = ts => {
     setStartDate(ts)
@@ -75,25 +82,32 @@ export const BotsPage: FC<{}> = () => {
     }
   }
 
-  const { data } = useGetBotsQuery({ status: filterStatus, startDate, endDate }, { refetchOnMountOrArgChange: true })
+  const { data: props, isFetching } = useGetBotsQuery(
+    { status: filterStatus, startDate, endDate },
+    { refetchOnMountOrArgChange: true },
+  )
 
-  // useEffect(() => {
-  //   console.log("data useEffect", props)
-  // }, [props])
+  useEffect(() => {
+    if (isFetching) {
+      dispatch(setSpinner(true))
+    }
+    if (props?.bots) {
+      dispatch(setSpinner(false))
+    }
+  }, [props, dispatch, isFetching])
 
   return (
     <Container>
-      {console.log("props", data?.data)}
-      <Stack gap={3} direction="horizontal" className="mt-3">
+      <Stack direction="horizontal" className="mt-3">
         <div className="p-3 gx-10">
           <h3>
-            Profit
-            {/* <Badge
-                    color={totalProfit > 0 ? "success" : "danger"}
-                  >
-                    <i className="nc-icon nc-bank" />{" "}
-                    {(totalProfit || 0) + "%"}
-                  </Badge> */}
+            {props?.bots?.ids.length > 0 && (
+              <Badge bg={props?.totalProfit > 0 ? "success" : "danger"}>
+                <i className="fas fa-building-columns" />{" "}
+                <span className="visually-hidden">Profit</span>
+                {(props?.totalProfit || 0) + "%"}
+              </Badge>
+            )}
           </h3>
         </div>
         <div className="p-3">
@@ -123,26 +137,36 @@ export const BotsPage: FC<{}> = () => {
         </div>
       </Stack>
       <Row>
-        {/* {data?.map((x, i) => (
+        {props?.bots?.ids.length > 0 ? Object.values(props?.bots?.entities).map((x, i) => (
           <Col key={i} sm="6" md="4" lg="3">
             <BotCard
               botIndex={i}
               bot={x}
               selectedCards={selectedCards}
-              // handleDelete={(id) => deleteBot(id)}
-              // handleSelection={this.handleSelection}
+              handleDelete={handleDelete}
+              handleSelection={handleSelection}
             />
           </Col>
-        ))} */}
+        )) : ""}
       </Row>
       <ConfirmModal
-        close={!!confirmModal}
-        modal={confirmModal}
+        show={!!botToDelete}
         handleActions={confirmDelete}
-        acceptText={"Close"}
-        cancelText={"Delete"}
+        primary={
+          <>
+            <i className="fa-solid fa-trash" />
+            <span className="visually-hidden">Delete</span>
+          </>
+        }
+        secondary={
+          <>
+            <i className="fa-solid fa-power-off" />
+            <span title="Deactivate" className="visually-hidden">Deactivate</span>
+          </>
+        }
       >
-        Closing deals will close outstanding orders, sell coins and delete bot
+        To close orders, please deactivate.
+        Deleting will only remove the bot.
       </ConfirmModal>
     </Container>
   )

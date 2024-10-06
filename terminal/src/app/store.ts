@@ -1,30 +1,12 @@
 import type { Action, ThunkAction } from "@reduxjs/toolkit"
-import { applyMiddleware, combineSlices, configureStore } from "@reduxjs/toolkit"
+import { combineSlices, configureStore } from "@reduxjs/toolkit"
 import { setupListeners } from "@reduxjs/toolkit/query"
-import { userApiSlice } from "../features/userApiSlice"
 import { layoutSlice } from "../features/layoutSlice"
-import { botsSlice } from "../features/bots/botsApiSlice"
-import { composeWithDevTools } from "@redux-devtools/extension"
+import { userApiSlice } from "../features/userApiSlice"
 
-const rootReducer = combineSlices(userApiSlice, layoutSlice, botsSlice)
+const rootReducer = combineSlices(userApiSlice, layoutSlice)
 
 export type RootState = ReturnType<typeof rootReducer>
-
-
-function logger({ getState }) {
-  return next => action => {
-    console.log('will dispatch', action)
-
-    // Call the next dispatch method in the middleware chain.
-    const returnValue = next(action)
-
-    console.log('state after dispatch', getState())
-
-    // This will likely be the action itself, unless
-    // a middleware further in chain changed it.
-    return returnValue
-  }
-}
 
 // The store setup is wrapped in `makeStore` to allow reuse
 // when setting up tests that need the same store config

@@ -45,7 +45,7 @@ export const defaultStatusValidator = (res: Response) => {
 
 export type NotificationType = "info" | "warning" | "success" | "error"
 
-export const notifification = (message: string, type: NotificationType) => {
+export const notifification = (type: NotificationType, message: string) => {
   return toast[type](message, {
     position: "top-right",
     autoClose: 5000,

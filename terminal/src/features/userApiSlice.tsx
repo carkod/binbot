@@ -1,6 +1,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react"
 import {
   baseQuery,
+  notifification,
 } from "../utils/api"
 
 interface LoginCredentials {
@@ -33,6 +34,12 @@ export const userApiSlice = createApi({
           method: "POST",
           body: body,
       }),
+      transformResponse: ({ data }) => {
+        if (data.error === 1) {
+          notifification("error", data.message)
+        }
+        return data
+      }
     }),
     getUsers: build.query<LoginResponse, void>({
       query: () => ({
