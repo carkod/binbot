@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router"
 import { usePostLoginMutation } from "../../features/userApiSlice"
 import { setToken } from "../../utils/login"
 import { useAppDispatch } from "../hooks"
+import { toast } from "react-toastify"
 
 export type LoginFormState = {
   email: string
@@ -12,7 +13,7 @@ export type LoginFormState = {
 }
 
 export const LoginForm: FC<{}> = () => {
-  const [login, { isSuccess, data }] = usePostLoginMutation()
+  const [login, { data }] = usePostLoginMutation()
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useAppDispatch()
@@ -33,16 +34,18 @@ export const LoginForm: FC<{}> = () => {
   })
 
   const onSubmit: SubmitHandler<LoginFormState> = values => {
-    login(values).unwrap()
-    navigate("/dashboard")
+    login(values)
   }
 
   useEffect(() => {
-    if (isSuccess && data?.access_token) {
+    if (data) {
       setToken(data.access_token)
-      navigate("/dashboard", { replace: true })
+      navigate("/dashboard" + from, { replace: true })
     }
-  }, [isSuccess, data, navigate, from])
+    if (data?.error) {
+      toast.error("Login failed")
+    }
+  }, [data, navigate, from])
 
   return (
     <Container className="my-4">

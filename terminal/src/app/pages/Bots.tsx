@@ -9,6 +9,7 @@ import { useAppDispatch, useAppSelector } from "../hooks"
 import BotCard from "../components/BotCard"
 import {
   botsApiSlice,
+  botsSlice,
   useDeleteBotMutation,
   useGetBotsQuery,
 } from "../../features/bots/botsApiSlice"
@@ -29,11 +30,7 @@ export const BotsPage: FC<{}> = () => {
   const [endDate, setEndDate] = useState(currentTs)
   const [filterStatus, setFilterStatus] = useState("")
 
-  const { data, isSuccess } = useGetBotsQuery({
-    status: "",
-    startDate: oneWeekAgo,
-    endDate: currentTs,
-  })
+  // const bots = useAppSelector(state => state.bots.bots)
 
   const handleSelection = id => {
     const index = selectedCards.indexOf(id)
@@ -78,16 +75,15 @@ export const BotsPage: FC<{}> = () => {
     }
   }
 
-  useEffect(() => {
-    if (data) {
-      console.log("data useEffect", data)
-    }
-  }, [data, isSuccess])
+  const { data } = useGetBotsQuery({ status: filterStatus, startDate, endDate }, { refetchOnMountOrArgChange: true })
+
+  // useEffect(() => {
+  //   console.log("data useEffect", props)
+  // }, [props])
 
   return (
     <Container>
-      {console.log("isSuccess", isSuccess)}
-      {console.log("data", data)}
+      {console.log("props", data?.data)}
       <Stack gap={3} direction="horizontal" className="mt-3">
         <div className="p-3 gx-10">
           <h3>

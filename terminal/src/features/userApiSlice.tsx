@@ -32,7 +32,6 @@ export const userApiSlice = createApi({
           url: import.meta.env.VITE_LOGIN || "/login",
           method: "POST",
           body: body,
-          invalidatesTags: ["login"]
       }),
     }),
     getUsers: build.query<LoginResponse, void>({
@@ -46,7 +45,6 @@ export const userApiSlice = createApi({
         url: import.meta.env.VITE_REGISTER_USER || "/user/register",
         method: "POST",
         body: body,
-        invalidatesTags: ["login"],
       }),
     }),
   }),
