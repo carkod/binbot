@@ -1,13 +1,10 @@
 import { useEffect, type FC } from "react"
-import {
-  Button,
-  Container,
-  Form,
-} from "react-bootstrap"
+import { Button, Container, Form } from "react-bootstrap"
 import { useForm, type SubmitHandler } from "react-hook-form"
-import { useLocation, useNavigate, useRouteLoaderData } from "react-router"
+import { useLocation, useNavigate } from "react-router"
 import { usePostLoginMutation } from "../../features/userApiSlice"
 import { setToken } from "../../utils/login"
+import { useAppDispatch } from "../hooks"
 
 export type LoginFormState = {
   email: string
@@ -15,12 +12,12 @@ export type LoginFormState = {
 }
 
 export const LoginForm: FC<{}> = () => {
-
   const [login, { isSuccess, data }] = usePostLoginMutation()
   const navigate = useNavigate()
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  const from = params.get("from") || "/";
+  const location = useLocation()
+  const dispatch = useAppDispatch()
+  const params = new URLSearchParams(location.search)
+  const from = params.get("from") || "/"
 
   const {
     register,
@@ -35,15 +32,15 @@ export const LoginForm: FC<{}> = () => {
     },
   })
 
-  const onSubmit: SubmitHandler<LoginFormState> = (values) => {
-    login(values)
-    navigate("/dashboard", { replace: true });
+  const onSubmit: SubmitHandler<LoginFormState> = values => {
+    login(values).unwrap()
+    navigate("/dashboard")
   }
 
   useEffect(() => {
     if (isSuccess && data?.access_token) {
       setToken(data.access_token)
-      navigate("/dashboard", { replace: true });
+      navigate("/dashboard", { replace: true })
     }
   }, [isSuccess, data, navigate, from])
 

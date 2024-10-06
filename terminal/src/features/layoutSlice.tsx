@@ -1,31 +1,36 @@
 import type { PayloadAction } from "@reduxjs/toolkit"
 import { createAppSlice } from "../app/createAppSlice"
 
+// Layout elements that
+// can be dynamically changed by children components
 export interface LayoutInitialState {
-  icon: string
-  headerTitle: string
+  icon?: string
+  headerTitle?: string
+  spinner?: boolean
 }
 
-export const layoutInitialState: LayoutInitialState = {
+const initialState: LayoutInitialState = {
   icon: "fas fa-home",
   headerTitle: "Dashboard",
+  spinner: false
 }
+
 
 export const layoutSlice = createAppSlice({
   name: "layout",
-  initialState: layoutInitialState,
-  reducers: {
-    setHeaderContent(state, action: PayloadAction<LayoutInitialState>) {
+  initialState,
+  reducers: create  => ({
+    setHeaderContent: create.reducer((state, action: PayloadAction<LayoutInitialState>) => {
       state.headerTitle = action.payload.headerTitle
       state.icon = action.payload.icon
-    },
-  },
+    }),
+    setSpinner: create.reducer((state, action: PayloadAction<LayoutInitialState>) => {
+      state.spinner = action.payload.spinner
+    }),
+  }),
   selectors: {
-    selectHeaderTitle: (state) => state.headerTitle,
-    selectHeaderIcon: (state) => state.icon,
+    selectSpinner: (state, action) => state.spinner = action.payload.spinner,
   },
 })
 
-// Action creators are generated for each case reducer function.
-export const { setHeaderContent } = layoutSlice.actions
-export const { selectHeaderTitle, selectHeaderIcon } = layoutSlice.selectors
+export const { setHeaderContent, setSpinner } = layoutSlice.actions

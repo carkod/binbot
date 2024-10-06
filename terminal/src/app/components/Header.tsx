@@ -1,25 +1,29 @@
 import type { FC } from "react"
 import { Container, Navbar } from "react-bootstrap"
-import { useAppSelector } from "../hooks"
+import { useLocation, useMatch } from "react-router"
+import { Link } from "react-router-dom"
+import { routes } from "../../App"
 
-export const Header: FC<{}> = ({}) => {
-  const icon = useAppSelector(state => state.layout.icon)
-  const headerTitle = useAppSelector(state => state.layout.headerTitle)
+export const Header: FC<{}> = () => {
+
+  const location = useLocation()
+  const matchPath = useMatch(location.pathname)
+  const loadData = matchPath ? routes.find(route => `/${route.path}` === location.pathname) : null
 
   return (
     <Navbar className="bg-body-tertiary">
-      <Container>
+      <Container fluid>
         <Navbar.Brand>
-          <i className={`${icon}`}></i> {headerTitle}
+          <i className={`${loadData?.icon}`}></i> {loadData?.name}
         </Navbar.Brand>
         <Navbar.Collapse className="justify-content-end">
           <Navbar.Text>
-            <a href="#login">
+            <Link to="/logout">
               <i
                 className="fa-solid fa-right-from-bracket"
                 style={{ color: "black" }}
               />
-            </a>
+            </Link>
           </Navbar.Text>
         </Navbar.Collapse>
       </Container>

@@ -2,17 +2,9 @@ import type { FC } from "react"
 import { useEffect } from "react"
 import { Form } from "react-bootstrap"
 import { useForm } from "react-hook-form"
-import { setHeaderContent } from "../../features/layoutSlice"
 import { type LoginFormState } from "../components/LoginForm"
-import { useAppDispatch } from "../hooks"
 
 export const BotDetail: FC<{}> = () => {
-  const dispatch = useAppDispatch()
-
-  dispatch(setHeaderContent({
-    icon: "fas fa-robot",
-    headerTitle: "Bot Details",
-  }))
 
 	const {
     register,

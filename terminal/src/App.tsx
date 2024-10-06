@@ -12,32 +12,35 @@ export const routes = [
   {
     path: "dashboard",
     name: "Dashboard",
-    icon: "nc-icon nc-bank",
+    icon: "fas fa-chart-simple",
     Component: DashboardPage,
   },
   {
     path: "bots",
     name: "Bots",
-    icon: "nc-icon nc-laptop",
+    icon: "fas fa-robot",
     Component: BotsPage,
     children: [
       {
         path: "new/:symbol?",
+        icon: null,
         name: "New Bot",
         Component: BotDetail,
       },
       {
         path: "edit/:id",
-        name: "New Bot",
+        icon: null,
+        name: "Edit Bot",
         Component: BotDetail,
       },
-      {
-        path: "autotrade",
-        name: "AutoTrade",
-        Component: AutotradePage,
-      }
     ]
   },
+  {
+    path: "autotrade",
+    icon: "fas fa-chart-simple",
+    name: "AutoTrade",
+    Component: AutotradePage,
+  }
 ]
 
 const rootRouter = createBrowserRouter([

@@ -1,92 +1,153 @@
-import { useState, type FC } from "react"
-import { Badge, Button, Col, Container, Form } from "react-bootstrap"
+import { useEffect, useState, type FC } from "react"
+import { Badge, Button, Col, Container, Form, Stack } from "react-bootstrap"
 import { Row } from "reactstrap"
-import { setHeaderContent } from "../../features/layoutSlice"
+import { setHeaderContent, setSpinner } from "../../features/layoutSlice"
 import BotsActions from "../components/BotsActions"
 import BotsDateFilter from "../components/BotsCalendar"
 import ConfirmModal from "../components/ConfirmModal"
-import { useAppDispatch } from "../hooks"
+import { useAppDispatch, useAppSelector } from "../hooks"
+import BotCard from "../components/BotCard"
+import {
+  botsApiSlice,
+  useDeleteBotMutation,
+  useGetBotsQuery,
+} from "../../features/bots/botsApiSlice"
+import { weekAgo } from "../../utils/time"
 
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch()
-  const [selectedCards, setSelectedCards] = useState([])
+  const currentTs = new Date().getTime()
+  const oneWeekAgo = weekAgo()
+  // const [id, { isFetching, isSuccess: botDeleted }] = useDeleteBotMutation()
+
+  // Component states
+  const [selectedCards, selectCards] = useState([])
   const [confirmModal, setConfirmModal] = useState(null)
   const [dateFilterError, setDateFilterError] = useState(null)
   const [bulkActions, setBulkActions] = useState(null)
-  const [startDate, setStartDate] = useState(null)
-  const [endDate, setEndDate] = useState(null)
+  const [startDate, setStartDate] = useState(oneWeekAgo)
+  const [endDate, setEndDate] = useState(currentTs)
+  const [filterStatus, setFilterStatus] = useState("")
 
-  const handleChange = (e) => {}
-  const handleSelection = (id) => {}
-  const handleDelete = (id) => {}
+  const { data, isSuccess } = useGetBotsQuery({
+    status: "",
+    startDate: oneWeekAgo,
+    endDate: currentTs,
+  })
+
+  const handleSelection = id => {
+    const index = selectedCards.indexOf(id)
+    if (index > -1) {
+      selectedCards.splice(index, 1)
+    } else {
+      selectedCards.push(id)
+    }
+    selectCards(selectedCards)
+  }
+  const handleDelete = id => {}
   const confirmDelete = () => {}
   const onSubmitBulkAction = () => {}
-  const handleStartDate = (e) => {}
-  const handleEndDate = (e) => {}
+  const handleStartDate = ts => {
+    setStartDate(ts)
+    if (ts > endDate) {
+      setDateFilterError("Start date cannot be greater than end date")
+    } else {
+      setDateFilterError(null)
+      dispatch(
+        botsApiSlice.endpoints.getBots.initiate({
+          status: filterStatus,
+          startDate: ts,
+          endDate: endDate,
+        }),
+      )
+    }
+  }
+  const handleEndDate = ts => {
+    setEndDate(ts)
+    if (ts < startDate) {
+      setDateFilterError("End date cannot be less than start date")
+    } else {
+      setDateFilterError(null)
+      dispatch(
+        botsApiSlice.endpoints.getBots.initiate({
+          status: filterStatus,
+          startDate: startDate,
+          endDate: ts,
+        }),
+      )
+    }
+  }
 
-
-  dispatch(setHeaderContent({
-    icon: "fas fa-robot",
-    headerTitle: "Bots",
-  }))
+  useEffect(() => {
+    if (data) {
+      console.log("data useEffect", data)
+    }
+  }, [data, isSuccess])
 
   return (
     <Container>
-      <Row>
-        <Col>
-          <Form>
-            <Form.Group>
-              <Col sm={2}>
-                <h3>
-                  <Badge
-                    color={this.props.totalProfit > 0 ? "success" : "danger"}
+      {console.log("isSuccess", isSuccess)}
+      {console.log("data", data)}
+      <Stack gap={3} direction="horizontal" className="mt-3">
+        <div className="p-3 gx-10">
+          <h3>
+            Profit
+            {/* <Badge
+                    color={totalProfit > 0 ? "success" : "danger"}
                   >
                     <i className="nc-icon nc-bank" />{" "}
-                    {(this.props.totalProfit || 0) + "%"}
-                  </Badge>
-                </h3>
-              </Col>
-              <Col sm={2}>
-                <BotsActions defaultValue={bulkActions} handleChange={setBulkActions} />
-              </Col>
-              <Col sm={2}>
-                <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
-              </Col>
-              <Col sm={2}>
-                <BotsDateFilter selectedDate={startDate} handleDateChange={handleStartDate} />
-              </Col>
-              <Col sm={2}>
-                <BotsDateFilter selectedDate={endDate} handleDateChange={handleEndDate} />
-              </Col>
-            </FormGroup>
-          </Form>
+                    {(totalProfit || 0) + "%"}
+                  </Badge> */}
+          </h3>
+        </div>
+        <div className="p-3">
+          <BotsActions
+            defaultValue={bulkActions}
+            handleChange={setBulkActions}
+          />
+        </div>
+        <div className="p-3">
+          <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
+        </div>
+        <div className="p-3">
+          <BotsDateFilter
+            title="Filter by start date"
+            controlId="startDate"
+            selectedDate={startDate}
+            handleDateChange={handleStartDate}
+          />
+        </div>
+        <div className="p-3">
+          <BotsDateFilter
+            title="Filter by end date"
+            controlId="endDate"
+            selectedDate={endDate}
+            handleDateChange={handleEndDate}
+          />
+        </div>
+      </Stack>
+      <Row>
+        {/* {data?.map((x, i) => (
+          <Col key={i} sm="6" md="4" lg="3">
+            <BotCard
+              botIndex={i}
+              bot={x}
+              selectedCards={selectedCards}
+              // handleDelete={(id) => deleteBot(id)}
+              // handleSelection={this.handleSelection}
+            />
           </Col>
-          </Row>
-          <Row>
-            {bots?.map((x, i) => (
-                  <Col key={i} sm="6" md="4" lg="3">
-                    <BotCard
-                      tabIndex={i}
-                      x={x}
-                      selectedCards={selectedCards}
-                      history={(url) => this.props.history.push(url)}
-                      archiveBot={(id) => this.props.archiveBot(id)}
-                      handleDelete={(id) => this.handleDelete(id)}
-                      handleSelection={this.handleSelection}
-                    />
-                  </Col>
-                ))
-              : "No data available"}
-          </Row>
-        <ConfirmModal
-          show={confirmModal !== null}
-          modal={confirmModal}
-          handleActions={confirmDelete}
-          acceptText={"Close"}
-          cancelText={"Delete"}
-        >
-          Closing deals will close outstanding orders, sell coins and delete bot
-        </ConfirmModal>
+        ))} */}
+      </Row>
+      <ConfirmModal
+        close={!!confirmModal}
+        modal={confirmModal}
+        handleActions={confirmDelete}
+        acceptText={"Close"}
+        cancelText={"Delete"}
+      >
+        Closing deals will close outstanding orders, sell coins and delete bot
+      </ConfirmModal>
     </Container>
   )
 }

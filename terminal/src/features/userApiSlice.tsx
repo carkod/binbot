@@ -15,14 +15,19 @@ interface LoginResponse {
   error: number
 }
 
-// Define a service using a base URL and expected endpoints
+/**
+ * Root API slice
+ * all other slices will be injected into this one
+ * userApiSlice is the main one called since it allows
+ * for login and registration other API endpoints will
+ * be conditional to this. This can also allow for
+ * code splitting
+ */
 export const userApiSlice = createApi({
   baseQuery: baseQuery,
-  reducerPath: "loginApi",
-  // Tag types are used for caching and invalidation.
-  tagTypes: ["login"],
+  reducerPath: "api",
   endpoints: build => ({
-    postLogin: build.mutation<LoginResponse, LoginCredentials>({
+    postLogin: build.mutation<LoginResponse, Partial<LoginCredentials>>({
       query: body => ({
           url: import.meta.env.VITE_LOGIN || "/login",
           method: "POST",
