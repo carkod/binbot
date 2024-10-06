@@ -1,11 +1,6 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query"
-import { getToken } from "./login"
 import { Bounce, toast } from "react-toastify"
-import {
-  isRejectedWithValue,
-  type Middleware,
-  type MiddlewareAPI,
-} from "@reduxjs/toolkit"
+import { getToken } from "./login"
 
 export function buildBackUrl() {
   let base = window.location.hostname.split(".")

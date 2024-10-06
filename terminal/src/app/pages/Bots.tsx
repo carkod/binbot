@@ -1,10 +1,15 @@
-import { useEffect, useState, type FC } from "react"
+import { ReactElement, useEffect, useState, type FC } from "react"
 import { Badge, Button, Container, Stack } from "react-bootstrap"
 import { Col, Row } from "reactstrap"
-import { botsApiSlice, useDeactivateBotMutation, useDeleteBotMutation, useGetBotsQuery } from "../../features/bots/botsApiSlice"
+import {
+  botsApiSlice,
+  useDeactivateBotMutation,
+  useDeleteBotMutation,
+  useGetBotsQuery,
+} from "../../features/bots/botsApiSlice"
 import { setSpinner } from "../../features/layoutSlice"
 import { weekAgo } from "../../utils/time"
-import BotsActions from "../components/BotsActions"
+import BotsActions, { BulkAction } from "../components/BotsActions"
 import BotsDateFilter from "../components/BotsCalendar"
 import { useAppDispatch } from "../hooks"
 import BotCard from "../components/BotCard"
@@ -14,14 +19,15 @@ export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch()
   const currentTs = new Date().getTime()
   const oneWeekAgo = weekAgo()
-  const [removeBot, { isSuccess: botDeleted }] = useDeleteBotMutation()
-  const [deactivateBot, { isSuccess: botDeactivated }] = useDeactivateBotMutation()
+  const [removeBots, { isSuccess: botDeleted }] = useDeleteBotMutation()
+  const [deactivateBot, { isSuccess: botDeactivated }] =
+    useDeactivateBotMutation()
 
   // Component states
   const [selectedCards, selectCards] = useState([])
   const [botToDelete, setBotToDelete] = useState<string | null>(null)
   const [dateFilterError, setDateFilterError] = useState(null)
-  const [bulkActions, setBulkActions] = useState(null)
+  const [bulkActions, setBulkActions] = useState<BulkAction>(BulkAction.NONE)
   const [startDate, setStartDate] = useState(oneWeekAgo)
   const [endDate, setEndDate] = useState(currentTs)
   const [filterStatus, setFilterStatus] = useState("")
@@ -41,16 +47,36 @@ export const BotsPage: FC<{}> = () => {
   const handleDelete = (botId: string) => {
     setBotToDelete(botId)
   }
-  const confirmDelete = (index) => {
+  const confirmDelete = index => {
     if (index === 1) {
-      removeBot([botToDelete])
+      removeBots([botToDelete])
     } else if (index === 2) {
       deactivateBot(botToDelete)
     }
     setBotToDelete(null)
     return false
   }
-  const onSubmitBulkAction = () => {}
+  const onSubmitBulkAction = () => {
+    switch (bulkActions) {
+      case BulkAction.DELETE:
+        removeBots(selectedCards)
+        break
+      case BulkAction.SELECT_ALL:
+        selectCards(Object.keys(props.bots.entities))
+        break
+      case BulkAction.COMPLETED:
+        setFilterStatus(BulkAction.COMPLETED)
+        break
+      case BulkAction.ACTIVE:
+        setFilterStatus(BulkAction.ACTIVE)
+        break
+      case BulkAction.UNSELECT_ALL:
+        selectCards([])
+        break
+      default:
+        break
+    }
+  }
   const handleStartDate = ts => {
     setStartDate(ts)
     if (ts > endDate) {
@@ -113,7 +139,7 @@ export const BotsPage: FC<{}> = () => {
         <div className="p-3">
           <BotsActions
             defaultValue={bulkActions}
-            handleChange={setBulkActions}
+            handleChange={(e) => setBulkActions(e.target.value as BulkAction)}
           />
         </div>
         <div className="p-3">
@@ -137,17 +163,19 @@ export const BotsPage: FC<{}> = () => {
         </div>
       </Stack>
       <Row>
-        {props?.bots?.ids.length > 0 ? Object.values(props?.bots?.entities).map((x, i) => (
-          <Col key={i} sm="6" md="4" lg="3">
-            <BotCard
-              botIndex={i}
-              bot={x}
-              selectedCards={selectedCards}
-              handleDelete={handleDelete}
-              handleSelection={handleSelection}
-            />
-          </Col>
-        )) : ""}
+        {props?.bots?.ids.length > 0
+          ? Object.values(props?.bots?.entities).map((x, i) => (
+              <Col key={i} sm="6" md="4" lg="3">
+                <BotCard
+                  botIndex={i}
+                  bot={x}
+                  selectedCards={selectedCards}
+                  handleDelete={handleDelete}
+                  handleSelection={handleSelection}
+                />
+              </Col>
+            ))
+          : ""}
       </Row>
       <ConfirmModal
         show={!!botToDelete}
@@ -161,12 +189,13 @@ export const BotsPage: FC<{}> = () => {
         secondary={
           <>
             <i className="fa-solid fa-power-off" />
-            <span title="Deactivate" className="visually-hidden">Deactivate</span>
+            <span title="Deactivate" className="visually-hidden">
+              Deactivate
+            </span>
           </>
         }
       >
-        To close orders, please deactivate.
-        Deleting will only remove the bot.
+        To close orders, please deactivate. Deleting will only remove the bot.
       </ConfirmModal>
     </Container>
   )
