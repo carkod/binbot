@@ -8,21 +8,32 @@ import { store } from "./app/store"
 import BotDetail from "./app/pages/BotDetail"
 import AutotradePage from "./app/pages/Autotrade"
 
+export type Routes = {
+  path: string
+  name?: string
+  icon?: string
+  link?: string  // Decides if shows on Sidebar
+  element: JSX.Element
+}
+
 export const routes = [
   {
     path: "dashboard",
+    link: "/dashboard",
     name: "Dashboard",
     icon: "fas fa-chart-simple",
-    Component: DashboardPage,
+    element: <DashboardPage />,
   },
   {
     path: "bots",
+    link: "/bots",
     name: "Bots",
     icon: "fas fa-robot",
-    Component: BotsPage,
+    element: <BotsPage />,
   },
   {
     path: "bots/new/:symbol?",
+    link: "/bots/new",
     icon: null,
     name: "New Bot",
     element: <BotDetail />,
@@ -35,9 +46,10 @@ export const routes = [
   },
   {
     path: "autotrade",
+    link: "/autotrade",
     icon: "fas fa-chart-simple",
     name: "AutoTrade",
-    Component: AutotradePage,
+    element: <AutotradePage />,
   }
 ]
 

@@ -23,14 +23,20 @@ export const Sidebar: FC<{}> = () => {
       </div>
       <div className="sidebar-wrapper" ref={sidebarRef}>
         <Nav defaultActiveKey="/dashboard" as="ul">
-          {routes.map((prop, key) => (
-            <Nav.Item as="li" className={activeRoute(prop.path)} key={key}>
-              <NavLink to={prop.path} className="nav-link">
-                <i className={prop.icon} />
-                <p>{prop.name}</p>
-              </NavLink>
-            </Nav.Item>
-          ))}
+          {routes.map((prop, key) => {
+            if (prop.link) {
+              return (
+                <Nav.Item as="li" className={activeRoute(prop.path)} key={key}>
+                  <NavLink to={prop.path} className="nav-link">
+                    <i className={prop.icon} />
+                    <p>{prop.name}</p>
+                  </NavLink>
+                </Nav.Item>
+              )
+            } else {
+              return null
+            }
+          })}
         </Nav>
       </div>
     </div>

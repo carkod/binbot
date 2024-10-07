@@ -153,12 +153,6 @@ const BotCard: FC<BotCardProps> = ({
       </Card.Body>
       <hr />
       <Card.Footer className="d-flex flex-row justify-content-between">
-        <Button variant="success" onClick={() => handleSelection(bot.id)}>
-          <i className="fa-solid fa-check" />
-          <span className="visually-hidden">
-            {selectedCards.includes(bot.id) ? "Deselect" : "Select"}
-          </span>
-        </Button>
         <Button
           variant="info"
           title="Edit this bot"
@@ -169,6 +163,12 @@ const BotCard: FC<BotCardProps> = ({
           }
         >
           <i className="fa-solid fa-edit u-disable-events" />
+        </Button>
+        <Button variant="success" onClick={() => handleSelection(bot.id)}>
+          <i className="fa-solid fa-check" />
+          <span className="visually-hidden">
+            {selectedCards.includes(bot.id) ? "Deselect" : "Select"}
+          </span>
         </Button>
         <Button variant="danger" onClick={() => handleDelete(bot.id)}>
           <i className="fa-solid fa-trash" />

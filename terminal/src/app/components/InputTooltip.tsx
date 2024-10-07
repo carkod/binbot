@@ -12,7 +12,7 @@ interface InputTooltipProps {
 
 export const InputTooltip: FC<InputTooltipProps> = ({ name, tooltip, children }, ...props) => {
   return (
-    <Form.Group className="position-relative" controlId={`${name}-tooltip`}>
+    <Form.Group className="position-relative">
       <Form.Label htmlFor={name}>
         <Button type="button" className="btn--tooltip" id={`${name}-tooltip`}>
           {children}

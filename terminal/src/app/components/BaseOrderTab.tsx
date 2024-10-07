@@ -7,6 +7,7 @@ import { type AppDispatch } from "../store"
 import { InputTooltip } from "./InputTooltip"
 import { setField } from "../../features/bots/botSlice"
 import { TabsKeys } from "../pages/BotDetail"
+import { BotStatus } from "../../utils/enums"
 
 const BaseOrderTab: FC<{
   bot: Bot
@@ -70,7 +71,7 @@ const BaseOrderTab: FC<{
             selected={bot.pair}
             handleChange={handlePairChange}
             handleBlur={handlePairBlur}
-            disabled={bot.status === "completed"}
+            disabled={bot.status === BotStatus.COMPLETED}
             required={true}
           /> */}
         </Col>
@@ -85,7 +86,7 @@ const BaseOrderTab: FC<{
           />
         </Col>
       </Row>
-      {/* <Row>
+      <Row>
         <Col md="6" sm="12">
           <InputTooltip name="base_order_size" tooltip={"Minimum 15 USD"} title="Base order size">
             <Form.Control
@@ -96,11 +97,11 @@ const BaseOrderTab: FC<{
               value={bot.base_order_size}
               autoComplete="off"
               required
-              disabled={bot.status === "active" || bot.status === "completed"}
+              disabled={bot.status === BotStatus.ACTIVE || bot.status === BotStatus.COMPLETED}
             />
           </InputTooltip>
           
-          {bot.status !== "active" && (
+          {bot.status !== BotStatus.ACTIVE && (
             <>
               <Badge color="secondary" onClick={addMin}>
                 Min{" "}
@@ -118,7 +119,7 @@ const BaseOrderTab: FC<{
             </>
           )}
         </Col>
-        {bot.status !== "active" && (
+        {bot.status !== BotStatus.ACTIVE && (
           <Col md="6" sm="12">
             <Form.Label htmlFor="balance_to_use" aria-required="true">
               Balance to use
@@ -156,7 +157,7 @@ const BaseOrderTab: FC<{
             </Form.Group>
           </Col>
         )}
-      </Row> */}
+      </Row>
       {/* <Row>
         <Col md="6" sm="12">
           <Form.Group>

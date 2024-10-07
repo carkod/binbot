@@ -23,7 +23,7 @@ export enum TabsKeys {
 export const BotDetail: FC<{}> = () => {
   const { id } = useParams()
   const editBotPage = useMatch("/bots/edit")
-  const { data, symbol } = useGetSingleBotQuery(id)
+  const { data } = useGetSingleBotQuery(id)
   const bot = useAppSelector(selectBot)
 
   useEffect(() => {
