@@ -1,23 +1,25 @@
 import { type FC } from "react"
-import { Form } from "react-bootstrap"
+import { Button, Form } from "react-bootstrap"
 import { Label } from "reactstrap"
 
 interface InputTooltipProps {
   name: string
-  text: string
+  tooltip: string
   children: React.ReactNode
+  title: string
+
 }
 
-export const InputTooltip: FC<InputTooltipProps> = ({ name, text, children }, ...props) => {
+export const InputTooltip: FC<InputTooltipProps> = ({ name, tooltip, children }, ...props) => {
   return (
     <Form.Group className="position-relative" controlId={`${name}-tooltip`}>
-      <Label htmlFor={name}>
-        <button type="button" className="btn--tooltip" id={`${name}-tooltip`}>
+      <Form.Label htmlFor={name}>
+        <Button type="button" className="btn--tooltip" id={`${name}-tooltip`}>
           {children}
-        </button>
-      </Label>
+        </Button>
+      </Form.Label>
       <Form.Control.Feedback>
-        <small>{text}</small>
+        <small>{tooltip}</small>
       </Form.Control.Feedback>
     </Form.Group>
   )

@@ -25,6 +25,10 @@ interface GetBotsParams {
   endDate?: number
 }
 
+interface SingleBotResponse {
+  bot: Bot
+}
+
 export const buildGetBotsPath = (
   status: string = null,
   startDate: number = weekAgo(),
@@ -64,7 +68,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return { bots: bots, totalProfit: totalProfit }
       },
     }),
-    getSingleBot: build.query<DefaultBotsResponse, string>({
+    getSingleBot: build.query<SingleBotResponse, string>({
       query: id => ({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
         method: "GET",

@@ -3,8 +3,9 @@ import { combineSlices, configureStore } from "@reduxjs/toolkit"
 import { setupListeners } from "@reduxjs/toolkit/query"
 import { layoutSlice } from "../features/layoutSlice"
 import { userApiSlice } from "../features/userApiSlice"
+import { botSlice } from "../features/bots/botSlice"
 
-const rootReducer = combineSlices(userApiSlice, layoutSlice)
+const rootReducer = combineSlices(userApiSlice, layoutSlice, botSlice)
 
 export type RootState = ReturnType<typeof rootReducer>
 

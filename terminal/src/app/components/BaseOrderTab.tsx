@@ -1,54 +1,47 @@
 import { type FC, useEffect, useState } from "react"
-import { Badge, Col, Form, Row, TabPane } from "react-bootstrap"
+import { Badge, Col, Form, Row, Tab } from "react-bootstrap"
 import { useForm } from "react-hook-form"
 import { useAppDispatch } from "../hooks"
 import { type Bot, singleBot } from "../../features/bots/botInitialState"
 import { type AppDispatch } from "../store"
 import { InputTooltip } from "./InputTooltip"
 import { setField } from "../../features/bots/botSlice"
+import { TabsKeys } from "../pages/BotDetail"
 
-export enum Tabs {
-	MAIN="main",
-	STOPLOSS = "stop-loss",
-	TAKEPROFIT = "take-profit",
-}
-
-const MainTabs: FC<{
-	bot: Bot
+const BaseOrderTab: FC<{
+  bot: Bot
 }> = ({ bot }) => {
   const dispatch: AppDispatch = useAppDispatch()
-  const [activeTab, setActiveTab] = useState<Tabs>(Tabs.MAIN)
+  const [activeTab, setActiveTab] = useState<TabsKeys>(TabsKeys.MAIN)
 
-  const handleTabClick = (tab: Tabs) => {
+  const handleTabClick = (tab: TabsKeys) => {
     setActiveTab(tab)
   }
 
-	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const { name, value } = e.target
-		dispatch(setField({ name, value }))
-	}
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    dispatch(setField({ name, value }))
+  }
 
-	const handleBaseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const { name, value } = e.target
-		dispatch(setField({ name, value }))
-	}
+  const handleBaseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    dispatch(setField({ name, value }))
+  }
 
-	const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-		const { name, value } = e.target
-		dispatch(setField({ name, value }))
-	}
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    dispatch(setField({ name, value }))
+  }
 
-	const addMin = () => {
-		dispatch(setField({ name: "base_order_size", value: 0.001 }))
-	}
+  const addMin = () => {
+    dispatch(setField({ name: "base_order_size", value: 0.001 }))
+  }
 
-	const addAll = () => {
-		dispatch(setField({ name: "base_order_size", value: 0.001 }))
-	}
+  const addAll = () => {
+    dispatch(setField({ name: "base_order_size", value: 0.001 }))
+  }
 
-
-
-	const {
+  const {
     register,
     watch,
     formState: { errors },
@@ -58,7 +51,7 @@ const MainTabs: FC<{
     defaultValues: singleBot,
   })
 
-	useEffect(() => {
+  useEffect(() => {
     const subscription = watch((value, { name, type }) => {
       console.log(">>", value, name, type)
     })
@@ -67,8 +60,8 @@ const MainTabs: FC<{
   }, [watch])
 
   return (
-    <TabPane id="main">
-      <Row className="u-margin-bottom">
+    <Tab.Pane id="main" eventKey={TabsKeys.MAIN} className="mb-3">
+      <Row>
         <Col md="6" sm="12">
           {/* <SymbolSearch
             name="Pair"
@@ -88,17 +81,13 @@ const MainTabs: FC<{
             name="name"
             onChange={handleChange}
             value={bot.name}
+            {...register("name")}
           />
         </Col>
       </Row>
-      <Row className="u-margin-bottom">
+      {/* <Row>
         <Col md="6" sm="12">
-          <Form.Label htmlFor="base_order_size">
-            <InputTooltip name="base_order_size" text={"Minimum 15 USD"}>
-              Base order size
-            </InputTooltip>
-            <span className="u-required">*</span>
-          </Form.Label>
+          <InputTooltip name="base_order_size" tooltip={"Minimum 15 USD"} title="Base order size">
             <Form.Control
               type="text"
               name="base_order_size"
@@ -106,8 +95,11 @@ const MainTabs: FC<{
               onBlur={handleBlur}
               value={bot.base_order_size}
               autoComplete="off"
+              required
               disabled={bot.status === "active" || bot.status === "completed"}
             />
+          </InputTooltip>
+          
           {bot.status !== "active" && (
             <>
               <Badge color="secondary" onClick={addMin}>
@@ -115,10 +107,10 @@ const MainTabs: FC<{
                 {bot.quoteAsset === "BTC"
                   ? 0.001
                   : bot.quoteAsset === "BNB"
-                  ? 0.051
-                  : bot.quoteAsset === "USDC"
-                  ? 15
-                  : ""}
+                    ? 0.051
+                    : bot.quoteAsset === "USDC"
+                      ? 15
+                      : ""}
               </Badge>{" "}
               <Badge color="secondary" onClick={addAll}>
                 Add all
@@ -128,8 +120,8 @@ const MainTabs: FC<{
         </Col>
         {bot.status !== "active" && (
           <Col md="6" sm="12">
-            <Form.Label htmlFor="balance_to_use">
-              Balance to use<span className="u-required">*</span>
+            <Form.Label htmlFor="balance_to_use" aria-required="true">
+              Balance to use
             </Form.Label>
             <Form.Group
               style={{
@@ -139,8 +131,9 @@ const MainTabs: FC<{
               }}
             >
               {bot.quoteAsset && (
-                <Form.Label check>
+                <Form.Label>
                   <Form.Control
+                    required
                     type="radio"
                     name="balance_to_use"
                     checked={bot.balance_to_use === bot.quoteAsset}
@@ -150,7 +143,7 @@ const MainTabs: FC<{
                   {bot.quoteAsset}
                 </Form.Label>
               )}
-              <Form.Label check>
+              <Form.Label>
                 <Form.Control
                   type="radio"
                   name="balance_to_use"
@@ -163,8 +156,8 @@ const MainTabs: FC<{
             </Form.Group>
           </Col>
         )}
-      </Row>
-      <Row>
+      </Row> */}
+      {/* <Row>
         <Col md="6" sm="12">
           <Form.Group>
             <InputTooltip
@@ -182,11 +175,11 @@ const MainTabs: FC<{
             />
           </Form.Group>
         </Col>
-      </Row>
-      <Row>
+      </Row> */}
+      {/* <Row>
         <Col md="6" sm="12">
           <Form.Group>
-            <Form.Label for="strategy">Trigger strategy</Form.Label>
+            <Form.Label htmlFor="strategy">Trigger strategy</Form.Label>
             <Form.Control
               id="strategy"
               name="strategy"
@@ -200,9 +193,9 @@ const MainTabs: FC<{
             </Form.Control>
           </Form.Group>
         </Col>
-      </Row>
-    </TabPane>
+      </Row> */}
+    </Tab.Pane>
   )
 }
 
-export default MainTabs
+export default BaseOrderTab
