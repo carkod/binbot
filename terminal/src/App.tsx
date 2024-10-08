@@ -14,6 +14,7 @@ export type Routes = {
   icon?: string
   link?: string  // Decides if shows on Sidebar
   element: JSX.Element
+  id: string  // Unique name to match path
 }
 
 export const routes = [
@@ -23,6 +24,7 @@ export const routes = [
     name: "Dashboard",
     icon: "fas fa-chart-simple",
     element: <DashboardPage />,
+    id: "dashboard",
   },
   {
     path: "bots",
@@ -30,6 +32,7 @@ export const routes = [
     name: "Bots",
     icon: "fas fa-robot",
     element: <BotsPage />,
+    id: "bots",
   },
   {
     path: "bots/new/:symbol?",
@@ -37,12 +40,14 @@ export const routes = [
     icon: null,
     name: "New Bot",
     element: <BotDetail />,
+    id: "new-bot",
   },
   {
     path: "bots/edit/:id",
     icon: null,
     name: "Edit Bot",
     element: <BotDetail />,
+    id: "edit-bot",
   },
   {
     path: "autotrade",
@@ -50,6 +55,7 @@ export const routes = [
     icon: "fas fa-chart-simple",
     name: "AutoTrade",
     element: <AutotradePage />,
+    id: "autotrade",
   }
 ]
 

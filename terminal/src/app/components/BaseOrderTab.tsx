@@ -1,5 +1,13 @@
 import { type FC, useEffect, useState } from "react"
-import { Badge, Col, Container, Form, InputGroup, Row, Stack, Tab } from "react-bootstrap"
+import {
+  Badge,
+  Col,
+  Container,
+  Form,
+  InputGroup,
+  Row,
+  Tab,
+} from "react-bootstrap"
 import { useForm } from "react-hook-form"
 import { useAppDispatch } from "../hooks"
 import { type Bot, singleBot } from "../../features/bots/botInitialState"
@@ -8,6 +16,7 @@ import { InputTooltip } from "./InputTooltip"
 import { setField } from "../../features/bots/botSlice"
 import { TabsKeys } from "../pages/BotDetail"
 import { BotStatus, BotStrategy } from "../../utils/enums"
+import SymbolSearch from "./SymbolSearch"
 
 const BaseOrderTab: FC<{
   bot: Bot
@@ -42,6 +51,14 @@ const BaseOrderTab: FC<{
     dispatch(setField({ name: "base_order_size", value: 0.001 }))
   }
 
+  const handlePairChange = (selected: string[]) => {
+    dispatch(setField({ name: "pair", value: selected[0] }))
+  }
+
+  const handlePairBlur = () => {
+    dispatch(setField({ name: "pair", value: bot.pair }))
+  }
+
   const {
     register,
     watch,
@@ -65,23 +82,24 @@ const BaseOrderTab: FC<{
       <Container>
         <Row className="my-3">
           <Col md="6" sm="12">
-            {/* <SymbolSearch
-            name="Pair"
-            label="Select pair"
-            options={symbols}
-            selected={bot.pair}
-            handleChange={handlePairChange}
-            handleBlur={handlePairBlur}
-            disabled={bot.status === BotStatus.COMPLETED}
-            required={true}
-          /> */}
+            <SymbolSearch
+              name="Pair"
+              label="Select pair"
+              options={["BTCUSDT", "BNBUSDT", "ETHUSDT", "USDCUSDT"]}
+              selected={bot.pair}
+              handleChange={handlePairChange}
+              handleBlur={handlePairBlur}
+              disabled={bot.status === BotStatus.COMPLETED}
+              required={true}
+              errors={errors}
+            />
           </Col>
           <Col md="6" sm="12">
             <Form.Label htmlFor="name">Name</Form.Label>
             <Form.Control
               type="text"
               name="name"
-              value={bot.name}
+              defaultValue={bot.name}
               {...register("name")}
             />
           </Col>
@@ -92,15 +110,15 @@ const BaseOrderTab: FC<{
               <InputTooltip
                 name="base_order_size"
                 tooltip={"Minimum 15 USD"}
-                title="Base order size"
                 label="Base order size"
                 errors={errors}
+                required={true}
               >
                 <Form.Control
                   type="text"
                   name="base_order_size"
                   onBlur={handleBlur}
-                  value={bot.base_order_size}
+                  defaultValue={bot.base_order_size}
                   autoComplete="off"
                   required
                   disabled={
@@ -139,10 +157,14 @@ const BaseOrderTab: FC<{
               </>
             )}
           </Col>
-          <Col md="6" sm="12">
-            <Stack direction="horizontal">
-              <Badge>{bot.balance_to_use}</Badge>
-            </Stack>
+          <Col md="6" sm="12" className="my-6">
+            <Form.Label htmlFor="balance_to_use">Balance to use</Form.Label>
+            <br />
+            <Form.Text>
+              <Badge bg="secondary" className="fs-6">
+                {bot.balance_to_use}
+              </Badge>
+            </Form.Text>
           </Col>
         </Row>
         <Row className="my-3">
@@ -151,15 +173,14 @@ const BaseOrderTab: FC<{
               name="cooldown"
               tooltip="Time until next bot activation with same pair"
               label="Cooldown (seconds)"
-              title="Cooldown"
               errors={errors}
-              {...register("cooldown")}
             >
               <Form.Control
                 type="number"
                 name="cooldown"
-                value={bot.cooldown}
-                autoComplete="off"
+                onBlur={handleBlur}
+                defaultValue={bot.cooldown}
+                {...register("cooldown")}
               />
             </InputTooltip>
           </Col>
@@ -171,7 +192,7 @@ const BaseOrderTab: FC<{
               <Form.Select
                 id="strategy"
                 name="strategy"
-                value={bot.strategy}
+                defaultValue={bot.strategy}
                 onBlur={handleBlur}
                 {...register("strategy", { required: "Strategy is required" })}
               >

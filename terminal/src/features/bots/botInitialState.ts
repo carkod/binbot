@@ -16,7 +16,7 @@ export interface Bot {
   price_deviation_so: string
   so_size: string
   take_profit: number
-  trailling: string
+  trailling: boolean
   trailling_deviation: number
   dynamic_trailling: boolean
   deal: any

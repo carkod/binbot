@@ -7,6 +7,11 @@ interface BotDetailsFormField {
   value: string | number
 }
 
+interface BotDetailsFormFieldBoolean {
+	name: string
+	value: boolean
+}
+
 interface BotDetailsState {
   bot: Bot
 }
@@ -20,6 +25,11 @@ export const botSlice = createAppSlice({
         state[payload.name] = payload.name
       },
     ),
+		setToggle: create.reducer(
+			(state, { payload }: PayloadAction<BotDetailsFormFieldBoolean>) => {
+				state[payload.name] = !state[payload.name]
+			}
+		),
     setBot: create.reducer((state, { payload }: PayloadAction<BotDetailsState>) => {
       state = payload.bot
     }),
@@ -29,5 +39,5 @@ export const botSlice = createAppSlice({
   },
 })
 
-export const { setField, setBot } = botSlice.actions
+export const { setField, setBot, setToggle } = botSlice.actions
 export const { selectBot } = botSlice.selectors

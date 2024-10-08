@@ -7,18 +7,19 @@ interface InputTooltipProps {
   name: string
   tooltip: string
   children: React.ReactNode
-  title: string
   label: string
   errors: FieldErrors<Bot>
+  required?: boolean
 }
 
 export const InputTooltip: FC<InputTooltipProps> = (
-  { name, tooltip, label, children, errors },
-  ...props
-) => {
+  { name, tooltip, label, children, errors, required = false }) => {
   return (
     <Form.Group className="position-relative">
-      <Form.Label htmlFor={name}>{label}</Form.Label>
+      <Form.Label htmlFor={name}>
+        {label}
+        {required && <span className="u-required">*</span>}
+      </Form.Label>
       {children}
       <Form.Control.Feedback>
         <small>{tooltip}</small>
