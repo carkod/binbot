@@ -56,7 +56,7 @@ export const singleBot: Bot = {
   price_deviation_so: "0.63",
   so_size: "0",
   take_profit: 2.3,
-  trailling: "false",
+  trailling: false,
   trailling_deviation: 2.8,
   dynamic_trailling: false,
   deal: {},
@@ -70,6 +70,7 @@ export const singleBot: Bot = {
   strategy: "long",
   short_buy_price: 0,
   short_sell_price: 0,
+  commissions: 0,
 };
 
 const botsInitialState = {

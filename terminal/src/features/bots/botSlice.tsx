@@ -22,7 +22,7 @@ export const botSlice = createAppSlice({
   reducers: create => ({
     setField: create.reducer(
       (state, { payload }: PayloadAction<BotDetailsFormField>) => {
-        state[payload.name] = payload.name
+        state[payload.name] = payload.value
       },
     ),
 		setToggle: create.reducer(

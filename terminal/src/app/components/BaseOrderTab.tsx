@@ -1,4 +1,4 @@
-import { type FC, useEffect, useState } from "react"
+import { type FC, SetStateAction, useEffect, useState } from "react"
 import {
   Badge,
   Col,
@@ -9,7 +9,7 @@ import {
   Tab,
 } from "react-bootstrap"
 import { useForm } from "react-hook-form"
-import { useAppDispatch } from "../hooks"
+import { useAppDispatch, useAppSelector } from "../hooks"
 import { type Bot, singleBot } from "../../features/bots/botInitialState"
 import { type AppDispatch } from "../store"
 import { InputTooltip } from "./InputTooltip"
@@ -17,16 +17,15 @@ import { setField } from "../../features/bots/botSlice"
 import { TabsKeys } from "../pages/BotDetail"
 import { BotStatus, BotStrategy } from "../../utils/enums"
 import SymbolSearch from "./SymbolSearch"
+import { useGetSymbolsQuery } from "../../features/symbolApiSlice"
 
 const BaseOrderTab: FC<{
   bot: Bot
 }> = ({ bot }) => {
   const dispatch: AppDispatch = useAppDispatch()
-  const [activeTab, setActiveTab] = useState<TabsKeys>(TabsKeys.MAIN)
-
-  const handleTabClick = (tab: TabsKeys) => {
-    setActiveTab(tab)
-  }
+  const { data } = useGetSymbolsQuery()
+  const [ pair, setPair ] = useState<string>(bot.pair)
+  const [ symbolsList, setSymbolsList ] = useState<string[]>([])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -52,11 +51,11 @@ const BaseOrderTab: FC<{
   }
 
   const handlePairChange = (selected: string[]) => {
-    dispatch(setField({ name: "pair", value: selected[0] }))
+    setPair(selected[0])
   }
 
-  const handlePairBlur = () => {
-    dispatch(setField({ name: "pair", value: bot.pair }))
+  const handlePairBlur = (e) => {
+    dispatch(setField({ name: "pair", value: e.target.value }))
   }
 
   const {
@@ -70,23 +69,28 @@ const BaseOrderTab: FC<{
   })
 
   useEffect(() => {
+
+    if (data) {
+      setSymbolsList(data)
+    }
+
     const subscription = watch((value, { name, type }) => {
       console.log(">>", value, name, type)
     })
 
     return () => subscription.unsubscribe()
-  }, [watch])
+  }, [watch, data, symbolsList, setSymbolsList])
 
   return (
-    <Tab.Pane id="main" eventKey={TabsKeys.MAIN} className="mb-3">
+    <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
       <Container>
         <Row className="my-3">
           <Col md="6" sm="12">
             <SymbolSearch
               name="Pair"
               label="Select pair"
-              options={["BTCUSDT", "BNBUSDT", "ETHUSDT", "USDCUSDT"]}
-              selected={bot.pair}
+              options={symbolsList}
+              selected={pair}
               handleChange={handlePairChange}
               handleBlur={handlePairBlur}
               disabled={bot.status === BotStatus.COMPLETED}

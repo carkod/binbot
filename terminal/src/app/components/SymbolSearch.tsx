@@ -1,16 +1,17 @@
 import Form from "react-bootstrap/Form"
 import { Typeahead } from "react-bootstrap-typeahead"
 import "react-bootstrap-typeahead/css/Typeahead.css"
-import { type FC } from "react"
+import { useEffect, useState, type FC } from "react"
 import { type FieldErrors } from "react-hook-form"
 import { type Bot } from "../../features/bots/botInitialState"
+import { type Option } from "react-bootstrap-typeahead/types/types"
 
 const SymbolSearch: FC<{
   name: string
   label: string
   options: string[]
   selected: string
-  handleChange: (selected: string[]) => void
+  handleChange: (selected: Option[]) => void
   handleBlur: () => void
   required?: boolean
   errors?: FieldErrors<Bot>
@@ -29,6 +30,15 @@ const SymbolSearch: FC<{
   },
   ...props
 ) => {
+
+  const [ data, setData ] = useState([])
+
+  useEffect(() => {
+    if (options && options.length > 0) {
+      setData(options)
+    }
+  }, [options, setData])
+
   return (
     <>
       <Form.Group>
@@ -40,11 +50,11 @@ const SymbolSearch: FC<{
           id={name}
           labelKey={name}
           onChange={handleChange}
-          options={options ? options : []}
+          options={data}
           selected={selected ? [selected] : []}
           onBlur={handleBlur}
-          className={errors ? "is-invalid" : ""}
-          isInvalid={!!errors}
+          className={errors?.[name] || selected === "" ? "is-invalid" : ""}
+          isInvalid={!!errors?.[name] || selected === ""}
           disabled={disabled}
           {...props}
         />
