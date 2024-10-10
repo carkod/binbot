@@ -77,6 +77,7 @@ class LoginForm extends Component {
                     placeholder="Email"
                     type="email"
                     name="email"
+                    autocomplete="on"
                     onChange={this.handleChange}
                   />
                   <FormFeedback>Email is required</FormFeedback>
@@ -89,6 +90,7 @@ class LoginForm extends Component {
                     invalid={passwordIsRequiredError}
                     type="password"
                     name="password"
+                    autocomplete="on"
                     onChange={this.handleChange}
                   />
                   <FormFeedback className="register-form__error">
