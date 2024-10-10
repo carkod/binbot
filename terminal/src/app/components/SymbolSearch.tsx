@@ -10,20 +10,17 @@ const SymbolSearch: FC<{
   name: string
   label: string
   options: string[]
-  selected: string
-  handleChange: (selected: Option[]) => void
-  handleBlur: () => void
+  defaultSelected?: string
   required?: boolean
   errors?: FieldErrors<Bot>
   disabled?: boolean
+  onChange?: (selected: string[]) => void
 }> = (
   {
     name,
     label,
     options,
-    selected,
-    handleChange,
-    handleBlur,
+    defaultSelected,
     errors,
     required = false,
     disabled = false,
@@ -49,12 +46,9 @@ const SymbolSearch: FC<{
         <Typeahead
           id={name}
           labelKey={name}
-          onChange={handleChange}
           options={data}
-          selected={selected ? [selected] : []}
-          onBlur={handleBlur}
-          className={errors?.[name] || selected === "" ? "is-invalid" : ""}
-          isInvalid={!!errors?.[name] || selected === ""}
+          defaultSelected={defaultSelected ? [defaultSelected] : []}
+          isInvalid={!!errors?.[name] || defaultSelected === ""}
           disabled={disabled}
           {...props}
         />

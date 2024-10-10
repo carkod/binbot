@@ -27,7 +27,7 @@ export const Sidebar: FC<{}> = () => {
             if (prop.link) {
               return (
                 <Nav.Item as="li" className={activeRoute(prop.path)} key={key}>
-                  <NavLink to={prop.path} className="nav-link">
+                  <NavLink to={prop.link} className="nav-link">
                     <i className={prop.icon} />
                     <p>{prop.name}</p>
                   </NavLink>

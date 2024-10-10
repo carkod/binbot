@@ -1,16 +1,28 @@
 import { useState, type FC } from "react"
-import { Button, Col, Nav, Row, Tab } from "react-bootstrap"
-import { type Bot } from "../../features/bots/botInitialState"
+import { Button, Col, Form, Nav, Row, Tab } from "react-bootstrap"
+import { singleBot, type Bot } from "../../features/bots/botInitialState"
 import { TabsKeys } from "../pages/BotDetail"
 import BaseOrderTab from "./BaseOrderTab"
 import { BotStatus } from "../../utils/enums"
 import StopLossTab from "./StopLossTab"
 import TakeProfit from "./TakeProfitTab"
+import { FormProvider, useForm, useFormContext } from "react-hook-form"
+
+export const ConnectBotForm = ({ children }) => {
+  const methods = useFormContext()
+
+  return children({ ...methods })
+}
 
 const BotDetailTabs: FC<{
   bot: Bot
 }> = ({ bot }) => {
   const [activeTab, setActiveTab] = useState<TabsKeys>(TabsKeys.MAIN)
+  const methods = useFormContext()
+
+  const { handleSubmit, reset, watch, control, register } = useForm({
+    defaultValues: singleBot,
+  })
 
   const handleTabClick = (tab: TabsKeys) => {
     setActiveTab(tab)
@@ -22,6 +34,8 @@ const BotDetailTabs: FC<{
   const handlePanicSell = (id: string) => {
     console.log("Panic sell", id)
   }
+
+  const onSubmit = (data: Bot) => console.log(data)
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>
@@ -41,9 +55,13 @@ const BotDetailTabs: FC<{
         </Col>
         <Col sm={12}>
           <Tab.Content>
-            <BaseOrderTab bot={bot} />
-            <StopLossTab bot={bot} />
-            <TakeProfit bot={bot} />
+            <ConnectBotForm {...methods}>
+              <Form onSubmit={handleSubmit(onSubmit)}>
+                <BaseOrderTab bot={bot} {...methods} />
+                <StopLossTab bot={bot} {...methods} />
+                <TakeProfit bot={bot} {...methods} />
+              </Form>
+            </ConnectBotForm>
           </Tab.Content>
         </Col>
       </Row>

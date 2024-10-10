@@ -8,7 +8,7 @@ import {
   Row,
   Tab,
 } from "react-bootstrap"
-import { useForm } from "react-hook-form"
+import { useController, useForm, useFormContext } from "react-hook-form"
 import { useAppDispatch, useAppSelector } from "../hooks"
 import { type Bot, singleBot } from "../../features/bots/botInitialState"
 import { type AppDispatch } from "../store"
@@ -26,6 +26,7 @@ const BaseOrderTab: FC<{
   const { data } = useGetSymbolsQuery()
   const [ pair, setPair ] = useState<string>(bot.pair)
   const [ symbolsList, setSymbolsList ] = useState<string[]>([])
+  const { register, control, errors } = useFormContext()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -58,15 +59,6 @@ const BaseOrderTab: FC<{
     dispatch(setField({ name: "pair", value: e.target.value }))
   }
 
-  const {
-    register,
-    watch,
-    formState: { errors },
-  } = useForm<Bot>({
-    mode: "onTouched",
-    reValidateMode: "onSubmit",
-    defaultValues: singleBot,
-  })
 
   useEffect(() => {
 
@@ -74,12 +66,8 @@ const BaseOrderTab: FC<{
       setSymbolsList(data)
     }
 
-    const subscription = watch((value, { name, type }) => {
-      console.log(">>", value, name, type)
-    })
 
-    return () => subscription.unsubscribe()
-  }, [watch, data, symbolsList, setSymbolsList])
+  }, [data, symbolsList, setSymbolsList])
 
   return (
     <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
@@ -90,12 +78,10 @@ const BaseOrderTab: FC<{
               name="Pair"
               label="Select pair"
               options={symbolsList}
-              selected={pair}
-              handleChange={handlePairChange}
-              handleBlur={handlePairBlur}
+              defaultSelected={pair}
               disabled={bot.status === BotStatus.COMPLETED}
               required={true}
-              errors={errors}
+              onChange={methods.onChange}
             />
           </Col>
           <Col md="6" sm="12">
@@ -104,7 +90,6 @@ const BaseOrderTab: FC<{
               type="text"
               name="name"
               defaultValue={bot.name}
-              {...register("name")}
             />
           </Col>
         </Row>
