@@ -8,7 +8,7 @@ interface InputTooltipProps {
   tooltip: string
   children: React.ReactNode
   label: string
-  errors: FieldErrors<Bot>
+  errors?: FieldErrors<Bot>
   required?: boolean
 }
 
@@ -24,11 +24,11 @@ export const InputTooltip: FC<InputTooltipProps> = (
       <Form.Control.Feedback>
         <small>{tooltip}</small>
       </Form.Control.Feedback>
-      {errors[name] && (
+      {/* {errors[name] && (
         <Form.Control.Feedback type="invalid">
           {errors[name as keyof FieldErrors].message}
         </Form.Control.Feedback>
-      )}
+      )} */}
     </Form.Group>
   )
 }

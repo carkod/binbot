@@ -1,4 +1,4 @@
-import { useState, type FC } from "react"
+import { useEffect, useState, type FC } from "react"
 import { Button, Col, Form, Nav, Row, Tab } from "react-bootstrap"
 import { singleBot, type Bot } from "../../features/bots/botInitialState"
 import { TabsKeys } from "../pages/BotDetail"
@@ -6,21 +6,42 @@ import BaseOrderTab from "./BaseOrderTab"
 import { BotStatus } from "../../utils/enums"
 import StopLossTab from "./StopLossTab"
 import TakeProfit from "./TakeProfitTab"
-import { FormProvider, useForm, useFormContext } from "react-hook-form"
+import { type FieldValue, type FieldValues, FormProvider, useForm, useFormContext, UseFormRegister, useFormState, useWatch } from "react-hook-form"
+import { useAppSelector } from "../hooks"
+import { selectBot } from "../../features/bots/botSlice"
 
-export const ConnectBotForm = ({ children }) => {
-  const methods = useFormContext()
+export const BotFormController = ({ control, register, name, rules, render }) => {
+  const value = useWatch({
+    control,
+    name
+  });
+  const { errors } = useFormState({
+    control,
+    name
+  });
+  const props = register(name, rules);
 
-  return children({ ...methods })
-}
+  return render({
+    value,
+    onChange: (e) =>
+      props.onChange({
+        target: {
+          name,
+          value: e.target.value
+        }
+      }),
+    onBlur: props.onBlur,
+    name: props.name
+  });
+};
 
 const BotDetailTabs: FC<{
   bot: Bot
 }> = ({ bot }) => {
   const [activeTab, setActiveTab] = useState<TabsKeys>(TabsKeys.MAIN)
-  const methods = useFormContext()
+  const props = useAppSelector(selectBot)
 
-  const { handleSubmit, reset, watch, control, register } = useForm({
+  const methods = useForm({
     defaultValues: singleBot,
   })
 
@@ -35,7 +56,10 @@ const BotDetailTabs: FC<{
     console.log("Panic sell", id)
   }
 
-  const onSubmit = (data: Bot) => console.log(data)
+  const onSubmit = () => {
+    console.log("Bot form data", props)
+  }
+
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>
@@ -55,13 +79,11 @@ const BotDetailTabs: FC<{
         </Col>
         <Col sm={12}>
           <Tab.Content>
-            <ConnectBotForm {...methods}>
-              <Form onSubmit={handleSubmit(onSubmit)}>
-                <BaseOrderTab bot={bot} {...methods} />
-                <StopLossTab bot={bot} {...methods} />
-                <TakeProfit bot={bot} {...methods} />
-              </Form>
-            </ConnectBotForm>
+            <Form onSubmit={() => onSubmit()}>
+              <BaseOrderTab bot={bot}  />
+              <StopLossTab bot={bot} />
+              <TakeProfit bot={bot} />
+            </Form>
           </Tab.Content>
         </Col>
       </Row>

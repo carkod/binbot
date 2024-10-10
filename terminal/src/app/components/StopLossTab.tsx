@@ -21,7 +21,6 @@ const StopLossTab: FC<{
   bot: Bot
 }> = ({ bot }) => {
   const dispatch: AppDispatch = useAppDispatch()
-  const { register, watch } = useFormContext()
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -51,9 +50,9 @@ const StopLossTab: FC<{
                 name="stop_loss"
                 onBlur={handleBlur}
                 defaultValue={bot.stop_loss}
-                {...register("stop_loss", {
-                  required: "Stop loss is required",
-                })}
+                // {...register("stop_loss", {
+                //   required: "Stop loss is required",
+                // })}
               />
               <InputGroupText>%</InputGroupText>
             </InputGroup>
@@ -73,7 +72,7 @@ const StopLossTab: FC<{
                   variant={bot.margin_short_reversal ? "primary" : "secondary"}
                   value={1}
                   checked={bot.margin_short_reversal}
-                  {...register("margin_short_reversal")}
+                  // {...register("margin_short_reversal")}
                 >
                   {bot.margin_short_reversal ? "On" : "Off"}
                 </ToggleButton>

@@ -8,7 +8,17 @@ import {
   Row,
   Tab,
 } from "react-bootstrap"
-import { useController, useForm, useFormContext } from "react-hook-form"
+import {
+  FieldArrayMethodProps,
+  type FieldValues,
+  FormProps,
+  useController,
+  useForm,
+  useFormContext,
+  UseFormProps,
+  type UseFormRegister,
+  UseFormStateProps,
+} from "react-hook-form"
 import { useAppDispatch, useAppSelector } from "../hooks"
 import { type Bot, singleBot } from "../../features/bots/botInitialState"
 import { type AppDispatch } from "../store"
@@ -18,15 +28,19 @@ import { TabsKeys } from "../pages/BotDetail"
 import { BotStatus, BotStrategy } from "../../utils/enums"
 import SymbolSearch from "./SymbolSearch"
 import { useGetSymbolsQuery } from "../../features/symbolApiSlice"
+import { BotFormController } from "./BotDetailTabs"
 
 const BaseOrderTab: FC<{
   bot: Bot
 }> = ({ bot }) => {
   const dispatch: AppDispatch = useAppDispatch()
   const { data } = useGetSymbolsQuery()
-  const [ pair, setPair ] = useState<string>(bot.pair)
-  const [ symbolsList, setSymbolsList ] = useState<string[]>([])
-  const { register, control, errors } = useFormContext()
+  const [pair, setPair] = useState<string>(bot.pair)
+  const [symbolsList, setSymbolsList] = useState<string[]>([])
+
+  const { control, register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: singleBot,
+  })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -55,18 +69,14 @@ const BaseOrderTab: FC<{
     setPair(selected[0])
   }
 
-  const handlePairBlur = (e) => {
+  const handlePairBlur = e => {
     dispatch(setField({ name: "pair", value: e.target.value }))
   }
 
-
   useEffect(() => {
-
     if (data) {
       setSymbolsList(data)
     }
-
-
   }, [data, symbolsList, setSymbolsList])
 
   return (
@@ -78,19 +88,15 @@ const BaseOrderTab: FC<{
               name="Pair"
               label="Select pair"
               options={symbolsList}
-              defaultSelected={pair}
               disabled={bot.status === BotStatus.COMPLETED}
               required={true}
-              onChange={methods.onChange}
+              onBlur={handlePairBlur}
+              selected={symbolsList.filter((symbol) => symbol === pair)}
             />
           </Col>
           <Col md="6" sm="12">
             <Form.Label htmlFor="name">Name</Form.Label>
-            <Form.Control
-              type="text"
-              name="name"
-              defaultValue={bot.name}
-            />
+            <Form.Control type="text" name="name" defaultValue={bot.name} />
           </Col>
         </Row>
         <Row className="my-3">
@@ -100,7 +106,7 @@ const BaseOrderTab: FC<{
                 name="base_order_size"
                 tooltip={"Minimum 15 USD"}
                 label="Base order size"
-                errors={errors}
+                // errors={errors}
                 required={true}
               >
                 <Form.Control
