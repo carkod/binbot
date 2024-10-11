@@ -1,4 +1,4 @@
-import { type FC, useEffect } from "react"
+import { type FC, useEffect, useState } from "react"
 import {
   ButtonGroup,
   Col,
@@ -10,27 +10,35 @@ import {
   ToggleButton,
 } from "react-bootstrap"
 import InputGroupText from "react-bootstrap/esm/InputGroupText"
-import { useForm, useFormContext } from "react-hook-form"
+import { FieldValue, useForm, useFormContext } from "react-hook-form"
 import { type Bot, singleBot } from "../../features/bots/botInitialState"
-import { setField, setToggle } from "../../features/bots/botSlice"
-import { useAppDispatch } from "../hooks"
+import { selectBot, setField, setToggle } from "../../features/bots/botSlice"
+import { useAppDispatch, useAppSelector } from "../hooks"
 import { TabsKeys } from "../pages/BotDetail"
 import { type AppDispatch } from "../store"
 
-const StopLossTab: FC<{
-  bot: Bot
-}> = ({ bot }) => {
+const StopLossTab: FC<{}> = () => {
   const dispatch: AppDispatch = useAppDispatch()
+  const props = useAppSelector(selectBot)
+  const [stopLossState, setStopLossState] = useState<number>(props.stop_loss)
+  const [marginShortReversal, setMarginShortReversal] = useState<boolean>(props.margin_short_reversal)
+  const {
+    register,
+    getValues,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      stop_loss: props.stop_loss,
+      margin_short_reversal: props.margin_short_reversal,
+    }
+  })
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    dispatch(setField({ name, value }))
+    const stopLossValue = getValues("stop_loss")
+    if (stopLossValue) {
+      dispatch(setField({ name: "stop_loss", value: stopLossValue }))
+    }
   }
-
-  const toggleAutoswitch = (value: boolean) => {
-    dispatch(setToggle({ name: "margin_short_reversal", value: value }))
-  }
-
 
   return (
     <Tab.Pane
@@ -49,14 +57,22 @@ const StopLossTab: FC<{
                 type="number"
                 name="stop_loss"
                 onBlur={handleBlur}
-                defaultValue={bot.stop_loss}
-                // {...register("stop_loss", {
-                //   required: "Stop loss is required",
-                // })}
+                defaultValue={props.stop_loss}
+                isInvalid={!!errors?.stop_loss}
+                {...register("stop_loss", {
+                  required: "Stop loss is required",
+                  valueAsNumber: true,
+                  min: 0,
+                  max: 100,
+                })}
               />
               <InputGroupText>%</InputGroupText>
+              {errors.stop_loss && (
+                <Form.Control.Feedback type="invalid">
+                  {errors.stop_loss?.message}
+                </Form.Control.Feedback>
+              )}
             </InputGroup>
-            <Form.Control.Feedback>Not a percentage</Form.Control.Feedback>
           </Col>
           <Col md="6" sm="12">
             <Form.Group className="position-relative">
@@ -69,12 +85,14 @@ const StopLossTab: FC<{
                   id="margin_short_reversal"
                   type="radio"
                   name="margin_short_reversal"
-                  variant={bot.margin_short_reversal ? "primary" : "secondary"}
+                  variant={props.margin_short_reversal ? "primary" : "secondary"}
                   value={1}
-                  checked={bot.margin_short_reversal}
-                  // {...register("margin_short_reversal")}
+                  checked={props.margin_short_reversal}
+                  onClick={() => {
+                    dispatch(setToggle({ name: "margin_short_reversal", value: !props.margin_short_reversal }))
+                  }}
                 >
-                  {bot.margin_short_reversal ? "On" : "Off"}
+                  {props.margin_short_reversal ? "On" : "Off"}
                 </ToggleButton>
               </ButtonGroup>
               <Form.Control.Feedback tooltip>

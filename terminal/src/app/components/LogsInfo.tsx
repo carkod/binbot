@@ -1,23 +1,23 @@
-import React, { useState } from "react";
-import { Card, CardBody, CardHeader, CardTitle, Button } from "reactstrap";
+import { useState } from "react";
+import { Button, Card } from "react-bootstrap";
 
 export default function LogInfo({ events }) {
   const [logInfo, toggleLogInfo] = useState(true)
   return (
     <Card>
-      <CardHeader className="u-space-between">
-        <CardTitle tag="h5">Event logs{" "}</CardTitle>
+      <Card.Header className="u-space-between">
+        <Card.Title as="h5">Event logs{" "}</Card.Title>
         <Button onClick={() => toggleLogInfo(!logInfo)} className="u-float-right u-space-bottom">Hide</Button>
-      </CardHeader>
+      </Card.Header>
       {logInfo && 
-      <CardBody>
+      <Card.Body>
         {events.map((item, i) => (
           <div key={i}>
             <p>{item}</p>
             <hr />
           </div>
 				))}
-      </CardBody>
+      </Card.Body>
       }
     </Card>
   );

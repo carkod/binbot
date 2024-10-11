@@ -1,6 +1,5 @@
 import { ReactElement, useEffect, useState, type FC } from "react"
-import { Badge, Button, Container, Stack } from "react-bootstrap"
-import { Col, Row } from "reactstrap"
+import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap"
 import {
   botsApiSlice,
   useDeactivateBotMutation,

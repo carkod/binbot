@@ -27,7 +27,7 @@ export const botSlice = createAppSlice({
     ),
 		setToggle: create.reducer(
 			(state, { payload }: PayloadAction<BotDetailsFormFieldBoolean>) => {
-				state[payload.name] = !state[payload.name]
+				state[payload.name] = payload.value
 			}
 		),
     setBot: create.reducer((state, { payload }: PayloadAction<BotDetailsState>) => {
@@ -35,7 +35,13 @@ export const botSlice = createAppSlice({
     }),
   }),
   selectors: {
-    selectBot: state => state,
+    selectBot: state => {
+      if (state) {
+        return state
+      } else {
+        return singleBot
+      }
+    },
   },
 })
 

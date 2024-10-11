@@ -1,53 +1,18 @@
-import { useEffect, useState, type FC } from "react"
-import { Button, Col, Form, Nav, Row, Tab } from "react-bootstrap"
-import { singleBot, type Bot } from "../../features/bots/botInitialState"
+import { type FC } from "react"
+import { Button, Col, Nav, Row, Tab } from "react-bootstrap"
+import { type Bot } from "../../features/bots/botInitialState"
+import { selectBot } from "../../features/bots/botSlice"
+import { BotStatus } from "../../utils/enums"
+import { useAppSelector } from "../hooks"
 import { TabsKeys } from "../pages/BotDetail"
 import BaseOrderTab from "./BaseOrderTab"
-import { BotStatus } from "../../utils/enums"
 import StopLossTab from "./StopLossTab"
 import TakeProfit from "./TakeProfitTab"
-import { type FieldValue, type FieldValues, FormProvider, useForm, useFormContext, UseFormRegister, useFormState, useWatch } from "react-hook-form"
-import { useAppSelector } from "../hooks"
-import { selectBot } from "../../features/bots/botSlice"
-
-export const BotFormController = ({ control, register, name, rules, render }) => {
-  const value = useWatch({
-    control,
-    name
-  });
-  const { errors } = useFormState({
-    control,
-    name
-  });
-  const props = register(name, rules);
-
-  return render({
-    value,
-    onChange: (e) =>
-      props.onChange({
-        target: {
-          name,
-          value: e.target.value
-        }
-      }),
-    onBlur: props.onBlur,
-    name: props.name
-  });
-};
 
 const BotDetailTabs: FC<{
   bot: Bot
 }> = ({ bot }) => {
-  const [activeTab, setActiveTab] = useState<TabsKeys>(TabsKeys.MAIN)
   const props = useAppSelector(selectBot)
-
-  const methods = useForm({
-    defaultValues: singleBot,
-  })
-
-  const handleTabClick = (tab: TabsKeys) => {
-    setActiveTab(tab)
-  }
 
   const handleActivation = (id: string) => {
     console.log("Activate bot", id)
@@ -59,7 +24,6 @@ const BotDetailTabs: FC<{
   const onSubmit = () => {
     console.log("Bot form data", props)
   }
-
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>
@@ -79,11 +43,9 @@ const BotDetailTabs: FC<{
         </Col>
         <Col sm={12}>
           <Tab.Content>
-            <Form onSubmit={() => onSubmit()}>
-              <BaseOrderTab bot={bot}  />
-              <StopLossTab bot={bot} />
-              <TakeProfit bot={bot} />
-            </Form>
+            <BaseOrderTab bot={bot} />
+            <StopLossTab bot={bot} />
+            <TakeProfit bot={bot} />
           </Tab.Content>
         </Col>
       </Row>
@@ -119,7 +81,12 @@ const BotDetailTabs: FC<{
         <Col lg="3">
           {(bot.status !== BotStatus.ACTIVE ||
             Object.keys(bot.deal).length === 0) && (
-            <Button className="btn-round" color="primary" type="submit">
+            <Button
+              className="btn-round"
+              color="primary"
+              type="submit"
+              onClick={onSubmit}
+            >
               Save
             </Button>
           )}

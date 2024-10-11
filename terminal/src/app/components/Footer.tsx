@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { Container, Row } from "reactstrap"
+import { Container, Row } from "react-bootstrap"
 
 export const Footer: FC<{}> = () => {
   return (

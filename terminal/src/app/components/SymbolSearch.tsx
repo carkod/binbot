@@ -1,40 +1,40 @@
 import { useEffect, useState, type FC } from "react"
 import { Typeahead } from "react-bootstrap-typeahead"
 import "react-bootstrap-typeahead/css/Typeahead.css"
-import Form from "react-bootstrap/Form"
-import { useForm, type FieldErrors } from "react-hook-form"
-import { type Bot } from "../../features/bots/botInitialState"
 import { type Option } from "react-bootstrap-typeahead/types/types"
+import Form from "react-bootstrap/Form"
+import { FieldErrors, useForm } from "react-hook-form"
 
 const SymbolSearch: FC<{
   name: string
   label: string
   options: string[]
-  defaultSelected?: string
+  value?: string
   required?: boolean
-  errors?: FieldErrors<Bot>
   disabled?: boolean
-  selected?: Option[]
+  selected?: string
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
-}> = (
-  {
-    name,
-    label,
-    options,
-    selected,
-    errors = null,
-    required = false,
-    disabled = false,
-  }
-) => {
+  onChange?: (selected: Option[]) => void
+  errors?: object
+}> = ({
+  name,
+  label,
+  options,
+  value,
+  onChange,
+  onBlur,
+  required = false,
+  disabled = false,
+  errors = {},
+}) => {
 
-  const [ data, setData ] = useState([])
+  const [selectedValue, setSelectedValue] = useState<string | undefined>(value)
 
   useEffect(() => {
-    if (options && options.length > 0) {
-      setData(options)
+    if (value) {
+      setSelectedValue(value)
     }
-  }, [options, setData])
+  }, [value])
 
   return (
     <>
@@ -46,17 +46,19 @@ const SymbolSearch: FC<{
         <Typeahead
           id={name}
           labelKey={name}
-          options={data}
-          isInvalid={!!errors?.[name] || selected === ""}
+          options={options}
+          isInvalid={errors?.[name] || Boolean(selectedValue) === false}
           disabled={disabled}
-          selected={selected ? [selected] : []}
+          selected={selectedValue ? [selectedValue] : []}
+          onChange={selected => onChange(selected)}
+          onBlur={e => onBlur(e)}
         />
 
-        {/* {errors[name] && (
+        {errors[name] && (
           <Form.Control.Feedback type="invalid">
-            {errors[name as keyof FieldErrors].message}
+            {errors[name].message}
           </Form.Control.Feedback>
-        )} */}
+        )}
       </Form.Group>
     </>
   )

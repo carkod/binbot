@@ -1,4 +1,4 @@
-import { type FC, SetStateAction, useEffect, useState } from "react"
+import { type FC, useEffect, useState } from "react"
 import {
   Badge,
   Col,
@@ -8,53 +8,41 @@ import {
   Row,
   Tab,
 } from "react-bootstrap"
-import {
-  FieldArrayMethodProps,
-  type FieldValues,
-  FormProps,
-  useController,
-  useForm,
-  useFormContext,
-  UseFormProps,
-  type UseFormRegister,
-  UseFormStateProps,
-} from "react-hook-form"
+import { useForm } from "react-hook-form"
+import { selectBot, setField } from "../../features/bots/botSlice"
+import { useGetSymbolsQuery } from "../../features/symbolApiSlice"
+import { BotStatus, BotStrategy } from "../../utils/enums"
 import { useAppDispatch, useAppSelector } from "../hooks"
-import { type Bot, singleBot } from "../../features/bots/botInitialState"
+import { TabsKeys } from "../pages/BotDetail"
 import { type AppDispatch } from "../store"
 import { InputTooltip } from "./InputTooltip"
-import { setField } from "../../features/bots/botSlice"
-import { TabsKeys } from "../pages/BotDetail"
-import { BotStatus, BotStrategy } from "../../utils/enums"
 import SymbolSearch from "./SymbolSearch"
-import { useGetSymbolsQuery } from "../../features/symbolApiSlice"
-import { BotFormController } from "./BotDetailTabs"
+import { useImmer } from "use-immer"
 
-const BaseOrderTab: FC<{
-  bot: Bot
-}> = ({ bot }) => {
+interface ErrorsState {
+  pair?: string
+}
+
+const BaseOrderTab: FC = () => {
   const dispatch: AppDispatch = useAppDispatch()
   const { data } = useGetSymbolsQuery()
-  const [pair, setPair] = useState<string>(bot.pair)
+  const props = useAppSelector(selectBot)
+  const [pair, setPair] = useState<string>(props.pair)
+  const [errorsState, setErrorsState] = useImmer<ErrorsState>({})
   const [symbolsList, setSymbolsList] = useState<string[]>([])
-
-  const { control, register, handleSubmit, formState: { errors } } = useForm({
-    defaultValues: singleBot,
-  })
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    dispatch(setField({ name, value }))
-  }
-
-  const handleBaseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    dispatch(setField({ name, value }))
-  }
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    control,
+    formState: { errors },
+  } = useForm()
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    dispatch(setField({ name, value }))
+    const value = getValues(e.target.name)
+    if (value) {
+      dispatch(setField({ name: e.target.name, value: value }))
+    }
   }
 
   const addMin = () => {
@@ -66,11 +54,25 @@ const BaseOrderTab: FC<{
   }
 
   const handlePairChange = (selected: string[]) => {
-    setPair(selected[0])
+    if (selected?.length === 0) {
+      setErrorsState(draft => {
+        delete draft["pair"]
+      })
+    } else {
+      setPair(selected[0])
+    }
   }
 
   const handlePairBlur = e => {
-    dispatch(setField({ name: "pair", value: e.target.value }))
+    // Only when selected not typed in
+    // this way we avoid any errors
+    if (pair) {
+      dispatch(setField({ name: "pair", value: pair }))
+    } else {
+      setErrorsState(draft => {
+        draft["pair"] = "Please select a pair"
+      })
+    }
   }
 
   useEffect(() => {
@@ -85,40 +87,42 @@ const BaseOrderTab: FC<{
         <Row className="my-3">
           <Col md="6" sm="12">
             <SymbolSearch
-              name="Pair"
+              name="pair"
               label="Select pair"
               options={symbolsList}
-              disabled={bot.status === BotStatus.COMPLETED}
-              required={true}
+              disabled={props.status === BotStatus.COMPLETED}
+              onChange={handlePairChange}
               onBlur={handlePairBlur}
-              selected={symbolsList.filter((symbol) => symbol === pair)}
+              value={pair}
+              required={true}
+              errors={errorsState}
             />
           </Col>
           <Col md="6" sm="12">
             <Form.Label htmlFor="name">Name</Form.Label>
-            <Form.Control type="text" name="name" defaultValue={bot.name} />
+            <Form.Control type="text" name="name" defaultValue={props.name} />
           </Col>
         </Row>
         <Row className="my-3">
           <Col md="6" sm="12">
-            <InputGroup>
+            <InputGroup className="mb-1">
               <InputTooltip
                 name="base_order_size"
                 tooltip={"Minimum 15 USD"}
                 label="Base order size"
-                // errors={errors}
+                errors={errors}
                 required={true}
               >
                 <Form.Control
                   type="text"
                   name="base_order_size"
                   onBlur={handleBlur}
-                  defaultValue={bot.base_order_size}
+                  defaultValue={props.base_order_size}
                   autoComplete="off"
                   required
                   disabled={
-                    bot.status === BotStatus.ACTIVE ||
-                    bot.status === BotStatus.COMPLETED
+                    props.status === BotStatus.ACTIVE ||
+                    props.status === BotStatus.COMPLETED
                   }
                   {...register("base_order_size", {
                     required: "Base order size is required",
@@ -129,20 +133,19 @@ const BaseOrderTab: FC<{
                   })}
                 />
               </InputTooltip>
-              {bot.quoteAsset && (
-                <InputGroup.Text>{bot.quoteAsset}</InputGroup.Text>
+              {props.quoteAsset && (
+                <InputGroup.Text>{props.quoteAsset}</InputGroup.Text>
               )}
             </InputGroup>
-
-            {bot.status !== BotStatus.ACTIVE && (
+            {props.status !== BotStatus.ACTIVE && (
               <>
                 <Badge color="secondary" onClick={addMin}>
                   Min{" "}
-                  {bot.quoteAsset === "BTC"
+                  {props.quoteAsset === "BTC"
                     ? 0.001
-                    : bot.quoteAsset === "BNB"
+                    : props.quoteAsset === "BNB"
                       ? 0.051
-                      : bot.quoteAsset === "USDC"
+                      : props.quoteAsset === "USDC"
                         ? 15
                         : ""}
                 </Badge>{" "}
@@ -157,7 +160,7 @@ const BaseOrderTab: FC<{
             <br />
             <Form.Text>
               <Badge bg="secondary" className="fs-6">
-                {bot.balance_to_use}
+                {props.balance_to_use}
               </Badge>
             </Form.Text>
           </Col>
@@ -174,7 +177,7 @@ const BaseOrderTab: FC<{
                 type="number"
                 name="cooldown"
                 onBlur={handleBlur}
-                defaultValue={bot.cooldown}
+                defaultValue={props.cooldown}
                 {...register("cooldown")}
               />
             </InputTooltip>
@@ -187,7 +190,7 @@ const BaseOrderTab: FC<{
               <Form.Select
                 id="strategy"
                 name="strategy"
-                defaultValue={bot.strategy}
+                defaultValue={props.strategy}
                 onBlur={handleBlur}
                 {...register("strategy", { required: "Strategy is required" })}
               >

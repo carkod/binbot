@@ -1,23 +1,15 @@
-import React, { useState } from "react";
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  CardTitle,
-  ListGroup,
-  ListGroupItem,
-  Table,
-} from "reactstrap";
+import { useState } from "react";
+
 import moment from "moment";
-import renderTimestamp from "./services/bot-duration";
+import { Button, Card, ListGroup, ListGroupItem, Table } from "react-bootstrap";
+import { RenderTimestamp } from "./RenderTs";
 
 const renderDuration = (bot) => {
   if (bot.deal) {
     return (
       <ListGroupItem className="d-flex justify-content-between align-items-start">
         <strong>duration</strong>
-        {renderTimestamp(bot)}
+        {RenderTimestamp(bot)}
       </ListGroupItem>
     );
 
@@ -39,12 +31,12 @@ export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState(bot.orders?.length > 0)
   return (
     <Card>
-      <CardHeader className="u-space-between">
-        <CardTitle tag="h5">Orders information{" "}</CardTitle>
+      <Card.Header className="u-space-between">
+        <Card.Title as="h5">Orders information{" "}</Card.Title>
         <Button onClick={() => toggleOrderInfo(!showOrderInfo)} className="u-float-right u-space-bottom">Hide</Button>
-      </CardHeader>
+      </Card.Header>
       {showOrderInfo && 
-      <CardBody>
+      <Card.Body>
         <Table responsive>
           <thead>
             <tr>
@@ -120,7 +112,7 @@ export default function BotInfo({ bot }) {
             </ListGroup>
           </div>
         )}
-      </CardBody>
+      </Card.Body>
       }
     </Card>
   );

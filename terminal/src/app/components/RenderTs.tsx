@@ -1,6 +1,6 @@
 import moment from "moment"
-import { Col, Row } from "reactstrap"
 import { renderDuration } from "../../utils/time"
+import { Col, Row } from "react-bootstrap"
 
 const TimestampComponent = ({ label, timestamp }) => {
   return (
