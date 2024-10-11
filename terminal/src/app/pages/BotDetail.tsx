@@ -22,7 +22,7 @@ export enum TabsKeys {
 
 export const BotDetail: FC<{}> = () => {
   const { id } = useParams()
-  let bot = singleBot;
+  const props = useAppSelector(selectBot)
   const { data } = useGetSingleBotQuery(id, {skip: !id})
 
   useEffect(() => {
@@ -33,11 +33,10 @@ export const BotDetail: FC<{}> = () => {
 
   return (
     <div className="content">
-      <div>Candlestick graph here</div>
       <Container fluid>
         <Row>
           <Col md="12" sm="12">
-            {/* <ChartContainer symbol={symbol} /> */}
+            <ChartContainer />
           </Col>
         </Row>
         <Row>
@@ -62,7 +61,7 @@ export const BotDetail: FC<{}> = () => {
           <Col md="7" sm="12">
             <Card>
               <Card.Body>
-                <BotDetailTabs bot={bot} />
+                <BotDetailTabs bot={props} />
               </Card.Body>
             </Card>
           </Col>

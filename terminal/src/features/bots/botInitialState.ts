@@ -1,5 +1,19 @@
 import { intervalOptions } from "../../utils/validations"
 
+export interface Deal {
+  buy_price?: number
+  original_buy_price?: number
+  sell_price?: number
+  buy_total_qty?: number
+  trailling_stop_loss_price?: number
+  trailling_profit_price?: number
+  take_profit_price?: number
+  margin_short_buy_back_price?: number
+  margin_short_sell_price?: number
+  buy_back_price?: number
+  stop_loss_price?: number
+}
+
 export interface Bot {
   id: string
   name: string
@@ -9,7 +23,8 @@ export interface Bot {
   balance_size_to_use: number
   base_order_size: number
   balance_to_use: string
-  errors: string[]
+  buy_total_qty?: number
+  errors?: string[]
   mode: string
   max_so_count: string
   pair: string
@@ -19,7 +34,7 @@ export interface Bot {
   trailling: boolean
   trailling_deviation: number
   dynamic_trailling: boolean
-  deal: any
+  deal?: Deal
   orders: any[]
   quoteAsset: string
   baseAsset: string
@@ -71,7 +86,7 @@ export const singleBot: Bot = {
   short_buy_price: 0,
   short_sell_price: 0,
   commissions: 0,
-};
+}
 
 const botsInitialState = {
   bot: singleBot,
