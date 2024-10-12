@@ -8,7 +8,7 @@ import {
   Row,
   Tab,
 } from "react-bootstrap"
-import { useForm } from "react-hook-form"
+import { type FieldValues, useForm } from "react-hook-form"
 import { selectBot, setField } from "../../features/bots/botSlice"
 import { useGetSymbolsQuery } from "../../features/symbolApiSlice"
 import { BotStatus, BotStrategy } from "../../utils/enums"
@@ -36,7 +36,7 @@ const BaseOrderTab: FC = () => {
     getValues,
     control,
     formState: { errors },
-  } = useForm()
+  } = useForm<FieldValues>()
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = getValues(e.target.name)
@@ -199,7 +199,7 @@ const BaseOrderTab: FC = () => {
               </Form.Select>
               {errors.strategy && (
                 <Form.Control.Feedback type="invalid">
-                  {errors.strategy.message}
+                  {errors.strategy.message as string}
                 </Form.Control.Feedback>
               )}
             </Form.Group>

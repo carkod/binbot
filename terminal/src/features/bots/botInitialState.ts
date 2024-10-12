@@ -2,6 +2,8 @@ import { intervalOptions } from "../../utils/validations"
 
 export interface Deal {
   buy_price?: number
+  buy_timestamp?: number
+  sell_timestamp?: number
   original_buy_price?: number
   sell_price?: number
   buy_total_qty?: number

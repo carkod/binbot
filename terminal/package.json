@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "tsc && vite build",
+    "build": "cp -r ./node_modules/binbot-charts/public/charting_library ./charting_library  && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "prettier --write .",
@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.0.1",
-    "binbot-charts": "^0.4.1",
+    "binbot-charts": "^0.6.8",
     "bootstrap": "5.2.2",
     "moment": "^2.29.1",
     "nanoid": "^4.0.0",

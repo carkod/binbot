@@ -36,9 +36,9 @@ const TakeProfit: FC = () => {
   })
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const value: number = getValues(e.target.name)
+    const value = getValues(e.target.name as "take_profit" | "trailling_deviation")
     if (value)
-    dispatch(setField({ name: e.target.name, value: parseFloat(value) }))
+    dispatch(setField({ name: e.target.name, value: value }))
   }
 
   return (

@@ -12,7 +12,7 @@ import BotDetailTabs from "../components/BotDetailTabs"
 import { singleBot } from "../../features/bots/botInitialState"
 import { selectBot, setBot } from "../../features/bots/botSlice"
 import { useAppSelector } from "../hooks"
-import { ChartContainer } from "../components/ChartContainer"
+import ChartContainer from "../components/ChartContainer"
 
 export enum TabsKeys {
   MAIN = "main",

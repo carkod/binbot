@@ -7,12 +7,10 @@ import { useImmer } from "use-immer"
 import { updateOrderLines } from "../../utils/charting/index"
 import { type OrderLine } from "../../utils/charting/index.d"
 import { updateTimescaleMarks } from "../../utils/charting"
-import { TVChartContainer } from "binbot-charts"
+import TVChartContainer from "binbot-charts"
+import { type ResolutionString } from "../../../charting_library/charting_library"
 
-// Untyped module
-// declare let TVChartContainer: any;
-
-export const ChartContainer = () => {
+const ChartContainer = () => {
   const props = useAppSelector(selectBot)
   const botProfit = computeSingleBotProfit(props)
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0)
@@ -77,7 +75,7 @@ export const ChartContainer = () => {
           <TVChartContainer
             symbol={props.pair}
             // Take interval value from autotrade settings
-            interval={"1h"}
+            interval={"1h" as ResolutionString}
             timescaleMarks={updateTimescaleMarks(props)}
             orderLines={currentOrderLines}
             onTick={tick => updatedPrice(tick.close)}
@@ -88,3 +86,5 @@ export const ChartContainer = () => {
     </Card>
   )
 }
+
+export default ChartContainer

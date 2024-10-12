@@ -43,9 +43,9 @@ const BotDetailTabs: FC<{
         </Col>
         <Col sm={12}>
           <Tab.Content>
-            <BaseOrderTab bot={bot} />
-            <StopLossTab bot={bot} />
-            <TakeProfit bot={bot} />
+            <BaseOrderTab />
+            <StopLossTab />
+            <TakeProfit />
           </Tab.Content>
         </Col>
       </Row>

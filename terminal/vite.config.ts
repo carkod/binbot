@@ -7,9 +7,11 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      '@public': path.resolve(__dirname, 'charting_library'),
       '~bootstrap': path.resolve(__dirname, 'node_modules/bootstrap'),
     }
   },
+  publicDir: "/charting_library",
   define: {
     'process.env': process.env
   },
