@@ -12,7 +12,6 @@ const SymbolSearch: FC<{
   value?: string
   required?: boolean
   disabled?: boolean
-  selected?: string
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
   onChange?: (selected: Option[]) => void
   errors?: object
@@ -28,39 +27,30 @@ const SymbolSearch: FC<{
   errors = {},
 }) => {
 
-  const [selectedValue, setSelectedValue] = useState<string | undefined>(value)
-
-  useEffect(() => {
-    if (value) {
-      setSelectedValue(value)
-    }
-  }, [value])
 
   return (
-    <>
-      <Form.Group>
-        <Form.Label>
-          {label}
-          {required && <span className="u-required">*</span>}
-        </Form.Label>
-        <Typeahead
-          id={name}
-          labelKey={name}
-          options={options}
-          isInvalid={errors?.[name] || Boolean(selectedValue) === false}
-          disabled={disabled}
-          selected={selectedValue ? [selectedValue] : []}
-          onChange={selected => onChange(selected)}
-          onBlur={e => onBlur(e)}
-        />
+    <Form.Group>
+      <Form.Label>
+        {label}
+        {required && <span className="u-required">*</span>}
+      </Form.Label>
+      <Typeahead
+        id={name}
+        labelKey={name}
+        options={options}
+        isInvalid={Boolean(errors?.[name]) || Boolean(value) === false}
+        disabled={disabled}
+        selected={value ? [value] : []}
+        onChange={selected => onChange(selected)}
+        onBlur={e => onBlur(e)}
+      />
 
-        {errors[name] && (
-          <Form.Control.Feedback type="invalid">
-            {errors[name].message}
-          </Form.Control.Feedback>
-        )}
-      </Form.Group>
-    </>
+      {errors[name] && (
+        <Form.Control.Feedback type="invalid">
+          {errors[name].message}
+        </Form.Control.Feedback>
+      )}
+    </Form.Group>
   )
 }
 

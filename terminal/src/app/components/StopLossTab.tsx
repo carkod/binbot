@@ -1,4 +1,4 @@
-import { type FC, useEffect, useState } from "react"
+import { type FC, useState } from "react"
 import {
   ButtonGroup,
   Col,
@@ -10,12 +10,11 @@ import {
   ToggleButton,
 } from "react-bootstrap"
 import InputGroupText from "react-bootstrap/esm/InputGroupText"
-import { FieldValue, useForm, useFormContext } from "react-hook-form"
-import { type Bot, singleBot } from "../../features/bots/botInitialState"
+import { useForm } from "react-hook-form"
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice"
 import { useAppDispatch, useAppSelector } from "../hooks"
-import { TabsKeys } from "../pages/BotDetail"
 import { type AppDispatch } from "../store"
+import { TabsKeys } from "../../utils/enums"
 
 const StopLossTab: FC<{}> = () => {
   const dispatch: AppDispatch = useAppDispatch()

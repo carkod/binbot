@@ -1,18 +1,14 @@
 import { type FC } from "react"
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap"
-import { type Bot } from "../../features/bots/botInitialState"
 import { selectBot } from "../../features/bots/botSlice"
-import { BotStatus } from "../../utils/enums"
+import { BotStatus, TabsKeys } from "../../utils/enums"
 import { useAppSelector } from "../hooks"
-import { TabsKeys } from "../pages/BotDetail"
 import BaseOrderTab from "./BaseOrderTab"
 import StopLossTab from "./StopLossTab"
 import TakeProfit from "./TakeProfitTab"
 
-const BotDetailTabs: FC<{
-  bot: Bot
-}> = ({ bot }) => {
-  const props = useAppSelector(selectBot)
+const BotDetailTabs: FC = () => {
+  const { bot } = useAppSelector(selectBot)
 
   const handleActivation = (id: string) => {
     console.log("Activate bot", id)
@@ -22,7 +18,7 @@ const BotDetailTabs: FC<{
   }
 
   const onSubmit = () => {
-    console.log("Bot form data", props)
+    console.log("Bot form data", bot)
   }
 
   return (
@@ -72,7 +68,6 @@ const BotDetailTabs: FC<{
                 className="btn-round"
                 color="primary"
                 onClick={() => handlePanicSell(bot.id)}
-                disabled
               >
                 Panic close
               </Button>

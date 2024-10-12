@@ -1,5 +1,5 @@
 import { type FC } from "react"
-import { Form } from "react-bootstrap"
+import { Form, InputGroup } from "react-bootstrap"
 import { type FieldErrors } from "react-hook-form"
 import { type Bot } from "../../features/bots/botInitialState"
 
@@ -10,18 +10,22 @@ interface InputTooltipProps {
   label: string
   errors?: FieldErrors<Bot>
   required?: boolean
+  secondaryText?: string
 }
 
 export const InputTooltip: FC<InputTooltipProps> = (
-  { name, tooltip, label, children, errors, required = false }) => {
+  { name, tooltip, label, children, errors, required = false, secondaryText = undefined }) => {
   return (
     <Form.Group className="position-relative">
       <Form.Label htmlFor={name}>
         {label}
         {required && <span className="u-required">*</span>}
       </Form.Label>
-      {children}
-      <Form.Control.Feedback>
+      <InputGroup>
+        {children}
+        {secondaryText && <InputGroup.Text>{secondaryText}</InputGroup.Text>}
+      </InputGroup>
+      <Form.Control.Feedback tooltip>
         <small>{tooltip}</small>
       </Form.Control.Feedback>
       {/* {errors[name] && (

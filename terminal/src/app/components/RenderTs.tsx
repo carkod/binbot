@@ -1,6 +1,16 @@
 import moment from "moment"
 import { renderDuration } from "../../utils/time"
 import { Col, Row } from "react-bootstrap"
+import { BotStatus, BotStrategy } from "../../utils/enums"
+
+/**
+ * Format timestamp by converting it to datetime format
+ * @param {string} timestamp in milliseconds
+ * @returns
+ */
+export const formatTimestamp = timestamp => {
+  return timestamp === 0 ? "0" : moment(timestamp).format("D MMM, HH:mm")
+}
 
 const TimestampComponent = ({ label, timestamp }) => {
   return (
@@ -9,9 +19,7 @@ const TimestampComponent = ({ label, timestamp }) => {
         <p className="small">{label}</p>
       </Col>
       <Col md="6" xs="5">
-        <p className="small">
-          {moment(timestamp).format("D, MMM, hh:mm")}
-        </p>
+        <p className="small">{formatTimestamp(timestamp)}</p>
       </Col>
     </Row>
   )
@@ -25,7 +33,7 @@ const TimestampComponent = ({ label, timestamp }) => {
  * @param {Bot} bot
  */
 const RenderTimestamp = bot => {
-  if (bot.strategy === "long") {
+  if (bot.strategy === BotStrategy.LONG) {
     if (bot.deal?.buy_timestamp > 0 && bot.deal?.sell_timestamp > 0) {
       return (
         <>
@@ -50,7 +58,7 @@ const RenderTimestamp = bot => {
   }
 
   // margin bots
-  if (bot.strategy === "margin_short") {
+  if (bot.strategy === BotStrategy.MARGIN_SHORT) {
     if (
       bot.deal?.margin_short_sell_timestamp > 0 &&
       bot.deal?.margin_short_buy_back_timestamp > 0

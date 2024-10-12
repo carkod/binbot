@@ -1,3 +1,4 @@
+import { BotStatus } from "../../utils/enums"
 import { intervalOptions } from "../../utils/validations"
 
 export interface Deal {
@@ -38,8 +39,6 @@ export interface Bot {
   dynamic_trailling: boolean
   deal?: Deal
   orders: any[]
-  quoteAsset: string
-  baseAsset: string
   stop_loss: number
   margin_short_reversal: boolean
   safety_orders: any[]
@@ -59,7 +58,7 @@ export interface Bot {
 // The initial state of the App
 export const singleBot: Bot = {
   id: null,
-  status: "inactive",
+  status: BotStatus.INACTIVE,
   balance_available: "0",
   balance_available_asset: "",
   balance_size_to_use: 0, // Centralized
@@ -68,7 +67,7 @@ export const singleBot: Bot = {
   errors: [],
   mode: "manual",
   max_so_count: "0",
-  name: "Default bot",
+  name: `manual_${new Date().getTime().toString()}`,
   pair: "",
   price_deviation_so: "0.63",
   so_size: "0",
@@ -78,8 +77,6 @@ export const singleBot: Bot = {
   dynamic_trailling: false,
   deal: {},
   orders: [],
-  quoteAsset: "",
-  baseAsset: "",
   stop_loss: 3,
   margin_short_reversal: true,
   safety_orders: [],
@@ -88,11 +85,4 @@ export const singleBot: Bot = {
   short_buy_price: 0,
   short_sell_price: 0,
   commissions: 0,
-}
-
-const botsInitialState = {
-  bot: singleBot,
-  balanceAvailableError: false,
-  candlestick_interval: intervalOptions[3],
-  formIsValid: false,
 }

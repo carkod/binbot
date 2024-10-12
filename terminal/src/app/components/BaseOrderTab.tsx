@@ -11,9 +11,8 @@ import {
 import { type FieldValues, useForm } from "react-hook-form"
 import { selectBot, setField } from "../../features/bots/botSlice"
 import { useGetSymbolsQuery } from "../../features/symbolApiSlice"
-import { BotStatus, BotStrategy } from "../../utils/enums"
+import { BotStatus, BotStrategy, TabsKeys } from "../../utils/enums"
 import { useAppDispatch, useAppSelector } from "../hooks"
-import { TabsKeys } from "../pages/BotDetail"
 import { type AppDispatch } from "../store"
 import { InputTooltip } from "./InputTooltip"
 import SymbolSearch from "./SymbolSearch"
@@ -26,14 +25,16 @@ interface ErrorsState {
 const BaseOrderTab: FC = () => {
   const dispatch: AppDispatch = useAppDispatch()
   const { data } = useGetSymbolsQuery()
-  const props = useAppSelector(selectBot)
-  const [pair, setPair] = useState<string>(props.pair)
+  const { bot } = useAppSelector(selectBot)
+  const [pair, setPair] = useState<string>(bot.pair)
+  const [quoteAsset, setQuoteAsset] = useState<string>("")
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({})
   const [symbolsList, setSymbolsList] = useState<string[]>([])
   const {
     register,
     handleSubmit,
     getValues,
+    reset,
     control,
     formState: { errors },
   } = useForm<FieldValues>()
@@ -79,7 +80,26 @@ const BaseOrderTab: FC = () => {
     if (data) {
       setSymbolsList(data)
     }
-  }, [data, symbolsList, setSymbolsList])
+    if (bot.pair) {
+      setPair(bot.pair)
+      setQuoteAsset(bot.pair.replace(bot.balance_to_use, ""))
+    }
+    if (bot) {
+      for (const key in bot) {
+        reset({ [key]: bot[key] })
+      }
+    }
+  }, [
+    data,
+    symbolsList,
+    setSymbolsList,
+    pair,
+    setPair,
+    bot,
+    quoteAsset,
+    setQuoteAsset,
+    reset,
+  ])
 
   return (
     <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
@@ -90,7 +110,7 @@ const BaseOrderTab: FC = () => {
               name="pair"
               label="Select pair"
               options={symbolsList}
-              disabled={props.status === BotStatus.COMPLETED}
+              disabled={bot.status === BotStatus.COMPLETED}
               onChange={handlePairChange}
               onBlur={handlePairBlur}
               value={pair}
@@ -100,7 +120,7 @@ const BaseOrderTab: FC = () => {
           </Col>
           <Col md="6" sm="12">
             <Form.Label htmlFor="name">Name</Form.Label>
-            <Form.Control type="text" name="name" defaultValue={props.name} />
+            <Form.Control type="text" name="name" {...register("name")} />
           </Col>
         </Row>
         <Row className="my-3">
@@ -112,17 +132,18 @@ const BaseOrderTab: FC = () => {
                 label="Base order size"
                 errors={errors}
                 required={true}
+                secondaryText={quoteAsset}
               >
                 <Form.Control
                   type="text"
                   name="base_order_size"
                   onBlur={handleBlur}
-                  defaultValue={props.base_order_size}
+                  defaultValue={bot.base_order_size}
                   autoComplete="off"
                   required
                   disabled={
-                    props.status === BotStatus.ACTIVE ||
-                    props.status === BotStatus.COMPLETED
+                    bot.status === BotStatus.ACTIVE ||
+                    bot.status === BotStatus.COMPLETED
                   }
                   {...register("base_order_size", {
                     required: "Base order size is required",
@@ -133,19 +154,16 @@ const BaseOrderTab: FC = () => {
                   })}
                 />
               </InputTooltip>
-              {props.quoteAsset && (
-                <InputGroup.Text>{props.quoteAsset}</InputGroup.Text>
-              )}
             </InputGroup>
-            {props.status !== BotStatus.ACTIVE && (
+            {bot.status !== BotStatus.ACTIVE && (
               <>
                 <Badge color="secondary" onClick={addMin}>
                   Min{" "}
-                  {props.quoteAsset === "BTC"
+                  {quoteAsset === "BTC"
                     ? 0.001
-                    : props.quoteAsset === "BNB"
+                    : quoteAsset === "BNB"
                       ? 0.051
-                      : props.quoteAsset === "USDC"
+                      : quoteAsset === "USDC"
                         ? 15
                         : ""}
                 </Badge>{" "}
@@ -160,7 +178,7 @@ const BaseOrderTab: FC = () => {
             <br />
             <Form.Text>
               <Badge bg="secondary" className="fs-6">
-                {props.balance_to_use}
+                {bot.balance_to_use}
               </Badge>
             </Form.Text>
           </Col>
@@ -177,7 +195,7 @@ const BaseOrderTab: FC = () => {
                 type="number"
                 name="cooldown"
                 onBlur={handleBlur}
-                defaultValue={props.cooldown}
+                defaultValue={bot.cooldown}
                 {...register("cooldown")}
               />
             </InputTooltip>
@@ -190,7 +208,7 @@ const BaseOrderTab: FC = () => {
               <Form.Select
                 id="strategy"
                 name="strategy"
-                defaultValue={props.strategy}
+                defaultValue={bot.strategy}
                 onBlur={handleBlur}
                 {...register("strategy", { required: "Strategy is required" })}
               >

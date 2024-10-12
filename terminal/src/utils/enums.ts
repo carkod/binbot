@@ -47,3 +47,9 @@ export enum BinanceKlineintervals {
   ONE_WEEK = "1w",
   ONE_MONTH = "1M",
 }
+
+export enum TabsKeys {
+  MAIN = "main",
+  STOPLOSS = "stop-loss",
+  TAKEPROFIT = "take-profit",
+}

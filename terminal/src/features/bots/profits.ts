@@ -1,3 +1,5 @@
+import { roundDecimals } from "../../utils/math"
+
 export function getProfit(base_price, current_price, strategy = "long") {
   if (base_price && current_price) {
     let percent =
@@ -61,10 +63,9 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
       if (bot.deal.margin_short_buy_back_price > 0) {
         const { interests, openTotal, closeTotal } =
           getInterestsShortMargin(bot)
-        let profitChange = parseFloat(
-          ((openTotal - closeTotal) / openTotal - interests) * 100,
-        )
-        return +profitChange.toFixed(2)
+        let profitChange =
+          ((openTotal - closeTotal) / openTotal - interests) * 100
+        return roundDecimals(profitChange, 2)
       } else {
         // Not completed margin_sho
         const closePrice =
@@ -75,10 +76,9 @@ export function computeSingleBotProfit(bot, realTimeCurrPrice = null) {
           return 0
         }
         const { interests, openTotal } = getInterestsShortMargin(bot)
-        let profitChange = parseFloat(
-          ((openTotal - closePrice) / openTotal - interests) * 100,
-        )
-        return +profitChange.toFixed(2)
+        let profitChange =
+          ((openTotal - closePrice) / openTotal - interests) * 100
+        return roundDecimals(profitChange, 2)
       }
     } else {
       return 0
@@ -123,15 +123,15 @@ export function computeTotalProfit(bots) {
           )
         }
       }
-      return parseFloat(accumulator) + parseFloat(currTotalProfit)
+      return parseFloat(accumulator) + currTotalProfit
     }, 0)
-  return totalProfit.toFixed(2)
+  return roundDecimals(totalProfit, 2)
 }
 
-export const getNetProfit = (bot) => {
+export const getNetProfit = bot => {
   // current price if bot is active
   // sell price if bot is completed
-  let netProfit = computeSingleBotProfit(bot);
-  if (!netProfit) netProfit = 0;
+  let netProfit = computeSingleBotProfit(bot)
+  if (!netProfit) netProfit = 0
   return netProfit
-};
+}

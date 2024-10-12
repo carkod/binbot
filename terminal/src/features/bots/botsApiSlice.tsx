@@ -9,7 +9,7 @@ import { userApiSlice } from "../userApiSlice"
 import type { Bot } from "./botInitialState"
 import { computeTotalProfit } from "./profits"
 
-interface DefaultBotsResponse {
+export interface DefaultBotsResponse {
   error: number
   data?: string
   message?: string
@@ -79,7 +79,9 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message)
         }
-        return data
+        return {
+          bot: data,
+        }
       }
     }),
     createBot: build.mutation<DefaultBotsResponse, Bot>({

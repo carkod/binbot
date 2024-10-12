@@ -4,12 +4,12 @@ import {
   notifification,
 } from "../utils/api"
 
-interface LoginCredentials {
+export interface LoginCredentials {
   email: string
   password: string
 }
 
-interface LoginResponse {
+export interface LoginResponse {
   access_token: string
   email: string
   token_type: string

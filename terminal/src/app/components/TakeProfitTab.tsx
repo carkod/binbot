@@ -13,8 +13,7 @@ import InputGroupText from "react-bootstrap/esm/InputGroupText"
 import { useForm } from "react-hook-form"
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice"
 import { useAppDispatch, useAppSelector } from "../hooks"
-import { TabsKeys } from "../pages/BotDetail"
-import InputTooltip from "./InputTooltip"
+import { TabsKeys } from "../../utils/enums"
 
 const TakeProfit: FC = () => {
   const dispatch = useAppDispatch()

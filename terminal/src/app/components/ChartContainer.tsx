@@ -11,24 +11,25 @@ import TVChartContainer from "binbot-charts"
 import { type ResolutionString } from "../../../charting_library/charting_library"
 
 const ChartContainer = () => {
-  const props = useAppSelector(selectBot)
-  const botProfit = computeSingleBotProfit(props)
+  const { bot } = useAppSelector(selectBot)
+  const botProfit = computeSingleBotProfit(bot)
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0)
   const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([])
 
   const updatedPrice = price => {
+    price = roundDecimals(price, 4)
     if (currentChartPrice !== parseFloat(price)) {
-      const newOrderLines = updateOrderLines(props, price)
+      const newOrderLines = updateOrderLines(bot, price)
       setCurrentOrderLines(newOrderLines)
       setCurrentChartPrice(parseFloat(price))
     }
   }
 
   const handleInitialPrice = price => {
-    if (!props.deal.buy_price && props.status !== "active") {
+    if (!bot.deal.buy_price && bot.status !== "active") {
       setCurrentChartPrice(price)
     }
-    const newOrderLines = updateOrderLines(props, price)
+    const newOrderLines = updateOrderLines(bot, price)
     setCurrentOrderLines(newOrderLines)
   }
 
@@ -36,50 +37,48 @@ const ChartContainer = () => {
     <Card style={{ minHeight: "650px" }}>
       <Card.Header>
         <Row style={{ alignItems: "baseline" }}>
-          <Col>
+          <Col md="8">
             <Card.Title as="h3">
-              {props.pair}{" "}
-              <Badge color={botProfit > 0 ? "success" : "danger"}>
+              {bot.pair}{" "}
+              <Badge bg={botProfit > 0 ? "success" : botProfit < 0 ? "danger" : "secondary"}>
                 {botProfit ? botProfit + "%" : "0%"}
               </Badge>{" "}
-              {props?.status && (
-                <Badge
-                  color={
-                    props.status === "active"
-                      ? "success"
-                      : props.status === "error"
-                        ? "warning"
-                        : props.status === "completed"
-                          ? "info"
-                          : "secondary"
-                  }
-                >
-                  {props.status}
-                </Badge>
-              )}{" "}
-              {props.strategy && <Badge color="info">{props.strategy}</Badge>}
+              <Badge
+                bg={
+                  bot.status === "active"
+                    ? "success"
+                    : bot.status === "error"
+                      ? "warning"
+                      : bot.status === "completed"
+                        ? "info"
+                        : "secondary"
+                }
+              >
+                {bot.status}
+              </Badge>{" "}
+            <Badge color="info">{bot.strategy}</Badge>
             </Card.Title>
           </Col>
-          <Col>
-            {botProfit && (
-              <h4>
+          <Col md="12" lg="4">
+            {botProfit && botProfit > 0 && (
+              <small className="fs-6 fw-light">
                 Earnings after commissions (est.):{" "}
-                {roundDecimals(botProfit - 0.3) + "%"}
-              </h4>
+                {roundDecimals(botProfit - bot.commissions) + "%"}
+              </small>
             )}
           </Col>
         </Row>
       </Card.Header>
       <Card.Body>
-        {props?.pair && (
+        {bot?.pair && (
           <TVChartContainer
-            symbol={props.pair}
+            symbol={bot.pair}
             // Take interval value from autotrade settings
             interval={"1h" as ResolutionString}
-            timescaleMarks={updateTimescaleMarks(props)}
+            timescaleMarks={updateTimescaleMarks(bot)}
             orderLines={currentOrderLines}
-            onTick={tick => updatedPrice(tick.close)}
-            getLatestBar={bar => handleInitialPrice(bar[3])}
+            onTick={tick => updatedPrice(parseFloat(tick.close))}
+            getLatestBar={bar => handleInitialPrice(parseFloat(bar[3]))}
           />
         )}
       </Card.Body>

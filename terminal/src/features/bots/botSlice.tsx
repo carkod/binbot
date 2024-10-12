@@ -8,8 +8,8 @@ interface BotDetailsFormField {
 }
 
 interface BotDetailsFormFieldBoolean {
-	name: string
-	value: boolean
+  name: string
+  value: boolean
 }
 
 interface BotDetailsState {
@@ -18,29 +18,29 @@ interface BotDetailsState {
 
 export const botSlice = createAppSlice({
   name: "bot",
-  initialState: singleBot,
+  initialState: {
+    bot: singleBot
+  },
   reducers: create => ({
     setField: create.reducer(
       (state, { payload }: PayloadAction<BotDetailsFormField>) => {
-        state[payload.name] = payload.value
+        state.bot[payload.name] = payload.value
       },
     ),
-		setToggle: create.reducer(
-			(state, { payload }: PayloadAction<BotDetailsFormFieldBoolean>) => {
-				state[payload.name] = payload.value
-			}
-		),
-    setBot: create.reducer((state, { payload }: PayloadAction<BotDetailsState>) => {
-      state = payload.bot
-    }),
+    setToggle: create.reducer(
+      (state, { payload }: PayloadAction<BotDetailsFormFieldBoolean>) => {
+        state.bot[payload.name] = payload.value
+      },
+    ),
+    setBot: create.reducer(
+      (state, { payload }: PayloadAction<BotDetailsState>) => {
+        state.bot = payload.bot
+      },
+    ),
   }),
   selectors: {
     selectBot: state => {
-      if (state) {
-        return state
-      } else {
-        return singleBot
-      }
+      return state
     },
   },
 })
