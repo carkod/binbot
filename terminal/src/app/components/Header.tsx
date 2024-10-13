@@ -8,7 +8,7 @@ export const Header: FC<{}> = () => {
 
   const location = useLocation()
   const matchPath = useMatch(location.pathname)
-  const loadData = matchPath ? routes.find(route => `/${route.path}` === location.pathname) : null
+  const loadData = matchPath ? routes.find(route => `${route.link}` === location.pathname) : null
 
   return (
     <Navbar className="bg-body-tertiary">
