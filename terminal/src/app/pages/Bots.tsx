@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useState, type FC } from "react"
+import { ReactElement, useEffect, useMemo, useState, type FC } from "react"
 import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap"
 import {
   botsApiSlice,
@@ -32,7 +32,10 @@ export const BotsPage: FC<{}> = () => {
   const [filterStatus, setFilterStatus] = useState("")
   const [toDelete, addToDelete] = useState([])
 
-  // const bots = useAppSelector(state => state.bots.bots)
+
+  const { data: props, isFetching } = useGetBotsQuery(
+    { status: filterStatus, startDate, endDate },
+  )
 
   const handleSelection = id => {
     let newCards = []
@@ -106,10 +109,6 @@ export const BotsPage: FC<{}> = () => {
       )
     }
   }
-
-  const { data: props, isFetching } = useGetBotsQuery(
-    { status: filterStatus, startDate, endDate },
-  )
 
   useEffect(() => {
     if (isFetching) {

@@ -4,8 +4,9 @@ import { setupListeners } from "@reduxjs/toolkit/query"
 import { layoutSlice } from "../features/layoutSlice"
 import { userApiSlice } from "../features/userApiSlice"
 import { botSlice } from "../features/bots/botSlice"
+import { binanceApiSlice } from "../features/binanceApiSlice"
 
-const rootReducer = combineSlices(userApiSlice, layoutSlice, botSlice)
+const rootReducer = combineSlices(userApiSlice, layoutSlice, botSlice, binanceApiSlice)
 
 export type RootState = ReturnType<typeof rootReducer>
 
@@ -17,7 +18,7 @@ export const makeStore = (preloadedState?: Partial<RootState>) => {
     // Adding the api middleware enables caching, invalidation, polling,
     // and other useful features of `rtk-query`.
     middleware: getDefaultMiddleware => {
-      return getDefaultMiddleware().concat(userApiSlice.middleware)
+      return getDefaultMiddleware().concat(userApiSlice.middleware).concat(binanceApiSlice.middleware)
     },
     preloadedState,
     devTools: process.env.NODE_ENV !== "production",

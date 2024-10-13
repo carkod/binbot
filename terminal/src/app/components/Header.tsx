@@ -1,18 +1,20 @@
 import type { FC } from "react"
-import { Container, Navbar } from "react-bootstrap"
+import { Col, Container, Navbar, Row } from "react-bootstrap"
 import { useLocation, useMatch } from "react-router"
 import { Link } from "react-router-dom"
 import { routes } from "../../App"
 
 export const Header: FC<{}> = () => {
-
   const location = useLocation()
   const matchPath = useMatch(location.pathname)
-  const loadData = matchPath ? routes.find(route => `${route.link}` === location.pathname) : null
+  const loadData = matchPath
+    ? routes.find(route => `${route.link}` === location.pathname)
+    : null
 
   return (
-    <Navbar className="bg-body-tertiary">
+    <Navbar className="bg-body-tertiary navbar-transparent navbar navbar-expand-lg">
       <Container fluid>
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Brand>
           <i className={`${loadData?.icon}`}></i> {loadData?.name}
         </Navbar.Brand>

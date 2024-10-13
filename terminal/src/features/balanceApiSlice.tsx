@@ -8,11 +8,19 @@ interface AssetCollection {
 }
 
 export interface BalanceEstimateData {
+  asset: string
   total_fiat: number
   balances: AssetCollection[]
   fiat_left: number
   estimated_total_btc: number
   estimated_total_fiat: number
+}
+
+// Benchmark of portfolio (in USDC at time of writing) against BTC
+export interface BenchmarkData {
+  usdc: number[]
+  btc: number[]
+  dates: string[]
 }
 
 export const balancesApiSlice = userApiSlice.injectEndpoints({
@@ -47,7 +55,23 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
         return data
       },
     }),
+    getBenchmark: build.query<BenchmarkData, void>({
+      query: () => ({
+        url: `${import.meta.env.VITE_BALANCE_SERIES}` || "/balance",
+        providesTags: ["balances"],
+      }),
+      transformResponse: ({ data, message, error }, meta, arg) => {
+        if (error && error === 1) {
+          notifification("error", message)
+        } else {
+          notifification("success", message)
+        }
+
+        return data
+      },
+    }),
+    
   }),
 })
 
-export const { useGetRawBalanceQuery, useGetEstimateQuery } = balancesApiSlice
+export const { useGetRawBalanceQuery, useGetEstimateQuery, useGetBenchmarkQuery } = balancesApiSlice

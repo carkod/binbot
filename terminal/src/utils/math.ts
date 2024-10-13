@@ -55,10 +55,14 @@ const replaceZeros = value => {
   return value.replace(/^0+/, "")
 }
 
-const roundDecimals = (num, decimals = 2) => {
-  const number =
-    Math.round((num + Number.EPSILON) * Math.pow(10, decimals)) /
-    Math.pow(10, decimals)
+const roundDecimals = (num: number, decimals: number = 2) => {
+  if (num < 0) return -roundDecimals(-num, decimals)
+  const p = Math.pow(10, decimals)
+  const n = num * p
+  const f = n - Math.floor(n)
+  const e = Number.EPSILON * n
+  const number = f >= 0.5 - e ? Math.ceil(n) / p : Math.floor(n) / p
+
   return number
 }
 

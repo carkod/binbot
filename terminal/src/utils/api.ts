@@ -13,7 +13,7 @@ export function buildBackUrl() {
   return backUrl
 }
 
-export const baseQuery = fetchBaseQuery({
+export const binbotBaseQuery = fetchBaseQuery({
   baseUrl: buildBackUrl(),
   prepareHeaders: (headers, { getState }) => {
     const token = getToken()
@@ -23,6 +23,10 @@ export const baseQuery = fetchBaseQuery({
     }
     return headers
   },
+})
+
+export const binanceBaseQuery = fetchBaseQuery({
+  baseUrl: "https://api.binance.com/api/v3",
 })
 
 export const defaultResponseHandler = async (res: Response) => {

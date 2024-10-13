@@ -43,7 +43,7 @@ export const buildGetBotsPath = (
 }
 
 const botsAdapter = createEntityAdapter<Bot>({
-  sortComparer: (a, b) => a.status.localeCompare(b.status),
+  sortComparer: false,
 })
 
 export const botsApiSlice = userApiSlice.injectEndpoints({
@@ -62,7 +62,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         }
 
         const totalProfit = computeTotalProfit(data)
-
+        // normalize [] -> {}
         const bots = botsAdapter.setAll(botsAdapter.getInitialState(), data)
 
         return { bots: bots, totalProfit: totalProfit }

@@ -1,6 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react"
 import {
-  baseQuery,
+  binbotBaseQuery,
   notifification,
 } from "../utils/api"
 
@@ -25,7 +25,7 @@ export interface LoginResponse {
  * code splitting
  */
 export const userApiSlice = createApi({
-  baseQuery: baseQuery,
+  baseQuery: binbotBaseQuery,
   reducerPath: "api",
   endpoints: build => ({
     postLogin: build.mutation<LoginResponse, Partial<LoginCredentials>>({
