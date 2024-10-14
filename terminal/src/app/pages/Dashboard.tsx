@@ -14,6 +14,7 @@ import { calculateTotalRevenue } from "../../utils/dashboard-computations"
 import GainersLosers from "../components/GainersLosers"
 import { useGainerLosersSeriesQuery } from "../../features/marketApiSlice"
 import { useGainerLosersQuery } from "../../features/binanceApiSlice"
+import PortfolioBenchmarkChart from "../components/PortfolioBenchmark"
 
 export const DashboardPage: FC<{}> = () => {
   const dispatch = useAppDispatch()
@@ -24,7 +25,7 @@ export const DashboardPage: FC<{}> = () => {
   const { data: errorBotEntities } = useGetBotsQuery({
     status: BotStatus.ACTIVE,
   })
-  const { data: benchmarkData } = useGetBenchmarkQuery()
+  const { data: benchmark } = useGetBenchmarkQuery()
   const { data: gainersLosersData } = useGainerLosersQuery()
   const { data: gainersLosersSeries } = useGainerLosersSeriesQuery()
 
@@ -41,9 +42,11 @@ export const DashboardPage: FC<{}> = () => {
       setErrorBotsCount(errorBotEntities.bots.ids.length)
     }
 
-    if (benchmarkData) {
-      if (benchmarkData.usdc) {
-        const { revenue, percentage } = calculateTotalRevenue(benchmarkData)
+    if (benchmark) {
+      if (benchmark.benchmarkData) {
+        const { revenue, percentage } = calculateTotalRevenue(
+          benchmark.benchmarkData,
+        )
         setRevenue(revenue)
         setPercentageRevenue(percentage)
       }
@@ -52,7 +55,7 @@ export const DashboardPage: FC<{}> = () => {
     accountData,
     activeBotEntities,
     errorBotEntities,
-    benchmarkData,
+    benchmark,
     gainersLosersData,
   ])
 
@@ -197,14 +200,11 @@ export const DashboardPage: FC<{}> = () => {
             )}
           </div>
         </Col>
-        {/* <Col lg="9">
-            {benchmarkData?.dates && (
-              <PortfolioBenchmarkChart
-                data={benchmarkData}
-                legend={this.state.lineChartLegend}
-              />
-            )}
-          </Col> */}
+        <Col lg="9">
+          {benchmark?.percentageSeries.datesSeries && (
+            <PortfolioBenchmarkChart chartData={benchmark.percentageSeries} />
+          )}
+        </Col>
       </Row>
       <Row>
         <Col lg="6" md="12">

@@ -23,6 +23,18 @@ export interface BenchmarkData {
   dates: string[]
 }
 
+export interface BenchmarkSeriesData {
+  usdcSeries: number[]
+  btcSeries: number[]
+  datesSeries: string[]
+}
+
+
+export interface BenchmarkCollection {
+  benchmarkData: BenchmarkData
+  percentageSeries: BenchmarkSeriesData
+}
+
 export const balancesApiSlice = userApiSlice.injectEndpoints({
   endpoints: build => ({
     getRawBalance: build.query<AssetCollection[], void>({
@@ -55,10 +67,10 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
         return data
       },
     }),
-    getBenchmark: build.query<BenchmarkData, void>({
+    getBenchmark: build.query<BenchmarkCollection, void>({
       query: () => ({
         url: `${import.meta.env.VITE_BALANCE_SERIES}` || "/balance",
-        providesTags: ["balances"],
+        providesTags: ["benchmark"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -66,12 +78,39 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message)
         }
+        // Convert to % so graph is normalized
+        data.dates.shift()
+        let percentageSeries = {
+          datesSeries: data.dates,
+          btcSeries: [],
+          uscdSeries: [],
+        }
+        data.btc.forEach((element, index) => {
+          if (index > 0) {
+            const previousQty = data.btc[index - 1];
+            const diff = (previousQty - element) / previousQty
+            percentageSeries.btcSeries.push(diff * 100);
+          }
+        });
+        data.usdc.forEach((element, index) => {
+          if (index > 0) {
+            const previousQty = data.usdc[index - 1];
+            const diff = (previousQty - element) / previousQty
+            percentageSeries.uscdSeries.push(diff * 100);
+          }
+        });
 
-        return data
+        return {
+          benchmarkData: data,
+          percentageSeries: percentageSeries,
+        }
       },
     }),
-    
   }),
 })
 
-export const { useGetRawBalanceQuery, useGetEstimateQuery, useGetBenchmarkQuery } = balancesApiSlice
+export const {
+  useGetRawBalanceQuery,
+  useGetEstimateQuery,
+  useGetBenchmarkQuery,
+} = balancesApiSlice
