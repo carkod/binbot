@@ -15,6 +15,8 @@ import GainersLosers from "../components/GainersLosers"
 import { useGainerLosersSeriesQuery } from "../../features/marketApiSlice"
 import { useGainerLosersQuery } from "../../features/binanceApiSlice"
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark"
+import ReversalBarChart from "../components/ReversalBarChart"
+import { listCssColors } from "../../utils/validations"
 
 export const DashboardPage: FC<{}> = () => {
   const dispatch = useAppDispatch()
@@ -212,14 +214,14 @@ export const DashboardPage: FC<{}> = () => {
             <GainersLosers data={gainersLosersData} />
           )}
         </Col>
-        {/* <Col lg="6" md="12">
-            {gainersLosersSeries && (
-              <GainersLosersGraph
-                data={gainersLosersSeries}
-                legend={this.state.lineChartLegend}
-              />
-            )}
-          </Col> */}
+        <Col lg="6" md="12">
+          {gainersLosersSeries && (
+            <ReversalBarChart data={gainersLosersSeries} legend={[{
+              name: "Portfolio",
+              color: listCssColors[0],
+            }]} />
+          )}
+        </Col>
       </Row>
       <Row>
         <Col md="12">

@@ -83,7 +83,7 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
         let percentageSeries = {
           datesSeries: data.dates,
           btcSeries: [],
-          uscdSeries: [],
+          usdcSeries: [],
         }
         data.btc.forEach((element, index) => {
           if (index > 0) {
@@ -96,7 +96,7 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
           if (index > 0) {
             const previousQty = data.usdc[index - 1];
             const diff = (previousQty - element) / previousQty
-            percentageSeries.uscdSeries.push(diff * 100);
+            percentageSeries.usdcSeries.push(diff * 100);
           }
         });
 

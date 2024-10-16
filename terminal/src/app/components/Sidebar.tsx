@@ -16,8 +16,8 @@ export const Sidebar: FC<{}> = () => {
   return (
     <div className="sidebar">
       <div className="logo">
-        <a href="/dashboard" className="logo__link">
-          <i className="nc-icon nc-sound-wave logo__icon" />
+        <a href="/dashboard" className="logo__link text-decoration-none text-info">
+          <i className="fa-solid fa-wave-square" />
           <h1 className="logo__heading-1">Binbot</h1>
         </a>
       </div>

@@ -60,7 +60,7 @@ const ChartContainer = () => {
             </Card.Title>
           </Col>
           <Col md="12" lg="4">
-            {botProfit && botProfit > 0 && (
+            {botProfit > 0 && (botProfit - bot.commissions) > 0 && (
               <small className="fs-6 fw-light">
                 Earnings after commissions (est.):{" "}
                 {roundDecimals(botProfit - bot.commissions) + "%"}

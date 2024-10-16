@@ -1,88 +1,67 @@
+import { type ChartOptions } from "chart.js"
+import "chart.js/auto" // Fixes rendering issues with chart.js
 import { Card, Col, Container, Row } from "react-bootstrap"
 import { Line } from "react-chartjs-2"
 import { listCssColors } from "../../utils/validations"
-import { type ChartOptions } from "chart.js"
-import 'chart.js/auto'; // ADD THIS
-
 
 const PortfolioBenchmarkChart = ({ chartData }) => {
   const lastUsdt = chartData.usdcSeries?.[chartData.usdcSeries.length - 1]
   const lastBtc = chartData.btcSeries?.[chartData.btcSeries.length - 1]
 
   const PBOptions: ChartOptions = {
-		title: {
-			text: "chart.js",
-			display: true,
-		},
-		tooltips: {
-			enabled: true,
-			intersect: true,
-			mode: "index",
-			position: "nearest",
-			callbacks: {
-				label: (item, d) => {
-				  const value = d.datasets[item.datasetIndex].data[item.index].y
-				  return `${d.datasets[item.datasetIndex].label} ${value}`
-				},
-				title: (items, d) => {
-					const item0 = items[0]
-					return d.datasets[item0.datasetIndex].data[item0.index]["x"].format(
-						"MM-DD HH:mm",
-					)
-				},
-				labelColor: (item, chart) => ({
-					borderColor: chart.data.datasets[item.datasetIndex].backgroundColor.toString(),
-					backgroundColor: chart.data.datasets[item.datasetIndex].borderColor.toString(),
-				}),
-			},
-		},
-		maintainAspectRatio: false,
-		legend: {
-			display: true,
-			position: "bottom",
-		},
-		scales: {
-			// xAxes: [
-			// 	{
-			// 		type: "time",
-			// 		time: {
-			// 			unit: "hour",
-			// 			minUnit: "hour",
-			// 			unitStepSize: 1,
-			// 			displayFormats: {
-			// 				hour: "HH[h]",
-			// 			},
-			// 		},
-			// 		gridLines: {
-			// 			drawOnChartArea: false,
-			// 		},
-			// 	},
-			// ],
-			// yAxes: [],
-		},
-		elements: {
-			point: {
-				radius: 0,
-				hitRadius: 10,
-				hoverRadius: 4,
-				hoverBorderWidth: 3,
-			},
-		},
-	}
+    maintainAspectRatio: true,
+    scales: {
+      y: {
+        type: "linear",
+        grace: "30%",
+        ticks: {
+          stepSize: 0.5,
+        },
+        grid: {
+          display: false,
+        },
+      },
+      x: {
+        border: {
+          display: true,
+        },
+        stacked: true,
+        grid: {
+          display: false,
+        },
+      },
+    },
+    plugins: {
+      legend: {
+        display: true,
+        labels: {
+          color: "rgb(255, 99, 132)",
+        },
+      },
+      tooltip: {
+        enabled: true,
+        intersect: true,
+        mode: "index",
+        position: "nearest",
+      },
+    },
+  }
 
   const data = {
     labels: chartData.datesSeries,
-    datasets:[
+    datasets: [
       {
-        label: 'Portfolio in USDCSeries',
-        data: chartData.usdcSeriesSeries,
-        backgroundColor: listCssColors[0],
+        type: "line",
+        label: "Portfolio in USDCSeries",
+        data: chartData.usdcSeries,
+        borderColor: listCssColors[0],
       },
       {
-        label: 'BTC prices',
+        type: "line",
+        label: "BTC prices",
         data: chartData.btcSeries,
-        backgroundColor: listCssColors[1],
-      }
+        borderColor: listCssColors[1],
+      },
     ],
   }
 
