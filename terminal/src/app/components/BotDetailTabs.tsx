@@ -6,9 +6,16 @@ import { useAppSelector } from "../hooks"
 import BaseOrderTab from "./BaseOrderTab"
 import StopLossTab from "./StopLossTab"
 import TakeProfit from "./TakeProfitTab"
+import { useCreateBotMutation, useEditBotMutation } from "../../features/bots/botsApiSlice"
+import { useParams } from "react-router"
 
 const BotDetailTabs: FC = () => {
   const { bot } = useAppSelector(selectBot)
+  const { id } = useParams<{ id: string }>()
+
+  const [ updateBot, { isLoading: updatingBot } ] = useEditBotMutation()
+
+  const [ createBot, { isLoading: creatingBot } ] = useCreateBotMutation()
 
   const handleActivation = (id: string) => {
     console.log("Activate bot", id)
@@ -18,7 +25,14 @@ const BotDetailTabs: FC = () => {
   }
 
   const onSubmit = () => {
-    console.log("Bot form data", bot)
+    if (id) {
+      console.log("Update bot", bot)
+      updateBot({ id, ...bot })
+    } else {
+      console.log("Create new bot", bot)
+      createBot(bot)
+    }
+    
   }
 
   return (
