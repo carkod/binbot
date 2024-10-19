@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from tools.handle_error import json_response, json_response_error, json_response_message
 from bots.controllers import Bot
 from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
 from typing import List
-from tools.exceptions import BinanceErrors, BinbotErrors, InsufficientBalance
+from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.enum_definitions import Status
 
 
@@ -61,7 +61,7 @@ def edit(id: str, bot_item: BotSchema):
 
 
 @bot_blueprint.delete("/bot", tags=["bots"])
-def delete(id: List[str] = Query(...)):
+def delete(id: List[str]):
     """
     Delete bots, given a list of ids
     """
@@ -81,7 +81,7 @@ async def activate_by_id(id: str):
     bot = bot_instance.get_one(id)
     if bot:
         try:
-            await bot_instance.activate(bot)
+            bot_instance.activate(bot)
             return json_response_message("Successfully activated bot!")
         except BinbotErrors as error:
             bot_instance.post_errors_by_id(id, error.message)

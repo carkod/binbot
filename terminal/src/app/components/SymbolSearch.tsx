@@ -1,19 +1,18 @@
 import { useEffect, useState, type FC } from "react"
 import { Typeahead } from "react-bootstrap-typeahead"
 import "react-bootstrap-typeahead/css/Typeahead.css"
-import { type Option } from "react-bootstrap-typeahead/types/types"
 import Form from "react-bootstrap/Form"
-import { FieldErrors, useForm } from "react-hook-form"
 
 const SymbolSearch: FC<{
   name: string
   label: string
   options: string[]
   value?: string
+  defaultValue?: string
   required?: boolean
   disabled?: boolean
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
-  onChange?: (selected: Option[]) => void
+  onChange?: (selected: string) => void
   errors?: object
 }> = ({
   name,
@@ -26,7 +25,13 @@ const SymbolSearch: FC<{
   disabled = false,
   errors = {},
 }) => {
+  const [state, setState] = useState<string>(value)
 
+  useEffect(() => {
+    if (value) {
+      setState(value)
+    }
+  }, [value])
 
   return (
     <Form.Group>
@@ -36,18 +41,24 @@ const SymbolSearch: FC<{
       </Form.Label>
       <Typeahead
         id={name}
-        labelKey={name}
         options={options}
         isInvalid={Boolean(errors?.[name]) || Boolean(value) === false}
         disabled={disabled}
-        selected={value ? [value] : []}
-        onChange={selected => onChange(selected)}
+        selected={state ? [state] : []}
+        onChange={selected => {
+          if (selected.length > 0) {
+            setState(selected[0] as string)
+          }
+        }}
+        onInputChange={value => {
+          setState(value)
+        }}
         onBlur={e => onBlur(e)}
       />
 
       {errors[name] && (
         <Form.Control.Feedback type="invalid">
-          {errors[name].message}
+          {errors[name]}
         </Form.Control.Feedback>
       )}
     </Form.Group>

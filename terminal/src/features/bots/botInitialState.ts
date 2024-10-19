@@ -29,9 +29,7 @@ export interface Bot {
   buy_total_qty?: number
   errors?: string[]
   mode: string
-  max_so_count: string
   pair: string
-  price_deviation_so: string
   so_size: string
   take_profit: number
   trailling: boolean
@@ -57,7 +55,7 @@ export interface Bot {
 
 // The initial state of the App
 export const singleBot: Bot = {
-  id: null,
+  id: "",
   status: BotStatus.INACTIVE,
   balance_available: "0",
   balance_available_asset: "",
@@ -66,10 +64,8 @@ export const singleBot: Bot = {
   balance_to_use: "USDC",
   errors: [],
   mode: "manual",
-  max_so_count: "0",
   name: `manual_${new Date().getTime().toString()}`,
   pair: "",
-  price_deviation_so: "0.63",
   so_size: "0",
   take_profit: 2.3,
   trailling: false,

@@ -1,4 +1,4 @@
-import { type FC, useState } from "react"
+import { type FC, useEffect, useState } from "react"
 import {
   ButtonGroup,
   Col,
@@ -18,26 +18,33 @@ import { TabsKeys } from "../../utils/enums"
 
 const StopLossTab: FC<{}> = () => {
   const dispatch: AppDispatch = useAppDispatch()
-  const props = useAppSelector(selectBot)
-  const [stopLossState, setStopLossState] = useState<number>(props.stop_loss)
-  const [marginShortReversal, setMarginShortReversal] = useState<boolean>(props.margin_short_reversal)
+  const { bot } = useAppSelector(selectBot)
   const {
+    watch,
     register,
     getValues,
     formState: { errors },
   } = useForm({
+    mode: "onTouched",
+    reValidateMode: "onBlur",
     defaultValues: {
-      stop_loss: props.stop_loss,
-      margin_short_reversal: props.margin_short_reversal,
-    }
+      stop_loss: bot.stop_loss,
+      margin_short_reversal: bot.margin_short_reversal,
+    },
   })
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const stopLossValue = getValues("stop_loss")
-    if (stopLossValue) {
-      dispatch(setField({ name: "stop_loss", value: stopLossValue }))
-    }
-  }
+  useEffect(() => {
+    const { unsubscribe } = watch((v, { name, type }) => {
+      if (v && v?.[name]) {
+        if (typeof v === "boolean") {
+          dispatch(setToggle({ name, value: v[name] }))
+        } else {
+          dispatch(setField({ name, value: v[name] as number | string }))
+        }
+      }
+    })
+    return () => unsubscribe()
+  }, [watch, dispatch])
 
   return (
     <Tab.Pane
@@ -55,14 +62,18 @@ const StopLossTab: FC<{}> = () => {
               <Form.Control
                 type="number"
                 name="stop_loss"
-                onBlur={handleBlur}
-                defaultValue={props.stop_loss}
                 isInvalid={!!errors?.stop_loss}
                 {...register("stop_loss", {
                   required: "Stop loss is required",
                   valueAsNumber: true,
-                  min: 0,
-                  max: 100,
+                  min: {
+                    value: 0,
+                    message: "Minimum trailling deviation is 1",
+                  },
+                  max: {
+                    value: 100,
+                    message: "Maximum trailling deviation is 100",
+                  },
                 })}
               />
               <InputGroupText>%</InputGroupText>
@@ -84,14 +95,19 @@ const StopLossTab: FC<{}> = () => {
                   id="margin_short_reversal"
                   type="radio"
                   name="margin_short_reversal"
-                  variant={props.margin_short_reversal ? "primary" : "secondary"}
+                  variant={bot.margin_short_reversal ? "primary" : "secondary"}
                   value={1}
-                  checked={props.margin_short_reversal}
+                  checked={bot.margin_short_reversal}
                   onClick={() => {
-                    dispatch(setToggle({ name: "margin_short_reversal", value: !props.margin_short_reversal }))
+                    dispatch(
+                      setToggle({
+                        name: "margin_short_reversal",
+                        value: !bot.margin_short_reversal,
+                      }),
+                    )
                   }}
                 >
-                  {props.margin_short_reversal ? "On" : "Off"}
+                  {bot.margin_short_reversal ? "On" : "Off"}
                 </ToggleButton>
               </ButtonGroup>
               <Form.Control.Feedback tooltip>

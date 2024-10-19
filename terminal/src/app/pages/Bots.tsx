@@ -13,6 +13,7 @@ import BotsDateFilter from "../components/BotsCalendar"
 import { useAppDispatch } from "../hooks"
 import BotCard from "../components/BotCard"
 import ConfirmModal from "../components/ConfirmModal"
+import { useImmer } from "use-immer"
 
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch()
@@ -23,15 +24,13 @@ export const BotsPage: FC<{}> = () => {
     useDeactivateBotMutation()
 
   // Component states
-  const [selectedCards, selectCards] = useState([])
+  const [selectedCards, selectCards] = useImmer([])
   const [botToDelete, setBotToDelete] = useState<string | null>(null)
   const [dateFilterError, setDateFilterError] = useState(null)
   const [bulkActions, setBulkActions] = useState<BulkAction>(BulkAction.NONE)
   const [startDate, setStartDate] = useState(oneWeekAgo)
   const [endDate, setEndDate] = useState(currentTs)
   const [filterStatus, setFilterStatus] = useState("")
-  const [toDelete, addToDelete] = useState([])
-
 
   const { data: props, isFetching } = useGetBotsQuery(
     { status: filterStatus, startDate, endDate },
@@ -62,6 +61,14 @@ export const BotsPage: FC<{}> = () => {
     switch (bulkActions) {
       case BulkAction.DELETE:
         removeBots(selectedCards)
+        dispatch(
+          botsApiSlice.endpoints.getBots.initiate({
+            status: filterStatus,
+            startDate: startDate,
+            endDate: endDate,
+          }),
+        )
+        selectCards([])
         break
       case BulkAction.SELECT_ALL:
         selectCards(Object.keys(props.bots.entities))
@@ -163,7 +170,7 @@ export const BotsPage: FC<{}> = () => {
           </Stack>
         </div>
       </Stack>
-      <Row xs="12" xl="7" xxl="7">
+      <Row md="4">
         {props?.bots?.ids.length > 0
           ? Object.values(props?.bots?.entities).map((x, i) => (
               <Col key={i}>

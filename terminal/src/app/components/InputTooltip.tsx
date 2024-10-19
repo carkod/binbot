@@ -28,11 +28,11 @@ export const InputTooltip: FC<InputTooltipProps> = (
       <Form.Control.Feedback tooltip>
         <small>{tooltip}</small>
       </Form.Control.Feedback>
-      {/* {errors[name] && (
+      {errors[name] && (
         <Form.Control.Feedback type="invalid">
-          {errors[name as keyof FieldErrors].message}
+          {errors[name]}
         </Form.Control.Feedback>
-      )} */}
+      )}
     </Form.Group>
   )
 }

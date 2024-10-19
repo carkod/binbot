@@ -28,6 +28,8 @@ export enum DealType {
   SHORT_BUY = "short_buy",
   MARGIN_SHORT = "margin_short",
   PANIC_CLOSE = "panic_close",
+  TRAILLING_PROFIT = "trailling_profit",
+  TRAILLING_STOP_LOSS = "trailling_stop_loss",
 }
 
 export enum BinanceKlineintervals {

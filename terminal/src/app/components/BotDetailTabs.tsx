@@ -1,38 +1,57 @@
-import { type FC } from "react"
+import { useState, type FC } from "react"
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap"
-import { selectBot } from "../../features/bots/botSlice"
+import { selectBot, setBot } from "../../features/bots/botSlice"
 import { BotStatus, TabsKeys } from "../../utils/enums"
-import { useAppSelector } from "../hooks"
+import { useAppDispatch, useAppSelector } from "../hooks"
 import BaseOrderTab from "./BaseOrderTab"
 import StopLossTab from "./StopLossTab"
 import TakeProfit from "./TakeProfitTab"
-import { useCreateBotMutation, useEditBotMutation } from "../../features/bots/botsApiSlice"
-import { useParams } from "react-router"
+import {
+  botsApiSlice,
+  useCreateBotMutation,
+  useEditBotMutation,
+} from "../../features/bots/botsApiSlice"
+import { useNavigate, useParams } from "react-router"
 
 const BotDetailTabs: FC = () => {
   const { bot } = useAppSelector(selectBot)
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
 
-  const [ updateBot, { isLoading: updatingBot } ] = useEditBotMutation()
+  const [updateBot] = useEditBotMutation()
 
-  const [ createBot, { isLoading: creatingBot } ] = useCreateBotMutation()
+  const [createBot] = useCreateBotMutation()
 
+  const [enableActivation, setEnableActivation] = useState(id ? true : false)
+
+  // Activate and get bot again
+  // Deals and orders information need to come from the server
   const handleActivation = (id: string) => {
-    console.log("Activate bot", id)
+    const response = dispatch(botsApiSlice.endpoints.activateBot.initiate(id))
+    console.log("Activate bot", response)
+    dispatch(botsApiSlice.endpoints.getSingleBot.initiate(id))
+
   }
   const handlePanicSell = (id: string) => {
     console.log("Panic sell", id)
   }
 
-  const onSubmit = () => {
-    if (id) {
-      console.log("Update bot", bot)
-      updateBot({ id, ...bot })
+  const onSubmit = async () => {
+    let response
+    if (id && bot.status !== BotStatus.COMPLETED) {
+      response = await updateBot({ body: bot, id }).unwrap()
     } else {
-      console.log("Create new bot", bot)
-      createBot(bot)
+      response = await createBot(bot).unwrap()
     }
-    
+
+    let botId = id
+    if (response?.botId) {
+      botId = response.botId
+    }
+
+    setEnableActivation(true)
+    navigate(`/bots/edit/${botId}`)
   }
 
   return (
@@ -66,7 +85,7 @@ const BotDetailTabs: FC = () => {
               className="btn-round"
               color="primary"
               onClick={() => handleActivation(bot.id)}
-              disabled
+              disabled={!enableActivation}
             >
               {bot.status === BotStatus.ACTIVE &&
               Object.keys(bot.deal).length > 0

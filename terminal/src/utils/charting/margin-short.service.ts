@@ -2,6 +2,7 @@ import { type Bot } from "../../features/bots/botInitialState"
 import { BotStatus } from "../enums"
 import { dealColors } from "../../utils/charting/index"
 import type { OrderLine } from "./index.d"
+import { getQuoteAsset } from "../api"
 
 export default function marginTrading(
   bot: Bot,
@@ -9,7 +10,7 @@ export default function marginTrading(
 ): OrderLine[] {
   let totalOrderLines: OrderLine[] = []
   const parsedCurrentPrice = currentPrice
-  const quoteAsset = bot.pair.replace(bot.balance_to_use, "")
+  const quoteAsset = getQuoteAsset(bot)
 
   if (
     bot.deal.margin_short_buy_back_price &&

@@ -9,7 +9,7 @@ import {
   Tab,
 } from "react-bootstrap"
 import { type FieldValues, useForm } from "react-hook-form"
-import { selectBot, setField } from "../../features/bots/botSlice"
+import { selectBot, setField, setToggle } from "../../features/bots/botSlice"
 import { useGetSymbolsQuery } from "../../features/symbolApiSlice"
 import { BotStatus, BotStrategy, TabsKeys } from "../../utils/enums"
 import { useAppDispatch, useAppSelector } from "../hooks"
@@ -17,6 +17,7 @@ import { type AppDispatch } from "../store"
 import { InputTooltip } from "./InputTooltip"
 import SymbolSearch from "./SymbolSearch"
 import { useImmer } from "use-immer"
+import { getQuoteAsset } from "../../utils/api"
 
 interface ErrorsState {
   pair?: string
@@ -26,25 +27,24 @@ const BaseOrderTab: FC = () => {
   const dispatch: AppDispatch = useAppDispatch()
   const { data } = useGetSymbolsQuery()
   const { bot } = useAppSelector(selectBot)
-  const [pair, setPair] = useState<string>(bot.pair)
   const [quoteAsset, setQuoteAsset] = useState<string>("")
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({})
   const [symbolsList, setSymbolsList] = useState<string[]>([])
   const {
     register,
-    handleSubmit,
-    getValues,
+    watch,
     reset,
-    control,
     formState: { errors },
-  } = useForm<FieldValues>()
-
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const value = getValues(e.target.name)
-    if (value) {
-      dispatch(setField({ name: e.target.name, value: value }))
-    }
-  }
+  } = useForm<FieldValues>({
+    mode: "onTouched",
+    reValidateMode: "onBlur",
+    defaultValues: {
+      name: bot.name,
+      base_order_size: bot.base_order_size,
+      cooldown: bot.cooldown,
+      strategy: bot.strategy,
+    },
+  })
 
   const addMin = () => {
     dispatch(setField({ name: "base_order_size", value: 0.001 }))
@@ -54,21 +54,20 @@ const BaseOrderTab: FC = () => {
     dispatch(setField({ name: "base_order_size", value: 0.001 }))
   }
 
-  const handlePairChange = (selected: string[]) => {
-    if (selected?.length === 0) {
-      setErrorsState(draft => {
-        delete draft["pair"]
-      })
-    } else {
-      setPair(selected[0])
+  const handleSelectedPair = (selected: string) => {
+    if (selected) {
+      dispatch(setField({ name: "pair", value: selected }))
     }
   }
 
   const handlePairBlur = e => {
     // Only when selected not typed in
     // this way we avoid any errors
-    if (pair) {
-      dispatch(setField({ name: "pair", value: pair }))
+    if (e.target.value) {
+      dispatch(setField({ name: "pair", value: e.target.value }))
+      setErrorsState(draft => {
+        delete draft["pair"]
+      })
     } else {
       setErrorsState(draft => {
         draft["pair"] = "Please select a pair"
@@ -81,25 +80,27 @@ const BaseOrderTab: FC = () => {
       setSymbolsList(data)
     }
     if (bot.pair) {
-      setPair(bot.pair)
-      setQuoteAsset(bot.pair.replace(bot.balance_to_use, ""))
+      setQuoteAsset(getQuoteAsset(bot))
     }
     if (bot) {
       for (const key in bot) {
         reset({ [key]: bot[key] })
       }
     }
-  }, [
-    data,
-    symbolsList,
-    setSymbolsList,
-    pair,
-    setPair,
-    bot,
-    quoteAsset,
-    setQuoteAsset,
-    reset,
-  ])
+  }, [data, symbolsList, setSymbolsList, bot, quoteAsset, setQuoteAsset, reset])
+
+  useEffect(() => {
+    const { unsubscribe } = watch((v, { name, type }) => {
+      if (v && v?.[name]) {
+        if (typeof v === "boolean") {
+          dispatch(setToggle({ name, value: v[name] }))
+        } else {
+          dispatch(setField({ name, value: v[name] as number | string }))
+        }
+      }
+    })
+    return () => unsubscribe()
+  }, [watch, dispatch])
 
   return (
     <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
@@ -111,10 +112,10 @@ const BaseOrderTab: FC = () => {
               label="Select pair"
               options={symbolsList}
               disabled={bot.status === BotStatus.COMPLETED}
-              onChange={handlePairChange}
+              value={bot.pair}
+              onChange={handleSelectedPair}
               onBlur={handlePairBlur}
-              value={pair}
-              required={true}
+              required
               errors={errorsState}
             />
           </Col>
@@ -135,10 +136,8 @@ const BaseOrderTab: FC = () => {
                 secondaryText={quoteAsset}
               >
                 <Form.Control
-                  type="text"
+                  type="number"
                   name="base_order_size"
-                  onBlur={handleBlur}
-                  defaultValue={bot.base_order_size}
                   autoComplete="off"
                   required
                   disabled={
@@ -147,12 +146,18 @@ const BaseOrderTab: FC = () => {
                   }
                   {...register("base_order_size", {
                     required: "Base order size is required",
+                    valueAsNumber: true,
                     min: {
                       value: 15,
                       message: "Minimum base order size is 15",
                     },
                   })}
                 />
+                {/* {errors.base_order_size && (
+                  <Form.Control.Feedback type="invalid">
+                    {errors.base_order_size.message}
+                  </Form.Control.Feedback>
+                )} */}
               </InputTooltip>
             </InputGroup>
             {bot.status !== BotStatus.ACTIVE && (
@@ -194,7 +199,6 @@ const BaseOrderTab: FC = () => {
               <Form.Control
                 type="number"
                 name="cooldown"
-                onBlur={handleBlur}
                 defaultValue={bot.cooldown}
                 {...register("cooldown")}
               />
@@ -204,12 +208,11 @@ const BaseOrderTab: FC = () => {
         <Row>
           <Col md="6" sm="12">
             <Form.Group>
-              <Form.Label htmlFor="strategy">Trigger strategy</Form.Label>
+              <Form.Label htmlFor="strategy">Strategy</Form.Label>
               <Form.Select
                 id="strategy"
                 name="strategy"
                 defaultValue={bot.strategy}
-                onBlur={handleBlur}
                 {...register("strategy", { required: "Strategy is required" })}
               >
                 <option value={BotStrategy.LONG}>Long</option>

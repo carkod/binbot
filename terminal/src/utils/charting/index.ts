@@ -2,7 +2,8 @@ import spotTrading from "./spot-strategy.service"
 import marginTrading from "./margin-short.service"
 import { type Bot } from "../../features/bots/botInitialState"
 import { type TimescaleMark } from "./index.d"
-import { BotStatus, BotStrategy } from "../enums"
+import { BotStrategy, DealType } from "../enums"
+import { getQuoteAsset } from "../api"
 
 const dealColors = {
   base_order: "#1f77d0",
@@ -46,26 +47,27 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
   let totalTimescaleMarks: TimescaleMark[] = []
   let color = "blue"
   let label = "B"
+  const quoteAsset = getQuoteAsset(bot)
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach(order => {
       // If base_order and margin_short
-      if (bot.strategy === "margin_short") {
+      if (bot.strategy === BotStrategy.MARGIN_SHORT) {
         label = "S"
       }
       if (
-        order.deal_type === "take_profit" ||
-        order.deal_type === "stop_loss"
+        order.deal_type === DealType.TAKE_PROFIT ||
+        order.deal_type === DealType.STOP_LOSS
       ) {
         color = dealColors.take_profit
-        if (bot.strategy === "margin_short") {
+        if (bot.strategy === BotStrategy.MARGIN_SHORT) {
           label = "B"
         }
         label = "S"
       }
-      if (order.deal_type === "trailling_profit") {
+      if (order.deal_type === DealType.TRAILLING_PROFIT) {
         color = dealColors.trailling_profit
       }
-      if (order.deal_type === "trailling_stop_loss") {
+      if (order.deal_type === DealType.TRAILLING_STOP_LOSS) {
         color = dealColors.take_profit
         label = "S"
       }
@@ -77,7 +79,7 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
         label: label,
         tooltip: [
           `${order.deal_type}`,
-          ` ${order.price} ${bot.baseAsset} / ${order.qty} ${bot.quoteAsset}`,
+          ` ${order.price} ${bot.balance_to_use} / ${order.qty} ${quoteAsset}`,
         ],
         time: matchTsToTimescale(order.timestamp),
         color: color,

@@ -15,7 +15,6 @@ from fastapi import Query
 from bots.schemas import BotSchema, ErrorsRequestBody
 from deals.controllers import CreateDealController
 from tools.exceptions import BinanceErrors, InsufficientBalance
-import asyncio
 
 
 class Bot(Database, Account):
@@ -176,9 +175,10 @@ class Bot(Database, Account):
         return resp
 
     def delete(self, bot_ids: List[str] = Query(...)):
-
-        if not bot_ids or not isinstance(bot_ids, list):
-            return json_response_error("At least one bot id is required")
+        """
+        Delete by multiple ids.
+        For a single id, pass one id in a list
+        """
 
         try:
             self.db_collection.delete_many({"id": {"$in": [id for id in bot_ids]}})
@@ -189,13 +189,13 @@ class Bot(Database, Account):
 
         return resp
 
-    async def activate(self, bot: dict | BotSchema):
+    def activate(self, bot: dict | BotSchema):
         if isinstance(bot, dict):
             self.active_bot = BotSchema.model_validate(bot)
         else:
             self.active_bot = bot
 
-        await CreateDealController(self.active_bot, db_collection="bots").open_deal()
+        CreateDealController(self.active_bot, db_collection="bots").open_deal()
         self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
         return bot
 

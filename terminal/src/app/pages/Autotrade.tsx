@@ -1,106 +1,84 @@
 import { type FC } from "react"
 import { useAppDispatch } from "../hooks"
 import { Button, Card, Col, Row, Form } from "react-bootstrap"
-import { useEditSettingsMutation, useGetSettingsQuery } from "../../features/autotradeApiSlice"
+import {
+  useEditSettingsMutation,
+  useGetSettingsQuery,
+} from "../../features/autotradeApiSlice"
 import SettingsInput from "../components/SettingsInput"
 import LightSwitch from "../components/LightSwitch"
 import { useController, useForm } from "react-hook-form"
 import { BotStrategy } from "../../utils/enums"
 
 export const AutotradePage: FC<{}> = () => {
-
   const { data } = useGetSettingsQuery()
-  const [ updateSettings, { isLoading: updatingSettings } ] = useEditSettingsMutation()
-  const { control, handleSubmit } = useForm();
+  const [updateSettings, { isLoading: updatingSettings }] =
+    useEditSettingsMutation()
+  const { control, handleSubmit } = useForm()
 
-  const {
-    field: candlestick_interval,
-  } = useController({
+  const { field: candlestick_interval } = useController({
     name: "candlestick_interval",
     rules: { required: true },
-    defaultValue: data.candlestick_interval
-  });
+    defaultValue: data.candlestick_interval,
+  })
 
-  const {
-    field: max_active_autotrade_bots,
-  } = useController({
+  const { field: max_active_autotrade_bots } = useController({
     name: "max_active_autotrade_bots",
     rules: { required: true },
-    defaultValue: data.max_active_autotrade_bots
-  });
+    defaultValue: data.max_active_autotrade_bots,
+  })
 
-  const {
-    field: telegram_signals,
-  } = useController({
+  const { field: telegram_signals } = useController({
     name: "telegram_signals",
     rules: { required: true },
-    defaultValue: data.telegram_signals
-  });
+    defaultValue: data.telegram_signals,
+  })
 
-  const {
-    field: strategy,
-  } = useController({
+  const { field: strategy } = useController({
     name: "strategy",
     rules: { required: true },
-    defaultValue: data.strategy
-  });
+    defaultValue: data.strategy,
+  })
 
-  const {
-    field: trailling,
-  } = useController({
+  const { field: trailling } = useController({
     name: "trailling",
     rules: { required: true },
-    defaultValue: data.trailling
-  });
+    defaultValue: data.trailling,
+  })
 
-  const {
-    field: base_order_size,
-  } = useController({
+  const { field: base_order_size } = useController({
     name: "base_order_size",
     rules: { required: true },
-    defaultValue: data.base_order_size
-  });
+    defaultValue: data.base_order_size,
+  })
 
-
-  const {
-    field: balance_to_use,
-  } = useController({
+  const { field: balance_to_use } = useController({
     name: "balance_to_use",
     rules: { required: true },
-    defaultValue: data.balance_to_use
-  });
+    defaultValue: data.balance_to_use,
+  })
 
-  const {
-    field: trailling_deviation,
-  } = useController({
+  const { field: trailling_deviation } = useController({
     name: "trailling_deviation",
     rules: { required: true },
-    defaultValue: data.trailling_deviation
-  });
+    defaultValue: data.trailling_deviation,
+  })
 
-  const {
-    field: stop_loss,
-  } = useController({
+  const { field: stop_loss } = useController({
     name: "stop_loss",
     rules: { required: true },
-    defaultValue: data.stop_loss
-  });
+    defaultValue: data.stop_loss,
+  })
 
-  const {
-    field: take_profit,
-  } = useController({
+  const { field: take_profit } = useController({
     name: "take_profit",
     rules: { required: true },
-    defaultValue: data.take_profit
-  });
+    defaultValue: data.take_profit,
+  })
 
-  const saveSettings = (data) => {
-    
-    console.log(data)
+  const saveSettings = data => {
     updateSettings(data)
-
   }
-
 
   return (
     <Card>
@@ -127,16 +105,11 @@ export const AutotradePage: FC<{}> = () => {
                 <LightSwitch
                   value={data.telegram_signals}
                   name="telegram_signals"
-                  
                 />
               </Col>
               <Col md="3">
                 <label htmlFor="strategy">Strategy</label>
-                <Form.Select
-                  size="sm"
-                  name="strategy"
-                  value={data.strategy}
-                >
+                <Form.Select size="sm" name="strategy" value={data.strategy}>
                   <option value={BotStrategy.LONG}>Long</option>
                   <option value={BotStrategy.MARGIN_SHORT}>Margin short</option>
                 </Form.Select>
@@ -146,11 +119,7 @@ export const AutotradePage: FC<{}> = () => {
               <Col md="3">
                 <label htmlFor="autotrade">Autotrade?</label>
                 <br />
-                <LightSwitch
-                  value={data.autotrade}
-                  name="autotrade"
-
-                />
+                <LightSwitch value={data.autotrade} name="autotrade" />
               </Col>
               <Col md="3">
                 <SettingsInput
