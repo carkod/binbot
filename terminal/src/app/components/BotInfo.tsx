@@ -7,6 +7,7 @@ import {
   Table,
   Row,
   Col,
+  Container,
 } from "react-bootstrap"
 import { DurationTsComponent, formatTimestamp } from "./RenderTs"
 
@@ -65,46 +66,51 @@ export default function BotInfo({ bot }) {
               </tbody>
             )}
           </Table>
-          <hr />
           {bot.deal && (
-            <Row>
-              <Col xl="8" lg="12">
-                <h5>Deal information (representated in the graph)</h5>
-                <ListGroup>
-                  {Object.keys(bot.deal).map((k, i) => {
-                    if (typeof bot.deal[k] !== "object") {
-                      let dealData = bot.deal[k]
-                      if (k === "buy_timestamp" || k === "sell_timestamp") {
-                        dealData =
-                          bot.deal[k] === 0 || formatTimestamp(bot.deal[k])
+            <Container>
+              <Row>
+                <Col>
+                  <h5>Deal information (representated in the graph)</h5>
+                </Col>
+              </Row>
+              <Row>
+                <Col xl="8" lg="12">
+                  <ListGroup>
+                    {Object.keys(bot.deal).map((k, i) => {
+                      if (typeof bot.deal[k] !== "object") {
+                        let dealData = bot.deal[k]
+                        if (k === "buy_timestamp" || k === "sell_timestamp") {
+                          dealData =
+                            bot.deal[k] === 0 || formatTimestamp(bot.deal[k])
+                        }
+                        return (
+                          <ListGroupItem
+                            key={i}
+                            className="d-flex justify-content-between align-items-start"
+                          >
+                            <strong>{k}</strong> {dealData}
+                          </ListGroupItem>
+                        )
+                      } else {
+                        return (
+                          <ListGroup key={i}>
+                            {Object.keys(bot.deal[k]).map((l, j) => (
+                              <ListGroupItem key={j}>
+                                {l}:{bot.deal[k][l]}
+                              </ListGroupItem>
+                            ))}
+                          </ListGroup>
+                        )
                       }
-                      return (
-                        <ListGroupItem
-                          key={i}
-                          className="d-flex justify-content-between align-items-start"
-                        >
-                          <strong>{k}</strong> {dealData}
-                        </ListGroupItem>
-                      )
-                    } else {
-                      return (
-                        <ListGroup key={i}>
-                          {Object.keys(bot.deal[k]).map((l, j) => (
-                            <ListGroupItem key={j}>
-                              {l}:{bot.deal[k][l]}
-                            </ListGroupItem>
-                          ))}
-                        </ListGroup>
-                      )
-                    }
-                  })}
-                  <ListGroupItem className="d-flex justify-content-between align-items-start">
-                    <strong>duration</strong>
-                    {DurationTsComponent(bot)}
-                  </ListGroupItem>
-                </ListGroup>
-              </Col>
-            </Row>
+                    })}
+                    <ListGroupItem className="d-flex justify-content-between align-items-start">
+                      <strong>duration</strong>
+                      {DurationTsComponent(bot)}
+                    </ListGroupItem>
+                  </ListGroup>
+                </Col>
+              </Row>
+            </Container>
           )}
         </Card.Body>
       )}

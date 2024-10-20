@@ -37,13 +37,20 @@ export const botSlice = createAppSlice({
         state.bot = payload.bot
       },
     ),
+    setCurrentPrice: create.reducer(
+      (state, { payload }: PayloadAction<number>) => {
+        // in principle this is updated only server-side,
+        // but the streaming service can blip in performance
+        state.bot.deal.current_price = payload
+      },
+    ),
   }),
   selectors: {
-    selectBot: state => {
+    selectBot: (state) => {
       return state
     },
   },
 })
 
-export const { setField, setBot, setToggle } = botSlice.actions
+export const { setField, setBot, setToggle, setCurrentPrice } = botSlice.actions
 export const { selectBot } = botSlice.selectors

@@ -19,6 +19,7 @@ export type Routes = {
 
 export const routes = [
   {
+    index: true,
     path: "dashboard",
     link: "/dashboard",
     name: "Dashboard",

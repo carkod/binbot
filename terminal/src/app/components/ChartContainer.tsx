@@ -1,6 +1,6 @@
 import { Badge, Card, Col, Row } from "react-bootstrap"
-import { useAppSelector } from "../hooks"
-import { selectBot } from "../../features/bots/botSlice"
+import { useAppDispatch, useAppSelector } from "../hooks"
+import { selectBot, setCurrentPrice } from "../../features/bots/botSlice"
 import { computeSingleBotProfit } from "../../features/bots/profits"
 import { roundDecimals } from "../../utils/math"
 import { useImmer } from "use-immer"
@@ -9,12 +9,17 @@ import { type OrderLine } from "../../utils/charting/index.d"
 import { updateTimescaleMarks } from "../../utils/charting"
 import TVChartContainer from "binbot-charts"
 import { type ResolutionString } from "../../../charting_library/charting_library"
+import { useEffect, type FC } from "react"
+import { type AppDispatch } from "../store"
+import { type Bot } from "../../features/bots/botInitialState"
 
-const ChartContainer = () => {
-  const { bot } = useAppSelector(selectBot)
-  const botProfit = computeSingleBotProfit(bot)
+const ChartContainer: FC = () => {
+  const { bot } = useAppSelector(selectBot) as { bot: Bot };
+  const dispatch: AppDispatch = useAppDispatch()
+  const initialBotProfit = computeSingleBotProfit(bot)
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0)
   const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([])
+  const [botProfit, setBotProfit] = useImmer<number>(initialBotProfit)
 
   const updatedPrice = price => {
     price = roundDecimals(price, 4)
@@ -32,6 +37,19 @@ const ChartContainer = () => {
     const newOrderLines = updateOrderLines(bot, price)
     setCurrentOrderLines(newOrderLines)
   }
+
+  useEffect(() => {
+
+    if (currentChartPrice !== 0) {
+      const newOrderLines = updateOrderLines(bot, currentChartPrice)
+      setCurrentOrderLines(newOrderLines)
+      setBotProfit(computeSingleBotProfit(bot, currentChartPrice))
+      if (bot.deal?.current_price !== currentChartPrice) {
+        dispatch(setCurrentPrice(currentChartPrice))
+      }
+    }
+
+  }, [currentChartPrice, bot, setCurrentOrderLines, setBotProfit, dispatch])
 
   return (
     <Card style={{ minHeight: "650px" }}>

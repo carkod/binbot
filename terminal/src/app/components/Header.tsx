@@ -16,7 +16,13 @@ export const Header: FC<{}> = () => {
       <Container fluid>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Brand>
-          <i className={`${loadData?.icon}`}></i> {loadData?.name}
+          {location?.state?.bot ? (
+            "Bot Details"
+          ) : (
+            <>
+              <i className={`${loadData?.icon}`}></i> {loadData?.name}
+            </>
+          )}
         </Navbar.Brand>
         <Navbar.Collapse className="justify-content-end">
           <Navbar.Text>
