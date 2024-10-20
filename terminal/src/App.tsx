@@ -54,7 +54,7 @@ export const routes = [
     path: "autotrade",
     link: "/autotrade",
     icon: "fas fa-chart-simple",
-    name: "AutoTrade",
+    name: "Autotrade",
     element: <AutotradePage />,
     id: "autotrade",
   }

@@ -1,29 +1,33 @@
 import { type FC } from "react"
-import { Button, ToggleButton, ToggleButtonGroup } from "react-bootstrap"
+import { ToggleButton, ToggleButtonGroup } from "react-bootstrap"
+import { type UseFormRegister, type FieldValues } from "react-hook-form"
 
 export type LightSwitchProps = {
-  value: 0 | 1
+  value: boolean
   name: string
-  toggle?: (name: string, value: 0 | 1) => void
+  toggle?: (name: string, value: boolean) => void
+  register?: UseFormRegister<FieldValues>
+  required?: boolean
 }
 
 /**
- * Standard toggler that accepts 1 (on) and 0 (off)
- * @param {*} value: boolean integer 0 for off or 1 for on
+ * Standard toggler that accepts boolean
+ * @param {*} value: boolean
  * @returns React.Component
  */
-const LightSwitch: FC<LightSwitchProps> = ({ value, name, toggle }, props) => {
+const LightSwitch: FC<LightSwitchProps> = ({ value, name, toggle, register, required=false }, props) => {
   return (
     <ToggleButtonGroup type="checkbox">
       <ToggleButton
         name={name}
-        checked={value === 1}
-        color={value === 1 ? "success" : "secondary"}
-        value={value}
-        onClick={e => toggle(name, value === 1 ? 0 : 1) }
+        checked={value}
+        color={value ? "success" : "secondary"}
+        defaultValue={value}
+        onClick={e => toggle(name, value) }
+        {...register(name, { required: required })}
         {...props}
       >
-        {value === 1 ? "On" : "Off"}
+        {value ? "On" : "Off"}
       </ToggleButton>
     </ToggleButtonGroup>
   )

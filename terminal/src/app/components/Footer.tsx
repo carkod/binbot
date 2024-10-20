@@ -8,7 +8,7 @@ export const Footer: FC<{}> = () => {
         <Row>
           <div className="credits ml-auto">
             <div className="copyright">
-              &copy; {1900 + new Date().getFullYear()} Binbot
+              &copy; {`2018 - ${new Date().getFullYear()} Binbot`}
             </div>
           </div>
         </Row>

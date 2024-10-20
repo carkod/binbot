@@ -5,8 +5,9 @@ import { layoutSlice } from "../features/layoutSlice"
 import { userApiSlice } from "../features/userApiSlice"
 import { botSlice } from "../features/bots/botSlice"
 import { binanceApiSlice } from "../features/binanceApiSlice"
+import { autotradeSettingsSlice } from "../features/autotradeSlice"
 
-const rootReducer = combineSlices(userApiSlice, layoutSlice, botSlice, binanceApiSlice)
+const rootReducer = combineSlices(userApiSlice, layoutSlice, botSlice, binanceApiSlice, autotradeSettingsSlice)
 
 export type RootState = ReturnType<typeof rootReducer>
 

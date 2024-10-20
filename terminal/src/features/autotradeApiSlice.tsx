@@ -1,34 +1,26 @@
 import { notifification } from "../utils/api"
-import { type BotStrategy } from "../utils/enums"
+import { type BinanceKlineintervals } from "../utils/enums"
 import { userApiSlice } from "./userApiSlice"
 
 export interface AutotradeSettings {
   _id: "settings"
-  candlestick_interval: string
-  autotrade: 0 | 1
+  candlestick_interval: BinanceKlineintervals
+  autotrade: boolean
   trailling: boolean
   trailling_deviation: number
   trailling_profit: number
   stop_loss: number
   take_profit: number
-  balance_to_use: string
-  balance_size_to_use: string
+  balance_to_use: number
+  balance_size_to_use: number
   max_request: number
   system_logs: []
   update_required: number
-  telegram_signals: 0 | 1
+  telegram_signals: boolean
   max_active_autotrade_bots: number
   base_order_size: number
-  test_autotrade: 0 | 1
+  test_autotrade: boolean
   updated_at: number
-  strategy: BotStrategy
-  telegram_signals: 0 | 1
-}
-
-export interface DefaultBotsResponse {
-  error: number
-  data?: AutotradeSettings
-  message?: string
 }
 
 export const autotradeApiSlice = userApiSlice.injectEndpoints({
