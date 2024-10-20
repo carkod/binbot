@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "cp -r ./node_modules/binbot-charts/public/charting_library ./charting_library  && vite build",
+    "build": "cp -r ./node_modules/binbot-charts/public/charting_library ./charting_library && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "prettier --write .",
@@ -54,7 +54,7 @@
     "prettier": "^3.2.1",
     "sass-embedded": "^1.79.4",
     "typescript": "^5.3.3",
-    "vite": "^5.0.11",
+    "vite": "^5.4.9",
     "vitest": "^1.2.0"
   }
 }
