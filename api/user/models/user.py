@@ -1,3 +1,4 @@
+from datetime import date
 import os
 
 from passlib.hash import pbkdf2_sha256
@@ -14,9 +15,9 @@ from database.mongodb.db import setup_db
 from user.schemas import UserSchema
 from fastapi.encoders import jsonable_encoder
 
+
 class User:
     def __init__(self):
-        self.defaults = UserSchema()
         self.db = setup_db()
 
     def get(self):
@@ -41,7 +42,7 @@ class User:
         """
         Provided email and password, returns token to login
         """
-        email = data.username.lower()
+        email = data.email.lower()
         password = data.password
         user = self.db.users.find_one({"email": email})
         if user:
@@ -78,14 +79,24 @@ class User:
         if (not data.email) or (not data.password):
             return json_response_message("Email and password are required")
 
+        self.defaults = UserSchema(
+            email=data.email,
+            password=data.password,
+            username=data.username,
+            description=data.description,
+            last_login=date.today().strftime("%Y-%m-%d"),
+            created_at=date.today().strftime("%Y-%m-%d"),
+        )
         # Merge the posted data with the default user attributes
         self.defaults = self.defaults.copy(update=data.dict(exclude_unset=True))
         # Encrypt the password
         self.defaults.password = pbkdf2_sha256.encrypt(
-             self.defaults.password, rounds=20000, salt_size=16
+            self.defaults.password, rounds=20000, salt_size=16
         )
         # Make sure there isn"t already a user with this email address
-        existing_email = self.db.users.find_one({"email": jsonable_encoder(self.defaults.email)})
+        existing_email = self.db.users.find_one(
+            {"email": jsonable_encoder(self.defaults.email)}
+        )
 
         if existing_email:
             resp = json_response_error(
@@ -112,7 +123,9 @@ class User:
             self.defaults.password, rounds=20000, salt_size=16
         )
 
-        edit_result = self.db.users.update_one({"email": self.defaults.email}, {"$set": jsonable_encoder(self.defaults)})
+        edit_result = self.db.users.update_one(
+            {"email": self.defaults.email}, {"$set": jsonable_encoder(self.defaults)}
+        )
 
         if edit_result:
             return json_response_message("User successfully updated!")

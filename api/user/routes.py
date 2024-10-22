@@ -26,7 +26,7 @@ def get_one(email):
 
 
 @user_blueprint.post("/user/login", tags=["users"], response_model=Token)
-def login(data: OAuth2PasswordRequestForm = Depends()):
+def login(data: LoginRequest):
     """
     Get an access_token to keep the user in session
     """

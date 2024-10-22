@@ -11,9 +11,9 @@ from tools.enum_definitions import BinbotEnums
 
 class SafetyOrderSchema(BaseModel):
     name: str = "so_1"  # should be so_<index>
-    status: Literal[
-        0, 1, 2
-    ] = 0  # 0 = standby, safety order hasn't triggered, 1 = filled safety order triggered, 2 = error
+    status: Literal[0, 1, 2] = (
+        0  # 0 = standby, safety order hasn't triggered, 1 = filled safety order triggered, 2 = error
+    )
     order_id: str | None = None
     created_at: float = time() * 1000
     updated_at: float = time() * 1000
@@ -29,32 +29,38 @@ class SafetyOrderSchema(BaseModel):
 
 
 class BotSchema(BaseModel):
-    id: str = ""
+    id: str | None = ""
     pair: str
     balance_size_to_use: str | float = 1
-    balance_to_use: str = "1"
-    base_order_size: str = "15"  # Min Binance 0.0001 BNB
+    balance_to_use: str | float = "1"
+    base_order_size: str | float = "15"  # Min Binance 0.0001 BNB
     candlestick_interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes
     close_condition: CloseConditions = CloseConditions.dynamic_trailling
-    cooldown: int = 0  # cooldown period in minutes before opening next bot with same pair
+    cooldown: int = (
+        0  # cooldown period in minutes before opening next bot with same pair
+    )
     created_at: float = time() * 1000
     deal: DealModel = Field(default_factory=DealModel)
     dynamic_trailling: bool = False
-    errors: list[str] = [] # Event logs
+    errors: list[str] = []  # Event logs
     locked_so_funds: float = 0  # funds locked by Safety orders
-    mode: str = "manual"  # Manual is triggered by the terminal dashboard, autotrade by research app
+    mode: str = (
+        "manual"  # Manual is triggered by the terminal dashboard, autotrade by research app
+    )
     name: str = "Default bot"
     orders: list[BinanceOrderModel] = []  # Internal
     status: Status = Status.inactive
     stop_loss: float = 0
-    margin_short_reversal: bool = False # If stop_loss > 0, allow for reversal
+    margin_short_reversal: bool = False  # If stop_loss > 0, allow for reversal
     take_profit: float = 0
     trailling: bool = True
     trailling_deviation: float = 0
     trailling_profit: float = 0  # Trailling activation (first take profit hit)
     safety_orders: list[SafetyOrderSchema] = []
     strategy: str = "long"
-    short_buy_price: float = 0  # > 0 base_order does not execute immediately, executes short strategy when this value is hit
+    short_buy_price: float = (
+        0  # > 0 base_order does not execute immediately, executes short strategy when this value is hit
+    )
     short_sell_price: float = 0  # autoswitch to short_strategy
     # Deal and orders are internal, should never be updated by outside data
     total_commission: float = 0
@@ -66,33 +72,34 @@ class BotSchema(BaseModel):
         "json_encoders": {ObjectId: str},
         "json_schema_extra": {
             "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Binance",
-            "examples": [{
-                "pair": "BNBUSDT",
-                "balance_size_to_use": "0",
-                "balance_to_use": "USDC",
-                "base_order_size": "15",
-                "candlestick_interval": "15m",
-                "cooldown": 0,
-                "errors": [],
-                "locked_so_funds": 0,
-                "mode": "manual",  # Manual is triggered by the terminal dashboard, autotrade by research app,
-                "name": "Default bot",
-                "orders": [],
-                "status": "inactive",
-                "stop_loss": 0,
-                "take_profit": 2.3,
-                "trailling": "true",
-                "trailling_deviation": 0.63,
-                "trailling_profit": 2.3,
-                "safety_orders": [],
-                "strategy": "long",
-                "short_buy_price": 0,
-                "short_sell_price": 0,
-                "total_commission": 0,
-            }],
-        }
+            "examples": [
+                {
+                    "pair": "BNBUSDT",
+                    "balance_size_to_use": "0",
+                    "balance_to_use": "USDC",
+                    "base_order_size": "15",
+                    "candlestick_interval": "15m",
+                    "cooldown": 0,
+                    "errors": [],
+                    "locked_so_funds": 0,
+                    "mode": "manual",  # Manual is triggered by the terminal dashboard, autotrade by research app,
+                    "name": "Default bot",
+                    "orders": [],
+                    "status": "inactive",
+                    "stop_loss": 0,
+                    "take_profit": 2.3,
+                    "trailling": "true",
+                    "trailling_deviation": 0.63,
+                    "trailling_profit": 2.3,
+                    "safety_orders": [],
+                    "strategy": "long",
+                    "short_buy_price": 0,
+                    "short_sell_price": 0,
+                    "total_commission": 0,
+                }
+            ],
+        },
     }
-
 
     @field_validator("pair", "base_order_size", "candlestick_interval")
     @classmethod
@@ -110,7 +117,9 @@ class BotSchema(BaseModel):
         else:
             return v
 
-    @field_validator("stop_loss", "take_profit", "trailling_deviation", "trailling_profit")
+    @field_validator(
+        "stop_loss", "take_profit", "trailling_deviation", "trailling_profit"
+    )
     @classmethod
     def check_percentage(cls, v):
         if 0 <= float(v) < 100:
@@ -143,7 +152,7 @@ class BotSchema(BaseModel):
     @classmethod
     def check_errors_format(cls, v: list[str]):
         if not isinstance(v, list):
-            raise ValueError(f'Errors must be a list of strings')
+            raise ValueError("Errors must be a list of strings")
         return v
 
 

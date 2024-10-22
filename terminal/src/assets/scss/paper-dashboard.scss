@@ -1,0 +1,41 @@
+@use "sass:color";
+
+@import "~bootstrap/scss/bootstrap";
+
+@import "paper-dashboard/variables";
+@import "paper-dashboard/mixins";
+
+// Plugins CSS
+@import "react-toastify/dist/ReactToastify.css";
+
+// Core CSS
+@import "paper-dashboard/buttons";
+@import "paper-dashboard/inputs";
+@import "paper-dashboard/typography";
+@import "paper-dashboard/misc";
+@import "paper-dashboard/checkboxes-radio";
+
+// components
+@import "paper-dashboard/navbar";
+@import "paper-dashboard/page-header";
+@import "paper-dashboard/dropdown";
+@import "paper-dashboard/alerts";
+@import "paper-dashboard/images";
+@import "paper-dashboard/tables";
+@import "paper-dashboard/sidebar-and-main-panel";
+@import "paper-dashboard/footers";
+
+// cards
+@import "paper-dashboard/cards";
+@import "paper-dashboard/cards/card-plain";
+@import "paper-dashboard/cards/card-chart";
+@import "paper-dashboard/cards/card-user";
+@import "paper-dashboard/cards/card-map";
+@import "paper-dashboard/responsive";
+
+// Custom
+@import "paper-dashboard/login";
+@import "paper-dashboard/gainers-losers-chart";
+
+// Overrides
+@import "paper-dashboard/utilities";

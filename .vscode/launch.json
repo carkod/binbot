@@ -2,6 +2,20 @@
   "version": "0.0.2",
   "configurations": [
     {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Vite",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/terminal",
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/*"
+      },
+      "outFiles": [
+        "${workspaceFolder}/web/**/*.js",
+        "${workspaceFolder}/web/src/node_modules/**"
+      ]
+    },
+    {
       "name": "Python: FastAPI",
       "type": "debugpy",
       "request": "launch",
@@ -66,6 +80,7 @@
         "${workspaceFolder}/web/**/*.js",
         "${workspaceFolder}/web/src/node_modules/**"
       ]
-    }
+    },
+
   ]
 }
