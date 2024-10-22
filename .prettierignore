@@ -1,0 +1,3 @@
+terminal/dist/*
+terminal/node_modules/*
+terminal/charting_library/*

@@ -228,29 +228,6 @@ export const DashboardPage: FC<{}> = () => {
           )}
         </Col>
       </Row>
-      <Row>
-        <Col md="12">
-          <Row>
-            {/* <Col md="6">
-                {this.state.netWorth && (
-                  <NetWorthChart data={this.state.netWorth} />
-                )}
-                {gainersLosersData &&
-                  gainersLosersData.length > 0 && (
-                    <VolumesRankingCard
-                      data={gainersLosersData}
-                      title="Today's highest volumes in USDC market"
-                    />
-                  )}
-              </Col> */}
-            {/* <Col md="6">
-                {this.state.dailyPnL && (
-                  <ProfitLossBars data={this.state.dailyPnL} />
-                )}
-              </Col> */}
-          </Row>
-        </Col>
-      </Row>
     </div>
   );
 };
