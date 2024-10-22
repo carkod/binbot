@@ -1,4 +1,4 @@
-import { useEffect, type FC } from "react"
+import { useEffect, type FC } from "react";
 import {
   ButtonGroup,
   Col,
@@ -8,16 +8,16 @@ import {
   Row,
   Tab,
   ToggleButton,
-} from "react-bootstrap"
-import InputGroupText from "react-bootstrap/esm/InputGroupText"
-import { useForm } from "react-hook-form"
-import { selectBot, setField, setToggle } from "../../features/bots/botSlice"
-import { useAppDispatch, useAppSelector } from "../hooks"
-import { TabsKeys } from "../../utils/enums"
+} from "react-bootstrap";
+import InputGroupText from "react-bootstrap/esm/InputGroupText";
+import { useForm } from "react-hook-form";
+import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import { TabsKeys } from "../../utils/enums";
 
 const TakeProfit: FC = () => {
-  const dispatch = useAppDispatch()
-  const { bot } = useAppSelector(selectBot)
+  const dispatch = useAppDispatch();
+  const { bot } = useAppSelector(selectBot);
 
   const {
     register,
@@ -32,20 +32,20 @@ const TakeProfit: FC = () => {
       trailling_deviation: bot.trailling_deviation,
       dynamic_trailling: bot.dynamic_trailling,
     },
-  })
+  });
 
   useEffect(() => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
-          dispatch(setToggle({ name, value: v[name] }))
+          dispatch(setToggle({ name, value: v[name] }));
         } else {
-          dispatch(setField({ name, value: v[name] as number | string }))
+          dispatch(setField({ name, value: v[name] as number | string }));
         }
       }
-    })
-    return () => unsubscribe()
-  }, [watch, dispatch])
+    });
+    return () => unsubscribe();
+  }, [watch, dispatch]);
 
   return (
     <Tab.Pane eventKey={TabsKeys.TAKEPROFIT}>
@@ -92,7 +92,7 @@ const TakeProfit: FC = () => {
                   checked={bot.trailling}
                   value={1}
                   variant={bot.trailling ? "primary" : "secondary"}
-                  onClick={e =>
+                  onClick={(e) =>
                     dispatch(
                       setToggle({ name: "trailling", value: !bot.trailling }),
                     )
@@ -120,7 +120,7 @@ const TakeProfit: FC = () => {
                   checked={bot.dynamic_trailling}
                   value={1}
                   variant={bot.dynamic_trailling ? "primary" : "secondary"}
-                  onClick={e =>
+                  onClick={(e) =>
                     dispatch(
                       setToggle({
                         name: "dynamic_trailling",
@@ -149,7 +149,8 @@ const TakeProfit: FC = () => {
                   type="number"
                   name="trailling_deviation"
                   {...register("trailling_deviation", {
-                    required: "Trailling deviation in percentage is required when trailling is activated",
+                    required:
+                      "Trailling deviation in percentage is required when trailling is activated",
                     valueAsNumber: true,
                     min: {
                       value: 0,
@@ -168,7 +169,7 @@ const TakeProfit: FC = () => {
         </Row>
       </Container>
     </Tab.Pane>
-  )
-}
+  );
+};
 
-export default TakeProfit
+export default TakeProfit;

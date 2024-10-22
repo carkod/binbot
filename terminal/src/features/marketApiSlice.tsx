@@ -1,31 +1,31 @@
-import { notifification } from "../utils/api"
-import { userApiSlice } from "./userApiSlice"
+import { notifification } from "../utils/api";
+import { userApiSlice } from "./userApiSlice";
 
 export interface GainerLosersData {
-  dates: string[]
-  gainers_percent: number[]
-  losers_percent: number[]
-  gainers_count: number[]
-  losers_count: number[]
-  total_volume: number[]
-  gainers: string[]
-  losers: string[]
+  dates: string[];
+  gainers_percent: number[];
+  losers_percent: number[];
+  gainers_count: number[];
+  losers_count: number[];
+  total_volume: number[];
+  gainers: string[];
+  losers: string[];
 }
 
 function computerPercent(data) {
-  const gainers = []
-  const losers = []
+  const gainers = [];
+  const losers = [];
 
   for (let i = 0; i < data.gainers_percent.length; i++) {
-    const totalCount = data.gainers_count[i] + data.losers_count[i]
+    const totalCount = data.gainers_count[i] + data.losers_count[i];
     const gainersCount =
-      ((data.gainers_count[i] / totalCount) * 100).toFixed(2) + "%"
+      ((data.gainers_count[i] / totalCount) * 100).toFixed(2) + "%";
     const losersCount =
-      ((data.losers_count[i] / totalCount) * 100).toFixed(2) + "%"
-    gainers.push(gainersCount)
-    losers.push(losersCount)
+      ((data.losers_count[i] / totalCount) * 100).toFixed(2) + "%";
+    gainers.push(gainersCount);
+    losers.push(losersCount);
   }
-  return { gainers, losers }
+  return { gainers, losers };
 }
 
 /**
@@ -36,7 +36,7 @@ function computerPercent(data) {
  * Some other data such as benchmark, are a mix of both market and account data, those should be in the balanceApiSlice, because at least one requires authentication.
  */
 export const marketApiSlice = userApiSlice.injectEndpoints({
-  endpoints: build => ({
+  endpoints: (build) => ({
     gainerLosersSeries: build.query<GainerLosersData, void>({
       query: () => ({
         url:
@@ -45,19 +45,19 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
 
         const historicalGLdata = {
           ...data,
           ...computerPercent(data),
-        }
-        return historicalGLdata
+        };
+        return historicalGLdata;
       },
     }),
   }),
-})
+});
 
-export const { useGainerLosersSeriesQuery } = marketApiSlice
+export const { useGainerLosersSeriesQuery } = marketApiSlice;

@@ -1,7 +1,7 @@
-import { type FC } from "react"
-import { Card } from "react-bootstrap"
-import { LoginForm } from "../components/LoginForm"
-import { Slide, ToastContainer } from "react-toastify"
+import { type FC } from "react";
+import { Card } from "react-bootstrap";
+import { LoginForm } from "../components/LoginForm";
+import { Slide, ToastContainer } from "react-toastify";
 
 export const LoginPage: FC<{}> = () => {
   return (
@@ -29,7 +29,7 @@ export const LoginPage: FC<{}> = () => {
         </Card.Body>
       </Card>
     </div>
-  )
-}
+  );
+};
 
-export default LoginPage
+export default LoginPage;

@@ -1,27 +1,26 @@
-import { useEffect, type FC } from "react"
-import { Button, Card, Col, Container, Row } from "react-bootstrap"
-import { set, useController, useForm, type FieldValues } from "react-hook-form"
+import { useEffect, type FC } from "react";
+import { Button, Card, Col, Container, Row } from "react-bootstrap";
+import { set, useController, useForm, type FieldValues } from "react-hook-form";
 import {
   useEditSettingsMutation,
   useGetSettingsQuery,
-} from "../../features/autotradeApiSlice"
+} from "../../features/autotradeApiSlice";
 import {
   selectSettings,
   setSettings,
   setSettingsField,
   setSettingsToggle,
-} from "../../features/autotradeSlice"
-import LightSwitch from "../components/LightSwitch"
-import SettingsInput from "../components/SettingsInput"
-import { useAppDispatch, useAppSelector } from "../hooks"
-import { type AppDispatch } from "../store"
+} from "../../features/autotradeSlice";
+import LightSwitch from "../components/LightSwitch";
+import SettingsInput from "../components/SettingsInput";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import { type AppDispatch } from "../store";
 
 export const AutotradePage: FC<{}> = () => {
-  const { data } = useGetSettingsQuery()
-  const dispatch: AppDispatch = useAppDispatch()
-  const { settings } = useAppSelector(selectSettings)
-  const [updateSettings ] =
-    useEditSettingsMutation()
+  const { data } = useGetSettingsQuery();
+  const dispatch: AppDispatch = useAppDispatch();
+  const { settings } = useAppSelector(selectSettings);
+  const [updateSettings] = useEditSettingsMutation();
 
   const {
     control,
@@ -37,53 +36,53 @@ export const AutotradePage: FC<{}> = () => {
     defaultValues: {
       candlestick_interval: settings.candlestick_interval,
     },
-  })
+  });
 
-  const handleBlur = e => {
+  const handleBlur = (e) => {
     if (e.target.name && e.target.value) {
-      const name = e.target.name
-      const value = e.target.value
+      const name = e.target.name;
+      const value = e.target.value;
       if (typeof value === "string") {
-        dispatch(setSettingsField({ name, value }))
+        dispatch(setSettingsField({ name, value }));
       } else {
-        dispatch(setSettingsToggle({ name, value }))
+        dispatch(setSettingsToggle({ name, value }));
       }
     }
-  }
+  };
 
-  const saveSettings = async data => {
+  const saveSettings = async (data) => {
     // translate old number values to boolean
     // to remove once data is cleaned
     if (data.telegram_signals === 1) {
-      data.telegram_signals = true
+      data.telegram_signals = true;
     } else {
-      data.telegram_signals = false
+      data.telegram_signals = false;
     }
     if (data.trailling === 1) {
-      data.trailling = true
+      data.trailling = true;
     } else {
-      data.trailling = false
+      data.trailling = false;
     }
     if (data.autotrade === 1) {
-      data.autotrade = true
+      data.autotrade = true;
     } else {
-      data.autotrade = false
+      data.autotrade = false;
     }
     if (data.test_autotrade === 1) {
-      data.test_autotrade = true
+      data.test_autotrade = true;
     } else {
-      data.test_autotrade = false
+      data.test_autotrade = false;
     }
-    dispatch(setSettings({ settings: data }))
-    const response = await updateSettings(data).unwrap()
-    console.log(response)
-  }
+    dispatch(setSettings({ settings: data }));
+    const response = await updateSettings(data).unwrap();
+    console.log(response);
+  };
 
   useEffect(() => {
     if (data) {
-      reset(data)
+      reset(data);
     }
-  }, [data, dispatch, reset, setValue])
+  }, [data, dispatch, reset, setValue]);
 
   return (
     <Container>
@@ -127,13 +126,13 @@ export const AutotradePage: FC<{}> = () => {
                       name="telegram_signals"
                       register={register}
                       toggle={(name, value) => {
-                        setValue(name, !value)
+                        setValue(name, !value);
                         dispatch(
                           setSettingsToggle({
                             name: name,
                             value: !value,
                           }),
-                        )
+                        );
                       }}
                     />
                   </Col>
@@ -148,13 +147,13 @@ export const AutotradePage: FC<{}> = () => {
                       name="autotrade"
                       register={register}
                       toggle={(name, value) => {
-                        setValue(name, value)
+                        setValue(name, value);
                         dispatch(
                           setSettingsToggle({
                             name: name,
                             value: !value,
                           }),
-                        )
+                        );
                       }}
                     />
                   </Col>
@@ -205,13 +204,13 @@ export const AutotradePage: FC<{}> = () => {
                       name="trailling"
                       color={settings.trailling ? "success" : "secondary"}
                       onClick={() => {
-                        setValue("trailling", !settings.trailling)
+                        setValue("trailling", !settings.trailling);
                         dispatch(
                           setSettingsToggle({
                             name: "trailling",
                             value: !settings.trailling,
                           }),
-                        )
+                        );
                       }}
                       {...register("trailling", { required: true })}
                     >
@@ -260,7 +259,7 @@ export const AutotradePage: FC<{}> = () => {
         </Card.Body>
       </Card>
     </Container>
-  )
-}
+  );
+};
 
-export default AutotradePage
+export default AutotradePage;

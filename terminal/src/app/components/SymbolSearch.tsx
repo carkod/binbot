@@ -1,19 +1,19 @@
-import { useEffect, useState, type FC } from "react"
-import { Typeahead } from "react-bootstrap-typeahead"
-import "react-bootstrap-typeahead/css/Typeahead.css"
-import Form from "react-bootstrap/Form"
+import { useEffect, useState, type FC } from "react";
+import { Typeahead } from "react-bootstrap-typeahead";
+import "react-bootstrap-typeahead/css/Typeahead.css";
+import Form from "react-bootstrap/Form";
 
 const SymbolSearch: FC<{
-  name: string
-  label: string
-  options: string[]
-  value?: string
-  defaultValue?: string
-  required?: boolean
-  disabled?: boolean
-  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
-  onChange?: (selected: string) => void
-  errors?: object
+  name: string;
+  label: string;
+  options: string[];
+  value?: string;
+  defaultValue?: string;
+  required?: boolean;
+  disabled?: boolean;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onChange?: (selected: string) => void;
+  errors?: object;
 }> = ({
   name,
   label,
@@ -25,13 +25,13 @@ const SymbolSearch: FC<{
   disabled = false,
   errors = {},
 }) => {
-  const [state, setState] = useState<string>(value)
+  const [state, setState] = useState<string>(value);
 
   useEffect(() => {
     if (value) {
-      setState(value)
+      setState(value);
     }
-  }, [value])
+  }, [value]);
 
   return (
     <Form.Group>
@@ -45,15 +45,15 @@ const SymbolSearch: FC<{
         isInvalid={Boolean(errors?.[name]) || Boolean(value) === false}
         disabled={disabled}
         selected={state ? [state] : []}
-        onChange={selected => {
+        onChange={(selected) => {
           if (selected.length > 0) {
-            setState(selected[0] as string)
+            setState(selected[0] as string);
           }
         }}
-        onInputChange={value => {
-          setState(value)
+        onInputChange={(value) => {
+          setState(value);
         }}
-        onBlur={e => onBlur(e)}
+        onBlur={(e) => onBlur(e)}
       />
 
       {errors[name] && (
@@ -62,7 +62,7 @@ const SymbolSearch: FC<{
         </Form.Control.Feedback>
       )}
     </Form.Group>
-  )
-}
+  );
+};
 
-export default SymbolSearch
+export default SymbolSearch;

@@ -1,21 +1,25 @@
-import { Provider } from "react-redux"
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom"
-import { Layout } from "./app/Layout"
-import BotsPage from "./app/pages/Bots"
-import DashboardPage from "./app/pages/Dashboard"
-import LoginPage from "./app/pages/Login"
-import { store } from "./app/store"
-import BotDetail from "./app/pages/BotDetail"
-import AutotradePage from "./app/pages/Autotrade"
+import { Provider } from "react-redux";
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+} from "react-router-dom";
+import { Layout } from "./app/Layout";
+import BotsPage from "./app/pages/Bots";
+import DashboardPage from "./app/pages/Dashboard";
+import LoginPage from "./app/pages/Login";
+import { store } from "./app/store";
+import BotDetail from "./app/pages/BotDetail";
+import AutotradePage from "./app/pages/Autotrade";
 
 export type Routes = {
-  path: string
-  name?: string
-  icon?: string
-  link?: string  // Decides if shows on Sidebar
-  element: JSX.Element
-  id: string  // Unique name to match path
-}
+  path: string;
+  name?: string;
+  icon?: string;
+  link?: string; // Decides if shows on Sidebar
+  element: JSX.Element;
+  id: string; // Unique name to match path
+};
 
 export const routes = [
   {
@@ -57,8 +61,8 @@ export const routes = [
     name: "Autotrade",
     element: <AutotradePage />,
     id: "autotrade",
-  }
-]
+  },
+];
 
 const rootRouter = createBrowserRouter([
   {
@@ -75,7 +79,7 @@ const rootRouter = createBrowserRouter([
     path: "/logout",
     element: <Navigate to="/login" replace />,
   },
-])
+]);
 
 export const App = () => {
   return (
@@ -85,7 +89,7 @@ export const App = () => {
         fallbackElement={<p>Initial Load...</p>}
       />
     </Provider>
-  )
-}
+  );
+};
 
-export default App
+export default App;

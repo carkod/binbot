@@ -1,7 +1,7 @@
-import { BinanceKlineintervals } from "../utils/enums"
-import { createAppSlice } from "../app/createAppSlice"
-import { type AutotradeSettings } from "./autotradeApiSlice"
-import { type PayloadAction } from "@reduxjs/toolkit"
+import { BinanceKlineintervals } from "../utils/enums";
+import { createAppSlice } from "../app/createAppSlice";
+import { type AutotradeSettings } from "./autotradeApiSlice";
+import { type PayloadAction } from "@reduxjs/toolkit";
 
 export const initialAutotradeSettings: AutotradeSettings = {
   _id: "settings",
@@ -22,20 +22,20 @@ export const initialAutotradeSettings: AutotradeSettings = {
   base_order_size: 0,
   test_autotrade: false,
   updated_at: 0,
-}
+};
 
 interface AutotradeSettingsFormField {
-  name: string
-  value: string | number
+  name: string;
+  value: string | number;
 }
 
 interface AutotradeSettingsFormBoolean {
-  name: string
-  value: boolean
+  name: string;
+  value: boolean;
 }
 
 interface AutotradeSettingsObject {
-  settings: AutotradeSettings
+  settings: AutotradeSettings;
 }
 
 // In general, this will be unused
@@ -46,27 +46,28 @@ export const autotradeSettingsSlice = createAppSlice({
   initialState: {
     settings: initialAutotradeSettings,
   },
-  reducers: create => ({
+  reducers: (create) => ({
     setSettingsField: create.reducer(
       (state, { payload }: PayloadAction<AutotradeSettingsFormField>) => {
-        state.settings[payload.name] = payload.value
+        state.settings[payload.name] = payload.value;
       },
     ),
     setSettingsToggle: create.reducer(
       (state, { payload }: PayloadAction<AutotradeSettingsFormBoolean>) => {
-        state.settings[payload.name] = payload.value
+        state.settings[payload.name] = payload.value;
       },
     ),
     setSettings: create.reducer(
       (state, { payload }: PayloadAction<AutotradeSettingsObject>) => {
-        state.settings = payload.settings
+        state.settings = payload.settings;
       },
     ),
   }),
   selectors: {
-    selectSettings: state => state
+    selectSettings: (state) => state,
   },
-})
+});
 
-export const { setSettingsField, setSettingsToggle, setSettings } = autotradeSettingsSlice.actions
-export const { selectSettings } = autotradeSettingsSlice.selectors
+export const { setSettingsField, setSettingsToggle, setSettings } =
+  autotradeSettingsSlice.actions;
+export const { selectSettings } = autotradeSettingsSlice.selectors;

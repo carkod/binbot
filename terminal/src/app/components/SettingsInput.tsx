@@ -1,18 +1,18 @@
-import { type FocusEvent, type FC } from "react"
-import { Form } from "react-bootstrap"
+import { type FocusEvent, type FC } from "react";
+import { Form } from "react-bootstrap";
 
 type SettingsInputProps = {
-  value?: string | number
-  name?: string
-  label: string
-  handleChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
-  handleBlur?: (e: FocusEvent<HTMLInputElement>) => void
-  errorMsg?: string
-  infoText?: string
-  type?: "text" | "number"
-  register?: any
-  required?: boolean
-}
+  value?: string | number;
+  name?: string;
+  label: string;
+  handleChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleBlur?: (e: FocusEvent<HTMLInputElement>) => void;
+  errorMsg?: string;
+  infoText?: string;
+  type?: "text" | "number";
+  register?: any;
+  required?: boolean;
+};
 
 const SettingsInput: FC<SettingsInputProps> = ({
   value,
@@ -43,7 +43,7 @@ const SettingsInput: FC<SettingsInputProps> = ({
         <Form.Control.Feedback tooltip>{infoText}</Form.Control.Feedback>
       )}
     </Form.Group>
-  )
-}
+  );
+};
 
-export default SettingsInput
+export default SettingsInput;

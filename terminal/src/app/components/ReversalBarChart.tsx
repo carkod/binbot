@@ -1,15 +1,15 @@
-import { Row, Col, Container, Card } from "react-bootstrap"
-import BarChart from "./BarChart"
-import { type FC } from "react"
+import { Row, Col, Container, Card } from "react-bootstrap";
+import BarChart from "./BarChart";
+import { type FC } from "react";
 
 type ReversalBarChartProps = {
-  data: any
-  legend: any
-}
+  data: any;
+  legend: any;
+};
 
 const ReversalBarChart: FC<ReversalBarChartProps> = ({ data, legend }) => {
-  const gainers = parseFloat(data.gainers_count)
-  const losers = parseFloat(data.losers_count)
+  const gainers = parseFloat(data.gainers_count);
+  const losers = parseFloat(data.losers_count);
   return (
     <Card className="card-chart">
       <Card.Header>
@@ -51,7 +51,7 @@ const ReversalBarChart: FC<ReversalBarChartProps> = ({ data, legend }) => {
                   <i className="fa fa-circle" style={{ color: x.color }} />
                   {x.name}
                 </span>
-              )
+              );
             })}
         </div>
         <hr />
@@ -63,7 +63,7 @@ const ReversalBarChart: FC<ReversalBarChartProps> = ({ data, legend }) => {
         )}
       </Card.Footer>
     </Card>
-  )
-}
+  );
+};
 
-export default ReversalBarChart
+export default ReversalBarChart;

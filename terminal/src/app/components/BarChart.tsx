@@ -1,13 +1,13 @@
-import Plot from "react-plotly.js"
-import { listCssColors } from "../../utils/validations"
-import { type FC } from "react"
+import Plot from "react-plotly.js";
+import { listCssColors } from "../../utils/validations";
+import { type FC } from "react";
 
 interface BarChartProps {
-    data: any
-    width?: string
-    height?: string
-    line1name?: string
-    line2name?: string
+  data: any;
+  width?: string;
+  height?: string;
+  line1name?: string;
+  line2name?: string;
 }
 
 const BarChart: FC<BarChartProps> = ({
@@ -42,7 +42,7 @@ const BarChart: FC<BarChartProps> = ({
       type: "linear",
       maxPoints: 50,
     },
-  }
+  };
 
   return (
     <>
@@ -70,7 +70,7 @@ const BarChart: FC<BarChartProps> = ({
         style={{ width: width, height: height }}
       />
     </>
-  )
-}
+  );
+};
 
-export default BarChart
+export default BarChart;

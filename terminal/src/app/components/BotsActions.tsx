@@ -1,5 +1,5 @@
-import { type FC } from "react"
-import { Form } from "react-bootstrap"
+import { type FC } from "react";
+import { Form } from "react-bootstrap";
 
 export enum BulkAction {
   NONE = "",
@@ -10,8 +10,8 @@ export enum BulkAction {
   SELECT_ALL = "select-all",
 }
 interface BotsActionsProps {
-  defaultValue: string
-  handleChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
+  defaultValue: string;
+  handleChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
 const BotsActions: FC<BotsActionsProps> = ({ defaultValue, handleChange }) => {
@@ -32,7 +32,7 @@ const BotsActions: FC<BotsActionsProps> = ({ defaultValue, handleChange }) => {
         <option value={BulkAction.SELECT_ALL}>Select all</option>
       </Form.Select>
     </Form.Group>
-  )
-}
+  );
+};
 
-export default BotsActions
+export default BotsActions;

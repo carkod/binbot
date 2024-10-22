@@ -1,26 +1,26 @@
-import { createApi } from "@reduxjs/toolkit/query/react"
-import { binanceBaseQuery, notifification } from "../utils/api"
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { binanceBaseQuery, notifification } from "../utils/api";
 
 export interface BinanceTicker24 {
-    symbol: string
-    priceChange: string
-    priceChangePercent: string
-    weightedAvgPrice: string
-    prevClosePrice: string
-    lastPrice: string
-    lastQty: string
-    bidPrice: string
-    askPrice: string
-    openPrice: string
-    highPrice: string
-    lowPrice: string
-    volume: string
-    quoteVolume: string
-    openTime: number
-    closeTime: number
-    firstId: number
-    lastId: number
-    count: number
+  symbol: string;
+  priceChange: string;
+  priceChangePercent: string;
+  weightedAvgPrice: string;
+  prevClosePrice: string;
+  lastPrice: string;
+  lastQty: string;
+  bidPrice: string;
+  askPrice: string;
+  openPrice: string;
+  highPrice: string;
+  lowPrice: string;
+  volume: string;
+  quoteVolume: string;
+  openTime: number;
+  closeTime: number;
+  firstId: number;
+  lastId: number;
+  count: number;
 }
 
 /**
@@ -33,7 +33,7 @@ export interface BinanceTicker24 {
 export const binanceApiSlice = createApi({
   baseQuery: binanceBaseQuery,
   reducerPath: "binanceApi",
-  endpoints: build => ({
+  endpoints: (build) => ({
     gainerLosers: build.query<BinanceTicker24[], void>({
       query: () => ({
         url: `${import.meta.env.VITE_TICKER_24}` || "/gainers-losers",
@@ -41,24 +41,24 @@ export const binanceApiSlice = createApi({
       }),
       transformResponse: (data, meta, arg) => {
         if (!meta.response.ok) {
-          notifification("error", meta.response.statusText)
+          notifification("error", meta.response.statusText);
         }
 
-        const filterUSDCmarket = data.filter(item =>
+        const filterUSDCmarket = data.filter((item) =>
           item.symbol.endsWith("USDC"),
-        )
+        );
         const usdcData = filterUSDCmarket
           .sort(
             (a, b) =>
               parseFloat(a.priceChangePercent) -
               parseFloat(b.priceChangePercent),
           )
-          .reverse()
+          .reverse();
 
-        return usdcData
+        return usdcData;
       },
     }),
   }),
-})
+});
 
-export const { useGainerLosersQuery } = binanceApiSlice
+export const { useGainerLosersQuery } = binanceApiSlice;

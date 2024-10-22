@@ -1,4 +1,4 @@
-import { type FC, useEffect, useState } from "react"
+import { type FC, useEffect, useState } from "react";
 import {
   ButtonGroup,
   Col,
@@ -8,17 +8,17 @@ import {
   Row,
   Tab,
   ToggleButton,
-} from "react-bootstrap"
-import InputGroupText from "react-bootstrap/esm/InputGroupText"
-import { useForm } from "react-hook-form"
-import { selectBot, setField, setToggle } from "../../features/bots/botSlice"
-import { useAppDispatch, useAppSelector } from "../hooks"
-import { type AppDispatch } from "../store"
-import { TabsKeys } from "../../utils/enums"
+} from "react-bootstrap";
+import InputGroupText from "react-bootstrap/esm/InputGroupText";
+import { useForm } from "react-hook-form";
+import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import { type AppDispatch } from "../store";
+import { TabsKeys } from "../../utils/enums";
 
 const StopLossTab: FC<{}> = () => {
-  const dispatch: AppDispatch = useAppDispatch()
-  const { bot } = useAppSelector(selectBot)
+  const dispatch: AppDispatch = useAppDispatch();
+  const { bot } = useAppSelector(selectBot);
   const {
     watch,
     register,
@@ -31,20 +31,20 @@ const StopLossTab: FC<{}> = () => {
       stop_loss: bot.stop_loss,
       margin_short_reversal: bot.margin_short_reversal,
     },
-  })
+  });
 
   useEffect(() => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
-          dispatch(setToggle({ name, value: v[name] }))
+          dispatch(setToggle({ name, value: v[name] }));
         } else {
-          dispatch(setField({ name, value: v[name] as number | string }))
+          dispatch(setField({ name, value: v[name] as number | string }));
         }
       }
-    })
-    return () => unsubscribe()
-  }, [watch, dispatch])
+    });
+    return () => unsubscribe();
+  }, [watch, dispatch]);
 
   return (
     <Tab.Pane
@@ -104,7 +104,7 @@ const StopLossTab: FC<{}> = () => {
                         name: "margin_short_reversal",
                         value: !bot.margin_short_reversal,
                       }),
-                    )
+                    );
                   }}
                 >
                   {bot.margin_short_reversal ? "On" : "Off"}
@@ -118,7 +118,7 @@ const StopLossTab: FC<{}> = () => {
         </Row>
       </Container>
     </Tab.Pane>
-  )
-}
+  );
+};
 
-export default StopLossTab
+export default StopLossTab;

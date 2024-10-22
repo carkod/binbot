@@ -1,4 +1,4 @@
-import { Badge, Card, ListGroup } from "react-bootstrap"
+import { Badge, Card, ListGroup } from "react-bootstrap";
 
 const GainersLosersCard = ({ data, title }) => {
   return (
@@ -20,7 +20,7 @@ const GainersLosersCard = ({ data, title }) => {
         ))}
       </ListGroup>
     </Card.Body>
-  )
-}
+  );
+};
 
-export default GainersLosersCard
+export default GainersLosersCard;

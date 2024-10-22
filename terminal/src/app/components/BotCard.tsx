@@ -1,17 +1,17 @@
-import { type FC } from "react"
-import { Badge, Button, Card, Col, Container, Row } from "react-bootstrap"
-import { useNavigate } from "react-router"
-import { type Bot } from "../../features/bots/botInitialState"
-import { computeSingleBotProfit } from "../../features/bots/profits"
-import { roundDecimals } from "../../utils/math"
-import { DurationTsComponent } from "./RenderTs"
+import { type FC } from "react";
+import { Badge, Button, Card, Col, Container, Row } from "react-bootstrap";
+import { useNavigate } from "react-router";
+import { type Bot } from "../../features/bots/botInitialState";
+import { computeSingleBotProfit } from "../../features/bots/profits";
+import { roundDecimals } from "../../utils/math";
+import { DurationTsComponent } from "./RenderTs";
 
 interface BotCardProps {
-  bot: Bot
-  botIndex?: number // Selected bot index, this can be one of the selectedCards array
-  selectedCards?: string[] // Collection of selected cards
-  handleSelection?: (id: string) => void
-  handleDelete?: (id: string) => void
+  bot: Bot;
+  botIndex?: number; // Selected bot index, this can be one of the selectedCards array
+  selectedCards?: string[]; // Collection of selected cards
+  handleSelection?: (id: string) => void;
+  handleDelete?: (id: string) => void;
 }
 
 /**
@@ -28,8 +28,8 @@ const BotCard: FC<BotCardProps> = ({
   handleSelection,
   handleDelete,
 }) => {
-  const botProfit = computeSingleBotProfit(bot)
-  const navigate = useNavigate()
+  const botProfit = computeSingleBotProfit(bot);
+  const navigate = useNavigate();
   return (
     <Card
       tabIndex={botIndex}
@@ -176,7 +176,7 @@ const BotCard: FC<BotCardProps> = ({
         </Button>
       </Card.Footer>
     </Card>
-  )
-}
+  );
+};
 
-export default BotCard
+export default BotCard;

@@ -1,11 +1,10 @@
 .btn,
 .navbar .navbar-nav > a.btn {
-
   & {
     @include btn-styles($default-color, $default-states-color);
     @include transition($fast-transition-time, linear);
   }
-  
+
   border-width: $border-thick;
   font-weight: $font-weight-semi;
   font-size: $font-size-small;

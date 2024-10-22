@@ -6,7 +6,7 @@ const dataHeaders = [
   "Price",
   "Original Quantity",
   "Executed Quantity",
-]
+];
 
 const listCssColors = [
   "#51cbce",
@@ -18,7 +18,7 @@ const listCssColors = [
   "#dcb285",
   "#f96332",
   "#6bd098",
-]
+];
 
 const intervalOptions = [
   "1m",
@@ -35,6 +35,6 @@ const intervalOptions = [
   "1d",
   "3d",
   "1w",
-]
+];
 
-export { dataHeaders, intervalOptions, listCssColors }
+export { dataHeaders, intervalOptions, listCssColors };

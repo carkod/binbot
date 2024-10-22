@@ -1,13 +1,13 @@
-import { type FC } from "react"
-import { Navigate, Outlet } from "react-router"
-import { Slide, ToastContainer } from "react-toastify"
-import { getToken } from "../utils/login"
-import Footer from "./components/Footer"
-import Header from "./components/Header"
-import Sidebar from "./components/Sidebar"
+import { type FC } from "react";
+import { Navigate, Outlet } from "react-router";
+import { Slide, ToastContainer } from "react-toastify";
+import { getToken } from "../utils/login";
+import Footer from "./components/Footer";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
 
 export const Layout: FC<{}> = () => {
-  const token = getToken()
+  const token = getToken();
 
   if (token) {
     return (
@@ -34,8 +34,8 @@ export const Layout: FC<{}> = () => {
           </div>
         </div>
       </div>
-    )
+    );
   } else {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace />;
   }
-}
+};

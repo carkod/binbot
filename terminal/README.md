@@ -34,14 +34,11 @@ New packages or installing from scratch:
 
 3. Wait for check to pass. Github action will publish to Docker Hub
 
-If docker-compose doesn't exist: 3. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com`
-4. Modify details to match production needs
+If docker-compose doesn't exist: 3. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com` 4. Modify details to match production needs
 
 or `docker build --tag binbot . && docker tag binbot carloswufei/binbot:latest && docker push carloswufei/binbot`
 
-In production: 
-5. `docker-compose pull && docker-compose up -d` 
-6. If `.env.prod` is modified, scp to remote server and replace `.env` in production with new `.env.prod`
+In production: 5. `docker-compose pull && docker-compose up -d` 6. If `.env.prod` is modified, scp to remote server and replace `.env` in production with new `.env.prod`
 
 ## Test production
 
@@ -52,7 +49,6 @@ If issues are encountered downloading prod DB to local
 
 1. Dump database: `docker exec binbot_db sh -c 'mongodump --authenticationDatabase admin -u <user> -p <password> --db binbot --archive' > db.dump`
 2. On local, restore `docker exec -i binbot_db sh -c 'mongorestore --archive -u <MONGO_AUTH_USERNAME> -p <MONGO_AUTH_PASSWORD> --authenticationDatabase <MONGO_AUTH_DATABASE> ' < db.dump`
-
 
 ## Detailed documentation
 

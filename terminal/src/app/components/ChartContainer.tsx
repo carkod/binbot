@@ -1,55 +1,53 @@
-import { Badge, Card, Col, Row } from "react-bootstrap"
-import { useAppDispatch, useAppSelector } from "../hooks"
-import { selectBot, setCurrentPrice } from "../../features/bots/botSlice"
-import { computeSingleBotProfit } from "../../features/bots/profits"
-import { roundDecimals } from "../../utils/math"
-import { useImmer } from "use-immer"
-import { updateOrderLines } from "../../utils/charting/index"
-import { type OrderLine } from "../../utils/charting/index.d"
-import { updateTimescaleMarks } from "../../utils/charting"
-import TVChartContainer from "binbot-charts"
-import { type ResolutionString } from "../../../charting_library/charting_library"
-import { useEffect, type FC } from "react"
-import { type AppDispatch } from "../store"
-import { type Bot } from "../../features/bots/botInitialState"
+import { Badge, Card, Col, Row } from "react-bootstrap";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import { selectBot, setCurrentPrice } from "../../features/bots/botSlice";
+import { computeSingleBotProfit } from "../../features/bots/profits";
+import { roundDecimals } from "../../utils/math";
+import { useImmer } from "use-immer";
+import { updateOrderLines } from "../../utils/charting/index";
+import { type OrderLine } from "../../utils/charting/index.d";
+import { updateTimescaleMarks } from "../../utils/charting";
+import TVChartContainer from "binbot-charts";
+import { type ResolutionString } from "../../../charting_library/charting_library";
+import { useEffect, type FC } from "react";
+import { type AppDispatch } from "../store";
+import { type Bot } from "../../features/bots/botInitialState";
 
 const ChartContainer: FC = () => {
   const { bot } = useAppSelector(selectBot) as { bot: Bot };
-  const dispatch: AppDispatch = useAppDispatch()
-  const initialBotProfit = computeSingleBotProfit(bot)
-  const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0)
-  const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([])
-  const [botProfit, setBotProfit] = useImmer<number>(initialBotProfit)
+  const dispatch: AppDispatch = useAppDispatch();
+  const initialBotProfit = computeSingleBotProfit(bot);
+  const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0);
+  const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([]);
+  const [botProfit, setBotProfit] = useImmer<number>(initialBotProfit);
 
-  const updatedPrice = price => {
-    price = roundDecimals(price, 4)
+  const updatedPrice = (price) => {
+    price = roundDecimals(price, 4);
     if (currentChartPrice !== parseFloat(price)) {
-      const newOrderLines = updateOrderLines(bot, price)
-      setCurrentOrderLines(newOrderLines)
-      setCurrentChartPrice(parseFloat(price))
+      const newOrderLines = updateOrderLines(bot, price);
+      setCurrentOrderLines(newOrderLines);
+      setCurrentChartPrice(parseFloat(price));
     }
-  }
+  };
 
-  const handleInitialPrice = price => {
+  const handleInitialPrice = (price) => {
     if (!bot.deal.buy_price && bot.status !== "active") {
-      setCurrentChartPrice(price)
+      setCurrentChartPrice(price);
     }
-    const newOrderLines = updateOrderLines(bot, price)
-    setCurrentOrderLines(newOrderLines)
-  }
+    const newOrderLines = updateOrderLines(bot, price);
+    setCurrentOrderLines(newOrderLines);
+  };
 
   useEffect(() => {
-
     if (currentChartPrice !== 0) {
-      const newOrderLines = updateOrderLines(bot, currentChartPrice)
-      setCurrentOrderLines(newOrderLines)
-      setBotProfit(computeSingleBotProfit(bot, currentChartPrice))
+      const newOrderLines = updateOrderLines(bot, currentChartPrice);
+      setCurrentOrderLines(newOrderLines);
+      setBotProfit(computeSingleBotProfit(bot, currentChartPrice));
       if (bot.deal?.current_price !== currentChartPrice) {
-        dispatch(setCurrentPrice(currentChartPrice))
+        dispatch(setCurrentPrice(currentChartPrice));
       }
     }
-
-  }, [currentChartPrice, bot, setCurrentOrderLines, setBotProfit, dispatch])
+  }, [currentChartPrice, bot, setCurrentOrderLines, setBotProfit, dispatch]);
 
   return (
     <Card style={{ minHeight: "650px" }}>
@@ -58,7 +56,15 @@ const ChartContainer: FC = () => {
           <Col md="8">
             <Card.Title as="h3">
               {bot.pair}{" "}
-              <Badge bg={botProfit > 0 ? "success" : botProfit < 0 ? "danger" : "secondary"}>
+              <Badge
+                bg={
+                  botProfit > 0
+                    ? "success"
+                    : botProfit < 0
+                      ? "danger"
+                      : "secondary"
+                }
+              >
                 {botProfit ? botProfit + "%" : "0%"}
               </Badge>{" "}
               <Badge
@@ -74,11 +80,11 @@ const ChartContainer: FC = () => {
               >
                 {bot.status}
               </Badge>{" "}
-            <Badge color="info">{bot.strategy}</Badge>
+              <Badge color="info">{bot.strategy}</Badge>
             </Card.Title>
           </Col>
           <Col md="12" lg="4">
-            {botProfit > 0 && (botProfit - bot.commissions) > 0 && (
+            {botProfit > 0 && botProfit - bot.commissions > 0 && (
               <small className="fs-6 fw-light">
                 Earnings after commissions (est.):{" "}
                 {roundDecimals(botProfit - bot.commissions) + "%"}
@@ -95,13 +101,13 @@ const ChartContainer: FC = () => {
             interval={"1h" as ResolutionString}
             timescaleMarks={updateTimescaleMarks(bot)}
             orderLines={currentOrderLines}
-            onTick={tick => updatedPrice(parseFloat(tick.close))}
-            getLatestBar={bar => handleInitialPrice(parseFloat(bar[3]))}
+            onTick={(tick) => updatedPrice(parseFloat(tick.close))}
+            getLatestBar={(bar) => handleInitialPrice(parseFloat(bar[3]))}
           />
         )}
       </Card.Body>
     </Card>
-  )
-}
+  );
+};
 
-export default ChartContainer
+export default ChartContainer;

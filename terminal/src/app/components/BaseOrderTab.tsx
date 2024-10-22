@@ -1,4 +1,4 @@
-import { type FC, useEffect, useState } from "react"
+import { type FC, useEffect, useState } from "react";
 import {
   Badge,
   Col,
@@ -7,29 +7,29 @@ import {
   InputGroup,
   Row,
   Tab,
-} from "react-bootstrap"
-import { type FieldValues, useForm } from "react-hook-form"
-import { selectBot, setField, setToggle } from "../../features/bots/botSlice"
-import { useGetSymbolsQuery } from "../../features/symbolApiSlice"
-import { BotStatus, BotStrategy, TabsKeys } from "../../utils/enums"
-import { useAppDispatch, useAppSelector } from "../hooks"
-import { type AppDispatch } from "../store"
-import { InputTooltip } from "./InputTooltip"
-import SymbolSearch from "./SymbolSearch"
-import { useImmer } from "use-immer"
-import { getQuoteAsset } from "../../utils/api"
+} from "react-bootstrap";
+import { type FieldValues, useForm } from "react-hook-form";
+import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import { useGetSymbolsQuery } from "../../features/symbolApiSlice";
+import { BotStatus, BotStrategy, TabsKeys } from "../../utils/enums";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import { type AppDispatch } from "../store";
+import { InputTooltip } from "./InputTooltip";
+import SymbolSearch from "./SymbolSearch";
+import { useImmer } from "use-immer";
+import { getQuoteAsset } from "../../utils/api";
 
 interface ErrorsState {
-  pair?: string
+  pair?: string;
 }
 
 const BaseOrderTab: FC = () => {
-  const dispatch: AppDispatch = useAppDispatch()
-  const { data } = useGetSymbolsQuery()
-  const { bot } = useAppSelector(selectBot)
-  const [quoteAsset, setQuoteAsset] = useState<string>("")
-  const [errorsState, setErrorsState] = useImmer<ErrorsState>({})
-  const [symbolsList, setSymbolsList] = useState<string[]>([])
+  const dispatch: AppDispatch = useAppDispatch();
+  const { data } = useGetSymbolsQuery();
+  const { bot } = useAppSelector(selectBot);
+  const [quoteAsset, setQuoteAsset] = useState<string>("");
+  const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
+  const [symbolsList, setSymbolsList] = useState<string[]>([]);
   const {
     register,
     watch,
@@ -44,63 +44,71 @@ const BaseOrderTab: FC = () => {
       cooldown: bot.cooldown,
       strategy: bot.strategy,
     },
-  })
+  });
 
   const addMin = () => {
-    dispatch(setField({ name: "base_order_size", value: 0.001 }))
-  }
+    dispatch(setField({ name: "base_order_size", value: 0.001 }));
+  };
 
   const addAll = () => {
-    dispatch(setField({ name: "base_order_size", value: 0.001 }))
-  }
+    dispatch(setField({ name: "base_order_size", value: 0.001 }));
+  };
 
   const handleSelectedPair = (selected: string) => {
     if (selected) {
-      dispatch(setField({ name: "pair", value: selected }))
+      dispatch(setField({ name: "pair", value: selected }));
     }
-  }
+  };
 
-  const handlePairBlur = e => {
+  const handlePairBlur = (e) => {
     // Only when selected not typed in
     // this way we avoid any errors
     if (e.target.value) {
-      dispatch(setField({ name: "pair", value: e.target.value }))
-      setErrorsState(draft => {
-        delete draft["pair"]
-      })
+      dispatch(setField({ name: "pair", value: e.target.value }));
+      setErrorsState((draft) => {
+        delete draft["pair"];
+      });
     } else {
-      setErrorsState(draft => {
-        draft["pair"] = "Please select a pair"
-      })
+      setErrorsState((draft) => {
+        draft["pair"] = "Please select a pair";
+      });
     }
-  }
+  };
 
   useEffect(() => {
     if (data) {
-      setSymbolsList(data)
+      setSymbolsList(data);
     }
     if (bot.pair) {
-      setQuoteAsset(getQuoteAsset(bot))
+      setQuoteAsset(getQuoteAsset(bot));
     }
     if (bot) {
       for (const key in bot) {
-        reset({ [key]: bot[key] })
+        reset({ [key]: bot[key] });
       }
     }
-  }, [data, symbolsList, setSymbolsList, bot, quoteAsset, setQuoteAsset, reset])
+  }, [
+    data,
+    symbolsList,
+    setSymbolsList,
+    bot,
+    quoteAsset,
+    setQuoteAsset,
+    reset,
+  ]);
 
   useEffect(() => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
-          dispatch(setToggle({ name, value: v[name] }))
+          dispatch(setToggle({ name, value: v[name] }));
         } else {
-          dispatch(setField({ name, value: v[name] as number | string }))
+          dispatch(setField({ name, value: v[name] as number | string }));
         }
       }
-    })
-    return () => unsubscribe()
-  }, [watch, dispatch])
+    });
+    return () => unsubscribe();
+  }, [watch, dispatch]);
 
   return (
     <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
@@ -228,7 +236,7 @@ const BaseOrderTab: FC = () => {
         </Row>
       </Container>
     </Tab.Pane>
-  )
-}
+  );
+};
 
-export default BaseOrderTab
+export default BaseOrderTab;

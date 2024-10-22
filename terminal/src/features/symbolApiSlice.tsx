@@ -1,8 +1,8 @@
-import { notifification } from "../utils/api"
-import { userApiSlice } from "./userApiSlice"
+import { notifification } from "../utils/api";
+import { userApiSlice } from "./userApiSlice";
 
 export const symbolsApiSlice = userApiSlice.injectEndpoints({
-  endpoints: build => ({
+  endpoints: (build) => ({
     // No cannibal symbols (without active bots)
     getSymbols: build.query<string[], void>({
       query: () => ({
@@ -11,15 +11,15 @@ export const symbolsApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
 
-        return data
+        return data;
       },
     }),
   }),
-})
+});
 
-export const { useGetSymbolsQuery } = symbolsApiSlice
+export const { useGetSymbolsQuery } = symbolsApiSlice;

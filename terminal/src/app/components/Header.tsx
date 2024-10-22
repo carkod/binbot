@@ -1,15 +1,15 @@
-import type { FC } from "react"
-import { Col, Container, Navbar, Row } from "react-bootstrap"
-import { useLocation, useMatch } from "react-router"
-import { Link } from "react-router-dom"
-import { routes } from "../../App"
+import type { FC } from "react";
+import { Col, Container, Navbar, Row } from "react-bootstrap";
+import { useLocation, useMatch } from "react-router";
+import { Link } from "react-router-dom";
+import { routes } from "../../App";
 
 export const Header: FC<{}> = () => {
-  const location = useLocation()
-  const matchPath = useMatch(location.pathname)
+  const location = useLocation();
+  const matchPath = useMatch(location.pathname);
   const loadData = matchPath
-    ? routes.find(route => `${route.link}` === location.pathname)
-    : null
+    ? routes.find((route) => `${route.link}` === location.pathname)
+    : null;
 
   return (
     <Navbar className="bg-body-tertiary navbar-transparent navbar navbar-expand-lg">
@@ -36,7 +36,7 @@ export const Header: FC<{}> = () => {
         </Navbar.Collapse>
       </Container>
     </Navbar>
-  )
-}
+  );
+};
 
-export default Header
+export default Header;

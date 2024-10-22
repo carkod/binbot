@@ -1,10 +1,9 @@
-import { Card, Col, Row } from "react-bootstrap"
-import { type FC } from "react"
-import { type BalanceEstimateData } from "../../features/balanceApiSlice"
-
+import { Card, Col, Row } from "react-bootstrap";
+import { type FC } from "react";
+import { type BalanceEstimateData } from "../../features/balanceApiSlice";
 
 const accountDataAnalysis: FC<{
-  accountData: BalanceEstimateData
+  accountData: BalanceEstimateData;
 }> = ({ accountData }) => {
   return (
     <Card>
@@ -50,16 +49,14 @@ const accountDataAnalysis: FC<{
           <Col md="4" sm="12">
             <div className="u-primary-color">
               <strong>{`${
-                accountData.fiat_left > 0
-                  ? accountData.fiat_left.toFixed(8)
-                  : 0
+                accountData.fiat_left > 0 ? accountData.fiat_left.toFixed(8) : 0
               } USDC`}</strong>
             </div>
           </Col>
         </Row>
       </Card.Body>
     </Card>
-  )
-}
+  );
+};
 
-export default accountDataAnalysis
+export default accountDataAnalysis;

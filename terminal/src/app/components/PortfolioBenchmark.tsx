@@ -1,12 +1,12 @@
-import { type ChartOptions } from "chart.js"
-import "chart.js/auto" // Fixes rendering issues with chart.js
-import { Card, Col, Container, Row } from "react-bootstrap"
-import { Line } from "react-chartjs-2"
-import { listCssColors } from "../../utils/validations"
+import { type ChartOptions } from "chart.js";
+import "chart.js/auto"; // Fixes rendering issues with chart.js
+import { Card, Col, Container, Row } from "react-bootstrap";
+import { Line } from "react-chartjs-2";
+import { listCssColors } from "../../utils/validations";
 
 const PortfolioBenchmarkChart = ({ chartData }) => {
-  const lastUsdt = chartData.usdcSeries?.[chartData.usdcSeries.length - 1]
-  const lastBtc = chartData.btcSeries?.[chartData.btcSeries.length - 1]
+  const lastUsdt = chartData.usdcSeries?.[chartData.usdcSeries.length - 1];
+  const lastBtc = chartData.btcSeries?.[chartData.btcSeries.length - 1];
 
   const PBOptions: ChartOptions = {
     maintainAspectRatio: true,
@@ -45,7 +45,7 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
         position: "nearest",
       },
     },
-  }
+  };
 
   const data = {
     labels: chartData.datesSeries,
@@ -63,7 +63,7 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
         borderColor: listCssColors[1],
       },
     ],
-  }
+  };
 
   return (
     <Card className="card-chart">
@@ -114,7 +114,7 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
         )}
       </Card.Footer>
     </Card>
-  )
-}
+  );
+};
 
-export default PortfolioBenchmarkChart
+export default PortfolioBenchmarkChart;

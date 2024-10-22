@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState } from "react";
 import {
   Button,
   Card,
@@ -8,13 +8,13 @@ import {
   Row,
   Col,
   Container,
-} from "react-bootstrap"
-import { DurationTsComponent, formatTimestamp } from "./RenderTs"
+} from "react-bootstrap";
+import { DurationTsComponent, formatTimestamp } from "./RenderTs";
 
 export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
     bot.orders?.length > 0,
-  )
+  );
   return (
     <Card>
       <Card.Header className="u-space-between">
@@ -54,13 +54,13 @@ export default function BotInfo({ bot }) {
                         <td>{order.status}</td>
                         <td>{order.order_side}</td>
                       </tr>
-                    )
+                    );
                   } else {
                     return (
                       <tr key={i}>
                         <td></td>
                       </tr>
-                    )
+                    );
                   }
                 })}
               </tbody>
@@ -78,10 +78,10 @@ export default function BotInfo({ bot }) {
                   <ListGroup>
                     {Object.keys(bot.deal).map((k, i) => {
                       if (typeof bot.deal[k] !== "object") {
-                        let dealData = bot.deal[k]
+                        let dealData = bot.deal[k];
                         if (k === "buy_timestamp" || k === "sell_timestamp") {
                           dealData =
-                            bot.deal[k] === 0 || formatTimestamp(bot.deal[k])
+                            bot.deal[k] === 0 || formatTimestamp(bot.deal[k]);
                         }
                         return (
                           <ListGroupItem
@@ -90,7 +90,7 @@ export default function BotInfo({ bot }) {
                           >
                             <strong>{k}</strong> {dealData}
                           </ListGroupItem>
-                        )
+                        );
                       } else {
                         return (
                           <ListGroup key={i}>
@@ -100,7 +100,7 @@ export default function BotInfo({ bot }) {
                               </ListGroupItem>
                             ))}
                           </ListGroup>
-                        )
+                        );
                       }
                     })}
                     <ListGroupItem className="d-flex justify-content-between align-items-start">
@@ -115,5 +115,5 @@ export default function BotInfo({ bot }) {
         </Card.Body>
       )}
     </Card>
-  )
+  );
 }

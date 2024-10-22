@@ -1,20 +1,27 @@
-import { type FC } from "react"
-import { Form, InputGroup } from "react-bootstrap"
-import { type FieldErrors } from "react-hook-form"
-import { type Bot } from "../../features/bots/botInitialState"
+import { type FC } from "react";
+import { Form, InputGroup } from "react-bootstrap";
+import { type FieldErrors } from "react-hook-form";
+import { type Bot } from "../../features/bots/botInitialState";
 
 interface InputTooltipProps {
-  name: string
-  tooltip: string
-  children: React.ReactNode
-  label: string
-  errors?: FieldErrors<Bot>
-  required?: boolean
-  secondaryText?: string
+  name: string;
+  tooltip: string;
+  children: React.ReactNode;
+  label: string;
+  errors?: FieldErrors<Bot>;
+  required?: boolean;
+  secondaryText?: string;
 }
 
-export const InputTooltip: FC<InputTooltipProps> = (
-  { name, tooltip, label, children, errors, required = false, secondaryText = undefined }) => {
+export const InputTooltip: FC<InputTooltipProps> = ({
+  name,
+  tooltip,
+  label,
+  children,
+  errors,
+  required = false,
+  secondaryText = undefined,
+}) => {
   return (
     <Form.Group className="position-relative">
       <Form.Label htmlFor={name}>
@@ -34,7 +41,7 @@ export const InputTooltip: FC<InputTooltipProps> = (
         </Form.Control.Feedback>
       )}
     </Form.Group>
-  )
-}
+  );
+};
 
-export default InputTooltip
+export default InputTooltip;

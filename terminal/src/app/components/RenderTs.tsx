@@ -1,16 +1,16 @@
-import moment from "moment"
-import { renderDuration } from "../../utils/time"
-import { Col, Row } from "react-bootstrap"
-import { BotStatus, BotStrategy } from "../../utils/enums"
+import moment from "moment";
+import { renderDuration } from "../../utils/time";
+import { Col, Row } from "react-bootstrap";
+import { BotStatus, BotStrategy } from "../../utils/enums";
 
 /**
  * Format timestamp by converting it to datetime format
  * @param {string} timestamp in milliseconds
  * @returns
  */
-export const formatTimestamp = timestamp => {
-  return timestamp === 0 ? "0" : moment(timestamp).format("D MMM, HH:mm")
-}
+export const formatTimestamp = (timestamp) => {
+  return timestamp === 0 ? "0" : moment(timestamp).format("D MMM, HH:mm");
+};
 
 const TimestampComponent = ({ label, timestamp }) => {
   return (
@@ -22,8 +22,8 @@ const TimestampComponent = ({ label, timestamp }) => {
         <p className="small">{formatTimestamp(timestamp)}</p>
       </Col>
     </Row>
-  )
-}
+  );
+};
 
 /**
  * Render deal bot opening and closing timestamp
@@ -32,7 +32,7 @@ const TimestampComponent = ({ label, timestamp }) => {
  *
  * @param {Bot} bot
  */
-const RenderTimestamp = bot => {
+const RenderTimestamp = (bot) => {
   if (bot.strategy === BotStrategy.LONG) {
     if (bot.deal?.buy_timestamp > 0 && bot.deal?.sell_timestamp > 0) {
       return (
@@ -46,14 +46,14 @@ const RenderTimestamp = bot => {
             timestamp={bot.deal?.sell_timestamp}
           />
         </>
-      )
+      );
     } else if (bot.deal?.buy_timestamp > 0) {
       return (
         <TimestampComponent
           label="Open time"
           timestamp={bot.deal?.buy_timestamp}
         />
-      )
+      );
     }
   }
 
@@ -74,25 +74,25 @@ const RenderTimestamp = bot => {
             timestamp={bot.deal?.sell_timestamp}
           />
         </>
-      )
+      );
     } else if (bot.deal?.margin_short_sell_timestamp > 0) {
       return (
         <TimestampComponent
           label="Open time"
           timestamp={bot.deal?.margin_short_sell_timestamp}
         />
-      )
+      );
     }
   }
-}
+};
 
-const DurationTsComponent = bot => {
+const DurationTsComponent = (bot) => {
   // Long positions
   if (bot.deal) {
-    return <p className="small">{renderDuration(bot)}</p>
+    return <p className="small">{renderDuration(bot)}</p>;
   } else {
-    return <></>
+    return <></>;
   }
-}
+};
 
-export { RenderTimestamp, DurationTsComponent }
+export { RenderTimestamp, DurationTsComponent };

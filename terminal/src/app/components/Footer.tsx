@@ -1,5 +1,5 @@
-import type { FC } from "react"
-import { Container, Row } from "react-bootstrap"
+import type { FC } from "react";
+import { Container, Row } from "react-bootstrap";
 
 export const Footer: FC<{}> = () => {
   return (
@@ -14,7 +14,7 @@ export const Footer: FC<{}> = () => {
         </Row>
       </Container>
     </footer>
-  )
-}
+  );
+};
 
-export default Footer
+export default Footer;

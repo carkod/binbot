@@ -131,7 +131,6 @@
       @include transform-translate-x(0px);
     }
 
-
     .menu-on-right {
       .main-panel {
         @include transform-translate-x(-$navbar-width);

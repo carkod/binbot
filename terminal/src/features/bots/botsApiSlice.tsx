@@ -1,41 +1,41 @@
 import {
   createEntityAdapter,
   type EntityId,
-  type EntityState
-} from "@reduxjs/toolkit"
-import { notifification } from "../../utils/api"
-import { weekAgo } from "../../utils/time"
-import { userApiSlice } from "../userApiSlice"
-import type { Bot } from "./botInitialState"
-import { computeTotalProfit } from "./profits"
+  type EntityState,
+} from "@reduxjs/toolkit";
+import { notifification } from "../../utils/api";
+import { weekAgo } from "../../utils/time";
+import { userApiSlice } from "../userApiSlice";
+import type { Bot } from "./botInitialState";
+import { computeTotalProfit } from "./profits";
 
 export interface DefaultBotsResponse {
-  error: number
-  data?: string
-  message?: string
+  error: number;
+  data?: string;
+  message?: string;
 }
 interface GetBotsResponse {
-  bots: EntityState<Bot, EntityId>
-  totalProfit: number
+  bots: EntityState<Bot, EntityId>;
+  totalProfit: number;
 }
 
 interface GetBotsParams {
-  status?: string
-  startDate?: number
-  endDate?: number
+  status?: string;
+  startDate?: number;
+  endDate?: number;
 }
 
 interface SingleBotResponse {
-  bot: Bot
+  bot: Bot;
 }
 
 interface CreateBotResponse extends DefaultBotsResponse {
-  botId: string
+  botId: string;
 }
 
 interface EditBotParams {
-  body: Bot
-  id: string
+  body: Bot;
+  id: string;
 }
 
 export const buildGetBotsPath = (
@@ -47,16 +47,16 @@ export const buildGetBotsPath = (
     start_date: startDate.toString(),
     end_date: endDate.toString(),
     status: status,
-  })
-  return params.toString()
-}
+  });
+  return params.toString();
+};
 
 const botsAdapter = createEntityAdapter<Bot>({
   sortComparer: false,
-})
+});
 
 export const botsApiSlice = userApiSlice.injectEndpoints({
-  endpoints: build => ({
+  endpoints: (build) => ({
     getBots: build.query<GetBotsResponse, Partial<GetBotsParams>>({
       query: ({ status, startDate, endDate }) => ({
         url: `${import.meta.env.VITE_GET_BOTS}` || "/bots",
@@ -65,40 +65,40 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
 
-        const totalProfit = computeTotalProfit(data)
+        const totalProfit = computeTotalProfit(data);
         // normalize [] -> {}
-        const bots = botsAdapter.setAll(botsAdapter.getInitialState(), data)
+        const bots = botsAdapter.setAll(botsAdapter.getInitialState(), data);
 
-        return { bots: bots, totalProfit: totalProfit }
+        return { bots: bots, totalProfit: totalProfit };
       },
     }),
     getSingleBot: build.query<SingleBotResponse, string>({
-      query: id => ({
+      query: (id) => ({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
         method: "GET",
         providesTags: (result, error, id) => {
-          console.log("result", result)
-          return [{ type: 'Post', id }]
+          console.log("result", result);
+          return [{ type: "Post", id }];
         },
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
         return {
           bot: data,
-        }
-      }
+        };
+      },
     }),
     createBot: build.mutation<CreateBotResponse, Bot>({
-      query: body => ({
+      query: (body) => ({
         url: import.meta.env.VITE_GET_BOTS || "/bot",
         method: "POST",
         body: body,
@@ -106,15 +106,15 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
-        return data
-      }
+        return data;
+      },
     }),
     editBot: build.mutation<CreateBotResponse, EditBotParams>({
-      query: ({body, id}) => ({
+      query: ({ body, id }) => ({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
         method: "PUT",
         body: body,
@@ -122,15 +122,15 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
-        return data
-      }
+        return data;
+      },
     }),
     deleteBot: build.mutation<DefaultBotsResponse, string[]>({
-      query: id => ({
+      query: (id) => ({
         url: `${import.meta.env.VITE_GET_BOTS}` || "/bot",
         method: "DELETE",
         body: id,
@@ -138,11 +138,11 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
-        return data
+        return data;
       },
     }),
     activateBot: build.query<DefaultBotsResponse, string>({
@@ -152,12 +152,12 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
-        return data
-      }
+        return data;
+      },
     }),
     deactivateBot: build.mutation<DefaultBotsResponse, string>({
       query: (id: string) => ({
@@ -167,11 +167,11 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       }),
     }),
   }),
-})
+});
 
 export interface BotsState {
-  bots: Bot[]
-  totalProfit: number
+  bots: Bot[];
+  totalProfit: number;
 }
 
 // Hooks generated by Redux
@@ -183,4 +183,4 @@ export const {
   useDeleteBotMutation,
   useActivateBotQuery,
   useDeactivateBotMutation,
-} = botsApiSlice
+} = botsApiSlice;

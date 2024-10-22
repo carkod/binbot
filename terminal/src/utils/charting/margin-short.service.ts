@@ -1,16 +1,16 @@
-import { type Bot } from "../../features/bots/botInitialState"
-import { BotStatus } from "../enums"
-import { dealColors } from "../../utils/charting/index"
-import type { OrderLine } from "./index.d"
-import { getQuoteAsset } from "../api"
+import { type Bot } from "../../features/bots/botInitialState";
+import { BotStatus } from "../enums";
+import { dealColors } from "../../utils/charting/index";
+import type { OrderLine } from "./index.d";
+import { getQuoteAsset } from "../api";
 
 export default function marginTrading(
   bot: Bot,
   currentPrice: number,
 ): OrderLine[] {
-  let totalOrderLines: OrderLine[] = []
-  const parsedCurrentPrice = currentPrice
-  const quoteAsset = getQuoteAsset(bot)
+  let totalOrderLines: OrderLine[] = [];
+  const parsedCurrentPrice = currentPrice;
+  const quoteAsset = getQuoteAsset(bot);
 
   if (
     bot.deal.margin_short_buy_back_price &&
@@ -30,7 +30,7 @@ export default function marginTrading(
       quantity: `${bot.base_order_size} ${quoteAsset}`,
       price: parseFloat(bot.deal.margin_short_sell_price?.toString() || "0"),
       color: dealColors.base_order,
-    })
+    });
 
     if (bot.trailling) {
       totalOrderLines.push({
@@ -40,7 +40,7 @@ export default function marginTrading(
         quantity: `${bot.base_order_size} ${quoteAsset}`,
         price: bot.deal.margin_short_buy_back_price,
         color: dealColors.take_profit,
-      })
+      });
     } else {
       totalOrderLines.push({
         id: "take_profit",
@@ -49,7 +49,7 @@ export default function marginTrading(
         quantity: `${bot.base_order_size} ${quoteAsset}`,
         price: bot.deal.buy_back_price || 0, // buy_profit * take_profit%
         color: dealColors.take_profit,
-      })
+      });
     }
   } else {
     if (bot.trailling) {
@@ -68,7 +68,7 @@ export default function marginTrading(
               bot.deal.take_profit_price ||
               0, // take_profit / trailling_profit
             color: dealColors.trailling_profit,
-          })
+          });
           totalOrderLines.push({
             id: "trailling_stop_loss",
             text: `Trailling stop loss -${bot.trailling_deviation}%`,
@@ -76,13 +76,13 @@ export default function marginTrading(
             quantity: `${bot.base_order_size} ${quoteAsset}`,
             price: bot.deal.trailling_stop_loss_price, // take_profit / trailling_profit
             color: dealColors.take_profit,
-          })
+          });
         } else {
           const price =
             bot.deal.margin_short_sell_price &&
             bot.deal.margin_short_sell_price > 0
               ? bot.deal.margin_short_sell_price
-              : parsedCurrentPrice
+              : parsedCurrentPrice;
           totalOrderLines.push({
             id: "take_profit",
             text: `Take profit ${bot.take_profit}% (Margin)`,
@@ -91,13 +91,13 @@ export default function marginTrading(
             price:
               price - (price * parseFloat(bot.take_profit.toString())) / 100, // buy_profit * take_profit%
             color: dealColors.take_profit,
-          })
+          });
         }
       } else {
         const trailling_profit =
-          parsedCurrentPrice - parsedCurrentPrice * (bot.take_profit / 100)
+          parsedCurrentPrice - parsedCurrentPrice * (bot.take_profit / 100);
         const trailling_stop_loss_price =
-          trailling_profit - trailling_profit * (bot.trailling_deviation / 100)
+          trailling_profit - trailling_profit * (bot.trailling_deviation / 100);
 
         totalOrderLines.push({
           id: "trailling_profit",
@@ -107,7 +107,7 @@ export default function marginTrading(
           price: trailling_profit, // take_profit / trailling_profit
           color: dealColors.trailling_profit,
           lineStyle: 2,
-        })
+        });
         totalOrderLines.push({
           id: "trailling_stop_loss",
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
@@ -115,13 +115,13 @@ export default function marginTrading(
           quantity: `${bot.buy_total_qty || bot.base_order_size} ${quoteAsset}`,
           price: trailling_stop_loss_price,
           color: dealColors.take_profit,
-        })
+        });
       }
     } else {
       const price =
         bot.deal.margin_short_sell_price && bot.deal.margin_short_sell_price > 0
           ? bot.deal.margin_short_sell_price
-          : parsedCurrentPrice
+          : parsedCurrentPrice;
       totalOrderLines.push({
         id: "take_profit",
         text: `Take profit ${bot.take_profit}% (Margin)`,
@@ -129,16 +129,16 @@ export default function marginTrading(
         quantity: `${bot.base_order_size} ${quoteAsset}`,
         price: price - (price * parseFloat(bot.take_profit.toString())) / 100, // buy_profit * take_profit%
         color: dealColors.take_profit,
-      })
+      });
     }
   }
 
   if (bot.stop_loss && bot.stop_loss > 0) {
-    let stopLossPrice = 0
+    let stopLossPrice = 0;
     if (bot.deal.stop_loss_price) {
-      stopLossPrice = bot.deal.stop_loss_price
+      stopLossPrice = bot.deal.stop_loss_price;
     } else {
-      stopLossPrice = parsedCurrentPrice * (1 + bot.stop_loss / 100)
+      stopLossPrice = parsedCurrentPrice * (1 + bot.stop_loss / 100);
     }
     totalOrderLines.push({
       id: "stop_loss",
@@ -147,13 +147,13 @@ export default function marginTrading(
       quantity: `${bot.base_order_size} ${quoteAsset}`,
       price: stopLossPrice, // buy_profit * take_profit%
       color: "red",
-    })
+    });
   }
 
   const price =
     bot.deal.margin_short_sell_price && bot.deal.margin_short_sell_price > 0
       ? bot.deal.margin_short_sell_price
-      : parsedCurrentPrice
+      : parsedCurrentPrice;
   totalOrderLines.push({
     id: "base_order",
     text: "Base",
@@ -168,7 +168,7 @@ export default function marginTrading(
     quantity: `${bot.base_order_size} ${quoteAsset}`,
     price: parseFloat(price.toString()),
     color: dealColors.base_order,
-  })
+  });
 
-  return totalOrderLines
+  return totalOrderLines;
 }

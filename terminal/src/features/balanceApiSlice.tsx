@@ -1,42 +1,41 @@
-import { notifification } from "../utils/api"
-import { userApiSlice } from "./userApiSlice"
+import { notifification } from "../utils/api";
+import { userApiSlice } from "./userApiSlice";
 
 interface AssetCollection {
-  asset: string
-  free: number
-  locked: number
+  asset: string;
+  free: number;
+  locked: number;
 }
 
 export interface BalanceEstimateData {
-  asset: string
-  total_fiat: number
-  balances: AssetCollection[]
-  fiat_left: number
-  estimated_total_btc: number
-  estimated_total_fiat: number
+  asset: string;
+  total_fiat: number;
+  balances: AssetCollection[];
+  fiat_left: number;
+  estimated_total_btc: number;
+  estimated_total_fiat: number;
 }
 
 // Benchmark of portfolio (in USDC at time of writing) against BTC
 export interface BenchmarkData {
-  usdc: number[]
-  btc: number[]
-  dates: string[]
+  usdc: number[];
+  btc: number[];
+  dates: string[];
 }
 
 export interface BenchmarkSeriesData {
-  usdcSeries: number[]
-  btcSeries: number[]
-  datesSeries: string[]
+  usdcSeries: number[];
+  btcSeries: number[];
+  datesSeries: string[];
 }
 
-
 export interface BenchmarkCollection {
-  benchmarkData: BenchmarkData
-  percentageSeries: BenchmarkSeriesData
+  benchmarkData: BenchmarkData;
+  percentageSeries: BenchmarkSeriesData;
 }
 
 export const balancesApiSlice = userApiSlice.injectEndpoints({
-  endpoints: build => ({
+  endpoints: (build) => ({
     getRawBalance: build.query<AssetCollection[], void>({
       query: () => ({
         url: `${import.meta.env.VITE_ACCOUNT_BALANCE_RAW}` || "/balance",
@@ -44,12 +43,12 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
 
-        return data
+        return data;
       },
     }),
     getEstimate: build.query<BalanceEstimateData, void>({
@@ -59,12 +58,12 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
 
-        return data
+        return data;
       },
     }),
     getBenchmark: build.query<BenchmarkCollection, void>({
@@ -74,28 +73,28 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
-          notifification("error", message)
+          notifification("error", message);
         } else {
-          notifification("success", message)
+          notifification("success", message);
         }
         // Convert to % so graph is normalized
-        data.dates.shift()
+        data.dates.shift();
         let percentageSeries = {
           datesSeries: data.dates,
           btcSeries: [],
           usdcSeries: [],
-        }
+        };
         data.btc.forEach((element, index) => {
           if (index > 0) {
             const previousQty = data.btc[index - 1];
-            const diff = (previousQty - element) / previousQty
+            const diff = (previousQty - element) / previousQty;
             percentageSeries.btcSeries.push(diff * 100);
           }
         });
         data.usdc.forEach((element, index) => {
           if (index > 0) {
             const previousQty = data.usdc[index - 1];
-            const diff = (previousQty - element) / previousQty
+            const diff = (previousQty - element) / previousQty;
             percentageSeries.usdcSeries.push(diff * 100);
           }
         });
@@ -103,14 +102,14 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
         return {
           benchmarkData: data,
           percentageSeries: percentageSeries,
-        }
+        };
       },
     }),
   }),
-})
+});
 
 export const {
   useGetRawBalanceQuery,
   useGetEstimateQuery,
   useGetBenchmarkQuery,
-} = balancesApiSlice
+} = balancesApiSlice;

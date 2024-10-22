@@ -1,58 +1,57 @@
-import { useState, type FC } from "react"
-import { Button, Col, Nav, Row, Tab } from "react-bootstrap"
-import { selectBot, setBot } from "../../features/bots/botSlice"
-import { BotStatus, TabsKeys } from "../../utils/enums"
-import { useAppDispatch, useAppSelector } from "../hooks"
-import BaseOrderTab from "./BaseOrderTab"
-import StopLossTab from "./StopLossTab"
-import TakeProfit from "./TakeProfitTab"
+import { useState, type FC } from "react";
+import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
+import { selectBot, setBot } from "../../features/bots/botSlice";
+import { BotStatus, TabsKeys } from "../../utils/enums";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import BaseOrderTab from "./BaseOrderTab";
+import StopLossTab from "./StopLossTab";
+import TakeProfit from "./TakeProfitTab";
 import {
   botsApiSlice,
   useCreateBotMutation,
   useEditBotMutation,
-} from "../../features/bots/botsApiSlice"
-import { useNavigate, useParams } from "react-router"
+} from "../../features/bots/botsApiSlice";
+import { useNavigate, useParams } from "react-router";
 
 const BotDetailTabs: FC = () => {
-  const { bot } = useAppSelector(selectBot)
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const dispatch = useAppDispatch()
+  const { bot } = useAppSelector(selectBot);
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
-  const [updateBot] = useEditBotMutation()
+  const [updateBot] = useEditBotMutation();
 
-  const [createBot] = useCreateBotMutation()
+  const [createBot] = useCreateBotMutation();
 
-  const [enableActivation, setEnableActivation] = useState(id ? true : false)
+  const [enableActivation, setEnableActivation] = useState(id ? true : false);
 
   // Activate and get bot again
   // Deals and orders information need to come from the server
   const handleActivation = (id: string) => {
-    const response = dispatch(botsApiSlice.endpoints.activateBot.initiate(id))
-    console.log("Activate bot", response)
-    dispatch(botsApiSlice.endpoints.getSingleBot.initiate(id))
-
-  }
+    const response = dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
+    console.log("Activate bot", response);
+    dispatch(botsApiSlice.endpoints.getSingleBot.initiate(id));
+  };
   const handlePanicSell = (id: string) => {
-    console.log("Panic sell", id)
-  }
+    console.log("Panic sell", id);
+  };
 
   const onSubmit = async () => {
-    let response
+    let response;
     if (id && bot.status !== BotStatus.COMPLETED) {
-      response = await updateBot({ body: bot, id }).unwrap()
+      response = await updateBot({ body: bot, id }).unwrap();
     } else {
-      response = await createBot(bot).unwrap()
+      response = await createBot(bot).unwrap();
     }
 
-    let botId = id
+    let botId = id;
     if (response?.botId) {
-      botId = response.botId
+      botId = response.botId;
     }
 
-    setEnableActivation(true)
-    navigate(`/bots/edit/${botId}`)
-  }
+    setEnableActivation(true);
+    navigate(`/bots/edit/${botId}`);
+  };
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>
@@ -121,7 +120,7 @@ const BotDetailTabs: FC = () => {
         </Col>
       </Row>
     </Tab.Container>
-  )
-}
+  );
+};
 
-export default BotDetailTabs
+export default BotDetailTabs;

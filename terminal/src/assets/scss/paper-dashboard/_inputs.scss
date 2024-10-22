@@ -285,7 +285,6 @@
   }
 }
 
-
 .form-control[disabled],
 .form-control[readonly],
 fieldset[disabled] .form-control {
@@ -386,5 +385,5 @@ textarea.form-control {
 }
 
 select .form-control {
-  padding: $padding-small-vertical  $padding-small-vertical;
+  padding: $padding-small-vertical $padding-small-vertical;
 }

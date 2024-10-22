@@ -1,19 +1,16 @@
-import { createApi } from "@reduxjs/toolkit/query/react"
-import {
-  binbotBaseQuery,
-  notifification,
-} from "../utils/api"
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { binbotBaseQuery, notifification } from "../utils/api";
 
 export interface LoginCredentials {
-  email: string
-  password: string
+  email: string;
+  password: string;
 }
 
 export interface LoginResponse {
-  access_token: string
-  email: string
-  token_type: string
-  error: number
+  access_token: string;
+  email: string;
+  token_type: string;
+  error: number;
 }
 
 /**
@@ -27,19 +24,19 @@ export interface LoginResponse {
 export const userApiSlice = createApi({
   baseQuery: binbotBaseQuery,
   reducerPath: "api",
-  endpoints: build => ({
+  endpoints: (build) => ({
     postLogin: build.mutation<LoginResponse, Partial<LoginCredentials>>({
-      query: body => ({
-          url: import.meta.env.VITE_LOGIN || "/login",
-          method: "POST",
-          body: body,
+      query: (body) => ({
+        url: import.meta.env.VITE_LOGIN || "/login",
+        method: "POST",
+        body: body,
       }),
       transformResponse: ({ data }) => {
         if (data.error === 1) {
-          notifification("error", data.message)
+          notifification("error", data.message);
         }
-        return data
-      }
+        return data;
+      },
     }),
     getUsers: build.query<LoginResponse, void>({
       query: () => ({
@@ -48,17 +45,17 @@ export const userApiSlice = createApi({
       }),
     }),
     registerUser: build.mutation<LoginCredentials, Partial<LoginResponse>>({
-      query: body => ({
+      query: (body) => ({
         url: import.meta.env.VITE_REGISTER_USER || "/user/register",
         method: "POST",
         body: body,
       }),
     }),
   }),
-})
+});
 
 export const {
   usePostLoginMutation,
   useGetUsersQuery,
   useRegisterUserMutation,
-} = userApiSlice
+} = userApiSlice;

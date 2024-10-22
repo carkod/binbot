@@ -1,14 +1,14 @@
-import type { FC } from "react"
-import { useEffect } from "react"
-import { Form } from "react-bootstrap"
-import { useForm } from "react-hook-form"
-import { type LoginFormState } from "../components/LoginForm"
-import { useLocation, useParams } from "react-router"
+import type { FC } from "react";
+import { useEffect } from "react";
+import { Form } from "react-bootstrap";
+import { useForm } from "react-hook-form";
+import { type LoginFormState } from "../components/LoginForm";
+import { useLocation, useParams } from "react-router";
 
 export const BotForm: FC<{}> = () => {
-  const location = useLocation()
-  let state = location.state
-  console.log(">>", state)
+  const location = useLocation();
+  let state = location.state;
+  console.log(">>", state);
 
   const {
     register,
@@ -21,15 +21,15 @@ export const BotForm: FC<{}> = () => {
       email: "",
       password: "",
     },
-  })
+  });
 
   useEffect(() => {
     const subscription = watch((value, { name, type }) => {
-      console.log(">>", value, name, type)
-    })
+      console.log(">>", value, name, type);
+    });
 
-    return () => subscription.unsubscribe()
-  }, [watch])
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   return (
     <Form>
@@ -68,7 +68,7 @@ export const BotForm: FC<{}> = () => {
         )}
       </Form.Group>
     </Form>
-  )
-}
+  );
+};
 
-export default BotForm
+export default BotForm;

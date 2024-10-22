@@ -1,21 +1,21 @@
-import { useEffect, type FC } from "react"
-import { Button, Container, Form } from "react-bootstrap"
-import { useForm, type SubmitHandler } from "react-hook-form"
-import { useLocation, useNavigate } from "react-router"
-import { usePostLoginMutation } from "../../features/userApiSlice"
-import { setToken } from "../../utils/login"
+import { useEffect, type FC } from "react";
+import { Button, Container, Form } from "react-bootstrap";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { useLocation, useNavigate } from "react-router";
+import { usePostLoginMutation } from "../../features/userApiSlice";
+import { setToken } from "../../utils/login";
 
 export type LoginFormState = {
-  email: string
-  password: string
-}
+  email: string;
+  password: string;
+};
 
 export const LoginForm: FC<{}> = () => {
-  const [login, { data }] = usePostLoginMutation()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const params = new URLSearchParams(location.search)
-  const from = params.get("from") || "/"
+  const [login, { data }] = usePostLoginMutation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const from = params.get("from") || "/";
 
   const {
     register,
@@ -28,18 +28,18 @@ export const LoginForm: FC<{}> = () => {
       email: "",
       password: "",
     },
-  })
+  });
 
-  const onSubmit: SubmitHandler<LoginFormState> = values => {
-    login(values)
-  }
+  const onSubmit: SubmitHandler<LoginFormState> = (values) => {
+    login(values);
+  };
 
   useEffect(() => {
     if (data) {
-      setToken(data.access_token)
-      navigate("/dashboard" + from, { replace: true })
+      setToken(data.access_token);
+      navigate("/dashboard" + from, { replace: true });
     }
-  }, [data, navigate, from])
+  }, [data, navigate, from]);
 
   return (
     <Container className="my-4">
@@ -86,5 +86,5 @@ export const LoginForm: FC<{}> = () => {
         </Button>
       </Form>
     </Container>
-  )
-}
+  );
+};

@@ -1,19 +1,19 @@
-import Card from "react-bootstrap/Card"
-import Col from "react-bootstrap/Col"
-import Row from "react-bootstrap/Row"
-import { computeWinnerLoserProportions } from "../../utils/dashboard-computations"
-import { roundDecimals } from "../../utils/math"
-import GainersLosersCard from "./GainersLosersCard"
+import Card from "react-bootstrap/Card";
+import Col from "react-bootstrap/Col";
+import Row from "react-bootstrap/Row";
+import { computeWinnerLoserProportions } from "../../utils/dashboard-computations";
+import { roundDecimals } from "../../utils/math";
+import GainersLosersCard from "./GainersLosersCard";
 
 export default function GainersLosers({ data }) {
   const { gainerCount, gainerAccumulator, loserAccumulator, loserCount } =
-    computeWinnerLoserProportions(data)
+    computeWinnerLoserProportions(data);
   // Top 10
-  const gainersData = data.slice(0, 10)
-  const perGainers = roundDecimals(gainerCount / data.length) * 100 + "%"
+  const gainersData = data.slice(0, 10);
+  const perGainers = roundDecimals(gainerCount / data.length) * 100 + "%";
   // Bottom 10
-  const losersData = data.slice(-10).reverse()
-  const perLosers = roundDecimals(loserCount / data.length) * 100 + "%"
+  const losersData = data.slice(-10).reverse();
+  const perLosers = roundDecimals(loserCount / data.length) * 100 + "%";
   return (
     <div>
       <Card border="success">
@@ -52,5 +52,5 @@ export default function GainersLosers({ data }) {
         </Row>
       </Card>
     </div>
-  )
+  );
 }

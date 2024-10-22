@@ -1,56 +1,56 @@
-import { useEffect, useState, type FC } from "react"
-import { useAppDispatch } from "../hooks"
-import { setHeaderContent } from "../../features/layoutSlice"
-import { Card, Col, Container, Row } from "react-bootstrap"
-import { roundDecimals } from "../../utils/math"
+import { useEffect, useState, type FC } from "react";
+import { useAppDispatch } from "../hooks";
+import { setHeaderContent } from "../../features/layoutSlice";
+import { Card, Col, Container, Row } from "react-bootstrap";
+import { roundDecimals } from "../../utils/math";
 import {
   useGetBenchmarkQuery,
   useGetEstimateQuery,
   useGetRawBalanceQuery,
-} from "../../features/balanceApiSlice"
-import { BotStatus } from "../../utils/enums"
-import { useGetBotsQuery } from "../../features/bots/botsApiSlice"
-import { calculateTotalRevenue } from "../../utils/dashboard-computations"
-import GainersLosers from "../components/GainersLosers"
-import { useGainerLosersSeriesQuery } from "../../features/marketApiSlice"
-import { useGainerLosersQuery } from "../../features/binanceApiSlice"
-import PortfolioBenchmarkChart from "../components/PortfolioBenchmark"
-import ReversalBarChart from "../components/ReversalBarChart"
-import { listCssColors } from "../../utils/validations"
+} from "../../features/balanceApiSlice";
+import { BotStatus } from "../../utils/enums";
+import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
+import { calculateTotalRevenue } from "../../utils/dashboard-computations";
+import GainersLosers from "../components/GainersLosers";
+import { useGainerLosersSeriesQuery } from "../../features/marketApiSlice";
+import { useGainerLosersQuery } from "../../features/binanceApiSlice";
+import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
+import ReversalBarChart from "../components/ReversalBarChart";
+import { listCssColors } from "../../utils/validations";
 
 export const DashboardPage: FC<{}> = () => {
-  const dispatch = useAppDispatch()
-  const { data: accountData } = useGetEstimateQuery()
+  const dispatch = useAppDispatch();
+  const { data: accountData } = useGetEstimateQuery();
   const { data: activeBotEntities } = useGetBotsQuery({
     status: BotStatus.ACTIVE,
-  })
+  });
   const { data: errorBotEntities } = useGetBotsQuery({
     status: BotStatus.ACTIVE,
-  })
-  const { data: benchmark } = useGetBenchmarkQuery()
-  const { data: gainersLosersData } = useGainerLosersQuery()
-  const { data: gainersLosersSeries } = useGainerLosersSeriesQuery()
+  });
+  const { data: benchmark } = useGetBenchmarkQuery();
+  const { data: gainersLosersData } = useGainerLosersQuery();
+  const { data: gainersLosersSeries } = useGainerLosersSeriesQuery();
 
-  const [activeBotsCount, setActiveBotsCount] = useState(0)
-  const [errorBotsCount, setErrorBotsCount] = useState(0)
-  const [revenue, setRevenue] = useState<number>(0)
-  const [percentageRevenue, setPercentageRevenue] = useState<number>(0)
+  const [activeBotsCount, setActiveBotsCount] = useState(0);
+  const [errorBotsCount, setErrorBotsCount] = useState(0);
+  const [revenue, setRevenue] = useState<number>(0);
+  const [percentageRevenue, setPercentageRevenue] = useState<number>(0);
 
   useEffect(() => {
     if (activeBotEntities) {
-      setActiveBotsCount(activeBotEntities.bots.ids.length)
+      setActiveBotsCount(activeBotEntities.bots.ids.length);
     }
     if (errorBotEntities) {
-      setErrorBotsCount(errorBotEntities.bots.ids.length)
+      setErrorBotsCount(errorBotEntities.bots.ids.length);
     }
 
     if (benchmark) {
       if (benchmark.benchmarkData) {
         const { revenue, percentage } = calculateTotalRevenue(
           benchmark.benchmarkData,
-        )
-        setRevenue(revenue)
-        setPercentageRevenue(percentage)
+        );
+        setRevenue(revenue);
+        setPercentageRevenue(percentage);
       }
     }
   }, [
@@ -59,7 +59,7 @@ export const DashboardPage: FC<{}> = () => {
     errorBotEntities,
     benchmark,
     gainersLosersData,
-  ])
+  ]);
 
   return (
     <div className="content">
@@ -216,10 +216,15 @@ export const DashboardPage: FC<{}> = () => {
         </Col>
         <Col lg="6" md="12">
           {gainersLosersSeries && (
-            <ReversalBarChart data={gainersLosersSeries} legend={[{
-              name: "Portfolio",
-              color: listCssColors[0],
-            }]} />
+            <ReversalBarChart
+              data={gainersLosersSeries}
+              legend={[
+                {
+                  name: "Portfolio",
+                  color: listCssColors[0],
+                },
+              ]}
+            />
           )}
         </Col>
       </Row>
@@ -247,7 +252,7 @@ export const DashboardPage: FC<{}> = () => {
         </Col>
       </Row>
     </div>
-  )
-}
+  );
+};
 
-export default DashboardPage
+export default DashboardPage;

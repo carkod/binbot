@@ -1,134 +1,139 @@
-import { ReactElement, useEffect, useMemo, useState, type FC } from "react"
-import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap"
+import { ReactElement, useEffect, useMemo, useState, type FC } from "react";
+import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
 import {
   botsApiSlice,
   useDeactivateBotMutation,
   useDeleteBotMutation,
   useGetBotsQuery,
-} from "../../features/bots/botsApiSlice"
-import { setSpinner } from "../../features/layoutSlice"
-import { weekAgo } from "../../utils/time"
-import BotsActions, { BulkAction } from "../components/BotsActions"
-import BotsDateFilter from "../components/BotsCalendar"
-import { useAppDispatch } from "../hooks"
-import BotCard from "../components/BotCard"
-import ConfirmModal from "../components/ConfirmModal"
-import { useImmer } from "use-immer"
+} from "../../features/bots/botsApiSlice";
+import { setSpinner } from "../../features/layoutSlice";
+import { weekAgo } from "../../utils/time";
+import BotsActions, { BulkAction } from "../components/BotsActions";
+import BotsDateFilter from "../components/BotsCalendar";
+import { useAppDispatch } from "../hooks";
+import BotCard from "../components/BotCard";
+import ConfirmModal from "../components/ConfirmModal";
+import { useImmer } from "use-immer";
 
 export const BotsPage: FC<{}> = () => {
-  const dispatch = useAppDispatch()
-  const currentTs = new Date().getTime()
-  const oneWeekAgo = weekAgo()
-  const [removeBots, { isSuccess: botDeleted }] = useDeleteBotMutation()
+  const dispatch = useAppDispatch();
+  const currentTs = new Date().getTime();
+  const oneWeekAgo = weekAgo();
+  const [removeBots, { isSuccess: botDeleted }] = useDeleteBotMutation();
   const [deactivateBot, { isSuccess: botDeactivated }] =
-    useDeactivateBotMutation()
+    useDeactivateBotMutation();
 
   // Component states
-  const [selectedCards, selectCards] = useImmer([])
-  const [botToDelete, setBotToDelete] = useState<string | null>(null)
-  const [dateFilterError, setDateFilterError] = useState(null)
-  const [bulkActions, setBulkActions] = useState<BulkAction>(BulkAction.NONE)
-  const [startDate, setStartDate] = useState(oneWeekAgo)
-  const [endDate, setEndDate] = useState(currentTs)
-  const [filterStatus, setFilterStatus] = useState("")
+  const [selectedCards, selectCards] = useImmer([]);
+  const [botToDelete, setBotToDelete] = useState<string | null>(null);
+  const [dateFilterError, setDateFilterError] = useState(null);
+  const [bulkActions, setBulkActions] = useState<BulkAction>(BulkAction.NONE);
+  const [startDate, setStartDate] = useState(oneWeekAgo);
+  const [endDate, setEndDate] = useState(currentTs);
+  const [filterStatus, setFilterStatus] = useState("");
 
-  const { data: props, isFetching } = useGetBotsQuery(
-    { status: filterStatus, startDate, endDate },
-  )
+  const { data: props, isFetching } = useGetBotsQuery({
+    status: filterStatus,
+    startDate,
+    endDate,
+  });
 
-  const handleSelection = id => {
-    let newCards = []
+  const handleSelection = (id) => {
+    let newCards = [];
     if (selectedCards.includes(id)) {
-      newCards = selectedCards.filter(x => x !== id)
+      newCards = selectedCards.filter((x) => x !== id);
     } else {
-      newCards = selectedCards.concat(id)
+      newCards = selectedCards.concat(id);
     }
-    selectCards(newCards)
-  }
+    selectCards(newCards);
+  };
   const handleDelete = (botId: string) => {
-    setBotToDelete(botId)
-  }
-  const confirmDelete = index => {
+    setBotToDelete(botId);
+  };
+  const confirmDelete = (index) => {
     if (index === 1) {
-      removeBots([botToDelete])
+      removeBots([botToDelete]);
     } else if (index === 2) {
-      deactivateBot(botToDelete)
+      deactivateBot(botToDelete);
     }
-    setBotToDelete(null)
-    return false
-  }
+    setBotToDelete(null);
+    return false;
+  };
   const onSubmitBulkAction = () => {
     switch (bulkActions) {
       case BulkAction.DELETE:
-        removeBots(selectedCards)
+        removeBots(selectedCards);
         dispatch(
           botsApiSlice.endpoints.getBots.initiate({
             status: filterStatus,
             startDate: startDate,
             endDate: endDate,
           }),
-        )
-        selectCards([])
-        break
+        );
+        selectCards([]);
+        break;
       case BulkAction.SELECT_ALL:
-        selectCards(Object.keys(props.bots.entities))
-        break
+        selectCards(Object.keys(props.bots.entities));
+        break;
       case BulkAction.COMPLETED:
-        setFilterStatus(BulkAction.COMPLETED)
-        break
+        setFilterStatus(BulkAction.COMPLETED);
+        break;
       case BulkAction.ACTIVE:
-        setFilterStatus(BulkAction.ACTIVE)
-        break
+        setFilterStatus(BulkAction.ACTIVE);
+        break;
       case BulkAction.UNSELECT_ALL:
-        selectCards([])
-        break
+        selectCards([]);
+        break;
       default:
-        break
+        break;
     }
-  }
-  const handleStartDate = ts => {
-    setStartDate(ts)
+  };
+  const handleStartDate = (ts) => {
+    setStartDate(ts);
     if (ts > endDate) {
-      setDateFilterError("Start date cannot be greater than end date")
+      setDateFilterError("Start date cannot be greater than end date");
     } else {
-      setDateFilterError(null)
+      setDateFilterError(null);
       dispatch(
         botsApiSlice.endpoints.getBots.initiate({
           status: filterStatus,
           startDate: ts,
           endDate: endDate,
         }),
-      )
+      );
     }
-  }
-  const handleEndDate = ts => {
-    setEndDate(ts)
+  };
+  const handleEndDate = (ts) => {
+    setEndDate(ts);
     if (ts < startDate) {
-      setDateFilterError("End date cannot be less than start date")
+      setDateFilterError("End date cannot be less than start date");
     } else {
-      setDateFilterError(null)
+      setDateFilterError(null);
       dispatch(
         botsApiSlice.endpoints.getBots.initiate({
           status: filterStatus,
           startDate: startDate,
           endDate: ts,
         }),
-      )
+      );
     }
-  }
+  };
 
   useEffect(() => {
     if (isFetching) {
-      dispatch(setSpinner(true))
+      dispatch(setSpinner(true));
     }
     if (props?.bots) {
-      dispatch(setSpinner(false))
+      dispatch(setSpinner(false));
     }
-  }, [props, dispatch, isFetching])
+  }, [props, dispatch, isFetching]);
 
   return (
     <Container fluid>
-      <Stack direction="horizontal" className="mb-3 d-flex flex-row justify-content-between">
+      <Stack
+        direction="horizontal"
+        className="mb-3 d-flex flex-row justify-content-between"
+      >
         <div id="bot-profits">
           <h4>
             {props?.bots?.ids.length > 0 && (
@@ -145,7 +150,9 @@ export const BotsPage: FC<{}> = () => {
             <div className="p-3">
               <BotsActions
                 defaultValue={bulkActions}
-                handleChange={e => setBulkActions(e.target.value as BulkAction)}
+                handleChange={(e) =>
+                  setBulkActions(e.target.value as BulkAction)
+                }
               />
             </div>
             <div className="p-3">
@@ -206,7 +213,7 @@ export const BotsPage: FC<{}> = () => {
         To close orders, please deactivate. Deleting will only remove the bot.
       </ConfirmModal>
     </Container>
-  )
-}
+  );
+};
 
-export default BotsPage
+export default BotsPage;

@@ -1,10 +1,10 @@
-import { type FC, useState } from "react"
-import { Button, Card } from "react-bootstrap"
+import { type FC, useState } from "react";
+import { Button, Card } from "react-bootstrap";
 
 const LogInfo: FC<{
-  events: string[]
+  events: string[];
 }> = ({ events }) => {
-  const [logInfo, toggleLogInfo] = useState(true)
+  const [logInfo, toggleLogInfo] = useState(true);
   return (
     <Card>
       <Card.Header className="u-space-between">
@@ -27,7 +27,7 @@ const LogInfo: FC<{
         </Card.Body>
       )}
     </Card>
-  )
-}
+  );
+};
 
-export default LogInfo
+export default LogInfo;
