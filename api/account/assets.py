@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from fastapi.responses import JSONResponse
 from account.controller import AssetsController
+from bots.schemas import BotSchema
 from deals.controllers import CreateDealController
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
@@ -355,7 +356,8 @@ class Assets(AssetsController):
         """
 
         try:
-            active_bot = self._db.bots.find_one({"status": Status.active, "pair": pair})
+            bot = self._db.bots.find_one({"status": Status.active, "pair": pair})
+            active_bot = BotSchema.model_validate(bot)
             deal = CreateDealController(
                 active_bot,
                 db_collection="bots"
