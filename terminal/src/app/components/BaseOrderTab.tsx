@@ -161,11 +161,11 @@ const BaseOrderTab: FC = () => {
                     },
                   })}
                 />
-                {/* {errors.base_order_size && (
+                {errors.base_order_size && (
                   <Form.Control.Feedback type="invalid">
-                    {errors.base_order_size.message}
+                    {errors.base_order_size.message as string}
                   </Form.Control.Feedback>
-                )} */}
+                )}
               </InputTooltip>
             </InputGroup>
             {bot.status !== BotStatus.ACTIVE && (
