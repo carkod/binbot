@@ -1,10 +1,11 @@
-import type { FC } from "react";
-import { Col, Container, Navbar, Row } from "react-bootstrap";
+import { useEffect, useState, type FC } from "react";
+import { Button, Container, Navbar, NavbarToggle } from "react-bootstrap";
 import { useLocation, useMatch } from "react-router";
 import { Link } from "react-router-dom";
 import { routes } from "../../App";
+import { useBreakpoint } from "../hooks";
 
-export const Header: FC<{}> = () => {
+export const Header: FC<{ onExpand: () => void }> = ({ onExpand }) => {
   const location = useLocation();
   const matchPath = useMatch(location.pathname);
   const loadData = matchPath
@@ -14,14 +15,21 @@ export const Header: FC<{}> = () => {
   return (
     <Navbar className="bg-body-tertiary navbar-transparent navbar navbar-expand-lg">
       <Container fluid>
-        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        <Button
+          aria-expanded="true"
+          type="button"
+          aria-label="Toggle navigation"
+          onClick={onExpand}
+        >
+          <span className="navbar-toggler-icon"></span>
+        </Button>
         <Navbar.Brand>
           {location?.state?.bot ? (
             "Bot Details"
           ) : (
-            <>
+            <div className="p-2 flex-fill">
               <i className={`${loadData?.icon}`}></i> {loadData?.name}
-            </>
+            </div>
           )}
         </Navbar.Brand>
         <Navbar.Collapse className="justify-content-end">

@@ -10,6 +10,7 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
 
   const PBOptions: ChartOptions = {
     maintainAspectRatio: true,
+    responsive: true,
     scales: {
       y: {
         type: "linear",
@@ -94,18 +95,6 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
         <Line data={data} options={PBOptions} />
       </Card.Body>
       <Card.Footer>
-        {/* <div className="legend">
-          {legend &&
-            legend.map((x, i) => {
-              return (
-                <span key={i} className="u-legend-text">
-                  <i className="fa fa-circle" style={{ color: x.color }} />
-                  {x.name}
-                </span>
-              )
-            })}
-        </div> */}
-        <hr />
         {chartData.dates && (
           <div className="card-stats">
             <i className="fa fa-check" /> Last updated{" "}

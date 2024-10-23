@@ -5,15 +5,6 @@
     &.navbar-absolute {
       padding-top: 0;
     }
-
-    .navbar-brand {
-      font-size: 16px;
-      margin-right: 0;
-    }
-  }
-
-  .profile-photo .profile-photo-small {
-    margin-left: -2px;
   }
 
   .button-dropdown {
@@ -143,11 +134,6 @@
 
       .navbar-translate {
         @include transform-translate-x(-300px);
-      }
-
-      #bodyClick {
-        right: $navbar-width;
-        left: auto;
       }
     }
   }
@@ -328,15 +314,6 @@
 
   .navbar .navbar-toggle {
     display: none;
-  }
-
-  .navbar-nav {
-    .nav-link {
-      &.profile-photo {
-        padding: 0;
-        margin: 7px $padding-base-horizontal;
-      }
-    }
   }
 
   .section-nucleo-icons .icons-container {

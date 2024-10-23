@@ -1,12 +1,11 @@
 import type { FC } from "react";
 import { useRef } from "react";
-import { Nav } from "react-bootstrap";
+import { Nav, Navbar } from "react-bootstrap";
 import { useLocation } from "react-router";
 import { NavLink } from "react-router-dom";
 import { routes } from "../../App";
 
-export const Sidebar: FC<{}> = () => {
-  const sidebarRef = useRef<HTMLDivElement>(null);
+export const Sidebar: FC<{ expand: boolean }> = ({ expand }) => {
   const location = useLocation();
 
   const activeRoute = (routeName: string) => {
@@ -14,7 +13,7 @@ export const Sidebar: FC<{}> = () => {
   };
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar nav-open`}>
       <div className="logo">
         <a
           href="/dashboard"
@@ -24,9 +23,9 @@ export const Sidebar: FC<{}> = () => {
           <h1 className="logo__heading-1">Binbot</h1>
         </a>
       </div>
-      <div className="sidebar-wrapper" ref={sidebarRef}>
+      <div className="sidebar-wrapper">
         <Nav defaultActiveKey="/dashboard" as="ul">
-          {routes.map((prop, key) => {
+          {...routes.map((prop, key) => {
             if (prop.link) {
               return (
                 <Nav.Item
