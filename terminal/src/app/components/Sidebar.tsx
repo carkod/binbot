@@ -2,7 +2,7 @@ import type { FC } from "react";
 import { useRef } from "react";
 import { Nav, Navbar } from "react-bootstrap";
 import { useLocation } from "react-router";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { routes } from "../../App";
 
 export const Sidebar: FC<{ expand: boolean }> = ({ expand }) => {
@@ -20,13 +20,15 @@ export const Sidebar: FC<{ expand: boolean }> = ({ expand }) => {
           className="logo__link text-decoration-none text-info"
         >
           <i className="fa-solid fa-wave-square" />
-          <h1 className="logo__heading-1">Binbot</h1>
+          <h1 className="fs-4 ps-3">
+            <Link className="btn-reset btn" to="/">Binbot</Link>
+          </h1>
         </a>
       </div>
       <div className="sidebar-wrapper">
         <Nav defaultActiveKey="/dashboard" as="ul">
           {...routes.map((prop, key) => {
-            if (prop.link) {
+            if (prop.nav) {
               return (
                 <Nav.Item
                   as="li"

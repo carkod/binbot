@@ -1,9 +1,8 @@
-import { useEffect, useState, type FC } from "react";
-import { Button, Container, Navbar, NavbarToggle } from "react-bootstrap";
+import { type FC } from "react";
+import { Button, Container, Navbar } from "react-bootstrap";
 import { useLocation, useMatch } from "react-router";
 import { Link } from "react-router-dom";
 import { routes } from "../../App";
-import { useBreakpoint } from "../hooks";
 
 export const Header: FC<{ onExpand: () => void }> = ({ onExpand }) => {
   const location = useLocation();
