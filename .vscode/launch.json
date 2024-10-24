@@ -4,15 +4,15 @@
     {
       "type": "chrome",
       "request": "launch",
-      "name": "Vite",
+      "name": "Terminal: Vite",
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/terminal",
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/*"
       },
       "outFiles": [
-        "${workspaceFolder}/web/**/*.js",
-        "${workspaceFolder}/web/src/node_modules/**"
+        "${workspaceFolder}/terminal/**/*.js",
+        "${workspaceFolder}/terminal/src/node_modules/**"
       ]
     },
     {

@@ -1,3 +1,4 @@
+import React from 'react';
 import { Provider } from "react-redux";
 import {
   createBrowserRouter,
@@ -24,12 +25,13 @@ export type Routes = {
 export const routes = [
   {
     index: true,
-    path: "dashboard",
-    link: "/dashboard",
-    name: "Dashboard",
+    path: "/",
+    link: "/",
+    name: "Home",
     icon: "fas fa-chart-simple",
     element: <DashboardPage />,
     id: "dashboard",
+    nav: false,
   },
   {
     path: "bots",
@@ -38,6 +40,7 @@ export const routes = [
     icon: "fas fa-robot",
     element: <BotsPage />,
     id: "bots",
+    nav: true,
   },
   {
     path: "bots/new/:symbol?",
@@ -46,6 +49,7 @@ export const routes = [
     name: "New Bot",
     element: <BotDetail />,
     id: "new-bot",
+    nav: true,
   },
   {
     path: "bots/edit/:id",
@@ -53,6 +57,7 @@ export const routes = [
     name: "Edit Bot",
     element: <BotDetail />,
     id: "edit-bot",
+    nav: false,
   },
   {
     path: "autotrade",
@@ -61,6 +66,7 @@ export const routes = [
     name: "Autotrade",
     element: <AutotradePage />,
     id: "autotrade",
+    nav: true,
   },
 ];
 
