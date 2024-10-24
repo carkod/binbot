@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.0.1",
-    "binbot-charts": "^0.6.8",
+    "binbot-charts": "^0.6.9",
     "bootstrap": "5.2.2",
     "chart.js": "^4.4.4",
     "moment": "^2.29.1",

@@ -10,20 +10,18 @@ import { useBreakpoint } from "./hooks";
 export const Layout: FC<{}> = () => {
   const token = getToken();
   const breakpoint = useBreakpoint();
-  // toggle sidebar
-  const [expand, setExpand] = useState(breakpoint === "xs" || breakpoint === "sm");
+  // toggle sidebar by default on larger screens
+  // collapse sidebar by default on smaller screens
+  const [expand, setExpand] = useState(breakpoint === "md" || breakpoint === "lg" || breakpoint === "xl");
 
   const handleExpand = () => {
+    console.log("handleExpand", expand);
     setExpand(!expand);
   };
 
-  useEffect(() => {
-    setExpand(expand);
-  }, [breakpoint, expand]);
-
   if (token) {
     return (
-      <div className={`wrapper ${expand && "nav-open"}`}>
+      <div className={`wrapper ${expand ? "nav-open" : ""}`}>
         <ToastContainer
           transition={Slide}
           position="top-right"

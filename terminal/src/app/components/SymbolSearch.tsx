@@ -12,14 +12,12 @@ const SymbolSearch: FC<{
   required?: boolean;
   disabled?: boolean;
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
-  onChange?: (selected: string) => void;
   errors?: object;
 }> = ({
   name,
   label,
   options,
   value,
-  onChange,
   onBlur,
   required = false,
   disabled = false,
