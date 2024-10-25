@@ -12,6 +12,7 @@ import LoginPage from "./app/pages/Login";
 import { store } from "./app/store";
 import BotDetail from "./app/pages/BotDetail";
 import AutotradePage from "./app/pages/Autotrade";
+import { getToken, removeToken } from './utils/login';
 
 export type Routes = {
   path: string;
@@ -73,7 +74,14 @@ export const routes = [
 const rootRouter = createBrowserRouter([
   {
     path: "/login",
-    element: <LoginPage />,
+    Component: () => {
+      const token = getToken();
+      if (token) {
+        return <Navigate to="/" replace />
+      } else {
+        return <LoginPage />;
+      }
+    },
   },
   {
     id: "root",
@@ -83,7 +91,10 @@ const rootRouter = createBrowserRouter([
   },
   {
     path: "/logout",
-    element: <Navigate to="/login" replace />,
+    Component: () => {
+      removeToken();
+      return <Navigate to="/login" replace />
+    },
   },
 ]);
 

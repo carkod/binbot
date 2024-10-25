@@ -3,7 +3,7 @@ import { Button, Container, Form } from "react-bootstrap";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useLocation, useNavigate } from "react-router";
 import { usePostLoginMutation } from "../../features/userApiSlice";
-import { setToken } from "../../utils/login";
+import { getToken, setToken } from "../../utils/login";
 
 export type LoginFormState = {
   email: string;
@@ -11,7 +11,7 @@ export type LoginFormState = {
 };
 
 export const LoginForm: FC<{}> = () => {
-  const [login, { data }] = usePostLoginMutation();
+  const [login, { data: access_token }] = usePostLoginMutation();
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -30,16 +30,19 @@ export const LoginForm: FC<{}> = () => {
     },
   });
 
-  const onSubmit: SubmitHandler<LoginFormState> = (values) => {
+  const onSubmit: SubmitHandler<LoginFormState> = async (values) => {
     login(values);
   };
 
   useEffect(() => {
-    if (data) {
-      setToken(data.access_token);
-      navigate("/dashboard" + from, { replace: true });
+    const token = getToken();
+    if (token || access_token) {
+      if (access_token) {
+        setToken(access_token);
+      }
+      navigate("/");
     }
-  }, [data, navigate, from]);
+  }, [navigate, from, access_token]);
 
   return (
     <Container className="my-4">

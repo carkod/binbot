@@ -1,16 +1,12 @@
 from datetime import date
-import os
-
 from passlib.hash import pbkdf2_sha256
-from jose import jwt
-
 from tools.handle_error import (
     json_response_error,
     json_response_message,
     json_response,
 )
 from bson.objectid import ObjectId
-from auth import enconde_access_token
+from auth import encode_access_token
 from database.mongodb.db import setup_db
 from user.schemas import UserSchema
 from fastapi.encoders import jsonable_encoder
@@ -19,6 +15,13 @@ from fastapi.encoders import jsonable_encoder
 class User:
     def __init__(self):
         self.db = setup_db()
+
+    def hash_password(self, password):
+        password_bytes = password.encode('utf-8')
+        hash_object = pbkdf2_sha256.encrypt(
+            password_bytes, rounds=20000, salt_size=16
+        )
+        return hash_object.hexdigest()
 
     def get(self):
         users = list(self.db.users.find())
@@ -44,36 +47,12 @@ class User:
         """
         email = data.email.lower()
         password = data.password
-        user = self.db.users.find_one({"email": email})
+        user = self.db.users.find_one({"email": email, "password": password})
         if user:
-            access_token = enconde_access_token(password, email)
-            resp = json_response(
-                {
-                    "email": email,
-                    "access_token": access_token,
-                    "token_type": "bearer",
-                    "error": 0,
-                },
-                200,
-            )
+            access_token, data = encode_access_token(password, email)
+            return access_token, data
         else:
-            resp = json_response({"message": "Credentials are incorrect", "error": 1})
-        return resp
-
-    def logout(self):
-        try:
-            tokenData = jwt.decode(
-                request.headers.get("AccessToken"), os.environ["SECRET_KEY"]
-            )
-            self.db.users.update(
-                {"id": tokenData["userid"]}, {"$unset": {"access_token": None}}
-            )
-            # Note: At some point I need to implement Token Revoking/Blacklisting
-            # General info here: https://flask-jwt-extended.readthedocs.io/en/latest/blacklist_and_token_revoking.html
-            return json_response_message("User logged out")
-
-        except Exception as error:
-            return json_response_error(f"User logged out error: {error}")
+            raise Exception("Invalid email or password")
 
     def add(self, data):
         if (not data.email) or (not data.password):

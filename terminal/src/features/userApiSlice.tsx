@@ -1,9 +1,17 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { binbotBaseQuery, notifification } from "../utils/api";
+import { set } from "react-hook-form";
+import { setToken } from "../utils/login";
 
 export interface LoginCredentials {
   email: string;
   password: string;
+}
+
+interface LoginResponsePayload {
+  email: string;
+  expires: number;
+  access_token: string;
 }
 
 export interface LoginResponse {
@@ -25,16 +33,22 @@ export const userApiSlice = createApi({
   baseQuery: binbotBaseQuery,
   reducerPath: "api",
   endpoints: (build) => ({
-    postLogin: build.mutation<LoginResponse, Partial<LoginCredentials>>({
+    postLogin: build.mutation<LoginResponsePayload, Partial<LoginCredentials>>({
       query: (body) => ({
         url: import.meta.env.VITE_LOGIN || "/login",
         method: "POST",
         body: body,
       }),
-      transformResponse: ({ data }) => {
-        if (data.error === 1) {
-          notifification("error", data.message);
+      transformErrorResponse: (error) => {
+        notifification("error", error.data.message);
+      },
+      transformResponse: ({ data, message, error }) => {
+        if (error && error === 1) {
+          notifification("error", message);
+        } else {
+          notifification("success", message);
         }
+        if (data.access_token) setToken(data.access_token);
         return data;
       },
     }),
