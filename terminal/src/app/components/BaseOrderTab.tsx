@@ -54,12 +54,6 @@ const BaseOrderTab: FC = () => {
     dispatch(setField({ name: "base_order_size", value: 0.001 }));
   };
 
-  const handleSelectedPair = (selected: string) => {
-    if (selected) {
-      dispatch(setField({ name: "pair", value: selected }));
-    }
-  };
-
   const handlePairBlur = (e) => {
     // Only when selected not typed in
     // this way we avoid any errors
@@ -121,7 +115,6 @@ const BaseOrderTab: FC = () => {
               options={symbolsList}
               disabled={bot.status === BotStatus.COMPLETED}
               value={bot.pair}
-              onChange={handleSelectedPair}
               onBlur={handlePairBlur}
               required
               errors={errorsState}
