@@ -1,4 +1,4 @@
-import { useState, type FC } from "react";
+import { useEffect, useState, type FC } from "react";
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
 import { selectBot, setBot } from "../../features/bots/botSlice";
 import { BotStatus, TabsKeys } from "../../utils/enums";
@@ -12,6 +12,7 @@ import {
   useEditBotMutation,
 } from "../../features/bots/botsApiSlice";
 import { useNavigate, useParams } from "react-router";
+import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 
 const BotDetailTabs: FC = () => {
   const { bot } = useAppSelector(selectBot);
@@ -20,8 +21,8 @@ const BotDetailTabs: FC = () => {
   const dispatch = useAppDispatch();
 
   const [updateBot] = useEditBotMutation();
-
-  const [createBot] = useCreateBotMutation();
+  const [createBot, { createdBot }] = useCreateBotMutation();
+  const { data: autotradeSettings } = useGetSettingsQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
 
@@ -42,6 +43,7 @@ const BotDetailTabs: FC = () => {
       response = await updateBot({ body: bot, id }).unwrap();
     } else {
       response = await createBot(bot).unwrap();
+      console.log("Create bot", response);
     }
 
     let botId = id;
@@ -52,6 +54,12 @@ const BotDetailTabs: FC = () => {
     setEnableActivation(true);
     navigate(`/bots/edit/${botId}`);
   };
+
+  useEffect(() => {
+    if (createdBot) {
+      console.log("createdBot", createdBot);
+    }
+  }, [createdBot, autotradeSettings]);
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>

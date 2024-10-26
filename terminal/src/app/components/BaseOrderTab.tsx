@@ -18,6 +18,7 @@ import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useImmer } from "use-immer";
 import { getQuoteAsset } from "../../utils/api";
+import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 
 interface ErrorsState {
   pair?: string;
@@ -27,6 +28,7 @@ const BaseOrderTab: FC = () => {
   const dispatch: AppDispatch = useAppDispatch();
   const { data } = useGetSymbolsQuery();
   const { bot } = useAppSelector(selectBot);
+  const { data: autotradeSettings } = useGetSettingsQuery();
   const [quoteAsset, setQuoteAsset] = useState<string>("");
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
@@ -69,6 +71,7 @@ const BaseOrderTab: FC = () => {
     }
   };
 
+  // Data
   useEffect(() => {
     if (data) {
       setSymbolsList(data);
@@ -88,9 +91,10 @@ const BaseOrderTab: FC = () => {
     bot,
     quoteAsset,
     setQuoteAsset,
-    reset,
+    reset
   ]);
 
+  // Form
   useEffect(() => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
