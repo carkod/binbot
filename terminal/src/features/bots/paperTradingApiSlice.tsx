@@ -1,34 +1,17 @@
-import { createEntityAdapter } from "@reduxjs/toolkit";
 import { notifification } from "../../utils/api";
-import { weekAgo } from "../../utils/time";
 import { userApiSlice } from "../userApiSlice";
 import type { Bot } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
+import type { GetBotsParams, GetBotsResponse } from "./bots";
+import { botsAdapter } from "./botsApiSlice";
 
-export const buildGetBotsPath = (
-  status: string = null,
-  startDate: number = weekAgo(),
-  endDate: number = new Date().getTime()
-): string => {
-  const params = new URLSearchParams({
-    start_date: startDate.toString(),
-    end_date: endDate.toString(),
-    status: status,
-  });
-  return params.toString();
-};
-
-export const botsAdapter = createEntityAdapter<Bot>({
-  sortComparer: false,
-});
-
-export const botsApiSlice = userApiSlice.injectEndpoints({
+export const papertradingApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
-    getBots: build.query<GetBotsResponse, Partial<GetBotsParams>>({
+    getTestBots: build.query<GetBotsResponse, Partial<GetBotsParams>>({
       query: ({ status, startDate, endDate }) => ({
-        url: `${import.meta.env.VITE_GET_BOTS}` || "/bots",
+        url: `${import.meta.env.VITE_TEST_BOT}` || "/paper-trading",
         params: { status, start_date: startDate, end_date: endDate },
-        providesTags: ["bots"],
+        providesTags: ["paper-trading"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -44,11 +27,11 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return { bots: bots, totalProfit: totalProfit };
       },
     }),
-    getSingleBot: build.query<SingleBotResponse, string>({
+    getSingleTestBot: build.query<SingleBotResponse, string>({
       query: (id) => ({
-        url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
+        url: `${import.meta.env.VITE_TEST_BOT}/${id}` || "/paper-trading",
         method: "GET",
-        providesTags: (result) => [{ type: "bot", id: result.bot.id }],
+        providesTags: (result) => [{ type: "paper-trading", id: result.bot.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -61,12 +44,12 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         };
       },
     }),
-    createBot: build.mutation<CreateBotResponse, Bot>({
+    createTestBot: build.mutation<CreateBotResponse, Bot>({
       query: (body) => ({
-        url: import.meta.env.VITE_GET_BOTS || "/bot",
+        url: import.meta.env.VITE_TEST_BOT || "/paper-trading",
         method: "POST",
         body: body,
-        invalidatesTags: ["bots"],
+        invalidatesTags: ["paper-trading"],
       }),
       transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -77,12 +60,12 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return botId;
       },
     }),
-    editBot: build.mutation<CreateBotResponse, EditBotParams>({
+    editTestBot: build.mutation<CreateBotResponse, EditBotParams>({
       query: ({ body, id }) => ({
-        url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
+        url: `${import.meta.env.VITE_TEST_BOT}/${id}` || "/paper-trading",
         method: "PUT",
         body: body,
-        invalidatesTags: (result) => [{ type: "bot", id: id }],
+        invalidatesTags: (result) => [{ type: "paper-trading", id: id }],
       }),
       transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -93,12 +76,12 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return botId;
       },
     }),
-    deleteBot: build.mutation<DefaultBotsResponse, string[]>({
+    deleteTestBot: build.mutation<DefaultBotsResponse, string[]>({
       query: (id) => ({
-        url: `${import.meta.env.VITE_GET_BOTS}` || "/bot",
+        url: `${import.meta.env.VITE_TEST_BOT}` || "/paper-trading",
         method: "DELETE",
         body: id,
-        invalidatesTags: ["bots"],
+        invalidatesTags: ["paper-trading"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -109,10 +92,13 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    activateBot: build.query<DefaultBotsResponse, string>({
+    activateTestBot: build.query<DefaultBotsResponse, string>({
       query: (id) => ({
-        url: `${import.meta.env.VITE_ACTIVATE_BOT}/${id}` || "/bot/activate",
+        url:
+          `${import.meta.env.VITE_ACTIVATE_TEST_BOT}/${id}` ||
+          "/paper-trading/activate",
         method: "GET",
+        invalidatesTags: ["paper-trading"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -123,23 +109,24 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    deactivateBot: build.mutation<DefaultBotsResponse, string>({
+    deactivateTestBot: build.mutation<DefaultBotsResponse, string>({
       query: (id: string) => ({
         url:
-          `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}` || "/bot/deactivate",
+          `${import.meta.env.VITE_DEACTIVATE_TEST_BOT}/${id}` ||
+          "/paper-trading/deactivate",
         method: "GET",
+        invalidatesTags: ["paper-trading"],
       }),
     }),
   }),
 });
 
-// Hooks generated by Redux
 export const {
-  useGetBotsQuery,
-  useGetSingleBotQuery,
-  useCreateBotMutation,
-  useEditBotMutation,
-  useDeleteBotMutation,
-  useActivateBotQuery,
-  useDeactivateBotMutation,
-} = botsApiSlice;
+  useGetTestBotsQuery,
+  useGetSingleTestBotQuery,
+  useCreateTestBotMutation,
+  useEditTestBotMutation,
+  useDeleteTestBotMutation,
+  useActivateTestBotQuery,
+  useDeactivateTestBotMutation,
+} = papertradingApiSlice;

@@ -14,6 +14,8 @@ import BlacklistPage from "./app/pages/BlacklistPage";
 import NotFound from './app/pages/NotFound';
 import { store } from "./app/store";
 import { getToken, removeToken } from './utils/login';
+import PaperTradingPage from "./app/pages/PaperTradingPage";
+import PaperTradingDetail from "./app/pages/PaperTradingDetail";
 
 export type Routes = {
   path: string;
@@ -69,6 +71,32 @@ export const routes = [
     element: <AutotradePage />,
     id: "autotrade",
     nav: true,
+  },
+  {
+    path: "paper-trading",
+    link: "/paper-trading",
+    name: "Paper Trading",
+    icon: "fas fa-pencil-ruler",
+    element: <PaperTradingPage />,
+    id: "paper-trading",
+    nav: true,
+  },
+  {
+    path: "paper-trading/new/:symbol?",
+    link: "/paper-trading/new",
+    icon: null,
+    name: "New Test Bot",
+    element: <PaperTradingDetail />,
+    id: "new-test-bot",
+    nav: true,
+  },
+  {
+    path: "paper-trading/edit/:id",
+    icon: null,
+    name: "Edit Test Bot",
+    element: <PaperTradingDetail />,
+    id: "edit-test-bot",
+    nav: false,
   },
   {
     path: "blacklist",

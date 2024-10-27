@@ -1,19 +1,18 @@
-import { useEffect, useState, type FC } from "react";
+import { useState, type FC } from "react";
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
-import { selectBot, setBot } from "../../features/bots/botSlice";
+import { useNavigate, useParams } from "react-router";
+import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
+import {
+  botsApiSlice,
+  useCreateBotMutation,
+  useEditBotMutation
+} from "../../features/bots/botsApiSlice";
+import { selectBot } from "../../features/bots/botSlice";
 import { BotStatus, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import BaseOrderTab from "./BaseOrderTab";
 import StopLossTab from "./StopLossTab";
 import TakeProfit from "./TakeProfitTab";
-import {
-  botsApiSlice,
-  useActivateBotQuery,
-  useCreateBotMutation,
-  useEditBotMutation,
-} from "../../features/bots/botsApiSlice";
-import { useNavigate, useParams } from "react-router";
-import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 
 const BotDetailTabs: FC = () => {
   const { bot } = useAppSelector(selectBot);

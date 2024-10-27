@@ -53,7 +53,8 @@ const BaseOrderTab: FC = () => {
   };
 
   const addAll = () => {
-    dispatch(setField({ name: "base_order_size", value: 0.001 }));
+    // fix: replace value with the full balance
+    // dispatch(setField({ name: "base_order_size", value: 0.001 }));
   };
 
   const handlePairBlur = (e) => {

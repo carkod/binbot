@@ -7,32 +7,32 @@ import type {
   BotDetailsState,
 } from "./bots";
 
-export const botSlice = createAppSlice({
-  name: "bot",
+export const paperTradingSlice = createAppSlice({
+  name: "paperTrading",
   initialState: {
-    bot: singleBot,
+    paperTrading: singleBot,
   },
   reducers: (create) => ({
-    setField: create.reducer(
+    setTestBotField: create.reducer(
       (state, { payload }: PayloadAction<BotDetailsFormField>) => {
-        state.bot[payload.name] = payload.value;
+        state.paperTrading[payload.name] = payload.value;
       }
     ),
-    setToggle: create.reducer(
+    setTestBotToggle: create.reducer(
       (state, { payload }: PayloadAction<BotDetailsFormFieldBoolean>) => {
-        state.bot[payload.name] = payload.value;
+        state.paperTrading[payload.name] = payload.value;
       }
     ),
-    setBot: create.reducer(
+    setTestBot: create.reducer(
       (state, { payload }: PayloadAction<BotDetailsState>) => {
-        state.bot = payload.bot;
+        state.paperTrading = payload.bot;
       }
     ),
-    setCurrentPrice: create.reducer(
+    setTestBotCurrentPrice: create.reducer(
       (state, { payload }: PayloadAction<number>) => {
         // in principle this is updated only server-side,
         // but the streaming service can blip in performance
-        state.bot.deal.current_price = payload;
+        state.paperTrading.deal.current_price = payload;
       }
     ),
   }),
@@ -43,6 +43,10 @@ export const botSlice = createAppSlice({
   },
 });
 
-export const { setField, setBot, setToggle, setCurrentPrice } =
-  botSlice.actions;
-export const { selectBot } = botSlice.selectors;
+export const {
+  setTestBotField,
+  setTestBot,
+  setTestBotToggle,
+  setTestBotCurrentPrice,
+} = paperTradingSlice.actions;
+export const { selectBot } = paperTradingSlice.selectors;
