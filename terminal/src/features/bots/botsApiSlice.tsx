@@ -81,7 +81,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       query: (id) => ({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
         method: "GET",
-        providesTags: ["bots"],
+        providesTags: (result) => [{ type: "bot", id: result.bot.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -115,7 +115,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
         method: "PUT",
         body: body,
-        invalidatesTags: ["bots"],
+        invalidatesTags: (result) => [{ type: "bot", id: id }],
       }),
       transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {

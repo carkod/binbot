@@ -8,6 +8,7 @@ import StopLossTab from "./StopLossTab";
 import TakeProfit from "./TakeProfitTab";
 import {
   botsApiSlice,
+  useActivateBotQuery,
   useCreateBotMutation,
   useEditBotMutation,
 } from "../../features/bots/botsApiSlice";
@@ -29,11 +30,13 @@ const BotDetailTabs: FC = () => {
   // Activate and get bot again
   // Deals and orders information need to come from the server
   const handleActivation = (id: string) => {
-    const response = dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
-    dispatch(botsApiSlice.endpoints.getSingleBot.initiate(id));
+    dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
+    // Deals and orders are not 
+    navigate(`/bots/edit/${id}`);
   };
   const handlePanicSell = (id: string) => {
-    console.log("Panic sell", id);
+    dispatch(botsApiSlice.endpoints.deactivateBot.initiate(id));
+    navigate(`/bots`);
   };
 
   const onSubmit = async () => {

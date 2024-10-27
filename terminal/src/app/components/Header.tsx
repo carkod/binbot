@@ -1,15 +1,18 @@
 import { type FC } from "react";
 import { Button, Container, Navbar } from "react-bootstrap";
-import { useLocation, useMatch } from "react-router";
+import { useLocation, matchPath } from "react-router";
 import { Link } from "react-router-dom";
 import { routes } from "../../App";
 
 export const Header: FC<{ onExpand: () => void }> = ({ onExpand }) => {
   const location = useLocation();
-  const matchPath = useMatch(location.pathname);
-  const loadData = matchPath
-    ? routes.find((route) => route.link === location.pathname)
-    : null;
+  const loadData = routes.find((route) => {
+    const match = matchPath(route.path, location.pathname);
+    if (match) {
+      return route.name;
+    }
+    return null;
+  });
 
   return (
     <Navbar className="bg-body-tertiary navbar-transparent navbar navbar-expand-lg">
@@ -23,13 +26,9 @@ export const Header: FC<{ onExpand: () => void }> = ({ onExpand }) => {
           <span className="navbar-toggler-icon"></span>
         </Button>
         <Navbar.Brand>
-          {location?.state?.bot ? (
-            "Bot Details"
-          ) : (
-            <div className="p-2 flex-fill">
-              <i className={`${loadData?.icon}`}></i> {loadData?.name}
-            </div>
-          )}
+          <div className="p-2 flex-fill">
+            <i className={`${loadData?.icon}`}></i> {loadData?.name}
+          </div>
         </Navbar.Brand>
         <Navbar.Collapse className="justify-content-end">
           <Navbar.Text>

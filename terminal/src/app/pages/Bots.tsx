@@ -1,5 +1,7 @@
-import { ReactElement, useEffect, useMemo, useState, type FC } from "react";
+import { useEffect, useState, type FC } from "react";
 import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
+import { useNavigate } from "react-router";
+import { useImmer } from "use-immer";
 import {
   botsApiSlice,
   useDeactivateBotMutation,
@@ -8,20 +10,19 @@ import {
 } from "../../features/bots/botsApiSlice";
 import { setSpinner } from "../../features/layoutSlice";
 import { weekAgo } from "../../utils/time";
+import BotCard from "../components/BotCard";
 import BotsActions, { BulkAction } from "../components/BotsActions";
 import BotsDateFilter from "../components/BotsCalendar";
-import { useAppDispatch } from "../hooks";
-import BotCard from "../components/BotCard";
 import ConfirmModal from "../components/ConfirmModal";
-import { useImmer } from "use-immer";
+import { useAppDispatch } from "../hooks";
 
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const currentTs = new Date().getTime();
   const oneWeekAgo = weekAgo();
-  const [removeBots, { isSuccess: botDeleted }] = useDeleteBotMutation();
-  const [deactivateBot, { isSuccess: botDeactivated }] =
-    useDeactivateBotMutation();
+  const [removeBots ] = useDeleteBotMutation();
+  const [deactivateBot] = useDeactivateBotMutation();
 
   // Component states
   const [selectedCards, selectCards] = useImmer([]);
@@ -63,13 +64,7 @@ export const BotsPage: FC<{}> = () => {
     switch (bulkActions) {
       case BulkAction.DELETE:
         removeBots(selectedCards);
-        dispatch(
-          botsApiSlice.endpoints.getBots.initiate({
-            status: filterStatus,
-            startDate: startDate,
-            endDate: endDate,
-          }),
-        );
+        navigate("/bots");
         selectCards([]);
         break;
       case BulkAction.SELECT_ALL:
@@ -99,7 +94,7 @@ export const BotsPage: FC<{}> = () => {
           status: filterStatus,
           startDate: ts,
           endDate: endDate,
-        }),
+        })
       );
     }
   };
@@ -114,7 +109,7 @@ export const BotsPage: FC<{}> = () => {
           status: filterStatus,
           startDate: startDate,
           endDate: ts,
-        }),
+        })
       );
     }
   };
