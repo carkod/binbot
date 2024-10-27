@@ -133,8 +133,16 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       query: (id: string) => ({
         url:
           `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}` || "/bot/deactivate",
-        method: "GET",
+        method: "DELETE",
       }),
+      transformResponse: ({ data, message, error }, meta, arg) => {
+        if (error && error === 1) {
+          notifification("error", message);
+        } else {
+          notifification("success", message);
+        }
+        return data;
+      },
     }),
   }),
 });
