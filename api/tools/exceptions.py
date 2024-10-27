@@ -1,4 +1,3 @@
-
 class BinanceErrors(Exception):
     def __init__(self, msg, code):
         self.code = code
@@ -8,6 +7,8 @@ class BinanceErrors(Exception):
 
     def __str__(self) -> str:
         return f"Binance Error: {self.code} {self.message}"
+
+
 class InvalidSymbol(BinanceErrors):
     pass
 
@@ -31,7 +32,9 @@ class CreateDealControllerError(BinbotErrors):
     Code: 1
     Message: "Bot already active"
     """
+
     pass
+
 
 class IsolateBalanceError(BinbotErrors):
     pass
@@ -63,6 +66,7 @@ class DeleteOrderError(BinbotErrors):
 class LowBalanceCleanupError(BinbotErrors):
     pass
 
+
 class OpenDealError(Exception):
     pass
 
@@ -90,6 +94,7 @@ class ShortStrategyError(OpenDealError):
 class DealCreationError(BinbotErrors):
     pass
 
+
 class TerminateStreaming(Exception):
     """
     This is required sometimes
@@ -103,6 +108,7 @@ class TerminateStreaming(Exception):
 
     pass
 
+
 class MaxBorrowLimit(BinbotErrors):
     pass
 
@@ -111,4 +117,5 @@ class InsufficientBalance(BinbotErrors):
     """
     Insufficient total_buy_qty to deactivate
     """
+
     pass

@@ -35,7 +35,7 @@ export const Layout: FC<{}> = () => {
           pauseOnHover
           theme="colored"
         />
-        <Sidebar expand={expand} />
+        <Sidebar />
         <div className="main-panel">
           <Header onExpand={handleExpand} />
           <Outlet />

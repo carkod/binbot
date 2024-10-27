@@ -2,8 +2,13 @@ import { createEntityAdapter } from "@reduxjs/toolkit";
 import { notifification } from "../../utils/api";
 import { weekAgo } from "../../utils/time";
 import { userApiSlice } from "../userApiSlice";
-import type { Bot } from "./botInitialState";
+import type { Bot, BotEntity } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
+
+type GetBotsResponse = {
+  bots: BotEntity;
+  totalProfit: number;
+};
 
 export const buildGetBotsPath = (
   status: string = null,
@@ -66,7 +71,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: import.meta.env.VITE_GET_BOTS || "/bot",
         method: "POST",
         body: body,
-        invalidatesTags: ["bots"],
+        providesTags: (result) => [{ type: "bot", id: id }],
       }),
       transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -94,19 +99,20 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       },
     }),
     deleteBot: build.mutation<DefaultBotsResponse, string[]>({
-      query: (id) => ({
+      query: (ids) => ({
         url: `${import.meta.env.VITE_GET_BOTS}` || "/bot",
         method: "DELETE",
-        body: id,
-        invalidatesTags: ["bots"],
+        body: ids,
+        invalidatesTags: ["bots"]
       }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
+      transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
         } else {
           notifification("success", message);
         }
-        return data;
+        // Return payload to update UI
+        return arg;
       },
     }),
     activateBot: build.query<DefaultBotsResponse, string>({

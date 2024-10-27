@@ -1,12 +1,13 @@
+import { type EntityStateAdapter } from "@reduxjs/toolkit";
 import { useEffect, useState, type FC } from "react";
 import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import { useImmer } from "use-immer";
+import { type Bot } from "../../features/bots/botInitialState";
 import {
-  botsApiSlice,
   useDeactivateBotMutation,
   useDeleteBotMutation,
-  useGetBotsQuery,
+  useGetBotsQuery
 } from "../../features/bots/botsApiSlice";
 import { setSpinner } from "../../features/layoutSlice";
 import { weekAgo } from "../../utils/time";
@@ -21,7 +22,7 @@ export const BotsPage: FC<{}> = () => {
   const navigate = useNavigate();
   const currentTs = new Date().getTime();
   const oneWeekAgo = weekAgo();
-  const [removeBots ] = useDeleteBotMutation();
+  const [removeBots] = useDeleteBotMutation();
   const [deactivateBot] = useDeactivateBotMutation();
 
   // Component states
@@ -33,11 +34,14 @@ export const BotsPage: FC<{}> = () => {
   const [endDate, setEndDate] = useState(currentTs);
   const [filterStatus, setFilterStatus] = useState("");
 
-  const { data: props, isFetching } = useGetBotsQuery({
-    status: filterStatus,
-    startDate,
-    endDate,
-  });
+  // Fetch bots which require filter dependencies
+  const {refetch, data: props, isFetching } = useGetBotsQuery(
+    {
+      status: filterStatus,
+      startDate,
+      endDate,
+    }
+  );
 
   const handleSelection = (id) => {
     let newCards = [];
@@ -58,14 +62,15 @@ export const BotsPage: FC<{}> = () => {
       deactivateBot(botToDelete);
     }
     setBotToDelete(null);
+    dispatch(() => refetch());
     return false;
   };
   const onSubmitBulkAction = () => {
     switch (bulkActions) {
       case BulkAction.DELETE:
         removeBots(selectedCards);
-        navigate("/bots");
         selectCards([]);
+        dispatch(() => refetch());
         break;
       case BulkAction.SELECT_ALL:
         selectCards(Object.keys(props.bots.entities));
@@ -89,13 +94,7 @@ export const BotsPage: FC<{}> = () => {
       setDateFilterError("Start date cannot be greater than end date");
     } else {
       setDateFilterError(null);
-      dispatch(
-        botsApiSlice.endpoints.getBots.initiate({
-          status: filterStatus,
-          startDate: ts,
-          endDate: endDate,
-        })
-      );
+      dispatch(() => refetch());
     }
   };
   const handleEndDate = (ts) => {
@@ -104,13 +103,7 @@ export const BotsPage: FC<{}> = () => {
       setDateFilterError("End date cannot be less than start date");
     } else {
       setDateFilterError(null);
-      dispatch(
-        botsApiSlice.endpoints.getBots.initiate({
-          status: filterStatus,
-          startDate: startDate,
-          endDate: ts,
-        })
-      );
+      dispatch(() => refetch());
     }
   };
 
@@ -121,7 +114,14 @@ export const BotsPage: FC<{}> = () => {
     if (props?.bots) {
       dispatch(setSpinner(false));
     }
-  }, [props, dispatch, isFetching]);
+  }, [
+    props?.bots,
+    dispatch,
+    isFetching,
+    startDate,
+    filterStatus,
+    endDate,
+  ]);
 
   return (
     <Container fluid>

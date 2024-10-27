@@ -6,6 +6,7 @@ from kafka import KafkaConsumer
 from streaming.streaming_controller import BbspreadsUpdater, StreamingController
 from tools.enum_definitions import KafkaTopics
 
+
 def main():
     consumer = KafkaConsumer(
         KafkaTopics.klines_store_topic.value,
@@ -23,6 +24,7 @@ def main():
             mu.process_klines(message.value)
         if message.topic == KafkaTopics.signals.value:
             bbu.update_close_conditions(message.value)
+
 
 if __name__ == "__main__":
     while True:

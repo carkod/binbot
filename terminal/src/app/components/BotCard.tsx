@@ -89,7 +89,7 @@ const BotCard: FC<BotCardProps> = ({
             <Col md="6" xs="5">
               <p className="small">
                 {(bot.deal?.buy_price &&
-                  roundDecimals(bot.deal.buy_price.toFixed(6))) ||
+                  roundDecimals(bot.deal.buy_price, 6)) ||
                   bot.deal?.buy_total_qty}
               </p>
             </Col>
