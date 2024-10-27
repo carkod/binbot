@@ -21,7 +21,7 @@ const BotDetailTabs: FC = () => {
   const dispatch = useAppDispatch();
 
   const [updateBot] = useEditBotMutation();
-  const [createBot, { createdBot }] = useCreateBotMutation();
+  const [createBot ] = useCreateBotMutation();
   const { data: autotradeSettings } = useGetSettingsQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
@@ -30,7 +30,6 @@ const BotDetailTabs: FC = () => {
   // Deals and orders information need to come from the server
   const handleActivation = (id: string) => {
     const response = dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
-    console.log("Activate bot", response);
     dispatch(botsApiSlice.endpoints.getSingleBot.initiate(id));
   };
   const handlePanicSell = (id: string) => {
@@ -38,28 +37,15 @@ const BotDetailTabs: FC = () => {
   };
 
   const onSubmit = async () => {
-    let response;
     if (id && bot.status !== BotStatus.COMPLETED) {
-      response = await updateBot({ body: bot, id }).unwrap();
+      const newBotId = await updateBot({ body: bot, id }).unwrap();
+      navigate(`/bots/edit/${newBotId}`);
     } else {
-      response = await createBot(bot).unwrap();
-      console.log("Create bot", response);
+      const newBotId = await createBot(bot).unwrap();
+      setEnableActivation(true);
+      navigate(`/bots/edit/${newBotId}`);
     }
-
-    let botId = id;
-    if (response?.botId) {
-      botId = response.botId;
-    }
-
-    setEnableActivation(true);
-    navigate(`/bots/edit/${botId}`);
   };
-
-  useEffect(() => {
-    if (createdBot) {
-      console.log("createdBot", createdBot);
-    }
-  }, [createdBot, autotradeSettings]);
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>

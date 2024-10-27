@@ -146,7 +146,9 @@ class BotSchema(BaseModel):
     def check_trailling(cls, v: str | bool):
         if isinstance(v, str) and v.lower() == "false":
             return False
-        return True
+        if isinstance(v, str) and v.lower() == "true":
+            return True
+        return v
 
     @field_validator("errors")
     @classmethod

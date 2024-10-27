@@ -3,12 +3,7 @@ import { Typeahead } from "react-bootstrap-typeahead";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import Form from "react-bootstrap/Form";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
-
-// Filter by base asset (balance_to_use) provided by autotrade settings
-// This is done in the front-end because it doesn't matter in the back-end, we always get the full list of symbols
-export const filterSymbolByBaseAsset = (options: string[], baseAsset: string): string[] => {
-  return options.filter((item) => item.endsWith(baseAsset));
-}
+import { filterSymbolByBaseAsset } from "../../utils/api";
 
 const SymbolSearch: FC<{
   name: string;

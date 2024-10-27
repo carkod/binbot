@@ -13,6 +13,7 @@ import { store } from "./app/store";
 import BotDetail from "./app/pages/BotDetail";
 import AutotradePage from "./app/pages/Autotrade";
 import { getToken, removeToken } from './utils/login';
+import NotFound from './app/pages/NotFound';
 
 export type Routes = {
   path: string;
@@ -69,6 +70,10 @@ export const routes = [
     id: "autotrade",
     nav: true,
   },
+  {
+    path: "*",
+    element: <NotFound />,
+  }
 ];
 
 const rootRouter = createBrowserRouter([

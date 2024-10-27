@@ -81,10 +81,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       query: (id) => ({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
         method: "GET",
-        providesTags: (result, error, id) => {
-          console.log("result", result);
-          return [{ type: "Post", id }];
-        },
+        providesTags: ["bots"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -104,13 +101,13 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         body: body,
         invalidatesTags: ["bots"],
       }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
+      transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
         } else {
           notifification("success", message);
         }
-        return data;
+        return botId;
       },
     }),
     editBot: build.mutation<CreateBotResponse, EditBotParams>({
@@ -120,13 +117,13 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         body: body,
         invalidatesTags: ["bots"],
       }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
+      transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
         } else {
           notifification("success", message);
         }
-        return data;
+        return botId;
       },
     }),
     deleteBot: build.mutation<DefaultBotsResponse, string[]>({

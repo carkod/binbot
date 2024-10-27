@@ -77,7 +77,7 @@ const BaseOrderTab: FC = () => {
       setSymbolsList(data);
     }
     if (bot.pair) {
-      setQuoteAsset(getQuoteAsset(bot));
+      setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.balance_to_use));
     }
     if (bot) {
       for (const key in bot) {
@@ -91,7 +91,8 @@ const BaseOrderTab: FC = () => {
     bot,
     quoteAsset,
     setQuoteAsset,
-    reset
+    reset,
+    autotradeSettings?.balance_to_use
   ]);
 
   // Form
@@ -188,7 +189,7 @@ const BaseOrderTab: FC = () => {
             <br />
             <Form.Text>
               <Badge bg="secondary" className="fs-6">
-                {bot.balance_to_use}
+                {autotradeSettings?.balance_to_use}
               </Badge>
             </Form.Text>
           </Col>
