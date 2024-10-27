@@ -7,7 +7,7 @@ import { type Bot } from "../../features/bots/botInitialState";
 import {
   useDeactivateBotMutation,
   useDeleteBotMutation,
-  useGetBotsQuery
+  useGetBotsQuery,
 } from "../../features/bots/botsApiSlice";
 import { setSpinner } from "../../features/layoutSlice";
 import { weekAgo } from "../../utils/time";
@@ -35,13 +35,15 @@ export const BotsPage: FC<{}> = () => {
   const [filterStatus, setFilterStatus] = useState("");
 
   // Fetch bots which require filter dependencies
-  const {refetch, data: props, isFetching } = useGetBotsQuery(
-    {
-      status: filterStatus,
-      startDate,
-      endDate,
-    }
-  );
+  const {
+    refetch,
+    data: props,
+    isFetching,
+  } = useGetBotsQuery({
+    status: filterStatus,
+    startDate,
+    endDate,
+  });
 
   const handleSelection = (id) => {
     let newCards = [];
@@ -114,21 +116,11 @@ export const BotsPage: FC<{}> = () => {
     if (props?.bots) {
       dispatch(setSpinner(false));
     }
-  }, [
-    props?.bots,
-    dispatch,
-    isFetching,
-    startDate,
-    filterStatus,
-    endDate,
-  ]);
+  }, [props?.bots, dispatch, isFetching, startDate, filterStatus, endDate]);
 
   return (
     <Container fluid>
-      <Stack
-        direction="horizontal"
-        className="mb-3 d-flex flex-row justify-content-between"
-      >
+      <div className="mb-3 d-flex flex-column flex-lg-row justify-content-between align-items-center">
         <div id="bot-profits">
           <h4>
             {props?.bots?.ids.length > 0 && (
@@ -140,8 +132,8 @@ export const BotsPage: FC<{}> = () => {
             )}
           </h4>
         </div>
-        <div id="filters">
-          <Stack direction="horizontal">
+        <div id="filters" className="mx-3 d-flex flex-column flex-md-row">
+          <Stack direction="horizontal" className="mx-3 d-flex flex-column flex-md-row">
             <div className="p-3">
               <BotsActions
                 defaultValue={bulkActions}
@@ -153,6 +145,8 @@ export const BotsPage: FC<{}> = () => {
             <div className="p-3">
               <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
             </div>
+          </Stack>
+          <Stack direction="horizontal" className="mx-3 d-flex flex-column flex-md-row">
             <div className="p-3">
               <BotsDateFilter
                 title="Filter by start date"
@@ -171,7 +165,7 @@ export const BotsPage: FC<{}> = () => {
             </div>
           </Stack>
         </div>
-      </Stack>
+      </div>
       <Row md="4">
         {props?.bots?.ids.length > 0
           ? Object.values(props?.bots?.entities).map((x, i) => (
