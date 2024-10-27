@@ -1,22 +1,20 @@
 import { useEffect, useState, type FC } from "react";
-import { useAppDispatch } from "../hooks";
-import { setHeaderContent } from "../../features/layoutSlice";
-import { Card, Col, Container, Row } from "react-bootstrap";
-import { roundDecimals } from "../../utils/math";
+import { Card, Col, Row } from "react-bootstrap";
 import {
   useGetBenchmarkQuery,
-  useGetEstimateQuery,
-  useGetRawBalanceQuery,
+  useGetEstimateQuery
 } from "../../features/balanceApiSlice";
-import { BotStatus } from "../../utils/enums";
-import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
-import { calculateTotalRevenue } from "../../utils/dashboard-computations";
-import GainersLosers from "../components/GainersLosers";
-import { useGainerLosersSeriesQuery } from "../../features/marketApiSlice";
 import { useGainerLosersQuery } from "../../features/binanceApiSlice";
+import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
+import { useGainerLosersSeriesQuery } from "../../features/marketApiSlice";
+import { calculateTotalRevenue } from "../../utils/dashboard-computations";
+import { BotStatus } from "../../utils/enums";
+import { roundDecimals } from "../../utils/math";
+import { listCssColors } from "../../utils/validations";
+import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import ReversalBarChart from "../components/ReversalBarChart";
-import { listCssColors } from "../../utils/validations";
+import { useAppDispatch } from "../hooks";
 
 export const DashboardPage: FC<{}> = () => {
   const dispatch = useAppDispatch();

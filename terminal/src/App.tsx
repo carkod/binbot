@@ -1,4 +1,3 @@
-import React from 'react';
 import { Provider } from "react-redux";
 import {
   createBrowserRouter,
@@ -6,14 +5,15 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { Layout } from "./app/Layout";
+import AutotradePage from "./app/pages/Autotrade";
+import BotDetail from "./app/pages/BotDetail";
 import BotsPage from "./app/pages/Bots";
 import DashboardPage from "./app/pages/Dashboard";
 import LoginPage from "./app/pages/Login";
-import { store } from "./app/store";
-import BotDetail from "./app/pages/BotDetail";
-import AutotradePage from "./app/pages/Autotrade";
-import { getToken, removeToken } from './utils/login';
+import BlacklistPage from "./app/pages/BlacklistPage";
 import NotFound from './app/pages/NotFound';
+import { store } from "./app/store";
+import { getToken, removeToken } from './utils/login';
 
 export type Routes = {
   path: string;
@@ -68,6 +68,15 @@ export const routes = [
     name: "Autotrade",
     element: <AutotradePage />,
     id: "autotrade",
+    nav: true,
+  },
+  {
+    path: "blacklist",
+    link: "/blacklist",
+    icon: "fas fa-ban",
+    name: "Blacklist",
+    element: <BlacklistPage />,
+    id: "blacklist",
     nav: true,
   },
   {
