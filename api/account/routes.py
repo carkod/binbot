@@ -168,7 +168,7 @@ def one_click_liquidation(asset):
 @account_blueprint.get(
     "/market-domination", tags=["assets"], response_model=MarketDominationResponse
 )
-def market_domination(size: int = 7):
+def market_domination(size: int = 14):
 
     data = Assets().get_market_domination(size)
     market_domination_series = MarketDominationSeries()
