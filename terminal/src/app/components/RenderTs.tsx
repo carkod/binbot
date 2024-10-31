@@ -86,13 +86,4 @@ const RenderTimestamp = (bot) => {
   }
 };
 
-const DurationTsComponent = (bot) => {
-  // Long positions
-  if (bot.deal) {
-    return <p className="small">{renderDuration(bot)}</p>;
-  } else {
-    return <></>;
-  }
-};
-
-export { RenderTimestamp, DurationTsComponent };
+export { RenderTimestamp };
