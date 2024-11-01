@@ -30,8 +30,8 @@ const ReversalBarChart: FC<ReversalBarChartProps> = ({ data, legend }) => {
             </Col>
             <Col lg="11" md="11" sm="11">
               <Card.Title as="h5">Gainers vs. Losers by Volume</Card.Title>
-              <p className="card-category u-text-left">
-                Market evolution of gainers vs losers by volume.
+              <p className="u-text-left">
+                Market evolution of gainers vs losers by volume. This graph shows indications of market reversal
               </p>
             </Col>
           </Row>

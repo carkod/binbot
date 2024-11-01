@@ -1,25 +1,38 @@
-import { type ChartOptions } from "chart.js";
-import "chart.js/auto"; // Fixes rendering issues with chart.js
+import { CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Tooltip as Tip, Title } from "chart.js";
+import { type FC } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
 import { Line } from "react-chartjs-2";
+import { type BenchmarkSeriesData } from "../../features/balanceApiSlice";
 import { listCssColors } from "../../utils/validations";
 
-const PortfolioBenchmarkChart = ({ chartData }) => {
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tip,
+  Legend
+);
+
+
+const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
+  chartData,
+}) => {
   const lastUsdt = chartData.usdcSeries?.[chartData.usdcSeries.length - 1];
   const lastBtc = chartData.btcSeries?.[chartData.btcSeries.length - 1];
 
-  const PBOptions: ChartOptions = {
+  const PBOptions = {
     maintainAspectRatio: true,
     responsive: true,
     scales: {
       y: {
-        type: "linear",
         grace: "30%",
         ticks: {
           stepSize: 0.5,
         },
         grid: {
-          display: false,
+          display: true,
         },
       },
       x: {
@@ -28,7 +41,7 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
         },
         stacked: true,
         grid: {
-          display: false,
+          display: true,
         },
       },
     },
@@ -39,12 +52,6 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
           color: "rgb(255, 99, 132)",
         },
       },
-      tooltip: {
-        enabled: true,
-        intersect: true,
-        mode: "index",
-        position: "nearest",
-      },
     },
   };
 
@@ -52,15 +59,15 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
     labels: chartData.datesSeries,
     datasets: [
       {
-        type: "line",
         label: "Portfolio in USDCSeries",
         data: chartData.usdcSeries,
+        backgroundColor: listCssColors[0],
         borderColor: listCssColors[0],
       },
       {
-        type: "line",
         label: "BTC prices",
         data: chartData.btcSeries,
+        backgroundColor: listCssColors[1],
         borderColor: listCssColors[1],
       },
     ],
@@ -81,7 +88,7 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
             <Col lg="11" md="11" sm="11">
               <Card.Title as="h5">Portfolio benchmarking</Card.Title>
               <div>
-                <p className="card-category u-text-left">
+                <p className="u-text-left">
                   Compare portfolio against BTC.
                   <br />
                   Values in % difference
@@ -92,13 +99,13 @@ const PortfolioBenchmarkChart = ({ chartData }) => {
         </Container>
       </Card.Header>
       <Card.Body>
-        <Line data={data} options={PBOptions} />
+        <Line data={data} options={PBOptions}/>
       </Card.Body>
       <Card.Footer>
-        {chartData.dates && (
+        {chartData.datesSeries && (
           <div className="card-stats">
             <i className="fa fa-check" /> Last updated{" "}
-            {chartData.dates[chartData.dates.length - 1]}
+            {chartData.datesSeries[chartData.datesSeries.length - 1]}
           </div>
         )}
       </Card.Footer>

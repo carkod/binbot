@@ -9,8 +9,7 @@ import {
   Col,
   Container,
 } from "react-bootstrap";
-import { formatTimestamp } from "./RenderTs";
-import { renderDuration } from "../../utils/time";
+import { renderDuration, formatTimestamp} from "../../utils/time";
 
 export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
