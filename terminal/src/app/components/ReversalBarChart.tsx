@@ -1,41 +1,55 @@
-import { Row, Col, Container, Card } from "react-bootstrap";
-import BarChart from "./BarChart";
 import { type FC } from "react";
+import { Card, Col, Row } from "react-bootstrap";
+import { type GainerLosersData } from "../../features/marketApiSlice";
+import { useBreakpoint } from "../hooks";
+import BarChart from "./BarChart";
 
 type ReversalBarChartProps = {
-  data: any;
+  chartData: GainerLosersData;
   legend: any;
 };
 
-const ReversalBarChart: FC<ReversalBarChartProps> = ({ data, legend }) => {
-  const gainers = parseFloat(data.gainers_count);
-  const losers = parseFloat(data.losers_count);
+const ReversalBarChart: FC<ReversalBarChartProps> = ({ chartData, legend }) => {
+  const breakpoint = useBreakpoint();
+  const data = { ...chartData };
+
+  if (breakpoint === "xs") {
+    // Show only the last 5 data points due to size of the screen
+    data.gainers_count = chartData.gainers_count?.slice(-10);
+    data.losers_count = chartData.losers_count?.slice(-10);
+    data.dates = chartData.dates?.slice(-10);
+    data.gainers_percent = chartData.gainers_percent?.slice(-10);
+    data.losers_percent = chartData.losers_percent?.slice(-10);
+    data.gainers = chartData.gainers?.slice(-10);
+    data.losers = chartData.losers?.slice(-10);
+    data.total_volume = chartData.total_volume?.slice(-10);
+  }
+
+  const gainers = data.gainers_count;
+  const losers = data.losers_count;
   return (
     <Card className="card-chart">
       <Card.Header>
-        <Container>
-          <Row>
-            <Col lg="1" md="1" sm="1">
-              <div className="u-fa-lg">
-                <i
-                  className={`fa fa-suitcase ${
-                    gainers > losers
-                      ? "text-success"
-                      : gainers < losers
-                        ? "text-danger"
-                        : ""
-                  }`}
-                />
-              </div>
-            </Col>
-            <Col lg="11" md="11" sm="11">
-              <Card.Title as="h5">Gainers vs. Losers by Volume</Card.Title>
-              <p className="u-text-left">
-                Market evolution of gainers vs losers by volume. This graph shows indications of market reversal
-              </p>
-            </Col>
-          </Row>
-        </Container>
+        <Row>
+          <Col lg="1" md="1" sm="1">
+            <i
+              className={`fs-2 fa fa-suitcase ${
+                gainers > losers
+                  ? "text-success"
+                  : gainers < losers
+                    ? "text-danger"
+                    : ""
+              }`}
+            />
+          </Col>
+          <Col lg="11" md="11" sm="11">
+            <Card.Title as="h5" className="mt-0">Gainers vs. Losers by Volume</Card.Title>
+            <p className="u-text-left">
+              Market evolution of gainers vs losers by volume. This graph shows
+              indications of market reversal
+            </p>
+          </Col>
+        </Row>
       </Card.Header>
       {data && (
         <Card.Body>

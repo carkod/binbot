@@ -1,7 +1,7 @@
 FROM node:lts as build-stage
 WORKDIR /app
 COPY /terminal/ /app/
-RUN yarn install && yarn build
+RUN npm install && npm run build
 
 FROM nginx/unit:1.28.0-python3.10
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-dev python-setuptools

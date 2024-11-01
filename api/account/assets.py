@@ -194,9 +194,8 @@ class Assets(AssetsController):
         )
         # btc candlestick data series
         klines = self.get_raw_klines(
-            limit=len(
-                balance_series
-            ),  # One month - 1 (calculating percentages) worth of data to display
+            # One month - 1 (calculating percentages) worth of data to display
+            limit=len(balance_series),
             symbol="BTCUSDC",
             interval="1d",
             end_time=str(end_time),
@@ -221,6 +220,11 @@ class Assets(AssetsController):
                 balance_btc_diff.append(float(klines[btc_index][4]))
             else:
                 continue
+
+        # Reverse data so it shows latest in the graph on the right side.
+        balances_series_diff.reverse()
+        balances_series_dates.reverse()
+        balance_btc_diff.reverse()
 
         resp = json_response(
             {

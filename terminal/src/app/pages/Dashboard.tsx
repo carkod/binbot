@@ -195,7 +195,7 @@ export const DashboardPage: FC<{}> = () => {
             </Card>
           )}
         </Col>
-        <Col lg="9">
+        <Col lg="9" xs="12" sm="12">
           {benchmark?.percentageSeries.datesSeries && (
             <PortfolioBenchmarkChart chartData={benchmark.percentageSeries} />
           )}
@@ -210,7 +210,7 @@ export const DashboardPage: FC<{}> = () => {
         <Col lg="6" md="12">
           {gainersLosersSeries && (
             <ReversalBarChart
-              data={gainersLosersSeries}
+              chartData={gainersLosersSeries}
               legend={[
                 {
                   name: "Portfolio",

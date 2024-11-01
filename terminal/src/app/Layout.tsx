@@ -1,4 +1,4 @@
-import { useEffect, useState, type FC } from "react";
+import { useState, type FC } from "react";
 import { Navigate, Outlet } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
 import { getToken } from "../utils/login";

@@ -1,6 +1,6 @@
 @use "sass:color";
 
-@import "~bootstrap/scss/bootstrap";
+@import "../node_modules/bootstrap/scss/bootstrap";
 
 @import "paper-dashboard/variables";
 @import "paper-dashboard/mixins";

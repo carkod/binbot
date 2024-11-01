@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "type-check": "tsc --noEmit",
-    "install:clean": "rm -rf dist node_modules && npm install"
+    "install:clean": "rm -rf dist node_modules package-lock.json && npm install"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.0.1",
