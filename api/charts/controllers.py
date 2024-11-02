@@ -1,7 +1,8 @@
-
 from datetime import datetime, timedelta
 from bson import ObjectId
+from mongomock import CollectionInvalid
 from pymongo import DESCENDING, ReturnDocument
+from autotrade.controller import AutotradeSettingsController
 from charts.models import MarketDominationSeriesStore
 from apis import BinbotApi
 from database.mongodb.db import Database, setup_db, setup_kafka_db
@@ -11,6 +12,7 @@ class KlinesSchema(Database):
     """
     Candlestick data CRUD operations
     """
+
     def __init__(self, pair, interval=None, limit=500) -> None:
         self._id = pair  # pair
         self.interval = interval
@@ -110,72 +112,90 @@ class MarketDominationController(Database, BinbotApi):
     """
     CRUD operations for market domination
     """
+
     def __init__(self) -> None:
         super().__init__()
         self.collection = self.kafka_db.market_domination
+        self.autotrade_settings = AutotradeSettingsController().get_settings()
 
     def mkdm_migration(self):
         """
         One time migration of market domination data from MongoDB ordinary db to MongoDB timeseries format
+
+        1. Check if collection exists. If not, code will continue
+        else it will raise an error and finish the task
+        2. Migrate market domination data to time series format
         """
+        try:
+            self.kafka_db.create_collection(
+                "market_domination",
+                # 1 week worth of data
+                expireAfterSeconds=604800,
+                check_exists=True,
+                timeseries={
+                    "timeField": "timestamp",
+                    "metaField": "symbol",
+                    "granularity": "minutes",
+                },
+            )
+        except CollectionInvalid:
+            return
+
+        # Start migration
         one_week_ago = datetime.now() - timedelta(weeks=1)
         one_week_ago_object_id = ObjectId.from_datetime(one_week_ago)
 
-        data = self._db.market_domination.find({
-            '_id': {'$gte': one_week_ago_object_id}
-        })
+        data = self._db.market_domination.find(
+            {"_id": {"$gte": one_week_ago_object_id}}
+        )
         data_collection = list(data)
         formatted_data = []
+
         for item in data_collection:
             for ticker in item["data"]:
-                formatted_data.append(MarketDominationSeriesStore(
-                    time=item["time"],
-                    symbol=ticker["symbol"],
-                    priceChangePercent=float(ticker["priceChangePercent"]),
-                    price=float(ticker["price"])
-                    
-                ))
-        self.kafka_db.create_collection(
-            "market_domination",
-            capped=True,
-            # 1 week worth of data
-            max=336,
-            expireAfterSeconds=604800,
-            check_exists=True,
-            timeseries={'time': 'timestamp'}
-        )
-        self.collection.create_index(
-            [("time", DESCENDING)], unique=True
-        )
-        self.collection.create_index(
-            [("symbol", DESCENDING)]
-        )
+                if float(ticker["priceChangePercent"]) > 0:
+                    store_data = MarketDominationSeriesStore(
+                        timestamp=datetime.strptime(
+                            item["time"], "%Y-%m-%d %H:%M:%S.%f"
+                        ),
+                        time=item["time"],
+                        symbol=ticker["symbol"],
+                        priceChangePercent=float(ticker["priceChangePercent"]),
+                        price=float(ticker["price"]),
+                        volume=float(ticker["volume"]),
+                    )
+                    md_data = store_data.model_dump()
+                    formatted_data.append(md_data)
+
         self.collection.insert_many(formatted_data)
 
     def store_market_domination(self):
-        get_ticker_data = self.ticker_24()
-        all_coins = []
-        for item in get_ticker_data:
-            if item["symbol"].endswith("USDC") and float(item["price"]) > 0:
-                all_coins.append(
-                    {
-                        "symbol": item["symbol"],
-                        "priceChangePercent": item["priceChangePercent"],
-                        "volume": item["volume"],
-                        "price": item["lastPrice"],
-                    }
-                )
+        """
+        Store ticker 24 data every 30 min
+        and calculate price change proportion
+        This is how to construct market domination data
 
-        all_coins = sorted(
-            all_coins, key=lambda item: float(item["priceChangePercent"]), reverse=True
-        )
-        current_time = datetime.now()
-        response = self.collection.insert_one(
-            {
-                "time": current_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                "data": all_coins,
-            }
-        )
+        The reason is to reduce weight, so as not to be banned by API
+        """
+        get_ticker_data = self.ticker_24()
+        coin_data = []
+        try:
+            for item in get_ticker_data:
+                if item["symbol"].endswith("USDC") and float(item["price"]) > 0:
+                    model_data = MarketDominationSeriesStore(
+                        timestamp=datetime.fromtimestamp(item["closeTime"]).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                        time=datetime.fromtimestamp(item["closeTime"]).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                        symbol=item["symbol"],
+                        priceChangePercent=float(item["priceChangePercent"]),
+                        price=float(item["price"]),
+                        volume=float(item["volume"]),
+                    )
+                    data = model_data.model_dump()
+                    coin_data.append(data)
+        except Exception as e:
+            print(e)
+
+        response = self.collection.insert_many(data)
         return response
 
     def get_market_domination(self, size=7):

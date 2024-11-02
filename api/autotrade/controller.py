@@ -1,8 +1,8 @@
 from pydantic import ValidationError
+from api.autotrade.schemas import AutotradeSettingsSchema
 from base_producer import BaseProducer
 from database.mongodb.db import Database
 from tools.handle_error import (
-    json_response,
     json_response_error,
     json_response_message,
 )
@@ -24,15 +24,9 @@ class AutotradeSettingsController(Database):
         self.producer = self.base_producer.start_producer()
 
     def get_settings(self):
-        try:
-            settings = self.db.research_controller.find_one({"_id": self.document_id})
-            resp = json_response(
-                {"message": "Successfully retrieved settings", "data": settings}
-            )
-        except Exception as error:
-            resp = json_response_error(f"Error getting settings: {error}")
-
-        return resp
+        settings = self.db.research_controller.find_one({"_id": self.document_id})
+        deserialized_data = AutotradeSettingsSchema(**settings)
+        return deserialized_data
 
     def edit_settings(self, data):
         try:
@@ -51,9 +45,3 @@ class AutotradeSettingsController(Database):
                 msg += field + desc[0]
             resp = json_response_error(f"{msg}")
         return resp
-
-    def get_autotrade_settings(self):
-        return self._db.research_controller.find_one({"_id": "settings"})
-
-    def get_test_autotrade_settings(self):
-        return self._db.research_controller.find_one({"_id": "test_autotrade_settings"})

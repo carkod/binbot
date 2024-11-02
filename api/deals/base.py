@@ -93,7 +93,8 @@ class BaseDeal(OrderController):
 
         return qty, free
 
-    def simulate_order(self, pair, price, qty, side):
+    def simulate_order(self, pair, qty, side):
+        price = float(self.matching_engine(pair, True, qty))
         order = {
             "symbol": pair,
             "orderId": self.generate_id().int,
@@ -112,7 +113,8 @@ class BaseDeal(OrderController):
         }
         return order
 
-    def simulate_response_order(self, pair, price, qty, side):
+    def simulate_response_order(self, pair, qty, side):
+        price = float(self.matching_engine(pair, True, qty))
         response_order = {
             "symbol": pair,
             "orderId": self.generate_id().int,

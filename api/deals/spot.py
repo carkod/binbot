@@ -1,14 +1,9 @@
 import logging
 
-from requests.exceptions import HTTPError
-from orders.controller import OrderController
 from base_producer import BaseProducer
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
-from tools.exceptions import (
-    BinbotErrors,
-)
 from tools.enum_definitions import CloseConditions, DealType, Status, Strategy
 from bots.schemas import BotSchema
 
@@ -38,6 +33,7 @@ class SpotLongDeal(BaseDeal):
         2. Calculate take_profit_price and stop_loss_price as usual
         3. Create deal
         """
+        self.active_bot: BotSchema = self.active_bot
         self.update_deal_logs(
             "Resetting bot for margin_short strategy...", self.active_bot
         )
@@ -51,7 +47,7 @@ class SpotLongDeal(BaseDeal):
         self.active_bot = self.save_bot_streaming(self.active_bot)
         return self.active_bot
 
-    def execute_stop_loss(self, price):
+    def execute_stop_loss(self):
         """
         Update stop limit after websocket
 
@@ -87,14 +83,14 @@ class SpotLongDeal(BaseDeal):
 
         # Dispatch fake order
         if self.db_collection.name == "paper_trading":
-            res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
+            res = self.simulate_order(self.active_bot.pair, qty, "SELL")
 
         else:
             self.active_bot.errors.append(
                 "Dispatching sell order for trailling profit..."
             )
             # Dispatch real order
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         stop_loss_order = BinanceOrderModel(
             timestamp=res["transactTime"],
@@ -117,9 +113,9 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
-        msg = f"Completed Stop loss. "
+        msg = "Completed Stop loss. "
         if self.active_bot.margin_short_reversal:
-            msg += f"Scheduled to switch strategy"
+            msg += "Scheduled to switch strategy"
         self.active_bot.errors.append(msg)
         self.active_bot.status = Status.completed
 
@@ -218,7 +214,7 @@ class SpotLongDeal(BaseDeal):
         if float(self.active_bot.stop_loss) > 0 and float(
             self.active_bot.deal.stop_loss_price
         ) > float(close_price):
-            self.execute_stop_loss(close_price)
+            self.execute_stop_loss()
             self.base_producer.update_required(self.producer, "EXECUTE_SPOT_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
                 self.switch_margin_short()

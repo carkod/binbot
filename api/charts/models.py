@@ -1,3 +1,4 @@
+import datetime
 from pydantic import BaseModel, field_validator
 from tools.handle_error import StandardResponse
 
@@ -20,6 +21,7 @@ class CandlestickParams(BaseModel):
 
 
 class MarketDominationSeriesStore(BaseModel):
+    timestamp: datetime.datetime
     time: str
     symbol: str
     priceChangePercent: float

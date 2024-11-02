@@ -42,8 +42,6 @@ class StreamingController(BaseStreaming):
         """
         New function to replace get_klines without websockets
         """
-        self.settings = self.autotrade_controller.get_autotrade_settings()
-        self.test_settings = self.autotrade_controller.get_test_autotrade_settings()
         # Load real bot settings
         bot_controller = Bot(collection_name="bots")
         self.list_bots = bot_controller.get_active_pairs()
