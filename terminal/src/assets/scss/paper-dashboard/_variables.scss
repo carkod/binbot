@@ -393,3 +393,12 @@ $zindex-notification: 1070 !default; // must be higher than a modal background (
 $zindex-modal: 1080 !default; // must be higher than a modal background (1050)
 $zindex-loader-bg: 1085 !default;
 $zindex-loader: 1090 !default;
+
+
+// input.scss variables
+$color1: $opacity-5;
+$color2: $opacity-8;
+$color3: $white-color;
+$color4: $transparent-bg;
+$color5: $opacity-1;
+$color6: $opacity-2;

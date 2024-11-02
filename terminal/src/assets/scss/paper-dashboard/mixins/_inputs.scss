@@ -1,3 +1,4 @@
+
 @mixin input-size($padding-vertical, $padding-horizontal) {
   padding: $padding-vertical $padding-horizontal;
 }
@@ -126,12 +127,6 @@
   }
 }
 
-$color1: $opacity-5;
-$color2: $opacity-8;
-$color3: $white-color;
-$color4: $transparent-bg;
-$color5: $opacity-1;
-$color6: $opacity-2;
 
 @mixin input-coloured-bg($color1, $color2, $color3, $color4, $color5, $color6) {
   @include form-control-placeholder(darken($color2, 8%), 1);
