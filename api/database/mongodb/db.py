@@ -9,9 +9,9 @@ from tools.enum_definitions import Status, AutotradeSettingsDocument
 
 
 def get_mongo_client():
-    client = MongoClient(
+    client: MongoClient = MongoClient(
         host=os.getenv("MONGO_HOSTNAME"),
-        port=int(os.getenv("MONGO_PORT")),
+        port=int(os.getenv("MONGO_PORT", 2017)),
         authSource="admin",
         username=os.getenv("MONGO_AUTH_USERNAME"),
         password=os.getenv("MONGO_AUTH_PASSWORD"),
@@ -27,7 +27,7 @@ def setup_db():
 
 
 def setup_kafka_db():
-    # Database
+    # Time series optimized database
     mongo = get_mongo_client()
     db = mongo[os.getenv("MONGO_KAFKA_DATABASE")]
     return db
@@ -45,6 +45,7 @@ class Database:
     """
 
     _db = setup_db()
+    kafka_db = setup_kafka_db()
 
     def get_fiat_coin(self):
         document_id = AutotradeSettingsDocument.settings

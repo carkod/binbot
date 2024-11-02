@@ -69,7 +69,7 @@ class BinanceApi:
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
 
     def request(
-        self, url, method="GET", session: Session = None, payload: dict = {}, **kwargs
+        self, url, method="GET", session: Session | None = None, payload: dict = {}, **kwargs
     ):
         """
         Standard request
@@ -350,7 +350,7 @@ class BinanceApi:
         open_orders = self.signed_request(self.open_orders, payload={"symbol": symbol})
         return open_orders
 
-    def get_all_orders(self, symbol, order_id: int = None, start_time=None):
+    def get_all_orders(self, symbol, order_id: int = 0, start_time=None):
         """
         Get all orders given symbol and order_id
 
@@ -424,7 +424,7 @@ class BinbotApi(BinanceApi):
     # research
     bb_autotrade_settings_url = f"{bb_base_url}/autotrade-settings/bots"
     bb_blacklist_url = f"{bb_base_url}/research/blacklist"
-    bb_market_domination = f"{bb_base_url}/account/market-domination"
+    bb_market_domination = f"{bb_base_url}/charts/market-domination"
 
     def bb_request(self, url, method="GET", params=None, payload=None):
         """

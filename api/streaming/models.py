@@ -2,6 +2,7 @@
 from tools.enum_definitions import TrendEnum
 from pydantic import BaseModel, ConfigDict, field_validator
 
+
 class SignalsConsumer(BaseModel):
     """
     Pydantic model for the signals consumer.

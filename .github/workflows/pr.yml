@@ -147,3 +147,49 @@ jobs:
           pipenv install httpx
       - name: Run tests
         run: pipenv run pytest -v
+
+  python-linting:
+    name: Python code linting
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      # Setup Python (faster than using Python container)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10.8"
+      - name: Install pipenv
+        run: |
+          python3 -m pip install pipenv
+      - name: Install dependencies
+        run: |
+          pipenv install --dev --system --deploy --ignore-pipfile --clear
+          pipenv install httpx
+      - name: Run linters
+        run: pipenv run black --check .
+        run: pipenv run mypy --check .
+    
+    frontend-tests:
+      name: Terminal React app tests
+      runs-on: ubuntu-latest
+      defaults:
+        run:
+          working-directory: terminal
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '20'
+
+        - name: Install dependencies
+          run: npm install
+
+        - name: Run tests
+          run: npm run test

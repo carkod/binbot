@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from pydantic import BaseModel
 from tools.handle_error import StandardResponse
 
@@ -57,6 +55,7 @@ class BinanceBalance(BaseModel):
     free: float
     locked: float
 
+
 class GainersLosersResponse(StandardResponse):
     data: list[Binance24Ticker]
 
@@ -80,31 +79,3 @@ class BalanceSeries(StandardResponse):
 class BalanceSeriesResponse(StandardResponse):
     data: list[BalanceSeries]
 
-
-class MarketDominationSeriesStore(BaseModel):
-    symbol: str
-    priceChangePercent: float
-
-
-class MarketDomination(BaseModel):
-    time: str
-    data: list[MarketDominationSeriesStore]
-
-
-class MarketDominationResponse(BaseModel):
-    data: list[MarketDominationSeriesStore]
-    message: str
-    error: int = 0
-
-
-class MarketDominationSeries(BaseModel):
-    dates: list[str] = []
-    gainers_percent: list[float] = []
-    losers_percent: list[float] = []
-    gainers_count: list[int] = []
-    losers_count: list[int] = []
-    total_volume: list[float] = []
-
-
-class GetMarketDominationResponse(StandardResponse):
-    data: MarketDominationSeries
