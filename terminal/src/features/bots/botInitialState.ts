@@ -47,6 +47,11 @@ export interface Bot {
   commissions: number;
 }
 
+export interface BotEntity {
+  ids: string[];
+  entities: { [id: string]: Bot };
+}
+
 /**
  * This file contains redux state
  * that is shared between bots views

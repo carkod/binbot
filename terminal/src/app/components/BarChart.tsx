@@ -45,31 +45,29 @@ const BarChart: FC<BarChartProps> = ({
   };
 
   return (
-    <>
-      <Plot
-        data={[
-          {
-            x: data.dates,
-            y: data.gainers_percent,
-            type: "bar",
-            marker: { color: listCssColors[8] },
-            name: line1name,
-            text: data.gainers,
-          },
-          {
-            x: data.dates,
-            y: data.losers_percent,
-            type: "bar",
-            marker: { color: listCssColors[2] },
-            name: line2name,
-            text: data.losers,
-          },
-        ]}
-        layout={layout}
-        useResizeHandler={true}
-        style={{ width: width, height: height }}
-      />
-    </>
+    <Plot
+      data={[
+        {
+          x: data.dates,
+          y: data.gainers_percent,
+          type: "bar",
+          marker: { color: listCssColors[8] },
+          name: line1name,
+          text: data.gainers,
+        },
+        {
+          x: data.dates,
+          y: data.losers_percent,
+          type: "bar",
+          marker: { color: listCssColors[2] },
+          name: line2name,
+          text: data.losers,
+        },
+      ]}
+      layout={layout}
+      useResizeHandler={true}
+      style={{ width: width, height: height }}
+    />
   );
 };
 

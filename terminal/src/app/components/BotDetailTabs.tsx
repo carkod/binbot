@@ -1,17 +1,18 @@
 import { useState, type FC } from "react";
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
-import { selectBot, setBot } from "../../features/bots/botSlice";
+import { useNavigate, useParams } from "react-router";
+import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
+import {
+  botsApiSlice,
+  useCreateBotMutation,
+  useEditBotMutation
+} from "../../features/bots/botsApiSlice";
+import { selectBot } from "../../features/bots/botSlice";
 import { BotStatus, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import BaseOrderTab from "./BaseOrderTab";
 import StopLossTab from "./StopLossTab";
 import TakeProfit from "./TakeProfitTab";
-import {
-  botsApiSlice,
-  useCreateBotMutation,
-  useEditBotMutation,
-} from "../../features/bots/botsApiSlice";
-import { useNavigate, useParams } from "react-router";
 
 const BotDetailTabs: FC = () => {
   const { bot } = useAppSelector(selectBot);
@@ -20,37 +21,32 @@ const BotDetailTabs: FC = () => {
   const dispatch = useAppDispatch();
 
   const [updateBot] = useEditBotMutation();
-
-  const [createBot] = useCreateBotMutation();
+  const [createBot ] = useCreateBotMutation();
+  const { data: autotradeSettings } = useGetSettingsQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
 
   // Activate and get bot again
   // Deals and orders information need to come from the server
   const handleActivation = (id: string) => {
-    const response = dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
-    console.log("Activate bot", response);
-    dispatch(botsApiSlice.endpoints.getSingleBot.initiate(id));
+    dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
+    // Deals and orders are not 
+    navigate(`/bots/edit/${id}`);
   };
   const handlePanicSell = (id: string) => {
-    console.log("Panic sell", id);
+    dispatch(botsApiSlice.endpoints.deactivateBot.initiate(id));
+    navigate(`/bots`);
   };
 
   const onSubmit = async () => {
-    let response;
     if (id && bot.status !== BotStatus.COMPLETED) {
-      response = await updateBot({ body: bot, id }).unwrap();
+      const newBotId = await updateBot({ body: bot, id }).unwrap();
+      navigate(`/bots/edit/${newBotId}`);
     } else {
-      response = await createBot(bot).unwrap();
+      const newBotId = await createBot(bot).unwrap();
+      setEnableActivation(true);
+      navigate(`/bots/edit/${newBotId}`);
     }
-
-    let botId = id;
-    if (response?.botId) {
-      botId = response.botId;
-    }
-
-    setEnableActivation(true);
-    navigate(`/bots/edit/${botId}`);
   };
 
   return (

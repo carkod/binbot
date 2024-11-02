@@ -4,7 +4,8 @@ import { useNavigate } from "react-router";
 import { type Bot } from "../../features/bots/botInitialState";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
-import { DurationTsComponent } from "./RenderTs";
+import { BotStatus } from "../../utils/enums";
+import { renderDuration } from "../../utils/time";
 
 interface BotCardProps {
   bot: Bot;
@@ -89,7 +90,7 @@ const BotCard: FC<BotCardProps> = ({
             <Col md="6" xs="5">
               <p className="small">
                 {(bot.deal?.buy_price &&
-                  roundDecimals(bot.deal.buy_price.toFixed(6))) ||
+                  roundDecimals(bot.deal.buy_price, 6)) ||
                   bot.deal?.buy_total_qty}
               </p>
             </Col>
@@ -137,18 +138,34 @@ const BotCard: FC<BotCardProps> = ({
               </Col>
             </Row>
           )}
-          {bot.deal?.buy_timestamp && bot.deal?.sell_timestamp ? (
+          {Boolean(bot.deal?.buy_timestamp) && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Duration</p>
+                <p className="small">Buy time</p>
               </Col>
-              <Col md="6" xs="5">
-                {DurationTsComponent(bot)}
-              </Col>
+              <Col md="6" xs="5"></Col>
             </Row>
-          ) : (
-            ""
           )}
+          {bot.status === BotStatus.COMPLETED &&
+            Boolean(bot.deal?.sell_timestamp) && (
+              <Row>
+                <Col md="6" xs="7">
+                  <p className="small">Sell time</p>
+                </Col>
+                <Col md="6" xs="5"></Col>
+              </Row>
+            )}
+          {bot.status === BotStatus.COMPLETED &&
+            Boolean(bot.deal?.buy_timestamp && bot.deal?.sell_timestamp) && (
+              <Row>
+                <Col md="6" xs="7">
+                  <p className="small">Duration</p>
+                </Col>
+                <Col md="6" xs="5">
+                  <p className="small">{renderDuration(bot)}</p>
+                </Col>
+              </Row>
+            )}
         </Container>
       </Card.Body>
       <hr />

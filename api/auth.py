@@ -11,6 +11,7 @@ from fastapi import Depends, HTTPException, status
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -26,6 +27,7 @@ credentials_exception = HTTPException(
     headers={"WWW-Authenticate": "Bearer"},
 )
 
+
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -33,12 +35,13 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def enconde_access_token(password: str, email: str):
+
+def encode_access_token(password: str, email: str):
     expires_delta = timedelta(minutes=int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"]))
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now() + timedelta(minutes=15)
 
     data = {
         "password": password,
@@ -46,7 +49,8 @@ def enconde_access_token(password: str, email: str):
         "exp": expire,
     }
     encoded_jwt = jwt.encode(data, os.environ["SECRET_KEY"], algorithm="HS256")
-    return encoded_jwt
+    return encoded_jwt, data
+
 
 def decode_access_token(token: str = Depends(oauth2_scheme)):
     try:

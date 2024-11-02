@@ -1,4 +1,14 @@
 import moment from "moment";
+
+/**
+ * Format timestamp by converting it to datetime format
+ * @param {string} timestamp in milliseconds
+ * @returns
+ */
+export const formatTimestamp = (timestamp) => {
+  return timestamp === 0 ? "0" : moment(timestamp).format("D MMM, HH:mm");
+};
+
 /**
  * Get timestamp of a week ago
  * @returns number timestamp
@@ -8,7 +18,7 @@ export function weekAgo() {
   const lastWeek = new Date(
     today.getFullYear(),
     today.getMonth(),
-    today.getDate() - 7,
+    today.getDate() - 7
   );
   return lastWeek.getTime();
 }

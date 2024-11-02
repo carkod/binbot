@@ -1,5 +1,8 @@
-import type { AppStore } from "../../app/store";
-import { makeStore } from "../../app/store";
+# Example of redux slice test
+
+```
+import type { AppStore } from "../app/store";
+import { makeStore } from "../app/store";
 import type { CounterSliceState } from "./counterSlice";
 import {
   counterSlice,
@@ -56,3 +59,4 @@ describe<LocalTestContext>("counter reducer", (it) => {
     expect(selectCount(store.getState())).toBe(5);
   });
 });
+```

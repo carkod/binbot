@@ -156,9 +156,10 @@ class Bot(Database, Account):
             # Merge new data with old data
             initial_bot_data = self.db_collection.find_one({"id": botId})
             # Ensure if client-side updated current_price is not overwritten
-            current_price = data.deal.current_price
+            # Client side most likely has most up to date current_price because of websockets single pair update in BotDetail
+            if data.deal.current_price:
+                initial_bot_data["deal"]["current_price"] = data.deal.current_price
             data.deal = initial_bot_data["deal"]
-            data.deal.current_price = current_price
             data.orders = initial_bot_data["orders"]
             data.created_at = initial_bot_data["created_at"]
             data.total_commission = initial_bot_data["total_commission"]

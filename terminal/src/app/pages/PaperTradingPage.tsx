@@ -1,14 +1,13 @@
-import { type EntityStateAdapter } from "@reduxjs/toolkit";
 import { useEffect, useState, type FC } from "react";
 import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import { useImmer } from "use-immer";
-import { type Bot } from "../../features/bots/botInitialState";
 import {
-  useDeactivateBotMutation,
-  useDeleteBotMutation,
-  useGetBotsQuery,
-} from "../../features/bots/botsApiSlice";
+  papertradingApiSlice,
+  useDeactivateTestBotMutation,
+  useDeleteTestBotMutation,
+  useGetTestBotsQuery,
+} from "../../features/bots/paperTradingApiSlice";
 import { setSpinner } from "../../features/layoutSlice";
 import { weekAgo } from "../../utils/time";
 import BotCard from "../components/BotCard";
@@ -17,13 +16,13 @@ import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
 import { useAppDispatch } from "../hooks";
 
-export const BotsPage: FC<{}> = () => {
+export const PaperTradingPage: FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const currentTs = new Date().getTime();
   const oneWeekAgo = weekAgo();
-  const [removeBots] = useDeleteBotMutation();
-  const [deactivateBot] = useDeactivateBotMutation();
+  const [removeBots ] = useDeleteTestBotMutation();
+  const [deactivateBot] = useDeactivateTestBotMutation();
 
   // Component states
   const [selectedCards, selectCards] = useImmer([]);
@@ -34,12 +33,7 @@ export const BotsPage: FC<{}> = () => {
   const [endDate, setEndDate] = useState(currentTs);
   const [filterStatus, setFilterStatus] = useState("");
 
-  // Fetch bots which require filter dependencies
-  const {
-    refetch,
-    data: props,
-    isFetching,
-  } = useGetBotsQuery({
+  const { data: props, isFetching } = useGetTestBotsQuery({
     status: filterStatus,
     startDate,
     endDate,
@@ -64,18 +58,17 @@ export const BotsPage: FC<{}> = () => {
       deactivateBot(botToDelete);
     }
     setBotToDelete(null);
-    dispatch(() => refetch());
     return false;
   };
   const onSubmitBulkAction = () => {
     switch (bulkActions) {
       case BulkAction.DELETE:
         removeBots(selectedCards);
+        navigate("/paper-trading");
         selectCards([]);
-        dispatch(() => refetch());
         break;
       case BulkAction.SELECT_ALL:
-        selectCards(Object.keys(props.bots.entities));
+        selectCards(Object.keys(props.paperTrading.entities));
         break;
       case BulkAction.COMPLETED:
         setFilterStatus(BulkAction.COMPLETED);
@@ -96,7 +89,13 @@ export const BotsPage: FC<{}> = () => {
       setDateFilterError("Start date cannot be greater than end date");
     } else {
       setDateFilterError(null);
-      dispatch(() => refetch());
+      dispatch(
+        papertradingApiSlice.endpoints.getTestBots.initiate({
+          status: filterStatus,
+          startDate: ts,
+          endDate: endDate,
+        })
+      );
     }
   };
   const handleEndDate = (ts) => {
@@ -105,7 +104,13 @@ export const BotsPage: FC<{}> = () => {
       setDateFilterError("End date cannot be less than start date");
     } else {
       setDateFilterError(null);
-      dispatch(() => refetch());
+      dispatch(
+        papertradingApiSlice.endpoints.getTestBots.initiate({
+          status: filterStatus,
+          startDate: startDate,
+          endDate: ts,
+        })
+      );
     }
   };
 
@@ -113,17 +118,20 @@ export const BotsPage: FC<{}> = () => {
     if (isFetching) {
       dispatch(setSpinner(true));
     }
-    if (props?.bots) {
+    if (props?.paperTrading) {
       dispatch(setSpinner(false));
     }
-  }, [props?.bots, dispatch, isFetching, startDate, filterStatus, endDate]);
+  }, [props, dispatch, isFetching]);
 
   return (
     <Container fluid>
-      <div className="mb-3 d-flex flex-column flex-lg-row justify-content-between align-items-center">
+      <Stack
+        direction="horizontal"
+        className="mb-3 d-flex flex-row justify-content-between"
+      >
         <div id="bot-profits">
           <h4>
-            {props?.bots?.ids.length > 0 && (
+            {props?.paperTrading?.ids.length > 0 && (
               <Badge bg={props?.totalProfit > 0 ? "success" : "danger"}>
                 <i className="fas fa-building-columns" />{" "}
                 <span className="visually-hidden">Profit</span>
@@ -132,8 +140,8 @@ export const BotsPage: FC<{}> = () => {
             )}
           </h4>
         </div>
-        <div id="filters" className="mx-3 d-flex flex-column flex-md-row">
-          <Stack direction="horizontal" className="mx-3 d-flex flex-column flex-md-row">
+        <div id="filters">
+          <Stack direction="horizontal">
             <div className="p-3">
               <BotsActions
                 defaultValue={bulkActions}
@@ -145,8 +153,6 @@ export const BotsPage: FC<{}> = () => {
             <div className="p-3">
               <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
             </div>
-          </Stack>
-          <Stack direction="horizontal" className="mx-3 d-flex flex-column flex-md-row">
             <div className="p-3">
               <BotsDateFilter
                 title="Filter by start date"
@@ -165,10 +171,10 @@ export const BotsPage: FC<{}> = () => {
             </div>
           </Stack>
         </div>
-      </div>
+      </Stack>
       <Row md="4">
-        {props?.bots?.ids.length > 0
-          ? Object.values(props?.bots?.entities).map((x, i) => (
+        {props?.paperTrading?.ids.length > 0
+          ? Object.values(props?.paperTrading?.entities).map((x, i) => (
               <Col key={i}>
                 <BotCard
                   botIndex={i}
@@ -205,4 +211,4 @@ export const BotsPage: FC<{}> = () => {
   );
 };
 
-export default BotsPage;
+export default PaperTradingPage;

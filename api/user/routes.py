@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends
+from tools.handle_error import json_response, json_response_error
 from user.models.user import User
 from user.schemas import LoginRequest, UserResponse, UserSchema
-from fastapi.security import OAuth2PasswordRequestForm
 from auth import oauth2_scheme, Token, decode_access_token
 
 user_blueprint = APIRouter()
-
 
 
 @user_blueprint.get("/user", response_model=UserResponse, tags=["users"])
@@ -30,15 +29,17 @@ def login(data: LoginRequest):
     """
     Get an access_token to keep the user in session
     """
-    return User().login(data)
-
-
-@user_blueprint.get("/user/logout", tags=["users"])
-def logout():
-    """
-    Remove access_token
-    """
-    return User().logout()
+    try:
+        access_token, user_data = User().login(data)
+        return json_response(
+            {"message": "Successfully logged in", "data": {
+                "access_token": access_token,
+                "expires": user_data["exp"],
+                "email": user_data["email"],
+            }}
+        )
+    except Exception as e:
+        return json_response_error(str(e))
 
 
 @user_blueprint.post("/user/register", tags=["users"])

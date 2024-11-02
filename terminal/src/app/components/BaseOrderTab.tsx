@@ -18,6 +18,7 @@ import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useImmer } from "use-immer";
 import { getQuoteAsset } from "../../utils/api";
+import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 
 interface ErrorsState {
   pair?: string;
@@ -27,6 +28,7 @@ const BaseOrderTab: FC = () => {
   const dispatch: AppDispatch = useAppDispatch();
   const { data } = useGetSymbolsQuery();
   const { bot } = useAppSelector(selectBot);
+  const { data: autotradeSettings } = useGetSettingsQuery();
   const [quoteAsset, setQuoteAsset] = useState<string>("");
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
@@ -51,13 +53,8 @@ const BaseOrderTab: FC = () => {
   };
 
   const addAll = () => {
-    dispatch(setField({ name: "base_order_size", value: 0.001 }));
-  };
-
-  const handleSelectedPair = (selected: string) => {
-    if (selected) {
-      dispatch(setField({ name: "pair", value: selected }));
-    }
+    // fix: replace value with the full balance
+    // dispatch(setField({ name: "base_order_size", value: 0.001 }));
   };
 
   const handlePairBlur = (e) => {
@@ -75,12 +72,13 @@ const BaseOrderTab: FC = () => {
     }
   };
 
+  // Data
   useEffect(() => {
     if (data) {
       setSymbolsList(data);
     }
     if (bot.pair) {
-      setQuoteAsset(getQuoteAsset(bot));
+      setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.balance_to_use));
     }
     if (bot) {
       for (const key in bot) {
@@ -95,8 +93,10 @@ const BaseOrderTab: FC = () => {
     quoteAsset,
     setQuoteAsset,
     reset,
+    autotradeSettings?.balance_to_use
   ]);
 
+  // Form
   useEffect(() => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
@@ -121,7 +121,6 @@ const BaseOrderTab: FC = () => {
               options={symbolsList}
               disabled={bot.status === BotStatus.COMPLETED}
               value={bot.pair}
-              onChange={handleSelectedPair}
               onBlur={handlePairBlur}
               required
               errors={errorsState}
@@ -191,7 +190,7 @@ const BaseOrderTab: FC = () => {
             <br />
             <Form.Text>
               <Badge bg="secondary" className="fs-6">
-                {bot.balance_to_use}
+                {autotradeSettings?.balance_to_use}
               </Badge>
             </Form.Text>
           </Col>

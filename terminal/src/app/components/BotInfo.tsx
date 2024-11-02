@@ -9,7 +9,7 @@ import {
   Col,
   Container,
 } from "react-bootstrap";
-import { DurationTsComponent, formatTimestamp } from "./RenderTs";
+import { renderDuration, formatTimestamp} from "../../utils/time";
 
 export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
@@ -105,7 +105,7 @@ export default function BotInfo({ bot }) {
                     })}
                     <ListGroupItem className="d-flex justify-content-between align-items-start">
                       <strong>duration</strong>
-                      {DurationTsComponent(bot)}
+                      <p className="small">{renderDuration(bot)}</p>
                     </ListGroupItem>
                   </ListGroup>
                 </Col>

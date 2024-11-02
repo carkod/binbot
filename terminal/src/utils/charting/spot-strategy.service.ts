@@ -1,11 +1,13 @@
 import { type OrderLine } from "./index.d";
 import { type Bot } from "../../features/bots/botInitialState";
 import { dealColors } from "../../utils/charting/index";
+import { getQuoteAsset } from "../api";
 
 export default function spotTrading(
   bot: Bot,
   currentPrice: number,
 ): OrderLine[] {
+  const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];
   if (bot.deal.buy_price && bot.deal.buy_price > 0 && bot.status === "active") {
     currentPrice = bot.deal.buy_price;
@@ -17,7 +19,7 @@ export default function spotTrading(
       id: "short_buy_price",
       text: "Short buy price",
       tooltip: [` Price: ${bot.short_buy_price}`],
-      quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+      quantity: `${bot.base_order_size} ${quoteAsset}`,
       price: bot.short_buy_price,
       color: dealColors.trailling_profit,
     });
@@ -28,7 +30,7 @@ export default function spotTrading(
       id: "short_sell_price",
       text: "Short sell price",
       tooltip: [` Price: ${bot.short_sell_price}`],
-      quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+      quantity: `${bot.base_order_size} ${quoteAsset}`,
       price: bot.short_sell_price,
       color: dealColors.trailling_profit,
     });
@@ -40,7 +42,7 @@ export default function spotTrading(
         id: "original_buy_price",
         text: "Original buy price",
         tooltip: [bot.status, " Original buy price before SO triggered"],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
         price: bot.deal.original_buy_price,
         color: dealColors.base_order,
       });
@@ -55,11 +57,11 @@ export default function spotTrading(
           bot.status,
           `${
             bot.deal.buy_total_qty && bot.deal.buy_total_qty > 0
-              ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)"
+              ? bot.deal.buy_total_qty + quoteAsset + "(Avg total)"
               : ""
           }`,
         ],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
         price: bot.deal.buy_price || 0,
         color: dealColors.base_order,
       });
@@ -71,11 +73,11 @@ export default function spotTrading(
           bot.status,
           `${
             bot.deal.buy_total_qty && bot.deal.buy_total_qty > 0
-              ? bot.deal.buy_total_qty + bot.quoteAsset + "(Avg total)"
+              ? bot.deal.buy_total_qty + quoteAsset + "(Avg total)"
               : ""
           }`,
         ],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
         price: currentPrice,
         color: dealColors.base_order,
       });
@@ -93,7 +95,7 @@ export default function spotTrading(
           id: "take_profit",
           text: `Take profit -${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell when prices drop to here"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          quantity: `${bot.base_order_size} ${quoteAsset}`,
           price: bot.deal.sell_price,
           color: dealColors.take_profit,
         });
@@ -101,7 +103,7 @@ export default function spotTrading(
           id: "trailling_profit",
           text: `Trailling profit ${bot.take_profit}%`,
           tooltip: [bot.status, " Breakpoint to increase Take profit"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          quantity: `${bot.base_order_size} ${quoteAsset}`,
           price: bot.deal.sell_price * (1 + bot.take_profit / 100), // take_profit / trailling_profit
           color: dealColors.trailling_profit,
           lineStyle: 2,
@@ -115,7 +117,7 @@ export default function spotTrading(
           id: "trailling_profit",
           text: `Take profit ${bot.take_profit}%`,
           tooltip: [bot.status, " Trace upward profit"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          quantity: `${bot.base_order_size} ${quoteAsset}`,
           price: bot.deal.trailling_profit_price || bot.deal.take_profit_price, // take_profit / trailling_profit
           color: dealColors.trailling_profit,
         });
@@ -123,7 +125,7 @@ export default function spotTrading(
           id: "take_profit",
           text: `Trailling profit ${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          quantity: `${bot.base_order_size} ${quoteAsset}`,
           price: bot.deal.trailling_stop_loss_price, // take_profit / trailling_profit
           color: dealColors.take_profit,
         });
@@ -133,7 +135,7 @@ export default function spotTrading(
           id: "trailling_profit",
           text: `Trailling profit ${bot.take_profit}%`,
           tooltip: [bot.status, " Breakpoint to increase Take profit"],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          quantity: `${bot.base_order_size} ${quoteAsset}`,
           price: bot.deal.trailling_profit_price || bot.deal.take_profit_price, // take_profit / trailling_profit
           color: dealColors.trailling_profit,
           lineStyle: 2,
@@ -143,7 +145,7 @@ export default function spotTrading(
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${bot.buy_total_qty || bot.base_order_size} ${
-            bot.quoteAsset
+            quoteAsset
           }`,
           price: bot.deal.trailling_stop_loss_price,
           color: dealColors.take_profit,
@@ -156,7 +158,7 @@ export default function spotTrading(
           id: "take_profit",
           text: `Take profit ${bot.take_profit}%`,
           tooltip: [bot.status, " Sell Order "],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          quantity: `${bot.base_order_size} ${quoteAsset}`,
           price: bot.deal.buy_price * (1 + bot.take_profit / 100), // buy_profit * take_profit%
           color: dealColors.take_profit,
         });
@@ -165,7 +167,7 @@ export default function spotTrading(
           id: "take_profit",
           text: `Take profit ${bot.take_profit}%`,
           tooltip: [bot.status, " Sell Order "],
-          quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+          quantity: `${bot.base_order_size} ${quoteAsset}`,
           price: currentPrice * (1 + bot.take_profit / 100), // buy_profit * take_profit%
           color: dealColors.take_profit,
         });
@@ -179,7 +181,7 @@ export default function spotTrading(
             id: element.name,
             text: element.name,
             tooltip: [bot.status, " Buy order when drops here"],
-            quantity: `${element.so_size} ${bot.quoteAsset}`,
+            quantity: `${element.so_size} ${quoteAsset}`,
             price: element.buy_price,
             color: dealColors.safety_order,
             lineStyle: 2,
@@ -203,7 +205,7 @@ export default function spotTrading(
         id: "stop_loss",
         text: `Stop Loss ${bot.stop_loss}%`,
         tooltip: [bot.status, " Sell Order "],
-        quantity: `${bot.base_order_size} ${bot.quoteAsset}`,
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
         price: stopLossPrice, // buy_profit * take_profit%
         color: "red",
       });

@@ -1,25 +1,21 @@
 import { useEffect, useState, type FC } from "react";
-import { useAppDispatch } from "../hooks";
-import { setHeaderContent } from "../../features/layoutSlice";
-import { Card, Col, Container, Row } from "react-bootstrap";
-import { roundDecimals } from "../../utils/math";
+import { Card, Col, Row } from "react-bootstrap";
 import {
   useGetBenchmarkQuery,
   useGetEstimateQuery,
-  useGetRawBalanceQuery,
 } from "../../features/balanceApiSlice";
-import { BotStatus } from "../../utils/enums";
-import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
-import { calculateTotalRevenue } from "../../utils/dashboard-computations";
-import GainersLosers from "../components/GainersLosers";
-import { useGainerLosersSeriesQuery } from "../../features/marketApiSlice";
 import { useGainerLosersQuery } from "../../features/binanceApiSlice";
+import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
+import { useGainerLosersSeriesQuery } from "../../features/marketApiSlice";
+import { calculateTotalRevenue } from "../../utils/dashboard-computations";
+import { BotStatus } from "../../utils/enums";
+import { roundDecimals } from "../../utils/math";
+import { listCssColors } from "../../utils/validations";
+import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import ReversalBarChart from "../components/ReversalBarChart";
-import { listCssColors } from "../../utils/validations";
 
 export const DashboardPage: FC<{}> = () => {
-  const dispatch = useAppDispatch();
   const { data: accountData } = useGetEstimateQuery();
   const { data: activeBotEntities } = useGetBotsQuery({
     status: BotStatus.ACTIVE,
@@ -47,7 +43,7 @@ export const DashboardPage: FC<{}> = () => {
     if (benchmark) {
       if (benchmark.benchmarkData) {
         const { revenue, percentage } = calculateTotalRevenue(
-          benchmark.benchmarkData,
+          benchmark.benchmarkData
         );
         setRevenue(revenue);
         setPercentageRevenue(percentage);
@@ -65,49 +61,7 @@ export const DashboardPage: FC<{}> = () => {
     <div className="content">
       <Row>
         <Col lg="3" xs="12">
-          <div id="dashboard-grid">
-            {accountData && (
-              <Card>
-                <Card.Body>
-                  <Row>
-                    <Col
-                      md="4"
-                      xs="5"
-                      className="d-flex justify-content-center align-items-center"
-                    >
-                      <div className="fs-1">
-                        <i className="fa-solid fa-money-bill" />
-                      </div>
-                    </Col>
-                    <Col md="8" xs="7">
-                      <p className="text-body-secondary text-end">
-                        Total Balance
-                      </p>
-                      <Card.Title as="h3" className="fs-4 text-end text-info">
-                        {roundDecimals(accountData.total_fiat, 2)}{" "}
-                        {accountData.asset}
-                      </Card.Title>
-                    </Col>
-                  </Row>
-                </Card.Body>
-                <Card.Footer>
-                  <hr />
-                  <Row>
-                    <Col>
-                      <p className="text-body-secondary fs-7 lh-1">
-                        Left to allocate:
-                      </p>
-                    </Col>
-                    <Col>
-                      <p className="text-body-secondary text-end">
-                        {roundDecimals(accountData.fiat_left)}{" "}
-                        {accountData.asset}
-                      </p>
-                    </Col>
-                  </Row>
-                </Card.Footer>
-              </Card>
-            )}
+          {accountData && (
             <Card>
               <Card.Body>
                 <Row>
@@ -116,29 +70,18 @@ export const DashboardPage: FC<{}> = () => {
                     xs="5"
                     className="d-flex justify-content-center align-items-center"
                   >
-                    <div className="text-center fs-1">
-                      <i
-                        className={`${
-                          percentageRevenue > 0 ? "text-success" : "text-danger"
-                        } fa-solid fa-building-columns`}
-                      />
+                    <div className="fs-1">
+                      <i className="fa-solid fa-money-bill" />
                     </div>
                   </Col>
                   <Col md="8" xs="7">
-                    <div>
-                      <p className="text-end text-body-secondary">
-                        Profit &amp; Loss
-                      </p>
-                    </div>
-                    <Card.Title
-                      as="h3"
-                      className={`${
-                        percentageRevenue > 0 ? "text-success" : "text-danger"
-                      } fs-4 text-end`}
-                    >
-                      {`${roundDecimals(percentageRevenue)}%`}
+                    <p className="text-body-secondary text-end">
+                      Total Balance
+                    </p>
+                    <Card.Title as="h3" className="fs-4 text-end text-info">
+                      {roundDecimals(accountData.total_fiat, 2)}{" "}
+                      {accountData.asset}
                     </Card.Title>
-                    <p />
                   </Col>
                 </Row>
               </Card.Body>
@@ -146,63 +89,113 @@ export const DashboardPage: FC<{}> = () => {
                 <hr />
                 <Row>
                   <Col>
-                    <p>(Current - Last balance)</p>
+                    <p className="text-body-secondary fs-7 lh-1">
+                      Left to allocate:
+                    </p>
                   </Col>
                   <Col>
-                    <p className=" text-end">{roundDecimals(revenue)} USDC</p>
+                    <p className="text-body-secondary text-end">
+                      {roundDecimals(accountData.fiat_left)} {accountData.asset}
+                    </p>
                   </Col>
                 </Row>
               </Card.Footer>
             </Card>
-            {activeBotsCount > 0 && (
-              <Card>
-                <Card.Body>
+          )}
+          <Card>
+            <Card.Body>
+              <Row>
+                <Col
+                  md="4"
+                  xs="5"
+                  className="d-flex justify-content-center align-items-center"
+                >
+                  <div className="text-center fs-1">
+                    <i
+                      className={`${
+                        percentageRevenue > 0 ? "text-success" : "text-danger"
+                      } fa-solid fa-building-columns`}
+                    />
+                  </div>
+                </Col>
+                <Col md="8" xs="7">
+                  <div>
+                    <p className="text-end text-body-secondary">
+                      Profit &amp; Loss
+                    </p>
+                  </div>
+                  <Card.Title
+                    as="h3"
+                    className={`${
+                      percentageRevenue > 0 ? "text-success" : "text-danger"
+                    } fs-4 text-end`}
+                  >
+                    {`${roundDecimals(percentageRevenue)}%`}
+                  </Card.Title>
+                  <p />
+                </Col>
+              </Row>
+            </Card.Body>
+            <Card.Footer>
+              <hr />
+              <Row>
+                <Col>
+                  <p>(Current - Last balance)</p>
+                </Col>
+                <Col>
+                  <p className=" text-end">{roundDecimals(revenue)} USDC</p>
+                </Col>
+              </Row>
+            </Card.Footer>
+          </Card>
+          {activeBotsCount > 0 && (
+            <Card>
+              <Card.Body>
+                <Row>
+                  <Col md="12">
+                    <div className="stats">
+                      <Row>
+                        <Col
+                          md="4"
+                          xs="5"
+                          className="d-flex justify-content-center align-items-center"
+                        >
+                          <div>
+                            <i className="fa-solid fa-laptop-code text-success fs-1" />
+                          </div>
+                        </Col>
+                        <Col md="8" xs="7">
+                          <p className="text-end">Active bots</p>
+                          <Card.Title as="h3" className="text-end">
+                            {activeBotsCount}
+                          </Card.Title>
+                        </Col>
+                      </Row>
+                    </div>
+                  </Col>
+                </Row>
+              </Card.Body>
+              <Card.Footer>
+                <hr />
+                {errorBotsCount > 0 && (
                   <Row>
-                    <Col md="12">
-                      <div className="stats">
-                        <Row>
-                          <Col
-                            md="4"
-                            xs="5"
-                            className="d-flex justify-content-center align-items-center"
-                          >
-                            <div>
-                              <i className="fa-solid fa-laptop-code text-success fs-1" />
-                            </div>
-                          </Col>
-                          <Col md="8" xs="7">
-                            <p className="text-end">Active bots</p>
-                            <Card.Title as="h3" className="text-end">
-                              {activeBotsCount}
-                            </Card.Title>
-                          </Col>
-                        </Row>
-                      </div>
+                    <Col>
+                      <p className="">Errors:</p>
+                    </Col>
+                    <Col>
+                      <p
+                        className={`${errorBotsCount > 0 && "text-danger"} text-end`}
+                      >
+                        {errorBotsCount}{" "}
+                      </p>
                     </Col>
                   </Row>
-                </Card.Body>
-                <Card.Footer>
-                  <hr />
-                  {errorBotsCount > 0 && (
-                    <Row>
-                      <Col>
-                        <p className="">Errors:</p>
-                      </Col>
-                      <Col>
-                        <p
-                          className={`${errorBotsCount > 0 && "text-danger"} text-end`}
-                        >
-                          {errorBotsCount}{" "}
-                        </p>
-                      </Col>
-                    </Row>
-                  )}
-                </Card.Footer>
-              </Card>
-            )}
-          </div>
+                )}
+              </Card.Footer>
+            </Card>
+          )}
         </Col>
-        <Col lg="9">
+        <Col lg="9" xs="12" sm="12">
           {benchmark?.percentageSeries.datesSeries && (
             <PortfolioBenchmarkChart chartData={benchmark.percentageSeries} />
           )}
@@ -217,7 +210,7 @@ export const DashboardPage: FC<{}> = () => {
         <Col lg="6" md="12">
           {gainersLosersSeries && (
             <ReversalBarChart
-              data={gainersLosersSeries}
+              chartData={gainersLosersSeries}
               legend={[
                 {
                   name: "Portfolio",

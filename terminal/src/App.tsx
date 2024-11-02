@@ -5,12 +5,17 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { Layout } from "./app/Layout";
+import AutotradePage from "./app/pages/Autotrade";
+import BotDetail from "./app/pages/BotDetail";
 import BotsPage from "./app/pages/Bots";
 import DashboardPage from "./app/pages/Dashboard";
 import LoginPage from "./app/pages/Login";
+import BlacklistPage from "./app/pages/BlacklistPage";
+import NotFound from './app/pages/NotFound';
 import { store } from "./app/store";
-import BotDetail from "./app/pages/BotDetail";
-import AutotradePage from "./app/pages/Autotrade";
+import { getToken, removeToken } from './utils/login';
+import PaperTradingPage from "./app/pages/PaperTradingPage";
+import PaperTradingDetail from "./app/pages/PaperTradingDetail";
 
 export type Routes = {
   path: string;
@@ -24,12 +29,13 @@ export type Routes = {
 export const routes = [
   {
     index: true,
-    path: "dashboard",
-    link: "/dashboard",
-    name: "Dashboard",
+    path: "/",
+    link: "/",
+    name: "Home",
     icon: "fas fa-chart-simple",
     element: <DashboardPage />,
     id: "dashboard",
+    nav: false,
   },
   {
     path: "bots",
@@ -38,6 +44,7 @@ export const routes = [
     icon: "fas fa-robot",
     element: <BotsPage />,
     id: "bots",
+    nav: true,
   },
   {
     path: "bots/new/:symbol?",
@@ -46,6 +53,7 @@ export const routes = [
     name: "New Bot",
     element: <BotDetail />,
     id: "new-bot",
+    nav: true,
   },
   {
     path: "bots/edit/:id",
@@ -53,6 +61,7 @@ export const routes = [
     name: "Edit Bot",
     element: <BotDetail />,
     id: "edit-bot",
+    nav: false,
   },
   {
     path: "autotrade",
@@ -61,13 +70,60 @@ export const routes = [
     name: "Autotrade",
     element: <AutotradePage />,
     id: "autotrade",
+    nav: true,
   },
+  {
+    path: "paper-trading",
+    link: "/paper-trading",
+    name: "Paper Trading",
+    icon: "fas fa-pencil-ruler",
+    element: <PaperTradingPage />,
+    id: "paper-trading",
+    nav: true,
+  },
+  {
+    path: "paper-trading/new/:symbol?",
+    link: "/paper-trading/new",
+    icon: null,
+    name: "New Test Bot",
+    element: <PaperTradingDetail />,
+    id: "new-test-bot",
+    nav: true,
+  },
+  {
+    path: "paper-trading/edit/:id",
+    icon: null,
+    name: "Edit Test Bot",
+    element: <PaperTradingDetail />,
+    id: "edit-test-bot",
+    nav: false,
+  },
+  {
+    path: "blacklist",
+    link: "/blacklist",
+    icon: "fas fa-ban",
+    name: "Blacklist",
+    element: <BlacklistPage />,
+    id: "blacklist",
+    nav: true,
+  },
+  {
+    path: "*",
+    element: <NotFound />,
+  }
 ];
 
 const rootRouter = createBrowserRouter([
   {
     path: "/login",
-    element: <LoginPage />,
+    Component: () => {
+      const token = getToken();
+      if (token) {
+        return <Navigate to="/" replace />
+      } else {
+        return <LoginPage />;
+      }
+    },
   },
   {
     id: "root",
@@ -77,7 +133,10 @@ const rootRouter = createBrowserRouter([
   },
   {
     path: "/logout",
-    element: <Navigate to="/login" replace />,
+    Component: () => {
+      removeToken();
+      return <Navigate to="/login" replace />
+    },
   },
 ]);
 

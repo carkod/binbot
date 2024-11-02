@@ -6,18 +6,18 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "cp -r ./node_modules/binbot-charts/public/charting_library ./charting_library && vite build",
+    "build": "vite build && cp -r ./node_modules/binbot-charts/public/charting_library ./dist/charting_library",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "prettier --write .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "type-check": "tsc --noEmit",
-    "install:clean": "rm -rf dist node_modules && npm install"
+    "install:clean": "rm -rf dist node_modules package-lock.json && npm install"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.0.1",
-    "binbot-charts": "^0.6.8",
+    "binbot-charts": "^0.6.9",
     "bootstrap": "5.2.2",
     "chart.js": "^4.4.4",
     "moment": "^2.29.1",
@@ -55,6 +55,6 @@
     "sass-embedded": "^1.79.4",
     "typescript": "^5.3.3",
     "vite": "^5.4.9",
-    "vitest": "^1.2.0"
+    "vitest": "^1.6.0"
   }
 }
