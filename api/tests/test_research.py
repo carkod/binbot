@@ -2,8 +2,7 @@ from fastapi.testclient import TestClient
 import pytest
 from research.controller import Controller
 from main import app
-import mongomock
-
+from mongomock import MongoClient
 
 @pytest.fixture()
 def mock_research(monkeypatch):
@@ -22,7 +21,7 @@ def mock_research(monkeypatch):
     ]
 
     def new_init(self):
-        mongo_client = mongomock.MongoClient()
+        mongo_client: MongoClient = MongoClient()
         self._db = mongo_client.db
 
     monkeypatch.setattr(Controller, "_db", new_init)

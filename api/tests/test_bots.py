@@ -1,10 +1,8 @@
-from cgi import test
 from fastapi.testclient import TestClient
-from httpx import patch
 import pytest
 from bots.controllers import Bot
 from main import app
-import mongomock
+from mongomock import MongoClient
 
 
 @pytest.fixture()
@@ -54,7 +52,7 @@ def patch_bot(monkeypatch):
     }
 
     def new_init(self, collection_name="bots"):
-        mongo_client = mongomock.MongoClient()
+        mongo_client: MongoClient = MongoClient()
         self.db = mongo_client.db
         self.db_collection = self.db[collection_name]
 
@@ -63,12 +61,13 @@ def patch_bot(monkeypatch):
 
     return bot
 
+
 @pytest.fixture()
 def patch_active_pairs(monkeypatch):
     active_pairs = ["BNBUSDT", "BTCUSDT"]
 
     def new_init(self, collection_name="bots"):
-        mongo_client = mongomock.MongoClient()
+        mongo_client: MongoClient = MongoClient()
         self.db = mongo_client.db
         self.db_collection = self.db[collection_name]
 
@@ -76,6 +75,7 @@ def patch_active_pairs(monkeypatch):
     monkeypatch.setattr(Bot, "get_active_pairs", lambda self: active_pairs)
 
     return active_pairs
+
 
 def test_get_one_by_id(patch_bot):
     client = TestClient(app)
@@ -89,6 +89,7 @@ def test_get_one_by_id(patch_bot):
     content = response.json()
     assert content["data"] == expected_result
 
+
 def test_get_one_by_symbol(patch_bot):
     client = TestClient(app)
     symbol = "ADXUSDT"
@@ -101,9 +102,10 @@ def test_get_one_by_symbol(patch_bot):
     content = response.json()
     assert content["data"] == expected_result
 
+
 def test_active_pairs(patch_active_pairs):
     client = TestClient(app)
-    response = client.get(f"/bot/active-pairs")
+    response = client.get("/bot/active-pairs")
 
     # Assert the expected result
     expected_result = patch_active_pairs
