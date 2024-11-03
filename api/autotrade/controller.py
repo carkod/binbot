@@ -1,5 +1,5 @@
 from pydantic import ValidationError
-from api.autotrade.schemas import AutotradeSettingsSchema
+from autotrade.schemas import AutotradeSettingsSchema
 from base_producer import BaseProducer
 from database.mongodb.db import Database
 from tools.handle_error import (

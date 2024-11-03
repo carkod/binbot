@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from tools.round_numbers import format_ts
 from charts.models import (
     GetMarketDominationResponse,
     MarketDominationResponse,
@@ -53,29 +54,12 @@ def market_domination(size: int = 14):
                     if float(crypto["volume"]) > 0:
                         total_volume += float(crypto["volume"]) * float(crypto["price"])
 
-            market_domination_series.dates.append(item["time"])
+            market_domination_series.dates.append(format_ts(item["time"]))
             market_domination_series.gainers_percent.append(gainers_percent)
             market_domination_series.losers_percent.append(losers_percent)
             market_domination_series.gainers_count.append(gainers_count)
             market_domination_series.losers_count.append(losers_count)
             market_domination_series.total_volume.append(total_volume)
-
-        market_domination_series.dates = market_domination_series.dates[-size:]
-        market_domination_series.gainers_percent = (
-            market_domination_series.gainers_percent[-size:]
-        )
-        market_domination_series.losers_percent = (
-            market_domination_series.losers_percent[-size:]
-        )
-        market_domination_series.gainers_count = market_domination_series.gainers_count[
-            -size:
-        ]
-        market_domination_series.losers_count = market_domination_series.losers_count[
-            -size:
-        ]
-        market_domination_series.total_volume = market_domination_series.total_volume[
-            -size:
-        ]
 
         data = market_domination_series.model_dump(mode="json")
 

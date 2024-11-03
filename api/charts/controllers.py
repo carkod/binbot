@@ -181,13 +181,20 @@ class MarketDominationController(Database, BinbotApi):
         coin_data = []
         try:
             for item in get_ticker_data:
-                if item["symbol"].endswith("USDC") and float(item["price"]) > 0:
+                if (
+                    item["symbol"].endswith(self.autotrade_settings.balance_to_use)
+                    and float(item["lastPrice"]) > 0
+                ):
                     model_data = MarketDominationSeriesStore(
-                        timestamp=datetime.fromtimestamp(item["closeTime"]).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                        time=datetime.fromtimestamp(item["closeTime"]).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                        timestamp=datetime.fromtimestamp(
+                            float(item["closeTime"]) / 1000
+                        ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                        time=datetime.fromtimestamp(
+                            float(item["closeTime"]) / 1000
+                        ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
                         symbol=item["symbol"],
                         priceChangePercent=float(item["priceChangePercent"]),
-                        price=float(item["price"]),
+                        price=float(item["lastPrice"]),
                         volume=float(item["volume"]),
                     )
                     data = model_data.model_dump()
@@ -195,7 +202,7 @@ class MarketDominationController(Database, BinbotApi):
         except Exception as e:
             print(e)
 
-        response = self.collection.insert_many(data)
+        response = self.collection.insert_many(coin_data)
         return response
 
     def get_market_domination(self, size=7):
@@ -207,6 +214,25 @@ class MarketDominationController(Database, BinbotApi):
         Returns:
             dict: A dictionary containing the market domination data, including gainers and losers counts, percentages, and dates.
         """
-        query = {"$query": {}, "$orderby": {"_id": -1}}
-        result = self.collection.find(query).limit(size)
+        result = self.collection.aggregate(
+            [
+                {
+                    "$group": {
+                        "_id": {
+                            "time": {
+                                "$dateTrunc": {
+                                    "date": "$timestamp",
+                                    "unit": "minute",
+                                    "binSize": 60,
+                                },
+                            },
+                        },
+                        "data": {"$push": "$$ROOT"},
+                    }
+                },
+                {"$sort": {"_id.time": DESCENDING}},
+                {"$project": {"time": "$_id.time", "data": 1, "_id": 0}},
+                {"$limit": size},
+            ]
+        )
         return list(result)

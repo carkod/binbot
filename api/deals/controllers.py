@@ -96,7 +96,7 @@ class CreateDealController(BaseDeal):
         else:
             qty = supress_notation(qty, self.qty_precision)
             price = supress_notation(price, self.price_precision)
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         # If error pass it up to parent function, can't continue
         if "error" in res:

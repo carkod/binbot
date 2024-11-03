@@ -5,7 +5,7 @@ const GainersLosersCard = ({ data, title }) => {
     <Card.Body>
       <Card.Title>{title}</Card.Title>
       <ListGroup className="list-group-flush">
-        {data.map((x, i) => (
+        {data.map((x, i) => parseFloat(x.priceChangePercent) !== 0 && (
           <ListGroup.Item key={i}>
             <Card.Link href={`/admin/bots/new/${x.symbol}`}>
               {x.symbol}

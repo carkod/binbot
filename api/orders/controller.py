@@ -35,8 +35,8 @@ class OrderController(Database, Account):
         If price is not provided by matching engine,
         sell at market price
         """
+        price = float(self.matching_engine(symbol, False, qty))
         if price:
-            book_price = float(self.matching_engine(symbol, False, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
@@ -45,13 +45,6 @@ class OrderController(Database, Account):
                 "price": supress_notation(price, self.price_precision),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
-
-            # If price is not provided by matching engine,
-            # create iceberg orders
-            if not book_price:
-                payload["iceberg_qty"] = self.zero_remainder(qty)
-                payload["price"] = supress_notation(book_price, self.price_precision)
-            
         else:
             payload = {
                 "symbol": symbol,
@@ -65,8 +58,8 @@ class OrderController(Database, Account):
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
 
         if float(data["price"]) == 0:
-            total_qty = 0
-            weighted_avg = 0
+            total_qty: float = 0
+            weighted_avg: float = 0
             for item in data["fills"]:
                 weighted_avg += float(item["price"]) * float(item["qty"])
                 total_qty += float(item["qty"])

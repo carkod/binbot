@@ -170,26 +170,27 @@ jobs:
           pipenv install --dev --system --deploy --ignore-pipfile --clear
           pipenv install httpx
       - name: Run linters
-        run: pipenv run black --check .
-        run: pipenv run mypy --check .
-    
-    frontend-tests:
-      name: Terminal React app tests
-      runs-on: ubuntu-latest
-      defaults:
-        run:
-          working-directory: terminal
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
+        run: |
+          pipenv run black --check .
+          pipenv run mypy --check .
 
-        - name: Set up Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: '20'
+  frontend-tests:
+    name: Terminal React app tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terminal
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-        - name: Install dependencies
-          run: npm install
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-        - name: Run tests
-          run: npm run test
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm run test

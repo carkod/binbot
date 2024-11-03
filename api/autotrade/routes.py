@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from api.tools.handle_error import json_response, json_response_error
+from tools.handle_error import json_response, json_response_error
 from autotrade.controller import AutotradeSettingsController
 from autotrade.schemas import AutotradeSettingsResponse, AutotradeSettingsSchema
 
