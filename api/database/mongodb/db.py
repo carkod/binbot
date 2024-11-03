@@ -54,7 +54,7 @@ class Database:
 
     def save_bot_streaming(
         self, active_bot: BotSchema, db_collection_name: str = "bots"
-    ):
+    ) -> BotSchema:
         """
         MongoDB query to save bot using Pydantic
 

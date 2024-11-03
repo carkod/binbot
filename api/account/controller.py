@@ -35,7 +35,7 @@ class AssetsController(Database, Account):
         Abstraction to reduce complexity
         fetches balances DB collection
         """
-        params = {}
+        params: dict = {}
 
         if start_date:
             start_date = start_date * 1000

@@ -34,14 +34,6 @@ class CreateDealController(BaseDeal):
         super().__init__(bot, db_collection)
         self.active_bot = bot
 
-    def get_one_balance(self, symbol="BTC"):
-        # Response after request
-        data = self.bb_request(url=self.bb_balance_url)
-        symbol_balance = next(
-            (x["free"] for x in data["data"] if x["asset"] == symbol), None
-        )
-        return symbol_balance
-
     def compute_qty(self, pair):
         """
         Helper function to compute buy_price.
@@ -49,7 +41,7 @@ class CreateDealController(BaseDeal):
         """
 
         asset = self.find_baseAsset(pair)
-        balance = self.get_one_balance(asset)
+        balance = self.get_raw_balance(asset)
         if not balance:
             return None
         qty = round_numbers(balance, self.qty_precision)
@@ -166,7 +158,7 @@ class CreateDealController(BaseDeal):
         # Sell everything
         pair = self.active_bot.pair
         base_asset = self.find_baseAsset(pair)
-        balance = self.get_one_balance(base_asset)
+        balance = self.get_raw_balance(base_asset)
         if balance:
             qty = round_numbers(balance, self.qty_precision)
             price = float(self.matching_engine(pair, True, qty))
@@ -201,7 +193,7 @@ class CreateDealController(BaseDeal):
                     print(error.message)
                     pass
 
-                qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
+                qty = round_numbers(self.get_raw_balance(asset), self.qty_precision)
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,

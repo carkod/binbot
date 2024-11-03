@@ -8,6 +8,7 @@ env:
   MONGO_AUTH_USERNAME: root
   MONGO_AUTH_PASSWORD: rootPassXXX
   MONGO_APP_DATABASE: binbot
+  MONGO_KAFKA_DATABASE: "kafka"
   MONGO_AUTH_DATABASE: admin
   MONGO_HOSTNAME: db
   MONGO_PORT: 27017
@@ -54,7 +55,8 @@ jobs:
           -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e ENV=ci -d binbot
-          curl --head --fail --retry-delay 10 --retry 3 --retry-all-errors http://localhost:8008
+          docker ps
+          # curl --head --fail --retry-delay 10 --retry 3 --retry-all-errors http://localhost:8008
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |

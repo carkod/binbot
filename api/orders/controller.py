@@ -6,9 +6,6 @@ from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation
 
 
-poll_percentage = 0
-
-
 class OrderController(Database, Account):
     """
     Always GTC and limit orders
@@ -18,7 +15,6 @@ class OrderController(Database, Account):
 
     def __init__(self) -> None:
         super().__init__()
-        self.save_bot_streaming = self.save_bot_streaming
         pass
 
     def zero_remainder(self, x):
@@ -97,8 +93,8 @@ class OrderController(Database, Account):
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
 
         if data["price"] == 0:
-            total_qty = 0
-            weighted_avg = 0
+            total_qty: float = 0
+            weighted_avg: float = 0
             for item in data["fills"]:
                 weighted_avg += float(item["price"]) * float(item["qty"])
                 total_qty += float(item["qty"])

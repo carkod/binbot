@@ -16,21 +16,6 @@ class Assets(AssetsController):
         self.exception_list = []
         self.fiat = self.get_fiat_coin()
 
-    def get_raw_balance(self, asset=None) -> list:
-        """
-        Unrestricted balance
-        """
-        data = self.get_account_balance()
-        balances = []
-        for item in data["balances"]:
-            if float(item["free"]) > 0 or float(item["locked"]) > 0:
-                if asset:
-                    if item["asset"] == asset:
-                        balances.append(item)
-                else:
-                    balances.append(item)
-        return balances
-
     def get_pnl(self, days=7):
         current_time = datetime.now()
         start = current_time - timedelta(days=days)

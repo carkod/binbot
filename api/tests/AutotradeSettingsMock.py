@@ -1,9 +1,7 @@
 from time import time
 from typing import Optional
-
 from pydantic import BaseModel
-
-from binquant.shared.enums import BinanceKlineIntervals, Strategy
+from tools.enum_definitions import BinanceKlineIntervals, Strategy
 
 
 class AutotradeSettingsMock(BaseModel):

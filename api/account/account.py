@@ -15,8 +15,9 @@ from decimal import Decimal
 
 
 class Account(BinbotApi):
+    db = setup_db()
+
     def __init__(self):
-        self.db = setup_db()
         pass
 
     def setup_mongocache(self):
@@ -186,7 +187,7 @@ class Account(BinbotApi):
         symbols = self._exchange_info(symbol)
         market = symbols["symbols"][0]
         price_filter = next(
-            (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"), None
+            (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER")
         )
         return price_filter[filter_limit].rstrip(".0")
 
@@ -199,8 +200,8 @@ class Account(BinbotApi):
         """
         symbols = self._exchange_info(symbol)
         market = symbols["symbols"][0]
-        quantity_filter = next(
-            (m for m in market["filters"] if m["filterType"] == "LOT_SIZE"), None
+        quantity_filter: list = next(
+            (m for m in market["filters"] if m["filterType"] == "LOT_SIZE")
         )
         return quantity_filter[lot_size_limit].rstrip(".0")
 
@@ -214,17 +215,24 @@ class Account(BinbotApi):
         symbols = self._exchange_info(symbol)
         market = symbols["symbols"][0]
         min_notional_filter = next(
-            (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL"), None
+            (m for m in market["filters"] if m["filterType"] == "MIN_NOTIONAL")
         )
         return min_notional_filter[min_notional_limit]
 
-    def get_one_balance(self, symbol="BTC"):
-        # Response after request
-        data = self.bb_request(url=self.bb_balance_url)
-        symbol_balance = next(
-            (x["free"] for x in data["data"] if x["asset"] == symbol), None
-        )
-        return symbol_balance
+    def get_raw_balance(self, asset=None) -> list:
+        """
+        Unrestricted balance
+        """
+        data = self.get_account_balance()
+        balances = []
+        for item in data["balances"]:
+            if float(item["free"]) > 0 or float(item["locked"]) > 0:
+                if asset:
+                    if item["asset"] == asset:
+                        balances.append(item)
+                else:
+                    balances.append(item)
+        return balances
 
     def get_margin_balance(self, symbol="BTC"):
         # Response after request

@@ -56,7 +56,7 @@ class BaseDeal(OrderController):
         """
 
         asset = self.find_baseAsset(pair)
-        balance = self.get_one_balance(asset)
+        balance = self.get_raw_balance(asset)
         if not balance:
             # If spot balance is not found
             # try to get isolated margin balance
@@ -210,14 +210,13 @@ class BaseDeal(OrderController):
             self.qty_precision,
         )
         # setup stop_loss_price
-        stop_loss_price = 0
+        stop_loss_price: float = 0
         if float(self.active_bot.stop_loss) > 0:
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(
                 self.active_bot.pair,
-                supress_notation(price, self.price_precision),
                 qty,
                 "BUY",
             )
@@ -308,7 +307,7 @@ class BaseDeal(OrderController):
                         # Not enough funds in isolated pair
                         # transfer from wallet
                         transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
-                        available_balance = self.get_one_balance(quote)
+                        available_balance = self.get_raw_balance(quote)
                         amount_to_transfer = 15  # Min amount
                         if available_balance < 15:
                             amount_to_transfer = available_balance
