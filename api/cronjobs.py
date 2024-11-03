@@ -3,6 +3,7 @@ import time
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.assets import Assets
+from charts.controllers import MarketDominationController
 
 
 logging.Formatter.converter = time.gmtime  # date time in GMT/UTC
@@ -18,6 +19,7 @@ def main():
 
     scheduler = BlockingScheduler()
     assets = Assets()
+    market_domination = MarketDominationController()
     timezone = "Europe/London"
 
     scheduler.add_job(
@@ -45,7 +47,7 @@ def main():
         id="clean_balance_assets",
     )
     scheduler.add_job(
-        func=assets.store_market_domination,
+        func=market_domination.store_market_domination,
         trigger="interval",
         timezone=timezone,
         hours=4,

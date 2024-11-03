@@ -7,7 +7,12 @@ from orders.controller import OrderController
 from bots.schemas import BotSchema
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 from tools.handle_error import encode_json
-from tools.exceptions import BinanceErrors, DealCreationError, InsufficientBalance, MarginLoanNotFound
+from tools.exceptions import (
+    BinanceErrors,
+    DealCreationError,
+    InsufficientBalance,
+    MarginLoanNotFound,
+)
 from tools.enum_definitions import DealType, Status, Strategy
 
 
@@ -224,9 +229,7 @@ class BaseDeal(OrderController):
             res = self.buy_order(
                 symbol=self.active_bot.pair,
                 qty=qty,
-                price=supress_notation(
-                    price, self.price_precision
-                ),
+                price=supress_notation(price, self.price_precision),
             )
 
         order_data = BinanceOrderModel(
@@ -380,7 +383,9 @@ class BaseDeal(OrderController):
             order_res = self.sell_order(pair, qty)
             return order_res
         else:
-            raise InsufficientBalance("Not enough balance to liquidate. Most likely bot closed already")
+            raise InsufficientBalance(
+                "Not enough balance to liquidate. Most likely bot closed already"
+            )
 
     def render_market_domination_reversal(self):
         """

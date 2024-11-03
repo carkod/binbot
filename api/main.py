@@ -1,3 +1,4 @@
+from pymongo.errors import ServerSelectionTimeoutError
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -21,8 +22,12 @@ from charts.controllers import MarketDominationController
 # needed to be run before app starts
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    MarketDominationController().mkdm_migration()
-    yield
+    try:
+        MarketDominationController().mkdm_migration()
+    except ServerSelectionTimeoutError:
+        print("Skipping mkdm_migration due to ServerSelectionTimeoutError")
+    finally:
+        yield
 
 
 app = FastAPI(lifespan=lifespan)
@@ -62,5 +67,7 @@ app.include_router(autotrade_settings_blueprint, prefix="/autotrade-settings")
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder({"message": exc.errors(), "data": exc.body, "error": 1}),
+        content=jsonable_encoder(
+            {"message": exc.errors(), "data": exc.body, "error": 1}
+        ),
     )

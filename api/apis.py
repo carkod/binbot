@@ -69,7 +69,12 @@ class BinanceApi:
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
 
     def request(
-        self, url, method="GET", session: Session | None = None, payload: dict = {}, **kwargs
+        self,
+        url,
+        method="GET",
+        session: Session | None = None,
+        payload: dict = {},
+        **kwargs,
     ):
         """
         Standard request

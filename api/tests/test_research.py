@@ -4,6 +4,7 @@ from research.controller import Controller
 from main import app
 from mongomock import MongoClient
 
+
 @pytest.fixture()
 def mock_research(monkeypatch):
     blacklist = [

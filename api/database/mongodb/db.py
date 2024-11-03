@@ -22,14 +22,14 @@ def get_mongo_client():
 def setup_db():
     # Database
     mongo = get_mongo_client()
-    db = mongo[os.getenv("MONGO_APP_DATABASE")]
+    db = mongo[os.getenv("MONGO_APP_DATABASE", "app")]
     return db
 
 
 def setup_kafka_db():
     # Time series optimized database
     mongo = get_mongo_client()
-    db = mongo[os.getenv("MONGO_KAFKA_DATABASE")]
+    db = mongo[os.getenv("MONGO_KAFKA_DATABASE", "kafka")]
     return db
 
 

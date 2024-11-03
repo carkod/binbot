@@ -32,11 +32,14 @@ def login(data: LoginRequest):
     try:
         access_token, user_data = User().login(data)
         return json_response(
-            {"message": "Successfully logged in", "data": {
-                "access_token": access_token,
-                "expires": user_data["exp"],
-                "email": user_data["email"],
-            }}
+            {
+                "message": "Successfully logged in",
+                "data": {
+                    "access_token": access_token,
+                    "expires": user_data["exp"],
+                    "email": user_data["email"],
+                },
+            }
         )
     except Exception as e:
         return json_response_error(str(e))

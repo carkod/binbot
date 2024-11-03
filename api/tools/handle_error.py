@@ -57,7 +57,7 @@ def handle_binance_errors(response: Response) -> Response:
     # Binance doesn't seem to reach 418 or 429 even after 2000 weight requests
     if (
         response.headers.get("x-mbx-used-weight-1m")
-        and int(response.headers.get("x-mbx-used-weight-1m")) > 4000
+        and float(response.headers.get("x-mbx-used-weight-1m", 0)) > 4000
     ):
         logging.warning("Request weight limit prevention pause, waiting 1 min")
         sleep(120)
@@ -68,13 +68,13 @@ def handle_binance_errors(response: Response) -> Response:
 
     # Cloudfront 403 error
     if response.status_code == 403 and response.reason:
-        raise HTTPError(response.reason)
+        raise HTTPError(response=response)
 
     content = response.json()
 
     if response.status_code == 404:
-        raise HTTPError(content)
-    
+        raise HTTPError(response=response)
+
     # Show error messsage for bad requests
     if response.status_code >= 400:
         # Binance errors

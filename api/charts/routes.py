@@ -97,4 +97,6 @@ def md_migration():
         if response:
             return json_response_message("Market domination migration completed.")
     except Exception as error:
-        return json_response_error(f"Failed to migrate market domination data: {error.args[0]}")
+        return json_response_error(
+            f"Failed to migrate market domination data: {error.args[0]}"
+        )

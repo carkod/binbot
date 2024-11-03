@@ -186,9 +186,7 @@ class CreateDealController(BaseDeal):
 
                 # First cancel old order to unlock balance
                 try:
-                    OrderController(symbol=bot.pair).delete_order(
-                        bot.pair, order_id
-                    )
+                    OrderController(symbol=bot.pair).delete_order(bot.pair, order_id)
                 except BinbotErrors as error:
                     print(error.message)
                     pass
@@ -197,9 +195,7 @@ class CreateDealController(BaseDeal):
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
-                    price=supress_notation(
-                        new_tp_price, self.price_precision
-                    ),
+                    price=supress_notation(new_tp_price, self.price_precision),
                 )
 
                 # New take profit order successfully created
@@ -291,7 +287,8 @@ class CreateDealController(BaseDeal):
 
         # Margin short Take profit
         if (
-            float(self.active_bot.take_profit) > 0 and self.active_bot.strategy == "margin_short"
+            float(self.active_bot.take_profit) > 0
+            and self.active_bot.strategy == "margin_short"
         ):
             self.active_bot = MarginDeal(
                 bot=self.active_bot, db_collection_name=self.db_collection.name

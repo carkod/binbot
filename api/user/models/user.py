@@ -17,10 +17,8 @@ class User:
         self.db = setup_db()
 
     def hash_password(self, password):
-        password_bytes = password.encode('utf-8')
-        hash_object = pbkdf2_sha256.encrypt(
-            password_bytes, rounds=20000, salt_size=16
-        )
+        password_bytes = password.encode("utf-8")
+        hash_object = pbkdf2_sha256.encrypt(password_bytes, rounds=20000, salt_size=16)
         return hash_object.hexdigest()
 
     def get(self):

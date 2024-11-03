@@ -103,13 +103,14 @@ def deactivation(id: str):
     botModel = Bot(collection_name="bots")
     bot = botModel.db_collection.find_one({"id": id, "status": Status.active})
     bot = BotSchema.model_validate(bot)
-    print("Finished BotSchema validation...")
     if not bot:
         return json_response_message("No active bot found.")
     else:
         response = botModel.deactivate(bot)
         if response:
-            return json_response_message("Active orders closed, sold base asset, deactivated")
+            return json_response_message(
+                "Active orders closed, sold base asset, deactivated"
+            )
         else:
             return json_response_error("Error deactivating bot.")
 

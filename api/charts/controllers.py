@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from bson import ObjectId
-from mongomock import CollectionInvalid
 from pymongo import DESCENDING, ReturnDocument
+from pymongo.errors import CollectionInvalid
 from autotrade.controller import AutotradeSettingsController
 from charts.models import MarketDominationSeriesStore
 from apis import BinbotApi

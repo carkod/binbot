@@ -78,4 +78,3 @@ class BalanceSeries(StandardResponse):
 
 class BalanceSeriesResponse(StandardResponse):
     data: list[BalanceSeries]
-

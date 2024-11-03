@@ -14,9 +14,9 @@ def supress_trailling(value: str | float | int) -> float:
     e.g. 2.05-5
     """
     value = float(value)
-    # supress scientific notation 
-    number = float(f'{value:f}')
-    number = float('{0:g}'.format(number))
+    # supress scientific notation
+    number = float(f"{value:f}")
+    number = float("{0:g}".format(number))
     return number
 
 
@@ -82,4 +82,4 @@ def format_ts(time: datetime.datetime) -> str:
     Central place to format datetime
     to human-readable date
     """
-    return time.strftime('%Y-%m-%d %H:%M:%S.%f')
+    return time.strftime("%Y-%m-%d %H:%M:%S.%f")

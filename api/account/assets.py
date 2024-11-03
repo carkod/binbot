@@ -347,10 +347,7 @@ class Assets(AssetsController):
         try:
             bot = self._db.bots.find_one({"status": Status.active, "pair": pair})
             active_bot = BotSchema.model_validate(bot)
-            deal = CreateDealController(
-                active_bot,
-                db_collection="bots"
-            )
+            deal = CreateDealController(active_bot, db_collection="bots")
             deal.margin_liquidation(pair)
             return json_response_message(f"Successfully liquidated {pair}")
         except MarginLoanNotFound as error:
@@ -359,4 +356,3 @@ class Assets(AssetsController):
             )
         except BinanceErrors as error:
             return json_response_error(f"Error liquidating {pair}: {error.message}")
-
