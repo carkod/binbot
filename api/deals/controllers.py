@@ -34,14 +34,6 @@ class CreateDealController(BaseDeal):
         super().__init__(bot, db_collection)
         self.active_bot = bot
 
-    def get_one_balance(self, symbol="BTC"):
-        # Response after request
-        data = self.bb_request(url=self.bb_balance_url)
-        symbol_balance = next(
-            (x["free"] for x in data["data"] if x["asset"] == symbol), None
-        )
-        return symbol_balance
-
     def compute_qty(self, pair):
         """
         Helper function to compute buy_price.
@@ -49,7 +41,7 @@ class CreateDealController(BaseDeal):
         """
 
         asset = self.find_baseAsset(pair)
-        balance = self.get_one_balance(asset)
+        balance = self.get_raw_balance(asset)
         if not balance:
             return None
         qty = round_numbers(balance, self.qty_precision)
@@ -96,7 +88,7 @@ class CreateDealController(BaseDeal):
         else:
             qty = supress_notation(qty, self.qty_precision)
             price = supress_notation(price, self.price_precision)
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
@@ -166,7 +158,7 @@ class CreateDealController(BaseDeal):
         # Sell everything
         pair = self.active_bot.pair
         base_asset = self.find_baseAsset(pair)
-        balance = self.get_one_balance(base_asset)
+        balance = self.get_raw_balance(base_asset)
         if balance:
             qty = round_numbers(balance, self.qty_precision)
             price = float(self.matching_engine(pair, True, qty))
@@ -194,20 +186,16 @@ class CreateDealController(BaseDeal):
 
                 # First cancel old order to unlock balance
                 try:
-                    OrderController(symbol=bot.pair).delete_order(
-                        bot.pair, order_id
-                    )
+                    OrderController(symbol=bot.pair).delete_order(bot.pair, order_id)
                 except BinbotErrors as error:
                     print(error.message)
                     pass
 
-                qty = round_numbers(self.get_one_balance(asset), self.qty_precision)
+                qty = round_numbers(self.get_raw_balance(asset), self.qty_precision)
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
-                    price=supress_notation(
-                        new_tp_price, self.price_precision
-                    ),
+                    price=supress_notation(new_tp_price, self.price_precision),
                 )
 
                 # New take profit order successfully created
@@ -299,7 +287,8 @@ class CreateDealController(BaseDeal):
 
         # Margin short Take profit
         if (
-            float(self.active_bot.take_profit) > 0 and self.active_bot.strategy == "margin_short"
+            float(self.active_bot.take_profit) > 0
+            and self.active_bot.strategy == "margin_short"
         ):
             self.active_bot = MarginDeal(
                 bot=self.active_bot, db_collection_name=self.db_collection.name

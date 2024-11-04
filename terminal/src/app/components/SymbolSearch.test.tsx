@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterSymbolByBaseAsset } from "./SymbolSearch";
+import { filterSymbolByBaseAsset } from "../../utils/api";
 
 describe("Search symbols", () => {
   it("returns symbols only with the given baseAsset", () => {

@@ -134,6 +134,7 @@ class DealType(str, Enum):
     def __str__(self):
         return str(self.str)
 
+
 class BinanceKlineIntervals(str, Enum):
     one_minute = "1m"
     three_minutes = "3m"
@@ -153,6 +154,7 @@ class BinanceKlineIntervals(str, Enum):
 
     def __str__(self):
         return str(self.str)
+
 
 class AutotradeSettingsDocument(str, Enum):
     # Autotrade settings for test bots

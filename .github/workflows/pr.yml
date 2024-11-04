@@ -8,6 +8,7 @@ env:
   MONGO_AUTH_USERNAME: root
   MONGO_AUTH_PASSWORD: rootPassXXX
   MONGO_APP_DATABASE: binbot
+  MONGO_KAFKA_DATABASE: kafka
   MONGO_AUTH_DATABASE: admin
   MONGO_HOSTNAME: db
   MONGO_PORT: 27017
@@ -18,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       db:
-        image: mongo:latest
+        image: mongo:7.0
         options: >-
           --health-cmd mongosh
           --health-interval 10s
@@ -32,7 +33,7 @@ jobs:
 
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Build image
         run: docker build --tag binbot .
       - name: Test app
@@ -41,6 +42,7 @@ jobs:
           -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
           -e MONGO_PORT=${{ env.MONGO_PORT }} \
           -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
+          -e MONGO_KAFKA_DATABASE=${{ env.MONGO_KAFKA_DATABASE }} \
           -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e ENV=ci -d binbot
@@ -51,10 +53,11 @@ jobs:
           -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
           -e MONGO_PORT=${{ env.MONGO_PORT }} \
           -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
+          -e MONGO_KAFKA_DATABASE=${{ env.MONGO_KAFKA_DATABASE }} \
           -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e ENV=ci -d binbot
-          curl --head --fail --retry-delay 10 --retry 3 --retry-all-errors http://localhost:8008
+          curl --head --fail --retry-delay 5 --retry 3 --retry-all-errors http://localhost:8008
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
@@ -144,6 +147,52 @@ jobs:
       - name: Install dependencies
         run: |
           pipenv install --dev --system --deploy --ignore-pipfile --clear
-          pipenv install httpx
+          pipenv install httpx coverage
       - name: Run tests
-        run: pipenv run pytest -v
+        run: coverage run -m pytest .
+
+  python-linting:
+    name: Python code linting
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      # Setup Python (faster than using Python container)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10.8"
+      - name: Install pipenv
+        run: python3 -m pip install pipenv
+      - name: Install dependencies
+        run: |
+          pipenv install --dev --system --deploy --ignore-pipfile --clear
+          pipenv install httpx
+      - name: Run linters
+        run: |
+          pipenv run black --check .
+          pipenv run mypy --check .
+
+  frontend-tests:
+    name: React app tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terminal
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm run test

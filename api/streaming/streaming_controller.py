@@ -42,8 +42,6 @@ class StreamingController(BaseStreaming):
         """
         New function to replace get_klines without websockets
         """
-        self.settings = self.autotrade_controller.get_autotrade_settings()
-        self.test_settings = self.autotrade_controller.get_test_autotrade_settings()
         # Load real bot settings
         bot_controller = Bot(collection_name="bots")
         self.list_bots = bot_controller.get_active_pairs()
@@ -166,13 +164,23 @@ class BbspreadsUpdater(BaseStreaming):
 
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
-            abs((bb_spreads["bb_high"] - bb_spreads["bb_mid"]) / bb_spreads["bb_high"])
-            * 100,
+            (
+                abs(
+                    (bb_spreads["bb_high"] - bb_spreads["bb_mid"])
+                    / bb_spreads["bb_high"]
+                )
+                * 100
+            ),
             2,
         )
         whole_spread = round_numbers(
-            abs((bb_spreads["bb_high"] - bb_spreads["bb_low"]) / bb_spreads["bb_high"])
-            * 100,
+            (
+                abs(
+                    (bb_spreads["bb_high"] - bb_spreads["bb_low"])
+                    / bb_spreads["bb_high"]
+                )
+                * 100
+            ),
             2,
         )
         bottom_spread = round_numbers(

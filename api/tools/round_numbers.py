@@ -1,3 +1,4 @@
+import datetime
 import math
 from decimal import Decimal
 import re
@@ -13,10 +14,11 @@ def supress_trailling(value: str | float | int) -> float:
     e.g. 2.05-5
     """
     value = float(value)
-    # supress scientific notation 
-    number = float(f'{value:f}')
-    number = float('{0:g}'.format(number))
+    # supress scientific notation
+    number = float(f"{value:f}")
+    number = float("{0:g}".format(number))
     return number
+
 
 def round_numbers(value, decimals=6):
     decimal_points = 10 ** int(decimals)
@@ -25,6 +27,7 @@ def round_numbers(value, decimals=6):
     if decimals == 0:
         result = int(result)
     return result
+
 
 def round_numbers_ceiling(value, decimals=6):
     decimal_points = 10 ** int(decimals)
@@ -72,3 +75,11 @@ def interval_to_millisecs(interval: str) -> int:
         return int(time) * 30 * 24 * 60 * 60 * 1000
 
     return 0
+
+
+def format_ts(time: datetime.datetime) -> str:
+    """
+    Central place to format datetime
+    to human-readable date
+    """
+    return time.strftime("%Y-%m-%d %H:%M:%S.%f")

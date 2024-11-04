@@ -1,13 +1,10 @@
 import json
 import logging
 import time
-import logging
 import threading
 from websocket import (
     ABNF,
     create_connection,
-    WebSocketException,
-    WebSocketConnectionClosedException,
 )
 
 
@@ -35,7 +32,7 @@ class BinanceSocketManager(threading.Thread):
         self.on_pong = on_pong
         self.on_error = on_error
         self.create_ws_connection()
-    
+
     def create_ws_connection(self):
         self.logger.debug(
             "Creating connection with WebSocket Server: %s", self.stream_url
@@ -94,6 +91,7 @@ class BinanceSocketManager(threading.Thread):
                 self.logger.error("Error from callback {}: {}".format(callback, e))
                 if self.on_error:
                     self.on_error(self, e)
+
 
 class BinanceWebsocketClient:
     ACTION_SUBSCRIBE = "SUBSCRIBE"

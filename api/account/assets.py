@@ -16,21 +16,6 @@ class Assets(AssetsController):
         self.exception_list = []
         self.fiat = self.get_fiat_coin()
 
-    def get_raw_balance(self, asset=None) -> list:
-        """
-        Unrestricted balance
-        """
-        data = self.get_account_balance()
-        balances = []
-        for item in data["balances"]:
-            if float(item["free"]) > 0 or float(item["locked"]) > 0:
-                if asset:
-                    if item["asset"] == asset:
-                        balances.append(item)
-                else:
-                    balances.append(item)
-        return balances
-
     def get_pnl(self, days=7):
         current_time = datetime.now()
         start = current_time - timedelta(days=days)
@@ -362,10 +347,7 @@ class Assets(AssetsController):
         try:
             bot = self._db.bots.find_one({"status": Status.active, "pair": pair})
             active_bot = BotSchema.model_validate(bot)
-            deal = CreateDealController(
-                active_bot,
-                db_collection="bots"
-            )
+            deal = CreateDealController(active_bot, db_collection="bots")
             deal.margin_liquidation(pair)
             return json_response_message(f"Successfully liquidated {pair}")
         except MarginLoanNotFound as error:
@@ -374,45 +356,3 @@ class Assets(AssetsController):
             )
         except BinanceErrors as error:
             return json_response_error(f"Error liquidating {pair}: {error.message}")
-
-    def store_market_domination(self):
-        get_ticker_data = self.ticker_24()
-        all_coins = []
-        for item in get_ticker_data:
-            if item["symbol"].endswith("USDC"):
-                all_coins.append(
-                    {
-                        "symbol": item["symbol"],
-                        "priceChangePercent": item["priceChangePercent"],
-                        "volume": item["volume"],
-                        "price": item["lastPrice"],
-                    }
-                )
-
-        all_coins = sorted(
-            all_coins, key=lambda item: float(item["priceChangePercent"]), reverse=True
-        )
-        try:
-            current_time = datetime.now()
-            self._db.market_domination.insert_one(
-                {
-                    "time": current_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                    "data": all_coins,
-                }
-            )
-            return json_response_message("Successfully stored market domination data.")
-        except Exception as error:
-            print(f"Failed to store balance: {error}")
-
-    def get_market_domination(self, size=7):
-        """
-        Get gainers vs losers historical data
-
-        Args:
-            size (int, optional): Number of data points to retrieve. Defaults to 7 (1 week).
-        Returns:
-            dict: A dictionary containing the market domination data, including gainers and losers counts, percentages, and dates.
-        """
-        query = {"$query": {}, "$orderby": {"_id": -1}}
-        result = self._db.market_domination.find(query).limit(size)
-        return list(result)

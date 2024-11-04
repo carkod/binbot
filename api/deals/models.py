@@ -1,7 +1,6 @@
 from time import time
 from typing import List
 from pydantic import BaseModel, field_validator
-
 from tools.enum_definitions import DealType
 
 
@@ -10,6 +9,7 @@ class BinanceOrderModel(BaseModel):
     Data model given by Binance,
     therefore it should be strings
     """
+
     order_type: str
     time_in_force: str
     timestamp: str | int
@@ -48,7 +48,8 @@ class BinanceRepayRecord(BaseModel):
 
 class BinanceRepayRecords(BaseModel):
     rows: list[BinanceRepayRecord]
-    total: int  # no. repays
+    # no. repays
+    total: int
 
 
 class DealModel(BaseModel):
@@ -56,6 +57,7 @@ class DealModel(BaseModel):
     Data model that is used for operations,
     so it should all be numbers (int or float)
     """
+
     buy_price: float = 0
     buy_total_qty: float = 0
     buy_timestamp: float = time() * 1000
@@ -67,12 +69,13 @@ class DealModel(BaseModel):
     sell_price: float = 0
     sell_qty: float = 0
     trailling_stop_loss_price: float = 0
-    trailling_profit_price: float = 0 # take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price
+    # take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price
+    trailling_profit_price: float = 0
     stop_loss_price: float = 0
     trailling_profit: float = 0
     so_prices: float = 0
     post_closure_current_price: float = 0
-    original_buy_price: float = 0  # historical buy_price after so triggere
+    original_buy_price: float = 0  # historical buy_price after so trigger
     short_sell_price: float = 0
     short_sell_qty: float = 0
     short_sell_timestamp: float = time() * 1000
@@ -106,6 +109,7 @@ class DealModel(BaseModel):
         if isinstance(v, str):
             return float(v)
         return v
+
 
 class SafetyOrderModel(BaseModel):
     buy_price: float

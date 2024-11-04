@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query
 from bots.controllers import Bot
 from bots.schemas import BotSchema
 from typing import List
@@ -7,14 +7,18 @@ from typing import List
 paper_trading_blueprint = APIRouter()
 
 
-@paper_trading_blueprint.get("/paper-trading", response_model=list[BotSchema], tags=["paper trading"])
+@paper_trading_blueprint.get(
+    "/paper-trading", response_model=list[BotSchema], tags=["paper trading"]
+)
 def get(
     status: str | None = None,
     start_date: float | None = None,
     end_date: float | None = None,
     no_cooldown: bool = True,
 ):
-    return Bot(collection_name="paper_trading").get(status, start_date, end_date, no_cooldown)
+    return Bot(collection_name="paper_trading").get(
+        status, start_date, end_date, no_cooldown
+    )
 
 
 @paper_trading_blueprint.get("/paper-trading/{id}", tags=["paper trading"])
@@ -45,7 +49,9 @@ def activate(id: str):
     return Bot(collection_name="paper_trading").activate(id)
 
 
-@paper_trading_blueprint.delete("/paper-trading/deactivate/{id}", tags=["paper trading"])
+@paper_trading_blueprint.delete(
+    "/paper-trading/deactivate/{id}", tags=["paper trading"]
+)
 def deactivate(id: str):
     """
     Deactivation means closing all deals and selling to GBP

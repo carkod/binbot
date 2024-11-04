@@ -1,11 +1,12 @@
-
 from tools.enum_definitions import TrendEnum
 from pydantic import BaseModel, ConfigDict, field_validator
+
 
 class SignalsConsumer(BaseModel):
     """
     Pydantic model for the signals consumer.
     """
+
     type: str = "signal"
     spread: float | str | None = 0
     current_price: float | str | None = 0
@@ -13,9 +14,8 @@ class SignalsConsumer(BaseModel):
     symbol: str
     algo: str
     trend: TrendEnum | None = TrendEnum.neutral
-
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
 
     @field_validator("spread", "current_price")
@@ -28,4 +28,4 @@ class SignalsConsumer(BaseModel):
         elif isinstance(v, float):
             return v
         else:
-            raise ValueError('must be a float or None')
+            raise ValueError("must be a float or None")

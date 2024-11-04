@@ -7,7 +7,12 @@ from orders.controller import OrderController
 from bots.schemas import BotSchema
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 from tools.handle_error import encode_json
-from tools.exceptions import BinanceErrors, DealCreationError, InsufficientBalance, MarginLoanNotFound
+from tools.exceptions import (
+    BinanceErrors,
+    DealCreationError,
+    InsufficientBalance,
+    MarginLoanNotFound,
+)
 from tools.enum_definitions import DealType, Status, Strategy
 
 
@@ -56,7 +61,7 @@ class BaseDeal(OrderController):
         """
 
         asset = self.find_baseAsset(pair)
-        balance = self.get_one_balance(asset)
+        balance = self.get_raw_balance(asset)
         if not balance:
             # If spot balance is not found
             # try to get isolated margin balance
@@ -93,7 +98,8 @@ class BaseDeal(OrderController):
 
         return qty, free
 
-    def simulate_order(self, pair, price, qty, side):
+    def simulate_order(self, pair, qty, side):
+        price = float(self.matching_engine(pair, True, qty))
         order = {
             "symbol": pair,
             "orderId": self.generate_id().int,
@@ -112,7 +118,8 @@ class BaseDeal(OrderController):
         }
         return order
 
-    def simulate_response_order(self, pair, price, qty, side):
+    def simulate_response_order(self, pair, qty, side):
+        price = float(self.matching_engine(pair, True, qty))
         response_order = {
             "symbol": pair,
             "orderId": self.generate_id().int,
@@ -208,14 +215,13 @@ class BaseDeal(OrderController):
             self.qty_precision,
         )
         # setup stop_loss_price
-        stop_loss_price = 0
+        stop_loss_price: float = 0
         if float(self.active_bot.stop_loss) > 0:
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(
                 self.active_bot.pair,
-                supress_notation(price, self.price_precision),
                 qty,
                 "BUY",
             )
@@ -223,9 +229,7 @@ class BaseDeal(OrderController):
             res = self.buy_order(
                 symbol=self.active_bot.pair,
                 qty=qty,
-                price=supress_notation(
-                    price, self.price_precision
-                ),
+                price=supress_notation(price, self.price_precision),
             )
 
         order_data = BinanceOrderModel(
@@ -306,7 +310,7 @@ class BaseDeal(OrderController):
                         # Not enough funds in isolated pair
                         # transfer from wallet
                         transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
-                        available_balance = self.get_one_balance(quote)
+                        available_balance = self.get_raw_balance(quote)
                         amount_to_transfer = 15  # Min amount
                         if available_balance < 15:
                             amount_to_transfer = available_balance
@@ -379,7 +383,9 @@ class BaseDeal(OrderController):
             order_res = self.sell_order(pair, qty)
             return order_res
         else:
-            raise InsufficientBalance("Not enough balance to liquidate. Most likely bot closed already")
+            raise InsufficientBalance(
+                "Not enough balance to liquidate. Most likely bot closed already"
+            )
 
     def render_market_domination_reversal(self):
         """

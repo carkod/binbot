@@ -37,6 +37,7 @@ __pycache__
 kafka_data
 pg_data
 pgadmin_data
+.coverage
 
 # Fix vscode linting bug
 .envFile

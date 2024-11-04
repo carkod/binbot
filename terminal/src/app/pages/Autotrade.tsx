@@ -184,6 +184,7 @@ export const AutotradePage: FC<{}> = () => {
                       label={"Balance to use"}
                       type="text"
                       register={register}
+                      infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"
                     />
                   </Col>
                   <Col md="3">

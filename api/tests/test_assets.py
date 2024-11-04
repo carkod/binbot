@@ -1,4 +1,3 @@
-from time import sleep
 from fastapi.testclient import TestClient
 import pytest
 from account.assets import Assets
@@ -13,21 +12,6 @@ app_client = TestClient(app)
 
 @pytest.fixture()
 def patch_database(monkeypatch):
-    data = [
-        {
-            "_id": "65d39b44a7ff2a5e843b1e0b",
-            "time": "2024-02-19 18:17:40.479",
-            "data": [
-                {
-                    "symbol": "PIXELUSDT",
-                    "priceChangePercent": "15.000",
-                    "volume": "1235816253.30000000",
-                    "price": "0.64880000",
-                }
-            ],
-        }
-    ]
-
     itemized_balance = [
         {"asset": "BTC", "free": 6.51e-06, "locked": 0.0},
         {"asset": "BNB", "free": 9.341e-05, "locked": 0.0},
@@ -39,7 +23,6 @@ def patch_database(monkeypatch):
         self._db = db
 
     monkeypatch.setattr(Assets, "_db", new_init)
-    monkeypatch.setattr(Assets, "get_market_domination", lambda a, size, *arg: data)
     monkeypatch.setattr(Assets, "get_fiat_coin", lambda self: "USDC")
     monkeypatch.setattr(
         Assets, "get_raw_balance", lambda self, asset=None: itemized_balance
@@ -119,27 +102,6 @@ def patch_store_balance(monkeypatch):
         "create_balance_series",
         lambda self, total_balance, total_estimated_fiat: None,
     )
-
-
-def test_get_market_domination(patch_database):
-
-    response = app_client.get("/account/market-domination")
-
-    # Assert the expected result
-    expected_result = {
-        "data": {
-            "dates": ["2024-02-19 18:17:40.479"],
-            "gainers_percent": [1235816253.3],
-            "losers_percent": [0.0],
-            "gainers_count": [1],
-            "losers_count": [0],
-            "total_volume": [801797585.14104],
-        },
-        "message": "Successfully retrieved market domination data.",
-        "error": 0,
-    }
-    assert response.status_code == 200
-    assert response.json() == expected_result
 
 
 def test_get_raw_balance(patch_database, patch_raw_balances):

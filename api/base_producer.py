@@ -1,7 +1,6 @@
 import json
 import os
 from kafka import KafkaProducer
-
 from tools.enum_definitions import KafkaTopics
 
 
@@ -17,9 +16,9 @@ class BaseProducer:
         must start from latest offset always.
         """
         kafka_producer = KafkaProducer(
-            bootstrap_servers=f'{os.environ["KAFKA_HOST"]}:{os.environ["KAFKA_PORT"]}',
+            bootstrap_servers=f'{os.getenv("KAFKA_HOST", "localhost")}:{os.getenv("KAFKA_PORT", 9092)}',
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-            api_version=(3, 4, 1)
+            api_version=(3, 4, 1),
         )
         return kafka_producer
 
@@ -35,6 +34,8 @@ class BaseProducer:
 
         value = {"type": "restart", "action": action}
 
-        producer.send(KafkaTopics.restart_streaming.value, value=json.dumps(value), partition=0)
+        producer.send(
+            KafkaTopics.restart_streaming.value, value=json.dumps(value), partition=0
+        )
 
         return
