@@ -22,7 +22,7 @@ def get_settings():
     try:
         deserialized_data = AutotradeSettingsController().get_settings()
         return json_response(
-            {"message": "Successfully retrieved settings", "data": deserialized_data}
+            {"message": "Successfully retrieved settings", "data": deserialized_data.model_dump()}
         )
     except Exception as error:
         return json_response_error(f"Error getting settings: {error}")
@@ -39,7 +39,7 @@ def get_test_autotrade_settings():
             document_id="test_autotrade_settings"
         ).get_settings()
         return json_response(
-            {"message": "Successfully retrieved settings", "data": deserialized_data}
+            {"message": "Successfully retrieved settings", "data": deserialized_data.model_dump()}
         )
     except Exception as error:
         return json_response_error(f"Error getting settings: {error}")
