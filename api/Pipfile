@@ -24,7 +24,9 @@ kafka-python= "==2.0.2"
 pyarrow= "==15.0.2"
 py4j= "==0.10.9"
 sqlalchemy="==2.0.30"
+sqlmodel = "*"
 httpx = "*"
+alembic = "*"
 
 [dev-packages]
 autopep8 = "==2.0.0"

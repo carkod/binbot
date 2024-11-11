@@ -5,7 +5,7 @@ from pymongo.errors import CollectionInvalid
 from autotrade.controller import AutotradeSettingsController
 from charts.models import MarketDominationSeriesStore
 from apis import BinbotApi
-from database.mongodb.db import Database, setup_db, setup_kafka_db
+from database.db import Database, setup_db, setup_kafka_db
 
 
 class KlinesSchema(Database):

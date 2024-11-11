@@ -1,7 +1,7 @@
 from pydantic import ValidationError
 from autotrade.schemas import AutotradeSettingsSchema
 from base_producer import BaseProducer
-from database.mongodb.db import Database
+from database.db import Database
 from tools.handle_error import (
     json_response_error,
     json_response_message,

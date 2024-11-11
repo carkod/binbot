@@ -7,7 +7,7 @@ from tools.handle_error import (
 )
 from bson.objectid import ObjectId
 from auth import encode_access_token
-from database.mongodb.db import setup_db
+from database.db import setup_db
 from user.schemas import UserSchema
 from fastapi.encoders import jsonable_encoder
 

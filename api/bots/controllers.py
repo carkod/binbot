@@ -4,7 +4,7 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 from account.account import Account
-from database.mongodb.db import Database
+from database.db import Database
 from deals.schema import MarginOrderSchema
 from deals.models import BinanceOrderModel, DealModel
 from base_producer import BaseProducer
