@@ -32,7 +32,7 @@ class BotSchema(BaseModel):
     id: str | None = ""
     pair: str
     balance_size_to_use: str | float = 1
-    balance_to_use: str | float = "1"
+    balance_to_use: str | float = "USDC"
     base_order_size: str | float = "15"  # Min Binance 0.0001 BNB
     candlestick_interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes
     close_condition: CloseConditions = CloseConditions.dynamic_trailling

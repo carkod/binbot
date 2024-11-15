@@ -12,15 +12,16 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_USER: ${MONGO_AUTH_USERNAME}
-      POSTGRES_PASSWORD: ${MONGO_AUTH_PASSWORD}
-      POSTGRES_DB: ${MONGO_APP_DATABASE}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-U", "$POSTGRES_USER"]
-      interval: 30s
-      timeout: 60s
-      retries: 5
-      start_period: 80s
+      POSTGRES_USER: "carkod"
+      POSTGRES_PASSWORD: "2FUd56b3a39Y"
+      POSTGRES_DB: "binbot"
+    ports:
+      - "5432:5432"
+    # healthcheck:
+    #   test: ["CMD-SHELL", "psql", "-U", "$POSTGRES_USER", "-d", "$POSTGRES_DB", "-W", "$POSTGRES_PASSWORD"]
+    #   interval: 30s
+    #   timeout: 60s
+    #   retries: 5
 
   data_db:
     image: mongo:7.0

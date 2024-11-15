@@ -1,5 +1,11 @@
+from typing import Optional
+from uuid import UUID
+
+from pydantic import ValidationInfo, field_validator
+from sqlalchemy import Column, Enum
+from database.models.bot_table import BotTable
 from tools.enum_definitions import DealType
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class ExchangeOrderTable(SQLModel, table=True):
@@ -10,16 +16,36 @@ class ExchangeOrderTable(SQLModel, table=True):
     This should be an immutable source of truth
     whatever shape comes from third party provider,
     should be stored the same way
+
+    id: orderId from Exchange
     """
-    id: int | None = Field(default=None, primary_key=True)
-    order_type: str
-    time_in_force: str
-    timestamp: str | int
-    order_id: str | int
-    order_side: str
-    pair: str
-    fills: list
-    qty: str | float
-    status: str
-    price: str | float
-    deal_type: DealType
+
+    __tablename__ = "exchange-order"
+
+    id: int = Field(primary_key=True)
+    order_type: str = Field(nullable=True)
+    time_in_force: str = Field(nullable=True)
+    timestamp: int = Field(nullable=True)
+    order_side: str = Field(nullable=True)
+    pair: str = Field(nullable=True)
+    qty: float = Field(nullable=True)
+    status: str = Field(nullable=True)
+    price: float = Field(nullable=True)
+    deal_type: DealType = Field(sa_column=Column(Enum(DealType)))
+    total_commission: float = Field(nullable=True, default=0)
+
+    # Relationships
+    bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
+    bot: Optional["BotTable"] = Relationship(back_populates="orders")
+
+    @field_validator("price", "qty", mode="before")
+    @classmethod
+    def validate_str_numbers(cls, v, info: ValidationInfo):
+        if isinstance(v, str):
+            return float(v)
+        elif isinstance(v, int):
+            return float(v)
+        elif isinstance(v, float):
+            return v
+        else:
+            raise ValueError(f"{info.field_name} must be float")

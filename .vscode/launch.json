@@ -2,6 +2,13 @@
   "version": "0.0.2",
   "configurations": [
     {
+      "name": "Python Debugger: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/api/app.py",
+      "console": "internalConsole"
+    },
+    {
       "type": "chrome",
       "request": "launch",
       "name": "Terminal: Vite",
@@ -32,7 +39,7 @@
       "program": "binquant/producer.py",
       "console": "internalConsole",
       "justMyCode": true,
-      "envFile": "${workspaceFolder}/.env",
+      "envFile": "${workspaceFolder}/.env"
     },
     {
       "name": "Binquant: Consumer",
@@ -80,7 +87,6 @@
         "${workspaceFolder}/web/**/*.js",
         "${workspaceFolder}/web/src/node_modules/**"
       ]
-    },
-
+    }
   ]
 }

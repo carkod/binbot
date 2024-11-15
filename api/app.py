@@ -10,8 +10,10 @@ from database.models.order_table import ExchangeOrderTable # noqa
 def main():
 
     api_db = ApiDb()
-    api_db.create_db_and_tables()
+    api_db.init_db()
     api_db.create_dummy_bot()
+    result = api_db.select_bot("BTCUSDT")
+    print("Created bot", result)
 
 
 if __name__ == "__main__":

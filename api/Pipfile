@@ -27,6 +27,7 @@ sqlalchemy="==2.0.30"
 sqlmodel = "*"
 httpx = "*"
 alembic = "*"
+psycopg2 = "*"
 
 [dev-packages]
 autopep8 = "==2.0.0"
