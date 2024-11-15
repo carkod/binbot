@@ -2,8 +2,9 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select
+from database.models.user_table import UserTable
 from database.models.order_table import ExchangeOrderTable
-from tools.enum_definitions import DealType, Status, Strategy
+from tools.enum_definitions import DealType, Status, Strategy, UserRoles
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 
@@ -34,6 +35,22 @@ class ApiDb:
 
     def drop_db(self):
         SQLModel.metadata.drop_all(engine)
+
+    def init_users(self):
+        """
+        Dummy data for testing users table
+        """
+
+        username = os.environ["USER"]
+        email = os.environ["EMAIL"]
+        password = os.environ["PASSWORD"]
+
+        user_data = UserTable(username=username, password=password, email=email, role=UserRoles.superuser)
+
+        self.session.add(user_data)
+
+        self.session.commit()
+        self.session.close()
 
     def create_dummy_bot(self):
         """

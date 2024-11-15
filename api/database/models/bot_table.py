@@ -22,7 +22,7 @@ class BotTable(SQLModel, table=True):
     __tablename__ = "bot"
 
     id: Optional[UUID] = Field(
-        default_factory=uuid4, primary_key=True, index=True, nullable=False
+        default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
     )
     pair: str = Field(index=True)
     fiat: str = Field(default="USDC")

@@ -6,7 +6,6 @@ verify_ssl = false
 [packages]
 uvicorn = "*"
 fastapi = "==0.110.0"
-pydantic = "==2.7.0"
 pymongo = "==4.6.3"
 python-jose = "*"
 passlib = "*"
@@ -28,6 +27,7 @@ sqlmodel = "*"
 httpx = "*"
 alembic = "*"
 psycopg2 = "*"
+pydantic = {extras = ["email"], version = "*"}
 
 [dev-packages]
 autopep8 = "==2.0.0"
