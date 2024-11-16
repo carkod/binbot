@@ -173,7 +173,7 @@ jobs:
           pipenv install httpx
       - name: Run linters
         run: |
-          pipenv run black --check .
+          pipenv run ruff --check .
           pipenv run mypy --check .
 
   frontend-tests:
