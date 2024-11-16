@@ -6,7 +6,7 @@ from tools.handle_error import (
     json_response,
 )
 from bson.objectid import ObjectId
-from api.user.services.auth import encode_access_token
+from user.services.auth import encode_access_token
 from database.db import setup_db
 from user.schemas import UserSchema
 from fastapi.encoders import jsonable_encoder

@@ -1,5 +1,4 @@
 import os
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import DealType, Status, Strategy, UserRoles
@@ -7,8 +6,6 @@ from database.models import UserTable, ExchangeOrderTable, DealTable, BotTable
 from alembic.config import Config
 from alembic import command
 
-
-load_dotenv("../.env")
 # This allows testing/Github action dummy envs
 db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@localhost/{os.getenv("POSTGRES_DB", "postgres")}'
 engine = create_engine(
@@ -26,15 +23,14 @@ class ApiDb:
         pass
 
     def init_db(self):
-        self.drop_db()
-        self.create_db_and_tables()
+        SQLModel.metadata.create_all(engine)
+        self.run_migrations()
+        self.init_users()
+        self.create_dummy_bot()
 
     def run_migrations(self):
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
-
-    def create_db_and_tables(self):
-        SQLModel.metadata.create_all(engine)
 
     def drop_db(self):
         SQLModel.metadata.drop_all(engine)

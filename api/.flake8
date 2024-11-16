@@ -1,3 +1,0 @@
-[flake8]
-ignore = E226,E302,E41,W503,E501
-max-complexity = 10

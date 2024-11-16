@@ -2,13 +2,6 @@
   "version": "0.0.2",
   "configurations": [
     {
-      "name": "Python Debugger: Current File",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/api/app.py",
-      "console": "internalConsole"
-    },
-    {
       "type": "chrome",
       "request": "launch",
       "name": "Terminal: Vite",

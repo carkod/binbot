@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
-from api.user.models.user import CreateUser
+from user.models.user import CreateUser
 from tools.handle_error import json_response, json_response_error
 from user.services.controller import Controller
 from user.schemas import LoginRequest, UserResponse
-from api.user.services.auth import oauth2_scheme, Token, decode_access_token
+from user.services.auth import oauth2_scheme, Token, decode_access_token
 
 user_blueprint = APIRouter()
 

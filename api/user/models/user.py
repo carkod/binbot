@@ -1,6 +1,7 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator
-from api.tools.enum_definitions import UserRoles
+from pydantic import BaseModel, EmailStr, field_validator
+from sqlmodel import Field
+from tools.enum_definitions import UserRoles
 from tools.handle_error import StandardResponse
 from uuid import UUID, uuid4
 
@@ -19,7 +20,7 @@ class CreateUser(BaseModel):
     )
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
-    role: UserRoles = Field(default=UserRoles.user)
+    role: UserRoles = Field(default=UserRoles.admin)
     full_name: Optional[str] = Field(default="")
     password: str = Field(min_length=8, max_length=40)
     # Email is the main identifier

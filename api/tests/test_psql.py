@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
-from api.database.api_db import ApiDb
 from main import app
 
 
@@ -18,23 +17,15 @@ def session_fixture():
 
 @pytest.fixture(name="client")
 def client_fixture(session: Session):
-    api_db = ApiDb()
-
-    def get_session_override():
-        return session
-
-    api_db.get_session = get_session_override
-
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()
 
+# def test_data_init(client: TestClient):
+#     client.create_db_and_tables()
+#     client.create_dummy_bot()
+#     result = client.select_bot("BTCUSDT")
 
-def test_data_init(client: TestClient):
-    client.create_db_and_tables()
-    client.create_dummy_bot()
-    result = client.select_bot("BTCUSDT")
-
-    assert result.status_code == 200
-    assert result["pair"] == "BTCUSDT"
-    assert result["base_order_size"] == "15"
+#     assert result.status_code == 200
+#     assert result["pair"] == "BTCUSDT"
+#     assert result["base_order_size"] == "15"

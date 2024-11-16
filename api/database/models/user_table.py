@@ -11,6 +11,9 @@ class UserTable(SQLModel, table=True):
 
     For full customer data create a separate table
     """
+
+    __tablename__ = "binbot-user"
+
     id: Optional[UUID] = Field(
         default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
     )
@@ -20,7 +23,6 @@ class UserTable(SQLModel, table=True):
     # For full name, use internal functions to compose
     full_name: str = Field(default="")
     password: str = Field(min_length=8, max_length=40)
-    # Email is the main identifier
     username: Optional[str] = ""
     bio: Optional[str] = ""
     # Future: Only required if customer table exists
