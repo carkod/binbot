@@ -1,6 +1,8 @@
 from alembic import context
-from api.database.api_db import ApiDb
-from database.models import SQLModel  # noqa
+from database.api_db import db_url
+from database.models.user_table import UserTable # noqa
+from database.models.order_table import ExchangeOrderTable # noqa
+from sqlmodel import SQLModel
 
 
 def run_migrations_offline():
@@ -16,7 +18,7 @@ def run_migrations_offline():
 
     """
     context.configure(
-        url=ApiDb.api_db_url,
+        url=db_url,
         target_metadata=SQLModel.metadata,
         literal_binds=True,
         compare_type=True,

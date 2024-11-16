@@ -11,8 +11,9 @@ from database.models.deal_table import DealTable
 
 load_dotenv("../.env")
 # This allows testing/Github action dummy envs
+db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@localhost/{os.getenv("POSTGRES_DB", "postgres")}' 
 engine = create_engine(
-    url=f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@localhost/{os.getenv("POSTGRES_DB", "postgres")}',
+    url=db_url,
 )
 
 
