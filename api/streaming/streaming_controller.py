@@ -7,7 +7,7 @@ from bots.schemas import BotSchema
 from autotrade.controller import AutotradeSettingsController
 from bots.controllers import Bot
 from tools.enum_definitions import Status, Strategy
-from database.mongodb.db import Database
+from database.db import Database
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from tools.exceptions import BinanceErrors

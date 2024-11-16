@@ -1,7 +1,7 @@
 name: PR checks
 on: pull_request
 env:
-  ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_RUNNER_DEBUG: false
   SECRET_KEY: test
   ENV: ci
   FRONTEND_DOMAIN: http://localhost
@@ -10,7 +10,7 @@ env:
   MONGO_APP_DATABASE: binbot
   MONGO_KAFKA_DATABASE: kafka
   MONGO_AUTH_DATABASE: admin
-  MONGO_HOSTNAME: db
+  MONGO_HOSTNAME: data_db
   MONGO_PORT: 27017
 
 jobs:
@@ -18,7 +18,20 @@ jobs:
     name: Test and deploy binbot
     runs-on: ubuntu-latest
     services:
-      db:
+      api_db:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: "postgres"
+          POSTGRES_PASSWORD: "postgres"
+          POSTGRES_DB: "binbot"
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      data_db:
         image: mongo:7.0
         options: >-
           --health-cmd mongosh
@@ -173,8 +186,8 @@ jobs:
           pipenv install httpx
       - name: Run linters
         run: |
-          pipenv run black --check .
-          pipenv run mypy --check .
+          pipenv run ruff check .
+          pipenv run mypy .
 
   frontend-tests:
     name: React app tests

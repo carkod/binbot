@@ -1,5 +1,5 @@
 from account.account import Account
-from database.mongodb.db import Database
+from database.db import Database
 from tools.handle_error import json_response
 from account.schemas import BalanceSchema
 from bson.objectid import ObjectId

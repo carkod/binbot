@@ -15,7 +15,8 @@ from paper_trading.routes import paper_trading_blueprint
 from research.routes import research_blueprint
 from user.routes import user_blueprint
 
-from charts.controllers import MarketDominationController
+from database.api_db import ApiDb
+from database.models import * # noqa
 
 
 # Startup operations
@@ -23,9 +24,16 @@ from charts.controllers import MarketDominationController
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        MarketDominationController().mkdm_migration()
+        api_db = ApiDb()
+        api_db.init_db()
+        api_db.create_dummy_bot()
+        result = api_db.select_bot("BTCUSDT")
+        print("Created dummy bot for API DB", result)
     except ServerSelectionTimeoutError:
-        print("Skipping mkdm_migration due to ServerSelectionTimeoutError")
+        pass
+    except Exception as e:
+        print("Error", e)
+
     finally:
         yield
 

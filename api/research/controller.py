@@ -1,4 +1,4 @@
-from database.mongodb.db import Database
+from database.db import Database
 from datetime import datetime
 from time import sleep
 from tools.handle_error import json_response, json_response_error, json_response_message

@@ -32,7 +32,7 @@ class BotSchema(BaseModel):
     id: str | None = ""
     pair: str
     balance_size_to_use: str | float = 1
-    balance_to_use: str | float = "1"
+    balance_to_use: str | float = "USDC"
     base_order_size: str | float = "15"  # Min Binance 0.0001 BNB
     candlestick_interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes
     close_condition: CloseConditions = CloseConditions.dynamic_trailling
@@ -44,9 +44,7 @@ class BotSchema(BaseModel):
     dynamic_trailling: bool = False
     errors: list[str] = []  # Event logs
     locked_so_funds: float = 0  # funds locked by Safety orders
-    mode: str = (
-        "manual"  # Manual is triggered by the terminal dashboard, autotrade by research app
-    )
+    mode: str = "manual"
     name: str = "Default bot"
     orders: list[BinanceOrderModel] = []  # Internal
     status: Status = Status.inactive
@@ -56,11 +54,8 @@ class BotSchema(BaseModel):
     trailling: bool = True
     trailling_deviation: float = 0
     trailling_profit: float = 0  # Trailling activation (first take profit hit)
-    safety_orders: list[SafetyOrderSchema] = []
     strategy: str = "long"
-    short_buy_price: float = (
-        0  # > 0 base_order does not execute immediately, executes short strategy when this value is hit
-    )
+    short_buy_price: float = 0
     short_sell_price: float = 0  # autoswitch to short_strategy
     # Deal and orders are internal, should never be updated by outside data
     total_commission: float = 0

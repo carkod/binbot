@@ -54,6 +54,11 @@ If issues are encountered downloading prod DB to local
 2. On local, restore `docker exec -i binbot_db sh -c 'mongorestore --archive -u <MONGO_AUTH_USERNAME> -p <MONGO_AUTH_PASSWORD> --authenticationDatabase <MONGO_AUTH_DATABASE> ' < db.dump`
 
 
+## API DB updates using Alembic
+Everytime the application runs, it will `alembic upgrade head`. To rollback changes use `alembic downgrade -1`.
+
+If files have been modified in the models and no new revisions were created, the Alembic Github action check should fail. In which case, an upgrade and new revision is required.
+
 ## Detailed documentation
 
 https://carkod.github.io/binbot/

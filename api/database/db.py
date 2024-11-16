@@ -1,7 +1,9 @@
+# Unified database file MongoDB + Postgres
 import os
 from time import time
 from bson import ObjectId
 from pymongo import MongoClient, ReturnDocument
+from database.api_db import ApiDb
 from tools.handle_error import encode_json
 from deals.models import DealModel
 from bots.schemas import BotSchema
@@ -46,6 +48,7 @@ class Database:
 
     _db = setup_db()
     kafka_db = setup_kafka_db()
+    api_db = ApiDb()
 
     def get_fiat_coin(self):
         document_id = AutotradeSettingsDocument.settings

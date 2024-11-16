@@ -32,7 +32,7 @@
       "program": "binquant/producer.py",
       "console": "internalConsole",
       "justMyCode": true,
-      "envFile": "${workspaceFolder}/.env",
+      "envFile": "${workspaceFolder}/.env"
     },
     {
       "name": "Binquant: Consumer",
@@ -80,7 +80,6 @@
         "${workspaceFolder}/web/**/*.js",
         "${workspaceFolder}/web/src/node_modules/**"
       ]
-    },
-
+    }
   ]
 }

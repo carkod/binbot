@@ -38,6 +38,7 @@ kafka_data
 pg_data
 pgadmin_data
 .coverage
+.ruff_cache
 
 # Fix vscode linting bug
 .envFile

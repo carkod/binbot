@@ -164,3 +164,15 @@ class AutotradeSettingsDocument(str, Enum):
 
     def __str__(self):
         return str(self.str)
+
+
+class UserRoles(str, Enum):
+    # Full access to all resources
+    superuser = "superuser"
+    # Access to terminal and customer accounts
+    admin = "admin"
+    # Only access to funds and client website
+    customer = "customer"
+
+    def __str__(self):
+        return str(self.str)
