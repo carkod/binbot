@@ -28,7 +28,7 @@ httpx = "*"
 alembic = "*"
 psycopg2 = "*"
 pydantic = {extras = ["email"], version = "*"}
-
+alembic-postgresql-enum = "*"
 
 [dev-packages]
 autopep8 = "==2.0.0"

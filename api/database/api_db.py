@@ -2,16 +2,15 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select
-from database.models.user_table import UserTable
-from database.models.order_table import ExchangeOrderTable
 from tools.enum_definitions import DealType, Status, Strategy, UserRoles
-from database.models.bot_table import BotTable
-from database.models.deal_table import DealTable
+from database.models import UserTable, ExchangeOrderTable, DealTable, BotTable
+from alembic.config import Config
+from alembic import command
 
 
 load_dotenv("../.env")
 # This allows testing/Github action dummy envs
-db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@localhost/{os.getenv("POSTGRES_DB", "postgres")}' 
+db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@localhost/{os.getenv("POSTGRES_DB", "postgres")}'
 engine = create_engine(
     url=db_url,
 )
@@ -22,7 +21,6 @@ def get_session():
 
 
 class ApiDb:
-
     def __init__(self):
         self.session: Session = get_session()
         pass
@@ -30,6 +28,10 @@ class ApiDb:
     def init_db(self):
         self.drop_db()
         self.create_db_and_tables()
+
+    def run_migrations(self):
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
 
     def create_db_and_tables(self):
         SQLModel.metadata.create_all(engine)
@@ -46,7 +48,9 @@ class ApiDb:
         email = os.environ["EMAIL"]
         password = os.environ["PASSWORD"]
 
-        user_data = UserTable(username=username, password=password, email=email, role=UserRoles.superuser)
+        user_data = UserTable(
+            username=username, password=password, email=email, role=UserRoles.superuser
+        )
 
         self.session.add(user_data)
 
@@ -84,7 +88,7 @@ class ApiDb:
                 price=1.222,
                 deal_type=DealType.take_profit,
                 total_commission=0,
-            )
+            ),
         ]
         deal = DealTable(
             buy_price=0,

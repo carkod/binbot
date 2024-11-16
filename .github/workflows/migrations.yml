@@ -37,6 +37,5 @@ jobs:
     if: needs.check_files.outputs.run_job == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Proceed to run alembic migrations
-        run: |
-          echo "Running alembic migrations"
+      - name: run for 'db' folder
+RThis job runs only when all the modified files are under the 'db' folder."
