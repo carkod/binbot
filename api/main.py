@@ -27,8 +27,7 @@ async def lifespan(app: FastAPI):
         api_db = ApiDb()
         api_db.init_db()
         api_db.create_dummy_bot()
-        result = api_db.select_bot("BTCUSDT")
-        print("Created dummy bot for API DB", result)
+        api_db.select_bot("BTCUSDT")
     except ServerSelectionTimeoutError:
         pass
     except Exception as e:
