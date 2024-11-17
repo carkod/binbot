@@ -20,7 +20,7 @@ def supress_trailling(value: str | float | int) -> float:
     return number
 
 
-def round_numbers(value, decimals=6):
+def round_numbers(value: float | int, decimals=6):
     decimal_points = 10 ** int(decimals)
     number = float(value)
     result = math.floor(number * decimal_points) / decimal_points

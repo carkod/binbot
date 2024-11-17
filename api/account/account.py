@@ -232,6 +232,8 @@ class Account(BinbotApi):
                         balances.append(item)
                 else:
                     balances.append(item)
+        if asset:
+            return balances[0]
         return balances
 
     def get_margin_balance(self, symbol="BTC"):
@@ -279,3 +281,12 @@ class Account(BinbotApi):
 
         final_qty = match_qty["price"].iloc[0]
         return final_qty
+
+    def calculate_total_commissions(self, fills: dict) -> float:
+        """
+        Calculate total commissions for a given order
+        """
+        total_commission: float = 0
+        for chunk in fills:
+            total_commission += float(chunk["commission"])
+        return total_commission

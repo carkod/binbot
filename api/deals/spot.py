@@ -94,20 +94,18 @@ class SpotLongDeal(BaseDeal):
 
         stop_loss_order = BinanceOrderModel(
             timestamp=res["transactTime"],
-            deal_type="stop_loss",
-            order_id=res["orderId"],
+            deal_type=DealType.stop_loss,
+            order_id=int(res["orderId"]),
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
             price=res["price"],
-            qty=res["origQty"],
-            fills=res["fills"],
+            qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
         )
 
-        for chunk in res["fills"]:
-            self.active_bot.total_commission += float(chunk["commission"])
+        self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
 
         self.active_bot.orders.append(stop_loss_order)
         self.active_bot.deal.sell_price = res["price"]
@@ -181,13 +179,11 @@ class SpotLongDeal(BaseDeal):
             order_type=res["type"],
             price=res["price"],
             qty=res["origQty"],
-            fills=res["fills"],
             time_in_force=res["timeInForce"],
             status=res["status"],
         )
 
-        for chunk in res["fills"]:
-            self.active_bot.total_commission += float(chunk["commission"])
+        self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
 
         self.active_bot.orders.append(order_data)
 
@@ -313,7 +309,6 @@ class SpotLongDeal(BaseDeal):
                     if order.order_id == order_response["orderId"]:
                         self.active_bot.orders[i].price = order_response["price"]
                         self.active_bot.orders[i].qty = order_response["origQty"]
-                        self.active_bot.orders[i].fills = order_response["fills"]
                         self.active_bot.orders[i].status = order_response["status"]
 
             self.active_bot = self.save_bot_streaming(self.active_bot)
