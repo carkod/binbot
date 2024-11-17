@@ -73,25 +73,16 @@ class OrderType(str, Enum):
     take_profit_limit = "TAKE_PROFIT_LIMIT"
     limit_maker = "LIMIT_MAKER"
 
-    def __str__(self):
-        return str(self.str)
-
 
 class TimeInForce(str, Enum):
     gtc = "GTC"
     ioc = "IOC"
     fok = "FOK"
 
-    def __str__(self):
-        return str(self.str)
-
 
 class OrderSide(str, Enum):
     buy = "BUY"
     sell = "SELL"
-
-    def __str__(self):
-        return str(self.str)
 
 
 class CloseConditions(str, Enum):
@@ -100,9 +91,6 @@ class CloseConditions(str, Enum):
     market_reversal = (
         "market_reversal"  # binbot-research param (self.market_trend_reversal)
     )
-
-    def __str__(self):
-        return str(self.str)
 
 
 class TrendEnum(str, Enum):
@@ -118,9 +106,6 @@ class KafkaTopics(str, Enum):
     signals = "signals"
     restart_streaming = "restart_streaming"
 
-    def __str__(self):
-        return str(self.str)
-
 
 class DealType(str, Enum):
     base_order = "base_order"
@@ -130,9 +115,6 @@ class DealType(str, Enum):
     short_buy = "short_buy"
     margin_short = "margin_short"
     panic_close = "panic_close"
-
-    def __str__(self):
-        return str(self.str)
 
 
 class BinanceKlineIntervals(str, Enum):
@@ -152,18 +134,12 @@ class BinanceKlineIntervals(str, Enum):
     one_week = "1w"
     one_month = "1M"
 
-    def __str__(self):
-        return str(self.str)
-
 
 class AutotradeSettingsDocument(str, Enum):
     # Autotrade settings for test bots
     test_autotrade_settings = "test_autotrade_settings"
     # Autotrade settings for real bots
     settings = "settings"
-
-    def __str__(self):
-        return str(self.str)
 
 
 class UserRoles(str, Enum):
@@ -173,6 +149,3 @@ class UserRoles(str, Enum):
     admin = "admin"
     # Only access to funds and client website
     customer = "customer"
-
-    def __str__(self):
-        return str(self.str)

@@ -153,7 +153,6 @@ class Assets(AssetsController):
     """
 
     def consolidate_dates(self, klines, balance_date, i: int = 0) -> int | None:
-
         if i == len(klines):
             return None
 
@@ -168,7 +167,6 @@ class Assets(AssetsController):
             return None
 
     async def get_balance_series(self, end_date, start_date):
-
         balance_series = self.query_balance_series(start_date, end_date)
 
         if len(balance_series) == 0:

@@ -14,7 +14,6 @@ from tools.exceptions import BinanceErrors
 
 
 class BaseStreaming(Database):
-
     def get_current_bot(self, symbol):
         current_bot = Bot(collection_name="bots").get_one(
             symbol=symbol, status=Status.active
@@ -161,7 +160,6 @@ class BbspreadsUpdater(BaseStreaming):
     def update_bots_parameters(
         self, bot: BotSchema, bb_spreads, collection_name="bots"
     ):
-
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
             (
@@ -191,7 +189,6 @@ class BbspreadsUpdater(BaseStreaming):
 
         # Otherwise it'll close too soon
         if 8 > whole_spread > 2:
-
             # check we are not duplicating the update
             if (
                 bot.take_profit == top_spread

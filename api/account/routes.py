@@ -112,7 +112,6 @@ async def get_balance_series():
 
 @account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
 def clean_balance(bypass: bool = False):
-
     try:
         Assets().clean_balance_assets(bypass=bypass)
         return json_response_message("Sucessfully cleaned balance.")

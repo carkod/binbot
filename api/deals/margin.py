@@ -1,7 +1,5 @@
 import logging
-
 from time import time
-from datetime import datetime
 from urllib.error import HTTPError
 from base_producer import BaseProducer
 from tools.enum_definitions import CloseConditions, DealType, Strategy

@@ -12,7 +12,6 @@ session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 
 
-
 class BaseModel(Base):
     """
     Base class to handle database model defaults

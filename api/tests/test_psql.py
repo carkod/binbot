@@ -21,6 +21,7 @@ def client_fixture(session: Session):
     yield client
     app.dependency_overrides.clear()
 
+
 # def test_data_init(client: TestClient):
 #     client.create_db_and_tables()
 #     client.create_dummy_bot()

@@ -113,7 +113,6 @@ def patch_database(monkeypatch):
 
 
 def test_get_market_domination(patch_database):
-
     response = app_client.get("/charts/market-domination")
 
     # Assert the expected result

@@ -16,7 +16,7 @@ from research.routes import research_blueprint
 from user.routes import user_blueprint
 
 from database.api_db import ApiDb
-from database.models import * # noqa
+from database.models import *  # noqa
 
 
 # Startup operations
