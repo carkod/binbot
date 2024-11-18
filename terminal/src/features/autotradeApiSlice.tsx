@@ -11,7 +11,7 @@ export interface AutotradeSettings {
   trailling_profit: number;
   stop_loss: number;
   take_profit: number;
-  balance_to_use: string;
+  balance_to_use: number;
   balance_size_to_use: number;
   max_request: number;
   system_logs: [];

@@ -1,5 +1,5 @@
 import { useEffect, type FC } from "react";
-import { Button, Card, Col, Container, Row } from "react-bootstrap";
+import { Button, Card, Col, Container, Form, Row } from "react-bootstrap";
 import { useForm, type FieldValues } from "react-hook-form";
 import {
   useEditSettingsMutation,
@@ -15,6 +15,7 @@ import LightSwitch from "../components/LightSwitch";
 import SettingsInput from "../components/SettingsInput";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
+import { BinanceKlineintervals } from "../../utils/enums";
 
 export const AutotradePage: FC<{}> = () => {
   const { data } = useGetSettingsQuery();
@@ -83,13 +84,39 @@ export const AutotradePage: FC<{}> = () => {
               <Col md={"12"} sm="12">
                 <Row>
                   <Col md="3">
-                    <SettingsInput
-                      name={"candlestick_interval"}
-                      label={"Candlestick interval"}
-                      handleBlur={handleBlur}
-                      register={register}
-                      value={settings.candlestick_interval}
-                    />
+                    <Form.Group>
+                      <Form.Label htmlFor="candlestick_interval">
+                        {"Candlestick interval"}
+                      </Form.Label>
+                      <Form.Select
+                        id="candlestick_interval"
+                        name="candlestick_interval"
+                        onChange={(e) => {
+                          const { value } = e.target;
+                          dispatch(
+                            setSettingsField({ name: "candlestick_interval", value })
+                          )
+                        }}
+                        onBlur={handleBlur}
+                        defaultValue={settings.candlestick_interval}
+                        {...register("candlestick_interval", {
+                          required: true,
+                        })}
+                      >
+                        {Object.values(BinanceKlineintervals).map((interval) => 
+                          <option value={interval.toString()}>{interval.toString()}</option>
+                        )}
+                      </ Form.Select>
+                      {errors.candlestick_interval && (
+                        <Form.Control.Feedback>
+                          {errors.candlestick_interval.message as string}
+                        </Form.Control.Feedback>
+                      )}
+                      <Form.Control.Feedback tooltip>
+                        Autotrade uses this interval to get candlestick data for technical analysis
+                        and decides to trade using this horizon.
+                      </Form.Control.Feedback>
+                    </Form.Group>
                   </Col>
 
                   <Col md="3">
@@ -107,7 +134,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          }),
+                          })
                         );
                       }}
                     />
@@ -128,7 +155,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          }),
+                          })
                         );
                       }}
                     />
@@ -186,7 +213,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: "trailling",
                             value: !settings.trailling,
-                          }),
+                          })
                         );
                       }}
                       {...register("trailling", { required: true })}
