@@ -60,6 +60,7 @@ web/public/charting_library/
 dist
 dist-ssr
 *.local
+.vite
 
 # Logs
 logs

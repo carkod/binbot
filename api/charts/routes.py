@@ -30,7 +30,6 @@ def get_timeseries(symbol: str, limit: int = 500):
     "/market-domination", tags=["assets"], response_model=MarketDominationResponse
 )
 def market_domination(size: int = 14):
-
     data = MarketDominationController().get_market_domination(size)
     market_domination_series = MarketDominationSeries()
 

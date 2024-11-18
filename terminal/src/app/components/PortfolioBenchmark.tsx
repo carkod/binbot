@@ -117,7 +117,7 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
         <Line
           data={data}
           options={PBOptions}
-          width={breakpoint === "xs" && "100%"}
+          width={breakpoint === "xs" ? "100%" : ""}
         />
       </Card.Body>
       <Card.Footer>

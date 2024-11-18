@@ -4,7 +4,7 @@ from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
 from pymongo import ReturnDocument
-from tools.enum_definitions import Status, Strategy
+from tools.enum_definitions import DealType, Status, Strategy
 from tools.exceptions import (
     BinbotErrors,
     TakeProfitError,
@@ -103,9 +103,12 @@ class CreateDealController(BaseDeal):
             order_type=res["type"],
             price=res["price"],
             qty=res["origQty"],
-            fills=res["fills"],
             time_in_force=res["timeInForce"],
             status=res["status"],
+        )
+
+        self.active_bot.total_commission = self.calculate_total_commissions(
+            res["fills"]
         )
 
         self.active_bot.orders.append(order_data)
@@ -202,18 +205,20 @@ class CreateDealController(BaseDeal):
                 order = handle_binance_errors(res)
 
                 # Replace take_profit order
-                take_profit_order = {
-                    "deal_type": "take_profit",
-                    "order_id": order["orderId"],
-                    "pair": order["symbol"],
-                    "order_side": order["side"],
-                    "order_type": order["type"],
-                    "price": order["price"],
-                    "qty": order["origQty"],
-                    "fills": order["fills"],
-                    "time_in_force": order["timeInForce"],
-                    "status": order["status"],
-                }
+                take_profit_order = BinanceOrderModel(
+                    timestamp=order["transactTime"],
+                    order_id=order["orderId"],
+                    deal_type=DealType.take_profit,
+                    pair=order["symbol"],
+                    order_side=order["side"],
+                    order_type=order["type"],
+                    price=order["price"],
+                    qty=order["origQty"],
+                    time_in_force=order["timeInForce"],
+                    status=order["status"],
+                )
+
+                total_commission = self.calculate_total_commissions(res["fills"])
                 # Build new deals list
                 new_deals = []
                 for d in bot.orders:
@@ -226,10 +231,13 @@ class CreateDealController(BaseDeal):
                 self.db.bots.update_one(
                     {"id": self.active_bot.id},
                     {
+                        "$set": {
+                            "total_commission": total_commission,
+                        },
                         "$push": {
-                            "orders": take_profit_order,
+                            "orders": take_profit_order.model_dump(),
                             "errors": "take_profit deal successfully updated",
-                        }
+                        },
                     },
                 )
                 return

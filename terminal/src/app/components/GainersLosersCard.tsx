@@ -7,7 +7,7 @@ const GainersLosersCard = ({ data, title }) => {
       <ListGroup className="list-group-flush">
         {data.map((x, i) => parseFloat(x.priceChangePercent) !== 0 && (
           <ListGroup.Item key={i}>
-            <Card.Link href={`/admin/bots/new/${x.symbol}`}>
+            <Card.Link href={`/bots/new/${x.symbol}`}>
               {x.symbol}
             </Card.Link>
             <Badge

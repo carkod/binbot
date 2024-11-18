@@ -68,7 +68,8 @@ class BaseDeal(OrderController):
             balance = self.get_margin_balance(asset)
             if not balance:
                 return None
-        qty = round_numbers(balance, (self.qty_precision))
+        free = balance["free"]
+        qty = round_numbers(free, self.qty_precision)
         return qty
 
     def compute_margin_buy_back(self):
@@ -241,7 +242,6 @@ class BaseDeal(OrderController):
             order_type=res["type"],
             price=res["price"],
             qty=res["origQty"],
-            fills=res["fills"],
             time_in_force=res["timeInForce"],
             status=res["status"],
         )

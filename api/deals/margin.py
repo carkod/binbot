@@ -1,7 +1,5 @@
 import logging
-
 from time import time
-from datetime import datetime
 from urllib.error import HTTPError
 from base_producer import BaseProducer
 from tools.enum_definitions import CloseConditions, DealType, Strategy
@@ -293,14 +291,12 @@ class MarginDeal(BaseDeal):
                         order_type=res["type"],
                         price=res["price"],
                         qty=res["origQty"],
-                        fills=res["fills"],
                         time_in_force=res["timeInForce"],
                         status=res["status"],
                         is_isolated=res["isIsolated"],
                     )
 
-                    for chunk in res["fills"]:
-                        self.active_bot.total_commission += float(chunk["commission"])
+                    self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
 
                     self.active_bot.orders.append(sell_back_order)
                     self.active_bot.deal.buy_total_qty = res["origQty"]
@@ -379,11 +375,12 @@ class MarginDeal(BaseDeal):
             order_type=order_res["type"],
             price=order_res["price"],
             qty=order_res["origQty"],
-            fills=order_res["fills"],
             time_in_force=order_res["timeInForce"],
             status=order_res["status"],
             is_isolated=order_res["isIsolated"],
         )
+
+        self.active_bot.total_commission = self.calculate_total_commissions(order_res["fills"])
 
         self.active_bot.orders.append(order_data)
 
@@ -546,14 +543,12 @@ class MarginDeal(BaseDeal):
             order_type=res["type"],
             price=res["price"],
             qty=res["origQty"],
-            fills=res["fills"],
             time_in_force=res["timeInForce"],
             status=res["status"],
             is_isolated=res["isIsolated"],
         )
 
-        for chunk in res["fills"]:
-            self.active_bot.total_commission += float(chunk["commission"])
+        self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
 
         self.active_bot.orders.append(stop_loss_order)
 
@@ -603,14 +598,12 @@ class MarginDeal(BaseDeal):
                 order_type=res["type"],
                 price=res["price"],
                 qty=res["origQty"],
-                fills=res["fills"],
                 time_in_force=res["timeInForce"],
                 status=res["status"],
                 is_isolated=res["isIsolated"],
             )
 
-            for chunk in res["fills"]:
-                self.active_bot.total_commission += float(chunk["commission"])
+            self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
 
             self.active_bot.orders.append(take_profit_order)
             self.active_bot.deal.margin_short_buy_back_price = res["price"]

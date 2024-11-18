@@ -30,7 +30,6 @@ class Controller(Database):
         return blacklist
 
     def create_blacklist_item(self, data):
-
         try:
             blacklist_item = data.dict()
             blacklist_item["_id"] = data.pair
@@ -45,7 +44,6 @@ class Controller(Database):
             return json_response_error(f"Failed to add pair to black list: {error}")
 
     def delete_blacklist_item(self, pair):
-
         blacklist = self._db.blacklist.delete_one({"_id": pair})
 
         if blacklist.acknowledged:
@@ -170,7 +168,7 @@ class Controller(Database):
         )
 
     def delete_all_subscribed_symbols(self):
-        query_result = self._db.subscribed_symbols.delete_many({})
+        self._db.subscribed_symbols.delete_many({})
 
         return json_response(
             {"message": "Successfully deleted all symbols", "data": {"total": 0}}

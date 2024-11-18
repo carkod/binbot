@@ -243,14 +243,12 @@ class Bot(Database, Account):
                 order_type=order_res["type"],
                 price=order_res["price"],
                 qty=order_res["origQty"],
-                fills=order_res["fills"],
                 time_in_force=order_res["timeInForce"],
                 status=order_res["status"],
                 is_isolated=order_res["isIsolated"],
             )
 
-            for chunk in order_res["fills"]:
-                bot.total_commission += float(chunk["commission"])
+            bot.total_commission = self.calculate_total_commissions(order_res["fills"])
 
             bot.orders.append(panic_close_order)
         else:
@@ -271,7 +269,6 @@ class Bot(Database, Account):
                 order_type=res["type"],
                 price=res["price"],
                 qty=res["origQty"],
-                fills=res["fills"],
                 time_in_force=res["timeInForce"],
                 status=res["status"],
             )

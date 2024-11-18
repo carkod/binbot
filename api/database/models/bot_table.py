@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 
 
 class BotTable(SQLModel, table=True):
-
     __tablename__ = "bot"
 
     id: Optional[UUID] = Field(

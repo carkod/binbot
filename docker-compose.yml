@@ -17,11 +17,11 @@ services:
       POSTGRES_DB: "binbot"
     ports:
       - "5432:5432"
-    # healthcheck:
-    #   test: ["CMD-SHELL", "psql", "-U", "$POSTGRES_USER", "-d", "$POSTGRES_DB", "-W", "$POSTGRES_PASSWORD"]
-    #   interval: 30s
-    #   timeout: 60s
-    #   retries: 5
+    healthcheck:
+      test: ["CMD-SHELL", "psql", "-U", "$POSTGRES_USER", "-d", "$POSTGRES_DB", "-W", "$POSTGRES_PASSWORD"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
 
   data_db:
     image: mongo:7.0

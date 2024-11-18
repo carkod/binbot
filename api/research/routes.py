@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from apis import ThreeCommasApi
 from research.controller import Controller
 from research.schemas import BlacklistSchema, BlacklistResponse, SubscribedSymbolsSchema
-from tools.handle_error import json_response, json_response_error, json_response_message
+from tools.handle_error import json_response
 
 research_blueprint = APIRouter()
 

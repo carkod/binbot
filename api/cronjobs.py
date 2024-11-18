@@ -16,7 +16,6 @@ logging.basicConfig(
 
 
 def main():
-
     scheduler = BlockingScheduler()
     assets = Assets()
     market_domination = MarketDominationController()
