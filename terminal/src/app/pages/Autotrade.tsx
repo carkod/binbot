@@ -1,6 +1,6 @@
 import { useEffect, type FC } from "react";
 import { Button, Card, Col, Container, Row } from "react-bootstrap";
-import { set, useController, useForm, type FieldValues } from "react-hook-form";
+import { useForm, type FieldValues } from "react-hook-form";
 import {
   useEditSettingsMutation,
   useGetSettingsQuery,
@@ -51,31 +51,7 @@ export const AutotradePage: FC<{}> = () => {
   };
 
   const saveSettings = async (data) => {
-    // translate old number values to boolean
-    // to remove once data is cleaned
-    if (data.telegram_signals === 1) {
-      data.telegram_signals = true;
-    } else {
-      data.telegram_signals = false;
-    }
-    if (data.trailling === 1) {
-      data.trailling = true;
-    } else {
-      data.trailling = false;
-    }
-    if (data.autotrade === 1) {
-      data.autotrade = true;
-    } else {
-      data.autotrade = false;
-    }
-    if (data.test_autotrade === 1) {
-      data.test_autotrade = true;
-    } else {
-      data.test_autotrade = false;
-    }
-    dispatch(setSettings({ settings: data }));
-    const response = await updateSettings(data).unwrap();
-    console.log(response);
+    await updateSettings(data).unwrap();
   };
 
   useEffect(() => {

@@ -20,6 +20,7 @@ class SpotLongDeal(BaseDeal):
         super().__init__(bot, db_collection_name)
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
+        self.active_bot: BotSchema
 
     def switch_margin_short(self):
         """
@@ -33,7 +34,6 @@ class SpotLongDeal(BaseDeal):
         2. Calculate take_profit_price and stop_loss_price as usual
         3. Create deal
         """
-        self.active_bot: BotSchema = self.active_bot
         self.update_deal_logs(
             "Resetting bot for margin_short strategy...", self.active_bot
         )
