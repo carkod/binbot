@@ -28,11 +28,12 @@
   ],
   "applications": {
     "api": {
-      "type": "python 3.10",
+      "type": "python 3.11",
       "path": "/api",
       "module": "main",
       "callable": "app",
       "processes": 6
     }
-  }
+  },
+  "access_log": "/dev/stdout"
 }
