@@ -4,7 +4,7 @@ COPY /terminal/ /app/
 RUN npm install && npm run build
 
 FROM nginx/unit:1.28.0-python3.10
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-dev python-setuptools libpq-dev
+RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing build-essential python3-dev python-setuptools libpq-dev
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 COPY api api
 WORKDIR api
