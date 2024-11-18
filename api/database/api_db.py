@@ -1,6 +1,8 @@
 import os
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select
+from api.charts.controllers import Candlestick
+from database.models.autotrade_table import AutotradeTable
 from tools.enum_definitions import DealType, Status, Strategy, UserRoles
 from database.models import UserTable, ExchangeOrderTable, DealTable, BotTable
 from alembic.config import Config
@@ -35,6 +37,29 @@ class ApiDb:
     def drop_db(self):
         SQLModel.metadata.drop_all(engine)
 
+    def init_autotrade_settings(self):
+        """
+        Dummy data for testing autotrade_settings table
+        """
+        autotrade_data = AutotradeTable(
+            balance_to_use="USDC",
+            base_order_size=15,
+            candlestick_interval=Candlestick.fifteen_minutes,
+            max_active_autotrade_bots=1,
+            max_request=500,
+            stop_loss=0,
+            take_profit=2.3,
+            telegram_signals=True,
+            trailling=True,
+            trailling_deviation=0.63,
+            trailling_profit=2.3,
+            autotrade=True,
+        )
+
+        self.session.add(autotrade_data)
+        self.session.commit()
+        pass
+
     def init_users(self):
         """
         Dummy data for testing users table
@@ -51,7 +76,6 @@ class ApiDb:
         self.session.add(user_data)
 
         self.session.commit()
-        self.session.close()
 
     def create_dummy_bot(self):
         """
@@ -144,7 +168,6 @@ class ApiDb:
         )
         self.session.add(bot)
         self.session.commit()
-        self.session.close()
         return bot
 
     def select_bot(self, pair):

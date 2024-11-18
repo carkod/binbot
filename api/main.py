@@ -6,9 +6,9 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.logger import logger
 
 from account.routes import account_blueprint
+from database.api_db import ApiDb
 from autotrade.routes import autotrade_settings_blueprint
 from bots.routes import bot_blueprint
 from charts.routes import charts_blueprint
@@ -17,7 +17,6 @@ from paper_trading.routes import paper_trading_blueprint
 from research.routes import research_blueprint
 from user.routes import user_blueprint
 
-from database.api_db import ApiDb
 from database.models import *  # noqa
 
 
@@ -29,8 +28,8 @@ async def lifespan(app: FastAPI):
         api_db = ApiDb()
         api_db.init_db()
         api_db.create_dummy_bot()
-        result = api_db.select_bot("BTCUSDT")
-        logging.info("Added dummy bot: ", result)
+        api_db.select_bot("BTCUSDT")
+        api_db.session.close()
     except ServerSelectionTimeoutError:
         pass
     except Exception as e:
