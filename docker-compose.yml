@@ -11,10 +11,6 @@ services:
       - ./pg_data:/var/lib/postgresql/data
     env_file:
       - .env
-    environment:
-      POSTGRES_USER: "carkod"
-      POSTGRES_PASSWORD: "2FUd56b3a39Y"
-      POSTGRES_DB: "binbot"
     ports:
       - "5432:5432"
     healthcheck:
@@ -116,7 +112,8 @@ services:
   #   restart: on-failure
   #   container_name: binbot
   #   depends_on:
-  #     - db
+  #     - api_db
+  #     - data_db
   #   env_file:
   #     - .env
   #   environment:

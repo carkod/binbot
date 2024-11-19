@@ -1,3 +1,4 @@
+import logging
 from pymongo.errors import ServerSelectionTimeoutError
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
@@ -5,6 +6,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.logger import logger
 
 from account.routes import account_blueprint
 from autotrade.routes import autotrade_settings_blueprint
@@ -27,11 +29,12 @@ async def lifespan(app: FastAPI):
         api_db = ApiDb()
         api_db.init_db()
         api_db.create_dummy_bot()
-        api_db.select_bot("BTCUSDT")
+        result = api_db.select_bot("BTCUSDT")
+        logging.info("Added dummy bot: ", result)
     except ServerSelectionTimeoutError:
         pass
     except Exception as e:
-        print("Error", e)
+        logging.error("Error", e)
 
     finally:
         yield
