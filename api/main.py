@@ -1,5 +1,6 @@
 import logging
 from pymongo.errors import ServerSelectionTimeoutError
+from psycopg2.errors import UniqueViolation
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -28,8 +29,11 @@ async def lifespan(app: FastAPI):
         api_db = ApiDb()
         api_db.init_db()
         api_db.create_dummy_bot()
-        api_db.select_bot("BTCUSDT")
+        api_db.init_autotrade_settings()
         api_db.session.close()
+    except UniqueViolation as error:
+        logging.error("Error", error)
+        pass
     except ServerSelectionTimeoutError:
         pass
     except Exception as e:

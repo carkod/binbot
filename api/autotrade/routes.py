@@ -1,5 +1,6 @@
-from fastapi import APIRouter
-from tools.handle_error import json_response, json_response_error
+from fastapi import APIRouter, HTTPException
+from pydantic import ValidationError
+from tools.handle_error import json_response, json_response_error, json_response_message
 from autotrade.controller import AutotradeSettingsController
 from autotrade.schemas import AutotradeSettingsResponse, AutotradeSettingsSchema
 
@@ -53,6 +54,19 @@ def get_test_autotrade_settings():
 
 @autotrade_settings_blueprint.put("/paper-trading", tags=["autotrade settings"])
 def edit_test_autotrade_settings(item: AutotradeSettingsSchema):
-    return AutotradeSettingsController(
-        document_id="test_autotrade_settings"
-    ).edit_settings(item)
+    try:
+        data = AutotradeSettingsController(
+            document_id="test_autotrade_settings"
+        ).edit_settings(item)
+        if not data:
+            raise HTTPException(status_code=404, detail="Autotrade settings not found")
+        else:
+            return json_response(
+                {"message": "Successfully updated settings", "data": data}
+            )
+    except ValidationError as error:
+        msg = ""
+        for field, desc in error.args[0].items():
+            msg += field + desc[0]
+        resp = json_response_error(f"{msg}")
+        return resp

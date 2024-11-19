@@ -12,7 +12,7 @@ class UserTable(SQLModel, table=True):
     For full customer data create a separate table
     """
 
-    __tablename__ = "binbot-user"
+    __tablename__ = "binbot_user"
 
     id: Optional[UUID] = Field(
         default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True

@@ -2,7 +2,7 @@ from time import time
 from typing import Optional
 from sqlalchemy import Column, Enum
 from sqlmodel import Field, SQLModel
-from tools.enum_definitions import BinanceKlineIntervals, CloseConditions
+from tools.enum_definitions import AutotradeSettingsDocument, BinanceKlineIntervals, CloseConditions
 
 
 class AutotradeTable(SQLModel, table=True):
@@ -16,7 +16,7 @@ class AutotradeTable(SQLModel, table=True):
     __tablename__ = "autotrade"
 
     id: Optional[str] = Field(
-        default="autotrade_settings", primary_key=True, nullable=False, unique=True
+        default=str(AutotradeSettingsDocument.settings), primary_key=True, nullable=False, unique=True
     )
     autotrade: bool = Field(default=False)
     updated_at: float = Field(default=time() * 1000)
@@ -34,7 +34,6 @@ class AutotradeTable(SQLModel, table=True):
     take_profit: float = Field(default=2.3)
     balance_to_use: str = Field(default="USDC")
     max_request: int = Field(default=950)
-    system_logs: list[str] = Field(default=[])
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)
     close_condition: CloseConditions = Field(
@@ -47,12 +46,14 @@ class AutotradeTable(SQLModel, table=True):
 
 
 class TestAutotradeTable(SQLModel, table=True):
-    __tablename__ = "autotrade"
+    """
+    Test autotrade
+    """
+    __tablename__ = "test_autotrade"
 
     id: Optional[str] = Field(
         default="test_autotrade_settings", primary_key=True, nullable=False, unique=True
     )
-    autotrade: bool = Field(default=False)
     updated_at: float = Field(default=time() * 1000)
     # Assuming 10 USDC is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
     base_order_size: float = Field(default=15)
@@ -66,7 +67,6 @@ class TestAutotradeTable(SQLModel, table=True):
     take_profit: float = Field(default=2.3)
     balance_to_use: str = Field(default="USDC")
     max_request: int = Field(default=950)
-    system_logs: list[str] = Field(default=[])
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)
 

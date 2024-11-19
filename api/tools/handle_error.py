@@ -10,6 +10,8 @@ from requests import Response, put
 from requests.exceptions import HTTPError
 from fastapi.encoders import jsonable_encoder
 from copy import deepcopy
+
+from sqlalchemy import JSON
 from tools.exceptions import (
     BinanceErrors,
     BinbotErrors,
@@ -46,7 +48,7 @@ def json_response_error(message):
     return json_response(body, status=422)
 
 
-def handle_binance_errors(response: Response) -> Response:
+def handle_binance_errors(response: Response) -> JSONResponse:
     """
     Handles:
     - HTTP codes, not authorized, rate limits...

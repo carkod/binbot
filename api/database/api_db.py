@@ -1,9 +1,8 @@
 import os
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select
-from api.charts.controllers import Candlestick
-from database.models.autotrade_table import AutotradeTable
-from tools.enum_definitions import DealType, Status, Strategy, UserRoles
+from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
+from tools.enum_definitions import AutotradeSettingsDocument, BinanceKlineIntervals, DealType, Status, Strategy, UserRoles
 from database.models import UserTable, ExchangeOrderTable, DealTable, BotTable
 from alembic.config import Config
 from alembic import command
@@ -41,10 +40,32 @@ class ApiDb:
         """
         Dummy data for testing autotrade_settings table
         """
+        statement = select(AutotradeTable).where(AutotradeTable.id == "settings")
+        results = self.session.exec(statement)
+        if results.first():
+            return
+
         autotrade_data = AutotradeTable(
+            id=AutotradeSettingsDocument.settings,
             balance_to_use="USDC",
             base_order_size=15,
-            candlestick_interval=Candlestick.fifteen_minutes,
+            candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
+            max_active_autotrade_bots=1,
+            max_request=500,
+            stop_loss=0,
+            take_profit=2.3,
+            telegram_signals=True,
+            trailling=True,
+            trailling_deviation=0.63,
+            trailling_profit=2.3,
+            autotrade=True,
+        )
+
+        test_autotrade_data = TestAutotradeTable(
+            id=AutotradeSettingsDocument.test_autotrade_settings,
+            balance_to_use="USDC",
+            base_order_size=15,
+            candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
             max_active_autotrade_bots=1,
             max_request=500,
             stop_loss=0,
@@ -57,6 +78,7 @@ class ApiDb:
         )
 
         self.session.add(autotrade_data)
+        self.session.add(test_autotrade_data)
         self.session.commit()
         pass
 
@@ -64,6 +86,11 @@ class ApiDb:
         """
         Dummy data for testing users table
         """
+
+        statement = select(UserTable).where(UserTable.username == os.environ["USER"])
+        results = self.session.exec(statement)
+        if results.first():
+            return
 
         username = os.environ["USER"]
         email = os.environ["EMAIL"]
@@ -82,6 +109,10 @@ class ApiDb:
         Dummy data for testing and initializing
         newborn DB
         """
+        statement = select(BotTable)
+        results = self.session.exec(statement)
+        if results.first():
+            return
         orders = [
             ExchangeOrderTable(
                 id=1,
