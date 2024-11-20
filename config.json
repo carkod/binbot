@@ -27,6 +27,10 @@
     }
   ],
   "applications": {
+    "pre_start": {
+      "exec": "/usr/bin/python3",
+      "args": ["/api/pre_start.py"]
+    },
     "api": {
       "type": "python 3.11",
       "path": "/api",

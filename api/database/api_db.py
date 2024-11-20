@@ -2,7 +2,14 @@ import os
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select
 from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
-from tools.enum_definitions import AutotradeSettingsDocument, BinanceKlineIntervals, DealType, Status, Strategy, UserRoles
+from tools.enum_definitions import (
+    AutotradeSettingsDocument,
+    BinanceKlineIntervals,
+    DealType,
+    Status,
+    Strategy,
+    UserRoles,
+)
 from database.models import UserTable, ExchangeOrderTable, DealTable, BotTable
 from alembic.config import Config
 from alembic import command
@@ -14,24 +21,25 @@ engine = create_engine(
 )
 
 
-def get_session():
-    return Session(engine)
-
-
 class ApiDb:
-    def __init__(self):
-        self.session: Session = get_session()
+    def __init__(self, session=None):
+        self.session: Session = session
         pass
 
     def init_db(self):
         SQLModel.metadata.create_all(engine)
+        print("Initializing DB")
         self.run_migrations()
         self.init_users()
         self.create_dummy_bot()
+        self.init_autotrade_settings()
+        self.session.close()
+        print("end of init")
 
     def run_migrations(self):
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
+        return
 
     def drop_db(self):
         SQLModel.metadata.drop_all(engine)
@@ -40,7 +48,9 @@ class ApiDb:
         """
         Dummy data for testing autotrade_settings table
         """
-        statement = select(AutotradeTable).where(AutotradeTable.id == "settings")
+        statement = select(AutotradeTable).where(
+            AutotradeTable.id == AutotradeSettingsDocument.settings
+        )
         results = self.session.exec(statement)
         if results.first():
             return
@@ -101,7 +111,7 @@ class ApiDb:
         )
 
         self.session.add(user_data)
-
+        self.session.refresh(user_data)
         self.session.commit()
 
     def create_dummy_bot(self):

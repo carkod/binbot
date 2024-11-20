@@ -1,7 +1,3 @@
-import logging
-from pymongo.errors import ServerSelectionTimeoutError
-from psycopg2.errors import UniqueViolation
-from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -9,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from account.routes import account_blueprint
-from database.api_db import ApiDb
 from autotrade.routes import autotrade_settings_blueprint
 from bots.routes import bot_blueprint
 from charts.routes import charts_blueprint
@@ -20,30 +15,7 @@ from user.routes import user_blueprint
 
 from database.models import *  # noqa
 
-
-# Startup operations
-# needed to be run before app starts
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    try:
-        api_db = ApiDb()
-        api_db.init_db()
-        api_db.create_dummy_bot()
-        api_db.init_autotrade_settings()
-        api_db.session.close()
-    except UniqueViolation as error:
-        logging.error("Error", error)
-        pass
-    except ServerSelectionTimeoutError:
-        pass
-    except Exception as e:
-        logging.error("Error", e)
-
-    finally:
-        yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 # Enable CORS for all routes
 app.add_middleware(
