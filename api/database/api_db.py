@@ -1,6 +1,7 @@
+import logging
 import os
 from sqlalchemy import create_engine
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import SQLModel, Session, select
 from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
@@ -20,21 +21,31 @@ engine = create_engine(
     url=db_url,
 )
 
+# create a logger
+logger = logging.getLogger()
+# log all messages, debug and up
+logger.setLevel(logging.DEBUG)
 
 class ApiDb:
-    def __init__(self, session=None):
-        self.session: Session = session
+    def __init__(self):
+        self.engine = create_engine(
+            url=db_url,
+        )
+        self.session = Session(engine)
         pass
 
     def init_db(self):
-        SQLModel.metadata.create_all(engine)
-        print("Initializing DB")
-        self.run_migrations()
-        self.init_users()
-        self.create_dummy_bot()
-        self.init_autotrade_settings()
-        self.session.close()
-        print("end of init")
+        try:
+            SQLModel.metadata.create_all(engine)
+            self.run_migrations()
+            self.init_users()
+            self.create_dummy_bot()
+            self.init_autotrade_settings()
+            self.session.close()
+            self.engine.dispose()
+        except Exception as e:
+            logger.error(f"Error initializing DB: {e}")
+            raise
 
     def run_migrations(self):
         alembic_cfg = Config("alembic.ini")
@@ -51,7 +62,7 @@ class ApiDb:
         statement = select(AutotradeTable).where(
             AutotradeTable.id == AutotradeSettingsDocument.settings
         )
-        results = self.session.exec(statement)
+        results = self.session.execute(statement)
         if results.first():
             return
 
@@ -98,7 +109,7 @@ class ApiDb:
         """
 
         statement = select(UserTable).where(UserTable.username == os.environ["USER"])
-        results = self.session.exec(statement)
+        results = self.session.execute(statement)
         if results.first():
             return
 
@@ -120,7 +131,7 @@ class ApiDb:
         newborn DB
         """
         statement = select(BotTable)
-        results = self.session.exec(statement)
+        results = self.session.execute(statement)
         if results.first():
             return
         orders = [
@@ -213,13 +224,13 @@ class ApiDb:
 
     def select_bot(self, pair):
         statement = select(BotTable).where(BotTable.pair == pair)
-        results = self.session.exec(statement)
+        results = self.session.execute(statement)
         bot = results.first()
         return bot
 
     def delete_bot(self, pair):
         statement = select(BotTable).where(BotTable.pair == pair)
-        results = self.session.exec(statement)
+        results = self.session.execute(statement)
         self.session.delete(results.first())
         self.session.commit()
         self.session.close()

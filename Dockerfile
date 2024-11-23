@@ -3,18 +3,19 @@ WORKDIR /app
 COPY /terminal/ /app/
 RUN npm install && npm run build
 
-FROM unit:python3.11
-RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing build-essential python3-dev libpq-dev
+FROM unit:1.33.0-python3.11
 COPY --from=build-stage /app/dist /usr/share/nginx/html
-COPY api api
+ADD api api
 WORKDIR api
 RUN pip3 install --upgrade pip
-RUN pip3 install pipenv --upgrade
-RUN pipenv install --system --deploy --clear
+RUN pip3 install pipenv
+RUN pipenv install --system --deploy
 RUN rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/*.list
 COPY ./config.json /docker-entrypoint.d/config.json
 RUN ln -sf /dev/stdout /var/log/unit.log
-RUN chown -R unit:unit /api/ /docker-entrypoint.d/config.json
+RUN chown -R unit:unit /api/ /usr/local/bin/docker-entrypoint.sh
 
 STOPSIGNAL SIGTERM
 EXPOSE 80 8006
+
+CMD ["alembic", "upgrade", "head"]

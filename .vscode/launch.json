@@ -26,7 +26,6 @@
       "args": ["main:app", "--port", "8008"],
       "justMyCode": true,
       "console": "internalConsole",
-      "preLaunchTask": "prestart"
     },
     {
       "name": "Binquant: Producer",

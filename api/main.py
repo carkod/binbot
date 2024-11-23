@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+import logging
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -5,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from account.routes import account_blueprint
+from database.api_db import ApiDb
 from autotrade.routes import autotrade_settings_blueprint
 from bots.routes import bot_blueprint
 from charts.routes import charts_blueprint
@@ -15,7 +18,16 @@ from user.routes import user_blueprint
 
 from database.models import *  # noqa
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    api_db = ApiDb()
+    api_db.init_db()
+    print("Finishing db operations")
+    yield
+
+
+app = FastAPI(title="Binbot API", lifespan=lifespan)
 
 # Enable CORS for all routes
 app.add_middleware(
