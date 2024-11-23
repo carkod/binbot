@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import ValidationError
-from tools.handle_error import json_response, json_response_error, json_response_message
+from tools.handle_error import json_response, json_response_error
 from autotrade.controller import AutotradeSettingsController
 from autotrade.schemas import AutotradeSettingsResponse, AutotradeSettingsSchema
 
@@ -13,7 +13,15 @@ def edit_settings(item: AutotradeSettingsSchema):
     Autotrade settings for bots
     these use real money and real Binance transactions
     """
-    return AutotradeSettingsController().edit_settings(item)
+    try:
+        AutotradeSettingsController().edit_settings(item)
+        return json_response({"message": "Successfully updated settings"})
+    except ValidationError as error:
+        msg = ""
+        for field, desc in error.args[0].items():
+            msg += field + desc[0]
+        resp = json_response_error(f"{msg}")
+        return resp
 
 
 @autotrade_settings_blueprint.get(

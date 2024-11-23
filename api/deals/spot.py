@@ -105,7 +105,9 @@ class SpotLongDeal(BaseDeal):
             status=res["status"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
+        self.active_bot.total_commission = self.calculate_total_commissions(
+            res["fills"]
+        )
 
         self.active_bot.orders.append(stop_loss_order)
         self.active_bot.deal.sell_price = res["price"]
@@ -183,7 +185,9 @@ class SpotLongDeal(BaseDeal):
             status=res["status"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
+        self.active_bot.total_commission = self.calculate_total_commissions(
+            res["fills"]
+        )
 
         self.active_bot.orders.append(order_data)
 

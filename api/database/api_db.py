@@ -1,8 +1,10 @@
 import logging
 import os
-from sqlalchemy import create_engine
-from sqlmodel import SQLModel, Session, select
+
+from database.models import BotTable, DealTable, ExchangeOrderTable, UserTable
 from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
+from sqlalchemy import create_engine
+from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
@@ -11,20 +13,15 @@ from tools.enum_definitions import (
     Strategy,
     UserRoles,
 )
-from database.models import UserTable, ExchangeOrderTable, DealTable, BotTable
 from alembic.config import Config
 from alembic import command
 
 # This allows testing/Github action dummy envs
-db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@{os.getenv("POSTGRES_HOSTNAME", "localhost")}/{os.getenv("POSTGRES_DB", "postgres")}'
+db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@{os.getenv("POSTGRES_HOSTNAME", "localhost")}:{os.getenv("POSTGRES_PORT", 5432)}/{os.getenv("POSTGRES_DB", "postgres")}'
 engine = create_engine(
     url=db_url,
 )
 
-# create a logger
-logger = logging.getLogger()
-# log all messages, debug and up
-logger.setLevel(logging.DEBUG)
 
 class ApiDb:
     def __init__(self):
@@ -35,22 +32,17 @@ class ApiDb:
         pass
 
     def init_db(self):
-        try:
-            SQLModel.metadata.create_all(engine)
-            self.run_migrations()
-            self.init_users()
-            self.create_dummy_bot()
-            self.init_autotrade_settings()
-            self.session.close()
-            self.engine.dispose()
-        except Exception as e:
-            logger.error(f"Error initializing DB: {e}")
-            raise
+        SQLModel.metadata.create_all(engine)
+        # self.run_migrations()
+        self.init_users()
+        self.create_dummy_bot()
+        self.init_autotrade_settings()
+        self.session.close()
+        logging.info("Finishing db operations")
 
     def run_migrations(self):
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
-        return
 
     def drop_db(self):
         SQLModel.metadata.drop_all(engine)
@@ -62,7 +54,7 @@ class ApiDb:
         statement = select(AutotradeTable).where(
             AutotradeTable.id == AutotradeSettingsDocument.settings
         )
-        results = self.session.execute(statement)
+        results = self.session.exec(statement)
         if results.first():
             return
 
@@ -107,22 +99,20 @@ class ApiDb:
         """
         Dummy data for testing users table
         """
+        username = os.getenv("USER", "admin")
+        email = os.getenv("EMAIL", "admin@example.com")
+        password = os.getenv("PASSWORD", "admin")
 
-        statement = select(UserTable).where(UserTable.username == os.environ["USER"])
-        results = self.session.execute(statement)
+        statement = select(UserTable).where(UserTable.username == username)
+        results = self.session.exec(statement)
         if results.first():
             return
-
-        username = os.environ["USER"]
-        email = os.environ["EMAIL"]
-        password = os.environ["PASSWORD"]
 
         user_data = UserTable(
             username=username, password=password, email=email, role=UserRoles.superuser
         )
 
         self.session.add(user_data)
-        self.session.refresh(user_data)
         self.session.commit()
 
     def create_dummy_bot(self):
@@ -131,7 +121,7 @@ class ApiDb:
         newborn DB
         """
         statement = select(BotTable)
-        results = self.session.execute(statement)
+        results = self.session.exec(statement)
         if results.first():
             return
         orders = [
@@ -224,13 +214,13 @@ class ApiDb:
 
     def select_bot(self, pair):
         statement = select(BotTable).where(BotTable.pair == pair)
-        results = self.session.execute(statement)
+        results = self.session.exec(statement)
         bot = results.first()
         return bot
 
     def delete_bot(self, pair):
         statement = select(BotTable).where(BotTable.pair == pair)
-        results = self.session.execute(statement)
+        results = self.session.exec(statement)
         self.session.delete(results.first())
         self.session.commit()
         self.session.close()

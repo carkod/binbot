@@ -2,7 +2,11 @@ from time import time
 from typing import Optional
 from sqlalchemy import Column, Enum
 from sqlmodel import Field, SQLModel
-from tools.enum_definitions import AutotradeSettingsDocument, BinanceKlineIntervals, CloseConditions
+from tools.enum_definitions import (
+    AutotradeSettingsDocument,
+    BinanceKlineIntervals,
+    CloseConditions,
+)
 
 
 class AutotradeTable(SQLModel, table=True):
@@ -16,7 +20,10 @@ class AutotradeTable(SQLModel, table=True):
     __tablename__ = "autotrade"
 
     id: Optional[str] = Field(
-        default=str(AutotradeSettingsDocument.settings), primary_key=True, nullable=False, unique=True
+        default=str(AutotradeSettingsDocument.settings),
+        primary_key=True,
+        nullable=False,
+        unique=True,
     )
     autotrade: bool = Field(default=False)
     updated_at: float = Field(default=time() * 1000)
@@ -49,6 +56,7 @@ class TestAutotradeTable(SQLModel, table=True):
     """
     Test autotrade
     """
+
     __tablename__ = "test_autotrade"
 
     id: Optional[str] = Field(

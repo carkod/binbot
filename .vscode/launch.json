@@ -14,8 +14,6 @@
         "${workspaceFolder}/terminal/**/*.js",
         "${workspaceFolder}/terminal/src/node_modules/**"
       ],
-      "preLaunchTask": "startApp",
-      "postDebugTask": "stopApp"
     },
     {
       "name": "Python: FastAPI",

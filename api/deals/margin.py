@@ -296,7 +296,9 @@ class MarginDeal(BaseDeal):
                         is_isolated=res["isIsolated"],
                     )
 
-                    self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
+                    self.active_bot.total_commission = self.calculate_total_commissions(
+                        res["fills"]
+                    )
 
                     self.active_bot.orders.append(sell_back_order)
                     self.active_bot.deal.buy_total_qty = res["origQty"]
@@ -380,7 +382,9 @@ class MarginDeal(BaseDeal):
             is_isolated=order_res["isIsolated"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(order_res["fills"])
+        self.active_bot.total_commission = self.calculate_total_commissions(
+            order_res["fills"]
+        )
 
         self.active_bot.orders.append(order_data)
 
@@ -548,7 +552,9 @@ class MarginDeal(BaseDeal):
             is_isolated=res["isIsolated"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
+        self.active_bot.total_commission = self.calculate_total_commissions(
+            res["fills"]
+        )
 
         self.active_bot.orders.append(stop_loss_order)
 
@@ -603,7 +609,9 @@ class MarginDeal(BaseDeal):
                 is_isolated=res["isIsolated"],
             )
 
-            self.active_bot.total_commission = self.calculate_total_commissions(res["fills"])
+            self.active_bot.total_commission = self.calculate_total_commissions(
+                res["fills"]
+            )
 
             self.active_bot.orders.append(take_profit_order)
             self.active_bot.deal.margin_short_buy_back_price = res["price"]

@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
-import logging
-from fastapi import FastAPI, Request, status
+from sys import prefix
+from fastapi import APIRouter, FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,11 +23,10 @@ from database.models import *  # noqa
 async def lifespan(app: FastAPI):
     api_db = ApiDb()
     api_db.init_db()
-    print("Finishing db operations")
     yield
 
 
-app = FastAPI(title="Binbot API", lifespan=lifespan)
+app = FastAPI(title="Binbot API", version="2.0.0", lifespan=lifespan)
 
 # Enable CORS for all routes
 app.add_middleware(
@@ -37,17 +36,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# Fix issue with curl returning method not allowed (https://github.com/tiangolo/fastapi/issues/1773)
-@app.head("/")
-# Routes
 @app.get("/")
-def root():
+async def root():
     """
-    Check app works
+    Check app works. Can be used for healthchecks
     """
-    return {"status": "Online"}
+    return {"message": "online"}
 
 
 app.include_router(user_blueprint)
