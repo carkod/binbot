@@ -1,3 +1,4 @@
+from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 import pytest
 from account.assets import Assets
@@ -8,6 +9,9 @@ client: MongoClient = MongoClient()
 db = client.db
 
 app_client = TestClient(app)
+
+MockAutotradeSettingsController = MagicMock()
+MockAutotradeSettingsController.return_value.get_settings.return_value.balance_to_use = "USDC"
 
 
 @pytest.fixture()
@@ -23,7 +27,6 @@ def patch_database(monkeypatch):
         self._db = db
 
     monkeypatch.setattr(Assets, "_db", new_init)
-    monkeypatch.setattr(Assets, "get_fiat_coin", lambda self: "USDC")
     monkeypatch.setattr(
         Assets, "get_raw_balance", lambda self, asset=None: itemized_balance
     )
@@ -78,7 +81,6 @@ def patch_total_fiat(monkeypatch):
         {"activate": False, "balance": "0", "walletName": "Trading Bots"},
     ]
 
-    monkeypatch.setattr(Assets, "get_fiat_coin", lambda self: "USDC")
     monkeypatch.setattr(Assets, "get_wallet_balance", lambda self: account_data)
     monkeypatch.setattr(
         Assets, "ticker", lambda self, symbol="BTCUSDT", json=False: {"price": "20000"}
@@ -93,7 +95,6 @@ def patch_store_balance(monkeypatch):
     """
     wallet_balance = [{"activate": True, "balance": "0.001", "walletName": "Spot"}]
 
-    monkeypatch.setattr(Assets, "get_fiat_coin", lambda self: "USDC")
     monkeypatch.setattr(Assets, "get_available_fiat", lambda self: 5.2)
     monkeypatch.setattr(Assets, "get_wallet_balance", lambda self: wallet_balance)
     monkeypatch.setattr(Assets, "get_ticker_price", lambda self, pair: "59095.79000000")
@@ -104,6 +105,7 @@ def patch_store_balance(monkeypatch):
     )
 
 
+@patch("account.assets.AutotradeSettingsController", MockAutotradeSettingsController)
 def test_get_raw_balance(patch_database, patch_raw_balances):
     """
     Test get all raw_balances
@@ -121,7 +123,8 @@ def test_get_raw_balance(patch_database, patch_raw_balances):
     assert content["data"] == expected_result
 
 
-def test_total_fiat(patch_database, patch_total_fiat):
+@patch("account.assets.AutotradeSettingsController", MockAutotradeSettingsController)
+def test_total_fiat(patch_total_fiat):
     """
     Test get balance estimates
     """
@@ -133,6 +136,7 @@ def test_total_fiat(patch_database, patch_total_fiat):
     assert content["data"] == 20
 
 
+@patch("account.assets.AutotradeSettingsController", MockAutotradeSettingsController)
 def test_available_fiat(patch_database, patch_raw_balances):
     """
     Test available fiat
@@ -145,6 +149,7 @@ def test_available_fiat(patch_database, patch_raw_balances):
     assert content["data"] == 5.2
 
 
+@patch("account.assets.AutotradeSettingsController", MockAutotradeSettingsController)
 def test_store_balance(patch_database, patch_store_balance):
     """
     Test store balance as an endpoint

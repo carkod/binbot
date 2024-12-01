@@ -6,6 +6,7 @@ def get_session():
     with Session(engine) as session:
         yield session
 
+
 def independent_session() -> Session:
     """
     Used outside of FastAPI context

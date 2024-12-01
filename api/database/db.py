@@ -2,10 +2,10 @@ import os
 from time import time
 from bson import ObjectId
 from pymongo import MongoClient, ReturnDocument
+from tools.enum_definitions import Status
 from tools.handle_error import encode_json
 from deals.models import DealModel
 from bots.schemas import BotSchema
-from tools.enum_definitions import Status, AutotradeSettingsDocument
 
 
 def get_mongo_client():
