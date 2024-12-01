@@ -15,6 +15,9 @@ class OrderController(Database, Account):
 
     def __init__(self) -> None:
         super().__init__()
+        # Inherted attributes
+        self.price_precision: int
+        self.qty_precision: int
         pass
 
     def zero_remainder(self, x):
@@ -128,10 +131,9 @@ class OrderController(Database, Account):
         Delete All orders by symbol
         - Optimal for open orders table
         """
-        params = [
-            ("symbol", symbol),
-        ]
-        data = self.signed_request(url=self.order_url, method="DELETE", params=params)
+        data = self.signed_request(url=self.order_url, method="DELETE", params={
+            "symbol": symbol,
+        })
 
         if data and len(data) > 0:
             resp = json_response({"message": "Orders deleted", "data": data})

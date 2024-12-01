@@ -127,8 +127,6 @@ class SpotLongDeal(BaseDeal):
         Sell at take_profit price, because prices will not reach trailling
         """
 
-        price = self.active_bot.deal.trailling_stop_loss_price
-
         if self.db_collection.name == "paper_trading":
             qty = self.active_bot.deal.buy_total_qty
         else:
@@ -156,7 +154,6 @@ class SpotLongDeal(BaseDeal):
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(
                 self.active_bot.pair,
-                price,
                 qty,
                 "SELL",
             )

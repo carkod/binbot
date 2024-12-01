@@ -33,6 +33,7 @@ class AutotradeSettingsController:
         results = self.session.exec(statement)
         # Should always return one result
         settings = results.first()
+        self.session.close()
         return settings
 
     def edit_settings(self, data):
@@ -51,4 +52,5 @@ class AutotradeSettingsController:
         # end of db operations
         # update the producer to reload streaming data
         AsyncBaseProducer().update_required("UPDATE_AUTOTRADE_SETTINGS")
+        self.session.close()
         return settings

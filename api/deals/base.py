@@ -41,9 +41,7 @@ class BaseDeal(OrderController):
         self.qty_precision = self.calculate_qty_precision(bot.pair)
 
         if self.active_bot.strategy == Strategy.margin_short:
-            self.isolated_balance: float = self.get_isolated_balance(
-                self.active_bot.pair
-            )
+            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
 
     def __repr__(self) -> str:
         """
@@ -100,6 +98,10 @@ class BaseDeal(OrderController):
         return qty, free
 
     def simulate_order(self, pair, qty, side):
+        """
+        Price is determined by market
+        to help trigger the order immediately
+        """
         price = float(self.matching_engine(pair, True, qty))
         order = {
             "symbol": pair,

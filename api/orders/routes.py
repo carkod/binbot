@@ -10,18 +10,18 @@ order_blueprint = APIRouter()
 
 @order_blueprint.post("/buy", tags=["orders"])
 def create_buy_order(item: OrderParams):
-    return OrderController(symbol=item.pair).buy_order(item)
+    return OrderController().buy_order(symbol=item.pair, qty=item.qty, price=item.price)
 
 
 @order_blueprint.post("/sell", tags=["orders"])
 def create_sell_order(item: OrderParams):
-    return OrderController(symbol=item.pair).sell_order(item)
+    return OrderController().sell_order(symbol=item.pair, qty=item.qty, price=item.price)
 
 
 @order_blueprint.delete("/close/{symbol}/{orderid}", tags=["orders"])
 def delete_order(symbol, orderid):
     try:
-        data = OrderController(symbol=symbol).delete_order(symbol, orderid)
+        data = OrderController().delete_order(symbol, orderid)
         resp = json_response({"message": "Order deleted!", "data": data})
     except BinanceErrors as error:
         resp = json_response_error(error.message)

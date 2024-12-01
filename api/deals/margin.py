@@ -145,7 +145,7 @@ class MarginDeal(BaseDeal):
                 self.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
-                    amount="1",
+                    amount=1,
                 )
 
         # Given USDC amount we want to buy,

@@ -45,7 +45,7 @@ def json_response_error(message):
     return json_response(body, status=422)
 
 
-def handle_binance_errors(response: Response) -> JSONResponse:
+def handle_binance_errors(response: Response) -> str | dict:
     """
     Handles:
     - HTTP codes, not authorized, rate limits...

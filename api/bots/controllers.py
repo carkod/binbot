@@ -18,16 +18,12 @@ from tools.exceptions import BinanceErrors, InsufficientBalance
 
 
 class Bot(Database, Account):
-    def __init__(self, collection_name="paper_trading"):
+    def __init__(self, collection_name="bots"):
         super().__init__()
         self.db_collection = self._db[collection_name]
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
         self.deal: CreateDealController | None = None
-
-    def set_deal_controller(self, bot: BotSchema, collection="bots"):
-        self.deal = CreateDealController(bot, db_collection=collection)
-        pass
 
     def get_active_pairs(self, symbol: str | None = None):
         """

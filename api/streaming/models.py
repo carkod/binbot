@@ -15,7 +15,7 @@ class SignalsConsumer(BaseModel):
     symbol: str
     algo: str
     trend: TrendEnum | None = TrendEnum.neutral
-    bb_spreads: Optional[dict[str, float]]
+    bb_spreads: Optional[dict]
     model_config = ConfigDict(
         extra="allow",
     )

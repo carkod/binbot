@@ -72,7 +72,7 @@ class BinanceSocketManager(threading.Thread):
                 self._callback(self.on_pong)
             else:
                 data = frame.data
-                if op_code == ABNF.OPCODE_TEXT:
+                if op_code == ABNF.OPCODE_TEXT and isinstance(data, bytes):
                     data = data.decode("utf-8")
                 self._callback(self.on_message, data)
 

@@ -33,7 +33,7 @@ class BotSchema(BaseModel):
     pair: str
     balance_size_to_use: str | float = 1
     balance_to_use: str | float = "USDC"
-    base_order_size: str | float = "15"  # Min Binance 0.0001 BNB
+    base_order_size: str | float = 15  # Min Binance 0.0001 BNB
     candlestick_interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes
     close_condition: CloseConditions = CloseConditions.dynamic_trailling
     cooldown: int = (
@@ -70,9 +70,9 @@ class BotSchema(BaseModel):
             "examples": [
                 {
                     "pair": "BNBUSDT",
-                    "balance_size_to_use": "0",
+                    "balance_size_to_use": 1,
                     "balance_to_use": "USDC",
-                    "base_order_size": "15",
+                    "base_order_size": 15,
                     "candlestick_interval": "15m",
                     "cooldown": 0,
                     "errors": [],
@@ -96,21 +96,21 @@ class BotSchema(BaseModel):
         },
     }
 
-    @field_validator("pair", "base_order_size", "candlestick_interval")
+    @field_validator("pair", "candlestick_interval")
     @classmethod
     def check_names_not_empty(cls, v):
         assert v != "", "Empty pair field."
         return v
 
-    @field_validator("balance_size_to_use", "base_order_size")
+    @field_validator("balance_size_to_use", "base_order_size", "base_order_size")
     @classmethod
-    def validate_str_numbers(cls, v):
-        if isinstance(v, float):
-            return str(v)
+    def countables(cls, v):
+        if isinstance(v, str):
+            return float(v)
         elif isinstance(v, int):
-            return str(v)
+            return float(v)
         else:
-            return v
+            raise ValueError(f"{v} must be a number (float, int or string)")
 
     @field_validator(
         "stop_loss", "take_profit", "trailling_deviation", "trailling_profit"
@@ -138,7 +138,7 @@ class BotSchema(BaseModel):
 
     @field_validator("trailling")
     @classmethod
-    def check_trailling(cls, v: str | bool):
+    def string_booleans(cls, v: str | bool):
         if isinstance(v, str) and v.lower() == "false":
             return False
         if isinstance(v, str) and v.lower() == "true":

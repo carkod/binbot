@@ -5,10 +5,7 @@ from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
 from pymongo import ReturnDocument
 from tools.enum_definitions import DealType, Status, Strategy
-from tools.exceptions import (
-    BinbotErrors,
-    TakeProfitError,
-)
+from tools.exceptions import TakeProfitError
 from tools.handle_error import (
     encode_json,
     handle_binance_errors,
@@ -67,11 +64,10 @@ class CreateDealController(BaseDeal):
         price = supress_notation(price, self.price_precision)
 
         if self.db_collection.name == "paper_trading":
-            res = self.simulate_order(self.active_bot.pair, price, qty, "SELL")
+            res = self.simulate_order(self.active_bot.pair, qty, "SELL")
             if price:
                 res = self.simulate_order(
                     self.active_bot.pair,
-                    price,
                     qty,
                     "SELL",
                 )
@@ -81,7 +77,6 @@ class CreateDealController(BaseDeal):
                 )
                 res = self.simulate_order(
                     self.active_bot.pair,
-                    price,
                     qty,
                     "SELL",
                 )
@@ -149,9 +144,7 @@ class CreateDealController(BaseDeal):
         # Close all active orders
         if len(orders) > 0:
             for d in orders:
-                if "deal_type" in d and (
-                    d["status"] == "NEW" or d["status"] == "PARTIALLY_FILLED"
-                ):
+                if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
                     self.update_deal_logs(
                         "Failed to close all active orders (status NEW), retrying...",
                         self.active_bot,
@@ -163,8 +156,8 @@ class CreateDealController(BaseDeal):
         base_asset = self.find_baseAsset(pair)
         balance = self.get_raw_balance(base_asset)
         if balance:
-            qty = round_numbers(balance, self.qty_precision)
-            price = float(self.matching_engine(pair, True, qty))
+            qty = round_numbers(balance[0], self.qty_precision)
+            price: float = float(self.matching_engine(pair, True, qty))
             price = supress_notation(price, self.price_precision)
             self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
@@ -179,8 +172,9 @@ class CreateDealController(BaseDeal):
         """
         bot = self.active_bot
         if "deal" in bot:
-            if bot.deal["order_id"] == order_id:
-                so_deal_price = bot.deal["buy_price"]
+            find_base_order = next(bot.orders.order_id == order_id, None)
+            if find_base_order:
+                so_deal_price = bot.deal.buy_price
                 # Create new take profit order
                 new_tp_price = float(so_deal_price) + (
                     float(so_deal_price) * float(bot.take_profit) / 100
@@ -188,11 +182,7 @@ class CreateDealController(BaseDeal):
                 asset = self.find_baseAsset(bot.pair)
 
                 # First cancel old order to unlock balance
-                try:
-                    OrderController(symbol=bot.pair).delete_order(bot.pair, order_id)
-                except BinbotErrors as error:
-                    print(error.message)
-                    pass
+                OrderController().delete_order(bot.pair, order_id)
 
                 qty = round_numbers(self.get_raw_balance(asset), self.qty_precision)
                 res = self.sell_order(
@@ -222,23 +212,17 @@ class CreateDealController(BaseDeal):
                 # Build new deals list
                 new_deals = []
                 for d in bot.orders:
-                    if d["deal_type"] != "take_profit":
+                    if d.deal_type != DealType.take_profit:
                         new_deals.append(d)
 
                 # Append now new take_profit deal
                 new_deals.append(take_profit_order)
                 self.active_bot.orders = new_deals
+                self.active_bot.total_commission = total_commission
+                self.active_bot.errors.append("take_profit deal successfully updated")
                 self.db.bots.update_one(
                     {"id": self.active_bot.id},
-                    {
-                        "$set": {
-                            "total_commission": total_commission,
-                        },
-                        "$push": {
-                            "orders": take_profit_order.model_dump(),
-                            "errors": "take_profit deal successfully updated",
-                        },
-                    },
+                    {"$set": self.active_bot.model_dump()},
                 )
                 return
         else:
@@ -258,7 +242,7 @@ class CreateDealController(BaseDeal):
             (
                 bo_deal
                 for bo_deal in self.active_bot.orders
-                if bo_deal.deal_type == "base_order"
+                if bo_deal.deal_type == DealType.base_order
             ),
             None,
         )
@@ -280,7 +264,7 @@ class CreateDealController(BaseDeal):
 
         # Update stop loss regarless of base order
         if float(self.active_bot.stop_loss) > 0:
-            if self.active_bot.strategy == "margin_short":
+            if self.active_bot.strategy == Strategy.margin_short:
                 self.active_bot = MarginDeal(
                     bot=self.active_bot, db_collection_name=self.db_collection.name
                 ).set_margin_short_stop_loss()
@@ -296,7 +280,7 @@ class CreateDealController(BaseDeal):
         # Margin short Take profit
         if (
             float(self.active_bot.take_profit) > 0
-            and self.active_bot.strategy == "margin_short"
+            and self.active_bot.strategy == Strategy.margin_short
         ):
             self.active_bot = MarginDeal(
                 bot=self.active_bot, db_collection_name=self.db_collection.name
