@@ -1,13 +1,4 @@
 {
-  "settings":{
-      "http":{
-         "header_read_timeout":180,
-         "body_read_timeout":180,
-         "send_timeout":180,
-         "idle_timeout":180,
-         "max_body_size":83886080
-      }
-  },
   "listeners": {
     "*:8006": {
       "pass": "applications/api"

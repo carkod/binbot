@@ -12,25 +12,27 @@ env:
   MONGO_AUTH_DATABASE: admin
   MONGO_HOSTNAME: data_db
   MONGO_PORT: 27017
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  POSTGRES_DB: "postgres"
 
 jobs:
   push_to_registry:
     name: Test and deploy binbot
     runs-on: ubuntu-latest
     services:
-      api_db:
+      postgres:
         image: postgres:latest
         env:
-          POSTGRES_USER: "postgres"
-          POSTGRES_PASSWORD: "postgres"
-          POSTGRES_DB: "binbot"
+          POSTGRES_PASSWORD: postgres
         ports:
-          - "5432:5432"
+          - 5432/tcp
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
       data_db:
         image: mongo:7.0
         options: >-
@@ -49,28 +51,13 @@ jobs:
         uses: actions/checkout@v4
       - name: Build image
         run: docker build --tag binbot .
-      - name: Test app
-        run: |
-          docker run --network host --name binbot \
-          -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
-          -e MONGO_PORT=${{ env.MONGO_PORT }} \
-          -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
-          -e MONGO_KAFKA_DATABASE=${{ env.MONGO_KAFKA_DATABASE }} \
-          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
-          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
-          -e ENV=ci -d binbot
-          curl --head --fail --retry-delay 5 --retry 3 --retry-connrefused http://localhost
-      - name: Test api
-        run: |
-          docker run --name binbot_api -p 8008:8006 \
-          -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
-          -e MONGO_PORT=${{ env.MONGO_PORT }} \
-          -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
-          -e MONGO_KAFKA_DATABASE=${{ env.MONGO_KAFKA_DATABASE }} \
-          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
-          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
-          -e ENV=ci -d binbot
-          curl --head --fail --retry-delay 5 --retry 3 --retry-all-errors http://localhost:8008
+      - name: Run docker container
+        run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d binbot
+
+      - name: Test front-end
+        run: curl --head --fail --retry-delay 5 --retry 3 --retry-connrefused http://localhost
+      - name: Test back-end
+        run: curl --fail --retry-delay 5 --retry 3 --retry-connrefused localhost:8006
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
@@ -143,6 +130,18 @@ jobs:
   python-tests:
     name: Python code tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: api
@@ -155,13 +154,14 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install pipenv
-        run: |
-          python3 -m pip install pipenv
+        run: python3 -m pip install pipenv
       - name: Install dependencies
         run: |
           pipenv install --dev --system --deploy --ignore-pipfile --clear
           pipenv install httpx coverage
       - name: Run tests
+        env:
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
         run: coverage run -m pytest .
 
   python-linting:
@@ -202,10 +202,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run tests
         run: npm run test

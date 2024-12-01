@@ -1,14 +1,12 @@
-import logging
-from pymongo.errors import ServerSelectionTimeoutError
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.logger import logger
 
 from account.routes import account_blueprint
+from database.api_db import ApiDb
 from autotrade.routes import autotrade_settings_blueprint
 from bots.routes import bot_blueprint
 from charts.routes import charts_blueprint
@@ -17,30 +15,17 @@ from paper_trading.routes import paper_trading_blueprint
 from research.routes import research_blueprint
 from user.routes import user_blueprint
 
-from database.api_db import ApiDb
 from database.models import *  # noqa
 
 
-# Startup operations
-# needed to be run before app starts
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
-        api_db = ApiDb()
-        api_db.init_db()
-        api_db.create_dummy_bot()
-        result = api_db.select_bot("BTCUSDT")
-        logging.info("Added dummy bot: ", result)
-    except ServerSelectionTimeoutError:
-        pass
-    except Exception as e:
-        logging.error("Error", e)
-
-    finally:
-        yield
+    api_db = ApiDb()
+    api_db.init_db()
+    yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(title="Binbot API", version="2.0.0", lifespan=lifespan)
 
 # Enable CORS for all routes
 app.add_middleware(
@@ -52,15 +37,12 @@ app.add_middleware(
 )
 
 
-# Fix issue with curl returning method not allowed (https://github.com/tiangolo/fastapi/issues/1773)
-@app.head("/")
-# Routes
 @app.get("/")
-def root():
+async def root():
     """
-    Check app works
+    Check app works. Can be used for healthchecks
     """
-    return {"status": "Online"}
+    return {"message": "online"}
 
 
 app.include_router(user_blueprint)

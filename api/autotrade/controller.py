@@ -1,47 +1,54 @@
-from pydantic import ValidationError
+from sqlmodel import Session, select
+from database.utils import independent_session
+from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
 from autotrade.schemas import AutotradeSettingsSchema
-from base_producer import BaseProducer
-from database.db import Database
-from tools.handle_error import (
-    json_response_error,
-    json_response_message,
-)
+from base_producer import AsyncBaseProducer
 from tools.enum_definitions import AutotradeSettingsDocument
 
 
-class AutotradeSettingsController(Database):
+class AutotradeSettingsController:
     """
     Autotrade settings
     """
 
     def __init__(
         self,
+        # Some instances of AutotradeSettingsController are used outside of the FastAPI context
+        # this is designed this way for reusability
+        session: Session | None = None,
         document_id: AutotradeSettingsDocument = AutotradeSettingsDocument.settings,
     ):
         self.document_id = document_id
-        self.db = self._db
-        self.base_producer = BaseProducer()
-        self.producer = self.base_producer.start_producer()
+        if session is None:
+            session = independent_session()
+
+        self.session = session
+        if document_id == AutotradeSettingsDocument.settings:
+            self.table = AutotradeTable
+        if document_id == AutotradeSettingsDocument.test_autotrade_settings:
+            self.table = TestAutotradeTable
 
     def get_settings(self):
-        settings = self.db.research_controller.find_one({"_id": self.document_id})
-        deserialized_data = AutotradeSettingsSchema(**settings)
-        return deserialized_data
+        statement = select(self.table).where(self.table.id == self.document_id)
+        results = self.session.exec(statement)
+        # Should always return one result
+        settings = results.first()
+        return settings
 
     def edit_settings(self, data):
-        try:
-            self.db.research_controller.update_one(
-                {"_id": self.document_id}, {"$set": data.model_dump()}
-            )
-            self.base_producer.update_required(
-                self.producer, "UPDATE_AUTOTRADE_SETTINGS"
-            )
-            resp = json_response_message("Successfully updated settings")
-        except TypeError as e:
-            resp = json_response_error(f"Data validation error: {e}")
-        except ValidationError as error:
-            msg = ""
-            for field, desc in error.args[0].items():
-                msg += field + desc[0]
-            resp = json_response_error(f"{msg}")
-        return resp
+        settings_data = AutotradeSettingsSchema.model_validate(data)
+        settings = self.session.get(self.table, settings_data.id)
+
+        if not settings:
+            return settings
+
+        # start db operations
+        dumped_settings = settings.model_dump(exclude_unset=True)
+        settings.sqlmodel_update(dumped_settings)
+        self.session.add(settings)
+        self.session.commit()
+
+        # end of db operations
+        # update the producer to reload streaming data
+        AsyncBaseProducer().update_required("UPDATE_AUTOTRADE_SETTINGS")
+        return settings

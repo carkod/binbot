@@ -1,8 +1,7 @@
-from random import randrange
-from typing import List
 import hashlib
 import hmac
 import os
+from random import randrange
 from urllib.parse import urlencode
 from requests import Session, request
 from tools.handle_error import handle_binance_errors, json_response, json_response_error
@@ -129,8 +128,9 @@ class BinanceApi:
         """
         headers = {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
         res = request(method="POST", url=self.user_data_stream, headers=headers)
-        data = handle_binance_errors(res)
-        return data["listenKey"]
+        response = handle_binance_errors(res)
+        data: str = response["listenKey"]
+        return data
 
     """
     No security endpoints
@@ -302,7 +302,7 @@ class BinanceApi:
             },
         )
 
-    def get_isolated_balance(self, symbol=None) -> List:
+    def get_isolated_balance(self, symbol=None) -> list:
         """
         Get balance of Isolated Margin account
 
@@ -335,7 +335,7 @@ class BinanceApi:
             )
         return assets
 
-    def transfer_dust(self, assets: List[str]):
+    def transfer_dust(self, assets: list[str]):
         """
         Transform small balances to BNB
         """

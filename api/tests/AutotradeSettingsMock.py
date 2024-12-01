@@ -23,6 +23,5 @@ class AutotradeSettingsMock(BaseModel):
     max_request: int = 950
     system_logs: list[str] = []
     # Number of times update is requested
-    update_required: Optional[float] = 0
     telegram_signals: bool = True
     max_active_autotrade_bots: int = 1

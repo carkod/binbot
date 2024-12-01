@@ -20,7 +20,7 @@ class ExchangeOrderTable(SQLModel, table=True):
     id: orderId from Exchange
     """
 
-    __tablename__ = "exchange-order"
+    __tablename__ = "exchange_order"
 
     id: int = Field(primary_key=True)
     order_type: str = Field(nullable=True)

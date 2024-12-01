@@ -1,25 +1,34 @@
+import logging
 import os
+
+from database.models import BotTable, DealTable, ExchangeOrderTable, UserTable
+from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select
-from tools.enum_definitions import DealType, Status, Strategy, UserRoles
-from database.models import UserTable, ExchangeOrderTable, DealTable, BotTable
+from tools.enum_definitions import (
+    AutotradeSettingsDocument,
+    BinanceKlineIntervals,
+    DealType,
+    Status,
+    Strategy,
+    UserRoles,
+)
 from alembic.config import Config
 from alembic import command
 
 # This allows testing/Github action dummy envs
-db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@{os.getenv("POSTGRES_HOSTNAME", "localhost")}/{os.getenv("POSTGRES_DB", "postgres")}'
+db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@{os.getenv("POSTGRES_HOSTNAME", "localhost")}:{os.getenv("POSTGRES_PORT", 5432)}/{os.getenv("POSTGRES_DB", "postgres")}'
 engine = create_engine(
     url=db_url,
 )
 
 
-def get_session():
-    return Session(engine)
-
-
 class ApiDb:
     def __init__(self):
-        self.session: Session = get_session()
+        self.engine = create_engine(
+            url=db_url,
+        )
+        self.session = Session(engine)
         pass
 
     def init_db(self):
@@ -27,6 +36,9 @@ class ApiDb:
         self.run_migrations()
         self.init_users()
         self.create_dummy_bot()
+        self.init_autotrade_settings()
+        self.session.close()
+        logging.info("Finishing db operations")
 
     def run_migrations(self):
         alembic_cfg = Config("alembic.ini")
@@ -35,29 +47,83 @@ class ApiDb:
     def drop_db(self):
         SQLModel.metadata.drop_all(engine)
 
+    def init_autotrade_settings(self):
+        """
+        Dummy data for testing autotrade_settings table
+        """
+        statement = select(AutotradeTable).where(
+            AutotradeTable.id == AutotradeSettingsDocument.settings
+        )
+        results = self.session.exec(statement)
+        if results.first():
+            return
+
+        autotrade_data = AutotradeTable(
+            id=AutotradeSettingsDocument.settings,
+            balance_to_use="USDC",
+            base_order_size=15,
+            candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
+            max_active_autotrade_bots=1,
+            max_request=500,
+            stop_loss=0,
+            take_profit=2.3,
+            telegram_signals=True,
+            trailling=True,
+            trailling_deviation=0.63,
+            trailling_profit=2.3,
+            autotrade=True,
+        )
+
+        test_autotrade_data = TestAutotradeTable(
+            id=AutotradeSettingsDocument.test_autotrade_settings,
+            balance_to_use="USDC",
+            base_order_size=15,
+            candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
+            max_active_autotrade_bots=1,
+            max_request=500,
+            stop_loss=0,
+            take_profit=2.3,
+            telegram_signals=True,
+            trailling=True,
+            trailling_deviation=0.63,
+            trailling_profit=2.3,
+            autotrade=False,
+        )
+
+        self.session.add(autotrade_data)
+        self.session.add(test_autotrade_data)
+        self.session.commit()
+        pass
+
     def init_users(self):
         """
         Dummy data for testing users table
         """
+        username = os.getenv("USER", "admin")
+        email = os.getenv("EMAIL", "admin@example.com")
+        password = os.getenv("PASSWORD", "admin")
 
-        username = os.environ["USER"]
-        email = os.environ["EMAIL"]
-        password = os.environ["PASSWORD"]
+        statement = select(UserTable).where(UserTable.username == username)
+        results = self.session.exec(statement)
+        if results.first():
+            return
 
         user_data = UserTable(
             username=username, password=password, email=email, role=UserRoles.superuser
         )
 
         self.session.add(user_data)
-
         self.session.commit()
-        self.session.close()
 
     def create_dummy_bot(self):
         """
         Dummy data for testing and initializing
         newborn DB
         """
+        statement = select(BotTable)
+        results = self.session.exec(statement)
+        if results.first():
+            return
         orders = [
             ExchangeOrderTable(
                 id=1,
@@ -144,7 +210,6 @@ class ApiDb:
         )
         self.session.add(bot)
         self.session.commit()
-        self.session.close()
         return bot
 
     def select_bot(self, pair):

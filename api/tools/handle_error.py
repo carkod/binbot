@@ -2,7 +2,6 @@ import json
 import os
 import logging
 from time import sleep
-
 from bson import json_util
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -46,7 +45,7 @@ def json_response_error(message):
     return json_response(body, status=422)
 
 
-def handle_binance_errors(response: Response) -> Response:
+def handle_binance_errors(response: Response) -> JSONResponse:
     """
     Handles:
     - HTTP codes, not authorized, rate limits...

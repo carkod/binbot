@@ -11,7 +11,7 @@ def test_index():
     """
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"status": "Online"}
+    assert response.json() == {"message": "online"}
 
 
 def test_docs():

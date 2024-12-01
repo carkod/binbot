@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from fastapi.responses import JSONResponse
 from account.controller import AssetsController
+from autotrade.controller import AutotradeSettingsController
 from bots.schemas import BotSchema
 from deals.controllers import CreateDealController
 from tools.handle_error import json_response, json_response_error, json_response_message
@@ -14,7 +15,7 @@ class Assets(AssetsController):
     def __init__(self):
         self.usd_balance = 0
         self.exception_list = []
-        self.fiat = self.get_fiat_coin()
+        self.fiat = AutotradeSettingsController().get_settings().balance_to_use
 
     def get_pnl(self, days=7):
         current_time = datetime.now()

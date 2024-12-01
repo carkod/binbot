@@ -13,7 +13,7 @@
       "outFiles": [
         "${workspaceFolder}/terminal/**/*.js",
         "${workspaceFolder}/terminal/src/node_modules/**"
-      ]
+      ],
     },
     {
       "name": "Python: FastAPI",
@@ -23,7 +23,7 @@
       "cwd": "${workspaceFolder}/api",
       "args": ["main:app", "--port", "8008"],
       "justMyCode": true,
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "name": "Binquant: Producer",
@@ -80,6 +80,6 @@
         "${workspaceFolder}/web/**/*.js",
         "${workspaceFolder}/web/src/node_modules/**"
       ]
-    }
+    },
   ]
 }

@@ -7,6 +7,8 @@ services:
     image: postgres:latest
     container_name: binbot_api_db
     restart: on-failure
+    networks:
+      - kafka_network
     volumes:
       - ./pg_data:/var/lib/postgresql/data
     env_file:
@@ -14,10 +16,11 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "psql", "-U", "$POSTGRES_USER", "-d", "$POSTGRES_DB", "-W", "$POSTGRES_PASSWORD"]
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
       interval: 30s
       timeout: 60s
       retries: 5
+      start_period: 30s
 
   data_db:
     image: mongo:7.0
@@ -34,6 +37,12 @@ services:
       - 27018:27017
     volumes:
       - ./mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "127.0.0.1/test", "--eval", "'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   kafka:
     image: docker.io/bitnami/kafka:3.4
@@ -106,18 +115,21 @@ services:
 
   # api:
   #   build: .
-  #   image: binbot_api
   #   networks:
   #     - kafka_network
   #   restart: on-failure
   #   container_name: binbot
   #   depends_on:
-  #     - api_db
-  #     - data_db
+  #     api_db:
+  #       condition: service_healthy
+  #       restart: true
+  #     data_db:
+  #       condition: service_healthy
   #   env_file:
   #     - .env
   #   environment:
   #     - MONGO_HOSTNAME=localhost
+  #     - POSTGRES_HOSTNAME=api_db
   #   ports:
   #     - 8007:80
   #     - 8008:8006
