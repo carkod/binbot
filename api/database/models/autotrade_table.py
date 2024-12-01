@@ -62,6 +62,7 @@ class TestAutotradeTable(SQLModel, table=True):
     id: Optional[str] = Field(
         default="test_autotrade_settings", primary_key=True, nullable=False, unique=True
     )
+    autotrade: bool = Field(default=False)
     updated_at: float = Field(default=time() * 1000)
     # Assuming 10 USDC is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
     base_order_size: float = Field(default=15)

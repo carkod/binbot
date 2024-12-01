@@ -1,7 +1,7 @@
 name: PR checks
 on: pull_request
 env:
-  ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_RUNNER_DEBUG: false
   SECRET_KEY: test
   ENV: ci
   FRONTEND_DOMAIN: http://localhost
@@ -24,9 +24,7 @@ jobs:
       postgres:
         image: postgres:latest
         env:
-          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
         ports:
           - 5432/tcp
         options: >-
@@ -54,14 +52,6 @@ jobs:
       - name: Build image
         run: docker build --tag binbot .
       - name: Run docker container
-        env:
-          MONGO_HOSTNAME: ${{ env.MONGO_HOSTNAME }}
-          MONGO_PORT: ${{ env.MONGO_PORT }}
-          MONGO_APP_DATABASE: ${{ env.MONGO_APP_DATABASE }}
-          MONGO_KAFKA_DATABASE: ${{ env.MONGO_KAFKA_DATABASE }}
-          MONGO_AUTH_USERNAME: ${{ env.MONGO_AUTH_USERNAME }}
-          MONGO_AUTH_PASSWORD: ${{ env.MONGO_AUTH_PASSWORD }}
-          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
         run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d binbot
 
       - name: Test front-end
@@ -144,9 +134,7 @@ jobs:
       postgres:
         image: postgres:latest
         env:
-          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
         ports:
           - 5432/tcp
         options: >-
@@ -172,7 +160,7 @@ jobs:
           pipenv install --dev --system --deploy --ignore-pipfile --clear
           pipenv install httpx coverage
       - name: Run tests
-        env: 
+        env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
         run: coverage run -m pytest .
 
@@ -214,7 +202,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies
         run: npm ci

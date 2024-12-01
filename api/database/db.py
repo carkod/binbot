@@ -1,9 +1,7 @@
-# Unified database file MongoDB + Postgres
 import os
 from time import time
 from bson import ObjectId
 from pymongo import MongoClient, ReturnDocument
-from database.api_db import ApiDb
 from tools.handle_error import encode_json
 from deals.models import DealModel
 from bots.schemas import BotSchema
@@ -13,7 +11,7 @@ from tools.enum_definitions import Status, AutotradeSettingsDocument
 def get_mongo_client():
     client: MongoClient = MongoClient(
         host=os.getenv("MONGO_HOSTNAME"),
-        port=int(os.getenv("MONGO_PORT", 2017)),
+        port=int(os.getenv("MONGO_PORT", 27018)),
         authSource="admin",
         username=os.getenv("MONGO_AUTH_USERNAME"),
         password=os.getenv("MONGO_AUTH_PASSWORD"),
@@ -48,12 +46,6 @@ class Database:
 
     _db = setup_db()
     kafka_db = setup_kafka_db()
-    api_db = ApiDb()
-
-    def get_fiat_coin(self):
-        document_id = AutotradeSettingsDocument.settings
-        settings = self._db.research_controller.find_one({"_id": document_id})
-        return settings["balance_to_use"]
 
     def save_bot_streaming(
         self, active_bot: BotSchema, db_collection_name: str = "bots"

@@ -2,7 +2,6 @@ import json
 import os
 import logging
 from time import sleep
-
 from bson import json_util
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -10,8 +9,6 @@ from requests import Response, put
 from requests.exceptions import HTTPError
 from fastapi.encoders import jsonable_encoder
 from copy import deepcopy
-
-from sqlalchemy import JSON
 from tools.exceptions import (
     BinanceErrors,
     BinbotErrors,

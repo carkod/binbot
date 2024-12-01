@@ -33,7 +33,7 @@ class ApiDb:
 
     def init_db(self):
         SQLModel.metadata.create_all(engine)
-        # self.run_migrations()
+        self.run_migrations()
         self.init_users()
         self.create_dummy_bot()
         self.init_autotrade_settings()
@@ -87,7 +87,7 @@ class ApiDb:
             trailling=True,
             trailling_deviation=0.63,
             trailling_profit=2.3,
-            autotrade=True,
+            autotrade=False,
         )
 
         self.session.add(autotrade_data)
