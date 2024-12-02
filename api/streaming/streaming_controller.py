@@ -241,9 +241,12 @@ class BbspreadsUpdater(BaseStreaming):
         bb_spreads = signalsData.bb_spreads
         if (
             (self.current_bot or self.current_test_bot)
-            and "bb_high" in bb_spreads and bb_spreads["bb_high"] # my-py
-            and "bb_low" in bb_spreads and bb_spreads["bb_low"]
-            and "bb_mide" in bb_spreads and bb_spreads["bb_mid"]
+            and "bb_high" in bb_spreads
+            and bb_spreads["bb_high"]  # my-py
+            and "bb_low" in bb_spreads
+            and bb_spreads["bb_low"]
+            and "bb_mide" in bb_spreads
+            and bb_spreads["bb_mid"]
         ):
             if self.current_bot:
                 self.update_bots_parameters(self.current_bot, bb_spreads)

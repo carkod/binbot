@@ -1,7 +1,13 @@
 import logging
 import os
 
-from database.models import BotTable, DealTable, ExchangeOrderTable, UserTable
+from database.models import (
+    BotTable,
+    DealTable,
+    ExchangeOrderTable,
+    UserTable,
+    PaperTradingTable,
+)
 from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
 from sqlalchemy import create_engine
 from sqlmodel import Session, SQLModel, select
@@ -209,6 +215,30 @@ class ApiDb:
             total_commission=0,
         )
         self.session.add(bot)
+        self.session.commit()
+        paper_trading_bot = PaperTradingTable(
+            pair="BTCUSDT",
+            balance_size_to_use=1,
+            balance_to_use=1,
+            base_order_size=15,
+            deal_id=deal.id,
+            cooldown=0,
+            logs='["Paper trading bot created"]',
+            mode="manual",
+            name="Dummy bot",
+            orders=orders,
+            status=Status.inactive,
+            stop_loss=0,
+            take_profit=2.3,
+            trailling=True,
+            trailling_deviation=0.63,
+            trailling_profit=2.3,
+            strategy=Strategy.long,
+            short_buy_price=0,
+            short_sell_price=0,
+            total_commission=0,
+        )
+        self.session.add(paper_trading_bot)
         self.session.commit()
         return bot
 

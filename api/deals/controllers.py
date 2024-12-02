@@ -10,7 +10,7 @@ from tools.handle_error import (
     encode_json,
     handle_binance_errors,
 )
-from tools.round_numbers import round_numbers, round_numbers
+from tools.round_numbers import round_numbers
 
 
 class CreateDealController(BaseDeal):

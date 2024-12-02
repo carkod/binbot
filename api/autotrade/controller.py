@@ -1,9 +1,9 @@
 import typing
-from sqlmodel import Session, select
-from database.utils import independent_session
-from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
-from autotrade.schemas import AutotradeSettingsSchema
+
 from base_producer import AsyncBaseProducer
+from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
+from database.utils import independent_session
+from sqlmodel import Session, select
 from tools.enum_definitions import AutotradeSettingsDocument
 
 

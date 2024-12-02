@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from tools.enum_definitions import TrendEnum
 from pydantic import BaseModel, ConfigDict, field_validator
 

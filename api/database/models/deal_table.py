@@ -6,6 +6,7 @@ from typing import Optional, TYPE_CHECKING
 # avoids circular imports
 if TYPE_CHECKING:
     from database.models.bot_table import BotTable
+    from database.models.paper_trading_table import PaperTradingTable
 
 
 class DealTable(SQLModel, table=True):
@@ -57,3 +58,7 @@ class DealTable(SQLModel, table=True):
     # Relationships
     bot_id: Optional[uuid.UUID] = Field(default=None, foreign_key="bot.id")
     bot: Optional["BotTable"] = Relationship(back_populates="deal")
+    paper_trading_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="paper_trading.id"
+    )
+    paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="deal")

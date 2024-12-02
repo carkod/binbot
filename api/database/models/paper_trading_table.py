@@ -24,6 +24,7 @@ class PaperTradingTable(SQLModel, table=True):
     these trade without actual money, so qty
     is usually 0 or 1. Orders are simualted
     """
+
     __tablename__ = "paper_trading"
 
     id: Optional[UUID] = Field(
@@ -44,13 +45,15 @@ class PaperTradingTable(SQLModel, table=True):
     # cooldown period in minutes before opening next bot with same pair
     cooldown: int = Field(default=0)
     created_at: float = Field(default_factory=lambda: time() * 1000)
-    deal: Optional["DealTable"] = Relationship(back_populates="bot")
+    deal: Optional["DealTable"] = Relationship(back_populates="paper_trading")
     dynamic_trailling: bool = Field(default=False)
     logs: JSON = Field(default="[]", sa_column=Column(JSON))
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
     # filled up internally
-    orders: Optional[List["ExchangeOrderTable"]] = Relationship(back_populates="bot")
+    orders: Optional[List["ExchangeOrderTable"]] = Relationship(
+        back_populates="paper_trading"
+    )
     status: str = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
     stop_loss: float = Field(default=0, gt=0)
     # If stop_loss > 0, allow for reversal

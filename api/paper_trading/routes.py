@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import ValidationError
 from bots.controllers import Bot
 from bots.schemas import BotSchema
 from typing import List
@@ -50,7 +49,9 @@ def activate(id: str):
     bot_instance = Bot(collection_name="paper_trading")
     bot = bot_instance.get_one(id)
     if not bot:
-        raise HTTPException(status_code=404, detail="Could not activate a bot that doesn't exist")
+        raise HTTPException(
+            status_code=404, detail="Could not activate a bot that doesn't exist"
+        )
 
     botSchema = BotSchema.model_validate(bot)
     return Bot(collection_name="paper_trading").activate(botSchema)
@@ -67,7 +68,9 @@ def deactivate(id: str):
     bot_instance = Bot(collection_name="paper_trading")
     bot = bot_instance.get_one(id)
     if not bot:
-        raise HTTPException(status_code=404, detail="Could not deactivate a bot that doesn't exist")
+        raise HTTPException(
+            status_code=404, detail="Could not deactivate a bot that doesn't exist"
+        )
 
     botSchema = BotSchema.model_validate(bot)
     return Bot(collection_name="paper_trading").deactivate(botSchema)

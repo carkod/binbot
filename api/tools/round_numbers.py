@@ -38,6 +38,7 @@ def round_numbers_ceiling(value, decimals=6):
         result = int(result)
     return float(result)
 
+
 # To merge with round_number and remove
 @typing.no_type_check
 def supress_notation(num: float, precision: int = 0) -> str:

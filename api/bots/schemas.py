@@ -1,5 +1,6 @@
 from time import time
-from typing import Literal, Optional
+from typing import Optional
+
 from bson.objectid import ObjectId
 from deals.models import BinanceOrderModel, DealModel
 from pydantic import BaseModel, Field, field_validator
@@ -19,7 +20,7 @@ class BotSchema(BaseModel):
     balance_size_to_use: str | float = 1
     # New table field fiat replaces balance_to_use
     fiat: str = "USDC"
-    balance_to_use: Optional[str] = "USDC"
+    balance_to_use: str = "USDC"
     base_order_size: float | int = 15  # Min Binance 0.0001 BNB
     candlestick_interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes
     close_condition: CloseConditions = CloseConditions.dynamic_trailling
