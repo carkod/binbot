@@ -7,8 +7,8 @@ from bots.schemas import BotSchema
 from deals.controllers import CreateDealController
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
-from tools.exceptions import BinanceErrors, LowBalanceCleanupError, MarginLoanNotFound
-from tools.enum_definitions import Status
+from tools.exceptions import BinanceErrors, LowBalanceCleanupError
+from tools.enum_definitions import Status, Strategy
 
 
 class Assets(AssetsController):
@@ -343,15 +343,15 @@ class Assets(AssetsController):
         where there are are still funds in the isolated pair
         """
 
-        try:
-            bot = self._db.bots.find_one({"status": Status.active, "pair": pair})
-            active_bot = BotSchema.model_validate(bot)
-            deal = CreateDealController(active_bot, db_collection="bots")
+        bot = self._db.bots.find_one({"status": Status.active, "pair": pair})
+        if not bot:
+            return bot
+        active_bot = BotSchema.model_validate(bot)
+        deal = CreateDealController(active_bot, db_collection="bots")
+        if active_bot.strategy == Strategy.margin_short:
             deal.margin_liquidation(pair)
-            return json_response_message(f"Successfully liquidated {pair}")
-        except MarginLoanNotFound as error:
-            return json_response_message(
-                f"{error}. Successfully cleared isolated pair {pair}"
-            )
-        except BinanceErrors as error:
-            return json_response_error(f"Error liquidating {pair}: {error.message}")
+
+        if active_bot.strategy == Strategy.long:
+            deal.spot_liquidation(pair)
+
+        return bot
