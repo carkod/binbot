@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from bots.controllers import Bot
 from bots.schemas import BotSchema
 from typing import List
@@ -46,7 +46,15 @@ def delete(id: List[str] = Query(...)):
 
 @paper_trading_blueprint.get("/paper-trading/activate/{id}", tags=["paper trading"])
 def activate(id: str):
-    return Bot(collection_name="paper_trading").activate(id)
+    bot_instance = Bot(collection_name="paper_trading")
+    bot = bot_instance.get_one(id)
+    if not bot:
+        raise HTTPException(
+            status_code=404, detail="Could not activate a bot that doesn't exist"
+        )
+
+    botSchema = BotSchema.model_validate(bot)
+    return Bot(collection_name="paper_trading").activate(botSchema)
 
 
 @paper_trading_blueprint.delete(
@@ -57,4 +65,12 @@ def deactivate(id: str):
     Deactivation means closing all deals and selling to GBP
     Otherwise losses will be incurred
     """
-    return Bot(collection_name="paper_trading").deactivate(id)
+    bot_instance = Bot(collection_name="paper_trading")
+    bot = bot_instance.get_one(id)
+    if not bot:
+        raise HTTPException(
+            status_code=404, detail="Could not deactivate a bot that doesn't exist"
+        )
+
+    botSchema = BotSchema.model_validate(bot)
+    return Bot(collection_name="paper_trading").deactivate(botSchema)

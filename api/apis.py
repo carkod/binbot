@@ -91,7 +91,7 @@ class BinanceApi:
         data = self.request(url=self.server_time_url)
         return data["serverTime"]
 
-    def signed_request(self, url, method="GET", payload: dict = {}):
+    def signed_request(self, url, method="GET", payload: dict = {}) -> dict:
         """
         USER_DATA, TRADE signed requests
 
@@ -129,8 +129,8 @@ class BinanceApi:
         headers = {"Content-Type": "application/json", "X-MBX-APIKEY": self.key}
         res = request(method="POST", url=self.user_data_stream, headers=headers)
         response = handle_binance_errors(res)
-        data: str = response["listenKey"]
-        return data
+        listen_key = response["listenKey"]
+        return listen_key
 
     """
     No security endpoints
@@ -240,7 +240,7 @@ class BinanceApi:
             },
         )
 
-    def transfer_spot_to_isolated_margin(self, asset: str, symbol: str, amount: str):
+    def transfer_spot_to_isolated_margin(self, asset: str, symbol: str, amount: float):
         return self.signed_request(
             self.margin_isolated_transfer_url,
             method="POST",
@@ -249,7 +249,7 @@ class BinanceApi:
                 "transTo": "ISOLATED_MARGIN",
                 "asset": asset,
                 "symbol": symbol,
-                "amount": amount,
+                "amount": str(amount),
             },
         )
 
@@ -289,7 +289,7 @@ class BinanceApi:
         )
 
     def repay_margin_loan(
-        self, asset: str, symbol: str, amount: float, isIsolated: str
+        self, asset: str, symbol: str, amount: float | int, isIsolated: str
     ):
         return self.signed_request(
             self.margin_repay_url,

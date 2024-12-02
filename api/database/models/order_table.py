@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import ValidationInfo, field_validator
 from sqlalchemy import Column, Enum
+from database.models.paper_trading_table import PaperTradingTable
 from database.models.bot_table import BotTable
 from tools.enum_definitions import DealType
 from sqlmodel import Field, Relationship, SQLModel
@@ -37,6 +38,10 @@ class ExchangeOrderTable(SQLModel, table=True):
     # Relationships
     bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
+    paper_trading_id: Optional[UUID] = Field(
+        default=None, foreign_key="paper_trading.id"
+    )
+    paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")
 
     @field_validator("price", "qty", mode="before")
     @classmethod

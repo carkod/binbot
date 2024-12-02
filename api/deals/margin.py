@@ -1,12 +1,12 @@
 import logging
 from time import time
 from urllib.error import HTTPError
+from deals.models import BinanceOrderModel
 from base_producer import BaseProducer
 from tools.enum_definitions import CloseConditions, DealType, Strategy
 from bots.schemas import BotSchema
 from tools.enum_definitions import Status
 from deals.base import BaseDeal
-from deals.schema import MarginOrderSchema
 from tools.exceptions import BinanceErrors, MarginShortError
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 
@@ -145,7 +145,7 @@ class MarginDeal(BaseDeal):
                 self.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.balance_to_use,
                     symbol=self.active_bot.pair,
-                    amount="1",
+                    amount=1,
                 )
 
         # Given USDC amount we want to buy,
@@ -216,28 +216,26 @@ class MarginDeal(BaseDeal):
 
         # Check margin account balance first
         balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
-        asset = float(self.isolated_balance[0]["baseAsset"]["asset"])
+        asset = self.isolated_balance[0]["baseAsset"]["asset"]
         if balance > 0:
             # repay
-            qty, free = self.compute_margin_buy_back(
-                self.active_bot.pair, self.qty_precision
-            )
+            qty, free = self.compute_margin_buy_back()
             repay_amount = qty
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
-            query_loan = self.signed_request(
+            query_loan: dict = self.signed_request(
                 url=self.loan_record_url,
                 payload={"asset": asset, "isolatedSymbol": self.active_bot.pair},
             )
-            if query_loan["total"] > 0 and repay_amount > 0:
+            if float(query_loan["total"]) > 0 and repay_amount > 0:
                 # Only supress trailling 0s, so that everything is paid
-                repay_amount = round_numbers_ceiling(repay_amount, self.qty_precision)
+                amount = round_numbers_ceiling(repay_amount, self.qty_precision)
                 try:
                     self.repay_margin_loan(
                         asset=asset,
                         symbol=self.active_bot.pair,
-                        amount=repay_amount,
+                        amount=amount,
                         isIsolated="TRUE",
                     )
                 except BinanceErrors as error:
@@ -282,7 +280,7 @@ class MarginDeal(BaseDeal):
                     res = self.sell_margin_order(
                         symbol=self.active_bot.pair, qty=sell_back_qty
                     )
-                    sell_back_order = MarginOrderSchema(
+                    sell_back_order = BinanceOrderModel(
                         timestamp=res["transactTime"],
                         deal_type=DealType.take_profit,
                         order_id=res["orderId"],
@@ -293,7 +291,6 @@ class MarginDeal(BaseDeal):
                         qty=res["origQty"],
                         time_in_force=res["timeInForce"],
                         status=res["status"],
-                        is_isolated=res["isIsolated"],
                     )
 
                     self.active_bot.total_commission = self.calculate_total_commissions(
@@ -368,7 +365,7 @@ class MarginDeal(BaseDeal):
             # qty doesn't matter in paper bots
             order_res = self.simulate_margin_order(1, "SELL")
 
-        order_data = MarginOrderSchema(
+        order_data = BinanceOrderModel(
             timestamp=order_res["transactTime"],
             order_id=order_res["orderId"],
             deal_type=DealType.base_order,
@@ -379,7 +376,6 @@ class MarginDeal(BaseDeal):
             qty=order_res["origQty"],
             time_in_force=order_res["timeInForce"],
             status=order_res["status"],
-            is_isolated=order_res["isIsolated"],
         )
 
         self.active_bot.total_commission = self.calculate_total_commissions(
@@ -538,7 +534,7 @@ class MarginDeal(BaseDeal):
             self.cancel_open_orders(DealType.stop_loss)
             res = self.margin_liquidation(self.active_bot.pair)
 
-        stop_loss_order = MarginOrderSchema(
+        stop_loss_order = BinanceOrderModel(
             timestamp=res["transactTime"],
             deal_type=DealType.stop_loss,
             order_id=res["orderId"],
@@ -549,7 +545,6 @@ class MarginDeal(BaseDeal):
             qty=res["origQty"],
             time_in_force=res["timeInForce"],
             status=res["status"],
-            is_isolated=res["isIsolated"],
         )
 
         self.active_bot.total_commission = self.calculate_total_commissions(
@@ -595,7 +590,7 @@ class MarginDeal(BaseDeal):
         if res:
             # No res means it wasn't properly closed/completed
 
-            take_profit_order = MarginOrderSchema(
+            take_profit_order = BinanceOrderModel(
                 timestamp=res["transactTime"],
                 deal_type=DealType.take_profit,
                 order_id=res["orderId"],
@@ -606,7 +601,6 @@ class MarginDeal(BaseDeal):
                 qty=res["origQty"],
                 time_in_force=res["timeInForce"],
                 status=res["status"],
-                is_isolated=res["isIsolated"],
             )
 
             self.active_bot.total_commission = self.calculate_total_commissions(
@@ -749,8 +743,8 @@ class MarginDeal(BaseDeal):
                     self.active_bot,
                 )
                 self.execute_stop_loss()
-                self.base_producer(
-                    self.active_bot.id, "EXECUTE_CLOSE_CONDITION_STOP_LOSS"
+                self.base_producer.update_required(
+                    self.producer, "EXECUTE_CLOSE_CONDITION_STOP_LOSS"
                 )
 
         pass

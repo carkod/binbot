@@ -1,3 +1,4 @@
+from typing import Tuple
 import uuid
 from time import time
 from pymongo import ReturnDocument
@@ -41,9 +42,7 @@ class BaseDeal(OrderController):
         self.qty_precision = self.calculate_qty_precision(bot.pair)
 
         if self.active_bot.strategy == Strategy.margin_short:
-            self.isolated_balance: float = self.get_isolated_balance(
-                self.active_bot.pair
-            )
+            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
 
     def __repr__(self) -> str:
         """
@@ -65,14 +64,14 @@ class BaseDeal(OrderController):
         if not balance:
             # If spot balance is not found
             # try to get isolated margin balance
-            balance = self.get_margin_balance(asset)
-            if not balance:
+            free = self.get_margin_balance(asset)
+            if not free:
                 return None
-        free = balance["free"]
+
         qty = round_numbers(free, self.qty_precision)
         return qty
 
-    def compute_margin_buy_back(self):
+    def compute_margin_buy_back(self) -> Tuple[float | int, float | int]:
         """
         Same as compute_qty but with isolated margin balance
 
@@ -81,11 +80,14 @@ class BaseDeal(OrderController):
         Decimals have to be rounded up to avoid leaving
         "leftover" interests
         """
+        qty: float = 0
+        free: float = 0
+
         if (
             self.isolated_balance[0]["quoteAsset"]["free"] == 0
             or self.isolated_balance[0]["baseAsset"]["borrowed"] == 0
         ):
-            return None
+            return qty, free
 
         qty = (
             float(self.isolated_balance[0]["baseAsset"]["borrowed"])
@@ -100,6 +102,10 @@ class BaseDeal(OrderController):
         return qty, free
 
     def simulate_order(self, pair, qty, side):
+        """
+        Price is determined by market
+        to help trigger the order immediately
+        """
         price = float(self.matching_engine(pair, True, qty))
         order = {
             "symbol": pair,
@@ -140,14 +146,14 @@ class BaseDeal(OrderController):
         return response_order
 
     def replace_order(self, cancel_order_id):
-        payload = [
-            ("symbol", self.active_bot.pair),
-            ("quantity", self.active_bot.base_order_size),
-            ("cancelOrderId", cancel_order_id),
-            ("type", "MARKET"),
-            ("side", "SELL"),
-            ("cancelReplaceMode", "ALLOW_FAILURE"),
-        ]
+        payload = {
+            "symbol": self.active_bot.pair,
+            "quantity": self.active_bot.base_order_size,
+            "cancelOrderId": cancel_order_id,
+            "type": "MARKET",
+            "side": "SELL",
+            "cancelReplaceMode": "ALLOW_FAILURE",
+        }
         response = self.signed_request(
             url=self.cancel_replace_url, method="POST", payload=payload
         )
@@ -170,7 +176,7 @@ class BaseDeal(OrderController):
                 )
                 for order in self.active_bot.orders:
                     if order.order_id == order["orderId"]:
-                        self.active_bot.orders.remove(self.active_bot.orders)
+                        self.active_bot.orders.remove(order)
                         self.active_bot.errors.append(
                             "base_order not executed, therefore cancelled"
                         )
@@ -312,8 +318,8 @@ class BaseDeal(OrderController):
                         transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
                         available_balance = self.get_raw_balance(quote)
                         amount_to_transfer = 15  # Min amount
-                        if available_balance < 15:
-                            amount_to_transfer = available_balance
+                        if available_balance[0] < 15:
+                            amount_to_transfer = available_balance[0]
                         self.transfer_spot_to_isolated_margin(
                             asset=quote,
                             symbol=pair,

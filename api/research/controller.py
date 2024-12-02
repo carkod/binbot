@@ -138,13 +138,13 @@ class Controller(Database):
 
         print("Successfully stored new 3commas.io signals", consolidated_signals)
 
+    # mypy: ignore-errors
     def get_3commas_signals(self):
         """
         Retrieve 3commas.io/marketplace signals
         per week
         """
-        query = {}
-        signals = list(self._db.three_commas_signals.find(query))
+        signals = list(self._db.three_commas_signals.find({}))
 
         return json_response(
             {

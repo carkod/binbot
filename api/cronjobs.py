@@ -49,8 +49,7 @@ def main():
         func=market_domination.store_market_domination,
         trigger="interval",
         timezone=timezone,
-        hours=4,
-        # minutes=1,
+        hours=2,
         id="market_domination",
     )
     scheduler.start()
