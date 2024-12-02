@@ -5,7 +5,6 @@ from bson.objectid import ObjectId
 from fastapi.exceptions import RequestValidationError
 from account.account import Account
 from database.db import Database
-from deals.schema import MarginOrderSchema
 from deals.models import BinanceOrderModel, DealModel
 from base_producer import BaseProducer
 from tools.enum_definitions import BinbotEnums, DealType, Status, Strategy
@@ -29,7 +28,7 @@ class Bot(Database, Account):
         """
         Get distinct (non-repeating) bots by status active
         """
-        params = {"status": Status.active}
+        params = {"status": Status.active.value}
         if symbol:
             params["pair"] = symbol
 
@@ -230,7 +229,7 @@ class Bot(Database, Account):
 
         if bot.strategy == Strategy.margin_short:
             order_res = deal_controller.margin_liquidation(bot.pair)
-            panic_close_order = MarginOrderSchema(
+            panic_close_order = BinanceOrderModel(
                 timestamp=order_res["transactTime"],
                 deal_type=DealType.panic_close,
                 order_id=order_res["orderId"],
@@ -241,7 +240,6 @@ class Bot(Database, Account):
                 qty=order_res["origQty"],
                 time_in_force=order_res["timeInForce"],
                 status=order_res["status"],
-                is_isolated=order_res["isIsolated"],
             )
 
             bot.total_commission = self.calculate_total_commissions(order_res["fills"])
@@ -254,7 +252,7 @@ class Bot(Database, Account):
                 self.update_deal_logs(error.message, bot)
                 bot.status = Status.completed
                 bot = self.save_bot_streaming(bot)
-                return bot
+                return bot.model_dump()
 
             panic_close_order = BinanceOrderModel(
                 timestamp=res["transactTime"],

@@ -1,3 +1,4 @@
+import typing
 from sqlmodel import Session, select
 from database.utils import independent_session
 from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
@@ -21,24 +22,43 @@ class AutotradeSettingsController:
         self.document_id = document_id
         if session is None:
             session = independent_session()
-
         self.session = session
-        if document_id == AutotradeSettingsDocument.settings:
-            self.table = AutotradeTable
-        if document_id == AutotradeSettingsDocument.test_autotrade_settings:
-            self.table = TestAutotradeTable
 
+    @typing.no_type_check
     def get_settings(self):
-        statement = select(self.table).where(self.table.id == self.document_id)
+        """
+        Mypy check ignored: Incompatible types in assignment
+        should not affect execution of statement.
+        This is to avoid dup code
+        """
+        if self.document_id == AutotradeSettingsDocument.test_autotrade_settings:
+            statement = select(TestAutotradeTable).where(
+                TestAutotradeTable.id == self.document_id
+            )
+        else:
+            statement = select(AutotradeTable).where(
+                AutotradeTable.id == self.document_id
+            )
+
         results = self.session.exec(statement)
         # Should always return one result
         settings = results.first()
         self.session.close()
         return settings
 
+    @typing.no_type_check
     def edit_settings(self, data):
-        settings_data = AutotradeSettingsSchema.model_validate(data)
-        settings = self.session.get(self.table, settings_data.id)
+        """
+        Mypy check ignored: Incompatible types in assignment
+        should not affect execution of statement.
+        This is to avoid dup code
+        """
+        if self.document_id == AutotradeSettingsDocument.test_autotrade_settings:
+            settings_data = TestAutotradeTable.model_validate(data)
+            settings = self.session.get(TestAutotradeTable, settings_data.id)
+        else:
+            settings_data = AutotradeTable.model_validate(data)
+            settings = self.session.get(AutotradeTable, settings_data.id)
 
         if not settings:
             return settings

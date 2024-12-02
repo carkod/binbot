@@ -91,7 +91,7 @@ class BinanceApi:
         data = self.request(url=self.server_time_url)
         return data["serverTime"]
 
-    def signed_request(self, url, method="GET", payload: dict = {}) -> str:
+    def signed_request(self, url, method="GET", payload: dict = {}) -> dict:
         """
         USER_DATA, TRADE signed requests
 
@@ -289,7 +289,7 @@ class BinanceApi:
         )
 
     def repay_margin_loan(
-        self, asset: str, symbol: str, amount: float, isIsolated: str
+        self, asset: str, symbol: str, amount: float | int, isIsolated: str
     ):
         return self.signed_request(
             self.margin_repay_url,

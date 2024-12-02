@@ -131,9 +131,13 @@ class OrderController(Database, Account):
         Delete All orders by symbol
         - Optimal for open orders table
         """
-        data = self.signed_request(url=self.order_url, method="DELETE", params={
-            "symbol": symbol,
-        })
+        data = self.signed_request(
+            url=self.order_url,
+            method="DELETE",
+            payload={
+                "symbol": symbol,
+            },
+        )
 
         if data and len(data) > 0:
             resp = json_response({"message": "Orders deleted", "data": data})

@@ -1,5 +1,6 @@
 import json
 import logging
+import typing
 
 from tools.round_numbers import round_numbers
 from streaming.models import SignalsConsumer
@@ -223,6 +224,8 @@ class BbspreadsUpdater(BaseStreaming):
                     # reactivate includes saving
                     self.reactivate_bot(bot, collection_name=collection_name)
 
+    # To find a better interface for bb_xx once mature
+    @typing.no_type_check
     def update_close_conditions(self, message):
         """
         Update bot with dynamic trailling enabled to update
@@ -238,9 +241,9 @@ class BbspreadsUpdater(BaseStreaming):
         bb_spreads = signalsData.bb_spreads
         if (
             (self.current_bot or self.current_test_bot)
-            and bb_spreads["bb_high"]
-            and bb_spreads["bb_low"]
-            and bb_spreads["bb_mid"]
+            and "bb_high" in bb_spreads and bb_spreads["bb_high"] # my-py
+            and "bb_low" in bb_spreads and bb_spreads["bb_low"]
+            and "bb_mide" in bb_spreads and bb_spreads["bb_mid"]
         ):
             if self.current_bot:
                 self.update_bots_parameters(self.current_bot, bb_spreads)

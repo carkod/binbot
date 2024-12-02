@@ -10,7 +10,7 @@ from tools.handle_error import (
     encode_json,
     handle_binance_errors,
 )
-from tools.round_numbers import round_numbers, supress_notation
+from tools.round_numbers import round_numbers, round_numbers
 
 
 class CreateDealController(BaseDeal):
@@ -39,9 +39,9 @@ class CreateDealController(BaseDeal):
 
         asset = self.find_baseAsset(pair)
         balance = self.get_raw_balance(asset)
-        if not balance:
+        if not balance or len(balance) == 0:
             return None
-        qty = round_numbers(balance, self.qty_precision)
+        qty = round_numbers(balance[0], self.qty_precision)
         return qty
 
     def take_profit_order(self) -> BotSchema:
@@ -60,8 +60,8 @@ class CreateDealController(BaseDeal):
         else:
             qty = self.compute_qty(self.active_bot.pair)
 
-        qty = supress_notation(buy_total_qty, self.qty_precision)
-        price = supress_notation(price, self.price_precision)
+        qty = round_numbers(buy_total_qty, self.qty_precision)
+        price = round_numbers(price, self.price_precision)
 
         if self.db_collection.name == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, qty, "SELL")
@@ -81,8 +81,8 @@ class CreateDealController(BaseDeal):
                     "SELL",
                 )
         else:
-            qty = supress_notation(qty, self.qty_precision)
-            price = supress_notation(price, self.price_precision)
+            qty = round_numbers(qty, self.qty_precision)
+            price = round_numbers(price, self.price_precision)
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         # If error pass it up to parent function, can't continue
@@ -149,7 +149,7 @@ class CreateDealController(BaseDeal):
                         "Failed to close all active orders (status NEW), retrying...",
                         self.active_bot,
                     )
-                    self.replace_order(d["orderId"])
+                    self.replace_order(d.order_id)
 
         # Sell everything
         pair = self.active_bot.pair
@@ -158,7 +158,7 @@ class CreateDealController(BaseDeal):
         if balance:
             qty = round_numbers(balance[0], self.qty_precision)
             price: float = float(self.matching_engine(pair, True, qty))
-            price = supress_notation(price, self.price_precision)
+            price = round_numbers(price, self.price_precision)
             self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
         return
@@ -171,8 +171,10 @@ class CreateDealController(BaseDeal):
         - Update database by replacing old take profit deal with new take profit deal
         """
         bot = self.active_bot
-        if "deal" in bot:
-            find_base_order = next(bot.orders.order_id == order_id, None)
+        if bot.deal:
+            find_base_order = next(
+                (order.order_id == order_id for order in bot.orders), None
+            )
             if find_base_order:
                 so_deal_price = bot.deal.buy_price
                 # Create new take profit order
@@ -184,11 +186,12 @@ class CreateDealController(BaseDeal):
                 # First cancel old order to unlock balance
                 OrderController().delete_order(bot.pair, order_id)
 
-                qty = round_numbers(self.get_raw_balance(asset), self.qty_precision)
+                raw_balance = self.get_raw_balance(asset)
+                qty = round_numbers(raw_balance[0], self.qty_precision)
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
-                    price=supress_notation(new_tp_price, self.price_precision),
+                    price=round_numbers(new_tp_price, self.price_precision),
                 )
 
                 # New take profit order successfully created
@@ -273,7 +276,7 @@ class CreateDealController(BaseDeal):
                 stop_loss_price = buy_price - (
                     buy_price * float(self.active_bot.stop_loss) / 100
                 )
-                self.active_bot.deal.stop_loss_price = supress_notation(
+                self.active_bot.deal.stop_loss_price = round_numbers(
                     stop_loss_price, self.price_precision
                 )
 

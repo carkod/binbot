@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from sqlmodel import Session
+from tools.enum_definitions import AutotradeSettingsDocument
 from database.utils import get_session
 from autotrade.controller import AutotradeSettingsController
 from autotrade.schemas import AutotradeSettingsResponse, AutotradeSettingsSchema
@@ -21,7 +22,9 @@ def edit_settings(
     these use real money and real Binance transactions
     """
     try:
-        AutotradeSettingsController(session=session).edit_settings(item)
+        result = AutotradeSettingsController(session=session).edit_settings(item)
+        if not result:
+            raise HTTPException(status_code=404, detail="Autotrade settings not found")
         return json_response({"message": "Successfully updated settings"})
     except ValidationError as error:
         msg = ""
@@ -55,7 +58,8 @@ def get_test_autotrade_settings(
 ):
     try:
         deserialized_data = AutotradeSettingsController(
-            document_id="test_autotrade_settings", session=session
+            document_id=AutotradeSettingsDocument.test_autotrade_settings,
+            session=session,
         ).get_settings()
         return json_response(
             {
@@ -74,7 +78,8 @@ def edit_test_autotrade_settings(
 ):
     try:
         data = AutotradeSettingsController(
-            document_id="test_autotrade_settings", session=session
+            document_id=AutotradeSettingsDocument.test_autotrade_settings,
+            session=session,
         ).edit_settings(item)
         if not data:
             raise HTTPException(status_code=404, detail="Autotrade settings not found")

@@ -236,11 +236,11 @@ class Account(BinbotApi):
             return balances[0]
         return balances
 
-    def get_margin_balance(self, symbol="BTC"):
+    def get_margin_balance(self, symbol="BTC") -> float:
         # Response after request
         data = self.get_isolated_balance(symbol)
         symbol_balance = next(
-            (x["free"] for x in data["data"] if x["asset"] == symbol), None
+            (x["free"] for x in data if x["asset"] == symbol), 0
         )
         return symbol_balance
 

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Any
 from tools.enum_definitions import TrendEnum
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -15,7 +15,7 @@ class SignalsConsumer(BaseModel):
     symbol: str
     algo: str
     trend: TrendEnum | None = TrendEnum.neutral
-    bb_spreads: Optional[dict]
+    bb_spreads: Optional[Dict[str, float]]
     model_config = ConfigDict(
         extra="allow",
     )
