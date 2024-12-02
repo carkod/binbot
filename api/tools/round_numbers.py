@@ -2,7 +2,6 @@ import datetime
 import math
 from decimal import Decimal
 import re
-import typing
 
 
 def supress_trailling(value: str | float | int) -> float:
@@ -39,8 +38,6 @@ def round_numbers_ceiling(value, decimals=6):
     return float(result)
 
 
-# To merge with round_number and remove
-@typing.no_type_check
 def supress_notation(num: float, precision: int = 0) -> str:
     """
     Supress scientific notation
@@ -51,7 +48,7 @@ def supress_notation(num: float, precision: int = 0) -> str:
     if precision >= 0:
         decimal_points = precision
     else:
-        decimal_points = Decimal(str(num)).as_tuple().exponent * -1
+        decimal_points = int(Decimal(str(num)).as_tuple().exponent * -1)
     return f"{num:.{decimal_points}f}"
 
 

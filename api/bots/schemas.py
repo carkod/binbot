@@ -22,8 +22,8 @@ class BotSchema(BaseModel):
     fiat: str = "USDC"
     balance_to_use: str = "USDC"
     base_order_size: float | int = 15  # Min Binance 0.0001 BNB
-    candlestick_interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes
-    close_condition: CloseConditions = CloseConditions.dynamic_trailling
+    candlestick_interval: BinanceKlineIntervals = Field(default=BinanceKlineIntervals.fifteen_minutes)
+    close_condition: CloseConditions = Field(default=CloseConditions.dynamic_trailling)
     # cooldown period in minutes before opening next bot with same pair
     cooldown: int = 0
     deal: DealModel = Field(default_factory=DealModel)
@@ -34,14 +34,14 @@ class BotSchema(BaseModel):
     mode: str = "manual"
     name: str = "Default bot"
     orders: list[BinanceOrderModel] = []  # Internal
-    status: Status = Status.inactive
+    status: Status = Field(default=Status.inactive)
     stop_loss: float = 0
     margin_short_reversal: bool = False  # If stop_loss > 0, allow for reversal
     take_profit: float = 0
     trailling: bool = True
     trailling_deviation: float = 0
     trailling_profit: float = 0  # Trailling activation (first take profit hit)
-    strategy: str = Strategy.long
+    strategy: str = Field(default=Strategy.long)
     short_buy_price: float = 0
     short_sell_price: float = 0  # autoswitch to short_strategy
     # Deal and orders are internal, should never be updated by outside data
@@ -89,10 +89,12 @@ class BotSchema(BaseModel):
         assert v != "", "Empty pair field."
         return v
 
-    @field_validator("balance_size_to_use", "base_order_size", "base_order_size")
+    @field_validator("balance_size_to_use", "base_order_size", "base_order_size", mode="before")
     @classmethod
     def countables(cls, v):
-        if isinstance(v, str):
+        if isinstance(v, float):
+            return v
+        elif isinstance(v, str):
             return float(v)
         elif isinstance(v, int):
             return float(v)
@@ -100,7 +102,7 @@ class BotSchema(BaseModel):
             raise ValueError(f"{v} must be a number (float, int or string)")
 
     @field_validator(
-        "stop_loss", "take_profit", "trailling_deviation", "trailling_profit"
+        "stop_loss", "take_profit", "trailling_deviation", "trailling_profit", mode="before"
     )
     @classmethod
     def check_percentage(cls, v):
