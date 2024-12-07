@@ -3,8 +3,6 @@ COPY api api
 WORKDIR api
 RUN pip3 install pipenv
 RUN pipenv install --system --deploy --ignore-pipfile --clear
-COPY entrypoint.sh entrypoint.sh
-RUN chmod +x entrypoint.sh
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["python3", "-u", "market_updates.py"]
 
 STOPSIGNAL SIGTERM

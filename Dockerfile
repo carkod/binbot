@@ -4,7 +4,6 @@ COPY /terminal/ /app/
 RUN npm install && npm run build
 
 FROM unit:1.33.0-python3.11
-RUN apt-get update --yes && apt-get install postgresql postgresql-contrib curl -y
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 COPY api api
 WORKDIR api

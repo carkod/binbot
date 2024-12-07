@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from datetime import datetime, timedelta
+
 from account.account import Account
 from account.assets import Assets
 from account.schemas import (
@@ -7,7 +8,7 @@ from account.schemas import (
     GainersLosersResponse,
     BalanceSeriesResponse,
 )
-from tools.exceptions import BinanceErrors, LowBalanceCleanupError
+from tools.exceptions import BinanceErrors, LowBalanceCleanupError, MarginLoanNotFound
 from tools.handle_error import json_response, json_response_error, json_response_message
 
 account_blueprint = APIRouter()
@@ -158,4 +159,16 @@ def check_isolated_symbol(symbol: str):
 
 @account_blueprint.get("/one-click-liquidation/{asset}", tags=["assets"])
 def one_click_liquidation(asset):
-    return Assets().one_click_liquidation(asset)
+    try:
+        liquidated = Assets().one_click_liquidation(asset)
+        if not liquidated:
+            raise HTTPException(
+                status_code=404, detail="Could not liquidate asset that doesn't exist."
+            )
+        return json_response_message(f"Successfully liquidated {asset}")
+    except MarginLoanNotFound as error:
+        return json_response_message(
+            f"{error}. Successfully cleared isolated pair {asset}"
+        )
+    except BinanceErrors as error:
+        return json_response_error(f"Error liquidating {asset}: {error.message}")

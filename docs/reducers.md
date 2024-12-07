@@ -1,15 +1,13 @@
 ## When make use of redux state?
 Over time, the development of the front-end app made the application larger due to the amount of API calls that the application uses. So Redux is used to share application data and state.
-1. Everytime a new API endpoint is available for the web app:
-- Create new Saga generator function and import it into the root saga
-- Create action creators and redux constants
-- Create reducer object and import in root reducer
-- Dispatch action creators and map state to props
 
-2. Everytime new application state is created:
-- Create action creators and redux constants
-- Create reducer object
-- Dispatch action creators and map state to props
+With the new redux-toolkit, a lot of boilerplate code has been removed. No need for action creators, mapping of reducers, props and states.
+
+1. Everytime a new API endpoint is available for the web app:
+  - Create a new xxApiSlice by injection using `userApiSlice`. Check out the other slices such as `botApiSlice`
+
+2. If application state is neede (which with react-toolkit it is not anymore)
+- Create a xxAppSlice. Checkout `botSlice`
 
 However, because some operations require quick readonly data that needs to be up to date, in some situations it's not worth doing all above steps and writing so much code for data that doesn't even change, so some components may have a `requests.js`, which is where we simply make calls to API endpoints and get the json.
 

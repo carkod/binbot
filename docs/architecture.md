@@ -20,3 +20,7 @@ This separation gives us the flexibility to release API changes independently of
 | Account              | MongoDB    | To be migrated to Postgres (new table Balances)   |
 | three_commas_signals | MongoDB    | 3Commas legacy, kept for reference                |
 | subscribed_symbols   | MongoDB    | 3Commas legacy, kept for reference                |
+
+PostgreSQL database is meant to be used for relational data for fast performance. Small chucks of data are consumed rapidly, bots, autotrade settings, users, these is data that can live in independently and are queried in small amounts and punctually.
+
+MongoDB database is meant to be used for time series data (charts) and cache. This is often unstructure data, high volume, high frequency of querying.
