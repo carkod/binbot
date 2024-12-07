@@ -28,7 +28,9 @@ class BotSchema(BaseModel):
     cooldown: int = 0
     deal: DealModel = Field(default_factory=DealModel)
     dynamic_trailling: bool = False
-    errors: list[str] = []  # Event logs
+    logs: list[str] = []
+    # to depricate in new db
+    errors: list[str] = []
     # to deprecate in new db
     locked_so_funds: Optional[float] = 0  # funds locked by Safety orders
     mode: str = "manual"
