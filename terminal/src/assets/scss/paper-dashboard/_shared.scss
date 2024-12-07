@@ -1,5 +1,11 @@
+@use "sass:color";
 @use "sass:meta";
-//Components
+
+@use "~bootstrap/scss/bootstrap";
+
+@use "./variables" as *;
+
+// Component mixins
 @use "mixins/transitions" as *;
 @use "mixins/sidebar" as *;
 @use "mixins/inputs" as *;
@@ -8,3 +14,7 @@
 @use "mixins/cards" as *;
 @use "mixins/transparency" as *;
 @use "mixins/buttons" as *;
+
+
+// Plugins CSS
+@use "react-toastify/dist/ReactToastify.css" as *;

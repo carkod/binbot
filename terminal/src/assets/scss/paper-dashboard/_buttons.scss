@@ -1,9 +1,10 @@
+@use "./variables" as *;
+@use "./mixins/buttons" as *;
+
 .btn,
 .navbar .navbar-nav > a.btn {
-  & {
-    @include btn-styles($default-color, $default-states-color);
-    @include transition($fast-transition-time, linear);
-  }
+  @include btn-styles($default-color, $default-states-color);
+  @include transition($fast-transition-time, linear);
 
   border-width: $border-thick;
   font-weight: $font-weight-semi;
@@ -121,7 +122,7 @@
 .btn-danger {
   @include btn-styles($danger-color, $danger-states-color);
 }
-// .btn-neutral { @include btn-styles($white-color, $white-color); }
+.btn-neutral { @include btn-styles($white-color, $white-color); }
 
 .btn-outline-default {
   @include btn-outline-styles($default-color, $default-states-color);

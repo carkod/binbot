@@ -1,41 +1,31 @@
-@use "sass:color";
-
-@import "../node_modules/bootstrap/scss/bootstrap";
-
-@import "paper-dashboard/variables";
-@import "paper-dashboard/mixins";
-
-// Plugins CSS
-@import "react-toastify/dist/ReactToastify.css";
-
 // Core CSS
-@import "paper-dashboard/buttons";
-@import "paper-dashboard/inputs";
-@import "paper-dashboard/typography";
-@import "paper-dashboard/misc";
-@import "paper-dashboard/checkboxes-radio";
+@use "paper-dashboard/buttons" as *;
+@use "paper-dashboard/inputs" as *;
+@use "paper-dashboard/typography" as *;
+@use "paper-dashboard/misc" as *;
+@use "paper-dashboard/checkboxes-radio" as *;
 
 // components
-@import "paper-dashboard/navbar";
-@import "paper-dashboard/page-header";
-@import "paper-dashboard/dropdown";
-@import "paper-dashboard/alerts";
-@import "paper-dashboard/images";
-@import "paper-dashboard/tables";
-@import "paper-dashboard/sidebar-and-main-panel";
-@import "paper-dashboard/footers";
+@use "paper-dashboard/navbar" as *;
+@use "paper-dashboard/page-header" as *;
+@use "paper-dashboard/dropdown" as *;
+@use "paper-dashboard/alerts" as *;
+@use "paper-dashboard/images" as *;
+@use "paper-dashboard/tables" as *;
+@use "paper-dashboard/sidebar-and-main-panel" as *;
+@use "paper-dashboard/footers" as *;
 
 // cards
-@import "paper-dashboard/cards";
-@import "paper-dashboard/cards/card-plain";
-@import "paper-dashboard/cards/card-chart";
-@import "paper-dashboard/cards/card-user";
-@import "paper-dashboard/cards/card-map";
-@import "paper-dashboard/responsive";
+@use "paper-dashboard/cards" as *;
+@use "paper-dashboard/cards/card-plain" as *;
+@use "paper-dashboard/cards/card-chart" as *;
+@use "paper-dashboard/cards/card-user" as *;
+@use "paper-dashboard/cards/card-map" as *;
+@use "paper-dashboard/responsive" as *;
 
 // Custom
-@import "paper-dashboard/login";
-@import "paper-dashboard/gainers-losers-chart";
+@use "paper-dashboard/login" as *;
+@use "paper-dashboard/gainers-losers-chart" as *;
 
 // Overrides
-@import "paper-dashboard/utilities";
+@use "paper-dashboard/utilities" as *;
