@@ -40,6 +40,7 @@ class AutotradeTable(SQLModel, table=True):
     stop_loss: float = Field(default=0)
     take_profit: float = Field(default=2.3)
     balance_to_use: str = Field(default="USDC")
+    fiat: str = Field(default="USDC")
     max_request: int = Field(default=950)
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)

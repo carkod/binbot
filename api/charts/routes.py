@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from tools.round_numbers import format_ts
 from charts.models import (
     GetMarketDominationResponse,
@@ -99,3 +99,22 @@ def md_migration():
         return json_response_error(
             f"Failed to migrate market domination data: {error.args[0]}"
         )
+
+
+@charts_blueprint.get("/top-gainers", tags=["assets"])
+def top_gainers():
+    try:
+        response = MarketDominationController().top_gainers()
+        if response:
+            return json_response(
+                {
+                    "data": response,
+                    "message": "Successfully retrieved top gainers data.",
+                    "error": 0,
+                }
+            )
+        else:
+            raise HTTPException(404, detail="No data found")
+
+    except Exception as error:
+        return json_response_error(f"Failed to retrieve top gainers data: {error}")
