@@ -38,6 +38,7 @@ class BotTable(SQLModel, table=True):
     # cooldown period in minutes before opening next bot with same pair
     cooldown: int = Field(default=0)
     created_at: float = Field(default_factory=lambda: time() * 1000)
+    updated_at: float = Field(default_factory=lambda: time() * 1000)
     deal: Optional["DealTable"] = Relationship(back_populates="bot")
     dynamic_trailling: bool = Field(default=False)
     logs: JSON = Field(default="[]", sa_column=Column(JSON))
@@ -59,7 +60,6 @@ class BotTable(SQLModel, table=True):
     # autoswitch to short_strategy
     short_sell_price: float = Field(default=0)
     total_commission: float = Field(default=0)
-    updated_at: float = Field(default_factory=lambda: time() * 1000)
 
     class Config:
         arbitrary_types_allowed = True

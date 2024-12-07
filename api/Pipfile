@@ -30,6 +30,7 @@ psycopg2 = "*"
 pydantic = {extras = ["email"], version = "*"}
 alembic-postgresql-enum = "*"
 python-dotenv = "*"
+psycopg = "*"
 
 [dev-packages]
 pytest = "==8.1.1"
