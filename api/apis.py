@@ -148,7 +148,7 @@ class BinanceApi:
             params["symbol"] = symbol
 
         # mongo_cache = self.setup_mongocache()
-        # expire_after = 15m because candlesticks are 15m
+        # # because candlesticks are 15m
         # session = CachedSession('ticker_24_cache', backend=mongo_cache, expire_after=15)
         data = self.request(url=self.ticker24_url, params=params)
         return data

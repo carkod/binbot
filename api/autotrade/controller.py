@@ -74,3 +74,7 @@ class AutotradeSettingsController:
         AsyncBaseProducer().update_required("UPDATE_AUTOTRADE_SETTINGS")
         self.session.close()
         return settings
+
+    def get_fiat(self):
+        data = self.get_settings()
+        return data.fiat

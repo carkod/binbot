@@ -17,3 +17,4 @@ __pycache__
 kafka_data
 pg_data
 !terminal/.env
+!.python-version

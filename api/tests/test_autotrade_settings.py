@@ -50,6 +50,8 @@ def test_get_autotrade_settings(client) -> None:
             "test_autotrade": False,
             "trailling_deviation": 0.63,
             "stop_loss": 0.0,
+            "fiat": "USDC",
+            # Below to be deprecated
             "balance_to_use": "USDC",
             "telegram_signals": True,
             "close_condition": "dynamic_trailling",

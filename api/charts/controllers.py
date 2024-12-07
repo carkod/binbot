@@ -116,7 +116,8 @@ class MarketDominationController(Database, BinbotApi):
     def __init__(self) -> None:
         super().__init__()
         self.collection = self.kafka_db.market_domination
-        self.autotrade_settings = AutotradeSettingsController().get_settings()
+        self.autotrade_db = AutotradeSettingsController()
+        self.autotrade_settings = self.autotrade_db.get_settings()
 
     def mkdm_migration(self):
         """
@@ -236,3 +237,16 @@ class MarketDominationController(Database, BinbotApi):
             ]
         )
         return list(result)
+
+    def top_gainers(self):
+        """
+        Get market top gainers of the day
+
+        ATTENTION - This is a very heavy weight operation
+        ticker_24() retrieves all tokens
+        """
+        fiat = self.autotrade_db.get_fiat()
+        ticket_data = self.ticker_24()
+
+        fiat_market_data = sorted((item for item in ticket_data if item["symbol"].endswith(fiat) and float(item["priceChangePercent"]) > 0), key=lambda x: x["priceChangePercent"], reverse=True)
+        return fiat_market_data[:10]
