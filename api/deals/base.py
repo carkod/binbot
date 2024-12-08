@@ -1,13 +1,15 @@
 from typing import Tuple
 import uuid
 from time import time
-from pymongo import ReturnDocument
 from datetime import datetime
+
+from database.bot_crud import BotTableCrud
+from database.paper_trading_crud import PaperTradingTableCrud
+from database.models.paper_trading_table import PaperTradingTable
+from database.models.bot_table import BotTable
 from deals.models import BinanceOrderModel, DealModel
 from orders.controller import OrderController
-from bots.schemas import BotSchema
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
-from tools.handle_error import encode_json
 from tools.exceptions import (
     BinanceErrors,
     DealCreationError,
@@ -15,6 +17,7 @@ from tools.exceptions import (
     MarginLoanNotFound,
 )
 from tools.enum_definitions import DealType, Status, Strategy
+from base_producer import BaseProducer
 
 
 # To be removed one day en commission endpoint found that provides this value
@@ -31,15 +34,14 @@ class BaseDeal(OrderController):
     self.symbol is always the same.
     """
 
-    def __init__(self, bot, db_collection_name):
-        if not isinstance(bot, BotSchema):
-            self.active_bot = BotSchema(**bot)
-        else:
-            self.active_bot = bot
-        self.db_collection = self._db[db_collection_name]
-        self.market_domination_reversal = None
+    def __init__(self, bot: BotTable, controller: PaperTradingTableCrud | BotTableCrud):
+        self.active_bot = bot
+        self.controller: PaperTradingTableCrud | BotTable = controller
+        self.market_domination_reversal: bool | None = None
         self.price_precision = self.calculate_price_precision(bot.pair)
         self.qty_precision = self.calculate_qty_precision(bot.pair)
+        self.base_producer = BaseProducer()
+        self.producer = self.base_producer.start_producer()
 
         if self.active_bot.strategy == Strategy.margin_short:
             self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
@@ -226,7 +228,7 @@ class BaseDeal(OrderController):
         if float(self.active_bot.stop_loss) > 0:
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
-        if self.db_collection.name == "paper_trading":
+        if self.controller == PaperTradingTable:
             res = self.simulate_order(
                 self.active_bot.pair,
                 qty,
@@ -265,18 +267,10 @@ class BaseDeal(OrderController):
         )
 
         # Activate bot
-        self.active_bot.status = Status.active
-
-        bot = encode_json(self.active_bot)
-        if "_id" in bot:
-            bot.pop("_id")  # _id is what causes conflict not id
-
-        document = self.db_collection.find_one_and_update(
-            {"id": self.active_bot.id},
-            {"$set": bot},
-            return_document=ReturnDocument.AFTER,
-        )
-
+        document = self.controller.activate(self.active_bot)
+        # do this after db operations in case there is rollback
+        # avoids sending unnecessary signals
+        self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
         return document
 
     def margin_liquidation(self, pair: str):
@@ -285,7 +279,7 @@ class BaseDeal(OrderController):
 
         Args:
         - pair: a.k.a symbol, quote asset + base asset
-        - qty_precision: to round numbers for Binance API. Passed optionally to
+        - qty_precision: to round numbers for Binance  Passed optionally to
         reduce number of requests to avoid rate limit.
         """
         self.isolated_balance = self.get_isolated_balance(pair)

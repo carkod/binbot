@@ -1,3 +1,7 @@
+from database.bot_crud import BotTableCrud
+from database.paper_trading_crud import PaperTradingTableCrud
+from database.models.paper_trading_table import PaperTradingTable
+from database.models.bot_table import BotTable
 from orders.controller import OrderController
 from bots.schemas import BotSchema
 from deals.base import BaseDeal
@@ -23,13 +27,24 @@ class CreateDealController(BaseDeal):
     3. Update deals (deal update controller)
 
     - db_collection = ["bots", "paper_trading"].
-    paper_trading uses simulated orders and bot uses real binance orders
+    paper_trading uses simulated orders and bot uses real binance orders.
+    PaperTradingTable is implemented, PaperTradingController with the db operations is not.
+    - bot: BotSchema (at some point to refactor into BotTable as they are both pydantic models)
     """
 
-    def __init__(self, bot: BotSchema, db_collection="paper_trading"):
-        # Inherit from parent class
-        super().__init__(bot, db_collection)
+    def __init__(
+        self,
+        bot: BotSchema | BotTable,
+        db_table: PaperTradingTable | BotTable = BotTable,
+    ):
+        if db_table == PaperTradingTable:
+            db_controller = PaperTradingTableCrud
+        else:
+            db_controller = BotTableCrud
+
+        super().__init__(bot, db_controller)
         self.active_bot = bot
+        self.db_table = db_table
 
     def compute_qty(self, pair):
         """
@@ -55,7 +70,7 @@ class CreateDealController(BaseDeal):
         buy_total_qty = self.active_bot.deal.buy_total_qty
         price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
 
-        if self.db_collection.name == "paper_trading":
+        if self.db_table == "paper_trading":
             qty = self.active_bot.deal.buy_total_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
@@ -63,7 +78,7 @@ class CreateDealController(BaseDeal):
         qty = round_numbers(buy_total_qty, self.qty_precision)
         price = round_numbers(price, self.price_precision)
 
-        if self.db_collection.name == "paper_trading":
+        if self.db_table == "paper_trading":
             res = self.simulate_order(self.active_bot.pair, qty, "SELL")
             if price:
                 res = self.simulate_order(
@@ -253,7 +268,7 @@ class CreateDealController(BaseDeal):
         if not base_order_deal:
             if self.active_bot.strategy == Strategy.margin_short:
                 self.active_bot = MarginDeal(
-                    bot=self.active_bot, db_collection_name=self.db_collection.name
+                    bot=self.active_bot, db_collection_name=self.db_table
                 ).margin_short_base_order()
             else:
                 bot = self.base_order()
@@ -269,7 +284,7 @@ class CreateDealController(BaseDeal):
         if float(self.active_bot.stop_loss) > 0:
             if self.active_bot.strategy == Strategy.margin_short:
                 self.active_bot = MarginDeal(
-                    bot=self.active_bot, db_collection_name=self.db_collection.name
+                    bot=self.active_bot, db_collection_name=self.db_table
                 ).set_margin_short_stop_loss()
             else:
                 buy_price = float(self.active_bot.deal.buy_price)

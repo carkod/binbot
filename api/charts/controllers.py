@@ -248,5 +248,14 @@ class MarketDominationController(Database, BinbotApi):
         fiat = self.autotrade_db.get_fiat()
         ticket_data = self.ticker_24()
 
-        fiat_market_data = sorted((item for item in ticket_data if item["symbol"].endswith(fiat) and float(item["priceChangePercent"]) > 0), key=lambda x: x["priceChangePercent"], reverse=True)
+        fiat_market_data = sorted(
+            (
+                item
+                for item in ticket_data
+                if item["symbol"].endswith(fiat)
+                and float(item["priceChangePercent"]) > 0
+            ),
+            key=lambda x: x["priceChangePercent"],
+            reverse=True,
+        )
         return fiat_market_data[:10]

@@ -1,4 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session
+from api.database.bot_crud import BotTableCrud
+from api.deals.controllers import CreateDealController
+from bots.bot_table_controller import BotTableController
+from database.models.bot_table import BotTable
+from database.utils import get_session
 from tools.handle_error import json_response, json_response_error, json_response_message
 from bots.controllers import Bot
 from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
@@ -69,7 +75,7 @@ def delete(id: List[str]):
 
 
 @bot_blueprint.get("/bot/activate/{id}", tags=["bots"])
-async def activate_by_id(id: str):
+async def activate_by_id(id: str, session: Session = Depends(get_session)):
     """
     Activate bot
 
@@ -77,21 +83,21 @@ async def activate_by_id(id: str):
     - If changes were made, it will override DB data
     - Because botId is received from endpoint, it will be a str not a PyObjectId
     """
-    bot_instance = Bot(collection_name="bots")
-    bot = bot_instance.get_one(id)
-    if bot:
-        try:
-            bot_instance.activate(bot)
-            return json_response_message("Successfully activated bot!")
-        except BinbotErrors as error:
-            bot_instance.post_errors_by_id(id, error.message)
-            return json_response_error(error.message)
-        except BinanceErrors as error:
-            bot_instance.post_errors_by_id(id, error.message)
-            return json_response_error(error.message)
+    bot = BotTableCrud(session=session).get_one(bot_id=id)
+    if not bot:
+        return json_response_message("Successfully activated bot!")
 
-    else:
-        return json_response_error("Bot not found.")
+    bot_instance = CreateDealController(bot, db_table=BotTable)
+
+    try:
+        bot_instance.activate(bot)
+        return json_response_message("Successfully activated bot!")
+    except BinbotErrors as error:
+        bot_instance.update_logs(bot_id=id, log_message=error.message)
+        return json_response_error(error.message)
+    except BinanceErrors as error:
+        bot_instance.update_logs(bot_id=id, log_message=error.message)
+        return json_response_error(error.message)
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", tags=["bots"])
@@ -113,11 +119,6 @@ def deactivation(id: str):
             )
         else:
             return json_response_error("Error deactivating bot.")
-
-
-@bot_blueprint.put("/bot/archive/{id}", tags=["bots"])
-def archive(id: str):
-    return Bot(collection_name="bots").put_archive(id)
 
 
 @bot_blueprint.post("/bot/errors/{bot_id}", tags=["bots"])

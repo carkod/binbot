@@ -3,21 +3,24 @@ from typing import List
 from fastapi import Query
 from sqlmodel import Session, asc, desc, or_, select, case
 from time import time
-from base_producer import BaseProducer
+from deals.controllers import CreateDealController
 from bots.schemas import BotSchema
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 from database.utils import independent_session
-from deals.controllers import CreateDealController
 from deals.models import DealModel
-from tools.enum_definitions import BinbotEnums, Status
-from psycopg.types.json import Json, set_json_loads
+from tools.enum_definitions import BinbotEnums, Status, Strategy
+from psycopg.types.json import Json
 
 
-class BotTableController:
+class BotTableCrud:
     """
     CRUD and database operations for the SQL API DB
     bot_table table.
+
+    Use for lower level APIs that require a session
+    e.g.
+    client-side -> receive json -> bots.routes -> BotTableCrud
     """
 
     def __init__(
@@ -29,11 +32,10 @@ class BotTableController:
         if session is None:
             session = independent_session()
         self.session = session
-        self.base_producer = BaseProducer()
-        self.producer = self.base_producer.start_producer()
-        self.deal: CreateDealController | None = None
 
-    def update_logs(self, log_message: str, bot: BotSchema = None, bot_id: str | None = None):
+    def update_logs(
+        self, log_message: str, bot: BotSchema = None, bot_id: str | None = None
+    ):
         """
         Update logs for a bot
 
@@ -74,8 +76,10 @@ class BotTableController:
         """
         Get all bots in the db except archived
         Args:
-        - archive=false
-        - filter_by: string - last-week, last-month, all
+        - status: Status enum
+        - start_date and end_date are timestamps in milliseconds
+        - no_cooldown: bool - filter out bots that are in cooldown
+        - limit and offset for pagination
         """
         statement = select(BotTable)
 
@@ -143,6 +147,9 @@ class BotTableController:
     def create(self, data: BotSchema):
         """
         Create a new bot
+
+        It's crucial to reset fields, so bot can trigger base orders
+        and start trailling.
         """
         bot = BotTable.model_validate(data)
         # Ensure values are reset
@@ -152,26 +159,27 @@ class BotTableController:
         bot.updated_at = time() * 1000
         bot.status = Status.inactive
         bot.deal = DealModel()
+
+        # db operations
         self.session.add(bot)
         self.session.commit()
         self.session.close()
-        self.base_producer.update_required(self.producer, "CREATE_BOT")
         return bot
 
-    def edit(self, bot_id: str, data: BotSchema):
+    def edit(self, id: str, data: BotSchema):
         """
         Edit a bot
         """
-        bot = self.session.get(BotTable, bot_id)
+        bot = self.session.get(BotTable, id)
         if not bot:
             return bot
 
-        dumped_bot = bot.model_dump(exclude_unset=True)
+        # double check orders and deal are not overwritten
+        dumped_bot = data.model_dump(exclude_unset=True)
         bot.sqlmodel_update(dumped_bot)
         self.session.add(bot)
         self.session.commit()
         self.session.close()
-        self.base_producer.update_required(self.producer, "UPDATE_BOT")
         return bot
 
     def delete(self, bot_ids: List[str] = Query(...)):
@@ -185,38 +193,19 @@ class BotTableController:
         bots = self.session.exec(statement).all()
         self.session.commit()
         self.session.close()
-        self.base_producer.update_required(self.producer, "DELETE_BOT")
         return bots
 
-    def activate(self, bot_id: str):
+    def update_status(self, bot: BotTable, status: Status) -> BotTable:
         """
-        Activate a bot
+        Activate a bot by opening a deal
         """
-        bot = self.session.get(BotTable, bot_id)
-        if not bot:
-            return bot
-
-        bot.status = Status.active
+        bot.status = status
+        # db operations
         self.session.add(bot)
         self.session.commit()
         self.session.close()
-        self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
-        return bot
-
-    def deactivate(self, bot_id: str):
-        """
-        Deactivate a bot (panic sell)
-        """
-        bot = self.session.get(BotTable, bot_id)
-        if not bot:
-            return bot
-
-        bot.status = Status.completed
-
-        self.session.add(bot)
-        self.session.commit()
-        self.session.close()
-        self.base_producer.update_required(self.producer, "DEACTIVATE_BOT")
+        # do this after db operations in case there is rollback
+        # avoids sending unnecessary signals
         return bot
 
     def get_active_pairs(self):

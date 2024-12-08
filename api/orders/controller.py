@@ -1,12 +1,12 @@
 from account.account import Account
+from api.database.bot_crud import BotTableCrud
 from tools.exceptions import DeleteOrderError
-from database.db import Database
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation
 
 
-class OrderController(Database, Account):
+class OrderController(BotTableCrud, Account):
     """
     Always GTC and limit orders
     limit/market orders will be decided by matching_engine
