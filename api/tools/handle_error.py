@@ -62,7 +62,7 @@ def handle_binance_errors(response: Response) -> dict:
         sleep(120)
 
     if response.status_code == 418 or response.status_code == 429:
-        print("Request weight limit hit, ban will come soon, waiting 1 hour")
+        logging.warning("Request weight limit hit, ban will come soon, waiting 1 hour")
         sleep(3600)
 
     # Cloudfront 403 error

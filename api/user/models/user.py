@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, SecretStr, field_validator
 from sqlmodel import Field
 from tools.enum_definitions import UserRoles
 from tools.handle_error import StandardResponse
@@ -22,7 +22,7 @@ class CreateUser(BaseModel):
     is_active: bool = True
     role: UserRoles = Field(default=UserRoles.admin)
     full_name: Optional[str] = Field(default="")
-    password: str = Field(min_length=8, max_length=40)
+    password: SecretStr = Field(min_length=8, max_length=40)
     # Email is the main identifier
     username: Optional[str] = Field(default="")
     bio: Optional[str] = Field(default="")

@@ -195,7 +195,7 @@ class ApiDb:
         bot = BotTable(
             pair="BTCUSDT",
             balance_size_to_use="1",
-            balance_to_use=1,
+            fiat="USDC",
             base_order_size=15,
             deal_id=deal.id,
             cooldown=0,

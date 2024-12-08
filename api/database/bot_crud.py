@@ -3,14 +3,11 @@ from typing import List
 from fastapi import Query
 from sqlmodel import Session, asc, desc, or_, select, case
 from time import time
-from deals.controllers import CreateDealController
 from bots.schemas import BotSchema
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 from database.utils import independent_session
-from deals.models import DealModel
-from tools.enum_definitions import BinbotEnums, Status, Strategy
-from psycopg.types.json import Json
+from tools.enum_definitions import BinbotEnums, Status
 
 
 class BotTableCrud:
@@ -48,7 +45,7 @@ class BotTableCrud:
         if bot_id:
             bot_object: BotTable | BotSchema = self.session.get(BotTable, bot_id)
         elif not bot:
-            raise ValueError("Bot id or bot BotSchema object is required")
+            raise ValueError("Bot id or BotSchema | BotTable object is required")
 
         bot_object = bot
 
@@ -59,6 +56,8 @@ class BotTableCrud:
             current_logs.append(log_message)
 
         bot_object.logs = json.dumps(current_logs)
+
+        # db operations
         self.session.add(bot_object)
         self.session.commit()
         self.session.close()
@@ -66,7 +65,7 @@ class BotTableCrud:
 
     def get(
         self,
-        status,
+        status: Status | None = None,
         start_date: float | None = None,
         end_date: float | None = None,
         no_cooldown=False,
@@ -83,10 +82,8 @@ class BotTableCrud:
         """
         statement = select(BotTable)
 
-        if status in BinbotEnums.statuses:
+        if status and status in BinbotEnums.statuses:
             statement.where(BotTable.status == status)
-        else:
-            raise ValueError("Invalid status")
 
         if start_date:
             statement.where(BotTable.created_at >= start_date)
@@ -128,23 +125,35 @@ class BotTableCrud:
 
         return bots
 
-    def get_one(self, bot_id: str | None = None, symbol: str | None = None):
+    def get_one(
+        self,
+        bot_id: str | None = None,
+        symbol: str | None = None,
+        status: Status | None = None,
+    ):
         """
         Get one bot by id or symbol
         """
         if bot_id:
             bot = self.session.get(BotTable, bot_id)
         elif symbol:
-            bot = self.session.exec(
-                select(BotTable).where(BotTable.pair == symbol)
-            ).first()
+            if status:
+                bot = self.session.exec(
+                    select(BotTable).where(
+                        BotTable.pair == symbol, BotTable.status == status
+                    )
+                ).first()
+            else:
+                bot = self.session.exec(
+                    select(BotTable).where(BotTable.pair == symbol)
+                ).first()
         else:
             raise ValueError("Invalid bot id or symbol")
 
         self.session.close()
         return bot
 
-    def create(self, data: BotSchema):
+    def create(self, data: BotTable) -> BotTable:
         """
         Create a new bot
 
@@ -154,11 +163,11 @@ class BotTableCrud:
         bot = BotTable.model_validate(data)
         # Ensure values are reset
         bot.orders = []
-        bot.logs = Json([])
+        bot.logs = []
         bot.created_at = time() * 1000
         bot.updated_at = time() * 1000
         bot.status = Status.inactive
-        bot.deal = DealModel()
+        bot.deal = DealTable()
 
         # db operations
         self.session.add(bot)
@@ -166,13 +175,16 @@ class BotTableCrud:
         self.session.close()
         return bot
 
-    def edit(self, id: str, data: BotSchema):
+    def save(self, data: BotTable):
         """
-        Edit a bot
+        Save bot
+
+        This can be an edit of an entire object
+        or just a few fields
         """
-        bot = self.session.get(BotTable, id)
+        bot = self.session.get(BotTable, data.id)
         if not bot:
-            return bot
+            raise ValueError("Bot not found")
 
         # double check orders and deal are not overwritten
         dumped_bot = data.model_dump(exclude_unset=True)
@@ -197,7 +209,8 @@ class BotTableCrud:
 
     def update_status(self, bot: BotTable, status: Status) -> BotTable:
         """
-        Activate a bot by opening a deal
+        Mostly as a replacement of the previous "activate" and "deactivate"
+        although any Status can be passed now
         """
         bot.status = status
         # db operations
@@ -211,6 +224,8 @@ class BotTableCrud:
     def get_active_pairs(self):
         """
         Get all active pairs
+
+        a replacement of the previous "distinct pairs" query
         """
         statement = select(BotTable.pair).where(BotTable.status == Status.active)
         pairs = self.session.exec(statement).all()

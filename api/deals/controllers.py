@@ -6,15 +6,13 @@ from orders.controller import OrderController
 from bots.schemas import BotSchema
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
-from deals.models import BinanceOrderModel
-from pymongo import ReturnDocument
-from tools.enum_definitions import DealType, Status, Strategy
+from deals.models import BinanceOrderModel, DealModel
+from tools.enum_definitions import DealType, OrderSide, Status, Strategy
 from tools.exceptions import TakeProfitError
 from tools.handle_error import (
-    encode_json,
     handle_binance_errors,
 )
-from tools.round_numbers import round_numbers
+from tools.round_numbers import round_numbers, supress_notation
 
 
 class CreateDealController(BaseDeal):
@@ -46,7 +44,7 @@ class CreateDealController(BaseDeal):
         self.active_bot = bot
         self.db_table = db_table
 
-    def compute_qty(self, pair):
+    def compute_qty(self, pair: str) -> float | None:
         """
         Helper function to compute buy_price.
         Previous qty = bot.deal["buy_total_qty"]
@@ -58,6 +56,72 @@ class CreateDealController(BaseDeal):
             return None
         qty = round_numbers(balance[0], self.qty_precision)
         return qty
+
+    def base_order(self):
+        """
+        Required initial order to trigger long strategy bot.
+        Other orders require this to execute,
+        therefore should fail if not successful
+
+        1. Initial base purchase
+        2. Set take_profit
+        """
+
+        # Long position does not need qty in take_profit
+        # initial price with 1 qty should return first match
+        price = float(self.matching_engine(self.active_bot.pair, True))
+        qty = round_numbers(
+            (float(self.active_bot.base_order_size) / float(price)),
+            self.qty_precision,
+        )
+        # setup stop_loss_price
+        stop_loss_price = 0
+        if float(self.active_bot.stop_loss) > 0:
+            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
+
+        if self.controller == PaperTradingTableCrud:
+            res = self.simulate_order(
+                self.active_bot.pair,
+                OrderSide.buy,
+            )
+        else:
+            res = self.buy_order(
+                symbol=self.active_bot.pair,
+                qty=qty,
+                price=supress_notation(price, self.price_precision),
+            )
+
+        order_data = BinanceOrderModel(
+            timestamp=res["transactTime"],
+            order_id=res["orderId"],
+            deal_type=DealType.base_order,
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=res["price"],
+            qty=res["origQty"],
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
+
+        self.active_bot.orders.append(order_data)
+        tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
+
+        self.active_bot.deal = DealModel(
+            buy_timestamp=res["transactTime"],
+            buy_price=res["price"],
+            buy_total_qty=res["origQty"],
+            current_price=res["price"],
+            take_profit_price=tp_price,
+            stop_loss_price=stop_loss_price,
+        )
+
+        # Activate bot
+        document = self.open_deal(self.active_bot)
+        # do this after db operations in case there is rollback
+        # avoids sending unnecessary signals
+        self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
+        return document
 
     def take_profit_order(self) -> BotSchema:
         """
@@ -79,22 +143,7 @@ class CreateDealController(BaseDeal):
         price = round_numbers(price, self.price_precision)
 
         if self.db_table == "paper_trading":
-            res = self.simulate_order(self.active_bot.pair, qty, "SELL")
-            if price:
-                res = self.simulate_order(
-                    self.active_bot.pair,
-                    qty,
-                    "SELL",
-                )
-            else:
-                price = (1 + (float(self.active_bot.take_profit) / 100)) * float(
-                    deal_buy_price
-                )
-                res = self.simulate_order(
-                    self.active_bot.pair,
-                    qty,
-                    "SELL",
-                )
+            res = self.simulate_order(self.active_bot.pair, OrderSide.sell)
         else:
             qty = round_numbers(qty, self.qty_precision)
             price = round_numbers(price, self.price_precision)
@@ -127,23 +176,9 @@ class CreateDealController(BaseDeal):
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
         self.active_bot.status = Status.completed
-        msg = "Completed take profit"
-        self.active_bot.errors.append(msg)
 
-        try:
-            bot = encode_json(self.active_bot)
-            if "_id" in bot:
-                bot.pop("_id")
-
-            bot = self.db_collection.find_one_and_update(
-                {"id": self.active_bot.id},
-                {
-                    "$set": bot,
-                },
-                return_document=ReturnDocument.AFTER,
-            )
-        except Exception as error:
-            raise TakeProfitError(error)
+        bot = self.controller.save(self.active_bot)
+        self.controller.update_logs("Completed take profit", self.active_bot)
 
         return bot
 
@@ -160,7 +195,7 @@ class CreateDealController(BaseDeal):
         if len(orders) > 0:
             for d in orders:
                 if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
-                    self.update_deal_logs(
+                    self.controller.update_logs(
                         "Failed to close all active orders (status NEW), retrying...",
                         self.active_bot,
                     )
@@ -178,7 +213,7 @@ class CreateDealController(BaseDeal):
 
         return
 
-    def update_take_profit(self, order_id) -> None:
+    def update_take_profit(self, order_id: int) -> BotTable:
         """
         Update take profit after websocket order endpoint triggered
         - Close current opened take profit order
@@ -187,9 +222,7 @@ class CreateDealController(BaseDeal):
         """
         bot = self.active_bot
         if bot.deal:
-            find_base_order = next(
-                (order.order_id == order_id for order in bot.orders), None
-            )
+            find_base_order = next((order.id == order_id for order in bot.orders), None)
             if find_base_order:
                 so_deal_price = bot.deal.buy_price
                 # Create new take profit order
@@ -237,25 +270,27 @@ class CreateDealController(BaseDeal):
                 new_deals.append(take_profit_order)
                 self.active_bot.orders = new_deals
                 self.active_bot.total_commission = total_commission
-                self.active_bot.errors.append("take_profit deal successfully updated")
-                self.db.bots.update_one(
-                    {"id": self.active_bot.id},
-                    {"$set": self.active_bot.model_dump()},
-                )
-                return
+                self.controller.save(self.active_bot)
+                self.controller.update_logs("take_profit deal successfully updated")
+                return self.active_bot
         else:
-            self.update_deal_logs(
+            self.controller.update_logs(
                 "Error: Bot does not contain a base order deal", self.active_bot
             )
+            raise ValueError("Bot does not contain a base order deal")
 
-    def open_deal(self) -> None:
+    def open_deal(self) -> BotTable:
         """
-        Mandatory deals section
+        Bot activation requires:
 
-        - If base order deal is not executed, bot is not activated
+        1. Opening a new deal, which entails opening orders
+        2. Updating stop loss and take profit
+        3. Updating trailling
+        4. Save in db
+
+        - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
         """
 
-        # If there is already a base order do not execute
         base_order_deal = next(
             (
                 bo_deal
@@ -272,7 +307,7 @@ class CreateDealController(BaseDeal):
                 ).margin_short_base_order()
             else:
                 bot = self.base_order()
-                self.active_bot = BotSchema(**bot)
+                self.active_bot = BotTable.model_validate(bot)
 
         """
         Optional deals section
@@ -282,10 +317,14 @@ class CreateDealController(BaseDeal):
 
         # Update stop loss regarless of base order
         if float(self.active_bot.stop_loss) > 0:
-            if self.active_bot.strategy == Strategy.margin_short:
-                self.active_bot = MarginDeal(
-                    bot=self.active_bot, db_collection_name=self.db_table
-                ).set_margin_short_stop_loss()
+            if (
+                self.active_bot.strategy == Strategy.margin_short
+                and self.active_bot.stop_loss > 0
+            ):
+                price = self.active_bot.deal.margin_short_sell_price
+                self.active_bot.deal.stop_loss_price = price + (
+                    price * (float(self.active_bot.stop_loss) / 100)
+                )
             else:
                 buy_price = float(self.active_bot.deal.buy_price)
                 stop_loss_price = buy_price - (
@@ -297,16 +336,19 @@ class CreateDealController(BaseDeal):
 
         # Margin short Take profit
         if (
-            float(self.active_bot.take_profit) > 0
+            self.active_bot.take_profit > 0
             and self.active_bot.strategy == Strategy.margin_short
         ):
-            self.active_bot = MarginDeal(
-                bot=self.active_bot, db_collection_name=self.db_collection.name
-            ).set_margin_take_profit()
+            if self.active_bot.take_profit:
+                price = float(self.active_bot.deal.margin_short_sell_price)
+                take_profit_price = price - (
+                    price * (self.active_bot.take_profit) / 100
+                )
+                self.active_bot.deal.take_profit_price = take_profit_price
 
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
         # if we don't do this, the trailling stop loss will trigger
-        if self.active_bot.deal and (
+        if (
             self.active_bot.deal.trailling_stop_loss_price > 0
             or self.active_bot.deal.trailling_stop_loss_price
             < self.active_bot.deal.buy_price
@@ -319,9 +361,6 @@ class CreateDealController(BaseDeal):
             self.active_bot.deal.trailling_stop_loss_price = 0
 
         self.active_bot.status = Status.active
-        bot = self.active_bot.model_dump()
-        if "_id" in bot:
-            bot.pop("_id")
-
-        self.db_collection.update_one({"id": self.active_bot.id}, {"$set": bot})
-        return
+        bot = self.controller.save(self.active_bot)
+        self.controller.update_logs("Bot activated", bot)
+        return bot
