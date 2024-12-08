@@ -1,9 +1,10 @@
 from time import time
 
-from sqlmodel import Session
+from sqlmodel import Session, or_, select, case, desc, asc
+from database.models.deal_table import DealTable
 from database.models.paper_trading_table import PaperTradingTable
 from database.utils import independent_session
-from tools.enum_definitions import Status
+from tools.enum_definitions import BinbotEnums, Status
 
 
 class PaperTradingTableCrud:
@@ -48,30 +49,115 @@ class PaperTradingTableCrud:
         self.session.close()
         return True
 
-    def get(self, id: str) -> PaperTradingTable:
+    def get(
+        self,
+        status: Status | None = None,
+        start_date: float | None = None,
+        end_date: float | None = None,
+        no_cooldown=False,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> PaperTradingTable:
         """
-        Get a paper trading account by id
+        Get all bots in the db except archived
+        Args:
+        - status: Status enum
+        - start_date and end_date are timestamps in milliseconds
+        - no_cooldown: bool - filter out bots that are in cooldown
+        - limit and offset for pagination
         """
-        paper_trading = self.session.get(PaperTradingTable, id)
-        self.session.close()
-        return paper_trading
+        statement = select(PaperTradingTable)
 
-    def activate(self, paper_trading: PaperTradingTable) -> PaperTradingTable:
+        if status and status in BinbotEnums.statuses:
+            statement.where(PaperTradingTable.status == status)
+
+        if start_date:
+            statement.where(PaperTradingTable.created_at >= start_date)
+
+        if end_date:
+            statement.where(PaperTradingTable.created_at <= end_date)
+
+        if status and no_cooldown:
+            current_timestamp = time()
+            cooldown_condition = cooldown_condition = or_(
+                PaperTradingTable.status == status,
+                case(
+                    (
+                        (DealTable.sell_timestamp > 0),
+                        current_timestamp - DealTable.sell_timestamp
+                        < (PaperTradingTable.cooldown * 1000),
+                    ),
+                    else_=(
+                        current_timestamp - PaperTradingTable.created_at
+                        < (PaperTradingTable.cooldown * 1000)
+                    ),
+                ),
+            )
+
+            statement.where(cooldown_condition)
+
+        # sorting
+        statement.order_by(
+            desc(PaperTradingTable.created_at),
+            case((PaperTradingTable.status == Status.active, 1), else_=2),
+            asc(PaperTradingTable.pair),
+        )
+
+        # pagination
+        statement.limit(limit).offset(offset)
+
+        bots = self.session.exec(statement).all()
+        self.session.close()
+
+        return bots
+
+    def update_status(
+        self, paper_trading: PaperTradingTable, status: Status
+    ) -> PaperTradingTable:
         """
         Activate a paper trading account
         """
-        paper_trading.status = Status.active
+        paper_trading.status = status
         self.session.add(paper_trading)
         self.session.commit()
         self.session.close()
         return paper_trading
 
-    def deactivate(self, paper_trading: PaperTradingTable) -> PaperTradingTable:
+    def get_one(
+        self,
+        bot_id: str | None = None,
+        symbol: str | None = None,
+        status: Status | None = None,
+    ):
         """
-        Deactivate a paper trading account
+        Get one bot by id or symbol
         """
-        paper_trading.status = Status.inactive
-        self.session.add(paper_trading)
-        self.session.commit()
+        if bot_id:
+            bot = self.session.get(PaperTradingTable, bot_id)
+        elif symbol:
+            if status:
+                bot = self.session.exec(
+                    select(PaperTradingTable).where(
+                        PaperTradingTable.pair == symbol,
+                        PaperTradingTable.status == status,
+                    )
+                ).first()
+            else:
+                bot = self.session.exec(
+                    select(PaperTradingTable).where(PaperTradingTable.pair == symbol)
+                ).first()
+        else:
+            raise ValueError("Invalid bot id or symbol")
+
         self.session.close()
-        return paper_trading
+        return bot
+
+    def get_active_pairs(self):
+        """
+        Get all active bots
+        """
+        bots = self.session.exec(
+            select(PaperTradingTable).where(PaperTradingTable.status == Status.active)
+        ).all()
+        self.session.close()
+        return bots
