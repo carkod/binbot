@@ -21,7 +21,7 @@
     "bootstrap": "5.2.2",
     "chart.js": "^4.4.4",
     "moment": "^2.29.1",
-    "nanoid": "^4.0.0",
+    "nanoid": "^5.0.9",
     "plotly": "^1.0.6",
     "plotly.js": "^2.35.2",
     "react": "^18.2.0",
