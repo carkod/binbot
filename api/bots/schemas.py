@@ -22,13 +22,17 @@ class BotSchema(BaseModel):
     fiat: str = "USDC"
     balance_to_use: str = "USDC"
     base_order_size: float | int = 15  # Min Binance 0.0001 BNB
-    candlestick_interval: BinanceKlineIntervals = Field(default=BinanceKlineIntervals.fifteen_minutes)
+    candlestick_interval: BinanceKlineIntervals = Field(
+        default=BinanceKlineIntervals.fifteen_minutes
+    )
     close_condition: CloseConditions = Field(default=CloseConditions.dynamic_trailling)
     # cooldown period in minutes before opening next bot with same pair
     cooldown: int = 0
     deal: DealModel = Field(default_factory=DealModel)
     dynamic_trailling: bool = False
-    errors: list[str] = []  # Event logs
+    logs: list[str] = []
+    # to depricate in new db
+    errors: list[str] = []
     # to deprecate in new db
     locked_so_funds: Optional[float] = 0  # funds locked by Safety orders
     mode: str = "manual"
@@ -89,7 +93,9 @@ class BotSchema(BaseModel):
         assert v != "", "Empty pair field."
         return v
 
-    @field_validator("balance_size_to_use", "base_order_size", "base_order_size", mode="before")
+    @field_validator(
+        "balance_size_to_use", "base_order_size", "base_order_size", mode="before"
+    )
     @classmethod
     def countables(cls, v):
         if isinstance(v, float):
@@ -102,7 +108,11 @@ class BotSchema(BaseModel):
             raise ValueError(f"{v} must be a number (float, int or string)")
 
     @field_validator(
-        "stop_loss", "take_profit", "trailling_deviation", "trailling_profit", mode="before"
+        "stop_loss",
+        "take_profit",
+        "trailling_deviation",
+        "trailling_profit",
+        mode="before",
     )
     @classmethod
     def check_percentage(cls, v):
