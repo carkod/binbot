@@ -1,62 +1,62 @@
 import json
 import logging
 import typing
-
+from kafka import KafkaConsumer
+from database.models.bot_table import BotTable
+from database.models.paper_trading_table import PaperTradingTable
+from database.paper_trading_crud import PaperTradingTableCrud
+from database.bot_crud import BotTableCrud
+from deals.controllers import CreateDealController
 from tools.round_numbers import round_numbers
 from streaming.models import SignalsConsumer
-from bots.schemas import BotSchema
 from autotrade.controller import AutotradeSettingsController
-from bots.controllers import Bot
 from tools.enum_definitions import Status, Strategy
-from database.db import Database
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from tools.exceptions import BinanceErrors
 
 
-class BaseStreaming(Database):
-    def get_current_bot(self, symbol):
-        current_bot = Bot(collection_name="bots").get_one(
-            symbol=symbol, status=Status.active
-        )
+class BaseStreaming:
+    def __init__(self) -> None:
+        self.bot_controller = BotTableCrud()
+        self.paper_trading_controller = PaperTradingTableCrud()
+
+    def get_current_bot(self, symbol: str) -> BotTable:
+        current_bot = self.bot_controller.get_one(symbol=symbol, status=Status.active)
         return current_bot
 
-    def get_current_test_bot(self, symbol):
-        current_test_bot = Bot(collection_name="paper_trading").get_one(
+    def get_current_test_bot(self, symbol: str) -> PaperTradingTable:
+        current_test_bot = self.paper_trading_controller.get_one(
             symbol=symbol, status=Status.active
         )
-        current_test_bot = current_test_bot
         return current_test_bot
 
 
 class StreamingController(BaseStreaming):
-    def __init__(self, consumer):
+    def __init__(self, consumer: KafkaConsumer) -> None:
         super().__init__()
-        self.streaming_db = self._db
         # Gets any signal to restart streaming
         self.consumer = consumer
         self.autotrade_controller = AutotradeSettingsController()
         self.load_data_on_start()
 
-    def load_data_on_start(self):
+    def load_data_on_start(self) -> None:
         """
         New function to replace get_klines without websockets
         """
         # Load real bot settings
-        bot_controller = Bot(collection_name="bots")
-        self.list_bots = bot_controller.get_active_pairs()
+        self.list_bots = self.bot_controller.get_active_pairs()
         # Load paper trading bot settings
-        paper_trading_controller_paper = Bot(collection_name="paper_trading")
-        self.list_paper_trading_bots = paper_trading_controller_paper.get_active_pairs()
+        self.list_paper_trading_bots = self.paper_trading_controller.get_active_pairs()
         return
 
     def execute_strategies(
         self,
-        current_bot,
+        current_bot: BotTable | PaperTradingTable,
         close_price: str,
         open_price: str,
-        db_collection_name,
-    ):
+        create_deal_controller: CreateDealController,
+    ) -> None:
         """
         Processes the deal market websocket price updates
 
@@ -69,44 +69,24 @@ class StreamingController(BaseStreaming):
             except Exception:
                 print(current_bot["orders"][0]["order_id"])
                 pass
-        try:
-            active_bot = BotSchema(**current_bot)
-            pass
-        except Exception as error:
-            logging.info(error)
-            return
+
+        active_bot = BotTable.model_validate(current_bot)
+
         # Margin short
         if active_bot.strategy == Strategy.margin_short:
-            margin_deal = MarginDeal(active_bot, db_collection_name)
-            try:
-                margin_deal.streaming_updates(close_price)
-            except BinanceErrors as error:
-                if error.code in (-2010, -1013):
-                    margin_deal.update_deal_logs(error.message, active_bot)
-            except Exception as error:
-                logging.info(error)
-                margin_deal.update_deal_logs(error, active_bot)
-                pass
+            margin_deal = MarginDeal(active_bot, create_deal_controller.controller)
+            margin_deal.streaming_updates(close_price)
 
         else:
             # Long strategy starts
             if active_bot.strategy == Strategy.long:
-                spot_long_deal = SpotLongDeal(active_bot, db_collection_name)
-                try:
-                    spot_long_deal.streaming_updates(close_price, open_price)
-                except BinanceErrors as error:
-                    if error.code in (-2010, -1013):
-                        spot_long_deal.update_deal_logs(error.message, active_bot)
-                        active_bot.status = Status.error
-                        active_bot = self.save_bot_streaming(active_bot)
-                except Exception as error:
-                    logging.info(error)
-                    spot_long_deal.update_deal_logs(error, active_bot)
-                    pass
-
+                spot_long_deal = SpotLongDeal(
+                    active_bot, create_deal_controller.controller
+                )
+                spot_long_deal.streaming_updates(close_price, open_price)
         pass
 
-    def process_klines(self, message):
+    def process_klines(self, message: str) -> None:
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
@@ -121,46 +101,57 @@ class StreamingController(BaseStreaming):
         # temporary test that we get enough streaming update signals
         logging.info(f"Streaming update for {symbol}")
 
-        if current_bot:
-            self.execute_strategies(
-                current_bot,
-                close_price,
-                open_price,
-                "bots",
-            )
-        if current_test_bot:
-            self.execute_strategies(
-                current_test_bot,
-                close_price,
-                open_price,
-                "paper_trading",
-            )
+        try:
+            if current_bot:
+                create_deal_controller = CreateDealController(
+                    bot=current_bot, controller=BotTableCrud
+                )
+                self.execute_strategies(
+                    current_bot,
+                    close_price,
+                    open_price,
+                    create_deal_controller,
+                )
+            if current_test_bot:
+                create_deal_controller = CreateDealController(
+                    bot=current_bot, controller=BotTableCrud
+                )
+                self.execute_strategies(
+                    current_test_bot,
+                    close_price,
+                    open_price,
+                    create_deal_controller,
+                )
+        except BinanceErrors as error:
+            if error.code in (-2010, -1013):
+                bot = current_bot if current_bot else current_test_bot
+                create_deal_controller.controller.update_logs(error.message, bot)
+                bot.status = Status.error
+                create_deal_controller.controller.save(bot)
 
         return
 
 
 class BbspreadsUpdater(BaseStreaming):
-    def __init__(self):
-        self.current_bot: BotSchema | None = None
-        self.current_test_bot: BotSchema | None = None
+    def __init__(self) -> None:
+        self.current_bot: BotTable | None = None
+        self.current_test_bot: PaperTradingTable | None = None
 
-    def load_current_bots(self, symbol):
+    def load_current_bots(self, symbol: str) -> None:
         current_bot_payload = self.get_current_bot(symbol)
         if current_bot_payload:
-            self.current_bot = BotSchema(**current_bot_payload)
+            self.current_bot = BotTable.model_validate(current_bot_payload)
 
         current_test_bot_payload = self.get_current_test_bot(symbol)
         if current_test_bot_payload:
-            self.current_test_bot = BotSchema(**current_test_bot_payload)
-
-    def reactivate_bot(self, bot: BotSchema, collection_name="bots"):
-        bot_instance = Bot(collection_name=collection_name)
-        activated_bot = bot_instance.activate(bot)
-        return activated_bot
+            self.current_test_bot = BotTable(**current_test_bot_payload)
 
     def update_bots_parameters(
-        self, bot: BotSchema, bb_spreads, collection_name="bots"
-    ):
+        self,
+        bot: BotTable,
+        bb_spreads: dict,
+        create_deal_controller: CreateDealController,
+    ) -> None:
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
             (
@@ -207,7 +198,7 @@ class BbspreadsUpdater(BaseStreaming):
                     # too much risk, reduce stop loss
                     bot.trailling_deviation = bottom_spread
                     # reactivate includes saving
-                    self.reactivate_bot(bot, collection_name=collection_name)
+                    create_deal_controller.open_deal(bot)
 
                 # No need to continue
                 # Bots can only be either long or short
@@ -222,7 +213,7 @@ class BbspreadsUpdater(BaseStreaming):
                 if bot.trailling_deviation > bottom_spread:
                     bot.trailling_deviation = top_spread
                     # reactivate includes saving
-                    self.reactivate_bot(bot, collection_name=collection_name)
+                    create_deal_controller.open_deal(bot)
 
     # To find a better interface for bb_xx once mature
     @typing.no_type_check
@@ -233,7 +224,7 @@ class BbspreadsUpdater(BaseStreaming):
         dynamic movements in the market
         """
         data = json.loads(message)
-        signalsData = SignalsConsumer(**data)
+        signalsData = SignalsConsumer.model_validate(data)
 
         # Check if it matches any active bots
         self.load_current_bots(signalsData.symbol)
@@ -249,8 +240,20 @@ class BbspreadsUpdater(BaseStreaming):
             and bb_spreads["bb_mid"]
         ):
             if self.current_bot:
-                self.update_bots_parameters(self.current_bot, bb_spreads)
-            if self.current_test_bot:
+                create_deal_controller = CreateDealController(
+                    bot=self.current_bot, controller=BotTableCrud
+                )
                 self.update_bots_parameters(
-                    self.current_test_bot, bb_spreads, collection_name="paper_trading"
+                    self.current_bot,
+                    bb_spreads,
+                    create_deal_controller=create_deal_controller,
+                )
+            if self.current_test_bot:
+                create_deal_controller = CreateDealController(
+                    bot=self.current_test_bot, controller=PaperTradingTableCrud
+                )
+                self.update_bots_parameters(
+                    self.current_test_bot,
+                    bb_spreads,
+                    create_deal_controller=create_deal_controller,
                 )

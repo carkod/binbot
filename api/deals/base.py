@@ -1,20 +1,19 @@
 from typing import Tuple
-import uuid
-from time import time
-from pymongo import ReturnDocument
 from datetime import datetime
+from database.bot_crud import BotTableCrud
+from database.paper_trading_crud import PaperTradingTableCrud
+from database.models.bot_table import BotTable
 from deals.models import BinanceOrderModel, DealModel
 from orders.controller import OrderController
-from bots.schemas import BotSchema
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
-from tools.handle_error import encode_json
 from tools.exceptions import (
     BinanceErrors,
     DealCreationError,
     InsufficientBalance,
     MarginLoanNotFound,
 )
-from tools.enum_definitions import DealType, Status, Strategy
+from tools.enum_definitions import DealType, OrderSide, Status, Strategy
+from base_producer import BaseProducer
 
 
 # To be removed one day en commission endpoint found that provides this value
@@ -31,15 +30,14 @@ class BaseDeal(OrderController):
     self.symbol is always the same.
     """
 
-    def __init__(self, bot, db_collection_name):
-        if not isinstance(bot, BotSchema):
-            self.active_bot = BotSchema(**bot)
-        else:
-            self.active_bot = bot
-        self.db_collection = self._db[db_collection_name]
-        self.market_domination_reversal = None
+    def __init__(self, bot: BotTable, controller: PaperTradingTableCrud | BotTableCrud):
+        self.active_bot = bot
+        self.controller: PaperTradingTableCrud | BotTableCrud = controller()
+        self.market_domination_reversal: bool | None = None
         self.price_precision = self.calculate_price_precision(bot.pair)
         self.qty_precision = self.calculate_qty_precision(bot.pair)
+        self.base_producer = BaseProducer()
+        self.producer = self.base_producer.start_producer()
 
         if self.active_bot.strategy == Strategy.margin_short:
             self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
@@ -50,13 +48,9 @@ class BaseDeal(OrderController):
         """
         return f"BaseDeal({self.__dict__})"
 
-    def generate_id(self):
-        return uuid.uuid4()
-
     def compute_qty(self, pair):
         """
         Helper function to compute buy_price.
-        Previous qty = bot.deal["buy_total_qty"]
         """
 
         asset = self.find_baseAsset(pair)
@@ -101,50 +95,6 @@ class BaseDeal(OrderController):
 
         return qty, free
 
-    def simulate_order(self, pair, qty, side):
-        """
-        Price is determined by market
-        to help trigger the order immediately
-        """
-        price = float(self.matching_engine(pair, True, qty))
-        order = {
-            "symbol": pair,
-            "orderId": self.generate_id().int,
-            "orderListId": -1,
-            "clientOrderId": self.generate_id().hex,
-            "transactTime": time() * 1000,
-            "price": price,
-            "origQty": qty,
-            "executedQty": qty,
-            "cummulativeQuoteQty": qty,
-            "status": "FILLED",
-            "timeInForce": "GTC",
-            "type": "LIMIT",
-            "side": side,
-            "fills": [],
-        }
-        return order
-
-    def simulate_response_order(self, pair, qty, side):
-        price = float(self.matching_engine(pair, True, qty))
-        response_order = {
-            "symbol": pair,
-            "orderId": self.generate_id().int,
-            "orderListId": -1,
-            "clientOrderId": self.generate_id().hex,
-            "transactTime": time() * 1000,
-            "price": price,
-            "origQty": qty,
-            "executedQty": qty,
-            "cummulativeQuoteQty": qty,
-            "status": "FILLED",
-            "timeInForce": "GTC",
-            "type": "LIMIT",
-            "side": side,
-            "fills": [],
-        }
-        return response_order
-
     def replace_order(self, cancel_order_id):
         payload = {
             "symbol": self.active_bot.pair,
@@ -175,9 +125,9 @@ class BaseDeal(OrderController):
                     payload={"symbol": symbol, "orderId": order["orderId"]},
                 )
                 for order in self.active_bot.orders:
-                    if order.order_id == order["orderId"]:
+                    if order.id == order["orderId"]:
                         self.active_bot.orders.remove(order)
-                        self.active_bot.errors.append(
+                        self.controller.update_logs(
                             "base_order not executed, therefore cancelled"
                         )
                         self.active_bot.status = Status.error
@@ -204,88 +154,13 @@ class BaseDeal(OrderController):
 
         return None
 
-    def base_order(self):
-        """
-        Required initial order to trigger long strategy bot.
-        Other orders require this to execute,
-        therefore should fail if not successful
-
-        1. Initial base purchase
-        2. Set take_profit
-        """
-
-        # Long position does not need qty in take_profit
-        # initial price with 1 qty should return first match
-        price = float(self.matching_engine(self.active_bot.pair, True))
-        qty = round_numbers(
-            (float(self.active_bot.base_order_size) / float(price)),
-            self.qty_precision,
-        )
-        # setup stop_loss_price
-        stop_loss_price: float = 0
-        if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
-
-        if self.db_collection.name == "paper_trading":
-            res = self.simulate_order(
-                self.active_bot.pair,
-                qty,
-                "BUY",
-            )
-        else:
-            res = self.buy_order(
-                symbol=self.active_bot.pair,
-                qty=qty,
-                price=supress_notation(price, self.price_precision),
-            )
-
-        order_data = BinanceOrderModel(
-            timestamp=res["transactTime"],
-            order_id=res["orderId"],
-            deal_type=DealType.base_order,
-            pair=res["symbol"],
-            order_side=res["side"],
-            order_type=res["type"],
-            price=res["price"],
-            qty=res["origQty"],
-            time_in_force=res["timeInForce"],
-            status=res["status"],
-        )
-
-        self.active_bot.orders.append(order_data)
-        tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
-
-        self.active_bot.deal = DealModel(
-            buy_timestamp=res["transactTime"],
-            buy_price=res["price"],
-            buy_total_qty=res["origQty"],
-            current_price=res["price"],
-            take_profit_price=tp_price,
-            stop_loss_price=stop_loss_price,
-        )
-
-        # Activate bot
-        self.active_bot.status = Status.active
-
-        bot = encode_json(self.active_bot)
-        if "_id" in bot:
-            bot.pop("_id")  # _id is what causes conflict not id
-
-        document = self.db_collection.find_one_and_update(
-            {"id": self.active_bot.id},
-            {"$set": bot},
-            return_document=ReturnDocument.AFTER,
-        )
-
-        return document
-
     def margin_liquidation(self, pair: str):
         """
         Emulate Binance Dashboard One click liquidation function
 
         Args:
         - pair: a.k.a symbol, quote asset + base asset
-        - qty_precision: to round numbers for Binance API. Passed optionally to
+        - qty_precision: to round numbers for Binance  Passed optionally to
         reduce number of requests to avoid rate limit.
         """
         self.isolated_balance = self.get_isolated_balance(pair)
