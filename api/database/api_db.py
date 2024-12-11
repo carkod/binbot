@@ -1,15 +1,12 @@
 import logging
 import os
 
-from database.models import (
-    BotTable,
-    DealTable,
-    ExchangeOrderTable,
-    UserTable,
-    PaperTradingTable,
-)
 from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
-from sqlalchemy import create_engine
+from database.models.deal_table import DealTable
+from database.models.order_table import ExchangeOrderTable
+from database.models.paper_trading_table import PaperTradingTable
+from database.models.user_table import UserTable
+from database.models.bot_table import BotTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
@@ -21,19 +18,10 @@ from tools.enum_definitions import (
 )
 from alembic.config import Config
 from alembic import command
-
-# This allows testing/Github action dummy envs
-db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@{os.getenv("POSTGRES_HOSTNAME", "localhost")}:{os.getenv("POSTGRES_PORT", 5432)}/{os.getenv("POSTGRES_DB", "postgres")}'
-engine = create_engine(
-    url=db_url,
-)
-
+from database.utils import engine
 
 class ApiDb:
     def __init__(self):
-        self.engine = create_engine(
-            url=db_url,
-        )
         self.session = Session(engine)
         pass
 

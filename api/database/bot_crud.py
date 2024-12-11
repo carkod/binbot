@@ -1,5 +1,6 @@
 import json
 from typing import List
+from uuid import UUID
 from fastapi import Query
 from sqlmodel import Session, asc, desc, or_, select, case
 from time import time
@@ -43,7 +44,7 @@ class BotTableCrud:
         Either id or bot has to be passed
         """
         if bot_id:
-            bot_object: BotTable | BotSchema = self.session.get(BotTable, bot_id)
+            bot_object: BotTable = self.session.get(BotTable, bot_id)
         elif not bot:
             raise ValueError("Bot id or BotSchema | BotTable object is required")
 
@@ -135,7 +136,7 @@ class BotTableCrud:
         Get one bot by id or symbol
         """
         if bot_id:
-            bot = self.session.get(BotTable, bot_id)
+            bot = self.session.get(BotTable, UUID(bot_id))
         elif symbol:
             if status:
                 bot = self.session.exec(
@@ -164,8 +165,6 @@ class BotTableCrud:
         # Ensure values are reset
         bot.orders = []
         bot.logs = []
-        bot.created_at = time() * 1000
-        bot.updated_at = time() * 1000
         bot.status = Status.inactive
         bot.deal = DealTable()
 

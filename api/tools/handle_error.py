@@ -2,6 +2,7 @@ import json
 import os
 import logging
 from time import sleep
+from typing import Literal, Optional, Union
 from bson import json_util
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -23,6 +24,27 @@ def post_error(msg):
     res = put(url=url, json={"system_logs": msg})
     handle_binance_errors(res)
     return
+
+
+def api_response(detail: str, data: Optional[BaseModel] = None, error: int = 0, status=200):
+    """
+    Custom Fast API response
+
+    Args:
+    - detail: the message of the response
+    - data: Pydantic model returned
+    """
+    body = {"message": detail}
+    if data:
+        body["data"] = jsonable_encoder(data)
+
+    if error:
+        body["error"] = str(error)
+
+    return JSONResponse(
+        status_code=status,
+        content=body,
+    )
 
 
 def json_response(content, status=200):

@@ -5,11 +5,15 @@ from database.bot_crud import BotTableCrud
 from deals.controllers import CreateDealController
 from database.models.bot_table import BotTable
 from database.utils import get_session
-from tools.handle_error import json_response, json_response_error, json_response_message
-from bots.schemas import BotSchema, BotListResponse, ErrorsRequestBody
+from tools.handle_error import (
+    api_response,
+    json_response,
+    json_response_error,
+    json_response_message,
+)
+from bots.schemas import BotResponse, BotListResponse, ErrorsRequestBody
 from typing import List
 from tools.exceptions import BinanceErrors, BinbotErrors
-from fastapi.encoders import jsonable_encoder
 
 
 bot_blueprint = APIRouter()
@@ -27,7 +31,7 @@ def get(
         bots = BotTableCrud(session=session).get(
             status, start_date, end_date, no_cooldown
         )
-        return json_response({"message": "Bots found!", "data": jsonable_encoder(bots)})
+        return api_response(detail="Bots found", data=bots)
     except ValidationError as error:
         return json_response_error(error.json())
 
@@ -38,7 +42,7 @@ def get_active_pairs(
 ):
     try:
         bot = BotTableCrud(session=session).get_active_pairs()
-        return json_response({"message": "Active pairs found!", "data": bot})
+        return api_response(detail="Active pairs found!", data=bot)
     except ValueError as error:
         return json_response_error(error)
 
@@ -48,9 +52,9 @@ def get_one_by_id(id: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=id, symbol=None)
         if not bot:
-            return json_response_error("Bot not found.")
+            return api_response(detail="Bot not found.", error=1)
         else:
-            return json_response({"message": "Bot found", "data": bot})
+            return api_response(detail="Bot found", data=bot)
     except ValidationError as error:
         return json_response_error(error.json())
 
@@ -62,27 +66,27 @@ def get_one_by_symbol(
 ):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=None, symbol=symbol)
-        return json_response({"message": "Bot found", "data": bot})
+        return api_response(detail="Bot found", data=bot)
     except ValidationError as error:
         return json_response_error(error.json())
 
 
-@bot_blueprint.post("/bot", tags=["bots"])
+@bot_blueprint.post("/bot", tags=["bots"], response_model=None)
 def create(
     bot_item: BotTable,
     session: Session = Depends(get_session),
 ):
     try:
         bot = BotTableCrud(session=session).create(bot_item)
-        return json_response({"message": "Bot created", "data": bot})
+        return bot
     except ValidationError as error:
-        return json_response_error(error.json())
+        return api_response(message=error.json(), error=1)
 
 
 @bot_blueprint.put("/bot/{id}", tags=["bots"])
 def edit(
     id: str,
-    bot_item: BotSchema,
+    bot_item: BotTable,
     session: Session = Depends(get_session),
 ):
     try:

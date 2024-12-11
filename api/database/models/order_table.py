@@ -1,12 +1,14 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 from pydantic import ValidationInfo, field_validator
 from sqlalchemy import Column, Enum
-from database.models.paper_trading_table import PaperTradingTable
-from database.models.bot_table import BotTable
 from tools.enum_definitions import DealType
 from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from database.models.bot_table import BotTable
+    from database.models.paper_trading_table import PaperTradingTable
 
 
 class ExchangeOrderTable(SQLModel, table=True):

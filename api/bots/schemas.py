@@ -1,17 +1,36 @@
 from time import time
 from typing import Optional
 
-from bson.objectid import ObjectId
+from bson import ObjectId
 from deals.models import BinanceOrderModel, DealModel
+from tools.enum_definitions import BinanceKlineIntervals, BinbotEnums, CloseConditions, Status, Strategy
+from database.models.bot_table import BotTable
 from pydantic import BaseModel, Field, field_validator
-from tools.enum_definitions import (
-    BinanceKlineIntervals,
-    BinbotEnums,
-    CloseConditions,
-    Status,
-    Strategy,
-)
+
 from tools.handle_error import StandardResponse
+
+
+class BotResponse(StandardResponse):
+    data: BotTable
+
+
+class BotListResponse(StandardResponse):
+    data: list[BotTable]
+
+
+class ErrorsRequestBody(BaseModel):
+    errors: str | list[str]
+
+    @field_validator("errors")
+    @classmethod
+    def check_names_not_empty(cls, v):
+        if isinstance(v, list):
+            assert len(v) != 0, "List of errors is empty."
+        if isinstance(v, str):
+            assert v != "", "Empty pair field."
+            return v
+
+        return v
 
 
 class BotSchema(BaseModel):
@@ -149,23 +168,4 @@ class BotSchema(BaseModel):
     def check_errors_format(cls, v: list[str]):
         if not isinstance(v, list):
             raise ValueError("Errors must be a list of strings")
-        return v
-
-
-class BotListResponse(StandardResponse):
-    data: list[BotSchema]
-
-
-class ErrorsRequestBody(BaseModel):
-    errors: str | list[str]
-
-    @field_validator("errors")
-    @classmethod
-    def check_names_not_empty(cls, v):
-        if isinstance(v, list):
-            assert len(v) != 0, "List of errors is empty."
-        if isinstance(v, str):
-            assert v != "", "Empty pair field."
-            return v
-
         return v
