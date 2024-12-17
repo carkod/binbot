@@ -21,5 +21,6 @@ def independent_session() -> Session:
     """
     return Session(engine)
 
+
 def timestamp() -> float:
     return int(round(time() * 1000))

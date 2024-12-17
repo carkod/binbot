@@ -1,7 +1,6 @@
 import logging
 from database.models.bot_table import BotTable
 from database.paper_trading_crud import PaperTradingTableCrud
-from database.schemas import Order
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel
@@ -12,7 +11,7 @@ from tools.enum_definitions import (
     Status,
     Strategy,
 )
-from bots.schemas import BotSchema
+from bots.models import BotModel
 
 
 class SpotLongDeal(BaseDeal):
@@ -25,7 +24,7 @@ class SpotLongDeal(BaseDeal):
         # Inherit from parent class
         self.db_collection_name = db_collection_name
         super().__init__(bot, db_collection_name)
-        self.active_bot: BotSchema
+        self.active_bot: BotModel
 
     def switch_margin_short(self):
         """
@@ -130,7 +129,7 @@ class SpotLongDeal(BaseDeal):
 
         return self.active_bot
 
-    def trailling_profit(self) -> BotSchema | None:
+    def trailling_profit(self) -> BotModel | None:
         """
         Sell at take_profit price, because prices will not reach trailling
         """

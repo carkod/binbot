@@ -3,15 +3,12 @@ from pydantic import ValidationError
 from sqlmodel import Session
 from database.bot_crud import BotTableCrud
 from deals.controllers import CreateDealController
-from database.models.bot_table import BotTable
+from database.models.bot_table import BotBase, BotTable
 from database.utils import get_session
 from tools.handle_error import (
     api_response,
-    json_response,
-    json_response_error,
-    json_response_message,
 )
-from bots.schemas import BotResponse, BotListResponse, ErrorsRequestBody
+from bots.models import BotResponse, BotListResponse, ErrorsRequestBody
 from typing import List
 from tools.exceptions import BinanceErrors, BinbotErrors
 
@@ -25,15 +22,17 @@ def get(
     start_date: float | None = None,
     end_date: float | None = None,
     no_cooldown: bool = True,
+    limit: int = 500,
+    offset: int = 0,
     session: Session = Depends(get_session),
 ):
     try:
         bots = BotTableCrud(session=session).get(
-            status, start_date, end_date, no_cooldown
+            status, start_date, end_date, no_cooldown, limit, offset
         )
         return api_response(detail="Bots found", data=bots)
     except ValidationError as error:
-        return json_response_error(error.json())
+        return api_response(detail=error.json(), error=1)
 
 
 @bot_blueprint.get("/bot/active-pairs", tags=["bots"])
@@ -44,43 +43,43 @@ def get_active_pairs(
         bot = BotTableCrud(session=session).get_active_pairs()
         return api_response(detail="Active pairs found!", data=bot)
     except ValueError as error:
-        return json_response_error(error)
+        return api_response(detail=f"Error retrieving active pairs: {error}", error=1)
 
 
 @bot_blueprint.get("/bot/{id}", tags=["bots"])
 def get_one_by_id(id: str, session: Session = Depends(get_session)):
     try:
-        bot = BotTableCrud(session=session).get_one(bot_id=id, symbol=None)
+        bot = BotTableCrud(session=session).get_one(bot_id=id)
         if not bot:
             return api_response(detail="Bot not found.", error=1)
         else:
             return api_response(detail="Bot found", data=bot)
     except ValidationError as error:
-        return json_response_error(error.json())
+        return api_response(error.json())
 
 
-@bot_blueprint.get("/bot/{symbol}", tags=["bots"])
-def get_one_by_symbol(
-    symbol: str,
-    session: Session = Depends(get_session),
-):
+@bot_blueprint.get("/bot/symbol/{symbol}", tags=["bots"])
+def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=None, symbol=symbol)
-        return api_response(detail="Bot found", data=bot)
+        if not bot:
+            return api_response(detail="Bot not found.", error=1)
+        else:
+            return api_response(detail="Bot found", data=bot)
     except ValidationError as error:
-        return json_response_error(error.json())
+        return api_response(error.json())
 
 
-@bot_blueprint.post("/bot", tags=["bots"], response_model=None)
+@bot_blueprint.post("/bot", tags=["bots"], response_model=BotResponse)
 def create(
-    bot_item: BotTable,
+    bot_item: BotBase,
     session: Session = Depends(get_session),
 ):
     try:
         bot = BotTableCrud(session=session).create(bot_item)
-        return bot
+        return api_response(detail="Bot created", data=bot)
     except ValidationError as error:
-        return api_response(message=error.json(), error=1)
+        return api_response(detail=error.json(), error=1)
 
 
 @bot_blueprint.put("/bot/{id}", tags=["bots"])
@@ -90,10 +89,10 @@ def edit(
     session: Session = Depends(get_session),
 ):
     try:
-        bot = BotTableCrud(session=session).create(bot_item)
-        return json_response({"message": "Bot updated", "data": bot})
+        bot = BotTableCrud(session=session).save(bot_item)
+        return api_response(detail="Bot updated", data=bot)
     except ValidationError as error:
-        return json_response_error(error.json())
+        return api_response(detail=error.json(), error=1)
 
 
 @bot_blueprint.delete("/bot", tags=["bots"])
@@ -106,9 +105,9 @@ def delete(
     """
     try:
         BotTableCrud(session=session).delete(id)
-        return json_response_message("Bots deleted successfully.")
+        return api_response(detail="Bots deleted successfully.")
     except ValidationError as error:
-        return json_response_error(error.json())
+        return api_response(error.json())
 
 
 @bot_blueprint.get("/bot/activate/{id}", tags=["bots"])
@@ -122,19 +121,19 @@ async def activate_by_id(id: str, session: Session = Depends(get_session)):
     """
     bot = BotTableCrud(session=session).get_one(bot_id=id)
     if not bot:
-        return json_response_error("Bot not found.")
+        return api_response(detail="Bot not found.")
 
     bot_instance = CreateDealController(bot, db_table=BotTable)
 
     try:
-        bot_instance.open_deal()
-        return json_response_message("Successfully activated bot!")
+        bot = bot_instance.open_deal()
+        return api_response(detail="Successfully activated bot!", data=bot)
     except BinbotErrors as error:
         bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
-        return json_response_error(error.message)
+        return api_response(detail=error.message, error=1)
     except BinanceErrors as error:
         bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
-        return json_response_error(error.message)
+        return api_response(detail=error.message, error=1)
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", tags=["bots"])
@@ -145,17 +144,15 @@ def deactivation(id: str, session: Session = Depends(get_session)):
     """
     bot_model = BotTableCrud(session=session).get_one(bot_id=id)
     if not bot_model:
-        return json_response_message("No active bot found.")
+        return api_response(detail="No active bot found.")
 
     bot_instance = CreateDealController(bot_model, db_table=BotTable)
     try:
         bot_instance.close_all()
-        return json_response_message(
-            "Active orders closed, sold base asset, deactivated"
-        )
+        return api_response(detail="Active orders closed, sold base asset, deactivated")
     except BinbotErrors as error:
         bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
-        return json_response_error(error.message)
+        return api_response(error.message)
 
 
 @bot_blueprint.post("/bot/errors/{bot_id}", tags=["bots"])
@@ -168,10 +165,10 @@ def bot_errors(
     - If error(s) is received from endpoint, get it from request body
     - Else use `post_errors_by_id` method for internal calls
     """
-    request_body = bot_errors.model_dump(mode="python")
-    bot_errors = request_body.get("errors", None)
     try:
-        BotTableCrud(session=session).update_logs(bot_errors, bot_id=bot_id)
+        request_body = ErrorsRequestBody.model_dump(bot_errors)
+        bot_errors = request_body.get("errors", None)
+        bot = BotTableCrud(session=session).update_logs(bot_errors, bot_id=bot_id)
+        return api_response(detail="Errors posted successfully.", data=bot)
     except Exception as error:
-        return json_response_error(f"Error posting errors: {error}")
-    return json_response_message("Errors posted successfully.")
+        return api_response(f"Error posting errors: {error}", error=1)

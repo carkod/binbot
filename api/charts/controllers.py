@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 from pymongo import DESCENDING, ReturnDocument
 from pymongo.errors import CollectionInvalid
-from autotrade.controller import AutotradeSettingsController
+from database.autotrade_crud import AutotradeCrud
 from charts.models import MarketDominationSeriesStore
 from apis import BinbotApi
 from database.db import Database, setup_db, setup_kafka_db
@@ -116,7 +116,7 @@ class MarketDominationController(Database, BinbotApi):
     def __init__(self) -> None:
         super().__init__()
         self.collection = self.kafka_db.market_domination
-        self.autotrade_db = AutotradeSettingsController()
+        self.autotrade_db = AutotradeCrud()
         self.autotrade_settings = self.autotrade_db.get_settings()
 
     def mkdm_migration(self):

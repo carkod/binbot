@@ -20,6 +20,7 @@ from alembic.config import Config
 from alembic import command
 from database.utils import engine
 
+
 class ApiDb:
     def __init__(self):
         self.session = Session(engine)
@@ -121,6 +122,7 @@ class ApiDb:
         orders = [
             ExchangeOrderTable(
                 id=1,
+                order_id=123,
                 order_type="market",
                 time_in_force="GTC",
                 timestamp=0,
@@ -134,6 +136,7 @@ class ApiDb:
             ),
             ExchangeOrderTable(
                 id=2,
+                order_id=123,
                 order_type="limit",
                 time_in_force="GTC",
                 timestamp=0,

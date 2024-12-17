@@ -5,7 +5,7 @@ from database.models.bot_table import BotTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from deals.models import BinanceOrderModel
 from tools.enum_definitions import CloseConditions, DealType, OrderSide, Strategy
-from bots.schemas import BotSchema
+from bots.models import BotModel
 from tools.enum_definitions import Status
 from deals.base import BaseDeal
 from tools.exceptions import BinanceErrors, MarginShortError
@@ -16,7 +16,7 @@ class MarginDeal(BaseDeal):
     def __init__(
         self, bot: BotTable, controller: PaperTradingTableCrud | BotTableCrud
     ) -> None:
-        self.active_bot: BotSchema
+        self.active_bot: BotModel
         # Inherit from parent class
         super().__init__(bot, controller=controller)
 
@@ -614,7 +614,7 @@ class MarginDeal(BaseDeal):
         self.controller.save(self.active_bot)
 
         bot = self.base_order()
-        self.active_bot = BotSchema.model_validate(bot)
+        self.active_bot = BotModel.model_validate(bot)
 
         # Keep bot up to date in the DB
         # this avoid unsyched bots when errors ocurr in other functions

@@ -26,6 +26,7 @@ mocked_db_data = AutotradeTable(
     max_active_autotrade_bots=1,
 )
 
+
 @fixture()
 def client() -> TestClient:
     session_mock = MagicMock()
@@ -38,14 +39,14 @@ def client() -> TestClient:
     return client
 
 
-def test_get_autotrade_settings(client) -> None:
+def test_get_autotrade_settings(client: TestClient) -> None:
     r = client.get("/autotrade-settings/bots")
     assert r.status_code == 200
     result = r.json()
-    assert result == mocked_db_data.model_dump_json()
+    assert result["data"] == mocked_db_data.model_dump()
 
 
-@patch("autotrade.controller.AsyncBaseProducer", MockAsyncBaseProducer)
+@patch("database.autotrade_crud.AsyncBaseProducer", MockAsyncBaseProducer)
 def test_edit_autotrade_settings(client: TestClient) -> None:
     r = client.put(
         "/autotrade-settings/bots",

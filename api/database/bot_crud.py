@@ -1,10 +1,9 @@
-import json
 from typing import List
 from uuid import UUID
 from fastapi import Query
 from sqlmodel import Session, asc, desc, or_, select, case
 from time import time
-from bots.schemas import BotSchema
+from bots.models import BotModel
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 from database.utils import independent_session
@@ -32,35 +31,34 @@ class BotTableCrud:
         self.session = session
 
     def update_logs(
-        self, log_message: str, bot: BotSchema = None, bot_id: str | None = None
+        self, log_message: str, bot: BotModel = None, bot_id: str | None = None
     ):
         """
         Update logs for a bot
 
         Args:
         - bot_id: str
-        - bot: BotSchema
+        - bot: BotModel
 
         Either id or bot has to be passed
         """
         if bot_id:
-            bot_object: BotTable = self.session.get(BotTable, bot_id)
+            bot = self.session.get(BotTable, bot_id)
         elif not bot:
-            raise ValueError("Bot id or BotSchema | BotTable object is required")
+            raise ValueError("Bot id or BotModel object is required")
 
-        bot_object = bot
-
-        current_logs: list[str] = json.loads(bot_object.logs)
-        if not current_logs or len(current_logs) == 0:
+        current_logs: list[str] = bot.logs
+        if len(current_logs) == 0:
             current_logs = [log_message]
         elif len(current_logs) > 0:
             current_logs.append(log_message)
 
-        bot_object.logs = json.dumps(current_logs)
+        bot.logs = current_logs
 
         # db operations
-        self.session.add(bot_object)
+        self.session.add(bot)
         self.session.commit()
+        self.session.refresh(bot)
         self.session.close()
         return bot
 
@@ -161,18 +159,19 @@ class BotTableCrud:
         It's crucial to reset fields, so bot can trigger base orders
         and start trailling.
         """
-        bot = BotTable.model_validate(data)
+        bot = BotModel.model_validate(data)
+
         # Ensure values are reset
         bot.orders = []
         bot.logs = []
         bot.status = Status.inactive
-        bot.deal = DealTable()
 
         # db operations
         self.session.add(bot)
         self.session.commit()
+        resulted_bot = self.session.get(BotTable, bot.id)
         self.session.close()
-        return bot
+        return resulted_bot
 
     def save(self, data: BotTable):
         """
@@ -190,8 +189,9 @@ class BotTableCrud:
         bot.sqlmodel_update(dumped_bot)
         self.session.add(bot)
         self.session.commit()
+        resulted_bot = self.session.get(BotTable, bot.id)
         self.session.close()
-        return bot
+        return resulted_bot
 
     def delete(self, bot_ids: List[str] = Query(...)):
         """
@@ -220,13 +220,15 @@ class BotTableCrud:
         # avoids sending unnecessary signals
         return bot
 
-    def get_active_pairs(self):
+    def get_active_pairs(self) -> list:
         """
         Get all active pairs
 
         a replacement of the previous "distinct pairs" query
         """
-        statement = select(BotTable.pair).where(BotTable.status == Status.active)
+        statement = (
+            select(BotTable.pair).where(BotTable.status == Status.active).distinct()
+        )
         pairs = self.session.exec(statement).all()
         self.session.close()
-        return pairs
+        return list(pairs)

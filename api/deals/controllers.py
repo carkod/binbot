@@ -3,7 +3,7 @@ from database.paper_trading_crud import PaperTradingTableCrud
 from database.models.paper_trading_table import PaperTradingTable
 from database.models.bot_table import BotTable
 from orders.controller import OrderController
-from bots.schemas import BotSchema
+from bots.models import BotModel
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import BinanceOrderModel, DealModel
@@ -27,12 +27,12 @@ class CreateDealController(BaseDeal):
     - db_collection = ["bots", "paper_trading"].
     paper_trading uses simulated orders and bot uses real binance orders.
     PaperTradingTable is implemented, PaperTradingController with the db operations is not.
-    - bot: BotSchema (at some point to refactor into BotTable as they are both pydantic models)
+    - bot: BotModel (at some point to refactor into BotTable as they are both pydantic models)
     """
 
     def __init__(
         self,
-        bot: BotSchema | BotTable,
+        bot: BotModel | BotTable,
         db_table: PaperTradingTable | BotTable = BotTable,
     ):
         if db_table == PaperTradingTable:
@@ -75,7 +75,7 @@ class CreateDealController(BaseDeal):
             self.qty_precision,
         )
         # setup stop_loss_price
-        stop_loss_price = 0
+        stop_loss_price: float = 0
         if float(self.active_bot.stop_loss) > 0:
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
@@ -117,13 +117,13 @@ class CreateDealController(BaseDeal):
         )
 
         # Activate bot
-        document = self.open_deal(self.active_bot)
+        document = self.open_deal()
         # do this after db operations in case there is rollback
         # avoids sending unnecessary signals
         self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
         return document
 
-    def take_profit_order(self) -> BotSchema:
+    def take_profit_order(self) -> BotModel:
         """
         take profit order (Binance take_profit)
         - We only have stop_price, because there are no book bids/asks in t0

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import ValidationInfo, field_validator
 from sqlalchemy import Column, Enum
-from tools.enum_definitions import DealType
+from tools.enum_definitions import DealType, OrderType
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -11,7 +11,20 @@ if TYPE_CHECKING:
     from database.models.paper_trading_table import PaperTradingTable
 
 
-class ExchangeOrderTable(SQLModel, table=True):
+class OrderModel(SQLModel):
+    order_type: OrderType
+    time_in_force: str
+    timestamp: Optional[int]
+    order_id: int = Field(nullable=True)
+    order_side: str
+    pair: str
+    qty: float
+    status: str
+    price: float
+    deal_type: DealType
+
+
+class ExchangeOrderTable(OrderModel, table=True):
     """
     Data provided by Crypto Exchange,
     therefore they should be all be strings
@@ -26,13 +39,6 @@ class ExchangeOrderTable(SQLModel, table=True):
     __tablename__ = "exchange_order"
 
     id: int = Field(primary_key=True)
-    order_type: str = Field(nullable=True)
-    time_in_force: str = Field(nullable=True)
-    timestamp: int = Field(nullable=True)
-    order_side: str = Field(nullable=True)
-    pair: str = Field(nullable=True)
-    qty: float = Field(nullable=True)
-    status: str = Field(nullable=True)
     price: float = Field(nullable=True)
     deal_type: DealType = Field(sa_column=Column(Enum(DealType)))
     total_commission: float = Field(nullable=True, default=0)

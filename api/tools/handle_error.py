@@ -2,7 +2,7 @@ import json
 import os
 import logging
 from time import sleep
-from typing import Literal, Optional, Union
+from typing import Optional
 from bson import json_util
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -26,7 +26,9 @@ def post_error(msg):
     return
 
 
-def api_response(detail: str, data: Optional[BaseModel] = None, error: int = 0, status=200):
+def api_response(
+    detail: str, data: Optional[BaseModel] = None, error: int = 0, status=200
+):
     """
     Custom Fast API response
 

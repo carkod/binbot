@@ -3,7 +3,6 @@ from datetime import datetime
 from database.bot_crud import BotTableCrud
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.models.bot_table import BotTable
-from deals.models import BinanceOrderModel, DealModel
 from orders.controller import OrderController
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 from tools.exceptions import (
@@ -12,7 +11,7 @@ from tools.exceptions import (
     InsufficientBalance,
     MarginLoanNotFound,
 )
-from tools.enum_definitions import DealType, OrderSide, Status, Strategy
+from tools.enum_definitions import Status, Strategy
 from base_producer import BaseProducer
 
 

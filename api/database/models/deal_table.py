@@ -1,4 +1,4 @@
-import uuid
+from uuid import uuid4, UUID
 from time import time
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
@@ -9,15 +9,8 @@ if TYPE_CHECKING:
     from database.models.paper_trading_table import PaperTradingTable
 
 
-class DealTable(SQLModel, table=True):
-    """
-    Data model that is used for operations,
-    so it should all be numbers (int or float)
-    """
-
-    __tablename__ = "deal"
-
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+class DealBase(SQLModel):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
     buy_price: float = Field(default=0)
     buy_total_qty: float = Field(default=0)
     buy_timestamp: float = time() * 1000
@@ -55,10 +48,19 @@ class DealTable(SQLModel, table=True):
     margin_short_sell_timestamp: int = Field(default=0)
     margin_short_loan_timestamp: int = Field(default=0)
 
+
+class DealTable(DealBase, table=True):
+    """
+    Data model that is used for operations,
+    so it should all be numbers (int or float)
+    """
+
+    __tablename__ = "deal"
+
     # Relationships
-    bot_id: Optional[uuid.UUID] = Field(default=None, foreign_key="bot.id")
+    bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
     bot: Optional["BotTable"] = Relationship(back_populates="deal")
-    paper_trading_id: Optional[uuid.UUID] = Field(
+    paper_trading_id: Optional[UUID] = Field(
         default=None, foreign_key="paper_trading.id"
     )
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="deal")

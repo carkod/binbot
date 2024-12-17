@@ -1,24 +1,15 @@
 from time import time
 from pydantic import BaseModel, field_validator
-from tools.enum_definitions import DealType
+from database.models.order_table import OrderModel
 
 
-class BinanceOrderModel(BaseModel):
+class BinanceOrderModel(OrderModel):
     """
     Data model given by Binance,
     therefore it should be strings
     """
 
-    order_type: str
-    time_in_force: str
-    timestamp: int
-    order_id: int
-    order_side: str
-    pair: str
-    qty: float
-    status: str
-    price: float
-    deal_type: DealType
+    pass
 
     @field_validator("timestamp", "order_id", "price", "qty", "order_id")
     @classmethod

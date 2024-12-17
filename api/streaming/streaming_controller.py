@@ -2,6 +2,7 @@ import json
 import logging
 import typing
 from kafka import KafkaConsumer
+from database.autotrade_crud import AutotradeCrud
 from database.models.bot_table import BotTable
 from database.models.paper_trading_table import PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
@@ -9,7 +10,6 @@ from database.bot_crud import BotTableCrud
 from deals.controllers import CreateDealController
 from tools.round_numbers import round_numbers
 from streaming.models import SignalsConsumer
-from autotrade.controller import AutotradeSettingsController
 from tools.enum_definitions import Status, Strategy
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
@@ -37,7 +37,7 @@ class StreamingController(BaseStreaming):
         super().__init__()
         # Gets any signal to restart streaming
         self.consumer = consumer
-        self.autotrade_controller = AutotradeSettingsController()
+        self.autotrade_controller = AutotradeCrud()
         self.load_data_on_start()
 
     def load_data_on_start(self) -> None:

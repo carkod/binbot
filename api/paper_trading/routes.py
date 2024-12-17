@@ -1,4 +1,3 @@
-import json
 from fastapi import APIRouter, Depends, Query
 from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session
@@ -12,7 +11,7 @@ from tools.handle_error import (
     json_response_error,
     json_response_message,
 )
-from bots.schemas import BotSchema
+from bots.models import BotModel
 from typing import List
 
 
@@ -20,7 +19,7 @@ paper_trading_blueprint = APIRouter()
 
 
 @paper_trading_blueprint.get(
-    "/paper-trading", response_model=list[BotSchema], tags=["paper trading"]
+    "/paper-trading", response_model=list[BotModel], tags=["paper trading"]
 )
 def get(
     status: str | None = None,
@@ -55,7 +54,7 @@ def get_one(
 
 
 @paper_trading_blueprint.post("/paper-trading", tags=["paper trading"])
-def create(bot_item: BotSchema, session: Session = Depends(get_session)):
+def create(bot_item: BotModel, session: Session = Depends(get_session)):
     try:
         bot = PaperTradingTableCrud(session=session).create(bot_item)
         return json_response({"message": "Bot created", "data": bot})
@@ -64,7 +63,7 @@ def create(bot_item: BotSchema, session: Session = Depends(get_session)):
 
 
 @paper_trading_blueprint.put("/paper-trading/{id}", tags=["paper trading"])
-def edit(id: str, bot_item: BotSchema, session: Session = Depends(get_session)):
+def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
     try:
         bot = PaperTradingTableCrud(session=session).create(bot_item)
         return json_response({"message": "Bot updated", "data": bot})
