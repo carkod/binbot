@@ -23,7 +23,6 @@ class OrderModel(SQLModel):
     price: float
     deal_type: DealType
 
-
 class ExchangeOrderTable(OrderModel, table=True):
     """
     Data provided by Crypto Exchange,

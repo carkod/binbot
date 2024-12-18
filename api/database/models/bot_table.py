@@ -50,12 +50,12 @@ class BotBase(SQLModel):
     stop_loss: float = Field(
         default=0, description="If stop_loss > 0, allow for reversal"
     )
-    margin_short_reversal: Optional[bool] = Field(default=False)
+    margin_short_reversal: bool = Field(default=False)
     take_profit: float = Field(default=0)
     trailling: bool = Field(default=False)
-    trailling_deviation: Optional[float] = Field(default=0, ge=-1, le=101)
+    trailling_deviation: float = Field(default=0, ge=-1, le=101)
     # Trailling activation (first take profit hit)
-    trailling_profit: Optional[float] = Field(default=0)
+    trailling_profit: float = Field(default=0)
     strategy: str = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
     short_buy_price: float = Field(default=0)
     # autoswitch to short_strategy

@@ -1,5 +1,5 @@
 from typing import List
-from database.models.order_table import ExchangeOrderTable
+from database.models.order_table import OrderModel
 from deals.models import DealModel
 from database.models.bot_table import BotBase, BotTable
 from pydantic import BaseModel, Field, field_validator
@@ -9,7 +9,7 @@ from tools.handle_error import StandardResponse
 
 class BotModel(BotBase):
     deal: DealModel = Field(default_factory=DealModel)
-    orders: List[ExchangeOrderTable] = Field(default=[])
+    orders: List[OrderModel] = Field(default=[])
 
     model_config = {
         "from_attributes": True,
