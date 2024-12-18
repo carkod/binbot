@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from fastapi.responses import JSONResponse
 from account.controller import AssetsController
+from database.models.bot_table import BotTable
 from database.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from deals.controllers import CreateDealController
@@ -347,7 +348,8 @@ class Assets(AssetsController):
         if not bot:
             return bot
         active_bot = BotModel.model_validate(bot)
-        deal = CreateDealController(active_bot, db_collection="bots")
+        deal = CreateDealController(active_bot, db_table=BotTable)
+
         if active_bot.strategy == Strategy.margin_short:
             deal.margin_liquidation(pair)
 

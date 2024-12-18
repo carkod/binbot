@@ -1,16 +1,12 @@
 from fastapi import APIRouter, Depends, Query
-from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session
+from tools.enum_definitions import Status
 from database.models.paper_trading_table import PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.utils import get_session
 from deals.controllers import CreateDealController
 from tools.exceptions import BinanceErrors, BinbotErrors
-from tools.handle_error import (
-    json_response,
-    json_response_error,
-    json_response_message,
-)
+from tools.handle_error import api_response
 from bots.models import BotModel
 from typing import List
 
@@ -22,20 +18,22 @@ paper_trading_blueprint = APIRouter()
     "/paper-trading", response_model=list[BotModel], tags=["paper trading"]
 )
 def get(
-    status: str | None = None,
+    status: Status | None = None,
     start_date: float | None = None,
     end_date: float | None = None,
-    no_cooldown: bool = True,
+    no_cooldown=False,
+    limit: int = 200,
+    offset: int = 0,
     session: Session = Depends(get_session),
 ):
     try:
         bot = PaperTradingTableCrud(session=session).get(
-            status, start_date, end_date, no_cooldown
+            status, start_date, end_date, no_cooldown, limit, offset
         )
-        return json_response({"message": "Bots found!", "data": jsonable_encoder(bot)})
+        return api_response(detail="Paper trading bots found!", data=bot)
 
     except BinbotErrors as error:
-        return json_response_error(error)
+        return api_response(detail=error.message, error=1)
 
 
 @paper_trading_blueprint.get("/paper-trading/{id}", tags=["paper trading"])
@@ -46,29 +44,29 @@ def get_one(
     try:
         bot = PaperTradingTableCrud(session=session).get_one(bot_id=id, symbol=None)
         if not bot:
-            return json_response_error("Bot not found.")
+            return api_response(detail="Bot not found.")
         else:
-            return json_response({"message": "Bot found", "data": bot})
+            return api_response(detail="Bot found", data=bot)
     except ValueError as error:
-        return json_response_error(error)
+        return api_response(detail=error.args[0], error=1)
 
 
 @paper_trading_blueprint.post("/paper-trading", tags=["paper trading"])
 def create(bot_item: BotModel, session: Session = Depends(get_session)):
     try:
         bot = PaperTradingTableCrud(session=session).create(bot_item)
-        return json_response({"message": "Bot created", "data": bot})
+        return api_response(detail="Bot created", data=bot)
     except BinbotErrors as error:
-        return json_response_error(error)
+        return api_response(detail=error.message, error=1)
 
 
 @paper_trading_blueprint.put("/paper-trading/{id}", tags=["paper trading"])
 def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
     try:
-        bot = PaperTradingTableCrud(session=session).create(bot_item)
-        return json_response({"message": "Bot updated", "data": bot})
+        bot = PaperTradingTableCrud(session=session).save(bot_item)
+        return api_response(detail="Bot updated", data=bot)
     except BinbotErrors as error:
-        return json_response_error(error)
+        return api_response(detail=error.message, error=1)
 
 
 @paper_trading_blueprint.delete("/paper-trading", tags=["paper trading"])
@@ -78,28 +76,29 @@ def delete(id: List[str] = Query(...), session: Session = Depends(get_session)):
     """
     try:
         PaperTradingTableCrud(session=session).delete(id)
+        return api_response(detail="Successfully deleted bot!")
     except BinbotErrors as error:
-        return json_response_error(error)
+        return api_response(detail=error.message, error=1)
 
 
 @paper_trading_blueprint.get("/paper-trading/activate/{id}", tags=["paper trading"])
 def activate(id: str, session: Session = Depends(get_session)):
     bot = PaperTradingTableCrud(session=session).get_one(bot_id=id)
     if not bot:
-        return json_response_error("Bot not found.")
+        return api_response("Bot not found.")
 
     bot_instance = CreateDealController(bot, db_table=PaperTradingTable)
 
     try:
         bot_instance.open_deal()
-        return json_response_message("Successfully activated bot!")
+        return api_response("Successfully activated bot!")
 
     except BinbotErrors as error:
         bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
-        return json_response_error(error.message)
+        return api_response(error.message, error=1)
     except BinanceErrors as error:
         bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
-        return json_response_error(error.message)
+        return api_response(error.message, error=1)
 
 
 @paper_trading_blueprint.delete(
@@ -112,15 +111,13 @@ def deactivate(id: str, session: Session = Depends(get_session)):
     """
     bot_model = PaperTradingTableCrud(session=session).get_one(bot_id=id)
     if not bot_model:
-        return json_response_error("No active bot found. Can't deactivate")
+        return api_response("No active bot found. Can't deactivate")
 
-    bot_instance = CreateDealController(bot_model, db_table=PaperTradingTable)
+    bot_instance = CreateDealController(bot_model, PaperTradingTable)
     try:
         bot_instance.close_all()
-        return json_response_message(
-            "Active orders closed, sold base asset, deactivated"
-        )
+        return api_response("Active orders closed, sold base asset, deactivated")
 
     except BinbotErrors as error:
         bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
-        return json_response_error(error.message)
+        return api_response(error.message, error=1)

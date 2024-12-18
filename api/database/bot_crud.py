@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from fastapi import Query
 from sqlmodel import Session, asc, desc, or_, select, case
 from time import time
 from bots.models import BotModel
-from database.models.bot_table import BotTable
+from database.models.bot_table import BotBase, BotTable
 from database.models.deal_table import DealTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
@@ -17,7 +17,7 @@ class BotTableCrud:
 
     Use for lower level APIs that require a session
     e.g.
-    client-side -> receive json -> bots.routes -> BotTableCrud
+    client-side -> receive json -> bots.routes -> BotModelCrud
     """
 
     def __init__(
@@ -31,8 +31,11 @@ class BotTableCrud:
         self.session = session
 
     def update_logs(
-        self, log_message: str, bot: BotModel = None, bot_id: str | None = None
-    ):
+        self,
+        log_message: str,
+        bot: Optional[BotModel] = None,
+        bot_id: str | None = None,
+    ) -> BotModel:
         """
         Update logs for a bot
 
@@ -43,7 +46,8 @@ class BotTableCrud:
         Either id or bot has to be passed
         """
         if bot_id:
-            bot = self.session.get(BotTable, bot_id)
+            bot_obj = self.session.get(BotTable, bot_id)
+            bot = BotModel.model_validate(bot_obj)
         elif not bot:
             raise ValueError("Bot id or BotModel object is required")
 
@@ -129,7 +133,7 @@ class BotTableCrud:
         bot_id: str | None = None,
         symbol: str | None = None,
         status: Status | None = None,
-    ):
+    ) -> BotModel:
         """
         Get one bot by id or symbol
         """
@@ -150,14 +154,18 @@ class BotTableCrud:
             raise ValueError("Invalid bot id or symbol")
 
         self.session.close()
-        return bot
+        bot_model = BotModel.model_validate(bot)
+        return bot_model
 
-    def create(self, data: BotTable) -> BotTable:
+    def create(self, data: BotBase) -> BotModel:
         """
         Create a new bot
 
         It's crucial to reset fields, so bot can trigger base orders
         and start trailling.
+
+        Args:
+        - data: BotBase includes only flat properties (excludes deal and orders which are generated internally)
         """
         bot = BotModel.model_validate(data)
 
@@ -171,9 +179,10 @@ class BotTableCrud:
         self.session.commit()
         resulted_bot = self.session.get(BotTable, bot.id)
         self.session.close()
-        return resulted_bot
+        data = BotModel.model_validate(resulted_bot)
+        return data
 
-    def save(self, data: BotTable):
+    def save(self, data: BotModel) -> BotModel:
         """
         Save bot
 
@@ -191,7 +200,8 @@ class BotTableCrud:
         self.session.commit()
         resulted_bot = self.session.get(BotTable, bot.id)
         self.session.close()
-        return resulted_bot
+        data = BotModel.model_validate(resulted_bot)
+        return data
 
     def delete(self, bot_ids: List[str] = Query(...)):
         """
@@ -206,18 +216,13 @@ class BotTableCrud:
         self.session.close()
         return bots
 
-    def update_status(self, bot: BotTable, status: Status) -> BotTable:
+    def update_status(self, bot: BotModel, status: Status) -> BotModel:
         """
         Mostly as a replacement of the previous "activate" and "deactivate"
         although any Status can be passed now
         """
         bot.status = status
-        # db operations
-        self.session.add(bot)
-        self.session.commit()
-        self.session.close()
-        # do this after db operations in case there is rollback
-        # avoids sending unnecessary signals
+        self.save(bot)
         return bot
 
     def get_active_pairs(self) -> list:

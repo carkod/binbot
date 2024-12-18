@@ -1,9 +1,12 @@
 import logging
+from typing import Type, Union
+from database.models.order_table import OrderModel
+from database.bot_crud import BotTableCrud
+from database.models.paper_trading_table import PaperTradingTable
 from database.models.bot_table import BotTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
-from deals.models import BinanceOrderModel
 from tools.enum_definitions import (
     CloseConditions,
     DealType,
@@ -20,13 +23,20 @@ class SpotLongDeal(BaseDeal):
     during streaming
     """
 
-    def __init__(self, bot, db_collection_name: str) -> None:
-        # Inherit from parent class
-        self.db_collection_name = db_collection_name
-        super().__init__(bot, db_collection_name)
-        self.active_bot: BotModel
+    def __init__(
+        self, bot, db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable
+    ) -> None:
+        db_controller: Type[Union[PaperTradingTableCrud, BotTableCrud]]
+        if db_table == PaperTradingTable:
+            db_controller = PaperTradingTableCrud
+        else:
+            db_controller = BotTableCrud
 
-    def switch_margin_short(self):
+        super().__init__(bot, db_controller)
+        self.active_bot: BotModel = bot
+        self.db_table = db_table
+
+    def switch_margin_short(self) -> BotModel:
         """
         Switch to short strategy.
         Doing some parts of open_deal from scratch
@@ -45,13 +55,13 @@ class SpotLongDeal(BaseDeal):
         self.active_bot = self.controller.create(data=self.active_bot)
 
         self.active_bot = MarginDeal(
-            bot=self.active_bot, db_collection_name=self.db_collection_name
+            bot=self.active_bot, db_table=self.db_table
         ).margin_short_base_order()
 
         self.active_bot = self.controller.save(self.active_bot)
         return self.active_bot
 
-    def execute_stop_loss(self) -> BotTable:
+    def execute_stop_loss(self) -> BotModel:
         """
         Update stop limit after websocket
 
@@ -67,7 +77,7 @@ class SpotLongDeal(BaseDeal):
 
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
-        if not qty:
+        if qty > 0:
             closed_orders = self.close_open_orders(self.active_bot.pair)
             if not closed_orders:
                 order = self.verify_deal_close_order()
@@ -98,7 +108,7 @@ class SpotLongDeal(BaseDeal):
             # Dispatch real order
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
-        stop_loss_order = BinanceOrderModel(
+        stop_loss_order = OrderModel(
             timestamp=res["transactTime"],
             deal_type=DealType.stop_loss,
             order_id=int(res["orderId"]),
@@ -139,7 +149,7 @@ class SpotLongDeal(BaseDeal):
         else:
             qty = self.compute_qty(self.active_bot.pair)
             # Already sold?
-            if not qty:
+            if qty > 0:
                 closed_orders = self.close_open_orders(self.active_bot.pair)
                 if not closed_orders:
                     order = self.verify_deal_close_order()
@@ -177,7 +187,7 @@ class SpotLongDeal(BaseDeal):
                 qty=qty,
             )
 
-        order_data = BinanceOrderModel(
+        order_data = OrderModel(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
             deal_type=DealType.take_profit,
@@ -210,7 +220,7 @@ class SpotLongDeal(BaseDeal):
 
     def streaming_updates(self, close_price, open_price):
         close_price = float(close_price)
-        self.close_conditions(float(close_price))
+        self.close_conditions(close_price)
 
         self.active_bot.deal.current_price = close_price
         self.active_bot = self.controller.save(self.active_bot)
@@ -218,7 +228,7 @@ class SpotLongDeal(BaseDeal):
         # Stop loss
         if (
             self.active_bot.stop_loss > 0
-            and self.active_bot.deal.stop_loss_price > float(close_price)
+            and self.active_bot.deal.stop_loss_price > close_price
         ):
             self.execute_stop_loss()
             self.base_producer.update_required(self.producer, "EXECUTE_SPOT_STOP_LOSS")
@@ -234,7 +244,7 @@ class SpotLongDeal(BaseDeal):
             return
 
         # Take profit trailling
-        if (self.active_bot.trailling) and float(self.active_bot.deal.buy_price) > 0:
+        if self.active_bot.trailling and float(self.active_bot.deal.buy_price) > 0:
             # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
             if self.active_bot.deal.trailling_stop_loss_price == 0:
                 trailling_price = float(self.active_bot.deal.buy_price) * (
@@ -248,13 +258,12 @@ class SpotLongDeal(BaseDeal):
 
             self.active_bot.deal.trailling_profit_price = trailling_price
             # Direction 1 (upward): breaking the current trailling
-            if float(close_price) >= float(trailling_price):
-                new_take_profit = float(close_price) * (
-                    1 + (float(self.active_bot.take_profit) / 100)
+            if close_price >= float(trailling_price):
+                new_take_profit = close_price * (
+                    1 + ((self.active_bot.take_profit) / 100)
                 )
-                new_trailling_stop_loss = float(close_price) - (
-                    float(close_price)
-                    * (float(self.active_bot.trailling_deviation) / 100)
+                new_trailling_stop_loss: float = close_price - (
+                    close_price * ((self.active_bot.trailling_deviation) / 100)
                 )
                 # Update deal take_profit
                 self.active_bot.deal.take_profit_price = new_take_profit
@@ -286,10 +295,9 @@ class SpotLongDeal(BaseDeal):
             if (
                 float(self.active_bot.deal.trailling_stop_loss_price) > 0
                 # Broken stop_loss
-                and float(close_price)
-                < float(self.active_bot.deal.trailling_stop_loss_price)
+                and close_price < float(self.active_bot.deal.trailling_stop_loss_price)
                 # Red candlestick
-                and (float(open_price) > float(close_price))
+                and (float(open_price) > close_price)
             ):
                 self.controller.update_logs(
                     f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}",

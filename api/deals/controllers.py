@@ -1,12 +1,13 @@
+from typing import Type, Union
+from database.models.order_table import OrderModel
 from database.bot_crud import BotTableCrud
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.models.paper_trading_table import PaperTradingTable
 from database.models.bot_table import BotTable
-from orders.controller import OrderController
 from bots.models import BotModel
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
-from deals.models import BinanceOrderModel, DealModel
+from deals.models import DealModel
 from tools.enum_definitions import DealType, OrderSide, Status, Strategy
 from tools.exceptions import TakeProfitError
 from tools.handle_error import (
@@ -32,9 +33,10 @@ class CreateDealController(BaseDeal):
 
     def __init__(
         self,
-        bot: BotModel | BotTable,
-        db_table: PaperTradingTable | BotTable = BotTable,
+        bot: BotModel,
+        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ):
+        db_controller: Type[Union[PaperTradingTableCrud, BotTableCrud]]
         if db_table == PaperTradingTable:
             db_controller = PaperTradingTableCrud
         else:
@@ -44,16 +46,16 @@ class CreateDealController(BaseDeal):
         self.active_bot = bot
         self.db_table = db_table
 
-    def compute_qty(self, pair: str) -> float | None:
+    def compute_qty(self, pair: str) -> float:
         """
         Helper function to compute buy_price.
         Previous qty = bot.deal["buy_total_qty"]
         """
-
+        qty = 0
         asset = self.find_baseAsset(pair)
         balance = self.get_raw_balance(asset)
         if not balance or len(balance) == 0:
-            return None
+            return qty
         qty = round_numbers(balance[0], self.qty_precision)
         return qty
 
@@ -91,7 +93,7 @@ class CreateDealController(BaseDeal):
                 price=supress_notation(price, self.price_precision),
             )
 
-        order_data = BinanceOrderModel(
+        order_data = OrderModel(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
             deal_type=DealType.base_order,
@@ -134,7 +136,7 @@ class CreateDealController(BaseDeal):
         buy_total_qty = self.active_bot.deal.buy_total_qty
         price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
 
-        if self.db_table == "paper_trading":
+        if self.db_table == PaperTradingTable:
             qty = self.active_bot.deal.buy_total_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
@@ -142,7 +144,7 @@ class CreateDealController(BaseDeal):
         qty = round_numbers(buy_total_qty, self.qty_precision)
         price = round_numbers(price, self.price_precision)
 
-        if self.db_table == "paper_trading":
+        if self.db_table == PaperTradingTable:
             res = self.simulate_order(self.active_bot.pair, OrderSide.sell)
         else:
             qty = round_numbers(qty, self.qty_precision)
@@ -153,7 +155,7 @@ class CreateDealController(BaseDeal):
         if "error" in res:
             raise TakeProfitError(res["error"])
 
-        order_data = BinanceOrderModel(
+        order_data = OrderModel(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
             deal_type="take_profit",
@@ -213,7 +215,7 @@ class CreateDealController(BaseDeal):
 
         return
 
-    def update_take_profit(self, order_id: int) -> BotTable:
+    def update_take_profit(self, order_id: int) -> BotModel:
         """
         Update take profit after websocket order endpoint triggered
         - Close current opened take profit order
@@ -222,7 +224,9 @@ class CreateDealController(BaseDeal):
         """
         bot = self.active_bot
         if bot.deal:
-            find_base_order = next((order.id == order_id for order in bot.orders), None)
+            find_base_order = next(
+                (order.order_id == order_id for order in bot.orders), None
+            )
             if find_base_order:
                 so_deal_price = bot.deal.buy_price
                 # Create new take profit order
@@ -232,7 +236,7 @@ class CreateDealController(BaseDeal):
                 asset = self.find_baseAsset(bot.pair)
 
                 # First cancel old order to unlock balance
-                OrderController().delete_order(bot.pair, order_id)
+                self.delete_order(bot.pair, order_id)
 
                 raw_balance = self.get_raw_balance(asset)
                 qty = round_numbers(raw_balance[0], self.qty_precision)
@@ -246,7 +250,7 @@ class CreateDealController(BaseDeal):
                 order = handle_binance_errors(res)
 
                 # Replace take_profit order
-                take_profit_order = BinanceOrderModel(
+                take_profit_order = OrderModel(
                     timestamp=order["transactTime"],
                     order_id=order["orderId"],
                     deal_type=DealType.take_profit,
@@ -278,8 +282,9 @@ class CreateDealController(BaseDeal):
                 "Error: Bot does not contain a base order deal", self.active_bot
             )
             raise ValueError("Bot does not contain a base order deal")
+        return self.active_bot
 
-    def open_deal(self) -> BotTable:
+    def open_deal(self) -> BotModel:
         """
         Bot activation requires:
 
@@ -303,11 +308,11 @@ class CreateDealController(BaseDeal):
         if not base_order_deal:
             if self.active_bot.strategy == Strategy.margin_short:
                 self.active_bot = MarginDeal(
-                    bot=self.active_bot, db_collection_name=self.db_table
+                    bot=self.active_bot, db_table=self.db_table
                 ).margin_short_base_order()
             else:
                 bot = self.base_order()
-                self.active_bot = BotTable.model_validate(bot)
+                self.active_bot = BotModel.model_validate(bot)
 
         """
         Optional deals section

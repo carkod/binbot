@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import ValidationError
 from sqlmodel import Session
+from tools.enum_definitions import Status
 from database.bot_crud import BotTableCrud
 from deals.controllers import CreateDealController
 from database.models.bot_table import BotBase, BotTable
@@ -8,7 +9,7 @@ from database.utils import get_session
 from tools.handle_error import (
     api_response,
 )
-from bots.models import BotResponse, BotListResponse, ErrorsRequestBody
+from bots.models import BotModel, BotResponse, BotListResponse, ErrorsRequestBody
 from typing import List
 from tools.exceptions import BinanceErrors, BinbotErrors
 
@@ -18,11 +19,11 @@ bot_blueprint = APIRouter()
 
 @bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
 def get(
-    status: str | None = None,
+    status: Status | None = None,
     start_date: float | None = None,
     end_date: float | None = None,
-    no_cooldown: bool = True,
-    limit: int = 500,
+    no_cooldown=False,
+    limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
 ):
@@ -76,8 +77,8 @@ def create(
     session: Session = Depends(get_session),
 ):
     try:
-        bot = BotTableCrud(session=session).create(bot_item)
-        return api_response(detail="Bot created", data=bot)
+        data = BotTableCrud(session=session).create(bot_item)
+        return api_response(detail="Bot created", data=data)
     except ValidationError as error:
         return api_response(detail=error.json(), error=1)
 
@@ -85,7 +86,7 @@ def create(
 @bot_blueprint.put("/bot/{id}", tags=["bots"])
 def edit(
     id: str,
-    bot_item: BotTable,
+    bot_item: BotModel,
     session: Session = Depends(get_session),
 ):
     try:
@@ -123,11 +124,11 @@ async def activate_by_id(id: str, session: Session = Depends(get_session)):
     if not bot:
         return api_response(detail="Bot not found.")
 
-    bot_instance = CreateDealController(bot, db_table=BotTable)
+    bot_instance = CreateDealController(bot)
 
     try:
-        bot = bot_instance.open_deal()
-        return api_response(detail="Successfully activated bot!", data=bot)
+        data = bot_instance.open_deal()
+        return api_response(detail="Successfully activated bot!", data=data)
     except BinbotErrors as error:
         bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
         return api_response(detail=error.message, error=1)
@@ -146,12 +147,12 @@ def deactivation(id: str, session: Session = Depends(get_session)):
     if not bot_model:
         return api_response(detail="No active bot found.")
 
-    bot_instance = CreateDealController(bot_model, db_table=BotTable)
+    deal_instance = CreateDealController(bot_model)
     try:
-        bot_instance.close_all()
+        deal_instance.close_all()
         return api_response(detail="Active orders closed, sold base asset, deactivated")
     except BinbotErrors as error:
-        bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
+        deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
         return api_response(error.message)
 
 
@@ -167,8 +168,10 @@ def bot_errors(
     """
     try:
         request_body = ErrorsRequestBody.model_dump(bot_errors)
-        bot_errors = request_body.get("errors", None)
-        bot = BotTableCrud(session=session).update_logs(bot_errors, bot_id=bot_id)
+        errors = request_body.get("errors", None)
+        bot = BotTableCrud(session=session).update_logs(
+            log_message=errors, bot_id=bot_id
+        )
         return api_response(detail="Errors posted successfully.", data=bot)
     except Exception as error:
         return api_response(f"Error posting errors: {error}", error=1)

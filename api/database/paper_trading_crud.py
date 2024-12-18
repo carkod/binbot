@@ -1,6 +1,9 @@
 from time import time
+from typing import Union
 
 from sqlmodel import Session, or_, select, case, desc, asc
+from database.models.bot_table import BotBase, BotTable
+from bots.models import BotModel
 from database.models.deal_table import DealTable
 from database.models.paper_trading_table import PaperTradingTable
 from database.utils import independent_session
@@ -14,38 +17,89 @@ class PaperTradingTableCrud:
         self.session = session
         pass
 
-    def create(self, paper_trading: PaperTradingTable) -> PaperTradingTable:
+    def update_logs(
+        self, log_message: str, bot: BotModel = None, bot_id: str | None = None
+    ) -> BotModel:
+        """
+        Update logs for a bot
+
+        Args:
+        - bot_id: str
+        - bot: BotModel
+
+        Either id or bot has to be passed
+        """
+        if bot_id:
+            bot_obj = self.session.get(PaperTradingTable, bot_id)
+            bot = BotModel.model_validate(bot_obj)
+        elif not bot:
+            raise ValueError("Bot id or BotModel object is required")
+
+        current_logs: list[str] = bot.logs
+        if len(current_logs) == 0:
+            current_logs = [log_message]
+        elif len(current_logs) > 0:
+            current_logs.append(log_message)
+
+        bot.logs = current_logs
+
+        # db operations
+        self.session.add(bot)
+        self.session.commit()
+        self.session.refresh(bot)
+        self.session.close()
+        return bot
+
+    def create(self, data: BotBase) -> BotModel:
         """
         Create a new paper trading account
         """
-        paper_trading.created_at = time() * 1000
-        paper_trading.updated_at = time() * 1000
+        bot = BotModel.model_validate(data)
+
+        # Ensure values are reset
+        bot.orders = []
+        bot.logs = []
+        bot.status = Status.inactive
 
         # db operations
-        self.session.add(paper_trading)
+        self.session.add(bot)
         self.session.commit()
+        resulted_bot = self.session.get(PaperTradingTable, bot.id)
         self.session.close()
-        return paper_trading
+        data = BotModel.model_validate(resulted_bot)
+        return data
 
-    def edit(self, paper_trading: PaperTradingTable) -> PaperTradingTable:
+    def save(self, data: BotModel) -> BotModel:
         """
-        Edit a paper trading account
+        Save operation
+        This can be editing a bot, or saving the object,
+        or updating a single field.
         """
-        self.session.add(paper_trading)
+        bot = self.session.get(PaperTradingTable, data.id)
+        if not bot:
+            raise ValueError("Bot not found")
+
+        # double check orders and deal are not overwritten
+        dumped_bot = data.model_dump(exclude_unset=True)
+        bot.sqlmodel_update(dumped_bot)
+        self.session.add(bot)
         self.session.commit()
+        resulted_bot = self.session.get(PaperTradingTable, bot.id)
         self.session.close()
-        return paper_trading
+        data = BotModel.model_validate(resulted_bot)
+        return data
 
-    def delete(self, id: str) -> bool:
+    def delete(self, id: Union[list[str], str]) -> bool:
         """
         Delete a paper trading account by id
         """
-        paper_trading = self.session.get(PaperTradingTable, id)
-        if not paper_trading:
+        data = self.session.get(PaperTradingTable, id)
+        if not data:
             return False
 
-        self.session.delete(paper_trading)
+        self.session.delete(data)
         self.session.commit()
+        self.session.refresh(data)
         self.session.close()
         return True
 
@@ -57,7 +111,7 @@ class PaperTradingTableCrud:
         no_cooldown=False,
         limit: int = 200,
         offset: int = 0,
-    ) -> PaperTradingTable:
+    ) -> BotTable:
         """
         Get all bots in the db except archived
         Args:
@@ -108,8 +162,7 @@ class PaperTradingTableCrud:
 
         bots = self.session.exec(statement).all()
         self.session.close()
-
-        return bots
+        return list(bots)
 
     def update_status(
         self, paper_trading: PaperTradingTable, status: Status
@@ -128,7 +181,7 @@ class PaperTradingTableCrud:
         bot_id: str | None = None,
         symbol: str | None = None,
         status: Status | None = None,
-    ):
+    ) -> BotModel:
         """
         Get one bot by id or symbol
         """
@@ -150,7 +203,8 @@ class PaperTradingTableCrud:
             raise ValueError("Invalid bot id or symbol")
 
         self.session.close()
-        return bot
+        data = BotModel.model_validate(bot)
+        return data
 
     def get_active_pairs(self):
         """

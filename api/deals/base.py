@@ -1,8 +1,8 @@
-from typing import Tuple
+from typing import Tuple, Type, Union
 from datetime import datetime
+from bots.models import BotModel
 from database.bot_crud import BotTableCrud
 from database.paper_trading_crud import PaperTradingTableCrud
-from database.models.bot_table import BotTable
 from orders.controller import OrderController
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
 from tools.exceptions import (
@@ -29,9 +29,13 @@ class BaseDeal(OrderController):
     self.symbol is always the same.
     """
 
-    def __init__(self, bot: BotTable, controller: PaperTradingTableCrud | BotTableCrud):
+    def __init__(
+        self,
+        bot: BotModel,
+        controller: Type[Union[PaperTradingTableCrud, BotTableCrud]],
+    ):
         self.active_bot = bot
-        self.controller: PaperTradingTableCrud | BotTableCrud = controller()
+        self.controller = controller()
         self.market_domination_reversal: bool | None = None
         self.price_precision = self.calculate_price_precision(bot.pair)
         self.qty_precision = self.calculate_qty_precision(bot.pair)
@@ -259,7 +263,7 @@ class BaseDeal(OrderController):
 
     def spot_liquidation(self, pair: str):
         qty = self.compute_qty(pair)
-        if qty:
+        if qty > 0:
             order_res = self.sell_order(pair, qty)
             return order_res
         else:

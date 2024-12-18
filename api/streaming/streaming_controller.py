@@ -1,7 +1,8 @@
 import json
 import logging
-import typing
+from typing import Type, Union, no_type_check
 from kafka import KafkaConsumer
+from bots.models import BotModel
 from database.autotrade_crud import AutotradeCrud
 from database.models.bot_table import BotTable
 from database.models.paper_trading_table import PaperTradingTable
@@ -21,11 +22,11 @@ class BaseStreaming:
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
 
-    def get_current_bot(self, symbol: str) -> BotTable:
+    def get_current_bot(self, symbol: str) -> BotModel:
         current_bot = self.bot_controller.get_one(symbol=symbol, status=Status.active)
         return current_bot
 
-    def get_current_test_bot(self, symbol: str) -> PaperTradingTable:
+    def get_current_test_bot(self, symbol: str) -> BotModel:
         current_test_bot = self.paper_trading_controller.get_one(
             symbol=symbol, status=Status.active
         )
@@ -52,10 +53,10 @@ class StreamingController(BaseStreaming):
 
     def execute_strategies(
         self,
-        current_bot: BotTable | PaperTradingTable,
+        current_bot: BotModel,
         close_price: str,
         open_price: str,
-        create_deal_controller: CreateDealController,
+        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ) -> None:
         """
         Processes the deal market websocket price updates
@@ -63,26 +64,24 @@ class StreamingController(BaseStreaming):
         It updates the bots deals, safety orders, trailling orders, stop loss
         for both paper trading test bots and real bots
         """
-        if len(current_bot["orders"]) > 0:
+        if len(current_bot.orders) > 0:
             try:
-                int(current_bot["orders"][0]["order_id"])
+                int(current_bot.orders[0].order_id)
             except Exception:
-                print(current_bot["orders"][0]["order_id"])
+                print(current_bot.orders[0].order_id)
                 pass
 
-        active_bot = BotTable.model_validate(current_bot)
+        active_bot = BotModel.model_validate(current_bot)
 
         # Margin short
         if active_bot.strategy == Strategy.margin_short:
-            margin_deal = MarginDeal(active_bot, create_deal_controller.controller)
+            margin_deal = MarginDeal(active_bot, db_table=db_table)
             margin_deal.streaming_updates(close_price)
 
         else:
             # Long strategy starts
             if active_bot.strategy == Strategy.long:
-                spot_long_deal = SpotLongDeal(
-                    active_bot, create_deal_controller.controller
-                )
+                spot_long_deal = SpotLongDeal(active_bot, db_table=db_table)
                 spot_long_deal.streaming_updates(close_price, open_price)
         pass
 
@@ -104,23 +103,23 @@ class StreamingController(BaseStreaming):
         try:
             if current_bot:
                 create_deal_controller = CreateDealController(
-                    bot=current_bot, controller=BotTableCrud
+                    bot=current_bot, db_table=BotTable
                 )
                 self.execute_strategies(
                     current_bot,
                     close_price,
                     open_price,
-                    create_deal_controller,
+                    db_table=BotTable,
                 )
-            if current_test_bot:
+            elif current_test_bot:
                 create_deal_controller = CreateDealController(
-                    bot=current_bot, controller=BotTableCrud
+                    bot=current_bot, db_table=PaperTradingTable
                 )
                 self.execute_strategies(
                     current_test_bot,
                     close_price,
                     open_price,
-                    create_deal_controller,
+                    db_table=PaperTradingTable,
                 )
         except BinanceErrors as error:
             if error.code in (-2010, -1013):
@@ -134,21 +133,21 @@ class StreamingController(BaseStreaming):
 
 class BbspreadsUpdater(BaseStreaming):
     def __init__(self) -> None:
-        self.current_bot: BotTable | None = None
-        self.current_test_bot: PaperTradingTable | None = None
+        self.current_bot: BotModel | None = None
+        self.current_test_bot: BotModel | None = None
 
     def load_current_bots(self, symbol: str) -> None:
         current_bot_payload = self.get_current_bot(symbol)
         if current_bot_payload:
-            self.current_bot = BotTable.model_validate(current_bot_payload)
+            self.current_bot = BotModel.model_validate(current_bot_payload)
 
         current_test_bot_payload = self.get_current_test_bot(symbol)
         if current_test_bot_payload:
-            self.current_test_bot = BotTable(**current_test_bot_payload)
+            self.current_test_bot = BotModel.model_validate(current_test_bot_payload)
 
     def update_bots_parameters(
         self,
-        bot: BotTable,
+        bot: BotModel,
         bb_spreads: dict,
         create_deal_controller: CreateDealController,
     ) -> None:
@@ -198,7 +197,7 @@ class BbspreadsUpdater(BaseStreaming):
                     # too much risk, reduce stop loss
                     bot.trailling_deviation = bottom_spread
                     # reactivate includes saving
-                    create_deal_controller.open_deal(bot)
+                    create_deal_controller.open_deal()
 
                 # No need to continue
                 # Bots can only be either long or short
@@ -213,10 +212,10 @@ class BbspreadsUpdater(BaseStreaming):
                 if bot.trailling_deviation > bottom_spread:
                     bot.trailling_deviation = top_spread
                     # reactivate includes saving
-                    create_deal_controller.open_deal(bot)
+                    create_deal_controller.open_deal()
 
     # To find a better interface for bb_xx once mature
-    @typing.no_type_check
+    @no_type_check
     def update_close_conditions(self, message):
         """
         Update bot with dynamic trailling enabled to update

@@ -27,7 +27,7 @@ class OrderController(Account):
     def generate_id(self):
         return uuid4()
 
-    def simulate_order(self, pair, qty, side):
+    def simulate_order(self, pair, side, qty=1):
         """
         Price is determined by market
         to help trigger the order immediately
@@ -51,7 +51,7 @@ class OrderController(Account):
         }
         return order
 
-    def simulate_response_order(self, pair, qty, side):
+    def simulate_response_order(self, pair, side, qty=1):
         price = float(self.matching_engine(pair, True, qty))
         response_order = {
             "symbol": pair,
@@ -181,7 +181,7 @@ class OrderController(Account):
 
         return data
 
-    def delete_order(self, symbol: str, orderId: str):
+    def delete_order(self, symbol: str, orderId: int):
         """
         Cancels single order by symbol
         - Optimal for open orders table
