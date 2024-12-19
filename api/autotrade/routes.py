@@ -1,9 +1,9 @@
 from typing import Annotated
 
 from sqlmodel import Session
+from database.autotrade_crud import AutotradeCrud
 from tools.enum_definitions import AutotradeSettingsDocument
 from database.utils import get_session
-from autotrade.controller import AutotradeSettingsController
 from autotrade.schemas import AutotradeSettingsResponse, AutotradeSettingsSchema
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
@@ -22,7 +22,7 @@ def edit_settings(
     these use real money and real Binance transactions
     """
     try:
-        result = AutotradeSettingsController(session=session).edit_settings(item)
+        result = AutotradeCrud(session=session).edit_settings(item)
         if not result:
             raise HTTPException(status_code=404, detail="Autotrade settings not found")
         return json_response({"message": "Successfully updated settings"})
@@ -37,7 +37,7 @@ def edit_settings(
 @autotrade_settings_blueprint.get("/bots", tags=["autotrade settings"])
 def get_settings(session: Session = Depends(get_session)):
     try:
-        deserialized_data = AutotradeSettingsController(session=session).get_settings()
+        deserialized_data = AutotradeCrud(session=session).get_settings()
         return json_response(
             {
                 "message": "Successfully retrieved settings",
@@ -57,7 +57,7 @@ def get_test_autotrade_settings(
     session: Session = Depends(get_session),
 ):
     try:
-        deserialized_data = AutotradeSettingsController(
+        deserialized_data = AutotradeCrud(
             document_id=AutotradeSettingsDocument.test_autotrade_settings,
             session=session,
         ).get_settings()
@@ -77,7 +77,7 @@ def edit_test_autotrade_settings(
     session: Session = Depends(get_session),
 ):
     try:
-        data = AutotradeSettingsController(
+        data = AutotradeCrud(
             document_id=AutotradeSettingsDocument.test_autotrade_settings,
             session=session,
         ).edit_settings(item)

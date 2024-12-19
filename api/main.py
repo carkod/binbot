@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -20,8 +21,12 @@ from database.models import *  # noqa
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    api_db = ApiDb()
-    api_db.init_db()
+    try:
+        api_db = ApiDb()
+        api_db.init_db()
+    except Exception as error:
+        logging.error(f"Error initializing database: {error}")
+        pass
     yield
 
 

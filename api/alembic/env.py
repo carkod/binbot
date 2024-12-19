@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
-from database.api_db import db_url
+from database.utils import db_url
 from database.models import SQLModel
 
 
