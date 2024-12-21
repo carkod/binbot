@@ -1,16 +1,20 @@
+from time import time
+from uuid import uuid4
 from account.account import Account
 from tools.exceptions import DeleteOrderError
-from database.db import Database
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_message
-from tools.round_numbers import supress_notation
+from tools.round_numbers import supress_notation, zero_remainder
 
 
-class OrderController(Database, Account):
+class OrderController(Account):
     """
     Always GTC and limit orders
     limit/market orders will be decided by matching_engine
     PRICE_FILTER decimals
+
+    Methods and attributes here are all unrelated to database operations
+    this is highly tied to the Binance API
     """
 
     def __init__(self) -> None:
@@ -20,14 +24,84 @@ class OrderController(Database, Account):
         self.qty_precision: int
         pass
 
-    def zero_remainder(self, x):
-        number = x
+    def generate_id(self):
+        return uuid4()
 
-        while True:
-            if number % x == 0:
-                return number
-            else:
-                number += x
+    def simulate_order(self, pair, side, qty=1):
+        """
+        Price is determined by market
+        to help trigger the order immediately
+        """
+        price = float(self.matching_engine(pair, True, qty))
+        order = {
+            "symbol": pair,
+            "orderId": self.generate_id().int,
+            "orderListId": -1,
+            "clientOrderId": self.generate_id().hex,
+            "transactTime": time() * 1000,
+            "price": price,
+            "origQty": qty,
+            "executedQty": qty,
+            "cummulativeQuoteQty": qty,
+            "status": "FILLED",
+            "timeInForce": "GTC",
+            "type": "LIMIT",
+            "side": side,
+            "fills": [],
+        }
+        return order
+
+    def simulate_response_order(self, pair, side, qty=1):
+        price = float(self.matching_engine(pair, True, qty))
+        response_order = {
+            "symbol": pair,
+            "orderId": self.generate_id().int,
+            "orderListId": -1,
+            "clientOrderId": self.generate_id().hex,
+            "transactTime": time() * 1000,
+            "price": price,
+            "origQty": qty,
+            "executedQty": qty,
+            "cummulativeQuoteQty": qty,
+            "status": "FILLED",
+            "timeInForce": "GTC",
+            "type": "LIMIT",
+            "side": side,
+            "fills": [],
+        }
+        return response_order
+
+    def simulate_margin_order(self, pair, side: OrderSide):
+        """
+        Quantity doesn't matter, as it is not a real order that needs
+        to be process by the exchange
+
+        Args:
+        - symbol and pair are used interchangably
+        - side: buy or sell
+        """
+        qty = 1
+        price = float(self.matching_engine(pair, True, qty))
+        order = {
+            "symbol": pair,
+            "orderId": self.generate_id().int,
+            "orderListId": -1,
+            "clientOrderId": self.generate_id().hex,
+            "transactTime": time() * 1000,
+            "price": price,
+            "origQty": qty,
+            "executedQty": qty,
+            "cummulativeQuoteQty": qty,
+            "status": "FILLED",
+            "timeInForce": "GTC",
+            "type": "LIMIT",
+            "side": side,
+            "marginBuyBorrowAmount": 5,
+            "marginBuyBorrowAsset": "BTC",
+            "isIsolated": "true",
+            "fills": [],
+        }
+        return order
 
     def sell_order(self, symbol, qty, price=None):
         """
@@ -82,7 +156,7 @@ class OrderController(Database, Account):
             # If price is not provided by matching engine,
             # create iceberg orders
             if not book_price:
-                payload["iceberg_qty"] = self.zero_remainder(qty)
+                payload["iceberg_qty"] = zero_remainder(qty)
                 payload["price"] = supress_notation(book_price, self.price_precision)
 
         else:
@@ -107,7 +181,7 @@ class OrderController(Database, Account):
 
         return data
 
-    def delete_order(self, symbol: str, orderId: str):
+    def delete_order(self, symbol: str, orderId: int):
         """
         Cancels single order by symbol
         - Optimal for open orders table

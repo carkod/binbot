@@ -7,9 +7,9 @@ from sqlmodel import Session, select
 from tools.enum_definitions import AutotradeSettingsDocument
 
 
-class AutotradeSettingsController:
+class AutotradeCrud:
     """
-    Autotrade settings
+    Database operations for Autotrade settings
     """
 
     def __init__(

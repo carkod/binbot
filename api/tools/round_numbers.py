@@ -83,3 +83,13 @@ def format_ts(time: datetime.datetime) -> str:
     to human-readable date
     """
     return time.strftime("%Y-%m-%d %H:%M:%S.%f")
+
+
+def zero_remainder(x):
+    number = x
+
+    while True:
+        if number % x == 0:
+            return number
+        else:
+            number += x
