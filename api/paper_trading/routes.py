@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 from tools.enum_definitions import Status
-from database.models.paper_trading_table import PaperTradingTable
+from database.models.bot_table import PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.utils import get_session
 from deals.controllers import CreateDealController

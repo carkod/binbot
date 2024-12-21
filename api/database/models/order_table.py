@@ -1,21 +1,20 @@
 from typing import TYPE_CHECKING, Optional
-from uuid import UUID
-
 from pydantic import ValidationInfo, field_validator
 from sqlalchemy import Column, Enum
 from tools.enum_definitions import DealType, OrderType
 from sqlmodel import Field, Relationship, SQLModel
+from uuid import UUID, uuid4
+
 
 if TYPE_CHECKING:
-    from database.models.bot_table import BotTable
-    from database.models.paper_trading_table import PaperTradingTable
+    from database.models.bot_table import BotTable, PaperTradingTable
 
 
-class OrderModel(SQLModel):
+class OrderBase(SQLModel):
     order_type: OrderType
     time_in_force: str
     timestamp: Optional[int]
-    order_id: int = Field(nullable=True)
+    order_id: int = Field(nullable=False)
     order_side: str
     pair: str
     qty: float
@@ -23,8 +22,18 @@ class OrderModel(SQLModel):
     price: float
     deal_type: DealType
 
+    # Relationships
+    bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
+    paper_trading_id: Optional[UUID] = Field(
+        default=None, foreign_key="paper_trading.id"
+    )
 
-class ExchangeOrderTable(OrderModel, table=True):
+    model_config = {
+        "use_enum_values": True,
+    }
+
+
+class ExchangeOrderTable(OrderBase, table=True):
     """
     Data provided by Crypto Exchange,
     therefore they should be all be strings
@@ -38,20 +47,18 @@ class ExchangeOrderTable(OrderModel, table=True):
 
     __tablename__ = "exchange_order"
 
-    id: int = Field(primary_key=True)
+    id: UUID = Field(
+        primary_key=True, default_factory=uuid4, nullable=False, unique=True, index=True
+    )
     price: float = Field(nullable=True)
     deal_type: DealType = Field(sa_column=Column(Enum(DealType)))
     total_commission: float = Field(nullable=True, default=0)
 
     # Relationships
-    bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
-    paper_trading_id: Optional[UUID] = Field(
-        default=None, foreign_key="paper_trading.id"
-    )
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")
 
-    @field_validator("price", "qty", mode="before")
+    @field_validator("price", "qty")
     @classmethod
     def validate_str_numbers(cls, v, info: ValidationInfo):
         if isinstance(v, str):

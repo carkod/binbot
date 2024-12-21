@@ -5,8 +5,7 @@ from typing import Optional, TYPE_CHECKING
 
 # avoids circular imports
 if TYPE_CHECKING:
-    from database.models.bot_table import BotTable
-    from database.models.paper_trading_table import PaperTradingTable
+    from database.models.bot_table import BotTable, PaperTradingTable
 
 
 class DealBase(SQLModel):
@@ -48,6 +47,9 @@ class DealBase(SQLModel):
     margin_short_sell_timestamp: int = Field(default=0)
     margin_short_loan_timestamp: int = Field(default=0)
 
+    # Relationships
+    # bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
+    # paper_trading_id: Optional[UUID] = Field(default=None, foreign_key="paper_trading.id")
 
 class DealTable(DealBase, table=True):
     """
@@ -59,8 +61,7 @@ class DealTable(DealBase, table=True):
 
     # Relationships
     bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
+    paper_trading_id: Optional[UUID] = Field(default=None, foreign_key="paper_trading.id")
     bot: Optional["BotTable"] = Relationship(back_populates="deal")
-    paper_trading_id: Optional[UUID] = Field(
-        default=None, foreign_key="paper_trading.id"
-    )
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="deal")
+    pass

@@ -1,10 +1,8 @@
 from typing import Type, Union
-from database.models.order_table import OrderModel
 from database.bot_crud import BotTableCrud
 from database.paper_trading_crud import PaperTradingTableCrud
-from database.models.paper_trading_table import PaperTradingTable
-from database.models.bot_table import BotTable
-from bots.models import BotModel
+from database.models.bot_table import BotTable, PaperTradingTable
+from bots.models import BotModel, OrderModel
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
 from deals.models import DealModel

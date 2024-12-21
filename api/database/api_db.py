@@ -4,9 +4,8 @@ import os
 from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
 from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
-from database.models.paper_trading_table import PaperTradingTable
 from database.models.user_table import UserTable
-from database.models.bot_table import BotTable
+from database.models.bot_table import BotTable, PaperTradingTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
@@ -119,36 +118,33 @@ class ApiDb:
         results = self.session.exec(statement)
         if results.first():
             return
-        orders = [
-            ExchangeOrderTable(
-                id=1,
-                order_id=123,
-                order_type="market",
-                time_in_force="GTC",
-                timestamp=0,
-                order_side="buy",
-                pair="BTCUSDT",
-                qty=0.000123,
-                status="filled",
-                price=1.222,
-                deal_type=DealType.base_order,
-                total_commission=0,
-            ),
-            ExchangeOrderTable(
-                id=2,
-                order_id=123,
-                order_type="limit",
-                time_in_force="GTC",
-                timestamp=0,
-                order_side="sell",
-                pair="BTCUSDT",
-                qty=0.000123,
-                status="filled",
-                price=1.222,
-                deal_type=DealType.take_profit,
-                total_commission=0,
-            ),
-        ]
+        self.session.close()
+        base_order = ExchangeOrderTable(
+            order_id=123,
+            order_type="market",
+            time_in_force="GTC",
+            timestamp=0,
+            order_side="buy",
+            pair="BTCUSDT",
+            qty=0.000123,
+            status="filled",
+            price=1.222,
+            deal_type=DealType.base_order,
+            total_commission=0,
+        )
+        take_profit_order = ExchangeOrderTable(
+            order_id=456,
+            order_type="limit",
+            time_in_force="GTC",
+            timestamp=0,
+            order_side="sell",
+            pair="BTCUSDT",
+            qty=0.000123,
+            status="filled",
+            price=1.222,
+            deal_type=DealType.take_profit,
+            total_commission=0,
+        )
         deal = DealTable(
             buy_price=0,
             buy_total_qty=0,
@@ -182,18 +178,39 @@ class ApiDb:
             margin_short_sell_timestamp=0,
             margin_short_loan_timestamp=0,
         )
-        self.session.add(deal)
         bot = BotTable(
             pair="BTCUSDT",
             balance_size_to_use="1",
             fiat="USDC",
             base_order_size=15,
-            deal_id=deal.id,
+            deal=deal,
             cooldown=0,
-            logs='["Bot created"]',
+            logs=["Bot created"],
             mode="manual",
             name="Dummy bot",
-            orders=orders,
+            orders=[base_order, take_profit_order],
+            status=Status.inactive,
+            stop_loss=0,
+            take_profit=2.3,
+            trailling=True,
+            trailling_deviation=0.63,
+            trailling_profit=2.3,
+            strategy=Strategy.long,
+            short_buy_price=0,
+            short_sell_price=0,
+            total_commission=0,
+        )
+        paper_trading_bot = PaperTradingTable(
+            pair="BTCUSDT",
+            balance_size_to_use=1,
+            balance_to_use=1,
+            base_order_size=15,
+            deal=deal,
+            cooldown=0,
+            logs=["Paper trading bot created"],
+            mode="manual",
+            name="Dummy bot",
+            orders=[base_order, take_profit_order],
             status=Status.inactive,
             stop_loss=0,
             take_profit=2.3,
@@ -206,31 +223,10 @@ class ApiDb:
             total_commission=0,
         )
         self.session.add(bot)
-        self.session.commit()
-        paper_trading_bot = PaperTradingTable(
-            pair="BTCUSDT",
-            balance_size_to_use=1,
-            balance_to_use=1,
-            base_order_size=15,
-            deal_id=deal.id,
-            cooldown=0,
-            logs='["Paper trading bot created"]',
-            mode="manual",
-            name="Dummy bot",
-            orders=orders,
-            status=Status.inactive,
-            stop_loss=0,
-            take_profit=2.3,
-            trailling=True,
-            trailling_deviation=0.63,
-            trailling_profit=2.3,
-            strategy=Strategy.long,
-            short_buy_price=0,
-            short_sell_price=0,
-            total_commission=0,
-        )
         self.session.add(paper_trading_bot)
         self.session.commit()
+        self.session.refresh(bot)
+        self.session.refresh(paper_trading_bot)
         return bot
 
     def select_bot(self, pair):

@@ -2,7 +2,7 @@ import json
 import os
 import logging
 from time import sleep
-from typing import Any, Optional, Union
+from typing import Any, Union, TypeVar, Generic
 from bson import json_util
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -36,7 +36,7 @@ def api_response(detail: str, data: Any = None, error: Union[str, int] = 0, stat
     """
     body = {"message": detail}
     if data:
-        body["data"] = jsonable_encoder(data)
+        body["data"] = data
 
     if error:
         body["error"] = str(error)
@@ -150,5 +150,13 @@ def encode_json(raw):
 
 
 class StandardResponse(BaseModel):
+    message: str
+    error: int = 0
+
+
+DataType = TypeVar("DataType")
+
+
+class IResponseBase(BaseModel, Generic[DataType]):
     message: str
     error: int = 0

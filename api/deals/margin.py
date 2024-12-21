@@ -1,28 +1,25 @@
 import logging
 from typing import Type, Union
 from urllib.error import HTTPError
-from database.models.order_table import OrderModel
-from deals.controllers import CreateDealController
-from database.models.paper_trading_table import PaperTradingTable
 from database.bot_crud import BotTableCrud
-from database.models.bot_table import BotTable
+from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from tools.enum_definitions import CloseConditions, DealType, OrderSide, Strategy
-from bots.models import BotModel
+from bots.models import BotModel, OrderModel
 from tools.enum_definitions import Status
-from deals.base import BaseDeal
 from tools.exceptions import BinanceErrors, MarginShortError
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
+from deals.base import BaseDeal
 
 
-class MarginDeal(CreateDealController):
+class MarginDeal(BaseDeal):
     def __init__(
         self,
         bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ):
-        self.active_bot = bot
         super().__init__(bot, db_table)
+        self.active_bot = bot
         self.db_table = db_table
 
     def get_remaining_assets(self) -> tuple[float, float]:
@@ -294,7 +291,7 @@ class MarginDeal(CreateDealController):
                 self.controller.update_logs("Loan not found for this bot.")
 
             # Save in two steps, because it takes time for Binance to process repayments
-            self.active_bot = self.controller.save(self.active_bot)
+            self.controller.save(self.active_bot)
 
             try:
                 # get new balance
@@ -324,7 +321,7 @@ class MarginDeal(CreateDealController):
                 self.active_bot,
             )
 
-        self.active_bot = self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
         return self.active_bot
 
     def margin_short_base_order(self) -> BotModel:
@@ -374,7 +371,7 @@ class MarginDeal(CreateDealController):
 
         # Activate bot
         self.active_bot.status = Status.active
-        self.active_bot = self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
         return self.active_bot
 
     def streaming_updates(self, close_price: str) -> BotModel:
@@ -428,7 +425,7 @@ class MarginDeal(CreateDealController):
                 self.active_bot.trailling == "true" or self.active_bot.trailling
             ) and self.active_bot.deal.margin_short_sell_price > 0:
                 self.update_trailling_profit(price)
-                self.active_bot = self.controller.save(self.active_bot)
+                self.controller.save(self.active_bot)
 
             else:
                 # Execute the usual non-trailling take_profit
@@ -539,7 +536,7 @@ class MarginDeal(CreateDealController):
         msg = "Completed Stop loss order"
         self.controller.update_logs(msg)
         self.active_bot.status = Status.completed
-        self.active_bot = self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
 
         return self.active_bot
 
@@ -597,7 +594,7 @@ class MarginDeal(CreateDealController):
 
         self.controller.update_logs(msg)
         self.active_bot.status = Status.completed
-        self.active_bot = self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
 
         return self.active_bot
 
@@ -624,7 +621,7 @@ class MarginDeal(CreateDealController):
 
         # Keep bot up to date in the DB
         # this avoid unsyched bots when errors ocurr in other functions
-        self.active_bot = self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
         return self.active_bot
 
     def update_trailling_profit(self, close_price: float) -> BotModel:

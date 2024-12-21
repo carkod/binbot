@@ -4,8 +4,7 @@ from typing import Type, Union, no_type_check
 from kafka import KafkaConsumer
 from bots.models import BotModel
 from database.autotrade_crud import AutotradeCrud
-from database.models.bot_table import BotTable
-from database.models.paper_trading_table import PaperTradingTable
+from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.bot_crud import BotTableCrud
 from deals.controllers import CreateDealController

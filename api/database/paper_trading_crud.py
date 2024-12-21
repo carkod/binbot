@@ -2,10 +2,9 @@ from time import time
 from typing import Union
 
 from sqlmodel import Session, or_, select, case, desc, asc
-from database.models.bot_table import BotBase, BotTable
-from bots.models import BotModel
+from database.models.bot_table import BotTable, PaperTradingTable
+from bots.models import BotModel, BotBase
 from database.models.deal_table import DealTable
-from database.models.paper_trading_table import PaperTradingTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 
@@ -162,7 +161,7 @@ class PaperTradingTableCrud:
 
         bots = self.session.exec(statement).all()
         self.session.close()
-        return list(bots)
+        return bots
 
     def update_status(
         self, paper_trading: PaperTradingTable, status: Status

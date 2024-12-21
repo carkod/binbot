@@ -4,10 +4,11 @@ from fastapi import Query
 from sqlmodel import Session, asc, desc, or_, select, case
 from time import time
 from bots.models import BotModel
-from database.models.bot_table import BotBase, BotTable
+from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
+from bots.models import BotBase
 
 
 class BotTableCrud:
@@ -35,7 +36,7 @@ class BotTableCrud:
         log_message: str,
         bot: Optional[BotModel] = None,
         bot_id: str | None = None,
-    ) -> BotModel:
+    ) -> BotTable:
         """
         Update logs for a bot
 
@@ -47,7 +48,10 @@ class BotTableCrud:
         """
         if bot_id:
             bot_obj = self.session.get(BotTable, bot_id)
-            bot = BotModel.model_validate(bot_obj)
+            if not bot_obj:
+                raise ValueError("Bot not found")
+            # No validation needed, this is a trusted source
+            bot = BotModel.model_construct(**bot_obj.model_dump())
         elif not bot:
             raise ValueError("Bot id or BotModel object is required")
 
@@ -57,14 +61,15 @@ class BotTableCrud:
         elif len(current_logs) > 0:
             current_logs.append(log_message)
 
-        bot.logs = current_logs
+        bot_table_model = BotTable.model_validate(bot.model_dump())
+        bot_table_model.logs = current_logs
 
         # db operations
-        self.session.add(bot)
+        self.session.add(bot_table_model)
         self.session.commit()
-        self.session.refresh(bot)
+        self.session.refresh(bot_table_model)
         self.session.close()
-        return bot
+        return bot_table_model
 
     def get(
         self,
@@ -124,8 +129,7 @@ class BotTableCrud:
         statement.limit(limit).offset(offset)
 
         bots = self.session.exec(statement).all()
-        self.session.close()
-
+        # self.session.close()
         return bots
 
     def get_one(
@@ -133,12 +137,16 @@ class BotTableCrud:
         bot_id: str | None = None,
         symbol: str | None = None,
         status: Status | None = None,
-    ) -> BotModel:
+    ) -> BotTable:
         """
         Get one bot by id or symbol
         """
         if bot_id:
-            bot = self.session.get(BotTable, UUID(bot_id))
+            santize_uuid = UUID(bot_id)
+            bot = self.session.get(BotTable, santize_uuid)
+            if not bot:
+                raise ValueError("Bot not found")
+            return bot
         elif symbol:
             if status:
                 bot = self.session.exec(
@@ -150,12 +158,11 @@ class BotTableCrud:
                 bot = self.session.exec(
                     select(BotTable).where(BotTable.pair == symbol)
                 ).first()
+            if not bot:
+                raise ValueError("Bot not found")
+            return bot
         else:
             raise ValueError("Invalid bot id or symbol")
-
-        self.session.close()
-        bot_model = BotModel.model_validate(bot)
-        return bot_model
 
     def create(self, data: BotBase) -> BotModel:
         """
@@ -167,22 +174,28 @@ class BotTableCrud:
         Args:
         - data: BotBase includes only flat properties (excludes deal and orders which are generated internally)
         """
-        bot = BotModel.model_validate(data)
-
-        # Ensure values are reset
-        bot.orders = []
-        bot.logs = []
-        bot.status = Status.inactive
+        bot = BotModel.model_construct(**data.model_dump())
+        deal = bot.deal
 
         # db operations
-        self.session.add(bot)
-        self.session.commit()
-        resulted_bot = self.session.get(BotTable, bot.id)
-        self.session.close()
-        data = BotModel.model_validate(resulted_bot)
-        return data
+        serialised_bot = BotTable.model_validate(data)
+        serialised_deal = DealTable.model_validate(deal)
 
-    def save(self, data: BotModel) -> BotModel:
+        self.session.add(serialised_bot)
+        self.session.add(serialised_deal)
+
+        self.session.commit()
+        self.session.refresh(serialised_bot)
+        self.session.refresh(serialised_deal)
+        self.session.close()
+        resulted_bot = self.session.get(BotTable, data.id)
+        if resulted_bot:
+            bot_model = BotModel.model_validate(resulted_bot.model_dump())
+        else:
+            bot_model = bot
+        return bot_model
+
+    def save(self, data: BotModel) -> BotTable:
         """
         Save bot
 
@@ -193,15 +206,15 @@ class BotTableCrud:
         if not bot:
             raise ValueError("Bot not found")
 
-        # double check orders and deal are not overwritten
-        dumped_bot = data.model_dump(exclude_unset=True)
+        # due to incompatibility of SQLModel and Pydantic
+        dumped_bot = data.model_dump()
         bot.sqlmodel_update(dumped_bot)
         self.session.add(bot)
         self.session.commit()
-        resulted_bot = self.session.get(BotTable, bot.id)
+        self.session.refresh(bot)
         self.session.close()
-        data = BotModel.model_validate(resulted_bot)
-        return data
+        resulted_bot = self.get_one(bot_id=dumped_bot["id"])
+        return resulted_bot
 
     def delete(self, bot_ids: List[str] = Query(...)):
         """

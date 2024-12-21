@@ -1,9 +1,7 @@
 import logging
 from typing import Type, Union
-from database.models.order_table import OrderModel
 from database.bot_crud import BotTableCrud
-from database.models.paper_trading_table import PaperTradingTable
-from database.models.bot_table import BotTable
+from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from deals.base import BaseDeal
 from deals.margin import MarginDeal
@@ -14,7 +12,7 @@ from tools.enum_definitions import (
     Status,
     Strategy,
 )
-from bots.models import BotModel
+from bots.models import BotModel, OrderModel
 
 
 class SpotLongDeal(BaseDeal):
@@ -58,7 +56,7 @@ class SpotLongDeal(BaseDeal):
             bot=self.active_bot, db_table=self.db_table
         ).margin_short_base_order()
 
-        self.active_bot = self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
         return self.active_bot
 
     def execute_stop_loss(self) -> BotModel:
@@ -93,7 +91,7 @@ class SpotLongDeal(BaseDeal):
                         self.active_bot,
                     )
                     self.active_bot.status = Status.error
-                    self.active_bot = self.controller.save(self.active_bot)
+                    self.controller.save(self.active_bot)
                     return self.active_bot
 
         # Dispatch fake order
@@ -135,7 +133,7 @@ class SpotLongDeal(BaseDeal):
 
         self.controller.update_logs(msg)
         self.active_bot.status = Status.completed
-        self.active_bot = self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
 
         return self.active_bot
 
@@ -165,7 +163,7 @@ class SpotLongDeal(BaseDeal):
                             self.active_bot,
                         )
                         self.active_bot.status = Status.error
-                        self.active_bot = self.controller.save(self.active_bot)
+                        self.controller.save(self.active_bot)
                     return self.active_bot
 
         # Dispatch fake order
@@ -212,7 +210,7 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
         self.active_bot.status = Status.completed
-        self.active_bot = self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
         self.controller.update_logs(
             f"Completed take profit after failing to break trailling {self.active_bot.pair}"
         )
@@ -223,7 +221,7 @@ class SpotLongDeal(BaseDeal):
         self.close_conditions(close_price)
 
         self.active_bot.deal.current_price = close_price
-        self.active_bot = self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
 
         # Stop loss
         if (
@@ -287,7 +285,7 @@ class SpotLongDeal(BaseDeal):
                     f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}",
                     self.active_bot,
                 )
-                self.active_bot = self.controller.save(self.active_bot)
+                self.controller.save(self.active_bot)
 
             # Direction 2 (downward): breaking the trailling_stop_loss
             # Make sure it's red candlestick, to avoid slippage loss
@@ -326,7 +324,7 @@ class SpotLongDeal(BaseDeal):
                         self.active_bot.orders[i].qty = order_response["origQty"]
                         self.active_bot.orders[i].status = order_response["status"]
 
-            self.active_bot = self.controller.save(self.active_bot)
+            self.controller.save(self.active_bot)
 
         self.base_producer.update_required(
             self.producer, "EXECUTE_SPOT_STREAMING_UPDATES"

@@ -1,6 +1,7 @@
 from typing import Tuple, Type, Union
 from datetime import datetime
 from bots.models import BotModel
+from database.models.bot_table import BotTable, PaperTradingTable
 from database.bot_crud import BotTableCrud
 from database.paper_trading_crud import PaperTradingTableCrud
 from orders.controller import OrderController
@@ -32,10 +33,14 @@ class BaseDeal(OrderController):
     def __init__(
         self,
         bot: BotModel,
-        controller: Type[Union[PaperTradingTableCrud, BotTableCrud]],
+        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ):
+        if db_table == PaperTradingTable:
+            self.controller = PaperTradingTableCrud()
+        else:
+            self.controller = BotTableCrud()
+
         self.active_bot = bot
-        self.controller = controller()
         self.market_domination_reversal: bool | None = None
         self.price_precision = self.calculate_price_precision(bot.pair)
         self.qty_precision = self.calculate_qty_precision(bot.pair)
