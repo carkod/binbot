@@ -1,6 +1,6 @@
 from uuid import uuid4, UUID
 from typing import TYPE_CHECKING, Optional
-from pydantic import Json, PositiveInt
+from pydantic import BaseModel, Json, PositiveInt
 from sqlalchemy import JSON, Column, Enum
 from database.utils import timestamp
 from tools.enum_definitions import (
@@ -18,7 +18,64 @@ if TYPE_CHECKING:
     from database.models.order_table import ExchangeOrderTable
 
 
-class BotBase(SQLModel):
+class BotBase(BaseModel):
+    """
+    The way SQLModel works causes a lot of errors
+    if we combine (with inheritance) both Pydantic models
+    and SQLModels. they are not compatible. Thus the duplication
+    """
+
+    id: Optional[UUID] = Field(default_factory=uuid4)
+    pair: str
+    fiat: str = Field(default="USDC", index=True)
+    base_order_size: float = Field(
+        default=15, description="Min Binance 0.0001 BNB approx 15USD"
+    )
+    candlestick_interval: BinanceKlineIntervals = Field(
+        default=BinanceKlineIntervals.fifteen_minutes,
+    )
+    close_condition: CloseConditions = Field(
+        default=CloseConditions.dynamic_trailling,
+    )
+    cooldown: PositiveInt = Field(
+        default=0,
+        description="cooldown period in minutes before opening next bot with same pair",
+    )
+    created_at: float = Field(default_factory=timestamp)
+    updated_at: float = Field(default_factory=timestamp)
+    dynamic_trailling: bool = Field(default=False)
+    logs: list[Json[str]] = Field(default=[])
+    mode: str = Field(default="manual")
+    name: str = Field(default="Default bot")
+    status: str = Field(default=Status.inactive)
+    stop_loss: float = Field(
+        default=0, description="If stop_loss > 0, allow for reversal"
+    )
+    margin_short_reversal: bool = Field(default=False)
+    take_profit: float = Field(default=0)
+    trailling: bool = Field(default=False)
+    trailling_deviation: float = Field(
+        default=0,
+        ge=-1,
+        le=101,
+        description="Trailling activation (first take profit hit)",
+    )
+    trailling_profit: float = Field(default=0)
+    strategy: str = Field(default=Strategy.long)
+    short_buy_price: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
+    short_sell_price: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
+    total_commission: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
+
+
+class BotTable(SQLModel, table=True):
+    __tablename__ = "bot"
+
     id: Optional[UUID] = Field(
         default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
     )
@@ -45,7 +102,6 @@ class BotBase(SQLModel):
     logs: list[Json[str]] = Field(default=[], sa_column=Column(JSON))
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
-    # filled up internally by Exchange
     status: str = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
     stop_loss: float = Field(
         default=0, description="If stop_loss > 0, allow for reversal"
@@ -53,19 +109,94 @@ class BotBase(SQLModel):
     margin_short_reversal: bool = Field(default=False)
     take_profit: float = Field(default=0)
     trailling: bool = Field(default=False)
-    trailling_deviation: float = Field(default=0, ge=-1, le=101)
-    # Trailling activation (first take profit hit)
+    trailling_deviation: float = Field(
+        default=0,
+        ge=-1,
+        le=101,
+        description="Trailling activation (first take profit hit)",
+    )
     trailling_profit: float = Field(default=0)
     strategy: str = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
-    short_buy_price: float = Field(default=0)
-    # autoswitch to short_strategy
-    short_sell_price: float = Field(default=0)
-    total_commission: float = Field(default=0)
+    short_buy_price: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
+    short_sell_price: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
+    total_commission: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
 
-
-class BotTable(BotBase, table=True):
-    __tablename__ = "bot"
-
+    # Table relationships filled up internally
     deal: "DealTable" = Relationship(back_populates="bot")
-    # filled up internally by Exchange
     orders: list["ExchangeOrderTable"] = Relationship(back_populates="bot")
+
+
+class PaperTradingTable(SQLModel, table=True):
+    """
+    Fake bots
+
+    these trade without actual money, so qty
+    is usually 0 or 1. Orders are simulated
+
+    This cannot inherit from a SQLModel base
+    because errors with candlestick_interval
+    already assigned to BotTable error
+    """
+
+    __tablename__ = "paper_trading"
+
+    id: Optional[UUID] = Field(
+        default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
+    )
+    pair: str = Field(index=True)
+    fiat: str = Field(default="USDC", index=True)
+    base_order_size: float = Field(
+        default=15, description="Min Binance 0.0001 BNB approx 15USD"
+    )
+    candlestick_interval: BinanceKlineIntervals = Field(
+        default=BinanceKlineIntervals.fifteen_minutes,
+        sa_column=Column(Enum(BinanceKlineIntervals)),
+    )
+    close_condition: CloseConditions = Field(
+        default=CloseConditions.dynamic_trailling,
+        sa_column=Column(Enum(CloseConditions)),
+    )
+    cooldown: PositiveInt = Field(
+        default=0,
+        description="cooldown period in minutes before opening next bot with same pair",
+    )
+    created_at: float = Field(default_factory=timestamp)
+    updated_at: float = Field(default_factory=timestamp)
+    dynamic_trailling: bool = Field(default=False)
+    logs: list[Json[str]] = Field(default=[], sa_column=Column(JSON))
+    mode: str = Field(default="manual")
+    name: str = Field(default="Default bot")
+    status: str = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
+    stop_loss: float = Field(
+        default=0, description="If stop_loss > 0, allow for reversal"
+    )
+    margin_short_reversal: bool = Field(default=False)
+    take_profit: float = Field(default=0)
+    trailling: bool = Field(default=False)
+    trailling_deviation: float = Field(
+        default=0,
+        ge=-1,
+        le=101,
+        description="Trailling activation (first take profit hit)",
+    )
+    trailling_profit: float = Field(default=0)
+    strategy: str = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
+    short_buy_price: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
+    short_sell_price: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
+    total_commission: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
+
+    # Table relationships filled up internally
+    deal: "DealTable" = Relationship(back_populates="paper_trading")
+    orders: list["ExchangeOrderTable"] = Relationship(back_populates="paper_trading")
