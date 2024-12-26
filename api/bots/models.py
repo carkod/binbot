@@ -1,0 +1,165 @@
+from typing import List, Optional
+from uuid import uuid4, UUID
+from tools.enum_definitions import (
+    BinanceKlineIntervals,
+    CloseConditions,
+    Status,
+    Strategy,
+)
+from deals.models import DealModel
+from pydantic import (
+    BaseModel,
+    Field,
+    Json,
+    field_validator,
+)
+from database.utils import timestamp
+from tools.handle_error import StandardResponse, IResponseBase
+from tools.enum_definitions import DealType, OrderType
+
+
+class OrderModel(BaseModel):
+    order_type: OrderType
+    time_in_force: str
+    timestamp: Optional[int]
+    order_id: int
+    order_side: str
+    pair: str
+    qty: float
+    status: str
+    price: float
+    deal_type: DealType
+
+
+class BotBase(BaseModel):
+    id: Optional[UUID] = Field(default_factory=uuid4)
+    pair: str
+    fiat: str = Field(default="USDC")
+    base_order_size: float = Field(
+        default=15, description="Min Binance 0.0001 BNB approx 15USD"
+    )
+    candlestick_interval: BinanceKlineIntervals = Field(
+        default=BinanceKlineIntervals.fifteen_minutes,
+    )
+    close_condition: CloseConditions = Field(
+        default=CloseConditions.dynamic_trailling,
+    )
+    cooldown: int = Field(
+        default=0,
+        description="cooldown period in minutes before opening next bot with same pair",
+    )
+    created_at: float = Field(default_factory=timestamp)
+    updated_at: float = Field(default_factory=timestamp)
+    dynamic_trailling: bool = Field(default=False)
+    logs: list[Json[str]] = Field(default=[])
+    mode: str = Field(default="manual")
+    name: str = Field(default="Default bot")
+    status: Status = Field(default=Status.inactive)
+    stop_loss: float = Field(
+        default=0, description="If stop_loss > 0, allow for reversal"
+    )
+    margin_short_reversal: bool = Field(default=False)
+    take_profit: float = Field(default=0)
+    trailling: bool = Field(default=False)
+    trailling_deviation: float = Field(
+        default=0,
+        ge=-1,
+        le=101,
+        description="Trailling activation (first take profit hit)",
+    )
+    trailling_profit: float = Field(default=0)
+    strategy: Strategy = Field(default=Strategy.long)
+    total_commission: float = Field(
+        default=0, description="autoswitch to short_strategy"
+    )
+
+    @field_validator("id")
+    def deserialize_id(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return True
+
+
+class BotModel(BotBase):
+    """
+    The way SQLModel works causes a lot of errors
+    if we combine (with inheritance) both Pydantic models
+    and SQLModels. they are not compatible. Thus the duplication
+    """
+
+    deal: DealModel = Field(default_factory=DealModel)
+    orders: List[OrderModel] = Field(default=[])
+
+    model_config = {
+        "from_attributes": True,
+        "use_enum_values": True,
+        "json_schema_extra": {
+            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Exchange",
+            "examples": [
+                {
+                    "pair": "BNBUSDT",
+                    "fiat": "USDC",
+                    "base_order_size": 15,
+                    "candlestick_interval": "15m",
+                    "cooldown": 0,
+                    "logs": [],
+                    # Manual is triggered by the terminal dashboard, autotrade by research app,
+                    "mode": "manual",
+                    "name": "Default bot",
+                    "orders": [],
+                    "status": "inactive",
+                    "stop_loss": 0,
+                    "take_profit": 2.3,
+                    "trailling": "true",
+                    "trailling_deviation": 0.63,
+                    "trailling_profit": 2.3,
+                    "strategy": "long",
+                    "short_buy_price": 0,
+                    "short_sell_price": 0,
+                    "total_commission": 0,
+                }
+            ],
+        },
+    }
+
+
+class BotResponse(StandardResponse):
+    data: Optional[BotModel] = None
+
+
+class ActivePairsResponse(IResponseBase):
+    data: Optional[list[str]]
+
+
+class BotListResponse(IResponseBase):
+    """
+    Model exclusively used to serialize
+    list of bots.
+
+    Has to be converted to BotModel to be able to
+    serialize nested table objects (deal, orders)
+    """
+
+    data: Optional[List[BotModel]] = Field(default=[])
+
+
+class ErrorsRequestBody(BaseModel):
+    errors: str | list[str]
+
+    @field_validator("errors")
+    @classmethod
+    def check_names_not_empty(cls, v):
+        if isinstance(v, list):
+            assert len(v) != 0, "List of errors is empty."
+        if isinstance(v, str):
+            assert v != "", "Empty pair field."
+        return v
+
+
+class GetBotParams(BaseModel):
+    status: str | None = None
+    start_date: float | None = None
+    end_date: float | None = None
+    no_cooldown: bool = True
+    limit: int = 100
+    offset: int = 0

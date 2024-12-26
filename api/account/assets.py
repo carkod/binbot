@@ -2,9 +2,10 @@ from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from fastapi.responses import JSONResponse
 from account.controller import AssetsController
-from autotrade.controller import AutotradeSettingsController
-from bots.schemas import BotSchema
-from deals.controllers import CreateDealController
+from database.models.bot_table import BotTable
+from database.autotrade_crud import AutotradeCrud
+from bots.models import BotModel
+from deals.factory import DealFactory
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
@@ -15,7 +16,7 @@ class Assets(AssetsController):
     def __init__(self):
         self.usd_balance = 0
         self.exception_list = []
-        self.fiat = AutotradeSettingsController().get_settings().balance_to_use
+        self.fiat = AutotradeCrud().get_settings().balance_to_use
 
     def get_pnl(self, days=7):
         current_time = datetime.now()
@@ -346,8 +347,9 @@ class Assets(AssetsController):
         bot = self._db.bots.find_one({"status": Status.active, "pair": pair})
         if not bot:
             return bot
-        active_bot = BotSchema.model_validate(bot)
-        deal = CreateDealController(active_bot, db_collection="bots")
+        active_bot = BotModel.model_validate(bot)
+        deal = DealFactory(active_bot, db_table=BotTable)
+
         if active_bot.strategy == Strategy.margin_short:
             deal.margin_liquidation(pair)
 

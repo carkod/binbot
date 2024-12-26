@@ -1,0 +1,358 @@
+from typing import Type, Union
+from database.paper_trading_crud import PaperTradingTableCrud
+from database.models.bot_table import BotTable, PaperTradingTable
+from bots.models import BotModel, OrderModel
+from deals.margin import MarginDeal
+from deals.spot import SpotLongDeal
+from deals.models import DealModel
+from tools.enum_definitions import DealType, OrderSide, Status, Strategy
+from tools.exceptions import TakeProfitError
+from tools.handle_error import (
+    handle_binance_errors,
+)
+from tools.round_numbers import round_numbers, supress_notation
+
+
+class DealFactory:
+    """
+    Centralized deal controller.
+
+    This is the first step that comes after a bot is saved
+    1. Save bot
+    2. Open deal (deal controller)
+    3. Update deals (deal update controller)
+
+    - db_collection = ["bots", "paper_trading"].
+    paper_trading uses simulated orders and bot uses real binance orders.
+    PaperTradingTable is implemented, PaperTradingController with the db operations is not.
+    - bot: BotModel (at some point to refactor into BotTable as they are both pydantic models)
+    """
+
+    def __init__(
+        self,
+        bot: BotModel,
+        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+    ):
+        self.active_bot = bot
+        self.db_table = db_table
+        if bot.strategy == Strategy.margin_short:
+            self.dealer = MarginDeal(bot, db_table)
+        else:
+            self.dealer = SpotLongDeal(bot, db_table)
+
+    def base_order(self):
+        """
+        Required initial order to trigger long strategy bot.
+        Other orders require this to execute,
+        therefore should fail if not successful
+
+        1. Initial base purchase
+        2. Set take_profit
+        """
+
+        # Long position does not need qty in take_profit
+        # initial price with 1 qty should return first match
+        price = float(self.dealer.matching_engine(self.active_bot.pair, True))
+        qty = round_numbers(
+            (float(self.active_bot.base_order_size) / float(price)),
+            self.dealer.qty_precision,
+        )
+        # setup stop_loss_price
+        stop_loss_price: float = 0
+        if float(self.active_bot.stop_loss) > 0:
+            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
+
+        if self.dealer.controller == PaperTradingTableCrud:
+            res = self.dealer.simulate_order(
+                self.active_bot.pair,
+                OrderSide.buy,
+            )
+        else:
+            res = self.dealer.buy_order(
+                symbol=self.active_bot.pair,
+                qty=qty,
+                price=supress_notation(price, self.dealer.price_precision),
+            )
+
+        order_data = OrderModel(
+            timestamp=res["transactTime"],
+            order_id=res["orderId"],
+            deal_type=DealType.base_order,
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=res["price"],
+            qty=res["origQty"],
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
+
+        self.active_bot.orders.append(order_data)
+        tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
+
+        self.active_bot.deal = DealModel(
+            buy_timestamp=res["transactTime"],
+            buy_price=res["price"],
+            buy_total_qty=res["origQty"],
+            current_price=res["price"],
+            take_profit_price=tp_price,
+            stop_loss_price=stop_loss_price,
+        )
+
+        # Activate bot
+        document = self.open_deal()
+        # do this after db operations in case there is rollback
+        # avoids sending unnecessary signals
+        self.dealer.base_producer.update_required(self.dealer.producer, "ACTIVATE_BOT")
+        return document
+
+    def take_profit_order(self) -> BotModel:
+        """
+        take profit order (Binance take_profit)
+        - We only have stop_price, because there are no book bids/asks in t0
+        - take_profit order can ONLY be executed once base order is filled (on Binance)
+        """
+
+        deal_buy_price = self.active_bot.deal.buy_price
+        buy_total_qty = self.active_bot.deal.buy_total_qty
+        price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
+
+        if self.db_table == PaperTradingTable:
+            qty = self.active_bot.deal.buy_total_qty
+        else:
+            qty = self.dealer.compute_qty(self.active_bot.pair)
+
+        qty = round_numbers(buy_total_qty, self.dealer.qty_precision)
+        price = round_numbers(price, self.dealer.price_precision)
+
+        if self.db_table == PaperTradingTable:
+            res = self.dealer.simulate_order(self.active_bot.pair, OrderSide.sell)
+        else:
+            qty = round_numbers(qty, self.dealer.qty_precision)
+            price = round_numbers(price, self.dealer.price_precision)
+            res = self.dealer.sell_order(symbol=self.active_bot.pair, qty=qty)
+
+        # If error pass it up to parent function, can't continue
+        if "error" in res:
+            raise TakeProfitError(res["error"])
+
+        order_data = OrderModel(
+            timestamp=res["transactTime"],
+            order_id=res["orderId"],
+            deal_type="take_profit",
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=res["price"],
+            qty=res["origQty"],
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
+
+        self.active_bot.total_commission = self.dealer.calculate_total_commissions(
+            res["fills"]
+        )
+
+        self.active_bot.orders.append(order_data)
+        self.active_bot.deal.take_profit_price = res["price"]
+        self.active_bot.deal.sell_price = res["price"]
+        self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.status = Status.completed
+
+        bot = self.dealer.controller.save(self.active_bot)
+        bot = BotModel.model_construct(**bot.model_dump())
+        self.dealer.controller.update_logs("Completed take profit", self.active_bot)
+
+        return bot
+
+    def close_all(self) -> BotModel:
+        """
+        Close all deals and sell pair
+        1. Close all deals
+        2. Sell Coins
+        3. Delete bot
+        """
+        orders = self.active_bot.orders
+
+        # Close all active orders
+        if len(orders) > 0:
+            for d in orders:
+                if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
+                    self.dealer.controller.update_logs(
+                        "Failed to close all active orders (status NEW), retrying...",
+                        self.active_bot,
+                    )
+                    self.dealer.replace_order(d.order_id)
+
+        # Sell everything
+        pair = self.active_bot.pair
+        base_asset = self.dealer.find_baseAsset(pair)
+        balance = self.dealer.get_raw_balance(base_asset)
+        if balance:
+            qty = round_numbers(balance[0], self.dealer.qty_precision)
+            price: float = float(self.dealer.matching_engine(pair, True, qty))
+            price = round_numbers(price, self.dealer.price_precision)
+            self.dealer.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+
+        self.dealer.controller.update_logs(
+            "Panic sell triggered. All active orders closed", self.active_bot
+        )
+        self.dealer.controller.update_status(self.active_bot, Status.completed)
+
+        return self.active_bot
+
+    def update_take_profit(self, order_id: int) -> BotModel:
+        """
+        Update take profit after websocket order endpoint triggered
+        - Close current opened take profit order
+        - Create new take profit order
+        - Update database by replacing old take profit deal with new take profit deal
+        """
+        bot = self.active_bot
+        if bot.deal:
+            find_base_order = next(
+                (order.order_id == order_id for order in bot.orders), None
+            )
+            if find_base_order:
+                so_deal_price = bot.deal.buy_price
+                # Create new take profit order
+                new_tp_price = float(so_deal_price) + (
+                    float(so_deal_price) * float(bot.take_profit) / 100
+                )
+                asset = self.dealer.find_baseAsset(bot.pair)
+
+                # First cancel old order to unlock balance
+                self.dealer.delete_order(bot.pair, order_id)
+
+                raw_balance = self.dealer.get_raw_balance(asset)
+                qty = round_numbers(raw_balance[0], self.dealer.qty_precision)
+                res = self.dealer.sell_order(
+                    symbol=self.active_bot.pair,
+                    qty=qty,
+                    price=round_numbers(new_tp_price, self.dealer.price_precision),
+                )
+
+                # New take profit order successfully created
+                order = handle_binance_errors(res)
+
+                # Replace take_profit order
+                take_profit_order = OrderModel(
+                    timestamp=order["transactTime"],
+                    order_id=order["orderId"],
+                    deal_type=DealType.take_profit,
+                    pair=order["symbol"],
+                    order_side=order["side"],
+                    order_type=order["type"],
+                    price=order["price"],
+                    qty=order["origQty"],
+                    time_in_force=order["timeInForce"],
+                    status=order["status"],
+                )
+
+                total_commission = self.dealer.calculate_total_commissions(res["fills"])
+                # Build new deals list
+                new_deals = []
+                for d in bot.orders:
+                    if d.deal_type != DealType.take_profit:
+                        new_deals.append(d)
+
+                # Append now new take_profit deal
+                new_deals.append(take_profit_order)
+                self.active_bot.orders = new_deals
+                self.active_bot.total_commission = total_commission
+                self.dealer.controller.save(self.active_bot)
+                self.dealer.controller.update_logs(
+                    "take_profit deal successfully updated"
+                )
+                return self.active_bot
+        else:
+            self.dealer.controller.update_logs(
+                "Error: Bot does not contain a base order deal", self.active_bot
+            )
+            raise ValueError("Bot does not contain a base order deal")
+        return self.active_bot
+
+    def open_deal(self) -> BotModel:
+        """
+        Bot activation requires:
+
+        1. Opening a new deal, which entails opening orders
+        2. Updating stop loss and take profit
+        3. Updating trailling
+        4. Save in db
+
+        - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
+        """
+
+        base_order_deal = next(
+            (
+                bo_deal
+                for bo_deal in self.active_bot.orders
+                if bo_deal.deal_type == DealType.base_order
+            ),
+            None,
+        )
+
+        if not base_order_deal:
+            if self.active_bot.strategy == Strategy.margin_short:
+                self.dealer.margin_short_base_order()
+            else:
+                bot = self.base_order()
+                self.active_bot = BotModel.model_validate(bot)
+
+        """
+        Optional deals section
+
+        The following functionality is triggered according to the options set in the bot
+        """
+
+        # Update stop loss regarless of base order
+        if float(self.active_bot.stop_loss) > 0:
+            if (
+                self.active_bot.strategy == Strategy.margin_short
+                and self.active_bot.stop_loss > 0
+            ):
+                price = self.active_bot.deal.margin_short_sell_price
+                self.active_bot.deal.stop_loss_price = price + (
+                    price * (float(self.active_bot.stop_loss) / 100)
+                )
+            else:
+                buy_price = float(self.active_bot.deal.buy_price)
+                stop_loss_price = buy_price - (
+                    buy_price * float(self.active_bot.stop_loss) / 100
+                )
+                self.active_bot.deal.stop_loss_price = round_numbers(
+                    stop_loss_price, self.dealer.price_precision
+                )
+
+        # Margin short Take profit
+        if (
+            self.active_bot.take_profit > 0
+            and self.active_bot.strategy == Strategy.margin_short
+        ):
+            if self.active_bot.take_profit:
+                price = float(self.active_bot.deal.margin_short_sell_price)
+                take_profit_price = price - (
+                    price * (self.active_bot.take_profit) / 100
+                )
+                self.active_bot.deal.take_profit_price = take_profit_price
+
+        # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
+        # if we don't do this, the trailling stop loss will trigger
+        if (
+            self.active_bot.deal.trailling_stop_loss_price > 0
+            or self.active_bot.deal.trailling_stop_loss_price
+            < self.active_bot.deal.buy_price
+        ):
+            take_profit_price = float(self.active_bot.deal.buy_price) * (
+                1 + (float(self.active_bot.take_profit) / 100)
+            )
+            self.active_bot.deal.take_profit_price = take_profit_price
+            # Update trailling_stop_loss
+            self.active_bot.deal.trailling_stop_loss_price = 0
+
+        self.active_bot.status = Status.active
+        bot = self.dealer.controller.save(self.active_bot)
+        self.dealer.controller.update_logs("Bot activated", bot)
+        return bot

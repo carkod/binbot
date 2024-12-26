@@ -27,7 +27,7 @@ class BinbotErrors(Exception):
         return f"Binbot error: {self.message}"
 
 
-class CreateDealControllerError(BinbotErrors):
+class DealFactoryError(BinbotErrors):
     """
     Code: 1
     Message: "Bot already active"

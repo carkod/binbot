@@ -1,4 +1,6 @@
 import requests
+import os
+import pandas
 from apis import BinbotApi
 from tools.handle_error import (
     handle_binance_errors,
@@ -9,8 +11,6 @@ from tools.handle_error import (
 from database.db import setup_db
 from requests_cache import CachedSession, MongoCache
 from pymongo import MongoClient
-import os
-import pandas
 from decimal import Decimal
 
 
@@ -253,8 +253,7 @@ class Account(BinbotApi):
         @param: qty - quantity wanted to be bought/sold
         """
 
-        params = [("symbol", symbol)]
-        res = requests.get(url=self.order_book_url, params=params)
+        res = requests.get(url=self.order_book_url, params={"symbol": symbol})
         data = handle_binance_errors(res)
 
         if order_side:

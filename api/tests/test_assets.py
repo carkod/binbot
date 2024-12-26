@@ -10,8 +10,8 @@ db = client.db
 
 app_client = TestClient(app)
 
-MockAutotradeSettingsController = MagicMock()
-MockAutotradeSettingsController.return_value.get_settings.return_value.balance_to_use = "USDC"
+MockAutotradeCrud = MagicMock()
+MockAutotradeCrud.return_value.get_settings.return_value.balance_to_use = "USDC"
 
 
 @pytest.fixture()
@@ -105,7 +105,7 @@ def patch_store_balance(monkeypatch):
     )
 
 
-@patch("account.assets.AutotradeSettingsController", MockAutotradeSettingsController)
+@patch("account.assets.AutotradeCrud", MockAutotradeCrud)
 def test_get_raw_balance(patch_database, patch_raw_balances):
     """
     Test get all raw_balances
@@ -123,7 +123,7 @@ def test_get_raw_balance(patch_database, patch_raw_balances):
     assert content["data"] == expected_result
 
 
-@patch("account.assets.AutotradeSettingsController", MockAutotradeSettingsController)
+@patch("account.assets.AutotradeCrud", MockAutotradeCrud)
 def test_total_fiat(patch_total_fiat):
     """
     Test get balance estimates
@@ -136,7 +136,7 @@ def test_total_fiat(patch_total_fiat):
     assert content["data"] == 20
 
 
-@patch("account.assets.AutotradeSettingsController", MockAutotradeSettingsController)
+@patch("account.assets.AutotradeCrud", MockAutotradeCrud)
 def test_available_fiat(patch_database, patch_raw_balances):
     """
     Test available fiat
@@ -149,7 +149,7 @@ def test_available_fiat(patch_database, patch_raw_balances):
     assert content["data"] == 5.2
 
 
-@patch("account.assets.AutotradeSettingsController", MockAutotradeSettingsController)
+@patch("account.assets.AutotradeCrud", MockAutotradeCrud)
 def test_store_balance(patch_database, patch_store_balance):
     """
     Test store balance as an endpoint

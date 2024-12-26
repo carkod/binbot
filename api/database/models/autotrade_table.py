@@ -49,8 +49,30 @@ class AutotradeTable(SQLModel, table=True):
         sa_column=Column(Enum(CloseConditions)),
     )
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {
+        "from_attributes": True,
+        "use_enum_values": True,
+        "json_schema_extra": {
+            "description": "Autotrade global settings used by Binquant",
+            "examples": [
+                {
+                    "autotrade": True,
+                    "base_order_size": 15,
+                    "candlestick_interval": "15m",
+                    "trailling": False,
+                    "trailling_deviation": 3,
+                    "trailling_profit": 2.4,
+                    "stop_loss": 0,
+                    "take_profit": 2.3,
+                    "fiat": "USDC",
+                    "max_request": 950,
+                    "telegram_signals": True,
+                    "max_active_autotrade_bots": 1,
+                    "close_condition": "dynamic_trailling",
+                }
+            ],
+        },
+    }
 
 
 class TestAutotradeTable(SQLModel, table=True):
@@ -80,5 +102,27 @@ class TestAutotradeTable(SQLModel, table=True):
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {
+        "from_attributes": True,
+        "use_enum_values": True,
+        "json_schema_extra": {
+            "description": "Autotrade global settings used by Binquant",
+            "examples": [
+                {
+                    "autotrade": True,
+                    "base_order_size": 15,
+                    "candlestick_interval": "15m",
+                    "trailling": False,
+                    "trailling_deviation": 3,
+                    "trailling_profit": 2.4,
+                    "stop_loss": 0,
+                    "take_profit": 2.3,
+                    "fiat": "USDC",
+                    "max_request": 950,
+                    "telegram_signals": True,
+                    "max_active_autotrade_bots": 1,
+                    "close_condition": "dynamic_trailling",
+                }
+            ],
+        },
+    }

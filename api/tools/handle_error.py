@@ -2,9 +2,10 @@ import json
 import os
 import logging
 from time import sleep
+from typing import Any, Union, TypeVar, Generic
 from bson import json_util
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from requests import Response, put
 from requests.exceptions import HTTPError
 from fastapi.encoders import jsonable_encoder
@@ -23,6 +24,27 @@ def post_error(msg):
     res = put(url=url, json={"system_logs": msg})
     handle_binance_errors(res)
     return
+
+
+def api_response(detail: str, data: Any = None, error: Union[str, int] = 0, status=200):
+    """
+    Custom Fast API response
+
+    Args:
+    - detail: the message of the response
+    - data: Pydantic model returned
+    """
+    body = {"message": detail}
+    if data:
+        body["data"] = data
+
+    if error:
+        body["error"] = str(error)
+
+    return JSONResponse(
+        status_code=status,
+        content=body,
+    )
 
 
 def json_response(content, status=200):
@@ -62,7 +84,7 @@ def handle_binance_errors(response: Response) -> dict:
         sleep(120)
 
     if response.status_code == 418 or response.status_code == 429:
-        print("Request weight limit hit, ban will come soon, waiting 1 hour")
+        logging.warning("Request weight limit hit, ban will come soon, waiting 1 hour")
         sleep(3600)
 
     # Cloudfront 403 error
@@ -128,5 +150,13 @@ def encode_json(raw):
 
 
 class StandardResponse(BaseModel):
+    message: str
+    error: int = Field(default=0)
+
+
+DataType = TypeVar("DataType")
+
+
+class IResponseBase(BaseModel, Generic[DataType]):
     message: str
     error: int = 0

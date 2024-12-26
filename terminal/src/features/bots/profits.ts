@@ -43,7 +43,7 @@ function getInterestsShortMargin(bot) {
  * by using input data from that individual bot as opposed to computeTotalProfit
  * function which uses an accumulator function to aggregate all profits of all bots
  *
- * @param { BotSchema } bot
+ * @param { BotModel } bot
  * @param { number } realTimeCurrPrice
  * @returns { number }
  */
