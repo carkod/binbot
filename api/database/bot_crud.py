@@ -9,6 +9,7 @@ from database.models.deal_table import DealTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
+from collections.abc import Sequence
 
 
 class BotTableCrud:
@@ -79,7 +80,7 @@ class BotTableCrud:
         no_cooldown=False,
         limit: int = 200,
         offset: int = 0,
-    ):
+    ) -> Sequence[BotTable]:
         """
         Get all bots in the db except archived
         Args:
@@ -129,7 +130,7 @@ class BotTableCrud:
         statement.limit(limit).offset(offset)
 
         bots = self.session.exec(statement).all()
-        # self.session.close()
+        self.session.close()
         return bots
 
     def get_one(

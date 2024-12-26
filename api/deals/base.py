@@ -35,11 +35,13 @@ class BaseDeal(OrderController):
         bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ):
+        db_controller: Type[Union[PaperTradingTableCrud, BotTableCrud]]
         if db_table == PaperTradingTable:
-            self.controller = PaperTradingTableCrud()
+            db_controller = PaperTradingTableCrud
         else:
-            self.controller = BotTableCrud()
-
+            db_controller = BotTableCrud
+        
+        self.controller = db_controller()
         self.active_bot = bot
         self.market_domination_reversal: bool | None = None
         self.price_precision = self.calculate_price_precision(bot.pair)

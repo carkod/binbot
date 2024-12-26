@@ -124,7 +124,7 @@ class BotModel(BotBase):
 
 
 class BotResponse(StandardResponse):
-    data: Optional[BotModel]
+    data: Optional[BotModel] = None
 
 
 class ActivePairsResponse(IResponseBase):
@@ -140,7 +140,7 @@ class BotListResponse(IResponseBase):
     serialize nested table objects (deal, orders)
     """
 
-    data: Optional[list[BotModel]]
+    data: Optional[List[BotModel]] = Field(default=[])
 
 
 class ErrorsRequestBody(BaseModel):

@@ -1,12 +1,13 @@
 from time import time
-from typing import Union
+from typing import Union, List
 
 from sqlmodel import Session, or_, select, case, desc, asc
-from database.models.bot_table import BotTable, PaperTradingTable
+from database.models.bot_table import PaperTradingTable
 from bots.models import BotModel, BotBase
 from database.models.deal_table import DealTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
+from collections.abc import Sequence
 
 
 class PaperTradingTableCrud:
@@ -110,7 +111,7 @@ class PaperTradingTableCrud:
         no_cooldown=False,
         limit: int = 200,
         offset: int = 0,
-    ) -> BotTable:
+    ) -> Sequence[PaperTradingTable]:
         """
         Get all bots in the db except archived
         Args:
@@ -164,8 +165,8 @@ class PaperTradingTableCrud:
         return bots
 
     def update_status(
-        self, paper_trading: PaperTradingTable, status: Status
-    ) -> PaperTradingTable:
+        self, paper_trading: BotModel, status: Status
+    ) -> BotModel:
         """
         Activate a paper trading account
         """

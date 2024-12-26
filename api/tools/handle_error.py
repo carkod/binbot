@@ -5,7 +5,7 @@ from time import sleep
 from typing import Any, Union, TypeVar, Generic
 from bson import json_util
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from requests import Response, put
 from requests.exceptions import HTTPError
 from fastapi.encoders import jsonable_encoder
@@ -151,7 +151,7 @@ def encode_json(raw):
 
 class StandardResponse(BaseModel):
     message: str
-    error: int = 0
+    error: int = Field(default=0)
 
 
 DataType = TypeVar("DataType")
