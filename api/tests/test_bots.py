@@ -7,7 +7,7 @@ from tests.model_mocks import (
     mock_model_data,
     id,
     mock_model_data_without_orders,
-    CreateDealControllerMock,
+    DealFactoryMock,
 )
 from tests.table_mocks import mocked_db_data
 from fastapi.encoders import jsonable_encoder
@@ -133,7 +133,7 @@ def test_delete_bot():
     assert content["message"] == "Sucessfully deleted bot."
 
 
-@patch("bots.routes.CreateDealController", CreateDealControllerMock)
+@patch("bots.routes.DealFactory", DealFactoryMock)
 def test_activate_by_id(client: TestClient):
     response = client.get(f"/bot/activate/{id}")
 
@@ -142,7 +142,7 @@ def test_activate_by_id(client: TestClient):
     assert content["data"] == mock_model_data.model_dump()
 
 
-@patch("bots.routes.CreateDealController", CreateDealControllerMock)
+@patch("bots.routes.DealFactory", DealFactoryMock)
 def test_deactivate(client: TestClient):
     response = client.delete(f"/bot/deactivate/{id}")
 

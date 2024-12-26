@@ -157,7 +157,7 @@ mock_model_data_without_orders = BotModel(
 )
 
 
-class CreateDealControllerMock:
+class DealFactoryMock:
     def __init__(self, bot: BotModel):
         pass
 

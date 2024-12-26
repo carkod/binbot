@@ -3,7 +3,7 @@ from pydantic import ValidationError, TypeAdapter
 from sqlmodel import Session
 from tools.enum_definitions import Status
 from database.bot_crud import BotTableCrud
-from deals.controllers import CreateDealController
+from deals.factory import DealFactory
 from database.utils import get_session
 from bots.models import (
     BotModel,
@@ -155,7 +155,7 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
         return BotResponse(message="Bot not found.")
 
     bot_model = BotModel.model_construct(**bot.model_dump())
-    bot_instance = CreateDealController(bot_model)
+    bot_instance = DealFactory(bot_model)
 
     try:
         data = bot_instance.open_deal()
@@ -179,7 +179,7 @@ def deactivation(id: str, session: Session = Depends(get_session)):
         return BotResponse(message="No active bot found.")
 
     bot_model = BotModel.model_construct(**bot_table.model_dump())
-    deal_instance = CreateDealController(bot_model)
+    deal_instance = DealFactory(bot_model)
     try:
         data = deal_instance.close_all()
         return BotResponse(message="Active orders closed, sold base asset, deactivated", data=data)

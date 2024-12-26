@@ -7,7 +7,7 @@ from database.autotrade_crud import AutotradeCrud
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.bot_crud import BotTableCrud
-from deals.controllers import CreateDealController
+from deals.factory import DealFactory
 from tools.round_numbers import round_numbers
 from streaming.models import SignalsConsumer
 from tools.enum_definitions import Status, Strategy
@@ -101,7 +101,7 @@ class StreamingController(BaseStreaming):
 
         try:
             if current_bot:
-                create_deal_controller = CreateDealController(
+                create_deal_controller = DealFactory(
                     bot=current_bot, db_table=BotTable
                 )
                 self.execute_strategies(
@@ -111,7 +111,7 @@ class StreamingController(BaseStreaming):
                     db_table=BotTable,
                 )
             elif current_test_bot:
-                create_deal_controller = CreateDealController(
+                create_deal_controller = DealFactory(
                     bot=current_bot, db_table=PaperTradingTable
                 )
                 self.execute_strategies(
@@ -148,7 +148,7 @@ class BbspreadsUpdater(BaseStreaming):
         self,
         bot: BotModel,
         bb_spreads: dict,
-        create_deal_controller: CreateDealController,
+        create_deal_controller: DealFactory,
     ) -> None:
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
@@ -238,7 +238,7 @@ class BbspreadsUpdater(BaseStreaming):
             and bb_spreads["bb_mid"]
         ):
             if self.current_bot:
-                create_deal_controller = CreateDealController(
+                create_deal_controller = DealFactory(
                     bot=self.current_bot, controller=BotTableCrud
                 )
                 self.update_bots_parameters(
@@ -247,7 +247,7 @@ class BbspreadsUpdater(BaseStreaming):
                     create_deal_controller=create_deal_controller,
                 )
             if self.current_test_bot:
-                create_deal_controller = CreateDealController(
+                create_deal_controller = DealFactory(
                     bot=self.current_test_bot, controller=PaperTradingTableCrud
                 )
                 self.update_bots_parameters(

@@ -1,6 +1,5 @@
 from time import time
-from typing import Union, List
-
+from typing import Union
 from sqlmodel import Session, or_, select, case, desc, asc
 from database.models.bot_table import PaperTradingTable
 from bots.models import BotModel, BotBase
@@ -164,9 +163,7 @@ class PaperTradingTableCrud:
         self.session.close()
         return bots
 
-    def update_status(
-        self, paper_trading: BotModel, status: Status
-    ) -> BotModel:
+    def update_status(self, paper_trading: BotModel, status: Status) -> BotModel:
         """
         Activate a paper trading account
         """

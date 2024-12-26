@@ -22,7 +22,7 @@ ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 class BaseDeal(OrderController):
     """
-    Base Deal class to share with CreateDealController and MarginDeal.
+    Base Deal class to share with DealFactory and MarginDeal.
 
     Deals should always deal with the same symbol
     at instance creation level, since it needs

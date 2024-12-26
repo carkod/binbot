@@ -4,7 +4,7 @@ from tools.enum_definitions import Status
 from database.models.bot_table import PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.utils import get_session
-from deals.controllers import CreateDealController
+from deals.factory import DealFactory
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.handle_error import api_response
 from bots.models import BotModel
@@ -87,7 +87,7 @@ def activate(id: str, session: Session = Depends(get_session)):
     if not bot:
         return api_response("Bot not found.")
 
-    bot_instance = CreateDealController(bot, db_table=PaperTradingTable)
+    bot_instance = DealFactory(bot, db_table=PaperTradingTable)
 
     try:
         bot_instance.open_deal()
@@ -113,7 +113,7 @@ def deactivate(id: str, session: Session = Depends(get_session)):
     if not bot_model:
         return api_response("No active bot found. Can't deactivate")
 
-    bot_instance = CreateDealController(bot_model, PaperTradingTable)
+    bot_instance = DealFactory(bot_model, PaperTradingTable)
     try:
         bot_instance.close_all()
         return api_response("Active orders closed, sold base asset, deactivated")
