@@ -2,7 +2,7 @@ import json
 import os
 import logging
 from time import sleep
-from typing import Any, Union, TypeVar, Generic
+from typing import Any, Union, TypeVar, Optional
 from bson import json_util
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -157,6 +157,6 @@ class StandardResponse(BaseModel):
 DataType = TypeVar("DataType")
 
 
-class IResponseBase(BaseModel, Generic[DataType]):
+class IResponseBase(BaseModel):
     message: str
-    error: int = 0
+    error: Optional[int] = Field(default=0)

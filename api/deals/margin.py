@@ -9,10 +9,10 @@ from bots.models import BotModel, OrderModel
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors, MarginShortError
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
-from deals.base import BaseDeal
+from deals.factory import DealAbstract
 
 
-class MarginDeal(BaseDeal):
+class MarginDeal(DealAbstract):
     def __init__(
         self,
         bot: BotModel,
@@ -728,3 +728,35 @@ class MarginDeal(BaseDeal):
                 )
 
         pass
+
+    def open_deal(self) -> BotModel:
+        """
+        Bot activation requires:
+
+        1. Opening a new deal, which entails opening orders
+        2. Updating stop loss and take profit
+        3. Updating trailling
+        4. Save in db
+
+        - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
+        """
+
+        base_order_deal = next(
+            (
+                bo_deal
+                for bo_deal in self.active_bot.orders
+                if bo_deal.deal_type == DealType.base_order
+            ),
+            None,
+        )
+
+        if not base_order_deal:
+            self.controller.update_logs(
+                f"Opening new margin deal for {self.active_bot.pair}...",
+                self.active_bot,
+            )
+            self.margin_short_base_order()
+
+        self.active_bot = self.open_deal_trailling_parameters()
+        self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_OPEN_DEAL")
+        return self.active_bot

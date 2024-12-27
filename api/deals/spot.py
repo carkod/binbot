@@ -1,10 +1,7 @@
 import logging
 from typing import Type, Union
-from database.bot_crud import BotTableCrud
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
-from deals.base import BaseDeal
-from deals.margin import MarginDeal
 from tools.enum_definitions import (
     CloseConditions,
     DealType,
@@ -13,9 +10,12 @@ from tools.enum_definitions import (
     Strategy,
 )
 from bots.models import BotModel, OrderModel
+from deals.factory import DealAbstract
+
+from deals.margin import MarginDeal
 
 
-class SpotLongDeal(BaseDeal):
+class SpotLongDeal(DealAbstract):
     """
     Spot (non-margin, no borrowing) long bot deal updates
     during streaming
@@ -24,17 +24,11 @@ class SpotLongDeal(BaseDeal):
     def __init__(
         self, bot, db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable
     ) -> None:
-        db_controller: Type[Union[PaperTradingTableCrud, BotTableCrud]]
-        if db_table == PaperTradingTable:
-            db_controller = PaperTradingTableCrud
-        else:
-            db_controller = BotTableCrud
-
-        super().__init__(bot, db_controller)
+        super().__init__(bot, db_table=db_table)
         self.active_bot: BotModel = bot
         self.db_table = db_table
 
-    def switch_margin_short(self) -> BotModel:
+    def switch_to_margin_short(self) -> BotModel:
         """
         Switch to short strategy.
         Doing some parts of open_deal from scratch
@@ -52,9 +46,9 @@ class SpotLongDeal(BaseDeal):
         self.active_bot.strategy = Strategy.margin_short
         self.active_bot = self.controller.create(data=self.active_bot)
 
-        self.active_bot = MarginDeal(
-            bot=self.active_bot, db_table=self.db_table
-        ).margin_short_base_order()
+        margin_strategy_deal = MarginDeal(bot=self.active_bot, db_table=self.db_table)
+
+        self.active_bot = margin_strategy_deal.margin_short_base_order()
 
         self.controller.save(self.active_bot)
         return self.active_bot
@@ -231,7 +225,7 @@ class SpotLongDeal(BaseDeal):
             self.execute_stop_loss()
             self.base_producer.update_required(self.producer, "EXECUTE_SPOT_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
-                self.switch_margin_short()
+                self.switch_to_margin_short()
                 self.base_producer.update_required(
                     self.producer, "EXECUTE_SWITCH_MARGIN_SHORT"
                 )
@@ -349,3 +343,34 @@ class SpotLongDeal(BaseDeal):
                 )
 
         pass
+
+    def open_deal(self):
+        """
+        Bot activation requires:
+
+        1. Opening a new deal, which entails opening orders
+        2. Updating stop loss and take profit
+        3. Updating trailling
+        4. Save in db
+
+        - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
+        """
+        base_order_deal = next(
+            (
+                bo_deal
+                for bo_deal in self.active_bot.orders
+                if bo_deal.deal_type == DealType.base_order
+            ),
+            None,
+        )
+
+        if not base_order_deal:
+            self.controller.update_logs(
+                f"Opening new spot deal for {self.active_bot.pair}...", self.active_bot
+            )
+            self.base_order()
+
+        self.active_bot = self.open_deal_trailling_parameters()
+        self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")
+
+        return self.active_bot

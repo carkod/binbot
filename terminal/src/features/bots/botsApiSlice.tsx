@@ -4,6 +4,8 @@ import { weekAgo } from "../../utils/time";
 import { userApiSlice } from "../userApiSlice";
 import type { Bot, BotEntity } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
+import { BotStatus } from "../../utils/enums";
+import { type GetBotsParams } from "./bots";
 
 type GetBotsResponse = {
   bots: BotEntity;
@@ -11,7 +13,7 @@ type GetBotsResponse = {
 };
 
 export const buildGetBotsPath = (
-  status: string = null,
+  status: string = BotStatus.ALL,
   startDate: number = weekAgo(),
   endDate: number = new Date().getTime()
 ): string => {

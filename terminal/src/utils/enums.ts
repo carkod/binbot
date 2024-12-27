@@ -3,6 +3,7 @@
 // strings have to match exactly those in the back-end
 
 export enum BotStatus {
+  ALL = "all",
   INACTIVE = "inactive",
   ACTIVE = "active",
   COMPLETED = "completed",

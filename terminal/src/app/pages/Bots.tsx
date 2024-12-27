@@ -1,9 +1,6 @@
-import { type EntityStateAdapter } from "@reduxjs/toolkit";
 import { useEffect, useState, type FC } from "react";
 import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
-import { useNavigate } from "react-router";
 import { useImmer } from "use-immer";
-import { type Bot } from "../../features/bots/botInitialState";
 import {
   useDeactivateBotMutation,
   useDeleteBotMutation,
@@ -16,10 +13,10 @@ import BotsActions, { BulkAction } from "../components/BotsActions";
 import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
 import { useAppDispatch } from "../hooks";
+import { BotStatus } from "../../utils/enums";
 
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const currentTs = new Date().getTime();
   const oneWeekAgo = weekAgo();
   const [removeBots] = useDeleteBotMutation();
@@ -28,11 +25,11 @@ export const BotsPage: FC<{}> = () => {
   // Component states
   const [selectedCards, selectCards] = useImmer([]);
   const [botToDelete, setBotToDelete] = useState<string | null>(null);
-  const [dateFilterError, setDateFilterError] = useState(null);
+  const [, setDateFilterError] = useState(null);
   const [bulkActions, setBulkActions] = useState<BulkAction>(BulkAction.NONE);
   const [startDate, setStartDate] = useState(oneWeekAgo);
   const [endDate, setEndDate] = useState(currentTs);
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState<BotStatus>(BotStatus.ALL);
 
   // Fetch bots which require filter dependencies
   const {
@@ -78,10 +75,12 @@ export const BotsPage: FC<{}> = () => {
         selectCards(Object.keys(props.bots.entities));
         break;
       case BulkAction.COMPLETED:
-        setFilterStatus(BulkAction.COMPLETED);
+        setBulkActions(BulkAction.COMPLETED);
+        setFilterStatus(BotStatus.COMPLETED);
         break;
       case BulkAction.ACTIVE:
-        setFilterStatus(BulkAction.ACTIVE);
+        setBulkActions(BulkAction.ACTIVE);
+        setFilterStatus(BotStatus.ACTIVE);
         break;
       case BulkAction.UNSELECT_ALL:
         selectCards([]);

@@ -52,11 +52,11 @@ class BinbotEnums:
 
 
 class Status(str, Enum):
+    all = "all"
     inactive = "inactive"
     active = "active"
     completed = "completed"
     error = "error"
-    archived = "archived"
 
 
 class Strategy(str, Enum):

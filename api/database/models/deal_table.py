@@ -51,6 +51,7 @@ class DealBase(SQLModel):
     # bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
     # paper_trading_id: Optional[UUID] = Field(default=None, foreign_key="paper_trading.id")
 
+
 class DealTable(DealBase, table=True):
     """
     Data model that is used for operations,
@@ -61,7 +62,9 @@ class DealTable(DealBase, table=True):
 
     # Relationships
     bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
-    paper_trading_id: Optional[UUID] = Field(default=None, foreign_key="paper_trading.id")
+    paper_trading_id: Optional[UUID] = Field(
+        default=None, foreign_key="paper_trading.id"
+    )
     bot: Optional["BotTable"] = Relationship(back_populates="deal")
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="deal")
     pass
