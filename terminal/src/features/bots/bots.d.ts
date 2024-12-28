@@ -1,4 +1,5 @@
 import type { EntityId, EntityState } from "@reduxjs/toolkit";
+import { type BotStatus } from "../../utils/enums";
 
 export interface DefaultBotsResponse {
   error: number;
@@ -11,7 +12,7 @@ export interface GetBotsResponse {
 }
 
 export interface GetBotsParams {
-  status?: string;
+  status?: BotStatus;
   startDate?: number;
   endDate?: number;
 }

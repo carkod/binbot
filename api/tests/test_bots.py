@@ -133,7 +133,7 @@ def test_delete_bot():
     assert content["message"] == "Sucessfully deleted bot."
 
 
-@patch("bots.routes.DealFactory", DealFactoryMock)
+@patch("bots.routes.SpotLongDeal", DealFactoryMock)
 def test_activate_by_id(client: TestClient):
     response = client.get(f"/bot/activate/{id}")
 
@@ -142,7 +142,7 @@ def test_activate_by_id(client: TestClient):
     assert content["data"] == mock_model_data.model_dump()
 
 
-@patch("bots.routes.DealFactory", DealFactoryMock)
+@patch("bots.routes.SpotLongDeal", DealFactoryMock)
 def test_deactivate(client: TestClient):
     response = client.delete(f"/bot/deactivate/{id}")
 

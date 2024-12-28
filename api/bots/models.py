@@ -10,11 +10,10 @@ from deals.models import DealModel
 from pydantic import (
     BaseModel,
     Field,
-    Json,
     field_validator,
 )
 from database.utils import timestamp
-from tools.handle_error import StandardResponse, IResponseBase
+from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType
 
 
@@ -32,7 +31,6 @@ class OrderModel(BaseModel):
 
 
 class BotBase(BaseModel):
-    id: Optional[UUID] = Field(default_factory=uuid4)
     pair: str
     fiat: str = Field(default="USDC")
     base_order_size: float = Field(
@@ -51,7 +49,7 @@ class BotBase(BaseModel):
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
     dynamic_trailling: bool = Field(default=False)
-    logs: list[Json[str]] = Field(default=[])
+    logs: list = Field(default=[])
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
     status: Status = Field(default=Status.inactive)
@@ -73,12 +71,6 @@ class BotBase(BaseModel):
         default=0, description="autoswitch to short_strategy"
     )
 
-    @field_validator("id")
-    def deserialize_id(cls, v):
-        if isinstance(v, UUID):
-            return str(v)
-        return True
-
 
 class BotModel(BotBase):
     """
@@ -87,6 +79,7 @@ class BotModel(BotBase):
     and SQLModels. they are not compatible. Thus the duplication
     """
 
+    id: Optional[UUID] = Field(default_factory=uuid4)
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default=[])
 
@@ -122,8 +115,14 @@ class BotModel(BotBase):
         },
     }
 
+    @field_validator("id")
+    def deserialize_id(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return True
 
-class BotResponse(StandardResponse):
+
+class BotResponse(IResponseBase):
     data: Optional[BotModel] = None
 
 
@@ -163,3 +162,7 @@ class GetBotParams(BaseModel):
     no_cooldown: bool = True
     limit: int = 100
     offset: int = 0
+
+
+class BotBaseResponse(BotBase):
+    id: str

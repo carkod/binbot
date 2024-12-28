@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 
+
 class DealModel(BaseModel):
     """
     Data model that is used for operations,
@@ -16,14 +17,16 @@ class DealModel(BaseModel):
     sell_timestamp: float = Field(default=0)
     sell_price: float = Field(default=0)
     sell_qty: float = Field(default=0)
-    trailling_stop_loss_price: float = Field(default=0, description="take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price")
+    trailling_stop_loss_price: float = Field(
+        default=0,
+        description="take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price",
+    )
     trailling_profit_price: float = Field(default=0)
     stop_loss_price: float = Field(default=0)
     trailling_profit: float = Field(default=0)
     so_prices: float = Field(default=0)
     original_buy_price: float = Field(
-        default=0,
-        description="historical buy_price after so trigger"
+        default=0, description="historical buy_price after so trigger"
     )
     short_sell_price: float = Field(default=0)
     short_sell_qty: float = Field(default=0)

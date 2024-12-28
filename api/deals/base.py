@@ -22,7 +22,8 @@ ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 class BaseDeal(OrderController):
     """
-    Base Deal class to share with DealFactory and MarginDeal.
+    Base Deal class to unify common functionality for
+    both DealAbstract and MarginDeal/SpotDeal.
 
     Deals should always deal with the same symbol
     at instance creation level, since it needs
@@ -40,7 +41,7 @@ class BaseDeal(OrderController):
             db_controller = PaperTradingTableCrud
         else:
             db_controller = BotTableCrud
-        
+
         self.controller = db_controller()
         self.active_bot = bot
         self.market_domination_reversal: bool | None = None

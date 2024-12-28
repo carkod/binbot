@@ -1,19 +1,18 @@
 from typing import Type, Union
-from database.paper_trading_crud import PaperTradingTableCrud
 from database.models.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
-from deals.margin import MarginDeal
-from deals.spot import SpotLongDeal
-from deals.models import DealModel
 from tools.enum_definitions import DealType, OrderSide, Status, Strategy
 from tools.exceptions import TakeProfitError
 from tools.handle_error import (
     handle_binance_errors,
 )
 from tools.round_numbers import round_numbers, supress_notation
+from deals.base import BaseDeal
+from deals.models import DealModel
+from database.paper_trading_crud import PaperTradingTableCrud
 
 
-class DealFactory:
+class DealAbstract(BaseDeal):
     """
     Centralized deal controller.
 
@@ -33,78 +32,9 @@ class DealFactory:
         bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ):
+        super().__init__(bot, db_table)
         self.active_bot = bot
         self.db_table = db_table
-        if bot.strategy == Strategy.margin_short:
-            self.dealer = MarginDeal(bot, db_table)
-        else:
-            self.dealer = SpotLongDeal(bot, db_table)
-
-    def base_order(self):
-        """
-        Required initial order to trigger long strategy bot.
-        Other orders require this to execute,
-        therefore should fail if not successful
-
-        1. Initial base purchase
-        2. Set take_profit
-        """
-
-        # Long position does not need qty in take_profit
-        # initial price with 1 qty should return first match
-        price = float(self.dealer.matching_engine(self.active_bot.pair, True))
-        qty = round_numbers(
-            (float(self.active_bot.base_order_size) / float(price)),
-            self.dealer.qty_precision,
-        )
-        # setup stop_loss_price
-        stop_loss_price: float = 0
-        if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
-
-        if self.dealer.controller == PaperTradingTableCrud:
-            res = self.dealer.simulate_order(
-                self.active_bot.pair,
-                OrderSide.buy,
-            )
-        else:
-            res = self.dealer.buy_order(
-                symbol=self.active_bot.pair,
-                qty=qty,
-                price=supress_notation(price, self.dealer.price_precision),
-            )
-
-        order_data = OrderModel(
-            timestamp=res["transactTime"],
-            order_id=res["orderId"],
-            deal_type=DealType.base_order,
-            pair=res["symbol"],
-            order_side=res["side"],
-            order_type=res["type"],
-            price=res["price"],
-            qty=res["origQty"],
-            time_in_force=res["timeInForce"],
-            status=res["status"],
-        )
-
-        self.active_bot.orders.append(order_data)
-        tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
-
-        self.active_bot.deal = DealModel(
-            buy_timestamp=res["transactTime"],
-            buy_price=res["price"],
-            buy_total_qty=res["origQty"],
-            current_price=res["price"],
-            take_profit_price=tp_price,
-            stop_loss_price=stop_loss_price,
-        )
-
-        # Activate bot
-        document = self.open_deal()
-        # do this after db operations in case there is rollback
-        # avoids sending unnecessary signals
-        self.dealer.base_producer.update_required(self.dealer.producer, "ACTIVATE_BOT")
-        return document
 
     def take_profit_order(self) -> BotModel:
         """
@@ -120,17 +50,17 @@ class DealFactory:
         if self.db_table == PaperTradingTable:
             qty = self.active_bot.deal.buy_total_qty
         else:
-            qty = self.dealer.compute_qty(self.active_bot.pair)
+            qty = self.compute_qty(self.active_bot.pair)
 
-        qty = round_numbers(buy_total_qty, self.dealer.qty_precision)
-        price = round_numbers(price, self.dealer.price_precision)
+        qty = round_numbers(buy_total_qty, self.qty_precision)
+        price = round_numbers(price, self.price_precision)
 
         if self.db_table == PaperTradingTable:
-            res = self.dealer.simulate_order(self.active_bot.pair, OrderSide.sell)
+            res = self.simulate_order(self.active_bot.pair, OrderSide.sell)
         else:
-            qty = round_numbers(qty, self.dealer.qty_precision)
-            price = round_numbers(price, self.dealer.price_precision)
-            res = self.dealer.sell_order(symbol=self.active_bot.pair, qty=qty)
+            qty = round_numbers(qty, self.qty_precision)
+            price = round_numbers(price, self.price_precision)
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
@@ -149,7 +79,7 @@ class DealFactory:
             status=res["status"],
         )
 
-        self.active_bot.total_commission = self.dealer.calculate_total_commissions(
+        self.active_bot.total_commission = self.calculate_total_commissions(
             res["fills"]
         )
 
@@ -160,9 +90,9 @@ class DealFactory:
         self.active_bot.deal.sell_timestamp = res["transactTime"]
         self.active_bot.status = Status.completed
 
-        bot = self.dealer.controller.save(self.active_bot)
+        bot = self.controller.save(self.active_bot)
         bot = BotModel.model_construct(**bot.model_dump())
-        self.dealer.controller.update_logs("Completed take profit", self.active_bot)
+        self.controller.update_logs("Completed take profit", self.active_bot)
 
         return bot
 
@@ -179,26 +109,26 @@ class DealFactory:
         if len(orders) > 0:
             for d in orders:
                 if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
-                    self.dealer.controller.update_logs(
+                    self.controller.update_logs(
                         "Failed to close all active orders (status NEW), retrying...",
                         self.active_bot,
                     )
-                    self.dealer.replace_order(d.order_id)
+                    self.replace_order(d.order_id)
 
         # Sell everything
         pair = self.active_bot.pair
-        base_asset = self.dealer.find_baseAsset(pair)
-        balance = self.dealer.get_raw_balance(base_asset)
+        base_asset = self.find_baseAsset(pair)
+        balance = self.get_raw_balance(base_asset)
         if balance:
-            qty = round_numbers(balance[0], self.dealer.qty_precision)
-            price: float = float(self.dealer.matching_engine(pair, True, qty))
-            price = round_numbers(price, self.dealer.price_precision)
-            self.dealer.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+            qty = round_numbers(balance[0], self.qty_precision)
+            price: float = float(self.matching_engine(pair, True, qty))
+            price = round_numbers(price, self.price_precision)
+            self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
-        self.dealer.controller.update_logs(
+        self.controller.update_logs(
             "Panic sell triggered. All active orders closed", self.active_bot
         )
-        self.dealer.controller.update_status(self.active_bot, Status.completed)
+        self.controller.update_status(self.active_bot, Status.completed)
 
         return self.active_bot
 
@@ -220,17 +150,17 @@ class DealFactory:
                 new_tp_price = float(so_deal_price) + (
                     float(so_deal_price) * float(bot.take_profit) / 100
                 )
-                asset = self.dealer.find_baseAsset(bot.pair)
+                asset = self.find_baseAsset(bot.pair)
 
                 # First cancel old order to unlock balance
-                self.dealer.delete_order(bot.pair, order_id)
+                self.delete_order(bot.pair, order_id)
 
-                raw_balance = self.dealer.get_raw_balance(asset)
-                qty = round_numbers(raw_balance[0], self.dealer.qty_precision)
-                res = self.dealer.sell_order(
+                raw_balance = self.get_raw_balance(asset)
+                qty = round_numbers(raw_balance[0], self.qty_precision)
+                res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
-                    price=round_numbers(new_tp_price, self.dealer.price_precision),
+                    price=round_numbers(new_tp_price, self.price_precision),
                 )
 
                 # New take profit order successfully created
@@ -250,7 +180,7 @@ class DealFactory:
                     status=order["status"],
                 )
 
-                total_commission = self.dealer.calculate_total_commissions(res["fills"])
+                total_commission = self.calculate_total_commissions(res["fills"])
                 # Build new deals list
                 new_deals = []
                 for d in bot.orders:
@@ -261,50 +191,24 @@ class DealFactory:
                 new_deals.append(take_profit_order)
                 self.active_bot.orders = new_deals
                 self.active_bot.total_commission = total_commission
-                self.dealer.controller.save(self.active_bot)
-                self.dealer.controller.update_logs(
-                    "take_profit deal successfully updated"
-                )
+                self.controller.save(self.active_bot)
+                self.controller.update_logs("take_profit deal successfully updated")
                 return self.active_bot
         else:
-            self.dealer.controller.update_logs(
+            self.controller.update_logs(
                 "Error: Bot does not contain a base order deal", self.active_bot
             )
             raise ValueError("Bot does not contain a base order deal")
         return self.active_bot
 
-    def open_deal(self) -> BotModel:
-        """
-        Bot activation requires:
-
-        1. Opening a new deal, which entails opening orders
-        2. Updating stop loss and take profit
-        3. Updating trailling
-        4. Save in db
-
-        - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
-        """
-
-        base_order_deal = next(
-            (
-                bo_deal
-                for bo_deal in self.active_bot.orders
-                if bo_deal.deal_type == DealType.base_order
-            ),
-            None,
-        )
-
-        if not base_order_deal:
-            if self.active_bot.strategy == Strategy.margin_short:
-                self.dealer.margin_short_base_order()
-            else:
-                bot = self.base_order()
-                self.active_bot = BotModel.model_validate(bot)
-
+    def open_deal_trailling_parameters(self):
         """
         Optional deals section
 
         The following functionality is triggered according to the options set in the bot
+        it comes after SpotConcrete.open_deal or MarginConcrete.open_deal
+        The reason why it's put here, it's because it's agnostic of what type of deal
+        strategy, we always execute these
         """
 
         # Update stop loss regarless of base order
@@ -323,7 +227,7 @@ class DealFactory:
                     buy_price * float(self.active_bot.stop_loss) / 100
                 )
                 self.active_bot.deal.stop_loss_price = round_numbers(
-                    stop_loss_price, self.dealer.price_precision
+                    stop_loss_price, self.price_precision
                 )
 
         # Margin short Take profit
@@ -353,6 +257,70 @@ class DealFactory:
             self.active_bot.deal.trailling_stop_loss_price = 0
 
         self.active_bot.status = Status.active
-        bot = self.dealer.controller.save(self.active_bot)
-        self.dealer.controller.update_logs("Bot activated", bot)
-        return bot
+        self.controller.save(self.active_bot)
+        self.controller.update_logs("Bot activated", self.active_bot)
+        return self.active_bot
+
+    def base_order(self):
+        """
+        Required initial order to trigger long strategy bot.
+        Other orders require this to execute,
+        therefore should fail if not successful
+
+        1. Initial base purchase
+        2. Set take_profit
+        """
+
+        # Long position does not need qty in take_profit
+        # initial price with 1 qty should return first match
+        price = float(self.matching_engine(self.active_bot.pair, True))
+        qty = round_numbers(
+            (float(self.active_bot.base_order_size) / float(price)),
+            self.qty_precision,
+        )
+        # setup stop_loss_price
+        stop_loss_price: float = 0
+        if float(self.active_bot.stop_loss) > 0:
+            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
+
+        if self.controller == PaperTradingTableCrud:
+            res = self.simulate_order(
+                self.active_bot.pair,
+                OrderSide.buy,
+            )
+        else:
+            res = self.buy_order(
+                symbol=self.active_bot.pair,
+                qty=qty,
+                price=supress_notation(price, self.price_precision),
+            )
+
+        order_data = OrderModel(
+            timestamp=res["transactTime"],
+            order_id=res["orderId"],
+            deal_type=DealType.base_order,
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=res["price"],
+            qty=res["origQty"],
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
+
+        self.active_bot.orders.append(order_data)
+        tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
+
+        self.active_bot.deal = DealModel(
+            buy_timestamp=res["transactTime"],
+            buy_price=res["price"],
+            buy_total_qty=res["origQty"],
+            current_price=res["price"],
+            take_profit_price=tp_price,
+            stop_loss_price=stop_loss_price,
+        )
+
+        # do this after db operations in case there is rollback
+        # avoids sending unnecessary signals
+        self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
+        return self.active_bot

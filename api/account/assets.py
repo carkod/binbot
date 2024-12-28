@@ -5,7 +5,7 @@ from account.controller import AssetsController
 from database.models.bot_table import BotTable
 from database.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
-from deals.factory import DealFactory
+from deals.factory import DealAbstract
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
@@ -348,7 +348,7 @@ class Assets(AssetsController):
         if not bot:
             return bot
         active_bot = BotModel.model_validate(bot)
-        deal = DealFactory(active_bot, db_table=BotTable)
+        deal = DealAbstract(active_bot, db_table=BotTable)
 
         if active_bot.strategy == Strategy.margin_short:
             deal.margin_liquidation(pair)

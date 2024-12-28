@@ -7,7 +7,7 @@ from database.autotrade_crud import AutotradeCrud
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.bot_crud import BotTableCrud
-from deals.factory import DealFactory
+from deals.factory import DealAbstract
 from tools.round_numbers import round_numbers
 from streaming.models import SignalsConsumer
 from tools.enum_definitions import Status, Strategy
@@ -23,13 +23,15 @@ class BaseStreaming:
 
     def get_current_bot(self, symbol: str) -> BotModel:
         current_bot = self.bot_controller.get_one(symbol=symbol, status=Status.active)
-        return current_bot
+        bot = BotModel.model_validate(current_bot)
+        return bot
 
     def get_current_test_bot(self, symbol: str) -> BotModel:
         current_test_bot = self.paper_trading_controller.get_one(
             symbol=symbol, status=Status.active
         )
-        return current_test_bot
+        bot = BotModel.model_validate(current_test_bot)
+        return bot
 
 
 class StreamingController(BaseStreaming):
@@ -101,7 +103,7 @@ class StreamingController(BaseStreaming):
 
         try:
             if current_bot:
-                create_deal_controller = DealFactory(
+                create_deal_controller = DealAbstract(
                     bot=current_bot, db_table=BotTable
                 )
                 self.execute_strategies(
@@ -111,7 +113,7 @@ class StreamingController(BaseStreaming):
                     db_table=BotTable,
                 )
             elif current_test_bot:
-                create_deal_controller = DealFactory(
+                create_deal_controller = DealAbstract(
                     bot=current_bot, db_table=PaperTradingTable
                 )
                 self.execute_strategies(
@@ -148,7 +150,7 @@ class BbspreadsUpdater(BaseStreaming):
         self,
         bot: BotModel,
         bb_spreads: dict,
-        create_deal_controller: DealFactory,
+        db_table: Type[Union[PaperTradingTable, BotTable]],
     ) -> None:
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
@@ -195,8 +197,9 @@ class BbspreadsUpdater(BaseStreaming):
                     bot.take_profit = top_spread
                     # too much risk, reduce stop loss
                     bot.trailling_deviation = bottom_spread
+                    spot_deal = SpotLongDeal(bot, db_table=db_table)
                     # reactivate includes saving
-                    create_deal_controller.open_deal()
+                    spot_deal.open_deal()
 
                 # No need to continue
                 # Bots can only be either long or short
@@ -210,8 +213,9 @@ class BbspreadsUpdater(BaseStreaming):
                 bot.take_profit = bottom_spread
                 if bot.trailling_deviation > bottom_spread:
                     bot.trailling_deviation = top_spread
+                    margin_deal = MarginDeal(bot, db_table=db_table)
                     # reactivate includes saving
-                    create_deal_controller.open_deal()
+                    margin_deal.open_deal()
 
     # To find a better interface for bb_xx once mature
     @no_type_check
@@ -238,20 +242,14 @@ class BbspreadsUpdater(BaseStreaming):
             and bb_spreads["bb_mid"]
         ):
             if self.current_bot:
-                create_deal_controller = DealFactory(
-                    bot=self.current_bot, controller=BotTableCrud
-                )
                 self.update_bots_parameters(
                     self.current_bot,
                     bb_spreads,
-                    create_deal_controller=create_deal_controller,
+                    db_table=BotTable,
                 )
             if self.current_test_bot:
-                create_deal_controller = DealFactory(
-                    bot=self.current_test_bot, controller=PaperTradingTableCrud
-                )
                 self.update_bots_parameters(
                     self.current_test_bot,
                     bb_spreads,
-                    create_deal_controller=create_deal_controller,
+                    db_table=PaperTradingTable,
                 )

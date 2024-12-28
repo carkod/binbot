@@ -130,7 +130,7 @@ class BotTableCrud:
         statement.limit(limit).offset(offset)
 
         bots = self.session.exec(statement).all()
-        self.session.close()
+        # self.session.close()
         return bots
 
     def get_one(
@@ -189,7 +189,7 @@ class BotTableCrud:
         self.session.refresh(serialised_bot)
         self.session.refresh(serialised_deal)
         self.session.close()
-        resulted_bot = self.session.get(BotTable, data.id)
+        resulted_bot = self.session.get(BotTable, serialised_bot.id)
         if resulted_bot:
             bot_model = BotModel.model_validate(resulted_bot.model_dump())
         else:
@@ -214,7 +214,7 @@ class BotTableCrud:
         self.session.commit()
         self.session.refresh(bot)
         self.session.close()
-        resulted_bot = self.get_one(bot_id=dumped_bot["id"])
+        resulted_bot = self.get_one(bot_id=str(dumped_bot["id"]))
         return resulted_bot
 
     def delete(self, bot_ids: List[str] = Query(...)):
