@@ -95,8 +95,15 @@ class StreamingController(BaseStreaming):
         close_price = data["close_price"]
         open_price = data["open_price"]
         symbol = data["symbol"]
-        current_bot = self.get_current_bot(symbol)
-        current_test_bot = self.get_current_test_bot(symbol)
+        try:
+            current_bot = self.get_current_bot(symbol)
+        except ValueError:
+            pass
+
+        try:
+            current_test_bot = self.get_current_test_bot(symbol)
+        except ValueError:
+            pass
 
         # temporary test that we get enough streaming update signals
         logging.info(f"Streaming update for {symbol}")
@@ -122,6 +129,8 @@ class StreamingController(BaseStreaming):
                     open_price,
                     db_table=PaperTradingTable,
                 )
+            else:
+                return
         except BinanceErrors as error:
             if error.code in (-2010, -1013):
                 bot = current_bot if current_bot else current_test_bot

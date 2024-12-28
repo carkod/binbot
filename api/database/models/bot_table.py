@@ -1,6 +1,6 @@
 from uuid import uuid4, UUID
 from typing import TYPE_CHECKING, Optional, List
-from pydantic import Json
+from pydantic import Json, field_validator
 from sqlalchemy import JSON, Column, Enum
 from database.utils import timestamp
 from tools.enum_definitions import (
@@ -44,7 +44,7 @@ class BotTable(SQLModel, table=True):
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
     dynamic_trailling: bool = Field(default=False)
-    logs: List[Json[str]] = Field(default=[], sa_column=Column(JSON))
+    logs: List[str] = Field(default=[], sa_column=Column(JSON))
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
     status: Status = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
@@ -74,6 +74,10 @@ class BotTable(SQLModel, table=True):
         "from_attributes": True,
         "use_enum_values": True,
     }
+
+    @field_validator("logs", mode="before")
+    def validate_logs(cls, v, info):
+        return v
 
 
 class PaperTradingTable(SQLModel, table=True):

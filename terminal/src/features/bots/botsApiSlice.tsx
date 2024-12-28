@@ -75,13 +75,13 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         body: body,
         providesTags: (result) => [{ type: "bot", id: id }],
       }),
-      transformResponse: ({ botId, message, error }, meta, arg) => {
+      transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
         } else {
           notifification("success", message);
         }
-        return botId;
+        return data;
       },
     }),
     editBot: build.mutation<CreateBotResponse, EditBotParams>({

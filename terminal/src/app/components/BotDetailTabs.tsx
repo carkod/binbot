@@ -43,9 +43,9 @@ const BotDetailTabs: FC = () => {
       const newBotId = await updateBot({ body: bot, id }).unwrap();
       navigate(`/bots/edit/${newBotId}`);
     } else {
-      const newBotId = await createBot(bot).unwrap();
+      const data = await createBot(bot).unwrap();
       setEnableActivation(true);
-      navigate(`/bots/edit/${newBotId}`);
+      navigate(`/bots/edit/${data.id}`);
     }
   };
 
