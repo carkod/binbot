@@ -67,8 +67,12 @@ class BotTable(SQLModel, table=True):
     )
 
     # Table relationships filled up internally
-    orders: Optional[list["ExchangeOrderTable"]] = Relationship(back_populates="bot")
-    deal: Optional["DealTable"] = Relationship(back_populates="bot")
+    orders: Optional[list["ExchangeOrderTable"]] = Relationship(
+        back_populates="bot", cascade_delete=True
+    )
+    deal: Optional["DealTable"] = Relationship(
+        back_populates="bot", cascade_delete=True
+    )
 
     model_config = {
         "from_attributes": True,
