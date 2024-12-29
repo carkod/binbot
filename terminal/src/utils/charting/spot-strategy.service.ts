@@ -173,24 +173,6 @@ export default function spotTrading(
         });
       }
     }
-    if (bot.safety_orders && bot.safety_orders.length > 0) {
-      let safetyOrderLines: OrderLine[] = [];
-      bot.safety_orders.forEach((element) => {
-        if (element.status === undefined || element.status === 0) {
-          safetyOrderLines.push({
-            id: element.name,
-            text: element.name,
-            tooltip: [bot.status, " Buy order when drops here"],
-            quantity: `${element.so_size} ${quoteAsset}`,
-            price: element.buy_price,
-            color: dealColors.safety_order,
-            lineStyle: 2,
-          });
-        }
-      });
-      totalOrderLines = totalOrderLines.concat(safetyOrderLines);
-    }
-
     if (bot.stop_loss && bot.stop_loss > 0) {
       let stopLossPrice = 0;
       if (bot.deal.buy_price) {

@@ -8,6 +8,7 @@ from tests.model_mocks import (
     id,
     mock_model_data_without_orders,
     DealFactoryMock,
+    mock_bot_model_response,
 )
 from tests.table_mocks import mocked_db_data
 from fastapi.encoders import jsonable_encoder
