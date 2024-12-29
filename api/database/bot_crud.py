@@ -67,9 +67,9 @@ class BotTableCrud:
         bot_table_model.logs = current_logs
 
         # db operations
-        self.session.add(bot_table_model)
+        statement = update(BotTable).where(BotTable.id == bot_table_model.id)
+        self.session.connection().execute(statement, bot_table_model.model_dump())
         self.session.commit()
-        self.session.refresh(bot_table_model)
         self.session.close()
         return bot_table_model
 

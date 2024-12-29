@@ -132,7 +132,7 @@ def edit(
         return BotResponse(message=f"Failed to edit bot: {error.json()}", error=1)
 
 
-@bot_blueprint.delete("/bot", tags=["bots"])
+@bot_blueprint.delete("/bot", response_model=IResponseBase, tags=["bots"])
 def delete(
     id: List[str],
     session: Session = Depends(get_session),
@@ -168,7 +168,11 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.open_deal()
-        return BotResponse(message="Successfully activated bot!", data=data)
+        response_data = BotModelResponse.model_construct(**data.model_dump())
+        return {
+            "message": "Bot activated successfully",
+            "data": response_data,
+        }
     except BinbotErrors as error:
         deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
         return BotResponse(message=error.message, error=1)

@@ -371,6 +371,4 @@ class SpotLongDeal(DealAbstract):
             self.base_order()
 
         self.active_bot = self.open_deal_trailling_parameters()
-        self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")
-
         return self.active_bot

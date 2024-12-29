@@ -320,7 +320,6 @@ class DealAbstract(BaseDeal):
             stop_loss_price=stop_loss_price,
         )
 
-        # do this after db operations in case there is rollback
-        # avoids sending unnecessary signals
-        self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
+        # Only signal for the whole activation
+        self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")
         return self.active_bot
