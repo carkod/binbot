@@ -58,7 +58,7 @@ def get_active_pairs(
     try:
         bot = BotTableCrud(session=session).get_active_pairs()
         if not bot:
-            return BotResponse(message="Bot not found.", error=1)
+            return ActivePairsResponse(message="Bot not found.", error=1, data=[])
         else:
             return ActivePairsResponse(
                 message="Successfully retrieved active pairs.", data=bot

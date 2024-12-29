@@ -79,11 +79,10 @@ class StreamingController(BaseStreaming):
             margin_deal = MarginDeal(active_bot, db_table=db_table)
             margin_deal.streaming_updates(close_price)
 
-        else:
-            # Long strategy starts
-            if active_bot.strategy == Strategy.long:
-                spot_long_deal = SpotLongDeal(active_bot, db_table=db_table)
-                spot_long_deal.streaming_updates(close_price, open_price)
+        elif active_bot.strategy == Strategy.long:
+            spot_long_deal = SpotLongDeal(active_bot, db_table=db_table)
+            spot_long_deal.streaming_updates(close_price, open_price)
+
         pass
 
     def process_klines(self, message: str) -> None:

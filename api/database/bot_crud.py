@@ -244,4 +244,6 @@ class BotTableCrud:
         )
         pairs = self.session.exec(statement).all()
         self.session.close()
+        if not pairs:
+            return []
         return list(pairs)
