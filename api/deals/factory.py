@@ -120,15 +120,35 @@ class DealAbstract(BaseDeal):
         base_asset = self.find_baseAsset(pair)
         balance = self.get_raw_balance(base_asset)
         if balance:
-            qty = round_numbers(balance[0], self.qty_precision)
+            qty = round_numbers(balance["free"], self.qty_precision)
             price: float = float(self.matching_engine(pair, True, qty))
             price = round_numbers(price, self.price_precision)
-            self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+
+            order_data = OrderModel(
+                timestamp=res["transactTime"],
+                order_id=res["orderId"],
+                deal_type=DealType.take_profit,
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=res["price"],
+                qty=res["origQty"],
+                time_in_force=res["timeInForce"],
+                status=res["status"],
+            )
+
+        self.active_bot.orders.append(order_data)
+        self.active_bot.deal.sell_price = res["price"]
+        self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
 
         self.controller.update_logs(
             "Panic sell triggered. All active orders closed", self.active_bot
         )
-        self.controller.update_status(self.active_bot, Status.completed)
+        self.active_bot.status = Status.completed
+        self.controller.save(self.active_bot)
 
         return self.active_bot
 

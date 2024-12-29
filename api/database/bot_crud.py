@@ -67,7 +67,7 @@ class BotTableCrud:
         bot_table_model.logs = current_logs
 
         # db operations
-        statement = update(BotTable).where(BotTable.id == bot_table_model.id)
+        statement = update(BotTable).where(col(BotTable.id == bot_table_model.id))
         self.session.connection().execute(statement, bot_table_model.model_dump())
         self.session.commit()
         self.session.close()
@@ -205,7 +205,7 @@ class BotTableCrud:
         or just a few fields
         """
         # due to incompatibility of SQLModel and Pydantic
-        statement = update(BotTable).where(BotTable.id == data.id)
+        statement = update(BotTable).where(col(BotTable.id == data.id))
         self.session.connection().execute(statement, data.model_dump())
         self.session.commit()
         self.session.close()

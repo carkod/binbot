@@ -135,8 +135,12 @@ class BotModelResponse(BotBase):
         return True
 
 
+class BotDataErrorResponse(BotBase):
+    error: str
+
+
 class BotResponse(IResponseBase):
-    data: Optional[BotModelResponse] = None
+    data: Optional[BotModelResponse] | Optional[BotDataErrorResponse] = None
 
 
 class ActivePairsResponse(IResponseBase):

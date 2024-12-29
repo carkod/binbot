@@ -12,27 +12,6 @@ title:  Autotrade
 - Autotrade checks for existent active bots, to avoid creating the same bot
 
 
-## default_5_so
-
-Default percentage deviation of -5% safety orders with 5 safety orders.
-
-This will create 5 safety orders that will trigger a BUY in when the price drops 5%.
-Each safety order is set to increase the BUY quantity exponentially by 1.2,
-starting from 10 USDT, which roughly will use up 172 USDT worth of funds.
-
-Take for example, in the BTC/USDT market, give current price 20,000 USDT per BTC:
-
-SO_1: Buy 10 USDT (qty) when price drops to @19,000 USDT per BTC
-SO_2: 10^1.2 = 15.84 USDT (qty) when price drops to @18,050 (-5% drop)
-SO_3: 15.84^1.2 = 27.52 USDT, when price drops to @17,147 (-5% drop)
-...
-
-1. Get total balance
-2. Separate total balance evenly (exponentially increase)
-3. Set buy price (-5% drop) and quantity (exponential 1.2 increase)
-
-
-
 ## handle_price_drops
 This is an improved version of `default_5_so`. Arguments:
 

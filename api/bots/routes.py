@@ -106,12 +106,10 @@ def create(
 ):
     try:
         bot = BotTableCrud(session=session).create(bot_item)
-        data = bot_ta.dump_python(bot)
+        data = BotModelResponse.model_construct(**bot.model_dump())
         return BotResponse(message="Successfully created one bot.", data=data)
     except ValidationError as error:
-        return BotResponse(
-            message="Failed to create new bot", data=error.json(), error=1
-        )
+        return BotResponse(message=f"Failed to create new bot {error.json()}", error=1)
 
 
 @bot_blueprint.put("/bot/{id}", response_model=BotResponse, tags=["bots"])
@@ -199,9 +197,11 @@ def deactivation(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.close_all()
-        return BotResponse(
-            message="Active orders closed, sold base asset, deactivated", data=data
-        )
+        response_data = BotModelResponse.model_construct(**data.model_dump())
+        return {
+            "message": "Successfully triggered panic sell! Bot deactivated.",
+            "data": response_data,
+        }
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
 
