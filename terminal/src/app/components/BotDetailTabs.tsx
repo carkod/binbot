@@ -1,7 +1,6 @@
 import { useState, type FC } from "react";
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
-import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import {
   botsApiSlice,
   useCreateBotMutation,
@@ -22,7 +21,6 @@ const BotDetailTabs: FC = () => {
 
   const [updateBot] = useEditBotMutation();
   const [createBot] = useCreateBotMutation();
-  const { data: autotradeSettings } = useGetSettingsQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
 

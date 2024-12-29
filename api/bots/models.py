@@ -122,8 +122,21 @@ class BotModel(BotBase):
         return True
 
 
+class BotModelResponse(BotBase):
+    id: str
+    deal: DealModel = Field(default_factory=DealModel)
+    orders: List[OrderModel] = Field(default=[])
+
+    @field_validator("id")
+    @classmethod
+    def deserialize_id(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return True
+
+
 class BotResponse(IResponseBase):
-    data: Optional[BotModel] = None
+    data: Optional[BotModelResponse] = None
 
 
 class ActivePairsResponse(IResponseBase):
@@ -162,7 +175,3 @@ class GetBotParams(BaseModel):
     no_cooldown: bool = True
     limit: int = 100
     offset: int = 0
-
-
-class BotBaseResponse(BotBase):
-    id: str

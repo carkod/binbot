@@ -10,7 +10,7 @@ from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 
 
 class BotTableCrud:
@@ -131,7 +131,7 @@ class BotTableCrud:
         statement.limit(limit).offset(offset)
 
         bots = self.session.exec(statement).all()
-        # self.session.close()
+        self.session.close()
         return bots
 
     def get_one(
@@ -204,18 +204,12 @@ class BotTableCrud:
         This can be an edit of an entire object
         or just a few fields
         """
-        bot = self.session.get(BotTable, data.id)
-        if not bot:
-            raise ValueError("Bot not found")
-
         # due to incompatibility of SQLModel and Pydantic
-        dumped_bot = data.model_dump()
-        bot.sqlmodel_update(dumped_bot)
-        self.session.add(bot)
+        statement = update(BotTable).where(BotTable.id == data.id)
+        self.session.connection().execute(statement, data.model_dump())
         self.session.commit()
-        self.session.refresh(bot)
         self.session.close()
-        resulted_bot = self.get_one(bot_id=str(dumped_bot["id"]))
+        resulted_bot = self.get_one(bot_id=str(data.id))
         return resulted_bot
 
     def delete(self, bot_ids: List[str] = Query(...)):

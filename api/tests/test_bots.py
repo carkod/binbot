@@ -16,6 +16,7 @@ from fastapi.encoders import jsonable_encoder
 @fixture()
 def client(pairs=False) -> TestClient:
     session_mock = MagicMock()
+    session_mock.connection.return_value.execute.return_value = MagicMock()
     session_mock.exec.return_value.first.return_value = mocked_db_data
     session_mock.exec.return_value.all.return_value = [mocked_db_data]
     session_mock.get.return_value = mocked_db_data

@@ -20,10 +20,10 @@ from deals.spot import SpotLongDeal
 from uuid import UUID
 from collections.abc import Sequence
 from database.models.bot_table import BotTable
-
+from bots.models import BotModelResponse
 
 bot_blueprint = APIRouter()
-bot_ta = TypeAdapter(BotModel)
+bot_ta = TypeAdapter(BotResponse)
 
 
 @bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
@@ -77,8 +77,11 @@ def get_one_by_id(id: str, session: Session = Depends(get_session)):
         if not bot:
             return BotResponse(message="Bot not found.", error=1)
         else:
-            data = bot_ta.dump_python(bot)  # type: ignore
-            return BotResponse(message="Successfully found one bot.", data=data)
+            data = BotModelResponse.model_construct(**bot.model_dump())
+            return {
+                "message": "Successfully found one bot.",
+                "data": data,
+            }
     except ValidationError as error:
         return BotResponse(message="Bot not found.", error=1, data=error.json())
 
@@ -120,10 +123,13 @@ def edit(
     try:
         bot_item.id = UUID(id)
         bot = BotTableCrud(session=session).save(bot_item)
-        data = bot_ta.dump_python(bot)  # type: ignore
-        return BotResponse(message="Sucessfully edited bot", data=data)
+        data = BotModelResponse.model_construct(**bot.model_dump())
+        return {
+            "message": "Successfully edited bot.",
+            "data": data,
+        }
     except ValidationError as error:
-        return BotResponse(message="Failed to edit bot", data=error.json(), error=1)
+        return BotResponse(message=f"Failed to edit bot: {error.json()}", error=1)
 
 
 @bot_blueprint.delete("/bot", tags=["bots"])

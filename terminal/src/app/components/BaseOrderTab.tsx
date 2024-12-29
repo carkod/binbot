@@ -9,16 +9,16 @@ import {
   Tab,
 } from "react-bootstrap";
 import { type FieldValues, useForm } from "react-hook-form";
+import { useImmer } from "use-immer";
+import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
 import { useGetSymbolsQuery } from "../../features/symbolApiSlice";
+import { getQuoteAsset } from "../../utils/api";
 import { BotStatus, BotStrategy, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
-import { useImmer } from "use-immer";
-import { getQuoteAsset } from "../../utils/api";
-import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 
 interface ErrorsState {
   pair?: string;
@@ -80,10 +80,13 @@ const BaseOrderTab: FC = () => {
     if (bot.pair) {
       setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.balance_to_use));
     }
-    if (bot) {
-      for (const key in bot) {
-        reset({ [key]: bot[key] });
-      }
+    if (bot.pair && bot.base_order_size) {
+      reset({
+        name: bot.name,
+        base_order_size: bot.base_order_size,
+        cooldown: bot.cooldown,
+        strategy: bot.strategy,
+      });
     }
   }, [
     data,
@@ -93,7 +96,8 @@ const BaseOrderTab: FC = () => {
     quoteAsset,
     setQuoteAsset,
     reset,
-    autotradeSettings?.balance_to_use
+    autotradeSettings?.balance_to_use,
+    dispatch,
   ]);
 
   // Form
