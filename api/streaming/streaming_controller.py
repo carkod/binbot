@@ -95,6 +95,8 @@ class StreamingController(BaseStreaming):
         close_price = data["close_price"]
         open_price = data["open_price"]
         symbol = data["symbol"]
+        current_bot = None
+        current_test_bot = None
         try:
             current_bot = self.get_current_bot(symbol)
         except ValueError:
