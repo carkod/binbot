@@ -19,12 +19,14 @@ import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
+import { useParams } from "react-router";
 
 interface ErrorsState {
   pair?: string;
 }
 
 const BaseOrderTab: FC = () => {
+  const { symbol } = useParams();
   const dispatch: AppDispatch = useAppDispatch();
   const { data } = useGetSymbolsQuery();
   const { bot } = useAppSelector(selectBot);
@@ -88,6 +90,10 @@ const BaseOrderTab: FC = () => {
         strategy: bot.strategy,
       });
     }
+
+    if (symbol) {
+      dispatch(setField({ name: "pair", value: symbol }));
+    }
   }, [
     data,
     symbolsList,
@@ -98,6 +104,7 @@ const BaseOrderTab: FC = () => {
     reset,
     autotradeSettings?.balance_to_use,
     dispatch,
+    symbol
   ]);
 
   // Form
