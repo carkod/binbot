@@ -62,7 +62,7 @@ class SpotLongDeal(DealAbstract):
         - Deactivate bot
         """
         self.controller.update_logs("Executing stop loss...", self.active_bot)
-        if self.controller == PaperTradingTableCrud:
+        if isinstance(self.controller, PaperTradingTableCrud):
             qty = self.active_bot.deal.buy_total_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
@@ -89,7 +89,7 @@ class SpotLongDeal(DealAbstract):
                     return self.active_bot
 
         # Dispatch fake order
-        if self.controller == PaperTradingTableCrud:
+        if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_order(pair=self.active_bot.pair, side=OrderSide.sell)
 
         else:
@@ -136,7 +136,7 @@ class SpotLongDeal(DealAbstract):
         Sell at take_profit price, because prices will not reach trailling
         """
 
-        if self.controller == PaperTradingTableCrud:
+        if isinstance(self.controller, PaperTradingTableCrud):
             qty = self.active_bot.deal.buy_total_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
@@ -161,7 +161,7 @@ class SpotLongDeal(DealAbstract):
                     return self.active_bot
 
         # Dispatch fake order
-        if self.controller == PaperTradingTableCrud:
+        if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_order(
                 self.active_bot.pair,
                 OrderSide.sell,

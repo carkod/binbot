@@ -232,14 +232,14 @@ class DealAbstract(BaseDeal):
         """
 
         # Update stop loss regarless of base order
-        if float(self.active_bot.stop_loss) > 0:
+        if self.active_bot.stop_loss > 0:
             if (
                 self.active_bot.strategy == Strategy.margin_short
                 and self.active_bot.stop_loss > 0
             ):
                 price = self.active_bot.deal.margin_short_sell_price
                 self.active_bot.deal.stop_loss_price = price + (
-                    price * (float(self.active_bot.stop_loss) / 100)
+                    price * (self.active_bot.stop_loss / 100)
                 )
             else:
                 buy_price = float(self.active_bot.deal.buy_price)
@@ -303,7 +303,7 @@ class DealAbstract(BaseDeal):
         if float(self.active_bot.stop_loss) > 0:
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
-        if self.controller == PaperTradingTableCrud:
+        if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_order(
                 self.active_bot.pair,
                 OrderSide.buy,

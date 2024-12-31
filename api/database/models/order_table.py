@@ -55,7 +55,9 @@ class ExchangeOrderTable(OrderBase, table=True):
     total_commission: float = Field(nullable=True, default=0)
 
     # Relationships
+    bot_id: UUID = Field(default=None, foreign_key="bot.id")
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
+    paper_trading_id: UUID = Field(default=None, foreign_key="paper_trading.id")
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")
 
     @field_validator("price", "qty")

@@ -11,6 +11,7 @@ from pydantic import (
     BaseModel,
     Field,
     field_validator,
+    TypeAdapter,
 )
 from database.utils import timestamp
 from tools.handle_error import IResponseBase
@@ -127,12 +128,18 @@ class BotModelResponse(BotBase):
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default=[])
 
-    @field_validator("id")
     @classmethod
-    def deserialize_id(cls, v):
-        if isinstance(v, UUID):
-            return str(v)
-        return True
+    def dump_bot(cls, bot: BotModel):
+        deal_ta = TypeAdapter(DealModel)
+        orders_ta = TypeAdapter(OrderModel)
+        deal = deal_ta.dump_python(bot.deal)
+        orders = [orders_ta.dump_python(order) for order in bot.orders]
+        model = cls(
+            deal=deal,
+            orders=orders,
+            **bot.model_dump(),
+        )
+        return model
 
 
 class BotDataErrorResponse(BotBase):

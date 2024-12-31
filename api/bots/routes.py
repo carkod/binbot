@@ -77,10 +77,9 @@ def get_one_by_id(id: str, session: Session = Depends(get_session)):
         if not bot:
             return BotResponse(message="Bot not found.", error=1)
         else:
-            data = BotModelResponse.model_construct(**bot.model_dump())
             return {
                 "message": "Successfully found one bot.",
-                "data": data,
+                "data": bot,
             }
     except ValidationError as error:
         return BotResponse(message="Bot not found.", error=1, data=error.json())
