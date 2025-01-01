@@ -29,11 +29,11 @@ class BotTable(SQLModel, table=True):
         default=15, description="Min Binance 0.0001 BNB approx 15USD"
     )
     candlestick_interval: BinanceKlineIntervals = Field(
-        default=BinanceKlineIntervals.fifteen_minutes.value,
+        default=BinanceKlineIntervals.fifteen_minutes,
         sa_column=Column(Enum(BinanceKlineIntervals)),
     )
     close_condition: CloseConditions = Field(
-        default=CloseConditions.dynamic_trailling.value,
+        default=CloseConditions.dynamic_trailling,
         sa_column=Column(Enum(CloseConditions)),
     )
     cooldown: int = Field(
@@ -47,7 +47,7 @@ class BotTable(SQLModel, table=True):
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
     status: Status = Field(
-        default=Status.inactive.value, sa_column=Column(Enum(Status))
+        default=Status.inactive, sa_column=Column(Enum(Status))
     )
     stop_loss: float = Field(
         default=0, description="If stop_loss > 0, allow for reversal"
@@ -63,7 +63,7 @@ class BotTable(SQLModel, table=True):
     )
     trailling_profit: float = Field(default=0)
     strategy: Strategy = Field(
-        default=Strategy.long.value, sa_column=Column(Enum(Strategy))
+        default=Strategy.long, sa_column=Column(Enum(Strategy))
     )
     total_commission: float = Field(
         default=0, description="autoswitch to short_strategy"

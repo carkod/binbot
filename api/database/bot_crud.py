@@ -177,26 +177,18 @@ class BotTableCrud:
         Args:
         - data: BotBase includes only flat properties (excludes deal and orders which are generated internally)
         """
-        bot = BotModel.model_construct(**data.model_dump())
-        deal = bot.deal
+        
+        new_bot = BotTable.model_construct(**data.model_dump())
+        new_bot.deal = DealTable()
+
 
         # db operations
-        serialised_bot = BotTable.model_validate(data)
-        serialised_deal = DealTable.model_validate(deal)
-
-        self.session.add(serialised_bot)
-        self.session.add(serialised_deal)
-
+        self.session.add(new_bot)
         self.session.commit()
-        self.session.refresh(serialised_bot)
-        self.session.refresh(serialised_deal)
+        self.session.refresh(new_bot)
         self.session.close()
-        resulted_bot = self.session.get(BotTable, serialised_bot.id)
-        if resulted_bot:
-            bot_model = BotModel.model_validate(resulted_bot.model_dump())
-        else:
-            bot_model = bot
-        return bot_model
+        resulted_bot = new_bot
+        return resulted_bot
 
     def save(self, data: BotModel) -> BotTable:
         """
