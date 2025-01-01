@@ -199,6 +199,11 @@ class BotTableCrud:
         """
         # due to incompatibility of SQLModel and Pydantic
         initial_bot = self.get_one(bot_id=str(data.id))
+        initial_bot.sqlmodel_update(data.model_dump())
+
+        if not initial_bot.deal:
+            initial_bot.deal = DealTable()
+
         initial_bot.deal.sqlmodel_update(data.deal.model_dump())
         for index, order in enumerate(data.orders):
             if index < len(initial_bot.orders):

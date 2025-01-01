@@ -76,12 +76,24 @@ const BaseOrderTab: FC = () => {
 
   // Data
   useEffect(() => {
+    const { unsubscribe } = watch((v, { name, type }) => {
+      if (v && v?.[name]) {
+        if (typeof v === "boolean") {
+          dispatch(setToggle({ name, value: v[name] }));
+        } else {
+          dispatch(setField({ name, value: v[name] as number | string }));
+        }
+      }
+    });
+
     if (data) {
       setSymbolsList(data);
     }
+
     if (bot.pair) {
       setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.balance_to_use));
     }
+
     if (bot.pair && bot.base_order_size) {
       reset({
         name: bot.name,
@@ -94,6 +106,8 @@ const BaseOrderTab: FC = () => {
     if (symbol) {
       dispatch(setField({ name: "pair", value: symbol }));
     }
+
+    return () => unsubscribe();
   }, [
     data,
     symbolsList,
@@ -104,22 +118,9 @@ const BaseOrderTab: FC = () => {
     reset,
     autotradeSettings?.balance_to_use,
     dispatch,
-    symbol
+    symbol,
+    watch,
   ]);
-
-  // Form
-  useEffect(() => {
-    const { unsubscribe } = watch((v, { name, type }) => {
-      if (v && v?.[name]) {
-        if (typeof v === "boolean") {
-          dispatch(setToggle({ name, value: v[name] }));
-        } else {
-          dispatch(setField({ name, value: v[name] as number | string }));
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, [watch, dispatch]);
 
   return (
     <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
@@ -217,7 +218,6 @@ const BaseOrderTab: FC = () => {
               <Form.Control
                 type="number"
                 name="cooldown"
-                defaultValue={bot.cooldown}
                 {...register("cooldown")}
               />
             </InputTooltip>
@@ -230,7 +230,6 @@ const BaseOrderTab: FC = () => {
               <Form.Select
                 id="strategy"
                 name="strategy"
-                defaultValue={bot.strategy}
                 {...register("strategy", { required: "Strategy is required" })}
               >
                 <option value={BotStrategy.LONG}>Long</option>
