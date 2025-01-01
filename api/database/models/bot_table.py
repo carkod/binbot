@@ -1,5 +1,5 @@
 from uuid import uuid4, UUID
-from typing import TYPE_CHECKING, Optional, List
+from typing import Optional, List
 from pydantic import Json, field_validator
 from sqlalchemy import JSON, Column, Enum
 from database.utils import timestamp
@@ -15,8 +15,6 @@ from database.models.order_table import ExchangeOrderTable
 from database.models.deal_table import DealTable
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
-# if TYPE_CHECKING:
-    
 
 
 class BotTable(SQLModel, table=True):

@@ -30,6 +30,24 @@ class OrderModel(BaseModel):
     price: float
     deal_type: DealType
 
+    @classmethod
+    def dump_from_table(cls, bot):
+        """
+        Same as model_dump() but from
+        BotTable
+        """
+        if isinstance(bot, BotTable):
+            model = BotModel.model_construct(**bot.model_dump())
+            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            order_models = [
+                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+            ]
+            model.deal = deal_model
+            model.orders = order_models
+            return model
+        else:
+            return bot
+
 
 class BotBase(BaseModel):
     pair: str
@@ -122,11 +140,35 @@ class BotModel(BotBase):
             return str(v)
         return True
 
+    @classmethod
+    def dump_from_table(cls, bot):
+        """
+        Same as model_dump() but from
+        BotTable
+        """
+        if isinstance(bot, BotTable):
+            model = BotModel.model_construct(**bot.model_dump())
+            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            order_models = [
+                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+            ]
+            model.deal = deal_model
+            model.orders = order_models
+            return model
+        else:
+            return bot
+
 
 class BotModelResponse(BotBase):
-    id: str
+    id: str | UUID = Field(default="")
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default=[])
+
+    @field_validator("id")
+    def deserialize_id(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return True
 
     @classmethod
     def dump_from_table(cls, bot):

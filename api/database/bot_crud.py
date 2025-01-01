@@ -6,6 +6,7 @@ from time import time
 from bots.models import BotModel
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
+from database.models.order_table import ExchangeOrderTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
@@ -205,11 +206,20 @@ class BotTableCrud:
         or just a few fields
         """
         # due to incompatibility of SQLModel and Pydantic
-        statement = update(BotTable).where(col(BotTable.id == data.id))
-        self.session.connection().execute(statement, data.model_dump())
+        initial_bot = self.get_one(bot_id=str(data.id))
+        initial_bot.deal.sqlmodel_update(data.deal.model_dump())
+        for index, order in enumerate(data.orders):
+            if index < len(initial_bot.orders):
+                initial_bot.orders[index].sqlmodel_update(order.model_dump())
+            else:
+                new_order_row = ExchangeOrderTable(**order.model_dump())
+                initial_bot.orders.append(new_order_row)
+
+        self.session.add(initial_bot)
         self.session.commit()
+        self.session.refresh(initial_bot)
+        resulted_bot = initial_bot
         self.session.close()
-        resulted_bot = self.get_one(bot_id=str(data.id))
         return resulted_bot
 
     def delete(self, bot_ids: List[str] = Query(...)):
