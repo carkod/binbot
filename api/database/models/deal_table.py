@@ -57,6 +57,8 @@ class DealTable(DealBase, table=True):
     __tablename__ = "deal"
 
     # Relationships
-    bot: "BotTable" = Relationship(sa_relationship_kwargs={"viewonly": True})
-    paper_trading: Optional["PaperTradingTable"] = Relationship(sa_relationship_kwargs={"viewonly": True})
+    bot: "BotTable" = Relationship(back_populates="deal")
+    paper_trading: Optional["PaperTradingTable"] = Relationship(
+        sa_relationship_kwargs={"viewonly": True}
+    )
     pass

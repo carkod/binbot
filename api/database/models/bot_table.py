@@ -11,11 +11,12 @@ from tools.enum_definitions import (
 )
 from sqlmodel import Relationship, SQLModel, Field
 
+from database.models.order_table import ExchangeOrderTable
+from database.models.deal_table import DealTable
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
-if TYPE_CHECKING:
-    from database.models.deal_table import DealTable
-    from database.models.order_table import ExchangeOrderTable
+# if TYPE_CHECKING:
+    
 
 
 class BotTable(SQLModel, table=True):
@@ -30,11 +31,11 @@ class BotTable(SQLModel, table=True):
         default=15, description="Min Binance 0.0001 BNB approx 15USD"
     )
     candlestick_interval: BinanceKlineIntervals = Field(
-        default=BinanceKlineIntervals.fifteen_minutes,
+        default=BinanceKlineIntervals.fifteen_minutes.value,
         sa_column=Column(Enum(BinanceKlineIntervals)),
     )
     close_condition: CloseConditions = Field(
-        default=CloseConditions.dynamic_trailling,
+        default=CloseConditions.dynamic_trailling.value,
         sa_column=Column(Enum(CloseConditions)),
     )
     cooldown: int = Field(
@@ -47,7 +48,9 @@ class BotTable(SQLModel, table=True):
     logs: List[str] = Field(default=[], sa_column=Column(JSON))
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
-    status: Status = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
+    status: Status = Field(
+        default=Status.inactive.value, sa_column=Column(Enum(Status))
+    )
     stop_loss: float = Field(
         default=0, description="If stop_loss > 0, allow for reversal"
     )
@@ -61,18 +64,18 @@ class BotTable(SQLModel, table=True):
         description="Trailling activation (first take profit hit)",
     )
     trailling_profit: float = Field(default=0)
-    strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
+    strategy: Strategy = Field(
+        default=Strategy.long.value, sa_column=Column(Enum(Strategy))
+    )
     total_commission: float = Field(
         default=0, description="autoswitch to short_strategy"
     )
 
     # Table relationships filled up internally
-    orders: Optional[list["ExchangeOrderTable"]] = Relationship(
-        back_populates="bot", cascade_delete=True
-    )
-    deal: Optional["DealTable"] = Relationship(
-        back_populates="bot", cascade_delete=True
-    )
+    orders: list[ExchangeOrderTable] = Relationship(back_populates="bot")
+    deal_id: Optional[UUID] = Field(
+        default=None, foreign_key="deal.id")
+    deal: DealTable = Relationship()
 
     model_config = {
         "from_attributes": True,
@@ -150,6 +153,9 @@ class PaperTradingTable(SQLModel, table=True):
     )
 
     # Table relationships filled up internally
+    deal_id: Optional[UUID] = Field(
+        default=None, foreign_key="deal.id"
+    )
     deal: "DealTable" = Relationship(back_populates="paper_trading")
     orders: Optional[list["ExchangeOrderTable"]] = Relationship(
         back_populates="paper_trading"

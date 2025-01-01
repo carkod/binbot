@@ -11,11 +11,11 @@ from pydantic import (
     BaseModel,
     Field,
     field_validator,
-    TypeAdapter,
 )
 from database.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType
+from database.models.bot_table import BotTable
 
 
 class OrderModel(BaseModel):
@@ -129,17 +129,22 @@ class BotModelResponse(BotBase):
     orders: List[OrderModel] = Field(default=[])
 
     @classmethod
-    def dump_bot(cls, bot: BotModel):
-        deal_ta = TypeAdapter(DealModel)
-        orders_ta = TypeAdapter(OrderModel)
-        deal = deal_ta.dump_python(bot.deal)
-        orders = [orders_ta.dump_python(order) for order in bot.orders]
-        model = cls(
-            deal=deal,
-            orders=orders,
-            **bot.model_dump(),
-        )
-        return model
+    def dump_from_table(cls, bot):
+        """
+        Same as model_dump() but from
+        BotTable
+        """
+        if isinstance(bot, BotTable):
+            model = BotModelResponse.model_construct(**bot.model_dump())
+            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            order_models = [
+                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+            ]
+            model.deal = deal_model
+            model.orders = order_models
+            return model
+        else:
+            return bot
 
 
 class BotDataErrorResponse(BotBase):

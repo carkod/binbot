@@ -74,12 +74,13 @@ def get_active_pairs(
 def get_one_by_id(id: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=id)
+        data = BotModelResponse.dump_from_table(bot)
         if not bot:
             return BotResponse(message="Bot not found.", error=1)
         else:
             return {
                 "message": "Successfully found one bot.",
-                "data": bot,
+                "data": data,
             }
     except ValidationError as error:
         return BotResponse(message="Bot not found.", error=1, data=error.json())
