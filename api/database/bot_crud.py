@@ -11,7 +11,7 @@ from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
-from sqlalchemy import delete, update
+from sqlalchemy import delete
 
 
 class BotTableCrud:
@@ -49,30 +49,25 @@ class BotTableCrud:
 
         Either id or bot has to be passed
         """
-        if bot_id:
-            bot_obj = self.session.get(BotTable, bot_id)
-            if not bot_obj:
-                raise ValueError("Bot not found")
-            # No validation needed, this is a trusted source
-            bot = BotModel.model_construct(**bot_obj.model_dump())
-        elif not bot:
+        if bot:
+            bot_id = str(bot.id)
+        elif not bot and not bot_id:
             raise ValueError("Bot id or BotModel object is required")
 
-        current_logs: list[str] = bot.logs
-        if len(current_logs) == 0:
-            current_logs = [log_message]
-        elif len(current_logs) > 0:
-            current_logs.append(log_message)
+        bot_result = self.session.get(BotTable, bot_id)
 
-        bot_table_model = BotTable.model_validate(bot.model_dump())
-        bot_table_model.logs = current_logs
+        if not bot_result:
+            raise ValueError("Bot not found")
+
+        bot_result.logs.extend([log_message])
+        bot_result.sqlmodel_update(bot_result)
 
         # db operations
-        statement = update(BotTable).where(col(BotTable.id == bot_table_model.id))
-        self.session.connection().execute(statement, bot_table_model.model_dump())
+        self.session.add(bot_result)
         self.session.commit()
+        self.session.refresh(bot_result)
         self.session.close()
-        return bot_table_model
+        return bot_result
 
     def get(
         self,
@@ -177,10 +172,8 @@ class BotTableCrud:
         Args:
         - data: BotBase includes only flat properties (excludes deal and orders which are generated internally)
         """
-        
-        new_bot = BotTable.model_construct(**data.model_dump())
-        new_bot.deal = DealTable()
 
+        new_bot = BotTable(**data.model_dump(), deal=DealTable(), orders=[])
 
         # db operations
         self.session.add(new_bot)
@@ -202,12 +195,13 @@ class BotTableCrud:
         initial_bot.sqlmodel_update(data.model_dump())
 
         if not initial_bot.deal:
-            initial_bot.deal = DealTable()
+            data.deal = DealTable(**data.deal.model_dump())
 
-        initial_bot.deal.sqlmodel_update(data.deal.model_dump())
+        initial_bot.deal = DealTable(**data.deal.model_dump())
+
         for index, order in enumerate(data.orders):
-            if index < len(initial_bot.orders):
-                initial_bot.orders[index].sqlmodel_update(order.model_dump())
+            if len(initial_bot.orders) > 0 and index < len(initial_bot.orders):
+                initial_bot.orders[index] = ExchangeOrderTable(**order.model_dump())
             else:
                 new_order_row = ExchangeOrderTable(**order.model_dump())
                 initial_bot.orders.append(new_order_row)

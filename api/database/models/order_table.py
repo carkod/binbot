@@ -3,6 +3,7 @@ from pydantic import ValidationInfo, field_validator
 from tools.enum_definitions import DealType, OrderType
 from sqlmodel import Field, Relationship, SQLModel
 from uuid import UUID, uuid4
+from sqlalchemy import Column, BigInteger
 
 
 if TYPE_CHECKING:
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 class OrderBase(SQLModel):
     order_type: OrderType
     time_in_force: str
-    timestamp: Optional[int]
+    timestamp: int = Field(sa_column=Column(BigInteger()))
     order_id: int = Field(nullable=False)
     order_side: str
     pair: str
@@ -47,7 +48,9 @@ class ExchangeOrderTable(OrderBase, table=True):
     # Relationships
     bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
-    paper_trading_id: Optional[UUID] = Field(default=None, foreign_key="paper_trading.id")
+    paper_trading_id: Optional[UUID] = Field(
+        default=None, foreign_key="paper_trading.id"
+    )
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")
 
     @field_validator("price", "qty")
