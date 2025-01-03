@@ -70,10 +70,11 @@ class BotTable(SQLModel, table=True):
     )
 
     # Table relationships filled up internally
-    orders: list[ExchangeOrderTable] = Relationship(back_populates="bot")
+    orders: list[ExchangeOrderTable] = Relationship(back_populates="bot", sa_relationship_kwargs={"lazy": "joined"})
     deal_id: Optional[UUID] = Field(
         default=None, foreign_key="deal.id")
-    deal: DealTable = Relationship()
+    # lazy option will allow objects to be nested when transformed for json return
+    deal: DealTable = Relationship(sa_relationship_kwargs={"lazy": "joined"})
 
     model_config = {
         "from_attributes": True,

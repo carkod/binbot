@@ -12,6 +12,7 @@ from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy import delete
+from sqlalchemy.orm import selectinload, subqueryload, contains_eager
 
 
 class BotTableCrud:
@@ -126,7 +127,8 @@ class BotTableCrud:
         # pagination
         statement.limit(limit).offset(offset)
 
-        bots = self.session.exec(statement).all()
+        # unique is necessary for a joinload
+        bots = self.session.exec(statement).unique().all()
         self.session.close()
         return bots
 
@@ -179,7 +181,6 @@ class BotTableCrud:
         self.session.add(new_bot)
         self.session.commit()
         self.session.refresh(new_bot)
-        self.session.close()
         resulted_bot = new_bot
         return resulted_bot
 
@@ -213,7 +214,6 @@ class BotTableCrud:
         self.session.commit()
         self.session.refresh(initial_bot)
         resulted_bot = initial_bot
-        self.session.close()
         return resulted_bot
 
     def delete(self, bot_ids: List[str] = Query(...)):

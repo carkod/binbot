@@ -26,7 +26,7 @@ bot_blueprint = APIRouter()
 bot_ta = TypeAdapter(BotResponse)
 
 
-@bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
+@bot_blueprint.get("/bot", response_model=None, tags=["bots"])
 def get(
     status: Status = Status.all,
     start_date: float | None = None,
@@ -42,9 +42,10 @@ def get(
         )
         # Has to be converted to BotModel to
         # be able to serialize nested objects
-        ta = TypeAdapter(List[BotModel])
-        data: Sequence[BotTable] = ta.dump_python(bots)  # type: ignore
-        return BotListResponse(message="Successfully found bots!", data=data)
+        ta = TypeAdapter(list[BotModelResponse])
+        data = ta.dump_python(bots)
+        response = BotListResponse(message="Successfully found bots!", data=data)
+        return response
     except ValidationError as error:
         return BotResponse(message="Failed to find bots!", data=error.json(), error=1)
 

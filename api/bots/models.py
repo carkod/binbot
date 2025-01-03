@@ -183,7 +183,7 @@ class BotModelResponse(BotBase):
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default=[])
 
-    @field_validator("id")
+    @field_validator("id", mode="before")
     def deserialize_id(cls, v):
         if isinstance(v, UUID):
             return str(v)
@@ -229,7 +229,7 @@ class BotListResponse(IResponseBase):
     serialize nested table objects (deal, orders)
     """
 
-    data: Optional[List[BotModel]] = Field(default=[])
+    data: list[BotModelResponse] = Field(default=[])
 
 
 class ErrorsRequestBody(BaseModel):
