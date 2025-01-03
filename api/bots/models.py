@@ -16,7 +16,8 @@ from database.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType
 from database.models.bot_table import BotTable
-
+from database.models.deal_table import DealTable
+from database.models.order_table import ExchangeOrderTable
 
 class OrderModel(BaseModel):
     order_type: OrderType
@@ -151,6 +152,24 @@ class BotModel(BotBase):
             deal_model = DealModel.model_construct(**bot.deal.model_dump())
             order_models = [
                 OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+            ]
+            model.deal = deal_model
+            model.orders = order_models
+            return model
+        else:
+            return bot
+    
+    @classmethod
+    def model_to_table(cls, bot):
+        """
+        Same as model_dump() but from
+        BotModel to BotTable
+        """
+        if isinstance(cls, BotModel):
+            model = BotTable.model_construct(**cls.model_dump())
+            deal_model = DealTable.model_construct(**cls.deal.model_dump())
+            order_models = [
+                ExchangeOrderTable.model_construct(**order.model_dump()) for order in cls.orders
             ]
             model.deal = deal_model
             model.orders = order_models

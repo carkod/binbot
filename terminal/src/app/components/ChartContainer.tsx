@@ -1,3 +1,4 @@
+import { useEffect, useState, type FC } from "react";
 import { Badge, Card, Col, Row } from "react-bootstrap";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { selectBot, setCurrentPrice } from "../../features/bots/botSlice";
@@ -9,7 +10,6 @@ import { type OrderLine } from "../../utils/charting/index.d";
 import { updateTimescaleMarks } from "../../utils/charting";
 import TVChartContainer from "binbot-charts";
 import { type ResolutionString } from "../../../charting_library/charting_library";
-import { useEffect, type FC } from "react";
 import { type AppDispatch } from "../store";
 import { type Bot } from "../../features/bots/botInitialState";
 
@@ -19,7 +19,7 @@ const ChartContainer: FC = () => {
   const initialBotProfit = computeSingleBotProfit(bot);
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0);
   const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([]);
-  const [botProfit, setBotProfit] = useImmer<number>(initialBotProfit);
+  const [botProfit, setBotProfit] = useState<number>(Number(initialBotProfit));
 
   const updatedPrice = (price) => {
     price = roundDecimals(price, 4);
@@ -39,6 +39,10 @@ const ChartContainer: FC = () => {
   };
 
   useEffect(() => {
+    if (initialBotProfit !== botProfit) {
+      setBotProfit(initialBotProfit);
+    }
+
     if (currentChartPrice !== 0) {
       const newOrderLines = updateOrderLines(bot, currentChartPrice);
       setCurrentOrderLines(newOrderLines);
@@ -47,7 +51,7 @@ const ChartContainer: FC = () => {
         dispatch(setCurrentPrice(currentChartPrice));
       }
     }
-  }, [currentChartPrice, bot, setCurrentOrderLines, setBotProfit, dispatch]);
+  }, [currentChartPrice, bot, setCurrentOrderLines, setBotProfit, botProfit, dispatch, initialBotProfit]);
 
   return (
     <Card style={{ minHeight: "650px" }}>
@@ -66,6 +70,11 @@ const ChartContainer: FC = () => {
                 }
               >
                 {botProfit ? botProfit + "%" : "0%"}
+                {botProfit > 0 && botProfit - bot.commissions > 0 && (
+                  <small className="fs-6 fw-light">
+                    {roundDecimals(botProfit - bot.commissions) + "%"}
+                  </small>
+                )}
               </Badge>{" "}
               <Badge
                 bg={
@@ -82,14 +91,6 @@ const ChartContainer: FC = () => {
               </Badge>{" "}
               <Badge color="info">{bot.strategy}</Badge>
             </Card.Title>
-          </Col>
-          <Col md="12" lg="4">
-            {botProfit > 0 && botProfit - bot.commissions > 0 && (
-              <small className="fs-6 fw-light">
-                Earnings after commissions (est.):{" "}
-                {roundDecimals(botProfit - bot.commissions) + "%"}
-              </small>
-            )}
           </Col>
         </Row>
       </Card.Header>

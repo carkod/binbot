@@ -1,5 +1,5 @@
 import { roundDecimals } from "../../utils/math";
-import { Bot } from "./botInitialState";
+import { type Bot } from "./botInitialState";
 
 export function getProfit(base_price, current_price, strategy = "long") {
   if (base_price && current_price) {

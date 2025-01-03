@@ -7,6 +7,7 @@ from database.models.deal_table import DealTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from collections.abc import Sequence
+from uuid import UUID
 
 
 class PaperTradingTableCrud:
@@ -183,7 +184,11 @@ class PaperTradingTableCrud:
         Get one bot by id or symbol
         """
         if bot_id:
-            bot = self.session.get(PaperTradingTable, bot_id)
+            santize_uuid = UUID(bot_id)
+            bot = self.session.get(PaperTradingTable, santize_uuid)
+            if not bot:
+                raise ValueError("Bot not found")
+            return bot
         elif symbol:
             if status:
                 bot = self.session.exec(
@@ -196,12 +201,11 @@ class PaperTradingTableCrud:
                 bot = self.session.exec(
                     select(PaperTradingTable).where(PaperTradingTable.pair == symbol)
                 ).first()
+            if not bot:
+                raise ValueError("Bot not found")
+            return bot
         else:
             raise ValueError("Invalid bot id or symbol")
-
-        self.session.close()
-        data = BotModel.model_validate(bot)
-        return data
 
     def get_active_pairs(self):
         """

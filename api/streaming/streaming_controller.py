@@ -23,14 +23,14 @@ class BaseStreaming:
 
     def get_current_bot(self, symbol: str) -> BotModel:
         current_bot = self.bot_controller.get_one(symbol=symbol, status=Status.active)
-        bot = BotModel.model_validate(current_bot)
+        bot = BotModel.dump_from_table(current_bot)
         return bot
 
     def get_current_test_bot(self, symbol: str) -> BotModel:
         current_test_bot = self.paper_trading_controller.get_one(
             symbol=symbol, status=Status.active
         )
-        bot = BotModel.model_validate(current_test_bot)
+        bot = BotModel.dump_from_table(current_test_bot)
         return bot
 
 
@@ -72,15 +72,13 @@ class StreamingController(BaseStreaming):
                 print(current_bot.orders[0].order_id)
                 pass
 
-        active_bot = BotModel.model_validate(current_bot)
-
         # Margin short
-        if active_bot.strategy == Strategy.margin_short:
-            margin_deal = MarginDeal(active_bot, db_table=db_table)
+        if current_bot.strategy == Strategy.margin_short:
+            margin_deal = MarginDeal(current_bot, db_table=db_table)
             margin_deal.streaming_updates(close_price)
 
-        elif active_bot.strategy == Strategy.long:
-            spot_long_deal = SpotLongDeal(active_bot, db_table=db_table)
+        elif current_bot.strategy == Strategy.long:
+            spot_long_deal = SpotLongDeal(current_bot, db_table=db_table)
             spot_long_deal.streaming_updates(close_price, open_price)
 
         pass
@@ -105,9 +103,6 @@ class StreamingController(BaseStreaming):
             current_test_bot = self.get_current_test_bot(symbol)
         except ValueError:
             pass
-
-        # temporary test that we get enough streaming update signals
-        logging.info(f"Streaming update for {symbol}")
 
         try:
             if current_bot:
