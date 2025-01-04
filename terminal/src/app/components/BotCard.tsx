@@ -5,7 +5,7 @@ import { type Bot } from "../../features/bots/botInitialState";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
 import { BotStatus } from "../../utils/enums";
-import { renderDuration } from "../../utils/time";
+import { formatTimestamp, renderDuration } from "../../utils/time";
 
 interface BotCardProps {
   bot: Bot;
@@ -30,7 +30,6 @@ const BotCard: FC<BotCardProps> = ({
   handleDelete,
 }) => {
   const botProfit = computeSingleBotProfit(bot);
-  console.log(bot, botProfit);
   const navigate = useNavigate();
   return (
     <Card
@@ -144,7 +143,11 @@ const BotCard: FC<BotCardProps> = ({
               <Col md="6" xs="7">
                 <p className="small">Buy time</p>
               </Col>
-              <Col md="6" xs="5"></Col>
+              <Col md="6" xs="5">
+                <p className="small">
+                  {formatTimestamp(bot.deal.buy_timestamp)}
+                </p>
+              </Col>
             </Row>
           )}
           {bot.status === BotStatus.COMPLETED &&
@@ -153,7 +156,11 @@ const BotCard: FC<BotCardProps> = ({
                 <Col md="6" xs="7">
                   <p className="small">Sell time</p>
                 </Col>
-                <Col md="6" xs="5"></Col>
+                <Col md="6" xs="5">
+                  <p className="small">
+                    {formatTimestamp(bot.deal.sell_timestamp)}
+                  </p>
+                </Col>
               </Row>
             )}
           {bot.status === BotStatus.COMPLETED &&
