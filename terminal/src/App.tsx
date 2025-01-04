@@ -129,6 +129,7 @@ const rootRouter = createBrowserRouter([
     id: "root",
     path: "/",
     element: <Layout />,
+    hydrateFallbackElement: <div>Loading...</div>,
     children: routes,
   },
   {
@@ -138,14 +139,24 @@ const rootRouter = createBrowserRouter([
       return <Navigate to="/login" replace />
     },
   },
-]);
+],
+{
+  future: {
+    v7_partialHydration: true,
+    v7_fetcherPersist: true,
+    v7_normalizeFormMethod: true,
+    v7_skipActionErrorRevalidation: true,
+  }
+});
 
 export const App = () => {
   return (
     <Provider store={store}>
       <RouterProvider
         router={rootRouter}
-        fallbackElement={<p>Initial Load...</p>}
+        future={{
+          v7_startTransition: true,
+        }}
       />
     </Provider>
   );
