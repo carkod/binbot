@@ -336,7 +336,7 @@ class Assets(AssetsController):
 
         return json_response_message(msg)
 
-    def one_click_liquidation(self, pair: str) -> JSONResponse:
+    def one_click_liquidation(self, pair: str) -> BotTable:
         """
         Emulate Binance Dashboard
         One click liquidation function

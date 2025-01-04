@@ -18,8 +18,6 @@ from tools.exceptions import BinanceErrors, BinbotErrors
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from uuid import UUID
-from collections.abc import Sequence
-from database.models.bot_table import BotTable
 from bots.models import BotModelResponse
 
 bot_blueprint = APIRouter()
@@ -159,7 +157,7 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
     if not bot:
         return BotResponse(message="Bot not found.")
 
-    bot_model = BotModel.model_construct(**bot.model_dump())
+    bot_model = BotModel.dump_from_table(bot)
     if bot_model.strategy == Strategy.margin_short:
         deal_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(bot_model)
     else:
@@ -167,11 +165,8 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.open_deal()
-        response_data = BotModelResponse.model_construct(**data.model_dump())
-        return {
-            "message": "Bot activated successfully",
-            "data": response_data,
-        }
+        response_data = BotModelResponse(**data.model_dump())
+        return BotResponse(message="Successfully activated bot.", data=response_data)
     except BinbotErrors as error:
         deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
         return BotResponse(message=error.message, error=1)

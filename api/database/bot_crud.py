@@ -164,7 +164,7 @@ class BotTableCrud:
         else:
             raise ValueError("Invalid bot id or symbol")
 
-    def create(self, data: BotBase) -> BotModel:
+    def create(self, data: BotBase) -> BotTable:
         """
         Create a new bot
 
@@ -198,9 +198,10 @@ class BotTableCrud:
         if initial_bot.deal.buy_price > 0:
             # No instance bot error when assigning to initial_bot.deal when deal already created
             initial_bot.deal.sqlmodel_update(data.deal.model_dump())
-        elif not initial_bot.deal:
-            data.deal = DealTable(**data.deal.model_dump())
         else:
+            if initial_bot.deal:
+                data.deal = DealTable()
+
             initial_bot.deal = DealTable(**data.deal.model_dump())
 
         for index, order in enumerate(data.orders):

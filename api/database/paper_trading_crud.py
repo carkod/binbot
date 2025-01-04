@@ -179,7 +179,7 @@ class PaperTradingTableCrud:
         bot_id: str | None = None,
         symbol: str | None = None,
         status: Status | None = None,
-    ) -> BotModel:
+    ) -> PaperTradingTable:
         """
         Get one bot by id or symbol
         """

@@ -132,7 +132,8 @@ def deactivate(id: str, session: Session = Depends(get_session)):
     if not bot_model:
         return api_response("No active bot found. Can't deactivate")
 
-    bot_instance = DealAbstract(bot_model, PaperTradingTable)
+    bot = BotModel.model_construct(**bot_model.model_dump())
+    bot_instance = DealAbstract(bot, PaperTradingTable)
     try:
         bot_instance.close_all()
         return api_response("Active orders closed, sold base asset, deactivated")

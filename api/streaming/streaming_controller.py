@@ -129,7 +129,13 @@ class StreamingController(BaseStreaming):
                 return
         except BinanceErrors as error:
             if error.code in (-2010, -1013):
-                bot = current_bot if current_bot else current_test_bot
+                if current_bot:
+                    bot = current_bot
+                elif current_test_bot:
+                    bot = current_test_bot
+                else:
+                    return
+
                 create_deal_controller.controller.update_logs(error.message, bot)
                 bot.status = Status.error
                 create_deal_controller.controller.save(bot)
