@@ -22,6 +22,7 @@ const TakeProfit: FC = () => {
   const {
     register,
     watch,
+    reset,
     formState: { errors },
   } = useForm({
     mode: "onTouched",
@@ -44,8 +45,18 @@ const TakeProfit: FC = () => {
         }
       }
     });
+
+    if (bot.id) {
+      reset({
+        take_profit: bot.take_profit,
+        trailling: bot.trailling,
+        trailling_deviation: bot.trailling_deviation,
+        dynamic_trailling: bot.dynamic_trailling,
+      });
+    }
+
     return () => unsubscribe();
-  }, [watch, dispatch]);
+  }, [watch, dispatch, bot, reset]);
 
   return (
     <Tab.Pane eventKey={TabsKeys.TAKEPROFIT}>

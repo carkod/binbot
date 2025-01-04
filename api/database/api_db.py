@@ -146,13 +146,13 @@ class ApiDb:
             total_commission=0,
         )
         deal = DealTable(
-            buy_price=0,
-            buy_total_qty=0,
+            buy_price=1.7777,
+            buy_total_qty=12,
             buy_timestamp=0,
             current_price=0,
             sd=0,
             avg_buy_price=0,
-            take_profit_price=0,
+            take_profit_price=2.3,
             sell_timestamp=0,
             sell_price=0,
             sell_qty=0,
@@ -179,7 +179,7 @@ class ApiDb:
             margin_short_loan_timestamp=0,
         )
         bot = BotTable(
-            pair="BTCUSDT",
+            pair="BTCUSDC",
             balance_size_to_use="1",
             fiat="USDC",
             base_order_size=15,

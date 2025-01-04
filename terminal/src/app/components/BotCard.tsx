@@ -30,6 +30,7 @@ const BotCard: FC<BotCardProps> = ({
   handleDelete,
 }) => {
   const botProfit = computeSingleBotProfit(bot);
+  console.log(bot, botProfit);
   const navigate = useNavigate();
   return (
     <Card

@@ -9,22 +9,24 @@ import {
   Tab,
 } from "react-bootstrap";
 import { type FieldValues, useForm } from "react-hook-form";
+import { useImmer } from "use-immer";
+import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
 import { useGetSymbolsQuery } from "../../features/symbolApiSlice";
+import { getQuoteAsset } from "../../utils/api";
 import { BotStatus, BotStrategy, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
-import { useImmer } from "use-immer";
-import { getQuoteAsset } from "../../utils/api";
-import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
+import { useParams } from "react-router";
 
 interface ErrorsState {
   pair?: string;
 }
 
 const BaseOrderTab: FC = () => {
+  const { symbol } = useParams();
   const dispatch: AppDispatch = useAppDispatch();
   const { data } = useGetSymbolsQuery();
   const { bot } = useAppSelector(selectBot);
@@ -74,30 +76,6 @@ const BaseOrderTab: FC = () => {
 
   // Data
   useEffect(() => {
-    if (data) {
-      setSymbolsList(data);
-    }
-    if (bot.pair) {
-      setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.balance_to_use));
-    }
-    if (bot) {
-      for (const key in bot) {
-        reset({ [key]: bot[key] });
-      }
-    }
-  }, [
-    data,
-    symbolsList,
-    setSymbolsList,
-    bot,
-    quoteAsset,
-    setQuoteAsset,
-    reset,
-    autotradeSettings?.balance_to_use
-  ]);
-
-  // Form
-  useEffect(() => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
@@ -107,8 +85,42 @@ const BaseOrderTab: FC = () => {
         }
       }
     });
+
+    if (data) {
+      setSymbolsList(data);
+    }
+
+    if (bot.pair) {
+      setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.balance_to_use));
+    }
+
+    if (bot.pair && bot.base_order_size) {
+      reset({
+        name: bot.name,
+        base_order_size: bot.base_order_size,
+        cooldown: bot.cooldown,
+        strategy: bot.strategy,
+      });
+    }
+
+    if (symbol) {
+      dispatch(setField({ name: "pair", value: symbol }));
+    }
+
     return () => unsubscribe();
-  }, [watch, dispatch]);
+  }, [
+    data,
+    symbolsList,
+    setSymbolsList,
+    bot,
+    quoteAsset,
+    setQuoteAsset,
+    reset,
+    autotradeSettings?.balance_to_use,
+    dispatch,
+    symbol,
+    watch,
+  ]);
 
   return (
     <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
@@ -206,7 +218,6 @@ const BaseOrderTab: FC = () => {
               <Form.Control
                 type="number"
                 name="cooldown"
-                defaultValue={bot.cooldown}
                 {...register("cooldown")}
               />
             </InputTooltip>
@@ -219,7 +230,6 @@ const BaseOrderTab: FC = () => {
               <Form.Select
                 id="strategy"
                 name="strategy"
-                defaultValue={bot.strategy}
                 {...register("strategy", { required: "Strategy is required" })}
               >
                 <option value={BotStrategy.LONG}>Long</option>

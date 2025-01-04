@@ -25,13 +25,15 @@ export interface Bot {
   balance_available_asset: string;
   balance_size_to_use: number;
   base_order_size: number;
-  balance_to_use: string;
+  // Deprecated in favor of fiat
+  balance_to_use?: string;
+  fiat?: string;
   buy_total_qty?: number;
   deal?: Deal;
   errors?: string[];
+  logs?: string[];
   mode: string;
   pair: string;
-  so_size: string;
   take_profit: number;
   trailling: boolean;
   trailling_deviation: number;
@@ -71,7 +73,6 @@ export const singleBot: Bot = {
   mode: "manual",
   name: `manual_${new Date().getTime().toString()}`,
   pair: "",
-  so_size: "0",
   take_profit: 2.3,
   trailling: false,
   trailling_deviation: 2.8,

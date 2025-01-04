@@ -1,6 +1,6 @@
 from uuid import uuid4, UUID
-from typing import TYPE_CHECKING, Optional, List
-from pydantic import Json
+from typing import Optional, List
+from pydantic import Json, field_validator
 from sqlalchemy import JSON, Column, Enum
 from database.utils import timestamp
 from tools.enum_definitions import (
@@ -11,11 +11,10 @@ from tools.enum_definitions import (
 )
 from sqlmodel import Relationship, SQLModel, Field
 
+from database.models.order_table import ExchangeOrderTable
+from database.models.deal_table import DealTable
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
-if TYPE_CHECKING:
-    from database.models.deal_table import DealTable
-    from database.models.order_table import ExchangeOrderTable
 
 
 class BotTable(SQLModel, table=True):
@@ -44,10 +43,12 @@ class BotTable(SQLModel, table=True):
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
     dynamic_trailling: bool = Field(default=False)
-    logs: List[Json[str]] = Field(default=[], sa_column=Column(JSON))
+    logs: List[str] = Field(default=[], sa_column=Column(JSON))
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
-    status: Status = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
+    status: Status = Field(
+        default=Status.inactive, sa_column=Column(Enum(Status))
+    )
     stop_loss: float = Field(
         default=0, description="If stop_loss > 0, allow for reversal"
     )
@@ -61,19 +62,28 @@ class BotTable(SQLModel, table=True):
         description="Trailling activation (first take profit hit)",
     )
     trailling_profit: float = Field(default=0)
-    strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
+    strategy: Strategy = Field(
+        default=Strategy.long, sa_column=Column(Enum(Strategy))
+    )
     total_commission: float = Field(
         default=0, description="autoswitch to short_strategy"
     )
 
     # Table relationships filled up internally
-    orders: Optional[list["ExchangeOrderTable"]] = Relationship(back_populates="bot")
-    deal: Optional["DealTable"] = Relationship(back_populates="bot")
+    orders: list[ExchangeOrderTable] = Relationship(back_populates="bot", sa_relationship_kwargs={"lazy": "joined"})
+    deal_id: Optional[UUID] = Field(
+        default=None, foreign_key="deal.id")
+    # lazy option will allow objects to be nested when transformed for json return
+    deal: DealTable = Relationship(sa_relationship_kwargs={"lazy": "joined"})
 
     model_config = {
         "from_attributes": True,
         "use_enum_values": True,
     }
+
+    @field_validator("logs", mode="before")
+    def validate_logs(cls, v, info):
+        return v
 
 
 class PaperTradingTable(SQLModel, table=True):
@@ -142,6 +152,9 @@ class PaperTradingTable(SQLModel, table=True):
     )
 
     # Table relationships filled up internally
+    deal_id: Optional[UUID] = Field(
+        default=None, foreign_key="deal.id"
+    )
     deal: "DealTable" = Relationship(back_populates="paper_trading")
     orders: Optional[list["ExchangeOrderTable"]] = Relationship(
         back_populates="paper_trading"

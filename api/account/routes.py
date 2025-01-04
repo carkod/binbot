@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
 
 from account.account import Account
@@ -10,13 +10,15 @@ from account.schemas import (
 )
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError, MarginLoanNotFound
 from tools.handle_error import json_response, json_response_error, json_response_message
+from sqlmodel import Session
+from database.utils import get_session
 
 account_blueprint = APIRouter()
 
 
 @account_blueprint.get("/balance/raw", response_model=BalanceResponse, tags=["account"])
-def raw_balance():
-    data = Assets().get_raw_balance()
+def raw_balance(session: Session = Depends(get_session)):
+    data = Assets(session=session).get_raw_balance()
     return json_response({"data": data})
 
 
@@ -59,9 +61,9 @@ def ticker_24(pair=None):
 
 
 @account_blueprint.get("/balance/estimate", tags=["assets"])
-def balance_estimated():
+def balance_estimated(session: Session = Depends(get_session)):
     try:
-        balance = Assets().balance_estimate()
+        balance = Assets(session=session).balance_estimate()
         if balance:
             return json_response(
                 {
@@ -74,19 +76,19 @@ def balance_estimated():
 
 
 @account_blueprint.get("/balance/series", tags=["assets"])
-def balance_series():
-    return Assets().balance_series()
+def balance_series(session: Session = Depends(get_session)):
+    return Assets(session=session).balance_series()
 
 
 @account_blueprint.get("/pnl", tags=["assets"])
-def get_pnl():
-    return Assets().get_pnl()
+def get_pnl(session: Session = Depends(get_session)):
+    return Assets(session=session).get_pnl()
 
 
 @account_blueprint.get("/store-balance", tags=["assets"])
-def store_balance():
+def store_balance(session: Session = Depends(get_session)):
     try:
-        Assets().store_balance()
+        Assets(session=session).store_balance()
         response = json_response_message("Successfully stored balance.")
     except Exception as error:
         response = json_response_error(f"Failed to store balance: {error}")
@@ -96,25 +98,25 @@ def store_balance():
 @account_blueprint.get(
     "/gainers-losers", response_model=GainersLosersResponse, tags=["assets"]
 )
-async def retrieve_gainers_losers():
-    return await Assets().retrieve_gainers_losers()
+async def retrieve_gainers_losers(session: Session = Depends(get_session)):
+    return await Assets(session=session).retrieve_gainers_losers()
 
 
 @account_blueprint.get(
     "/balance-series", response_model=BalanceSeriesResponse, tags=["assets"]
 )
-async def get_balance_series():
+async def get_balance_series(session: Session = Depends(get_session)):
     today = datetime.now()
     month_ago = today - timedelta(30)
-    return await Assets().get_balance_series(
+    return await Assets(session=session).get_balance_series(
         start_date=datetime.timestamp(month_ago), end_date=datetime.timestamp(today)
     )
 
 
 @account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
-def clean_balance(bypass: bool = False):
+def clean_balance(bypass: bool = False, session: Session = Depends(get_session)):
     try:
-        Assets().clean_balance_assets(bypass=bypass)
+        Assets(session=session).clean_balance_assets(bypass=bypass)
         return json_response_message("Sucessfully cleaned balance.")
     except LowBalanceCleanupError as error:
         return json_response_error(f"Failed to clean balance: {error}")
@@ -125,42 +127,42 @@ def clean_balance(bypass: bool = False):
 @account_blueprint.get(
     "/fiat/available", response_model=BalanceSeriesResponse, tags=["assets"]
 )
-def fiat_available():
+def fiat_available(session: Session = Depends(get_session)):
     """
     Total USDC in balance
     Calculated by Binance
     """
-    total_fiat = Assets().get_available_fiat()
+    total_fiat = Assets(session=session).get_available_fiat()
     return json_response({"data": total_fiat})
 
 
 @account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["assets"])
-def fiat():
+def fiat(session: Session = Depends(get_session)):
     """
     Total USDC in balance
     Calculated by Binance
     """
-    total_fiat = Assets().get_total_fiat()
+    total_fiat = Assets(session=session).get_total_fiat()
     return json_response({"data": total_fiat})
 
 
 @account_blueprint.get(
     "/disable-isolated", response_model=BalanceSeriesResponse, tags=["assets"]
 )
-def disable_isolated():
-    return Assets().disable_isolated_accounts()
+def disable_isolated(session: Session = Depends(get_session)):
+    return Assets(session=session).disable_isolated_accounts()
 
 
 @account_blueprint.get("/isolated", tags=["assets"])
-def check_isolated_symbol(symbol: str):
-    isolated_account = Assets().get_isolated_account(symbol)
+def check_isolated_symbol(symbol: str, session: Session = Depends(get_session)):
+    isolated_account = Assets(session=session).get_isolated_account(symbol)
     return isolated_account
 
 
 @account_blueprint.get("/one-click-liquidation/{asset}", tags=["assets"])
-def one_click_liquidation(asset):
+def one_click_liquidation(asset: str, session: Session = Depends(get_session)):
     try:
-        liquidated = Assets().one_click_liquidation(asset)
+        liquidated = Assets(session=session).one_click_liquidation(asset)
         if not liquidated:
             raise HTTPException(
                 status_code=404, detail="Could not liquidate asset that doesn't exist."

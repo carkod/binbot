@@ -22,7 +22,7 @@ const StopLossTab: FC<{}> = () => {
   const {
     watch,
     register,
-    getValues,
+    reset,
     formState: { errors },
   } = useForm({
     mode: "onTouched",
@@ -43,8 +43,16 @@ const StopLossTab: FC<{}> = () => {
         }
       }
     });
+
+    if (bot.id) {
+      reset({
+        stop_loss: bot.stop_loss,
+        margin_short_reversal: bot.margin_short_reversal,
+      });
+    }
+
     return () => unsubscribe();
-  }, [watch, dispatch]);
+  }, [watch, dispatch, bot, reset]);
 
   return (
     <Tab.Pane

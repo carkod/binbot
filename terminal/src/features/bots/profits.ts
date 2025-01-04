@@ -1,5 +1,5 @@
 import { roundDecimals } from "../../utils/math";
-import { Bot } from "./botInitialState";
+import { type Bot } from "./botInitialState";
 
 export function getProfit(base_price, current_price, strategy = "long") {
   if (base_price && current_price) {
@@ -51,7 +51,7 @@ export function computeSingleBotProfit(
   bot: Bot,
   realTimeCurrPrice: number | null = null,
 ) {
-  if (bot.deal && bot.base_order_size) {
+  if (bot.deal && bot.base_order_size > 0) {
     if (bot.deal.buy_price > 0) {
       const currentPrice = bot.deal.sell_price
         ? bot.deal.sell_price

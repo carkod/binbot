@@ -24,3 +24,8 @@ This separation gives us the flexibility to release API changes independently of
 PostgreSQL database is meant to be used for relational data for fast performance. Small chucks of data are consumed rapidly, bots, autotrade settings, users, these is data that can live in independently and are queried in small amounts and punctually.
 
 MongoDB database is meant to be used for time series data (charts) and cache. This is often unstructure data, high volume, high frequency of querying.
+
+Reasons for moving to SQL:
+- Better data consistency. Because Document-based NoSQL data is often not strictly typed, the ORM/ODM has fewer guards, and the DB doesn't actually card specifici fields, moving to SQL allows us to better guard such fields. Wrongly or inconsistenly submitted fields in SQL will throw errors and allow us to rollback changes.
+- Maturity of Binbot data. As binbot data structure (autotrade settings, bots) become more mature, it's clear to see the relation between the data.
+- Future-proof. As project grows, more data related to bots and trades will be added, and we probably don't want to attach it into the exisiting objects that are already very large (bots in MongoDB). This allows us to separate and break down into small chunks and still keep the relationship in the data, e.g. querying all orders without all the overhead of bots.

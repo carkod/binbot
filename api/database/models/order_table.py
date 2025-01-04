@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING, Optional
 from pydantic import ValidationInfo, field_validator
-from sqlalchemy import Column, Enum
 from tools.enum_definitions import DealType, OrderType
 from sqlmodel import Field, Relationship, SQLModel
 from uuid import UUID, uuid4
+from sqlalchemy import Column, BigInteger
 
 
 if TYPE_CHECKING:
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class OrderBase(SQLModel):
     order_type: OrderType
     time_in_force: str
-    timestamp: Optional[int]
+    timestamp: int = Field(sa_column=Column(BigInteger()))
     order_id: int = Field(nullable=False)
     order_side: str
     pair: str
@@ -21,12 +21,6 @@ class OrderBase(SQLModel):
     status: str
     price: float
     deal_type: DealType
-
-    # Relationships
-    bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
-    paper_trading_id: Optional[UUID] = Field(
-        default=None, foreign_key="paper_trading.id"
-    )
 
     model_config = {
         "use_enum_values": True,
@@ -50,12 +44,13 @@ class ExchangeOrderTable(OrderBase, table=True):
     id: UUID = Field(
         primary_key=True, default_factory=uuid4, nullable=False, unique=True, index=True
     )
-    price: float = Field(nullable=True)
-    deal_type: DealType = Field(sa_column=Column(Enum(DealType)))
-    total_commission: float = Field(nullable=True, default=0)
 
     # Relationships
+    bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
+    paper_trading_id: Optional[UUID] = Field(
+        default=None, foreign_key="paper_trading.id"
+    )
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")
 
     @field_validator("price", "qty")

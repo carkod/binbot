@@ -4,6 +4,7 @@ import time
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.assets import Assets
 from charts.controllers import MarketDominationController
+from database.utils import independent_session
 
 
 logging.Formatter.converter = time.gmtime  # date time in GMT/UTC
@@ -17,7 +18,7 @@ logging.basicConfig(
 
 def main():
     scheduler = BlockingScheduler()
-    assets = Assets()
+    assets = Assets(session=independent_session())
     market_domination = MarketDominationController()
     timezone = "Europe/London"
 

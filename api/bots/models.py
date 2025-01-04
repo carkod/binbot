@@ -15,7 +15,9 @@ from pydantic import (
 from database.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType
-
+from database.models.bot_table import BotTable
+from database.models.deal_table import DealTable
+from database.models.order_table import ExchangeOrderTable
 
 class OrderModel(BaseModel):
     order_type: OrderType
@@ -28,6 +30,24 @@ class OrderModel(BaseModel):
     status: str
     price: float
     deal_type: DealType
+
+    @classmethod
+    def dump_from_table(cls, bot):
+        """
+        Same as model_dump() but from
+        BotTable
+        """
+        if isinstance(bot, BotTable):
+            model = BotModel.model_construct(**bot.model_dump())
+            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            order_models = [
+                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+            ]
+            model.deal = deal_model
+            model.orders = order_models
+            return model
+        else:
+            return bot
 
 
 class BotBase(BaseModel):
@@ -121,9 +141,79 @@ class BotModel(BotBase):
             return str(v)
         return True
 
+    @classmethod
+    def dump_from_table(cls, bot):
+        """
+        Same as model_dump() but from
+        BotTable
+        """
+        if isinstance(bot, BotTable):
+            model = BotModel.model_construct(**bot.model_dump())
+            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            order_models = [
+                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+            ]
+            model.deal = deal_model
+            model.orders = order_models
+            return model
+        else:
+            return bot
+    
+    @classmethod
+    def model_to_table(cls, bot):
+        """
+        Same as model_dump() but from
+        BotModel to BotTable
+        """
+        if isinstance(cls, BotModel):
+            model = BotTable.model_construct(**cls.model_dump())
+            deal_model = DealTable.model_construct(**cls.deal.model_dump())
+            order_models = [
+                ExchangeOrderTable.model_construct(**order.model_dump()) for order in cls.orders
+            ]
+            model.deal = deal_model
+            model.orders = order_models
+            return model
+        else:
+            return bot
+
+
+class BotModelResponse(BotBase):
+    id: str | UUID = Field(default="")
+    deal: DealModel = Field(default_factory=DealModel)
+    orders: List[OrderModel] = Field(default=[])
+
+    @field_validator("id", mode="before")
+    def deserialize_id(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return True
+
+    @classmethod
+    def dump_from_table(cls, bot):
+        """
+        Same as model_dump() but from
+        BotTable
+        """
+        if isinstance(bot, BotTable):
+            model = BotModelResponse.model_construct(**bot.model_dump())
+            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            order_models = [
+                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+            ]
+            model.deal = deal_model
+            model.orders = order_models
+            return model
+        else:
+            return bot
+
+
+class BotDataErrorResponse(BotBase):
+    error: str
+
 
 class BotResponse(IResponseBase):
-    data: Optional[BotModel] = None
+    data: Optional[BotModelResponse] | Optional[BotDataErrorResponse] = None
 
 
 class ActivePairsResponse(IResponseBase):
@@ -139,7 +229,7 @@ class BotListResponse(IResponseBase):
     serialize nested table objects (deal, orders)
     """
 
-    data: Optional[List[BotModel]] = Field(default=[])
+    data: list[BotModelResponse] = Field(default=[])
 
 
 class ErrorsRequestBody(BaseModel):
@@ -162,7 +252,3 @@ class GetBotParams(BaseModel):
     no_cooldown: bool = True
     limit: int = 100
     offset: int = 0
-
-
-class BotBaseResponse(BotBase):
-    id: str

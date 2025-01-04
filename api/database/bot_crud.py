@@ -1,15 +1,18 @@
 from typing import List, Optional
 from uuid import UUID
 from fastapi import Query
-from sqlmodel import Session, asc, desc, or_, select, case
+from sqlmodel import Session, asc, desc, or_, select, case, col
 from time import time
 from bots.models import BotModel
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
+from database.models.order_table import ExchangeOrderTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
+from sqlalchemy import delete
+from sqlalchemy.orm import selectinload, subqueryload, contains_eager
 
 
 class BotTableCrud:
@@ -47,30 +50,25 @@ class BotTableCrud:
 
         Either id or bot has to be passed
         """
-        if bot_id:
-            bot_obj = self.session.get(BotTable, bot_id)
-            if not bot_obj:
-                raise ValueError("Bot not found")
-            # No validation needed, this is a trusted source
-            bot = BotModel.model_construct(**bot_obj.model_dump())
-        elif not bot:
+        if bot:
+            bot_id = str(bot.id)
+        elif not bot and not bot_id:
             raise ValueError("Bot id or BotModel object is required")
 
-        current_logs: list[str] = bot.logs
-        if len(current_logs) == 0:
-            current_logs = [log_message]
-        elif len(current_logs) > 0:
-            current_logs.append(log_message)
+        bot_result = self.session.get(BotTable, bot_id)
 
-        bot_table_model = BotTable.model_validate(bot.model_dump())
-        bot_table_model.logs = current_logs
+        if not bot_result:
+            raise ValueError("Bot not found")
+
+        bot_result.logs.extend([log_message])
+        bot_result.sqlmodel_update(bot_result)
 
         # db operations
-        self.session.add(bot_table_model)
+        self.session.add(bot_result)
         self.session.commit()
-        self.session.refresh(bot_table_model)
+        self.session.refresh(bot_result)
         self.session.close()
-        return bot_table_model
+        return bot_result
 
     def get(
         self,
@@ -129,8 +127,9 @@ class BotTableCrud:
         # pagination
         statement.limit(limit).offset(offset)
 
-        bots = self.session.exec(statement).all()
-        # self.session.close()
+        # unique is necessary for a joinload
+        bots = self.session.exec(statement).unique().all()
+        self.session.close()
         return bots
 
     def get_one(
@@ -175,26 +174,15 @@ class BotTableCrud:
         Args:
         - data: BotBase includes only flat properties (excludes deal and orders which are generated internally)
         """
-        bot = BotModel.model_construct(**data.model_dump())
-        deal = bot.deal
+
+        new_bot = BotTable(**data.model_dump(), deal=DealTable(), orders=[])
 
         # db operations
-        serialised_bot = BotTable.model_validate(data)
-        serialised_deal = DealTable.model_validate(deal)
-
-        self.session.add(serialised_bot)
-        self.session.add(serialised_deal)
-
+        self.session.add(new_bot)
         self.session.commit()
-        self.session.refresh(serialised_bot)
-        self.session.refresh(serialised_deal)
-        self.session.close()
-        resulted_bot = self.session.get(BotTable, serialised_bot.id)
-        if resulted_bot:
-            bot_model = BotModel.model_validate(resulted_bot.model_dump())
-        else:
-            bot_model = bot
-        return bot_model
+        self.session.refresh(new_bot)
+        resulted_bot = new_bot
+        return resulted_bot
 
     def save(self, data: BotModel) -> BotTable:
         """
@@ -203,18 +191,29 @@ class BotTableCrud:
         This can be an edit of an entire object
         or just a few fields
         """
-        bot = self.session.get(BotTable, data.id)
-        if not bot:
-            raise ValueError("Bot not found")
-
         # due to incompatibility of SQLModel and Pydantic
-        dumped_bot = data.model_dump()
-        bot.sqlmodel_update(dumped_bot)
-        self.session.add(bot)
+        initial_bot = self.get_one(bot_id=str(data.id))
+        initial_bot.sqlmodel_update(data.model_dump())
+
+        if initial_bot.deal.buy_price > 0:
+            # No instance bot error when assigning to initial_bot.deal when deal already created
+            initial_bot.deal.sqlmodel_update(data.deal.model_dump())
+        elif not initial_bot.deal:
+            data.deal = DealTable(**data.deal.model_dump())
+        else:
+            initial_bot.deal = DealTable(**data.deal.model_dump())
+
+        for index, order in enumerate(data.orders):
+            if len(initial_bot.orders) > 0 and index < len(initial_bot.orders):
+                initial_bot.orders[index] = ExchangeOrderTable(**order.model_dump())
+            else:
+                new_order_row = ExchangeOrderTable(**order.model_dump())
+                initial_bot.orders.append(new_order_row)
+
+        self.session.add(initial_bot)
         self.session.commit()
-        self.session.refresh(bot)
-        self.session.close()
-        resulted_bot = self.get_one(bot_id=str(dumped_bot["id"]))
+        self.session.refresh(initial_bot)
+        resulted_bot = initial_bot
         return resulted_bot
 
     def delete(self, bot_ids: List[str] = Query(...)):
@@ -222,10 +221,9 @@ class BotTableCrud:
         Delete by multiple ids.
         For a single id, pass one id in a list
         """
-        statement = select(BotTable)
-        for id in bot_ids:
-            statement.where(BotTable.id == id)
-        bots = self.session.exec(statement).all()
+        statement = delete(BotTable).where(col(BotTable.id).in_(bot_ids))
+        # exec doesn't pass mypy
+        bots = self.session.connection().execute(statement)
         self.session.commit()
         self.session.close()
         return bots
@@ -250,4 +248,6 @@ class BotTableCrud:
         )
         pairs = self.session.exec(statement).all()
         self.session.close()
+        if not pairs:
+            return []
         return list(pairs)

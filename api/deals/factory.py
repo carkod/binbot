@@ -120,15 +120,35 @@ class DealAbstract(BaseDeal):
         base_asset = self.find_baseAsset(pair)
         balance = self.get_raw_balance(base_asset)
         if balance:
-            qty = round_numbers(balance[0], self.qty_precision)
+            qty = round_numbers(balance["free"], self.qty_precision)
             price: float = float(self.matching_engine(pair, True, qty))
             price = round_numbers(price, self.price_precision)
-            self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+
+            order_data = OrderModel(
+                timestamp=res["transactTime"],
+                order_id=res["orderId"],
+                deal_type=DealType.take_profit,
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=res["price"],
+                qty=res["origQty"],
+                time_in_force=res["timeInForce"],
+                status=res["status"],
+            )
+
+        self.active_bot.orders.append(order_data)
+        self.active_bot.deal.sell_price = res["price"]
+        self.active_bot.deal.sell_qty = res["origQty"]
+        self.active_bot.deal.sell_timestamp = res["transactTime"]
 
         self.controller.update_logs(
             "Panic sell triggered. All active orders closed", self.active_bot
         )
-        self.controller.update_status(self.active_bot, Status.completed)
+        self.active_bot.status = Status.completed
+        self.controller.save(self.active_bot)
 
         return self.active_bot
 
@@ -212,14 +232,14 @@ class DealAbstract(BaseDeal):
         """
 
         # Update stop loss regarless of base order
-        if float(self.active_bot.stop_loss) > 0:
+        if self.active_bot.stop_loss > 0:
             if (
                 self.active_bot.strategy == Strategy.margin_short
                 and self.active_bot.stop_loss > 0
             ):
                 price = self.active_bot.deal.margin_short_sell_price
                 self.active_bot.deal.stop_loss_price = price + (
-                    price * (float(self.active_bot.stop_loss) / 100)
+                    price * (self.active_bot.stop_loss / 100)
                 )
             else:
                 buy_price = float(self.active_bot.deal.buy_price)
@@ -283,7 +303,7 @@ class DealAbstract(BaseDeal):
         if float(self.active_bot.stop_loss) > 0:
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
-        if self.controller == PaperTradingTableCrud:
+        if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_order(
                 self.active_bot.pair,
                 OrderSide.buy,
@@ -320,7 +340,6 @@ class DealAbstract(BaseDeal):
             stop_loss_price=stop_loss_price,
         )
 
-        # do this after db operations in case there is rollback
-        # avoids sending unnecessary signals
-        self.base_producer.update_required(self.producer, "ACTIVATE_BOT")
+        # Only signal for the whole activation
+        self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")
         return self.active_bot

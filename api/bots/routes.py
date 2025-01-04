@@ -20,13 +20,13 @@ from deals.spot import SpotLongDeal
 from uuid import UUID
 from collections.abc import Sequence
 from database.models.bot_table import BotTable
-
+from bots.models import BotModelResponse
 
 bot_blueprint = APIRouter()
-bot_ta = TypeAdapter(BotModel)
+bot_ta = TypeAdapter(BotResponse)
 
 
-@bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
+@bot_blueprint.get("/bot", response_model=None, tags=["bots"])
 def get(
     status: Status = Status.all,
     start_date: float | None = None,
@@ -42,9 +42,10 @@ def get(
         )
         # Has to be converted to BotModel to
         # be able to serialize nested objects
-        ta = TypeAdapter(List[BotModel])
-        data: Sequence[BotTable] = ta.dump_python(bots)  # type: ignore
-        return BotListResponse(message="Successfully found bots!", data=data)
+        ta = TypeAdapter(list[BotModelResponse])
+        data = ta.dump_python(bots)
+        response = BotListResponse(message="Successfully found bots!", data=data)
+        return response
     except ValidationError as error:
         return BotResponse(message="Failed to find bots!", data=error.json(), error=1)
 
@@ -58,7 +59,7 @@ def get_active_pairs(
     try:
         bot = BotTableCrud(session=session).get_active_pairs()
         if not bot:
-            return BotResponse(message="Bot not found.", error=1)
+            return ActivePairsResponse(message="Bot not found.", error=1, data=[])
         else:
             return ActivePairsResponse(
                 message="Successfully retrieved active pairs.", data=bot
@@ -74,11 +75,14 @@ def get_active_pairs(
 def get_one_by_id(id: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=id)
+        data = BotModelResponse.dump_from_table(bot)
         if not bot:
             return BotResponse(message="Bot not found.", error=1)
         else:
-            data = bot_ta.dump_python(bot)  # type: ignore
-            return BotResponse(message="Successfully found one bot.", data=data)
+            return {
+                "message": "Successfully found one bot.",
+                "data": data,
+            }
     except ValidationError as error:
         return BotResponse(message="Bot not found.", error=1, data=error.json())
 
@@ -103,12 +107,10 @@ def create(
 ):
     try:
         bot = BotTableCrud(session=session).create(bot_item)
-        data = bot_ta.dump_python(bot)
+        data = BotModelResponse.model_construct(**bot.model_dump())
         return BotResponse(message="Successfully created one bot.", data=data)
     except ValidationError as error:
-        return BotResponse(
-            message="Failed to create new bot", data=error.json(), error=1
-        )
+        return BotResponse(message=f"Failed to create new bot {error.json()}", error=1)
 
 
 @bot_blueprint.put("/bot/{id}", response_model=BotResponse, tags=["bots"])
@@ -120,13 +122,16 @@ def edit(
     try:
         bot_item.id = UUID(id)
         bot = BotTableCrud(session=session).save(bot_item)
-        data = bot_ta.dump_python(bot)  # type: ignore
-        return BotResponse(message="Sucessfully edited bot", data=data)
+        data = BotModelResponse.model_construct(**bot.model_dump())
+        return {
+            "message": "Successfully edited bot.",
+            "data": data,
+        }
     except ValidationError as error:
-        return BotResponse(message="Failed to edit bot", data=error.json(), error=1)
+        return BotResponse(message=f"Failed to edit bot: {error.json()}", error=1)
 
 
-@bot_blueprint.delete("/bot", tags=["bots"])
+@bot_blueprint.delete("/bot", response_model=IResponseBase, tags=["bots"])
 def delete(
     id: List[str],
     session: Session = Depends(get_session),
@@ -162,7 +167,11 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.open_deal()
-        return BotResponse(message="Successfully activated bot!", data=data)
+        response_data = BotModelResponse.model_construct(**data.model_dump())
+        return {
+            "message": "Bot activated successfully",
+            "data": response_data,
+        }
     except BinbotErrors as error:
         deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
         return BotResponse(message=error.message, error=1)
@@ -189,9 +198,11 @@ def deactivation(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.close_all()
-        return BotResponse(
-            message="Active orders closed, sold base asset, deactivated", data=data
-        )
+        response_data = BotModelResponse.model_construct(**data.model_dump())
+        return {
+            "message": "Successfully triggered panic sell! Bot deactivated.",
+            "data": response_data,
+        }
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
 

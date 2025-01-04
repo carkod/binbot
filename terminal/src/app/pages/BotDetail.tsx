@@ -47,7 +47,7 @@ export const BotDetail: FC<{}> = () => {
               <BotInfo bot={bot} />
             </Col>
             <Col md="5" sm="12">
-              {bot.errors?.length > 0 && <LogsInfo events={bot.errors} />}
+              {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
             </Col>
           </Row>
         )}

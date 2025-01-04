@@ -1,11 +1,10 @@
 import { useState, type FC } from "react";
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
-import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import {
   botsApiSlice,
   useCreateBotMutation,
-  useEditBotMutation
+  useEditBotMutation,
 } from "../../features/bots/botsApiSlice";
 import { selectBot } from "../../features/bots/botSlice";
 import { BotStatus, TabsKeys } from "../../utils/enums";
@@ -21,8 +20,7 @@ const BotDetailTabs: FC = () => {
   const dispatch = useAppDispatch();
 
   const [updateBot] = useEditBotMutation();
-  const [createBot ] = useCreateBotMutation();
-  const { data: autotradeSettings } = useGetSettingsQuery();
+  const [createBot] = useCreateBotMutation();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
 
@@ -30,7 +28,7 @@ const BotDetailTabs: FC = () => {
   // Deals and orders information need to come from the server
   const handleActivation = (id: string) => {
     dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
-    // Deals and orders are not 
+    // Deals and orders are not
     navigate(`/bots/edit/${id}`);
   };
   const handlePanicSell = (id: string) => {
@@ -40,12 +38,12 @@ const BotDetailTabs: FC = () => {
 
   const onSubmit = async () => {
     if (id && bot.status !== BotStatus.COMPLETED) {
-      const newBotId = await updateBot({ body: bot, id }).unwrap();
-      navigate(`/bots/edit/${newBotId}`);
+      await updateBot({ body: bot, id });
+      navigate(`/bots/edit/${id}`);
     } else {
-      const newBotId = await createBot(bot).unwrap();
+      const data = await createBot(bot).unwrap();
       setEnableActivation(true);
-      navigate(`/bots/edit/${newBotId}`);
+      navigate(`/bots/edit/${data.id}`);
     }
   };
 

@@ -100,7 +100,7 @@ class MarginDeal(DealAbstract):
 
     def init_margin_short(self, initial_price: float) -> BotModel:
         """
-        Pre-tasks for db_collection = bots
+        Pre-tasks for bots that use margin_short strategy
         These tasks are not necessary for paper_trading
 
         1. transfer funds
@@ -334,7 +334,7 @@ class MarginDeal(DealAbstract):
         """
         initial_price = float(self.matching_engine(self.active_bot.pair, False))
 
-        if self.controller == BotTableCrud:
+        if isinstance(self.controller, BotTableCrud):
             self.init_margin_short(initial_price)
             order_res = self.sell_margin_order(
                 symbol=self.active_bot.pair,
@@ -498,7 +498,7 @@ class MarginDeal(DealAbstract):
         This is used during streaming updates
         """
         # Margin buy (buy back)
-        if self.controller == PaperTradingTableCrud:
+        if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_margin_order(
                 self.active_bot.deal.buy_total_qty, OrderSide.buy
             )
@@ -552,11 +552,11 @@ class MarginDeal(DealAbstract):
 
         - Buy back asset sold
         """
-        if self.controller == BotTableCrud:
+        if isinstance(self.controller, BotTableCrud):
             self.cancel_open_orders(DealType.take_profit)
 
         # Margin buy (buy back)
-        if self.controller == PaperTradingTableCrud:
+        if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_margin_order(
                 self.active_bot.deal.buy_total_qty, OrderSide.buy
             )

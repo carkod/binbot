@@ -33,10 +33,3 @@ interface Deal {
   trailling_profit_price?: number;
   take_profit_price?: number;
 }
-
-interface SafetyOrder {
-  name: string;
-  status?: number;
-  so_size: number;
-  buy_price: number;
-}

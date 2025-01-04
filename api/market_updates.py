@@ -6,6 +6,12 @@ from kafka import KafkaConsumer
 from streaming.streaming_controller import BbspreadsUpdater, StreamingController
 from tools.enum_definitions import KafkaTopics
 
+logging.basicConfig(
+    level=logging.INFO,
+    filename=None,
+    format="%(asctime)s.%(msecs)03d UTC %(levelname)s %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 def main():
     consumer = KafkaConsumer(

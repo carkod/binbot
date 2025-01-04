@@ -10,13 +10,14 @@ from tools.handle_error import json_response, json_response_error, json_response
 from tools.round_numbers import round_numbers
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.enum_definitions import Status, Strategy
-
+from database.bot_crud import BotTableCrud
 
 class Assets(AssetsController):
-    def __init__(self):
+    def __init__(self, session):
         self.usd_balance = 0
         self.exception_list = []
         self.fiat = AutotradeCrud().get_settings().balance_to_use
+        self.bot_controller = BotTableCrud(session=session)
 
     def get_pnl(self, days=7):
         current_time = datetime.now()
@@ -344,10 +345,12 @@ class Assets(AssetsController):
         where there are are still funds in the isolated pair
         """
 
-        bot = self._db.bots.find_one({"status": Status.active, "pair": pair})
+        bot = self.bot_controller.get_one(symbol=pair)
+
         if not bot:
             return bot
-        active_bot = BotModel.model_validate(bot)
+
+        active_bot = BotModel.model_validate(bot.model_dump())
         deal = DealAbstract(active_bot, db_table=BotTable)
 
         if active_bot.strategy == Strategy.margin_short:

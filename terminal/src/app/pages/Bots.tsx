@@ -42,7 +42,7 @@ export const BotsPage: FC<{}> = () => {
     endDate,
   });
 
-  const handleSelection = (id) => {
+  const handleSelection = (id: string) => {
     let newCards = [];
     if (selectedCards.includes(id)) {
       newCards = selectedCards.filter((x) => x !== id);
@@ -132,7 +132,10 @@ export const BotsPage: FC<{}> = () => {
           </h4>
         </div>
         <div id="filters" className="mx-3 d-flex flex-column flex-md-row">
-          <Stack direction="horizontal" className="mx-3 d-flex flex-column flex-md-row">
+          <Stack
+            direction="horizontal"
+            className="mx-3 d-flex flex-column flex-md-row"
+          >
             <div className="p-3">
               <BotsActions
                 defaultValue={bulkActions}
@@ -145,7 +148,10 @@ export const BotsPage: FC<{}> = () => {
               <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
             </div>
           </Stack>
-          <Stack direction="horizontal" className="mx-3 d-flex flex-column flex-md-row">
+          <Stack
+            direction="horizontal"
+            className="mx-3 d-flex flex-column flex-md-row"
+          >
             <div className="p-3">
               <BotsDateFilter
                 title="Filter by start date"
