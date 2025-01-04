@@ -46,9 +46,7 @@ class BotTable(SQLModel, table=True):
     logs: List[str] = Field(default=[], sa_column=Column(JSON))
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
-    status: Status = Field(
-        default=Status.inactive, sa_column=Column(Enum(Status))
-    )
+    status: Status = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
     stop_loss: float = Field(
         default=0, description="If stop_loss > 0, allow for reversal"
     )
@@ -62,17 +60,16 @@ class BotTable(SQLModel, table=True):
         description="Trailling activation (first take profit hit)",
     )
     trailling_profit: float = Field(default=0)
-    strategy: Strategy = Field(
-        default=Strategy.long, sa_column=Column(Enum(Strategy))
-    )
+    strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
     total_commission: float = Field(
         default=0, description="autoswitch to short_strategy"
     )
 
     # Table relationships filled up internally
-    orders: list[ExchangeOrderTable] = Relationship(back_populates="bot", sa_relationship_kwargs={"lazy": "joined"})
-    deal_id: Optional[UUID] = Field(
-        default=None, foreign_key="deal.id")
+    orders: list[ExchangeOrderTable] = Relationship(
+        back_populates="bot", sa_relationship_kwargs={"lazy": "joined"}
+    )
+    deal_id: Optional[UUID] = Field(default=None, foreign_key="deal.id")
     # lazy option will allow objects to be nested when transformed for json return
     deal: DealTable = Relationship(sa_relationship_kwargs={"lazy": "joined"})
 
@@ -152,9 +149,7 @@ class PaperTradingTable(SQLModel, table=True):
     )
 
     # Table relationships filled up internally
-    deal_id: Optional[UUID] = Field(
-        default=None, foreign_key="deal.id"
-    )
+    deal_id: Optional[UUID] = Field(default=None, foreign_key="deal.id")
     deal: "DealTable" = Relationship(back_populates="paper_trading")
     orders: Optional[list["ExchangeOrderTable"]] = Relationship(
         back_populates="paper_trading"

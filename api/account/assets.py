@@ -12,6 +12,7 @@ from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.enum_definitions import Status, Strategy
 from database.bot_crud import BotTableCrud
 
+
 class Assets(AssetsController):
     def __init__(self, session):
         self.usd_balance = 0

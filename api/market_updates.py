@@ -13,6 +13,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+
 def main():
     consumer = KafkaConsumer(
         KafkaTopics.klines_store_topic.value,
