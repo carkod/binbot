@@ -19,6 +19,7 @@ from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
 
+
 class OrderModel(BaseModel):
     order_type: OrderType
     time_in_force: str
@@ -158,7 +159,7 @@ class BotModel(BotBase):
             return model
         else:
             return bot
-    
+
     @classmethod
     def model_to_table(cls, bot):
         """
@@ -169,7 +170,8 @@ class BotModel(BotBase):
             model = BotTable.model_construct(**cls.model_dump())
             deal_model = DealTable.model_construct(**cls.deal.model_dump())
             order_models = [
-                ExchangeOrderTable.model_construct(**order.model_dump()) for order in cls.orders
+                ExchangeOrderTable.model_construct(**order.model_dump())
+                for order in cls.orders
             ]
             model.deal = deal_model
             model.orders = order_models
@@ -182,6 +184,10 @@ class BotModelResponse(BotBase):
     id: str | UUID = Field(default="")
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default=[])
+
+    model_config = {
+        "json_encoders": {UUID: str},
+    }
 
     @field_validator("id", mode="before")
     def deserialize_id(cls, v):
