@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
-from fastapi.responses import JSONResponse
 from account.controller import AssetsController
 from database.models.bot_table import BotTable
 from database.autotrade_crud import AutotradeCrud

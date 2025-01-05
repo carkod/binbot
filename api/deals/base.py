@@ -72,7 +72,8 @@ class BaseDeal(OrderController):
             free = self.get_margin_balance(asset)
             if not free:
                 return None
-
+        else:
+            free = balance["free"]
         qty = round_numbers(free, self.qty_precision)
         return qty
 
