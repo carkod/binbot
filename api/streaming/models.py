@@ -14,7 +14,7 @@ class SignalsConsumer(BaseModel):
     msg: str
     symbol: str
     algo: str
-    trend: TrendEnum = TrendEnum.neutral
+    trend: Optional[TrendEnum] = TrendEnum.neutral
     bb_spreads: Optional[Dict[str, float]]
 
     model_config = {

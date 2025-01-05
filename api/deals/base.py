@@ -66,15 +66,15 @@ class BaseDeal(OrderController):
 
         asset = self.find_baseAsset(pair)
         balance = self.get_single_raw_balance(asset)
-        if balance > 0:
+        if balance == 0:
             # If spot balance is not found
             # try to get isolated margin balance
             free = self.get_margin_balance(asset)
+            qty = round_numbers(free, self.qty_precision)
             if not free:
                 return None
-        else:
-            free = balance["free"]
-        qty = round_numbers(free, self.qty_precision)
+
+        qty = round_numbers(balance, self.qty_precision)
         return qty
 
     def compute_margin_buy_back(self) -> Tuple[float | int, float | int]:

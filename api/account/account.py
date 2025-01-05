@@ -219,7 +219,7 @@ class Account(BinbotApi):
         )
         return min_notional_filter[min_notional_limit]
 
-    def get_raw_balance(self) -> list | float:
+    def get_raw_balance(self) -> list:
         """
         Unrestricted balance
         """
@@ -234,7 +234,7 @@ class Account(BinbotApi):
         data = self.get_account_balance()
         for x in data["balances"]:
             if x["asset"] == asset:
-                return x
+                return float(x["free"])
         return 0
 
     def get_margin_balance(self, symbol="BTC") -> float:

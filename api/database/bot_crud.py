@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from fastapi import Query
-from sqlmodel import Session, asc, desc, or_, select, case, col
+from sqlmodel import Session, asc, desc, or_, select, case
 from time import time
 from bots.models import BotModel
 from database.models.bot_table import BotTable
@@ -11,8 +11,6 @@ from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
-from sqlalchemy import delete
-from sqlalchemy.orm import selectinload, subqueryload, contains_eager
 
 
 class BotTableCrud:
@@ -222,12 +220,14 @@ class BotTableCrud:
         Delete by multiple ids.
         For a single id, pass one id in a list
         """
-        statement = delete(BotTable).where(col(BotTable.id).in_(bot_ids))
-        # exec doesn't pass mypy
-        bots = self.session.connection().execute(statement)
+        for id in bot_ids:
+            statement = select(BotTable).where(BotTable.id == id)
+            bot = self.session.exec(statement).first()
+            self.session.delete(bot)
+
         self.session.commit()
         self.session.close()
-        return bots
+        return bot_ids
 
     def update_status(self, bot: BotModel, status: Status) -> BotModel:
         """

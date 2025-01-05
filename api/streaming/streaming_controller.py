@@ -40,17 +40,14 @@ class StreamingController(BaseStreaming):
         # Gets any signal to restart streaming
         self.consumer = consumer
         self.autotrade_controller = AutotradeCrud()
-        self.load_data_on_start()
 
     def load_data_on_start(self) -> None:
         """
-        New function to replace get_klines without websockets
+        Load data on start and on update_required
         """
-        # Load real bot settings
         self.list_bots = self.bot_controller.get_active_pairs()
         # Load paper trading bot settings
         self.list_paper_trading_bots = self.paper_trading_controller.get_active_pairs()
-        return
 
     def execute_strategies(
         self,
@@ -145,17 +142,23 @@ class StreamingController(BaseStreaming):
 
 class BbspreadsUpdater(BaseStreaming):
     def __init__(self) -> None:
+        super().__init__()
         self.current_bot: BotModel | None = None
         self.current_test_bot: BotModel | None = None
 
     def load_current_bots(self, symbol: str) -> None:
-        current_bot_payload = self.get_current_bot(symbol)
-        if current_bot_payload:
-            self.current_bot = BotModel.model_validate(current_bot_payload)
+        try:
+            current_bot_payload = self.get_current_bot(symbol)
+            if current_bot_payload:
+                self.current_bot = BotModel.model_validate(current_bot_payload)
 
-        current_test_bot_payload = self.get_current_test_bot(symbol)
-        if current_test_bot_payload:
-            self.current_test_bot = BotModel.model_validate(current_test_bot_payload)
+            current_test_bot_payload = self.get_current_test_bot(symbol)
+            if current_test_bot_payload:
+                self.current_test_bot = BotModel.model_validate(
+                    current_test_bot_payload
+                )
+        except ValueError:
+            pass
 
     def get_interests_short_margin(self, bot: BotModel) -> tuple[float, float, float]:
         close_timestamp = bot.deal.margin_short_buy_back_timestamp
@@ -316,6 +319,7 @@ class BbspreadsUpdater(BaseStreaming):
         bb_spreads = signalsData.bb_spreads
         if (
             (self.current_bot or self.current_test_bot)
+            and bb_spreads
             and "bb_high" in bb_spreads
             and bb_spreads["bb_high"]  # my-py
             and "bb_low" in bb_spreads

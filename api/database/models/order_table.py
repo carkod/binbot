@@ -46,7 +46,9 @@ class ExchangeOrderTable(OrderBase, table=True):
     )
 
     # Relationships
-    bot_id: Optional[UUID] = Field(default=None, foreign_key="bot.id")
+    bot_id: Optional[UUID] = Field(
+        default=None, foreign_key="bot.id", ondelete="CASCADE"
+    )
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
     paper_trading_id: Optional[UUID] = Field(
         default=None, foreign_key="paper_trading.id"
