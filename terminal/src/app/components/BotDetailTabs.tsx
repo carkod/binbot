@@ -34,7 +34,6 @@ const BotDetailTabs: FC = () => {
   };
   const handlePanicSell = (id: string) => {
     dispatch(botsApiSlice.endpoints.deactivateBot.initiate(id));
-    navigate(`/bots`);
   };
 
   const onSubmit = async () => {
