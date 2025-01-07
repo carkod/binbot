@@ -9,7 +9,7 @@ from tools.enum_definitions import (
     Status,
     Strategy,
 )
-from bots.models import BotModel, OrderModel
+from bots.models import BotModel, OrderModel, BotBase
 from deals.factory import DealAbstract
 from deals.margin import MarginDeal
 from tools.round_numbers import round_numbers
@@ -43,8 +43,13 @@ class SpotLongDeal(DealAbstract):
         self.controller.update_logs(
             "Resetting bot for margin_short strategy...", self.active_bot
         )
-        self.active_bot.strategy = Strategy.margin_short
-        self.active_bot = self.controller.create(data=self.active_bot)
+
+        # Reset bot operations
+        new_bot = BotBase.model_construct(**self.active_bot.model_dump())
+        new_bot.strategy = Strategy.margin_short
+
+        bot_table = self.controller.create(data=new_bot)
+        self.active_bot = BotModel.dump_from_table(bot_table)
 
         margin_strategy_deal = MarginDeal(bot=self.active_bot, db_table=self.db_table)
 
@@ -69,7 +74,7 @@ class SpotLongDeal(DealAbstract):
 
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
-        if qty > 0:
+        if qty == 0:
             closed_orders = self.close_open_orders(self.active_bot.pair)
             if not closed_orders:
                 order = self.verify_deal_close_order()
@@ -101,13 +106,13 @@ class SpotLongDeal(DealAbstract):
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         stop_loss_order = OrderModel(
-            timestamp=res["transactTime"],
+            timestamp=float(res["transactTime"]),
             deal_type=DealType.stop_loss,
             order_id=int(res["orderId"]),
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
-            price=res["price"],
+            price=float(res["price"]),
             qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
@@ -125,7 +130,7 @@ class SpotLongDeal(DealAbstract):
         if self.active_bot.margin_short_reversal:
             msg += " Scheduled to switch strategy"
 
-        self.controller.update_logs(msg)
+        self.controller.update_logs(msg, self.active_bot)
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 

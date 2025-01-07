@@ -281,7 +281,7 @@ class DealAbstract(BaseDeal):
         self.controller.update_logs("Bot activated", self.active_bot)
         return self.active_bot
 
-    def base_order(self):
+    def base_order(self) -> BotModel:
         """
         Required initial order to trigger long strategy bot.
         Other orders require this to execute,

@@ -1,5 +1,5 @@
 from uuid import uuid4, UUID
-from typing import Optional, List
+from typing import Optional
 from pydantic import Json, field_validator
 from sqlalchemy import JSON, Column, Enum
 from database.utils import timestamp
@@ -10,7 +10,6 @@ from tools.enum_definitions import (
     Strategy,
 )
 from sqlmodel import Relationship, SQLModel, Field
-
 from database.models.order_table import ExchangeOrderTable
 from database.models.deal_table import DealTable
 # avoids circular imports
@@ -43,7 +42,7 @@ class BotTable(SQLModel, table=True):
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
     dynamic_trailling: bool = Field(default=False)
-    logs: List[str] = Field(default=[], sa_column=Column(JSON))
+    logs: list = Field(default=[], sa_column=Column(JSON))
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
     status: Status = Field(default=Status.inactive, sa_column=Column(Enum(Status)))

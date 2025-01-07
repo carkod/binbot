@@ -11,6 +11,7 @@ from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
+from sqlalchemy.orm.attributes import flag_modified
 
 
 class BotTableCrud:
@@ -58,8 +59,9 @@ class BotTableCrud:
         if not bot_result:
             raise ValueError("Bot not found")
 
-        bot_result.logs.extend([log_message])
-        bot_result.sqlmodel_update(bot_result)
+        # Update logs as an SQLAlchemy list
+        bot_result.logs = [log_message] + bot_result.logs
+        flag_modified(bot_result, "logs")
 
         # db operations
         self.session.add(bot_result)
@@ -132,12 +134,15 @@ class BotTableCrud:
 
     def get_one(
         self,
-        bot_id: str | None = None,
-        symbol: str | None = None,
+        bot_id: Optional[str] = None,
+        symbol: Optional[str] = None,
         status: Status | None = None,
     ) -> BotTable:
         """
         Get one bot by id or symbol
+
+        If only bot_id is passed, it will always match 1, so status doesn't matter too much.
+        If only symbol is passed, it is possible to match more than one so more specificity is needed. Therefore, status is used too.
         """
         if bot_id:
             santize_uuid = UUID(bot_id)
