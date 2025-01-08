@@ -198,21 +198,19 @@ class BotTableCrud:
         initial_bot = self.get_one(bot_id=str(data.id))
         initial_bot.sqlmodel_update(data.model_dump())
 
-        if initial_bot.deal.buy_price > 0:
-            # No instance bot error when assigning to initial_bot.deal when deal already created
-            initial_bot.deal.sqlmodel_update(data.deal.model_dump())
+        # Handle deal update
+        deal = self.session.get(DealTable, str(initial_bot.deal.id))
+        if not deal:
+            initial_bot.deal = DealTable()
         else:
-            if initial_bot.deal:
-                data.deal = DealTable()
+            deal.sqlmodel_update(data.deal)
+            initial_bot.deal = deal
 
-            initial_bot.deal = DealTable(**data.deal.model_dump())
-
-        for index, order in enumerate(data.orders):
-            if len(initial_bot.orders) > 0 and index < len(initial_bot.orders):
-                initial_bot.orders[index] = ExchangeOrderTable(**order.model_dump())
-            else:
-                new_order_row = ExchangeOrderTable(**order.model_dump())
-                initial_bot.orders.append(new_order_row)
+        # Handle orders update
+        initial_bot.orders.clear()
+        for order in data.orders:
+            new_order_row = ExchangeOrderTable(**order.model_dump())
+            initial_bot.orders.append(new_order_row)
 
         self.session.add(initial_bot)
         self.session.commit()

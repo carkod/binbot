@@ -617,7 +617,7 @@ class MarginDeal(DealAbstract):
         new_bot = BotBase.model_construct(**self.active_bot.model_dump())
         new_bot.strategy = Strategy.long
         bot_table = self.controller.save(new_bot)
-        self.active_bot = BotModel.model_validate(bot_table)
+        self.active_bot = BotModel.dump_from_table(bot_table)
 
         self.active_bot = self.base_order()
 

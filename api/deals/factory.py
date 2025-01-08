@@ -340,6 +340,8 @@ class DealAbstract(BaseDeal):
             stop_loss_price=stop_loss_price,
         )
 
+        self.controller.save(self.active_bot)
+
         # Only signal for the whole activation
         self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")
         return self.active_bot
