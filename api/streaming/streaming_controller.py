@@ -1,5 +1,4 @@
 import json
-import logging
 from typing import Type, Union, no_type_check
 from kafka import KafkaConsumer
 from bots.models import BotModel
@@ -14,6 +13,7 @@ from tools.enum_definitions import Status, Strategy
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from tools.exceptions import BinanceErrors
+from datetime import datetime
 
 
 class BaseStreaming:
@@ -40,17 +40,14 @@ class StreamingController(BaseStreaming):
         # Gets any signal to restart streaming
         self.consumer = consumer
         self.autotrade_controller = AutotradeCrud()
-        self.load_data_on_start()
 
     def load_data_on_start(self) -> None:
         """
-        New function to replace get_klines without websockets
+        Load data on start and on update_required
         """
-        # Load real bot settings
         self.list_bots = self.bot_controller.get_active_pairs()
         # Load paper trading bot settings
         self.list_paper_trading_bots = self.paper_trading_controller.get_active_pairs()
-        return
 
     def execute_strategies(
         self,
@@ -129,7 +126,13 @@ class StreamingController(BaseStreaming):
                 return
         except BinanceErrors as error:
             if error.code in (-2010, -1013):
-                bot = current_bot if current_bot else current_test_bot
+                if current_bot:
+                    bot = current_bot
+                elif current_test_bot:
+                    bot = current_test_bot
+                else:
+                    return
+
                 create_deal_controller.controller.update_logs(error.message, bot)
                 bot.status = Status.error
                 create_deal_controller.controller.save(bot)
@@ -139,23 +142,87 @@ class StreamingController(BaseStreaming):
 
 class BbspreadsUpdater(BaseStreaming):
     def __init__(self) -> None:
+        super().__init__()
         self.current_bot: BotModel | None = None
         self.current_test_bot: BotModel | None = None
 
     def load_current_bots(self, symbol: str) -> None:
-        current_bot_payload = self.get_current_bot(symbol)
-        if current_bot_payload:
-            self.current_bot = BotModel.model_validate(current_bot_payload)
+        try:
+            current_bot_payload = self.get_current_bot(symbol)
+            if current_bot_payload:
+                self.current_bot = BotModel.model_validate(current_bot_payload)
 
-        current_test_bot_payload = self.get_current_test_bot(symbol)
-        if current_test_bot_payload:
-            self.current_test_bot = BotModel.model_validate(current_test_bot_payload)
+            current_test_bot_payload = self.get_current_test_bot(symbol)
+            if current_test_bot_payload:
+                self.current_test_bot = BotModel.model_validate(
+                    current_test_bot_payload
+                )
+        except ValueError:
+            pass
+
+    def get_interests_short_margin(self, bot: BotModel) -> tuple[float, float, float]:
+        close_timestamp = bot.deal.margin_short_buy_back_timestamp
+        if close_timestamp == 0:
+            close_timestamp = int(datetime.now().timestamp() * 1000)
+
+        time_delta = close_timestamp - bot.deal.margin_short_sell_timestamp
+        duration_hours = time_delta / 1000 / 3600
+        interests = float(bot.deal.hourly_interest_rate) * duration_hours
+        close_total = bot.deal.margin_short_buy_back_price
+        open_total = bot.deal.margin_short_sell_price
+
+        return interests, open_total, close_total
+
+    def compute_single_bot_profit(self, bot: BotModel, current_price: float) -> float:
+        if bot.deal and bot.base_order_size > 0:
+            if bot.deal.buy_price > 0:
+                current_price = (
+                    bot.deal.sell_price
+                    if bot.deal.sell_price
+                    else current_price or bot.deal.current_price
+                )
+                buy_price = bot.deal.buy_price
+                profit_change = ((current_price - buy_price) / buy_price) * 100
+                if current_price == 0:
+                    profit_change = 0
+                return round(profit_change, 2)
+            elif bot.deal.margin_short_sell_price > 0:
+                # Completed margin short
+                if bot.deal.margin_short_buy_back_price > 0:
+                    interests, open_total, close_total = (
+                        self.get_interests_short_margin(bot)
+                    )
+                    profit_change = (
+                        (open_total - close_total) / open_total - interests
+                    ) * 100
+                    return round(profit_change, 2)
+                else:
+                    # Not completed margin short
+                    close_price = (
+                        bot.deal.margin_short_buy_back_price
+                        if bot.deal.margin_short_buy_back_price > 0
+                        else current_price or bot.deal.current_price
+                    )
+                    if close_price == 0:
+                        return 0
+                    interests, open_total, close_total = (
+                        self.get_interests_short_margin(bot)
+                    )
+                    profit_change = (
+                        (open_total - close_price) / open_total - interests
+                    ) * 100
+                    return round(profit_change, 2)
+            else:
+                return 0
+        else:
+            return 0
 
     def update_bots_parameters(
         self,
         bot: BotModel,
         bb_spreads: dict,
         db_table: Type[Union[PaperTradingTable, BotTable]],
+        current_price: float,
     ) -> None:
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
@@ -195,32 +262,45 @@ class BbspreadsUpdater(BaseStreaming):
                 return
 
             bot.trailling = True
+            # reset values to avoid too much risk when there's profit
+            bot_profit = self.compute_single_bot_profit(bot, current_price)
             # when prices go up only
             if bot.strategy == Strategy.long:
+                if bot_profit > 6:
+                    bot.take_profit = 2.8
+                    bot.trailling_deviation = 2.6
+                    bot.stop_loss = 3.6
                 # Only when TD_2 > TD_1
-                if bottom_spread > bot.trailling_deviation:
+                elif bottom_spread > bot.trailling_deviation:
                     bot.take_profit = top_spread
                     # too much risk, reduce stop loss
                     bot.trailling_deviation = bottom_spread
-                    spot_deal = SpotLongDeal(bot, db_table=db_table)
-                    # reactivate includes saving
-                    spot_deal.open_deal()
+
+                spot_deal = SpotLongDeal(bot, db_table=db_table)
+                # reactivate includes saving
+                spot_deal.open_deal()
 
                 # No need to continue
                 # Bots can only be either long or short
                 return
 
             if bot.strategy == Strategy.margin_short:
+                if bot_profit > 6:
+                    bot.take_profit = 2.8
+                    bot.trailling_deviation = 2.6
+                    bot.stop_loss = 3.6
+
                 # Decrease risk for margin shorts
                 # as volatility is higher, we want to keep parameters tighter
                 # also over time we'll be paying more interest, so better to liquidate sooner
                 # that means smaller trailing deviation to close deal earlier
-                bot.take_profit = bottom_spread
-                if bot.trailling_deviation > bottom_spread:
+                elif bot.trailling_deviation > bottom_spread:
+                    bot.take_profit = bottom_spread
                     bot.trailling_deviation = top_spread
-                    margin_deal = MarginDeal(bot, db_table=db_table)
-                    # reactivate includes saving
-                    margin_deal.open_deal()
+
+                margin_deal = MarginDeal(bot, db_table=db_table)
+                # reactivate includes saving
+                margin_deal.open_deal()
 
     # To find a better interface for bb_xx once mature
     @no_type_check
@@ -239,6 +319,7 @@ class BbspreadsUpdater(BaseStreaming):
         bb_spreads = signalsData.bb_spreads
         if (
             (self.current_bot or self.current_test_bot)
+            and bb_spreads
             and "bb_high" in bb_spreads
             and bb_spreads["bb_high"]  # my-py
             and "bb_low" in bb_spreads
@@ -251,10 +332,12 @@ class BbspreadsUpdater(BaseStreaming):
                     self.current_bot,
                     bb_spreads,
                     db_table=BotTable,
+                    current_price=signalsData.current_price,
                 )
             if self.current_test_bot:
                 self.update_bots_parameters(
                     self.current_test_bot,
                     bb_spreads,
                     db_table=PaperTradingTable,
+                    current_price=signalsData.current_price,
                 )

@@ -118,8 +118,8 @@ class DealAbstract(BaseDeal):
         # Sell everything
         pair = self.active_bot.pair
         base_asset = self.find_baseAsset(pair)
-        balance = self.get_raw_balance(base_asset)
-        if balance:
+        balance = self.get_single_raw_balance(base_asset)
+        if balance > 0:
             qty = round_numbers(balance["free"], self.qty_precision)
             price: float = float(self.matching_engine(pair, True, qty))
             price = round_numbers(price, self.price_precision)
@@ -175,8 +175,8 @@ class DealAbstract(BaseDeal):
                 # First cancel old order to unlock balance
                 self.delete_order(bot.pair, order_id)
 
-                raw_balance = self.get_raw_balance(asset)
-                qty = round_numbers(raw_balance[0], self.qty_precision)
+                raw_balance = self.get_single_raw_balance(asset)
+                qty = round_numbers(raw_balance, self.qty_precision)
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
@@ -281,7 +281,7 @@ class DealAbstract(BaseDeal):
         self.controller.update_logs("Bot activated", self.active_bot)
         return self.active_bot
 
-    def base_order(self):
+    def base_order(self) -> BotModel:
         """
         Required initial order to trigger long strategy bot.
         Other orders require this to execute,
@@ -339,6 +339,8 @@ class DealAbstract(BaseDeal):
             take_profit_price=tp_price,
             stop_loss_price=stop_loss_price,
         )
+
+        self.controller.save(self.active_bot)
 
         # Only signal for the whole activation
         self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")

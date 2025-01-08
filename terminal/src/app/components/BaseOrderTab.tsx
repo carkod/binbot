@@ -34,6 +34,7 @@ const BaseOrderTab: FC = () => {
   const [quoteAsset, setQuoteAsset] = useState<string>("");
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
   const {
     register,
     watch,
@@ -107,6 +108,10 @@ const BaseOrderTab: FC = () => {
       dispatch(setField({ name: "pair", value: symbol }));
     }
 
+    if (bot.deal?.current_price) {
+      setCurrentPrice(bot.deal.current_price);
+    }
+
     return () => unsubscribe();
   }, [
     data,
@@ -152,7 +157,7 @@ const BaseOrderTab: FC = () => {
                 label="Base order size"
                 errors={errors}
                 required={true}
-                secondaryText={quoteAsset}
+                secondaryText={autotradeSettings?.balance_to_use}
               >
                 <Form.Control
                   type="number"
@@ -198,13 +203,21 @@ const BaseOrderTab: FC = () => {
             )}
           </Col>
           <Col md="6" sm="12" className="my-6">
-            <Form.Label htmlFor="balance_to_use">Balance to use</Form.Label>
-            <br />
-            <Form.Text>
-              <Badge bg="secondary" className="fs-6">
-                {autotradeSettings?.balance_to_use}
-              </Badge>
-            </Form.Text>
+            <InputTooltip
+              name="base_order_size"
+              tooltip={"Amount of asset to trade"}
+              label="Asset amount"
+              errors={errors}
+              secondaryText={quoteAsset}
+            >
+              <Form.Control
+                type="number"
+                name="base_order_size"
+                autoComplete="off"
+                disabled={true}
+                value={bot.base_order_size * currentPrice}
+              />
+            </InputTooltip>
           </Col>
         </Row>
         <Row className="my-3">

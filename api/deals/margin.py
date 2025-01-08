@@ -5,7 +5,7 @@ from database.bot_crud import BotTableCrud
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from tools.enum_definitions import CloseConditions, DealType, OrderSide, Strategy
-from bots.models import BotModel, OrderModel
+from bots.models import BotModel, OrderModel, BotBase
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors, MarginShortError
 from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
@@ -613,11 +613,13 @@ class MarginDeal(DealAbstract):
         self.controller.update_logs(
             "Switching margin_short to long strategy", self.active_bot
         )
-        self.active_bot.strategy = Strategy.long
-        self.controller.save(self.active_bot)
 
-        bot = self.base_order()
-        self.active_bot = BotModel.model_validate(bot)
+        new_bot = BotBase.model_construct(**self.active_bot.model_dump())
+        new_bot.strategy = Strategy.long
+        bot_table = self.controller.save(new_bot)
+        self.active_bot = BotModel.dump_from_table(bot_table)
+
+        self.active_bot = self.base_order()
 
         # Keep bot up to date in the DB
         # this avoid unsyched bots when errors ocurr in other functions

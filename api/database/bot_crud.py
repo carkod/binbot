@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from fastapi import Query
-from sqlmodel import Session, asc, desc, or_, select, case, col
+from sqlmodel import Session, asc, desc, or_, select, case
 from time import time
 from bots.models import BotModel
 from database.models.bot_table import BotTable
@@ -11,8 +11,7 @@ from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
-from sqlalchemy import delete
-from sqlalchemy.orm import selectinload, subqueryload, contains_eager
+from sqlalchemy.orm.attributes import flag_modified
 
 
 class BotTableCrud:
@@ -60,8 +59,9 @@ class BotTableCrud:
         if not bot_result:
             raise ValueError("Bot not found")
 
-        bot_result.logs.extend([log_message])
-        bot_result.sqlmodel_update(bot_result)
+        # Update logs as an SQLAlchemy list
+        bot_result.logs = [log_message] + bot_result.logs
+        flag_modified(bot_result, "logs")
 
         # db operations
         self.session.add(bot_result)
@@ -134,12 +134,15 @@ class BotTableCrud:
 
     def get_one(
         self,
-        bot_id: str | None = None,
-        symbol: str | None = None,
+        bot_id: Optional[str] = None,
+        symbol: Optional[str] = None,
         status: Status | None = None,
     ) -> BotTable:
         """
         Get one bot by id or symbol
+
+        If only bot_id is passed, it will always match 1, so status doesn't matter too much.
+        If only symbol is passed, it is possible to match more than one so more specificity is needed. Therefore, status is used too.
         """
         if bot_id:
             santize_uuid = UUID(bot_id)
@@ -164,7 +167,7 @@ class BotTableCrud:
         else:
             raise ValueError("Invalid bot id or symbol")
 
-    def create(self, data: BotBase) -> BotModel:
+    def create(self, data: BotBase) -> BotTable:
         """
         Create a new bot
 
@@ -195,20 +198,19 @@ class BotTableCrud:
         initial_bot = self.get_one(bot_id=str(data.id))
         initial_bot.sqlmodel_update(data.model_dump())
 
-        if initial_bot.deal.buy_price > 0:
-            # No instance bot error when assigning to initial_bot.deal when deal already created
-            initial_bot.deal.sqlmodel_update(data.deal.model_dump())
-        elif not initial_bot.deal:
-            data.deal = DealTable(**data.deal.model_dump())
+        # Handle deal update
+        deal = self.session.get(DealTable, str(initial_bot.deal.id))
+        if not deal:
+            initial_bot.deal = DealTable()
         else:
-            initial_bot.deal = DealTable(**data.deal.model_dump())
+            deal.sqlmodel_update(data.deal)
+            initial_bot.deal = deal
 
-        for index, order in enumerate(data.orders):
-            if len(initial_bot.orders) > 0 and index < len(initial_bot.orders):
-                initial_bot.orders[index] = ExchangeOrderTable(**order.model_dump())
-            else:
-                new_order_row = ExchangeOrderTable(**order.model_dump())
-                initial_bot.orders.append(new_order_row)
+        # Handle orders update
+        initial_bot.orders.clear()
+        for order in data.orders:
+            new_order_row = ExchangeOrderTable(**order.model_dump())
+            initial_bot.orders.append(new_order_row)
 
         self.session.add(initial_bot)
         self.session.commit()
@@ -221,12 +223,14 @@ class BotTableCrud:
         Delete by multiple ids.
         For a single id, pass one id in a list
         """
-        statement = delete(BotTable).where(col(BotTable.id).in_(bot_ids))
-        # exec doesn't pass mypy
-        bots = self.session.connection().execute(statement)
+        for id in bot_ids:
+            statement = select(BotTable).where(BotTable.id == id)
+            bot = self.session.exec(statement).first()
+            self.session.delete(bot)
+
         self.session.commit()
         self.session.close()
-        return bots
+        return bot_ids
 
     def update_status(self, bot: BotModel, status: Status) -> BotModel:
         """

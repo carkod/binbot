@@ -26,14 +26,14 @@ const BotDetailTabs: FC = () => {
 
   // Activate and get bot again
   // Deals and orders information need to come from the server
-  const handleActivation = (id: string) => {
+  const handleActivation = async (id: string) => {
+    await updateBot({ body: bot, id });
     dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
     // Deals and orders are not
     navigate(`/bots/edit/${id}`);
   };
   const handlePanicSell = (id: string) => {
     dispatch(botsApiSlice.endpoints.deactivateBot.initiate(id));
-    navigate(`/bots`);
   };
 
   const onSubmit = async () => {
@@ -77,7 +77,9 @@ const BotDetailTabs: FC = () => {
             <Button
               className="btn-round"
               color="primary"
-              onClick={() => handleActivation(bot.id)}
+              onClick={() => {
+                handleActivation(bot.id);
+              }}
               disabled={!enableActivation}
             >
               {bot.status === BotStatus.ACTIVE &&

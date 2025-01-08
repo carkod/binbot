@@ -15,7 +15,6 @@ export const Layout: FC<{}> = () => {
   const [expand, setExpand] = useState(breakpoint === "md" || breakpoint === "lg" || breakpoint === "xl");
 
   const handleExpand = () => {
-    console.log("handleExpand", expand);
     setExpand(!expand);
   };
 

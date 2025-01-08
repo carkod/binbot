@@ -9,10 +9,10 @@ from tools.enum_definitions import (
     Status,
     Strategy,
 )
-from bots.models import BotModel, OrderModel
+from bots.models import BotModel, OrderModel, BotBase
 from deals.factory import DealAbstract
-
 from deals.margin import MarginDeal
+from tools.round_numbers import round_numbers
 
 
 class SpotLongDeal(DealAbstract):
@@ -43,8 +43,13 @@ class SpotLongDeal(DealAbstract):
         self.controller.update_logs(
             "Resetting bot for margin_short strategy...", self.active_bot
         )
-        self.active_bot.strategy = Strategy.margin_short
-        self.active_bot = self.controller.create(data=self.active_bot)
+
+        # Reset bot operations
+        new_bot = BotBase.model_construct(**self.active_bot.model_dump())
+        new_bot.strategy = Strategy.margin_short
+
+        bot_table = self.controller.create(data=new_bot)
+        self.active_bot = BotModel.dump_from_table(bot_table)
 
         margin_strategy_deal = MarginDeal(bot=self.active_bot, db_table=self.db_table)
 
@@ -69,7 +74,7 @@ class SpotLongDeal(DealAbstract):
 
         # If for some reason, the bot has been closed already (e.g. transacted on Binance)
         # Inactivate bot
-        if qty > 0:
+        if qty == 0:
             closed_orders = self.close_open_orders(self.active_bot.pair)
             if not closed_orders:
                 order = self.verify_deal_close_order()
@@ -101,13 +106,13 @@ class SpotLongDeal(DealAbstract):
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         stop_loss_order = OrderModel(
-            timestamp=res["transactTime"],
+            timestamp=float(res["transactTime"]),
             deal_type=DealType.stop_loss,
             order_id=int(res["orderId"]),
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
-            price=res["price"],
+            price=float(res["price"]),
             qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
@@ -125,7 +130,7 @@ class SpotLongDeal(DealAbstract):
         if self.active_bot.margin_short_reversal:
             msg += " Scheduled to switch strategy"
 
-        self.controller.update_logs(msg)
+        self.controller.update_logs(msg, self.active_bot)
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 
@@ -344,6 +349,53 @@ class SpotLongDeal(DealAbstract):
 
         pass
 
+    def long_open_deal_trailling_parameters(self) -> BotModel:
+        """
+        This updates trailling parameters for spot long bots
+        Once bot is activated, this section is optional.
+
+        Inherits from old open_deal method
+        this one simplifies by separating strategy specific
+        """
+
+        # Update stop loss regarless of base order
+        if self.active_bot.stop_loss > 0:
+            if (
+                self.active_bot.strategy == Strategy.margin_short
+                and self.active_bot.stop_loss > 0
+            ):
+                price = self.active_bot.deal.margin_short_sell_price
+                self.active_bot.deal.stop_loss_price = price + (
+                    price * (self.active_bot.stop_loss / 100)
+                )
+            else:
+                buy_price = float(self.active_bot.deal.buy_price)
+                stop_loss_price = buy_price - (
+                    buy_price * float(self.active_bot.stop_loss) / 100
+                )
+                self.active_bot.deal.stop_loss_price = round_numbers(
+                    stop_loss_price, self.price_precision
+                )
+
+        # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
+        # if we don't do this, the trailling stop loss will trigger
+        if (
+            self.active_bot.deal.trailling_stop_loss_price > 0
+            or self.active_bot.deal.trailling_stop_loss_price
+            < self.active_bot.deal.buy_price
+        ):
+            take_profit_price = float(self.active_bot.deal.buy_price) * (
+                1 + (float(self.active_bot.take_profit) / 100)
+            )
+            self.active_bot.deal.take_profit_price = take_profit_price
+            # Update trailling_stop_loss
+            self.active_bot.deal.trailling_stop_loss_price = 0
+
+        self.active_bot.status = Status.active
+        self.controller.save(self.active_bot)
+        self.controller.update_logs("Bot activated", self.active_bot)
+        return self.active_bot
+
     def open_deal(self):
         """
         Bot activation requires:
@@ -355,7 +407,7 @@ class SpotLongDeal(DealAbstract):
 
         - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
         """
-        base_order_deal = next(
+        base_order = next(
             (
                 bo_deal
                 for bo_deal in self.active_bot.orders
@@ -364,11 +416,11 @@ class SpotLongDeal(DealAbstract):
             None,
         )
 
-        if not base_order_deal:
+        if not base_order:
             self.controller.update_logs(
                 f"Opening new spot deal for {self.active_bot.pair}...", self.active_bot
             )
             self.base_order()
 
-        self.active_bot = self.open_deal_trailling_parameters()
+        self.active_bot = self.long_open_deal_trailling_parameters()
         return self.active_bot

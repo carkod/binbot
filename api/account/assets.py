@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
-from fastapi.responses import JSONResponse
 from account.controller import AssetsController
 from database.models.bot_table import BotTable
 from database.autotrade_crud import AutotradeCrud
@@ -11,6 +10,7 @@ from tools.round_numbers import round_numbers
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.enum_definitions import Status, Strategy
 from database.bot_crud import BotTableCrud
+
 
 class Assets(AssetsController):
     def __init__(self, session):
@@ -335,7 +335,7 @@ class Assets(AssetsController):
 
         return json_response_message(msg)
 
-    def one_click_liquidation(self, pair: str) -> JSONResponse:
+    def one_click_liquidation(self, pair: str) -> BotTable:
         """
         Emulate Binance Dashboard
         One click liquidation function

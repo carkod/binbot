@@ -1,6 +1,6 @@
 from typing import Optional, Dict
 from tools.enum_definitions import TrendEnum
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, field_validator
 
 
 class SignalsConsumer(BaseModel):
@@ -10,17 +10,28 @@ class SignalsConsumer(BaseModel):
 
     type: str = "signal"
     spread: float | str | None = 0
-    current_price: float | str | None = 0
+    current_price: float = 0
     msg: str
     symbol: str
     algo: str
-    trend: TrendEnum | None = TrendEnum.neutral
+    trend: Optional[TrendEnum] = TrendEnum.neutral
     bb_spreads: Optional[Dict[str, float]]
-    model_config = ConfigDict(
-        extra="allow",
-    )
 
-    @field_validator("spread", "current_price")
+    model_config = {
+        "arbitrary_types_allowed": True,
+    }
+
+    @field_validator("current_price", mode="before")
+    @classmethod
+    def convert_to_float(cls, v):
+        if v is None:
+            return 0
+        elif isinstance(v, str):
+            return float(v)
+        else:
+            return v
+
+    @field_validator("spread")
     @classmethod
     def name_must_contain_space(cls, v):
         if v is None:

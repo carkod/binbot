@@ -65,15 +65,16 @@ class BaseDeal(OrderController):
         """
 
         asset = self.find_baseAsset(pair)
-        balance = self.get_raw_balance(asset)
-        if not balance:
+        balance = self.get_single_raw_balance(asset)
+        if balance == 0:
             # If spot balance is not found
             # try to get isolated margin balance
             free = self.get_margin_balance(asset)
+            qty = round_numbers(free, self.qty_precision)
             if not free:
                 return None
 
-        qty = round_numbers(free, self.qty_precision)
+        qty = round_numbers(balance, self.qty_precision)
         return qty
 
     def compute_margin_buy_back(self) -> Tuple[float | int, float | int]:
@@ -202,10 +203,10 @@ class BaseDeal(OrderController):
                         # Not enough funds in isolated pair
                         # transfer from wallet
                         transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
-                        available_balance = self.get_raw_balance(quote)
+                        available_balance = self.get_single_raw_balance(quote)
                         amount_to_transfer = 15  # Min amount
-                        if available_balance[0] < 15:
-                            amount_to_transfer = available_balance[0]
+                        if available_balance < 15:
+                            amount_to_transfer = available_balance
                         self.transfer_spot_to_isolated_margin(
                             asset=quote,
                             symbol=pair,
