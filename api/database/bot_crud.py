@@ -90,13 +90,13 @@ class BotTableCrud:
         statement = select(BotTable)
 
         if status and status in BinbotEnums.statuses:
-            statement.where(BotTable.status == status)
+            statement = statement.where(BotTable.status == status)
 
         if start_date:
-            statement.where(BotTable.created_at >= start_date)
+            statement = statement.where(BotTable.created_at >= start_date)
 
         if end_date:
-            statement.where(BotTable.created_at <= end_date)
+            statement = statement.where(BotTable.created_at <= end_date)
 
         if status and no_cooldown:
             current_timestamp = time()
@@ -115,17 +115,17 @@ class BotTableCrud:
                 ),
             )
 
-            statement.where(cooldown_condition)
+            statement = statement.where(cooldown_condition)
 
         # sorting
-        statement.order_by(
+        statement = statement.order_by(
             desc(BotTable.created_at),
             case((BotTable.status == Status.active, 1), else_=2),
             asc(BotTable.pair),
         )
 
         # pagination
-        statement.limit(limit).offset(offset)
+        statement = statement.limit(limit).offset(offset)
 
         # unique is necessary for a joinload
         bots = self.session.exec(statement).unique().all()
