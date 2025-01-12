@@ -2,7 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import Query
 from sqlmodel import Session, asc, desc, or_, select, case
-from time import time
+from database.utils import timestamp
 from bots.models import BotModel
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
@@ -75,7 +75,7 @@ class BotTableCrud:
         status: Status | None = None,
         start_date: float | None = None,
         end_date: float | None = None,
-        no_cooldown=False,
+        include_cooldown=False,
         limit: int = 200,
         offset: int = 0,
     ) -> Sequence[BotTable]:
@@ -98,21 +98,12 @@ class BotTableCrud:
         if end_date:
             statement = statement.where(BotTable.created_at <= end_date)
 
-        if status and no_cooldown:
-            current_timestamp = time()
-            cooldown_condition = cooldown_condition = or_(
-                BotTable.status == status,
-                case(
-                    (
-                        (DealTable.sell_timestamp > 0),
-                        current_timestamp - DealTable.sell_timestamp
-                        < (BotTable.cooldown * 1000),
-                    ),
-                    else_=(
-                        current_timestamp - BotTable.created_at
-                        < (BotTable.cooldown * 1000)
-                    ),
-                ),
+        if include_cooldown:
+            current_timestamp = timestamp()
+            cooldown_condition = or_(
+                current_timestamp - DealTable.sell_timestamp
+                < (BotTable.cooldown * 1000),
+                current_timestamp - BotTable.created_at < (BotTable.cooldown * 1000)
             )
 
             statement = statement.where(cooldown_condition)

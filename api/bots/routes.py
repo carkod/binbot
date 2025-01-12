@@ -29,14 +29,14 @@ def get(
     status: Status = Status.all,
     start_date: float | None = None,
     end_date: float | None = None,
-    no_cooldown=False,
+    include_cooldown: bool=False,
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
 ):
     try:
         bots = BotTableCrud(session=session).get(
-            status, start_date, end_date, no_cooldown, limit, offset
+            status, start_date, end_date, include_cooldown, limit, offset
         )
         # Has to be converted to BotModel to
         # be able to serialize nested objects
