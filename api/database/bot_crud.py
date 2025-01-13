@@ -190,21 +190,40 @@ class BotTableCrud:
         initial_bot.sqlmodel_update(data.model_dump())
 
         # Handle deal update
-        deal = self.session.get(DealTable, str(initial_bot.deal.id))
+        deal = self.session.get(DealTable, str(data.deal.id))
         if not deal:
-            initial_bot.deal = DealTable()
+            deal = DealTable()
         else:
-            deal.sqlmodel_update(data.deal)
-            initial_bot.deal = deal
+            deal = deal.sqlmodel_update(data.deal.model_dump())
 
-        # Handle orders update
-        initial_bot.orders.clear()
+        initial_bot.deal_id = deal.id
+
+        # Insert update to DB only if it doesn't exist
+        # Assign correct botId in the one side of the one-many relationship
         for order in data.orders:
-            new_order_row = ExchangeOrderTable(**order.model_dump())
-            initial_bot.orders.append(new_order_row)
+            statement = select(ExchangeOrderTable).where(ExchangeOrderTable.order_id == order.order_id)
+            get_order = self.session.exec(statement).first()
+            if not get_order:
+                new_order_row = ExchangeOrderTable(
+                    order_type=order.order_type,
+                    time_in_force=order.time_in_force,
+                    timestamp=order.timestamp,
+                    order_id=order.order_id,
+                    order_side=order.order_side,
+                    pair=order.pair,
+                    qty=order.qty,
+                    status=order.status,
+                    price=order.price,
+                    deal_type=order.deal_type,
+                    bot_id=data.id
+                )
+                self.session.add(new_order_row)
 
+
+        self.session.add(deal)
         self.session.add(initial_bot)
         self.session.commit()
+        self.session.refresh(deal)
         self.session.refresh(initial_bot)
         resulted_bot = initial_bot
         return resulted_bot
