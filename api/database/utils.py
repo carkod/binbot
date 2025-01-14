@@ -9,7 +9,7 @@ engine = create_engine(url=db_url, poolclass=pool.NullPool)
 
 
 def get_session():
-    with Session(engine) as session:
+    with Session(engine).no_autoflush as session:
         yield session
 
 

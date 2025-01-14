@@ -340,6 +340,9 @@ class DealAbstract(BaseDeal):
             stop_loss_price=stop_loss_price,
         )
 
+        # temporary measures to keep deal up to date
+        # once bugs are fixed, this can be removed to improve efficiency
+        self.active_bot.status = Status.active
         self.controller.save(self.active_bot)
 
         # Only signal for the whole activation

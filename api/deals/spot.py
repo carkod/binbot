@@ -392,8 +392,8 @@ class SpotLongDeal(DealAbstract):
             self.active_bot.deal.trailling_stop_loss_price = 0
 
         self.active_bot.status = Status.active
+        self.active_bot.logs.append("Bot activated")
         self.controller.save(self.active_bot)
-        self.controller.update_logs("Bot activated", self.active_bot)
         return self.active_bot
 
     def open_deal(self):

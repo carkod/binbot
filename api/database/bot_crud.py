@@ -12,6 +12,7 @@ from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
+from tools.exceptions import SaveBotError
 
 
 class BotTableCrud:
@@ -103,7 +104,7 @@ class BotTableCrud:
             cooldown_condition = or_(
                 current_timestamp - DealTable.sell_timestamp
                 < (BotTable.cooldown * 1000),
-                current_timestamp - BotTable.created_at < (BotTable.cooldown * 1000)
+                current_timestamp - BotTable.created_at < (BotTable.cooldown * 1000),
             )
 
             statement = statement.where(cooldown_condition)
@@ -187,21 +188,24 @@ class BotTableCrud:
         """
         # due to incompatibility of SQLModel and Pydantic
         initial_bot = self.get_one(bot_id=str(data.id))
+        deal_id = initial_bot.deal_id
         initial_bot.sqlmodel_update(data.model_dump())
 
-        # Handle deal update
-        deal = self.session.get(DealTable, str(data.deal.id))
+        # Use deal id from db to avoid creating a new deal
+        # which causes integrity errors
+        # there should always be only 1 deal per bot
+        deal = self.session.get(DealTable, deal_id)
         if not deal:
-            deal = DealTable()
+            raise SaveBotError("Bot must be created first before updating")
         else:
-            deal = deal.sqlmodel_update(data.deal.model_dump())
-
-        initial_bot.deal_id = deal.id
+            deal.sqlmodel_update(data.deal.model_dump())
 
         # Insert update to DB only if it doesn't exist
         # Assign correct botId in the one side of the one-many relationship
         for order in data.orders:
-            statement = select(ExchangeOrderTable).where(ExchangeOrderTable.order_id == order.order_id)
+            statement = select(ExchangeOrderTable).where(
+                ExchangeOrderTable.order_id == order.order_id
+            )
             get_order = self.session.exec(statement).first()
             if not get_order:
                 new_order_row = ExchangeOrderTable(
@@ -215,10 +219,9 @@ class BotTableCrud:
                     status=order.status,
                     price=order.price,
                     deal_type=order.deal_type,
-                    bot_id=data.id
+                    bot_id=data.id,
                 )
                 self.session.add(new_order_row)
-
 
         self.session.add(deal)
         self.session.add(initial_bot)
@@ -266,11 +269,15 @@ class BotTableCrud:
             return []
         return list(pairs)
 
-    def order_update(self, order: ExchangeOrderTable, commission: float) -> ExchangeOrderTable:
+    def order_update(
+        self, order: ExchangeOrderTable, commission: float
+    ) -> ExchangeOrderTable:
         """
         Update order data
         """
-        statement = select(ExchangeOrderTable).where(ExchangeOrderTable.order_id == order.order_id)
+        statement = select(ExchangeOrderTable).where(
+            ExchangeOrderTable.order_id == order.order_id
+        )
         initial_order = self.session.exec(statement).first()
 
         if not initial_order:

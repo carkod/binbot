@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field, field_validator
-from uuid import uuid4, UUID
 
 
 class DealModel(BaseModel):
@@ -8,7 +7,7 @@ class DealModel(BaseModel):
     so it should all be numbers (int or float)
     """
 
-    id: UUID = Field(default_factory=uuid4)
+    order_id: int = Field(default=0)
     buy_price: float = Field(default=0)
     buy_total_qty: float = Field(default=0)
     buy_timestamp: float = Field(default=0)
