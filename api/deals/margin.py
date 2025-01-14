@@ -332,7 +332,7 @@ class MarginDeal(DealAbstract):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        initial_price = float(self.matching_engine(self.active_bot.pair, False))
+        initial_price = float(self.matching_engine(self.active_bot.pair, False, qty=self.active_bot.base_order_size))
 
         if isinstance(self.controller, BotTableCrud):
             self.init_margin_short(initial_price)

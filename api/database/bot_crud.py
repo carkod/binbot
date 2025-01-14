@@ -269,7 +269,7 @@ class BotTableCrud:
             return []
         return list(pairs)
 
-    def order_update(
+    def update_order(
         self, order: ExchangeOrderTable, commission: float
     ) -> ExchangeOrderTable:
         """
@@ -288,6 +288,9 @@ class BotTableCrud:
         initial_order.order_side = order.order_side
         initial_order.order_type = order.order_type
         initial_order.timestamp = order.timestamp
+        initial_order.pair = order.pair
+        initial_order.time_in_force = order.time_in_force
+        initial_order.price = order.price
 
         initial_bot = self.get_one(bot_id=str(initial_order.bot_id))
         initial_bot.total_commission += commission

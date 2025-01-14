@@ -193,7 +193,7 @@ def deactivation(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.close_all()
-        response_data = BotModelResponse.model_construct(**data.model_dump())
+        response_data = BotModelResponse(**data.model_dump())
         return {
             "message": "Successfully triggered panic sell! Bot deactivated.",
             "data": response_data,

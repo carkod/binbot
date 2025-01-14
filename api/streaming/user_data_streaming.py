@@ -35,13 +35,14 @@ class UserDataStreaming(Database, BinanceApi):
         """
 
         update = ExchangeOrderTable(
-            order_id=result["i"],
+            order_id=int(result["i"]),
             status=result["X"],
-            qty=result["q"],
+            qty=float(result["q"]),
             order_side=result["S"],
             order_type=result["o"],
             timestamp=result["T"],
-            total_commission=float(result["n"]),
+            pair=result["s"],
+            time_in_force=result["f"],
         )
 
         if float(result["p"]) > 0:
@@ -49,7 +50,7 @@ class UserDataStreaming(Database, BinanceApi):
         else:
             update.price = float(result["L"])
 
-        order_result = self.bot_controller.order_update(
+        order_result = self.bot_controller.update_order(
             order=update, commission=float(result["n"])
         )
         return order_result
@@ -72,11 +73,7 @@ class UserDataStreaming(Database, BinanceApi):
 
         if "e" in res:
             if "executionReport" in res["e"]:
-                query = self.update_order_data(res)
-                if query.raw_result["nModified"] == 0:
-                    logging.debug(
-                        f'No bot found with order client order id: {res["i"]}. Order status: {res["X"]}'
-                    )
+                self.update_order_data(res)
                 return
 
             elif "outboundAccountPosition" in res["e"]:

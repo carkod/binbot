@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class DealBase(SQLModel):
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
+
     buy_price: float = Field(default=0)
     buy_total_qty: float = Field(default=0)
     buy_timestamp: float = time() * 1000
@@ -55,6 +55,8 @@ class DealTable(DealBase, table=True):
     """
 
     __tablename__ = "deal"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
 
     # Relationships
     bot: Optional["BotTable"] = Relationship(back_populates="deal", cascade_delete=True)
