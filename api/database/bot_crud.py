@@ -265,3 +265,31 @@ class BotTableCrud:
         if not pairs:
             return []
         return list(pairs)
+
+    def order_update(self, order: ExchangeOrderTable, commission: float) -> ExchangeOrderTable:
+        """
+        Update order data
+        """
+        statement = select(ExchangeOrderTable).where(ExchangeOrderTable.order_id == order.order_id)
+        initial_order = self.session.exec(statement).first()
+
+        if not initial_order:
+            raise ValueError("Order not found")
+
+        initial_order.status = order.status
+        initial_order.qty = order.qty
+        initial_order.order_side = order.order_side
+        initial_order.order_type = order.order_type
+        initial_order.timestamp = order.timestamp
+
+        initial_bot = self.get_one(bot_id=str(initial_order.bot_id))
+        initial_bot.total_commission += commission
+        initial_bot.logs.append("Order status updated")
+
+        self.session.add(initial_order)
+        self.session.add(initial_bot)
+        self.session.commit()
+        self.session.refresh(initial_order)
+        self.session.refresh(initial_bot)
+        self.session.close()
+        return order
