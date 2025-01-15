@@ -215,10 +215,10 @@ def bot_errors(
     try:
         request_body = ErrorsRequestBody.model_dump(bot_errors)
         errors = request_body.get("errors", None)
-        bot = BotTableCrud(session=session).update_logs(
+        data = BotTableCrud(session=session).update_logs(
             log_message=errors, bot_id=bot_id
         )
-        data = BotModel.model_construct(**bot.model_dump())
-        return BotResponse(message="Errors posted successfully.", data=data)
+        response_data = BotModelResponse(**data.model_dump())
+        return BotResponse(message="Errors posted successfully.", data=response_data)
     except ValidationError as error:
         return BotResponse(message="Failed to post errors", data=error.json(), error=1)
