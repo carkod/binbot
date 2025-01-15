@@ -1,4 +1,6 @@
-from database.models import BotTable, DealTable, ExchangeOrderTable
+from database.models.bot_table import BotTable
+from database.models.deal_table import DealTable
+from database.models.order_table import ExchangeOrderTable
 from tools.enum_definitions import DealType, OrderType
 from uuid import UUID
 
@@ -52,11 +54,8 @@ deal_table = DealTable(
     trailling_profit_price=0,
     stop_loss_price=0,
     trailling_profit=0,
-    so_prices=0,
     original_buy_price=0,
     short_sell_price=0,
-    short_sell_qty=0,
-    short_sell_timestamp=0,
     margin_short_loan_principal=0,
     margin_loan_id=0,
     hourly_interest_rate=0,

@@ -8,9 +8,8 @@ from tools.enum_definitions import CloseConditions, DealType, OrderSide, Strateg
 from bots.models import BotModel, OrderModel, BotBase
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors, MarginShortError
-from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
+from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling, round_timestamp
 from deals.factory import DealAbstract
-
 
 class MarginDeal(DealAbstract):
     def __init__(
@@ -162,9 +161,9 @@ class MarginDeal(DealAbstract):
             asset=asset, isolatedSymbol=self.active_bot.pair
         )
 
-        self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0][
+        self.active_bot.deal.margin_short_loan_principal = float(loan_details["rows"][0][
             "principal"
-        ]
+        ])
         self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
 
         # Estimate interest to add to total cost
@@ -347,13 +346,13 @@ class MarginDeal(DealAbstract):
 
         order_data = OrderModel(
             timestamp=order_res["transactTime"],
-            order_id=order_res["orderId"],
+            order_id=int(order_res["orderId"]),
             deal_type=DealType.base_order,
             pair=order_res["symbol"],
             order_side=order_res["side"],
             order_type=order_res["type"],
-            price=order_res["price"],
-            qty=order_res["origQty"],
+            price=float(order_res["price"]),
+            qty=float(order_res["origQty"]),
             time_in_force=order_res["timeInForce"],
             status=order_res["status"],
         )
@@ -364,7 +363,7 @@ class MarginDeal(DealAbstract):
 
         self.active_bot.orders.append(order_data)
 
-        self.active_bot.deal.margin_short_sell_timestamp = order_res["transactTime"]
+        self.active_bot.deal.margin_short_sell_timestamp = round_timestamp(order_res["transactTime"])
         self.active_bot.deal.margin_short_sell_price = float(order_res["price"])
         self.active_bot.deal.buy_total_qty = float(order_res["origQty"])
         self.active_bot.deal.margin_short_base_order = float(order_res["origQty"])

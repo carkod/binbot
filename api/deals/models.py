@@ -25,13 +25,10 @@ class DealModel(BaseModel):
     trailling_profit_price: float = Field(default=0)
     stop_loss_price: float = Field(default=0)
     trailling_profit: float = Field(default=0)
-    so_prices: float = Field(default=0)
     original_buy_price: float = Field(
         default=0, description="historical buy_price after so trigger"
     )
     short_sell_price: float = Field(default=0)
-    short_sell_qty: float = Field(default=0)
-    short_sell_timestamp: float = Field(default=0)
 
     # fields for margin trading
     margin_short_loan_principal: float = Field(default=0)

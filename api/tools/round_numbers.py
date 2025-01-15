@@ -93,3 +93,14 @@ def zero_remainder(x):
             return number
         else:
             number += x
+
+
+def round_timestamp(ts: float) -> int:
+    """
+    Round timestamps less than 10 digits to avoid PSQL Big Int error
+    """
+    digits = int(math.log10(ts)) + 1
+    if digits > 10:
+        return round_numbers(ts * 1000, 0)
+    else:
+        return int(ts)
