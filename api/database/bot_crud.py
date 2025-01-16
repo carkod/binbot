@@ -204,26 +204,27 @@ class BotTableCrud:
 
         # Insert update to DB only if it doesn't exist
         # Assign correct botId in the one side of the one-many relationship
-        for order in data.orders:
-            statement = select(ExchangeOrderTable).where(
-                ExchangeOrderTable.order_id == order.order_id
-            )
-            get_order = self.session.exec(statement).first()
-            if not get_order:
-                new_order_row = ExchangeOrderTable(
-                    order_type=order.order_type,
-                    time_in_force=order.time_in_force,
-                    timestamp=order.timestamp,
-                    order_id=order.order_id,
-                    order_side=order.order_side,
-                    pair=order.pair,
-                    qty=order.qty,
-                    status=order.status,
-                    price=order.price,
-                    deal_type=order.deal_type,
-                    bot_id=data.id,
+        if hasattr(data, "orders"):
+            for order in data.orders:
+                statement = select(ExchangeOrderTable).where(
+                    ExchangeOrderTable.order_id == order.order_id
                 )
-                self.session.add(new_order_row)
+                get_order = self.session.exec(statement).first()
+                if not get_order:
+                    new_order_row = ExchangeOrderTable(
+                        order_type=order.order_type,
+                        time_in_force=order.time_in_force,
+                        timestamp=order.timestamp,
+                        order_id=order.order_id,
+                        order_side=order.order_side,
+                        pair=order.pair,
+                        qty=order.qty,
+                        status=order.status,
+                        price=order.price,
+                        deal_type=order.deal_type,
+                        bot_id=data.id,
+                    )
+                    self.session.add(new_order_row)
 
         self.session.add(deal)
         self.session.add(initial_bot)
