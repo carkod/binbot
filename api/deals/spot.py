@@ -130,7 +130,7 @@ class SpotLongDeal(DealAbstract):
         if self.active_bot.margin_short_reversal:
             msg += " Scheduled to switch strategy"
 
-        self.controller.update_logs(msg, self.active_bot)
+        self.active_bot.logs.append(msg)
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 
