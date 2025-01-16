@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
+from typing import Optional
 
 
 class DealModel(BaseModel):
@@ -42,6 +43,29 @@ class DealModel(BaseModel):
     margin_short_base_order: float = Field(default=0)
     margin_short_sell_timestamp: int = Field(default=0)
     margin_short_loan_timestamp: int = Field(default=0)
+
+    # Refactored deal prices that combine both margin and spot
+    opening_price: Optional[float] = Field(
+        default=0,
+        description="replaces previous buy_price or short_sell_price/margin_short_sell_price",
+    )
+    opening_qty: Optional[float] = Field(
+        default=0,
+        description="replaces previous buy_total_qty or short_sell_qty/margin_short_sell_qty",
+    )
+    opening_timestamp: Optional[int] = Field(default=0)
+    closing_price: Optional[float] = Field(
+        default=0,
+        description="replaces previous sell_price or short_sell_price/margin_short_sell_price",
+    )
+    closing_qty: Optional[float] = Field(
+        default=0,
+        description="replaces previous sell_qty or short_sell_qty/margin_short_sell_qty",
+    )
+    closing_timestamp: Optional[int] = Field(
+        default=0,
+        description="replaces previous buy_timestamp or margin/short_sell timestamps",
+    )
 
     @field_validator(
         "buy_price",

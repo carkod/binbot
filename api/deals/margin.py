@@ -498,9 +498,6 @@ class MarginDeal(DealAbstract):
                 self.active_bot.deal.buy_total_qty, OrderSide.buy
             )
         else:
-            # Cancel orders first
-            # paper_trading doesn't have real orders so no need to check
-            self.cancel_open_orders(DealType.stop_loss)
             res = self.margin_liquidation(self.active_bot.pair)
 
         stop_loss_order = OrderModel(
@@ -524,12 +521,16 @@ class MarginDeal(DealAbstract):
 
         # Guard against type errors
         # These errors are sometimes hard to debug, it takes hours
-        self.active_bot.deal.margin_short_buy_back_price = res["price"]
-        self.active_bot.deal.buy_total_qty = res["origQty"]
-        self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
+        self.active_bot.deal.margin_short_buy_back_price = float(res["price"])
+        self.active_bot.deal.buy_total_qty = float(res["origQty"])
+        self.active_bot.deal.margin_short_buy_back_timestamp = float(res["transactTime"])
 
-        msg = "Completed Stop loss order"
-        self.controller.update_logs(msg)
+        # Future overrides
+        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+
+        self.active_bot.logs.append("Completed Stop loss order")
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 
