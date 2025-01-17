@@ -19,14 +19,14 @@ const LogInfo: FC<{
       {logInfo && (
         <Card.Body>
           {events.map((item, i) => (
-            <ListGroup variant="flush">
+            <ListGroup className="list-group-flush">
               <ListGroup.Item
                 action
-                as="h5"
+                as="small"
                 key={i}
                 className="d-flex justify-content-between align-items-start"
               >
-                {item}
+                <p>{item}</p>
               </ListGroup.Item>
             </ListGroup>
           ))}

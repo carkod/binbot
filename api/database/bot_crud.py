@@ -1,8 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from fastapi import Query
-from sqlmodel import Session, asc, desc, or_, select, case
-from database.utils import timestamp
+from sqlmodel import Session, asc, desc, select, case
 from bots.models import BotModel
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable

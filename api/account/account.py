@@ -1,6 +1,5 @@
 import requests
 import os
-import pandas
 from apis import BinbotApi
 from tools.handle_error import (
     handle_binance_errors,
@@ -85,7 +84,7 @@ class Account(BinbotApi):
             price, base_qty = data["bids"][index]
         else:
             price, base_qty = data["asks"][index]
-        
+
         return float(price), float(base_qty)
 
     def ticker(self, symbol: str | None = None, json: bool = True):
@@ -255,7 +254,7 @@ class Account(BinbotApi):
         symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), 0)
         return symbol_balance
 
-    def matching_engine(self, symbol: str, order_side: bool, qty: float=0) -> float:
+    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
         """
         Match quantity with available 100% fill order price,
         so that order can immediately buy/sell
@@ -278,12 +277,16 @@ class Account(BinbotApi):
             else:
                 total_length = len(data["bids"])
                 for i in range(1, total_length):
-                    price, base_qty = self._get_price_from_book_order(data, order_side, i)
+                    price, base_qty = self._get_price_from_book_order(
+                        data, order_side, i
+                    )
                     if buyable_qty > base_qty:
                         return price
                     else:
                         continue
-                raise ValueError("Unable to match base_order_size with available order prices")
+                raise ValueError(
+                    "Unable to match base_order_size with available order prices"
+                )
 
     def calculate_total_commissions(self, fills: dict) -> float:
         """
