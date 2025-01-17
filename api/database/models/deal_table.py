@@ -35,13 +35,13 @@ class DealBase(SQLModel):
     # fields for margin trading
     margin_short_loan_principal: float = Field(default=0)
     margin_loan_id: float = Field(default=0)
-    hourly_interest_rate: float = Field(default=0, sa_column=Column(BigInteger()))
-    margin_short_sell_price: float = Field(default=0)
+    hourly_interest_rate: float = Field(default=0, description="to be deprecated, only used for interest calculation", sa_column=Column(BigInteger()))
+    margin_short_sell_price: float = Field(default=0, description="to be deprecated, use opening_price instead")
     margin_short_loan_interest: float = Field(default=0)
-    margin_short_buy_back_price: float = Field(default=0)
-    margin_short_sell_qty: float = Field(default=0)
+    margin_short_buy_back_price: float = Field(default=0, description="to be deprecated, use opening_price instead")
+    margin_short_sell_qty: float = Field(default=0, description="to be deprecated, use closing_qty instead")
     margin_short_buy_back_timestamp: int = Field(
-        default=0, sa_column=Column(BigInteger())
+        default=0, description="to be deprecated, use opening_timestamp", sa_column=Column(BigInteger())
     )
     margin_short_base_order: float = Field(
         default=0, description="To be merged with base_order"

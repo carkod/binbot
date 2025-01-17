@@ -140,6 +140,7 @@ class SpotLongDeal(DealAbstract):
             qty = self.active_bot.deal.buy_total_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
+            logging.error(f"trailling_profit qty: {qty}")
             # Already sold?
             if qty > 0:
                 closed_orders = self.close_open_orders(self.active_bot.pair)
