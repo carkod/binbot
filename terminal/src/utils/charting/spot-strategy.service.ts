@@ -2,6 +2,7 @@ import { type OrderLine } from "./index.d";
 import { type Bot } from "../../features/bots/botInitialState";
 import { dealColors } from "../../utils/charting/index";
 import { getQuoteAsset } from "../api";
+import { BotStatus } from "../enums";
 
 export default function spotTrading(
   bot: Bot,
@@ -9,46 +10,13 @@ export default function spotTrading(
 ): OrderLine[] {
   const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];
-  if (bot.deal.buy_price && bot.deal.buy_price > 0 && bot.status === "active") {
-    currentPrice = bot.deal.buy_price;
+  if (bot.deal.opening_price && bot.deal.opening_price > 0 && bot.status === BotStatus.ACTIVE) {
+    currentPrice = bot.deal.opening_price;
   }
 
-  // short strategy
-  if (bot.short_buy_price && bot.short_buy_price > 0) {
-    totalOrderLines.push({
-      id: "short_buy_price",
-      text: "Short buy price",
-      tooltip: [` Price: ${bot.short_buy_price}`],
-      quantity: `${bot.base_order_size} ${quoteAsset}`,
-      price: bot.short_buy_price,
-      color: dealColors.trailling_profit,
-    });
-  }
-
-  if (bot.short_sell_price && bot.short_sell_price > 0) {
-    totalOrderLines.push({
-      id: "short_sell_price",
-      text: "Short sell price",
-      tooltip: [` Price: ${bot.short_sell_price}`],
-      quantity: `${bot.base_order_size} ${quoteAsset}`,
-      price: bot.short_sell_price,
-      color: dealColors.trailling_profit,
-    });
-  }
 
   if (bot.base_order_size && currentPrice) {
-    if (bot.deal.original_buy_price && bot.deal.original_buy_price > 0) {
-      totalOrderLines.push({
-        id: "original_buy_price",
-        text: "Original buy price",
-        tooltip: [bot.status, " Original buy price before SO triggered"],
-        quantity: `${bot.base_order_size} ${quoteAsset}`,
-        price: bot.deal.original_buy_price,
-        color: dealColors.base_order,
-      });
-    }
-
-    if (bot.deal.sell_price && bot.deal.sell_price > 0) {
+    if (bot.deal.closing_price && bot.deal.closing_price > 0) {
       // If there is sell_price, it means it's completed
       totalOrderLines.push({
         id: "base_order",
@@ -56,13 +24,13 @@ export default function spotTrading(
         tooltip: [
           bot.status,
           `${
-            bot.deal.buy_total_qty && bot.deal.buy_total_qty > 0
-              ? bot.deal.buy_total_qty + quoteAsset + "(Avg total)"
+            bot.deal.opening_qty && bot.deal.opening_qty > 0
+              ? bot.deal.opening_qty + quoteAsset + "(Avg total)"
               : ""
           }`,
         ],
         quantity: `${bot.base_order_size} ${quoteAsset}`,
-        price: bot.deal.buy_price || 0,
+        price: bot.deal.opening_price || 0,
         color: dealColors.base_order,
       });
     } else {
@@ -72,8 +40,8 @@ export default function spotTrading(
         tooltip: [
           bot.status,
           `${
-            bot.deal.buy_total_qty && bot.deal.buy_total_qty > 0
-              ? bot.deal.buy_total_qty + quoteAsset + "(Avg total)"
+            bot.deal.opening_qty && bot.deal.opening_qty > 0
+              ? bot.deal.opening_qty + quoteAsset + "(Avg total)"
               : ""
           }`,
         ],
@@ -90,13 +58,13 @@ export default function spotTrading(
       bot.deal.trailling_stop_loss_price > 0
     ) {
       // Bot is sold and completed
-      if (bot.status === "completed" && bot.deal.sell_price) {
+      if (bot.status === "completed" && bot.deal.closing_price) {
         totalOrderLines.push({
           id: "take_profit",
           text: `Take profit -${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell when prices drop to here"],
           quantity: `${bot.base_order_size} ${quoteAsset}`,
-          price: bot.deal.sell_price,
+          price: bot.deal.closing_price,
           color: dealColors.take_profit,
         });
         totalOrderLines.push({
@@ -104,12 +72,12 @@ export default function spotTrading(
           text: `Trailling profit ${bot.take_profit}%`,
           tooltip: [bot.status, " Breakpoint to increase Take profit"],
           quantity: `${bot.base_order_size} ${quoteAsset}`,
-          price: bot.deal.sell_price * (1 + bot.take_profit / 100), // take_profit / trailling_profit
+          price: bot.deal.closing_price * (1 + bot.take_profit / 100), // take_profit / trailling_profit
           color: dealColors.trailling_profit,
           lineStyle: 2,
         });
       } else if (
-        bot.deal.buy_price &&
+        bot.deal.opening_price &&
         bot.deal.take_profit_price &&
         bot.status === "active"
       ) {
@@ -144,7 +112,7 @@ export default function spotTrading(
           id: "trailling_stop_loss",
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${bot.buy_total_qty || bot.base_order_size} ${
+          quantity: `${bot.deal.opening_qty || bot.base_order_size} ${
             quoteAsset
           }`,
           price: bot.deal.trailling_stop_loss_price,
@@ -153,13 +121,13 @@ export default function spotTrading(
       }
     } else if (bot.take_profit) {
       // No trailling, just normal take_profit
-      if (bot.status === "completed" && bot.deal.buy_price) {
+      if (bot.status === "completed" && bot.deal.opening_price) {
         totalOrderLines.push({
           id: "take_profit",
           text: `Take profit ${bot.take_profit}%`,
           tooltip: [bot.status, " Sell Order "],
           quantity: `${bot.base_order_size} ${quoteAsset}`,
-          price: bot.deal.buy_price * (1 + bot.take_profit / 100), // buy_profit * take_profit%
+          price: bot.deal.opening_price * (1 + bot.take_profit / 100), // buy_profit * take_profit%
           color: dealColors.take_profit,
         });
       } else {
@@ -175,9 +143,9 @@ export default function spotTrading(
     }
     if (bot.stop_loss && bot.stop_loss > 0) {
       let stopLossPrice = 0;
-      if (bot.deal.buy_price) {
+      if (bot.deal.opening_price) {
         stopLossPrice =
-          bot.deal.buy_price - bot.deal.buy_price * (bot.stop_loss / 100);
+          bot.deal.opening_price - bot.deal.opening_price * (bot.stop_loss / 100);
       } else {
         stopLossPrice = currentPrice - currentPrice * (bot.stop_loss / 100);
       }

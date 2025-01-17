@@ -60,9 +60,6 @@ class BotTable(SQLModel, table=True):
     )
     trailling_profit: float = Field(default=0)
     strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
-    total_commission: float = Field(
-        default=0, description="autoswitch to short_strategy"
-    )
 
     # Table relationships filled up internally
     orders: list[ExchangeOrderTable] = Relationship(

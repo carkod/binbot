@@ -89,9 +89,9 @@ const BotCard: FC<BotCardProps> = ({
             </Col>
             <Col md="6" xs="5">
               <p className="small">
-                {(bot.deal?.buy_price &&
-                  roundDecimals(bot.deal.buy_price, 6)) ||
-                  bot.deal?.buy_total_qty}
+                {(bot.deal?.opening_price &&
+                  roundDecimals(bot.deal.opening_price, 6)) ||
+                  bot.deal?.opening_qty}
               </p>
             </Col>
           </Row>
@@ -138,33 +138,33 @@ const BotCard: FC<BotCardProps> = ({
               </Col>
             </Row>
           )}
-          {Boolean(bot.deal?.buy_timestamp) && (
+          {Boolean(bot.deal?.opening_timestamp) && (
             <Row>
               <Col md="6" xs="7">
                 <p className="small">Buy time</p>
               </Col>
               <Col md="6" xs="5">
                 <p className="small">
-                  {formatTimestamp(bot.deal.buy_timestamp)}
+                  {formatTimestamp(bot.deal.opening_timestamp)}
                 </p>
               </Col>
             </Row>
           )}
           {bot.status === BotStatus.COMPLETED &&
-            Boolean(bot.deal?.sell_timestamp) && (
+            Boolean(bot.deal?.closing_timestamp) && (
               <Row>
                 <Col md="6" xs="7">
                   <p className="small">Sell time</p>
                 </Col>
                 <Col md="6" xs="5">
                   <p className="small">
-                    {formatTimestamp(bot.deal.sell_timestamp)}
+                    {formatTimestamp(bot.deal.closing_timestamp)}
                   </p>
                 </Col>
               </Row>
             )}
           {bot.status === BotStatus.COMPLETED &&
-            Boolean(bot.deal?.buy_timestamp && bot.deal?.sell_timestamp) && (
+            Boolean(bot.deal?.opening_timestamp && bot.deal?.closing_timestamp) && (
               <Row>
                 <Col md="6" xs="7">
                   <p className="small">Duration</p>

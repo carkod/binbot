@@ -13,8 +13,8 @@ export default function marginTrading(
   const quoteAsset = getQuoteAsset(bot);
 
   if (
-    bot.deal.margin_short_buy_back_price &&
-    bot.deal.margin_short_buy_back_price > 0
+    bot.deal.opening_price &&
+    bot.deal.opening_price > 0
   ) {
     totalOrderLines.push({
       id: "base_order",
@@ -22,13 +22,13 @@ export default function marginTrading(
       tooltip: [
         bot.status,
         `${
-          bot.deal.buy_total_qty && bot.deal.buy_total_qty > 0
-            ? bot.deal.buy_total_qty + quoteAsset + "(Avg total)"
+          bot.deal.opening_qty && bot.deal.opening_qty > 0
+            ? bot.deal.opening_qty + quoteAsset + "(Avg total)"
             : ""
         }`,
       ],
       quantity: `${bot.base_order_size} ${quoteAsset}`,
-      price: parseFloat(bot.deal.margin_short_sell_price?.toString() || "0"),
+      price: parseFloat(bot.deal.opening_price?.toString() || "0"),
       color: dealColors.base_order,
     });
 
@@ -38,7 +38,7 @@ export default function marginTrading(
         text: `Take profit (trailling) -${bot.trailling_deviation}%`,
         tooltip: [bot.status, " Bot closed here at profit"],
         quantity: `${bot.base_order_size} ${quoteAsset}`,
-        price: bot.deal.margin_short_buy_back_price,
+        price: bot.deal.opening_price,
         color: dealColors.take_profit,
       });
     } else {
@@ -47,7 +47,7 @@ export default function marginTrading(
         text: `Take profit ${bot.take_profit}% (Margin buy)`,
         tooltip: [bot.status, " Margin buy"],
         quantity: `${bot.base_order_size} ${quoteAsset}`,
-        price: bot.deal.buy_back_price || 0, // buy_profit * take_profit%
+        price: bot.deal.closing_price || 0, // buy_profit * take_profit%
         color: dealColors.take_profit,
       });
     }
@@ -79,9 +79,9 @@ export default function marginTrading(
           });
         } else {
           const price =
-            bot.deal.margin_short_sell_price &&
-            bot.deal.margin_short_sell_price > 0
-              ? bot.deal.margin_short_sell_price
+            bot.deal.closing_price &&
+            bot.deal.closing_price > 0
+              ? bot.deal.closing_price
               : parsedCurrentPrice;
           totalOrderLines.push({
             id: "take_profit",
@@ -112,15 +112,15 @@ export default function marginTrading(
           id: "trailling_stop_loss",
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${bot.buy_total_qty || bot.base_order_size} ${quoteAsset}`,
+          quantity: `${bot.deal.opening_qty || bot.base_order_size} ${quoteAsset}`,
           price: trailling_stop_loss_price,
           color: dealColors.take_profit,
         });
       }
     } else {
       const price =
-        bot.deal.margin_short_sell_price && bot.deal.margin_short_sell_price > 0
-          ? bot.deal.margin_short_sell_price
+        bot.deal.opening_price && bot.deal.opening_price > 0
+          ? bot.deal.opening_price
           : parsedCurrentPrice;
       totalOrderLines.push({
         id: "take_profit",
@@ -151,8 +151,8 @@ export default function marginTrading(
   }
 
   const price =
-    bot.deal.margin_short_sell_price && bot.deal.margin_short_sell_price > 0
-      ? bot.deal.margin_short_sell_price
+    bot.deal.closing_price && bot.deal.closing_price > 0
+      ? bot.deal.closing_price
       : parsedCurrentPrice;
   totalOrderLines.push({
     id: "base_order",
@@ -160,8 +160,8 @@ export default function marginTrading(
     tooltip: [
       bot.status,
       `${
-        bot.deal.buy_total_qty && bot.deal.buy_total_qty > 0
-          ? bot.deal.buy_total_qty + quoteAsset + "(Avg total)"
+        bot.deal.opening_qty && bot.deal.opening_qty > 0
+          ? bot.deal.opening_qty + quoteAsset + "(Avg total)"
           : ""
       }`,
     ],

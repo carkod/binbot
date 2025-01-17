@@ -1,7 +1,7 @@
 from time import time
 from uuid import uuid4
 from account.account import Account
-from tools.exceptions import DeleteOrderError
+from tools.exceptions import DeleteOrderError, BinanceErrors
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation, zero_remainder
@@ -114,7 +114,7 @@ class OrderController(Account):
                 "symbol": symbol,
                 "side": OrderSide.sell,
                 "type": OrderType.limit,
-                "timeInForce": TimeInForce.gtc,
+                "timeInForce": TimeInForce.fok,
                 "price": supress_notation(price, self.price_precision),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
@@ -128,7 +128,11 @@ class OrderController(Account):
             # Because market orders don't have price
             # get it from fills
 
-        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        try:
+            data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        except BinanceErrors as e:
+            # use market order if FOK fails
+            print(e)
 
         if float(data["price"]) == 0:
             total_qty: float = 0
@@ -149,7 +153,7 @@ class OrderController(Account):
                 "symbol": symbol,
                 "side": OrderSide.buy,
                 "type": OrderType.limit,
-                "timeInForce": TimeInForce.gtc,
+                "timeInForce": TimeInForce.fok,
                 "price": supress_notation(book_price, self.price_precision),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
@@ -167,7 +171,11 @@ class OrderController(Account):
                 "quantity": qty,
             }
 
-        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        try:
+            data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        except BinanceErrors as e:
+            # use market order if FOK fails
+            print(e)
 
         if data["price"] == 0:
             total_qty: float = 0

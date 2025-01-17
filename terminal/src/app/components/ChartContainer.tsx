@@ -31,7 +31,7 @@ const ChartContainer: FC = () => {
   };
 
   const handleInitialPrice = (price) => {
-    if (!bot.deal.buy_price && bot.status !== "active") {
+    if (!bot.deal.opening_price && bot.status !== "active") {
       setCurrentChartPrice(price);
     }
     const newOrderLines = updateOrderLines(bot, price);

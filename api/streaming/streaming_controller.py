@@ -14,10 +14,11 @@ from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from tools.exceptions import BinanceErrors
 from datetime import datetime
-
+from apis import BinanceApi
 
 class BaseStreaming:
     def __init__(self) -> None:
+        self.binance_api = BinanceApi()
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
 
@@ -161,34 +162,38 @@ class BbspreadsUpdater(BaseStreaming):
             pass
 
     def get_interests_short_margin(self, bot: BotModel) -> tuple[float, float, float]:
-        close_timestamp = bot.deal.margin_short_buy_back_timestamp
+        close_timestamp = bot.deal.closing_timestamp
         if close_timestamp == 0:
             close_timestamp = int(datetime.now().timestamp() * 1000)
 
-        time_delta = close_timestamp - bot.deal.margin_short_sell_timestamp
-        duration_hours = time_delta / 1000 / 3600
-        interests = float(bot.deal.hourly_interest_rate) * duration_hours
-        close_total = bot.deal.margin_short_buy_back_price
-        open_total = bot.deal.margin_short_sell_price
+        loan_details = self.binance_api.get_margin_loan_details(bot.deal.margin_loan_id)
+
+        if len(loan_details["rows"]) > 0:
+            interests = loan_details["rows"][0]["interests"]
+        else:
+            interests = 0
+
+        close_total = bot.deal.closing_price
+        open_total = bot.deal.closing_price
 
         return interests, open_total, close_total
 
     def compute_single_bot_profit(self, bot: BotModel, current_price: float) -> float:
         if bot.deal and bot.base_order_size > 0:
-            if bot.deal.buy_price > 0:
+            if bot.deal.opening_price > 0:
                 current_price = (
-                    bot.deal.sell_price
-                    if bot.deal.sell_price
+                    bot.deal.closing_price
+                    if bot.deal.closing_price
                     else current_price or bot.deal.current_price
                 )
-                buy_price = bot.deal.buy_price
+                buy_price = bot.deal.opening_price
                 profit_change = ((current_price - buy_price) / buy_price) * 100
                 if current_price == 0:
                     profit_change = 0
                 return round(profit_change, 2)
-            elif bot.deal.margin_short_sell_price > 0:
+            elif bot.deal.opening_price > 0:
                 # Completed margin short
-                if bot.deal.margin_short_buy_back_price > 0:
+                if bot.deal.closing_price > 0:
                     interests, open_total, close_total = (
                         self.get_interests_short_margin(bot)
                     )
@@ -199,8 +204,8 @@ class BbspreadsUpdater(BaseStreaming):
                 else:
                     # Not completed margin short
                     close_price = (
-                        bot.deal.margin_short_buy_back_price
-                        if bot.deal.margin_short_buy_back_price > 0
+                        bot.deal.closing_price
+                        if bot.deal.closing_price > 0
                         else current_price or bot.deal.current_price
                     )
                     if close_price == 0:

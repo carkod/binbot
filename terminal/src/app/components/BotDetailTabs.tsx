@@ -28,12 +28,13 @@ const BotDetailTabs: FC = () => {
   // Deals and orders information need to come from the server
   const handleActivation = async (id: string) => {
     await updateBot({ body: bot, id });
-    dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
-    // Deals and orders are not
-    navigate(`/bots/edit/${id}`);
+    const result = await dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
+    if (result.isSuccess) {
+      navigate(`/bots/edit/${id}`);
+    }
   };
-  const handlePanicSell = (id: string) => {
-    dispatch(botsApiSlice.endpoints.deactivateBot.initiate(id));
+  const handlePanicSell = async (id: string) => {
+    await dispatch(botsApiSlice.endpoints.deactivateBot.initiate(id));
   };
 
   const onSubmit = async () => {
