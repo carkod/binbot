@@ -67,6 +67,12 @@ class LowBalanceCleanupError(BinbotErrors):
     pass
 
 
+class DealCreationError(BinbotErrors):
+    pass
+
+class SaveBotError(BinbotErrors):
+    pass
+
 class OpenDealError(Exception):
     pass
 
@@ -88,10 +94,6 @@ class TakeProfitError(OpenDealError):
 
 
 class ShortStrategyError(OpenDealError):
-    pass
-
-
-class DealCreationError(BinbotErrors):
     pass
 
 

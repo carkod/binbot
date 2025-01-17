@@ -76,6 +76,18 @@ class Account(BinbotApi):
         data = handle_binance_errors(r)
         return data
 
+    def _get_price_from_book_order(self, data: dict, order_side: bool, index: int):
+        """
+        Buy order = get bid prices = True
+        Sell order = get ask prices = False
+        """
+        if order_side:
+            price, base_qty = data["bids"][index]
+        else:
+            price, base_qty = data["asks"][index]
+        
+        return float(price), float(base_qty)
+
     def ticker(self, symbol: str | None = None, json: bool = True):
         params = {}
         if symbol:
@@ -243,42 +255,35 @@ class Account(BinbotApi):
         symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), 0)
         return symbol_balance
 
-    def matching_engine(self, symbol: str, order_side: bool, qty=None):
+    def matching_engine(self, symbol: str, order_side: bool, qty: float=0) -> float:
         """
         Match quantity with available 100% fill order price,
         so that order can immediately buy/sell
         If it doesn't match, do split order
         @param: order_side -
-            Buy order = get ask prices = True
-            Sell order = get bids prices = False
-        @param: qty - quantity wanted to be bought/sold
+            Buy order = get bid prices = True
+            Sell order = get ask prices = False
+        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
+        data = self.get_book_depth(symbol)
 
-        res = requests.get(url=self.order_book_url, params={"symbol": symbol})
-        data = handle_binance_errors(res)
+        price, base_qty = self._get_price_from_book_order(data, order_side, 0)
 
-        if order_side:
-            df = pandas.DataFrame(data["bids"], columns=["price", "qty"])
+        if qty == 0:
+            return price
         else:
-            df = pandas.DataFrame(data["asks"], columns=["price", "qty"])
-
-        df["qty"] = df["qty"].astype(float)
-
-        # Test bots qty = None
-        if not qty:
-            return df["price"].iloc[0]
-
-        # If quantity matches list
-        df = df[:5]
-        match_qty = df[df.qty > float(qty)]
-        condition = df["qty"] > float(qty)
-        if not condition.any():
-            # force market order
-            return None
-        match_qty["price"].iloc[0]
-
-        final_qty = match_qty["price"].iloc[0]
-        return final_qty
+            buyable_qty = qty / float(price)
+            if buyable_qty < base_qty:
+                return price
+            else:
+                total_length = len(data["bids"])
+                for i in range(1, total_length):
+                    price, base_qty = self._get_price_from_book_order(data, order_side, i)
+                    if buyable_qty > base_qty:
+                        return price
+                    else:
+                        continue
+                raise ValueError("Unable to match base_order_size with available order prices")
 
     def calculate_total_commissions(self, fills: dict) -> float:
         """

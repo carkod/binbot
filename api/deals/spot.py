@@ -79,16 +79,11 @@ class SpotLongDeal(DealAbstract):
             if not closed_orders:
                 order = self.verify_deal_close_order()
                 if order:
-                    self.controller.update_logs(
-                        "Execute stop loss previous order found! Appending...",
-                        self.active_bot,
-                    )
+                    self.active_bot.logs.append("Execute stop loss previous order found! Appending...")
                     self.active_bot.orders.append(order)
+                    self.controller.save(self.active_bot)
                 else:
-                    self.controller.update_logs(
-                        "No quantity in balance, no closed orders. Cannot execute update stop limit.",
-                        self.active_bot,
-                    )
+                    self.active_bot.logs.append("No quantity in balance, no closed orders. Cannot execute update stop limit.")
                     self.active_bot.status = Status.error
                     self.controller.save(self.active_bot)
                     return self.active_bot
@@ -130,7 +125,7 @@ class SpotLongDeal(DealAbstract):
         if self.active_bot.margin_short_reversal:
             msg += " Scheduled to switch strategy"
 
-        self.controller.update_logs(msg, self.active_bot)
+        self.active_bot.logs.append(msg)
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 
@@ -151,15 +146,14 @@ class SpotLongDeal(DealAbstract):
                 if not closed_orders:
                     order = self.verify_deal_close_order()
                     if order:
-                        self.controller.update_logs(
-                            "Execute trailling profit previous order found! Appending...",
-                            self.active_bot,
+                        self.active_bot.logs.append(
+                            "Execute trailling profit previous order found! Appending..."
                         )
                         self.active_bot.orders.append(order)
+                        self.controller.save(self.active_bot)
                     else:
-                        self.controller.update_logs(
-                            "No quantity in balance, no closed orders. Cannot execute update trailling profit.",
-                            self.active_bot,
+                        self.active_bot.logs.append(
+                            "No quantity in balance, no closed orders. Cannot execute update trailling profit."
                         )
                         self.active_bot.status = Status.error
                         self.controller.save(self.active_bot)
@@ -209,10 +203,8 @@ class SpotLongDeal(DealAbstract):
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
         self.active_bot.status = Status.completed
+        self.active_bot.logs.append(f"Completed take profit after failing to break trailling {self.active_bot.pair}")
         self.controller.save(self.active_bot)
-        self.controller.update_logs(
-            f"Completed take profit after failing to break trailling {self.active_bot.pair}"
-        )
         return self.active_bot
 
     def streaming_updates(self, close_price, open_price):
@@ -392,8 +384,8 @@ class SpotLongDeal(DealAbstract):
             self.active_bot.deal.trailling_stop_loss_price = 0
 
         self.active_bot.status = Status.active
+        self.active_bot.logs.append("Bot activated")
         self.controller.save(self.active_bot)
-        self.controller.update_logs("Bot activated", self.active_bot)
         return self.active_bot
 
     def open_deal(self):

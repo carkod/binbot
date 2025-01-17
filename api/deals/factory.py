@@ -293,7 +293,7 @@ class DealAbstract(BaseDeal):
 
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
-        price = float(self.matching_engine(self.active_bot.pair, True))
+        price = float(self.matching_engine(self.active_bot.pair, True, qty=self.active_bot.base_order_size))
         qty = round_numbers(
             (float(self.active_bot.base_order_size) / float(price)),
             self.qty_precision,
@@ -340,6 +340,9 @@ class DealAbstract(BaseDeal):
             stop_loss_price=stop_loss_price,
         )
 
+        # temporary measures to keep deal up to date
+        # once bugs are fixed, this can be removed to improve efficiency
+        self.active_bot.status = Status.active
         self.controller.save(self.active_bot)
 
         # Only signal for the whole activation

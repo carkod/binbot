@@ -133,7 +133,7 @@ class StreamingController(BaseStreaming):
                 else:
                     return
 
-                create_deal_controller.controller.update_logs(error.message, bot)
+                bot.logs.append(error.message)
                 bot.status = Status.error
                 create_deal_controller.controller.save(bot)
 

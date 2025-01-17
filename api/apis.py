@@ -72,7 +72,7 @@ class BinanceApi:
         url,
         method="GET",
         session: Session | None = None,
-        payload: dict = {},
+        payload: dict | None = None,
         **kwargs,
     ):
         """
@@ -394,6 +394,13 @@ class BinanceApi:
             method="DELETE",
             payload={"symbol": symbol, "orderId": order_id},
         )
+
+    def get_book_depth(self, symbol: str):
+        """
+        Get order book for a given symbol
+        """
+        data = self.request(url=f"{self.order_book_url}?symbol={symbol}")
+        return data
 
 
 class BinbotApi(BinanceApi):

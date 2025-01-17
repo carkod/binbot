@@ -8,9 +8,8 @@ from tools.enum_definitions import CloseConditions, DealType, OrderSide, Strateg
 from bots.models import BotModel, OrderModel, BotBase
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors, MarginShortError
-from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
+from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling, round_timestamp
 from deals.factory import DealAbstract
-
 
 class MarginDeal(DealAbstract):
     def __init__(
@@ -31,18 +30,14 @@ class MarginDeal(DealAbstract):
 
         """
         if float(self.isolated_balance[0]["quoteAsset"]["borrowed"]) > 0:
-            self.controller.update_logs(
-                f'Borrowed {self.isolated_balance[0]["quoteAsset"]["asset"]} still remaining, please clear out manually',
-                self.active_bot,
-            )
+            self.active_bot.logs.append(f'Borrowed {self.isolated_balance[0]["quoteAsset"]["asset"]} still remaining, please clear out manually')
             self.active_bot.status = Status.error
+            self.controller.save(self.active_bot)
 
         if float(self.isolated_balance[0]["baseAsset"]["borrowed"]) > 0:
-            self.controller.update_logs(
-                f'Borrowed {self.isolated_balance[0]["baseAsset"]["asset"]} still remaining, please clear out manually',
-                self.active_bot,
-            )
+            self.active_bot.logs.append(f'Borrowed {self.isolated_balance[0]["baseAsset"]["asset"]} still remaining, please clear out manually')
             self.active_bot.status = Status.error
+            self.controller.save(self.active_bot)
 
         quote_asset = float(self.isolated_balance[0]["quoteAsset"]["free"])
         base_asset = float(self.isolated_balance[0]["baseAsset"]["free"])
@@ -162,9 +157,9 @@ class MarginDeal(DealAbstract):
             asset=asset, isolatedSymbol=self.active_bot.pair
         )
 
-        self.active_bot.deal.margin_short_loan_principal = loan_details["rows"][0][
+        self.active_bot.deal.margin_short_loan_principal = float(loan_details["rows"][0][
             "principal"
-        ]
+        ])
         self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
 
         # Estimate interest to add to total cost
@@ -332,7 +327,7 @@ class MarginDeal(DealAbstract):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        initial_price = float(self.matching_engine(self.active_bot.pair, False))
+        initial_price = float(self.matching_engine(self.active_bot.pair, False, qty=self.active_bot.base_order_size))
 
         if isinstance(self.controller, BotTableCrud):
             self.init_margin_short(initial_price)
@@ -347,13 +342,13 @@ class MarginDeal(DealAbstract):
 
         order_data = OrderModel(
             timestamp=order_res["transactTime"],
-            order_id=order_res["orderId"],
+            order_id=int(order_res["orderId"]),
             deal_type=DealType.base_order,
             pair=order_res["symbol"],
             order_side=order_res["side"],
             order_type=order_res["type"],
-            price=order_res["price"],
-            qty=order_res["origQty"],
+            price=float(order_res["price"]),
+            qty=float(order_res["origQty"]),
             time_in_force=order_res["timeInForce"],
             status=order_res["status"],
         )
@@ -364,7 +359,7 @@ class MarginDeal(DealAbstract):
 
         self.active_bot.orders.append(order_data)
 
-        self.active_bot.deal.margin_short_sell_timestamp = order_res["transactTime"]
+        self.active_bot.deal.margin_short_sell_timestamp = round_timestamp(order_res["transactTime"])
         self.active_bot.deal.margin_short_sell_price = float(order_res["price"])
         self.active_bot.deal.buy_total_qty = float(order_res["origQty"])
         self.active_bot.deal.margin_short_base_order = float(order_res["origQty"])
@@ -503,9 +498,6 @@ class MarginDeal(DealAbstract):
                 self.active_bot.deal.buy_total_qty, OrderSide.buy
             )
         else:
-            # Cancel orders first
-            # paper_trading doesn't have real orders so no need to check
-            self.cancel_open_orders(DealType.stop_loss)
             res = self.margin_liquidation(self.active_bot.pair)
 
         stop_loss_order = OrderModel(
@@ -529,12 +521,16 @@ class MarginDeal(DealAbstract):
 
         # Guard against type errors
         # These errors are sometimes hard to debug, it takes hours
-        self.active_bot.deal.margin_short_buy_back_price = res["price"]
-        self.active_bot.deal.buy_total_qty = res["origQty"]
-        self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
+        self.active_bot.deal.margin_short_buy_back_price = float(res["price"])
+        self.active_bot.deal.buy_total_qty = float(res["origQty"])
+        self.active_bot.deal.margin_short_buy_back_timestamp = float(res["transactTime"])
 
-        msg = "Completed Stop loss order"
-        self.controller.update_logs(msg)
+        # Future overrides
+        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+
+        self.active_bot.logs.append("Completed Stop loss order")
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 

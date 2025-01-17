@@ -93,6 +93,10 @@ class BotBase(BaseModel):
     )
 
 
+class BotPayload(BotBase):
+    id: Optional[str] = Field(default="")
+
+
 class BotModel(BotBase):
     """
     The way SQLModel works causes a lot of errors
@@ -140,6 +144,18 @@ class BotModel(BotBase):
     def deserialize_id(cls, v):
         if isinstance(v, UUID):
             return str(v)
+        return True
+
+    @field_validator(
+        "take_profit",
+        "stop_loss",
+        "trailling_profit",
+        "trailling_deviation",
+        mode="before",
+    )
+    def convert_string_floats(cls, v):
+        if isinstance(v, str):
+            return float(v)
         return True
 
     @classmethod

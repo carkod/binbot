@@ -137,12 +137,13 @@ class BaseDeal(OrderController):
                     payload={"symbol": symbol, "orderId": order["orderId"]},
                 )
                 for order in self.active_bot.orders:
-                    if order.id == order["orderId"]:
+                    if order.order_id == order["orderId"]:
                         self.active_bot.orders.remove(order)
-                        self.controller.update_logs(
+                        self.active_bot.logs.append(
                             "base_order not executed, therefore cancelled"
                         )
                         self.active_bot.status = Status.error
+                        self.controller.save(self.active_bot)
                         break
 
                 return True

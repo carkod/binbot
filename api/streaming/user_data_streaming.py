@@ -3,11 +3,16 @@ import json
 from apis import BinanceApi
 from streaming.socket_client import SpotWebsocketStreamClient
 from database.db import Database
+from database.models.order_table import ExchangeOrderTable
+from database.bot_crud import BotTableCrud
+from database.utils import independent_session
 
 
 class UserDataStreaming(Database, BinanceApi):
     def __init__(self) -> None:
         self.streaming_db = self._db
+        self.session = independent_session()
+        self.bot_controller = BotTableCrud(session=self.session)
         pass
 
     def on_error(self, socket, error):
@@ -28,28 +33,27 @@ class UserDataStreaming(Database, BinanceApi):
             db_collection (str, optional): Defaults to "bots".
 
         """
-        order_id = result["i"]
-        update = {
-            "$set": {
-                "orders.$.status": result["X"],
-                "orders.$.qty": result["q"],
-                "orders.$.order_side": result["S"],
-                "orders.$.order_type": result["o"],
-                "orders.$.timestamp": result["T"],
-            },
-            "$inc": {"total_commission": float(result["n"])},
-            "$push": {"errors": "Order status updated"},
-        }
-        if float(result["p"]) > 0:
-            update["$set"]["orders.$.price"] = float(result["p"])
-        else:
-            update["$set"]["orders.$.price"] = float(result["L"])
 
-        query = self.streaming_db[db_collection].update_one(
-            {"orders": {"$elemMatch": {"order_id": order_id}}},
-            update,
+        update = ExchangeOrderTable(
+            order_id=int(result["i"]),
+            status=result["X"],
+            qty=float(result["q"]),
+            order_side=result["S"],
+            order_type=result["o"],
+            timestamp=result["T"],
+            pair=result["s"],
+            time_in_force=result["f"],
         )
-        return query
+
+        if float(result["p"]) > 0:
+            update.price = float(result["p"])
+        else:
+            update.price = float(result["L"])
+
+        order_result = self.bot_controller.update_order(
+            order=update, commission=float(result["n"])
+        )
+        return order_result
 
     def get_user_data(self):
         listen_key = self.get_listen_key()
@@ -69,11 +73,7 @@ class UserDataStreaming(Database, BinanceApi):
 
         if "e" in res:
             if "executionReport" in res["e"]:
-                query = self.update_order_data(res)
-                if query.raw_result["nModified"] == 0:
-                    logging.debug(
-                        f'No bot found with order client order id: {res["i"]}. Order status: {res["X"]}'
-                    )
+                self.update_order_data(res)
                 return
 
             elif "outboundAccountPosition" in res["e"]:

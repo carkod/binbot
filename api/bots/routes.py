@@ -18,7 +18,7 @@ from tools.exceptions import BinanceErrors, BinbotErrors
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from uuid import UUID
-from bots.models import BotModelResponse
+from bots.models import BotModelResponse, BotPayload
 
 bot_blueprint = APIRouter()
 bot_ta = TypeAdapter(BotResponse)
@@ -29,14 +29,14 @@ def get(
     status: Status = Status.all,
     start_date: float | None = None,
     end_date: float | None = None,
-    no_cooldown=False,
+    include_cooldown: bool = False,
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
 ):
     try:
         bots = BotTableCrud(session=session).get(
-            status, start_date, end_date, no_cooldown, limit, offset
+            status, start_date, end_date, include_cooldown, limit, offset
         )
         # Has to be converted to BotModel to
         # be able to serialize nested objects
@@ -114,12 +114,19 @@ def create(
 @bot_blueprint.put("/bot/{id}", response_model=BotResponse, tags=["bots"])
 def edit(
     id: str,
-    bot_item: BotModel,
+    bot_item: BotPayload,
     session: Session = Depends(get_session),
 ):
     try:
         bot_item.id = UUID(id)
-        bot = BotTableCrud(session=session).save(bot_item)
+        controller = BotTableCrud(session=session)
+        bot_table = controller.get_one(bot_item)
+
+        # bottable crud save only accepts BotModel
+        # this is to keep consistency across the entire app
+        bot_model = BotModel.model_validate(bot_table.model_dump())
+        bot = controller.save(bot_model)
+
         data = BotModelResponse.model_construct(**bot.model_dump())
         return {
             "message": "Successfully edited bot.",
@@ -193,7 +200,7 @@ def deactivation(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.close_all()
-        response_data = BotModelResponse.model_construct(**data.model_dump())
+        response_data = BotModelResponse(**data.model_dump())
         return {
             "message": "Successfully triggered panic sell! Bot deactivated.",
             "data": response_data,
@@ -215,10 +222,10 @@ def bot_errors(
     try:
         request_body = ErrorsRequestBody.model_dump(bot_errors)
         errors = request_body.get("errors", None)
-        bot = BotTableCrud(session=session).update_logs(
+        data = BotTableCrud(session=session).update_logs(
             log_message=errors, bot_id=bot_id
         )
-        data = BotModel.model_construct(**bot.model_dump())
-        return BotResponse(message="Errors posted successfully.", data=data)
+        response_data = BotModelResponse(**data.model_dump())
+        return BotResponse(message="Errors posted successfully.", data=response_data)
     except ValidationError as error:
         return BotResponse(message="Failed to post errors", data=error.json(), error=1)

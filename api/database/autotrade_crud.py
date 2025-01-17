@@ -5,7 +5,7 @@ from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
 from database.utils import independent_session
 from sqlmodel import Session, select
 from tools.enum_definitions import AutotradeSettingsDocument
-
+from autotrade.schemas import AutotradeSettingsSchema
 
 class AutotradeCrud:
     """
@@ -47,7 +47,7 @@ class AutotradeCrud:
         return settings
 
     @typing.no_type_check
-    def edit_settings(self, data):
+    def edit_settings(self, data: AutotradeSettingsSchema):
         """
         Mypy check ignored: Incompatible types in assignment
         should not affect execution of statement.
@@ -64,10 +64,10 @@ class AutotradeCrud:
             return settings
 
         # start db operations
-        dumped_settings = settings.model_dump(exclude_unset=True)
-        settings.sqlmodel_update(dumped_settings)
+        settings.sqlmodel_update(data.model_dump())
         self.session.add(settings)
         self.session.commit()
+        self.session.refresh(settings)
 
         # end of db operations
         # update the producer to reload streaming data

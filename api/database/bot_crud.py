@@ -2,7 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import Query
 from sqlmodel import Session, asc, desc, or_, select, case
-from time import time
+from database.utils import timestamp
 from bots.models import BotModel
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
@@ -12,6 +12,7 @@ from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
+from tools.exceptions import SaveBotError
 
 
 class BotTableCrud:
@@ -75,7 +76,7 @@ class BotTableCrud:
         status: Status | None = None,
         start_date: float | None = None,
         end_date: float | None = None,
-        no_cooldown=False,
+        include_cooldown=False,
         limit: int = 200,
         offset: int = 0,
     ) -> Sequence[BotTable]:
@@ -90,42 +91,35 @@ class BotTableCrud:
         statement = select(BotTable)
 
         if status and status in BinbotEnums.statuses:
-            statement.where(BotTable.status == status)
+            statement = statement.where(BotTable.status == status)
 
         if start_date:
-            statement.where(BotTable.created_at >= start_date)
+            statement = statement.where(BotTable.created_at >= start_date)
 
         if end_date:
-            statement.where(BotTable.created_at <= end_date)
+            statement = statement.where(BotTable.created_at <= end_date)
 
-        if status and no_cooldown:
-            current_timestamp = time()
-            cooldown_condition = cooldown_condition = or_(
-                BotTable.status == status,
-                case(
-                    (
-                        (DealTable.sell_timestamp > 0),
-                        current_timestamp - DealTable.sell_timestamp
-                        < (BotTable.cooldown * 1000),
-                    ),
-                    else_=(
-                        current_timestamp - BotTable.created_at
-                        < (BotTable.cooldown * 1000)
-                    ),
-                ),
-            )
+        # Rethink cooldown filtering
+        # for now, include all inactive bots within a day
+        # if include_cooldown:
+        #     current_timestamp = timestamp()
+        #     cooldown_condition = or_(
+        #         current_timestamp - DealTable.sell_timestamp
+        #         < (BotTable.cooldown * 1000),
+        #         current_timestamp - BotTable.created_at < (BotTable.cooldown * 1000),
+        #     )
 
-            statement.where(cooldown_condition)
+        #     statement = statement.where(cooldown_condition)
 
         # sorting
-        statement.order_by(
+        statement = statement.order_by(
             desc(BotTable.created_at),
             case((BotTable.status == Status.active, 1), else_=2),
             asc(BotTable.pair),
         )
 
         # pagination
-        statement.limit(limit).offset(offset)
+        statement = statement.limit(limit).offset(offset)
 
         # unique is necessary for a joinload
         bots = self.session.exec(statement).unique().all()
@@ -196,24 +190,46 @@ class BotTableCrud:
         """
         # due to incompatibility of SQLModel and Pydantic
         initial_bot = self.get_one(bot_id=str(data.id))
+        deal_id = initial_bot.deal_id
         initial_bot.sqlmodel_update(data.model_dump())
 
-        # Handle deal update
-        deal = self.session.get(DealTable, str(initial_bot.deal.id))
+        # Use deal id from db to avoid creating a new deal
+        # which causes integrity errors
+        # there should always be only 1 deal per bot
+        deal = self.session.get(DealTable, deal_id)
         if not deal:
-            initial_bot.deal = DealTable()
+            raise SaveBotError("Bot must be created first before updating")
         else:
-            deal.sqlmodel_update(data.deal)
-            initial_bot.deal = deal
+            deal.sqlmodel_update(data.deal.model_dump())
 
-        # Handle orders update
-        initial_bot.orders.clear()
-        for order in data.orders:
-            new_order_row = ExchangeOrderTable(**order.model_dump())
-            initial_bot.orders.append(new_order_row)
+        # Insert update to DB only if it doesn't exist
+        # Assign correct botId in the one side of the one-many relationship
+        if hasattr(data, "orders"):
+            for order in data.orders:
+                statement = select(ExchangeOrderTable).where(
+                    ExchangeOrderTable.order_id == order.order_id
+                )
+                get_order = self.session.exec(statement).first()
+                if not get_order:
+                    new_order_row = ExchangeOrderTable(
+                        order_type=order.order_type,
+                        time_in_force=order.time_in_force,
+                        timestamp=order.timestamp,
+                        order_id=order.order_id,
+                        order_side=order.order_side,
+                        pair=order.pair,
+                        qty=order.qty,
+                        status=order.status,
+                        price=order.price,
+                        deal_type=order.deal_type,
+                        bot_id=data.id,
+                    )
+                    self.session.add(new_order_row)
 
+        self.session.add(deal)
         self.session.add(initial_bot)
         self.session.commit()
+        self.session.refresh(deal)
         self.session.refresh(initial_bot)
         resulted_bot = initial_bot
         return resulted_bot
@@ -255,3 +271,38 @@ class BotTableCrud:
         if not pairs:
             return []
         return list(pairs)
+
+    def update_order(
+        self, order: ExchangeOrderTable, commission: float
+    ) -> ExchangeOrderTable:
+        """
+        Update order data
+        """
+        statement = select(ExchangeOrderTable).where(
+            ExchangeOrderTable.order_id == order.order_id
+        )
+        initial_order = self.session.exec(statement).first()
+
+        if not initial_order:
+            raise ValueError("Order not found")
+
+        initial_order.status = order.status
+        initial_order.qty = order.qty
+        initial_order.order_side = order.order_side
+        initial_order.order_type = order.order_type
+        initial_order.timestamp = order.timestamp
+        initial_order.pair = order.pair
+        initial_order.time_in_force = order.time_in_force
+        initial_order.price = order.price
+
+        initial_bot = self.get_one(bot_id=str(initial_order.bot_id))
+        initial_bot.total_commission += commission
+        initial_bot.logs.append("Order status updated")
+
+        self.session.add(initial_order)
+        self.session.add(initial_bot)
+        self.session.commit()
+        self.session.refresh(initial_order)
+        self.session.refresh(initial_bot)
+        self.session.close()
+        return order
