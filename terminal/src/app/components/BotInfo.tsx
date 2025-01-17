@@ -123,7 +123,7 @@ export default function BotInfo({ bot }) {
                   as="h5"
                   className="d-flex justify-content-between align-items-start"
                 >
-                  <small>duration</small>
+                  <small>deal duration</small>
                   <Badge bg="secondary">{renderDuration(bot)}</Badge>
                 </ListGroup.Item>
               </ListGroup>
