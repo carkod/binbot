@@ -1,5 +1,5 @@
 import { type FC, useState } from "react";
-import { Button, Card } from "react-bootstrap";
+import { Button, Card, ListGroup } from "react-bootstrap";
 
 const LogInfo: FC<{
   events: string[];
@@ -19,10 +19,16 @@ const LogInfo: FC<{
       {logInfo && (
         <Card.Body>
           {events.map((item, i) => (
-            <div key={i}>
-              <p>{item}</p>
-              <hr />
-            </div>
+            <ListGroup variant="flush">
+              <ListGroup.Item
+                action
+                as="h5"
+                key={i}
+                className="d-flex justify-content-between align-items-start"
+              >
+                {item}
+              </ListGroup.Item>
+            </ListGroup>
           ))}
         </Card.Body>
       )}

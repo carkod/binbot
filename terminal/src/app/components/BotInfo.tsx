@@ -3,17 +3,17 @@ import {
   Button,
   Card,
   ListGroup,
-  ListGroupItem,
   Table,
   Row,
   Col,
   Container,
+  Badge,
 } from "react-bootstrap";
-import { renderDuration, formatTimestamp} from "../../utils/time";
+import { renderDuration, formatTimestamp } from "../../utils/time";
 
 export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
-    bot.orders?.length > 0,
+    bot.orders?.length > 0
   );
   return (
     <Card>
@@ -28,19 +28,19 @@ export default function BotInfo({ bot }) {
       </Card.Header>
       {showOrderInfo && (
         <Card.Body>
-          <Table responsive>
-            <thead>
-              <tr>
-                <th>Order Id</th>
-                <th>Timestamp</th>
-                <th>Deal type</th>
-                <th>Price</th>
-                <th>Qty</th>
-                <th>Status</th>
-                <th>Order Side</th>
-              </tr>
-            </thead>
-            {bot.orders.length > 0 && (
+          {bot.orders.length > 0 && (
+            <Table responsive>
+              <thead>
+                <tr>
+                  <th>Order Id</th>
+                  <th>Timestamp</th>
+                  <th>Deal type</th>
+                  <th>Price</th>
+                  <th>Qty</th>
+                  <th>Status</th>
+                  <th>Order Side</th>
+                </tr>
+              </thead>
               <tbody>
                 {bot.orders.map((order, i) => {
                   if (typeof order === "object" && "order_type" in order) {
@@ -64,52 +64,69 @@ export default function BotInfo({ bot }) {
                   }
                 })}
               </tbody>
-            )}
-          </Table>
+            </Table>
+          )}
           {bot.deal && (
             <Container>
               <Row>
                 <Col>
-                  <h5>Deal information (representated in the graph)</h5>
+                  <Card.Subtitle className="mb-2 text-muted upper">
+                    Deal information
+                  </Card.Subtitle>
+                  <footer className="blockquote-footer">
+                    <p>representated in the graph</p>
+                  </footer>
                 </Col>
               </Row>
-              <Row>
-                <Col xl="8" lg="12">
-                  <ListGroup>
-                    {Object.keys(bot.deal).map((k, i) => {
-                      if (typeof bot.deal[k] !== "object") {
-                        let dealData = bot.deal[k];
-                        if (k === "buy_timestamp" || k === "sell_timestamp") {
-                          dealData =
-                            bot.deal[k] === 0 || formatTimestamp(bot.deal[k]);
-                        }
-                        return (
-                          <ListGroupItem
-                            key={i}
+              <ListGroup className="list-group-flush">
+                {Object.keys(bot.deal).map((k, i) => {
+                  if (typeof bot.deal[k] !== "object") {
+                    let dealData = bot.deal[k];
+                    if (k === "buy_timestamp" || k === "sell_timestamp") {
+                      dealData =
+                        bot.deal[k] === 0 || formatTimestamp(bot.deal[k]);
+                    }
+                    return (
+                      <ListGroup.Item
+                        action
+                        as="h5"
+                        key={i}
+                        className="d-flex justify-content-between align-items-start"
+                      >
+                        <small>{k}</small>
+                        {dealData || dealData > 0 ? (
+                          <Badge bg="secondary">{dealData}</Badge>
+                        ) : (
+                          <small>{dealData}</small>
+                        )}
+                      </ListGroup.Item>
+                    );
+                  } else {
+                    return (
+                      <ListGroup key={i} variant="flush">
+                        {Object.keys(bot.deal[k]).map((l, j) => (
+                          <ListGroup.Item
+                            key={j}
+                            as="h5"
                             className="d-flex justify-content-between align-items-start"
                           >
-                            <strong>{k}</strong> {dealData}
-                          </ListGroupItem>
-                        );
-                      } else {
-                        return (
-                          <ListGroup key={i}>
-                            {Object.keys(bot.deal[k]).map((l, j) => (
-                              <ListGroupItem key={j}>
-                                {l}:{bot.deal[k][l]}
-                              </ListGroupItem>
-                            ))}
-                          </ListGroup>
-                        );
-                      }
-                    })}
-                    <ListGroupItem className="d-flex justify-content-between align-items-start">
-                      <strong>duration</strong>
-                      <p className="small">{renderDuration(bot)}</p>
-                    </ListGroupItem>
-                  </ListGroup>
-                </Col>
-              </Row>
+                            <div className="ms-2 me-auto">
+                              {l}:{bot.deal[k][l]}
+                            </div>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    );
+                  }
+                })}
+                <ListGroup.Item
+                  as="h5"
+                  className="d-flex justify-content-between align-items-start"
+                >
+                  <small>duration</small>
+                  <Badge bg="secondary">{renderDuration(bot)}</Badge>
+                </ListGroup.Item>
+              </ListGroup>
             </Container>
           )}
         </Card.Body>
