@@ -268,6 +268,10 @@ class SpotLongDeal(DealAbstract):
                 new_trailling_stop_loss: float = close_price - (
                     close_price * ((self.active_bot.trailling_deviation) / 100)
                 )
+
+                # Avoid duplicate logs
+                trailling_profit_price = self.active_bot.deal.trailling_profit_price
+
                 # Update deal take_profit
                 self.active_bot.deal.take_profit_price = new_take_profit
                 # take_profit but for trailling, to avoid confusion
@@ -286,9 +290,14 @@ class SpotLongDeal(DealAbstract):
                         new_trailling_stop_loss
                     )
 
-                self.active_bot.logs.append(
-                    f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
-                )
+                if (
+                    self.active_bot.deal.trailling_profit_price
+                    != trailling_profit_price
+                ):
+                    self.active_bot.logs.append(
+                        f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
+                    )
+
                 self.controller.save(self.active_bot)
 
             # Direction 2 (downward): breaking the trailling_stop_loss
