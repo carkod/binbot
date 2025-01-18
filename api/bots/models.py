@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Annotated
 from uuid import uuid4, UUID
 from tools.enum_definitions import (
     BinanceKlineIntervals,
@@ -7,17 +7,26 @@ from tools.enum_definitions import (
     Strategy,
 )
 from deals.models import DealModel
-from pydantic import (
-    BaseModel,
-    Field,
-    field_validator,
-)
+from pydantic import BaseModel, Field, field_validator, BeforeValidator
 from database.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
+
+
+def _prepare_comma_seperated_float(value: str | float) -> float | str:
+    if isinstance(value, str):
+        return value.replace(",", ".")
+
+    return value
+
+
+Amount = Annotated[
+    float,
+    BeforeValidator(_prepare_comma_seperated_float),
+]
 
 
 class OrderModel(BaseModel):
@@ -54,8 +63,8 @@ class OrderModel(BaseModel):
 class BotBase(BaseModel):
     pair: str
     fiat: str = Field(default="USDC")
-    base_order_size: float = Field(
-        default=15, description="Min Binance 0.0001 BNB approx 15USD"
+    base_order_size: Amount = Field(
+        default=15, ge=0, description="Min Binance 0.0001 BNB approx 15USD"
     )
     candlestick_interval: BinanceKlineIntervals = Field(
         default=BinanceKlineIntervals.fifteen_minutes,
@@ -65,6 +74,7 @@ class BotBase(BaseModel):
     )
     cooldown: int = Field(
         default=0,
+        ge=0,
         description="cooldown period in minutes before opening next bot with same pair",
     )
     created_at: float = Field(default_factory=timestamp)
@@ -74,19 +84,22 @@ class BotBase(BaseModel):
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
     status: Status = Field(default=Status.inactive)
-    stop_loss: float = Field(
-        default=0, description="If stop_loss > 0, allow for reversal"
+    stop_loss: Amount = Field(
+        default=0,
+        ge=-1,
+        le=101,
+        description="If stop_loss > 0, allow for reversal",
     )
     margin_short_reversal: bool = Field(default=False)
-    take_profit: float = Field(default=0)
+    take_profit: Amount = Field(default=0, ge=-1, le=101)
     trailling: bool = Field(default=False)
-    trailling_deviation: float = Field(
+    trailling_deviation: Amount = Field(
         default=0,
         ge=-1,
         le=101,
         description="Trailling activation (first take profit hit)",
     )
-    trailling_profit: float = Field(default=0)
+    trailling_profit: Amount = Field(default=0, ge=-1, le=101)
     strategy: Strategy = Field(default=Strategy.long)
     total_commission: float = Field(
         default=0, description="autoswitch to short_strategy"
@@ -144,18 +157,6 @@ class BotModel(BotBase):
     def deserialize_id(cls, v):
         if isinstance(v, UUID):
             return str(v)
-        return True
-
-    @field_validator(
-        "take_profit",
-        "stop_loss",
-        "trailling_profit",
-        "trailling_deviation",
-        mode="before",
-    )
-    def convert_string_floats(cls, v):
-        if isinstance(v, str):
-            return float(v)
         return True
 
     @classmethod

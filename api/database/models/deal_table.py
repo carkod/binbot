@@ -29,7 +29,7 @@ class DealBase(SQLModel):
     )
     trailling_profit_price: float = Field(default=0)
     stop_loss_price: float = Field(default=0)
-    trailling_profit: float = Field(default=0)
+    trailling_profit: float = Field(default=0, description="to be deprecated, duplicate field")
     original_buy_price: float = Field(default=0)
 
     # fields for margin trading
@@ -82,7 +82,7 @@ class DealTable(DealBase, table=True):
 
     __tablename__ = "deal"
 
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True, unique=True)
 
     # Relationships
     bot: Optional["BotTable"] = Relationship(back_populates="deal", cascade_delete=True)

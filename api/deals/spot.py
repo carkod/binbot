@@ -45,7 +45,7 @@ class SpotLongDeal(DealAbstract):
         )
 
         # Reset bot operations
-        new_bot = BotBase.model_construct(**self.active_bot.model_dump())
+        new_bot = BotBase.model_validate(self.active_bot.model_dump())
         new_bot.strategy = Strategy.margin_short
 
         bot_table = self.controller.create(data=new_bot)
@@ -55,7 +55,6 @@ class SpotLongDeal(DealAbstract):
 
         self.active_bot = margin_strategy_deal.margin_short_base_order()
 
-        self.controller.save(self.active_bot)
         return self.active_bot
 
     def execute_stop_loss(self) -> BotModel:
