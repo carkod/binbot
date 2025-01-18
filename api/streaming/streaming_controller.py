@@ -114,7 +114,7 @@ class StreamingController(BaseStreaming):
                 )
             elif current_test_bot:
                 create_deal_controller = DealAbstract(
-                    bot=current_bot, db_table=PaperTradingTable
+                    bot=current_test_bot, db_table=PaperTradingTable
                 )
                 self.execute_strategies(
                     current_test_bot,

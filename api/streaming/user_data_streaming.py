@@ -3,9 +3,7 @@ import json
 from apis import BinanceApi
 from streaming.socket_client import SpotWebsocketStreamClient
 from database.db import Database
-from database.models.order_table import ExchangeOrderTable
 from database.bot_crud import BotTableCrud
-from database.paper_trading_crud import PaperTradingTableCrud
 from database.utils import independent_session
 
 
@@ -14,7 +12,6 @@ class UserDataStreaming(Database, BinanceApi):
         self.streaming_db = self._db
         self.session = independent_session()
         self.bot_controller = BotTableCrud(session=self.session)
-        self.test_bot_controller = PaperTradingTableCrud(session=self.session)
         pass
 
     def on_error(self, socket, error):

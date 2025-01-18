@@ -70,8 +70,10 @@ class LowBalanceCleanupError(BinbotErrors):
 class DealCreationError(BinbotErrors):
     pass
 
+
 class SaveBotError(BinbotErrors):
     pass
+
 
 class OpenDealError(Exception):
     pass

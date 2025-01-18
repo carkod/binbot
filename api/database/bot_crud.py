@@ -11,7 +11,7 @@ from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
-from tools.exceptions import SaveBotError
+from tools.exceptions import SaveBotError, BinbotErrors
 
 
 class BotTableCrud:
@@ -280,7 +280,10 @@ class BotTableCrud:
         )
         order = self.session.exec(statement).first()
         # self.session.close()
-        return order
+        if order:
+            return order
+        else:
+            raise BinbotErrors("Order not found")
 
     def update_order(
         self, order: ExchangeOrderTable, commission: float

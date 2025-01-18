@@ -93,11 +93,6 @@ class BotBase(BaseModel):
         default=0, description="autoswitch to short_strategy"
     )
 
-
-class BotPayload(BotBase):
-    id: Optional[str] = Field(default="")
-
-
 class BotModel(BotBase):
     """
     The way SQLModel works causes a lot of errors

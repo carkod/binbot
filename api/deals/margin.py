@@ -8,8 +8,14 @@ from tools.enum_definitions import CloseConditions, DealType, OrderSide, Strateg
 from bots.models import BotModel, OrderModel, BotBase
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors, MarginShortError
-from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling, round_timestamp
+from tools.round_numbers import (
+    round_numbers,
+    supress_notation,
+    round_numbers_ceiling,
+    round_timestamp,
+)
 from deals.factory import DealAbstract
+
 
 class MarginDeal(DealAbstract):
     def __init__(
@@ -30,12 +36,16 @@ class MarginDeal(DealAbstract):
 
         """
         if float(self.isolated_balance[0]["quoteAsset"]["borrowed"]) > 0:
-            self.active_bot.logs.append(f'Borrowed {self.isolated_balance[0]["quoteAsset"]["asset"]} still remaining, please clear out manually')
+            self.active_bot.logs.append(
+                f'Borrowed {self.isolated_balance[0]["quoteAsset"]["asset"]} still remaining, please clear out manually'
+            )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
 
         if float(self.isolated_balance[0]["baseAsset"]["borrowed"]) > 0:
-            self.active_bot.logs.append(f'Borrowed {self.isolated_balance[0]["baseAsset"]["asset"]} still remaining, please clear out manually')
+            self.active_bot.logs.append(
+                f'Borrowed {self.isolated_balance[0]["baseAsset"]["asset"]} still remaining, please clear out manually'
+            )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
 
@@ -157,9 +167,9 @@ class MarginDeal(DealAbstract):
             asset=asset, isolatedSymbol=self.active_bot.pair
         )
 
-        self.active_bot.deal.margin_short_loan_principal = float(loan_details["rows"][0][
-            "principal"
-        ])
+        self.active_bot.deal.margin_short_loan_principal = float(
+            loan_details["rows"][0]["principal"]
+        )
         self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
 
         # Estimate interest to add to total cost
@@ -327,7 +337,11 @@ class MarginDeal(DealAbstract):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        initial_price = float(self.matching_engine(self.active_bot.pair, False, qty=self.active_bot.base_order_size))
+        initial_price = float(
+            self.matching_engine(
+                self.active_bot.pair, False, qty=self.active_bot.base_order_size
+            )
+        )
 
         if isinstance(self.controller, BotTableCrud):
             self.init_margin_short(initial_price)
@@ -359,7 +373,9 @@ class MarginDeal(DealAbstract):
 
         self.active_bot.orders.append(order_data)
 
-        self.active_bot.deal.margin_short_sell_timestamp = round_timestamp(order_res["transactTime"])
+        self.active_bot.deal.margin_short_sell_timestamp = round_timestamp(
+            order_res["transactTime"]
+        )
         self.active_bot.deal.margin_short_sell_price = float(order_res["price"])
         self.active_bot.deal.buy_total_qty = float(order_res["origQty"])
         self.active_bot.deal.margin_short_base_order = float(order_res["origQty"])
@@ -523,7 +539,9 @@ class MarginDeal(DealAbstract):
         # These errors are sometimes hard to debug, it takes hours
         self.active_bot.deal.margin_short_buy_back_price = float(res["price"])
         self.active_bot.deal.buy_total_qty = float(res["origQty"])
-        self.active_bot.deal.margin_short_buy_back_timestamp = float(res["transactTime"])
+        self.active_bot.deal.margin_short_buy_back_timestamp = float(
+            res["transactTime"]
+        )
 
         # Future overrides
         self.active_bot.deal.closing_price = float(res["price"])
@@ -610,16 +628,19 @@ class MarginDeal(DealAbstract):
             "Switching margin_short to long strategy", self.active_bot
         )
 
-        new_bot = BotBase.model_construct(**self.active_bot.model_dump())
+        # Create new bot as you'd do through Dashboard terminal
+        new_bot = BotBase.model_validate(self.active_bot.model_dump())
         new_bot.strategy = Strategy.long
-        bot_table = self.controller.save(new_bot)
-        self.active_bot = BotModel.dump_from_table(bot_table)
+        created_bot = self.controller.create(new_bot)
 
-        self.active_bot = self.base_order()
-
-        # Keep bot up to date in the DB
-        # this avoid unsyched bots when errors ocurr in other functions
-        self.controller.save(self.active_bot)
+        # to avoid circular imports make network request
+        # This class is already imported for switch_to_margin_short
+        bot_id = self.request(
+            url=self.bb_activate_bot_url, payload={"id": str(created_bot.id)}
+        )
+        self.controller.update_logs(
+            f"Switched margin_short to long strategy. New bot id: {bot_id}"
+        )
         return self.active_bot
 
     def update_trailling_profit(self, close_price: float) -> BotModel:

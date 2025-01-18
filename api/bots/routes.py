@@ -17,8 +17,7 @@ from typing import List, Union
 from tools.exceptions import BinanceErrors, BinbotErrors
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
-from uuid import UUID
-from bots.models import BotModelResponse, BotPayload
+from bots.models import BotModelResponse
 
 bot_blueprint = APIRouter()
 bot_ta = TypeAdapter(BotResponse)
@@ -41,7 +40,7 @@ def get(
         # Has to be converted to BotModel to
         # be able to serialize nested objects
         ta = TypeAdapter(list[BotModelResponse])
-        data = ta.dump_python(bots)
+        data = ta.dump_python(bots)  # type: ignore
         response = BotListResponse(message="Successfully found bots!", data=data)
         return response
     except ValidationError as error:
@@ -114,13 +113,14 @@ def create(
 @bot_blueprint.put("/bot/{id}", response_model=BotResponse, tags=["bots"])
 def edit(
     id: str,
-    bot_item: BotPayload,
+    bot_item: BotBase,
     session: Session = Depends(get_session),
 ):
     try:
-        bot_item.id = UUID(id)
+
         controller = BotTableCrud(session=session)
-        bot_table = controller.get_one(bot_item)
+        bot_table = controller.get_one(id)
+        bot_table.sqlmodel_update(bot_item)
 
         # bottable crud save only accepts BotModel
         # this is to keep consistency across the entire app
@@ -134,6 +134,8 @@ def edit(
         }
     except ValidationError as error:
         return BotResponse(message=f"Failed to edit bot: {error.json()}", error=1)
+    except BinbotErrors as error:
+        return BotResponse(message=error.message, error=1)
 
 
 @bot_blueprint.delete("/bot", response_model=IResponseBase, tags=["bots"])

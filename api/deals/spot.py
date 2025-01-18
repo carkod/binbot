@@ -78,11 +78,15 @@ class SpotLongDeal(DealAbstract):
             if not closed_orders:
                 order = self.verify_deal_close_order()
                 if order:
-                    self.active_bot.logs.append("Execute stop loss previous order found! Appending...")
+                    self.active_bot.logs.append(
+                        "Execute stop loss previous order found! Appending..."
+                    )
                     self.active_bot.orders.append(order)
                     self.controller.save(self.active_bot)
                 else:
-                    self.active_bot.logs.append("No quantity in balance, no closed orders. Cannot execute update stop limit.")
+                    self.active_bot.logs.append(
+                        "No quantity in balance, no closed orders. Cannot execute update stop limit."
+                    )
                     self.active_bot.status = Status.error
                     self.controller.save(self.active_bot)
                     return self.active_bot
@@ -211,7 +215,9 @@ class SpotLongDeal(DealAbstract):
         self.active_bot.deal.closing_timestamp = float(res["transactTime"])
 
         self.active_bot.status = Status.completed
-        self.active_bot.logs.append(f"Completed take profit after failing to break trailling {self.active_bot.pair}")
+        self.active_bot.logs.append(
+            f"Completed take profit after failing to break trailling {self.active_bot.pair}"
+        )
         self.controller.save(self.active_bot)
         return self.active_bot
 
@@ -280,7 +286,9 @@ class SpotLongDeal(DealAbstract):
                         new_trailling_stop_loss
                     )
 
-                self.active_bot.logs.append(f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}")
+                self.active_bot.logs.append(
+                    f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
+                )
                 self.controller.save(self.active_bot)
 
             # Direction 2 (downward): breaking the trailling_stop_loss

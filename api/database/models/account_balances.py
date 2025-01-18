@@ -21,7 +21,10 @@ class ExchangeInfoTable(SQLModel, table=True):
     base_asset: str = Field(
         index=True, description="Base asset of the symbol e.g. BTCUSDC -> BTC"
     )
-    binance_exchange_info: dict = Field(sa_column=Column(JSON), description="For now, this is the full binance exchange info to make things easier")
+    binance_exchange_info: dict = Field(
+        sa_column=Column(JSON),
+        description="For now, this is the full binance exchange info to make things easier",
+    )
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
 
@@ -46,7 +49,16 @@ class ConsolidatedBalancesTable(SQLModel, table=True):
 
     __tablename__ = "consolidated_balances"
 
-    id: float = Field(default_factory=timestamp, primary_key=True, unique=True, index=True, nullable=False)
+    id: float = Field(
+        default_factory=timestamp,
+        primary_key=True,
+        unique=True,
+        index=True,
+        nullable=False,
+    )
     asset: str = Field(index=True, nullable=False)
     free: Optional[float] = Field(default=0)
-    estimated_total_fiat: Optional[float] = Field(default=0, description="This is derived from free * price of fiat, which is determined in autotrade")
+    estimated_total_fiat: Optional[float] = Field(
+        default=0,
+        description="This is derived from free * price of fiat, which is determined in autotrade",
+    )
