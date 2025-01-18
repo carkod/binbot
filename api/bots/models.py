@@ -1,4 +1,4 @@
-from typing import List, Optional, Annotated
+from typing import List, Optional
 from uuid import uuid4, UUID
 from tools.enum_definitions import (
     BinanceKlineIntervals,
@@ -7,26 +7,14 @@ from tools.enum_definitions import (
     Strategy,
 )
 from deals.models import DealModel
-from pydantic import BaseModel, Field, field_validator, BeforeValidator
+from pydantic import BaseModel, Field, field_validator
 from database.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
-
-
-def _prepare_comma_seperated_float(value: str | float) -> float | str:
-    if isinstance(value, str):
-        return value.replace(",", ".")
-
-    return value
-
-
-Amount = Annotated[
-    float,
-    BeforeValidator(_prepare_comma_seperated_float),
-]
+from database.utils import Amount
 
 
 class OrderModel(BaseModel):
@@ -141,7 +129,7 @@ class BotModel(BotBase):
                     "status": "inactive",
                     "stop_loss": 0,
                     "take_profit": 2.3,
-                    "trailling": "true",
+                    "trailling": True,
                     "trailling_deviation": 0.63,
                     "trailling_profit": 2.3,
                     "strategy": "long",
