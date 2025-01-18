@@ -142,7 +142,7 @@ class SpotLongDeal(DealAbstract):
             qty = self.compute_qty(self.active_bot.pair)
             logging.error(f"trailling_profit qty: {qty}")
             # Already sold?
-            if qty > 0:
+            if qty == 0:
                 closed_orders = self.close_open_orders(self.active_bot.pair)
                 if not closed_orders:
                     order = self.verify_deal_close_order()
@@ -181,13 +181,13 @@ class SpotLongDeal(DealAbstract):
 
         order_data = OrderModel(
             timestamp=res["transactTime"],
-            order_id=res["orderId"],
+            order_id=int(res["orderId"]),
             deal_type=DealType.take_profit,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
-            price=res["price"],
-            qty=res["origQty"],
+            price=float(res["price"]),
+            qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
         )
