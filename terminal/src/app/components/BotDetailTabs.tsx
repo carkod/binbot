@@ -28,7 +28,9 @@ const BotDetailTabs: FC = () => {
   // Deals and orders information need to come from the server
   const handleActivation = async (id: string) => {
     await updateBot({ body: bot, id });
-    const result = await dispatch(botsApiSlice.endpoints.activateBot.initiate(id));
+    const result = await dispatch(
+      botsApiSlice.endpoints.activateBot.initiate(id),
+    );
     if (result.isSuccess) {
       navigate(`/bots/edit/${id}`);
     }

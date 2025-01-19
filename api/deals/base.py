@@ -155,7 +155,8 @@ class BaseDeal(OrderController):
         if there are any SELL orders
         """
         all_orders = self.get_all_orders(
-            self.active_bot.pair, start_time=float(self.active_bot.deal.opening_timestamp)
+            self.active_bot.pair,
+            start_time=float(self.active_bot.deal.opening_timestamp),
         )
         for order in all_orders:
             if (

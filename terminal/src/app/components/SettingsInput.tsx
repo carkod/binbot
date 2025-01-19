@@ -25,7 +25,7 @@ const SettingsInput: FC<SettingsInputProps> = ({
   register,
   type = "text",
   required = false,
-}): JSX.Element => {
+}) => {
   return (
     <Form.Group>
       <Form.Label htmlFor={name}>{label}</Form.Label>

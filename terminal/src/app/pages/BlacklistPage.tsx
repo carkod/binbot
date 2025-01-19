@@ -10,7 +10,6 @@ import {
   useGetBlacklistQuery,
 } from "../../features/blacklistApiSlice";
 
-
 const BlacklistPage: FC = () => {
   const { data: symbols } = useGetSymbolsQuery();
   const { data: blacklistData } = useGetBlacklistQuery();

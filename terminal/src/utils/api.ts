@@ -16,7 +16,7 @@ export function buildBackUrl() {
 
 export const binbotBaseQuery = fetchBaseQuery({
   baseUrl: buildBackUrl(),
-  prepareHeaders: (headers, { getState }) => {
+  prepareHeaders: (headers) => {
     const token = getToken();
 
     if (token) {
@@ -66,7 +66,7 @@ export const notifification = (type: NotificationType, message: string) => {
  * @returns
  */
 export const getQuoteAsset = (bot: Bot, balance_to_use?: string) => {
-  balance_to_use = balance_to_use || bot.balance_to_use
+  balance_to_use = balance_to_use || bot.fiat;
   return bot.pair.replace(balance_to_use, "");
 };
 
@@ -74,7 +74,7 @@ export const getQuoteAsset = (bot: Bot, balance_to_use?: string) => {
 // This is done in the front-end because it doesn't matter in the back-end, we always get the full list of symbols
 export const filterSymbolByBaseAsset = (
   options: string[],
-  baseAsset: string
+  baseAsset: string,
 ): string[] => {
   return options.filter((item) => item.endsWith(baseAsset));
 };

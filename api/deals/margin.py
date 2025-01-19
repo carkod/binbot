@@ -205,7 +205,9 @@ class MarginDeal(DealAbstract):
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
-            query_loan: dict = self.get_margin_loan_details(self.active_bot.deal.margin_loan_id)
+            query_loan: dict = self.get_margin_loan_details(
+                self.active_bot.deal.margin_loan_id
+            )
             if float(query_loan["total"]) > 0 and repay_amount > 0:
                 # Only supress trailling 0s, so that everything is paid
                 amount = round_numbers_ceiling(repay_amount, self.qty_precision)
@@ -229,10 +231,14 @@ class MarginDeal(DealAbstract):
                     # most likely it is still possible to update bot
                     pass
 
-                repay_details_res = self.get_margin_loan_details(loan_id=self.active_bot.deal.margin_loan_id)
+                repay_details_res = self.get_margin_loan_details(
+                    loan_id=self.active_bot.deal.margin_loan_id
+                )
 
                 if len(repay_details_res["rows"]) > 0:
-                    self.active_bot.deal.total_interests = repay_details_res["rows"][0]["interest"]
+                    self.active_bot.deal.total_interests = repay_details_res["rows"][0][
+                        "interest"
+                    ]
 
                 self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
                 sell_back_qty = supress_notation(
@@ -261,8 +267,8 @@ class MarginDeal(DealAbstract):
                         status=res["status"],
                     )
 
-                    self.active_bot.deal.total_commissions = self.calculate_total_commissions(
-                        res["fills"]
+                    self.active_bot.deal.total_commissions = (
+                        self.calculate_total_commissions(res["fills"])
                     )
 
                     self.active_bot.orders.append(sell_back_order)
@@ -498,7 +504,7 @@ class MarginDeal(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             res["fills"]
         )
 
@@ -553,7 +559,7 @@ class MarginDeal(DealAbstract):
                 status=res["status"],
             )
 
-            self.active_bot.total_commission = self.calculate_total_commissions(
+            self.active_bot.deal.total_commissions = self.calculate_total_commissions(
                 res["fills"]
             )
 

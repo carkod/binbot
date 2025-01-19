@@ -12,10 +12,7 @@ export default function marginTrading(
   const parsedCurrentPrice = currentPrice;
   const quoteAsset = getQuoteAsset(bot);
 
-  if (
-    bot.deal.opening_price &&
-    bot.deal.opening_price > 0
-  ) {
+  if (bot.deal.opening_price && bot.deal.opening_price > 0) {
     totalOrderLines.push({
       id: "base_order",
       text: "Base (Margin sell)",
@@ -79,8 +76,7 @@ export default function marginTrading(
           });
         } else {
           const price =
-            bot.deal.closing_price &&
-            bot.deal.closing_price > 0
+            bot.deal.closing_price && bot.deal.closing_price > 0
               ? bot.deal.closing_price
               : parsedCurrentPrice;
           totalOrderLines.push({

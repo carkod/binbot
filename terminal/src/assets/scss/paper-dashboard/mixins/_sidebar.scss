@@ -68,39 +68,19 @@
   }
 }
 
-
 @mixin sidebar-toggle($invert: false) {
   // Sidebar toggle
-.nav-open {
-  @include transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
-  .main-panel {
-    @if $invert {
-      @include transform-translate-x(0);
-      width: 100vw;
-    } @else {
-      @include transform-translate-x($navbar-width);  
-    }
-  }
-
-  .sidebar {
-    @if $invert {
-      @include transform-translate-x(-$navbar-width);
-    } @else {
-      @include transform-translate-x(0);
-    }
-  }
-
-  .menu-on-right {
+  .nav-open {
+    @include transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
     .main-panel {
       @if $invert {
-        @include transform-translate-x(-$navbar-width);
+        @include transform-translate-x(0);
+        width: 100vw;
       } @else {
         @include transform-translate-x($navbar-width);
       }
-      
     }
 
-    .navbar-collapse,
     .sidebar {
       @if $invert {
         @include transform-translate-x(-$navbar-width);
@@ -109,13 +89,31 @@
       }
     }
 
-    .navbar-translate {
-      @if $invert {
-        @include transform-translate-x(-$navbar-width);
-      } @else {
-        @include transform-translate-x($navbar-width);
+    .menu-on-right {
+      .main-panel {
+        @if $invert {
+          @include transform-translate-x(-$navbar-width);
+        } @else {
+          @include transform-translate-x($navbar-width);
+        }
+      }
+
+      .navbar-collapse,
+      .sidebar {
+        @if $invert {
+          @include transform-translate-x(-$navbar-width);
+        } @else {
+          @include transform-translate-x(0);
+        }
+      }
+
+      .navbar-translate {
+        @if $invert {
+          @include transform-translate-x(-$navbar-width);
+        } @else {
+          @include transform-translate-x($navbar-width);
+        }
       }
     }
   }
-}
 }

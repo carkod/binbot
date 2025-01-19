@@ -1,9 +1,7 @@
-from time import time
 from typing import Union
-from sqlmodel import Session, or_, select, case, desc, asc
+from sqlmodel import Session, select, case, desc, asc
 from database.models.bot_table import PaperTradingTable
 from bots.models import BotModel, BotBase
-from database.models.deal_table import DealTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from collections.abc import Sequence

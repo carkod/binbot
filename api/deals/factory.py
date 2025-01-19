@@ -79,14 +79,14 @@ class DealAbstract(BaseDeal):
             status=res["status"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             res["fills"]
         )
 
         self.active_bot.orders.append(order_data)
         self.active_bot.deal.take_profit_price = float(res["price"])
         self.active_bot.deal.closing_price = float(res["price"])
-        self.active_bot.deal.closing_qty =float(res["origQty"])
+        self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = float(res["transactTime"])
         self.active_bot.status = Status.completed
 
@@ -210,7 +210,7 @@ class DealAbstract(BaseDeal):
                 # Append now new take_profit deal
                 new_deals.append(take_profit_order)
                 self.active_bot.orders = new_deals
-                self.active_bot.total_commission = total_commission
+                self.active_bot.deal.total_commissions = total_commission
                 self.controller.save(self.active_bot)
                 self.controller.update_logs("take_profit deal successfully updated")
                 return self.active_bot

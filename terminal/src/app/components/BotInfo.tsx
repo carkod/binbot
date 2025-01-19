@@ -13,7 +13,7 @@ import { renderDuration, formatTimestamp } from "../../utils/time";
 
 export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
-    bot.orders?.length > 0
+    bot.orders?.length > 0,
   );
   return (
     <Card>

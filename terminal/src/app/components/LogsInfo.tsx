@@ -1,4 +1,4 @@
-import { type FC, useState } from "react";
+import React, { type FC, useState } from "react";
 import { Button, Card, ListGroup } from "react-bootstrap";
 
 const LogInfo: FC<{

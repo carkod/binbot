@@ -117,7 +117,6 @@ def edit(
     session: Session = Depends(get_session),
 ):
     try:
-
         controller = BotTableCrud(session=session)
         bot_table = controller.get_one(id)
         bot_table.sqlmodel_update(bot_item)

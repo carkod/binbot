@@ -7,12 +7,14 @@ import { roundDecimals } from "../../utils/math";
 import { BotStatus } from "../../utils/enums";
 import { formatTimestamp, renderDuration } from "../../utils/time";
 
+type handleCallback = (id: string) => void;
+
 interface BotCardProps {
   bot: Bot;
   botIndex?: number; // Selected bot index, this can be one of the selectedCards array
   selectedCards?: string[]; // Collection of selected cards
-  handleSelection?: (id: string) => void;
-  handleDelete?: (id: string) => void;
+  handleSelection?: handleCallback;
+  handleDelete?: handleCallback;
 }
 
 /**
@@ -128,13 +130,23 @@ const BotCard: FC<BotCardProps> = ({
             </Row>
           )}
 
-          {bot.commissions > 0 && (
+          {bot.deal?.total_commissions > 0 && (
             <Row>
               <Col md="6" xs="7">
                 <p className="small">Comissions</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">{`${bot.commissions} BNB`}</p>
+                <p className="small">{`${bot.deal.total_commissions} BNB`}</p>
+              </Col>
+            </Row>
+          )}
+          {bot.deal?.total_interests > 0 && (
+            <Row>
+              <Col md="6" xs="7">
+                <p className="small">Comissions</p>
+              </Col>
+              <Col md="6" xs="5">
+                <p className="small">{`${bot.deal.total_interests} BNB`}</p>
               </Col>
             </Row>
           )}
@@ -164,7 +176,9 @@ const BotCard: FC<BotCardProps> = ({
               </Row>
             )}
           {bot.status === BotStatus.COMPLETED &&
-            Boolean(bot.deal?.opening_timestamp && bot.deal?.closing_timestamp) && (
+            Boolean(
+              bot.deal?.opening_timestamp && bot.deal?.closing_timestamp,
+            ) && (
               <Row>
                 <Col md="6" xs="7">
                   <p className="small">Duration</p>

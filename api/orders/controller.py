@@ -129,7 +129,9 @@ class OrderController(Account):
             # get it from fills
 
         try:
-            data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+            data = self.signed_request(
+                url=self.order_url, method="POST", payload=payload
+            )
         except BinanceErrors as e:
             # use market order if FOK fails
             print(e)
@@ -172,7 +174,9 @@ class OrderController(Account):
             }
 
         try:
-            data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+            data = self.signed_request(
+                url=self.order_url, method="POST", payload=payload
+            )
         except BinanceErrors as e:
             # use market order if FOK fails
             print(e)

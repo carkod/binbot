@@ -16,6 +16,7 @@ from tools.exceptions import BinanceErrors
 from datetime import datetime
 from apis import BinanceApi
 
+
 class BaseStreaming:
     def __init__(self) -> None:
         self.binance_api = BinanceApi()

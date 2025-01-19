@@ -10,7 +10,10 @@ if TYPE_CHECKING:
 
 class DealBase(SQLModel):
     current_price: float = Field(default=0)
-    take_profit_price: float = Field(default=0, description="derived from take_profit, while this price gets updated according to market, take_profit percentage doesn't")
+    take_profit_price: float = Field(
+        default=0,
+        description="derived from take_profit, while this price gets updated according to market, take_profit percentage doesn't",
+    )
     trailling_stop_loss_price: float = Field(
         default=0,
         description="take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price",

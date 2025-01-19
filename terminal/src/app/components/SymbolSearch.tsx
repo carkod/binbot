@@ -23,7 +23,7 @@ const SymbolSearch: FC<{
   onBlur,
   required = false,
   disabled = false,
-  errors = {}
+  errors = {},
 }) => {
   const [state, setState] = useState<string>(value);
   const [optionsState, setOptionsState] = useState<string[]>(options);
@@ -35,10 +35,13 @@ const SymbolSearch: FC<{
     }
     // BTCUSDT, BTCUSDC, BTCETH, ETHUSDT, ETHUSDC -> BTCUSDC
     // check test for examples
-    if (options && options.length > 0 ) {
+    if (options && options.length > 0) {
       let updatedOptions = options;
       if (autotradeSettings?.balance_to_use) {
-        updatedOptions = filterSymbolByBaseAsset(options, autotradeSettings.balance_to_use);
+        updatedOptions = filterSymbolByBaseAsset(
+          options,
+          autotradeSettings.balance_to_use,
+        );
       }
       setOptionsState(updatedOptions);
     }

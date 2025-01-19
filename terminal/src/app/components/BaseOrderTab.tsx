@@ -77,7 +77,7 @@ const BaseOrderTab: FC = () => {
 
   // Data
   useEffect(() => {
-    const { unsubscribe } = watch((v, { name, type }) => {
+    const { unsubscribe } = watch((v, { name }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
           dispatch(setToggle({ name, value: v[name] }));

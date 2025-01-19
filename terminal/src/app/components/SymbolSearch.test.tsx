@@ -4,7 +4,14 @@ import { filterSymbolByBaseAsset } from "../../utils/api";
 describe("Search symbols", () => {
   it("returns symbols only with the given baseAsset", () => {
     const baseAsset = "USDC";
-    const listSymbols = ["USDCBNB", "BTCUSDT", "BTCUSDC", "BTCETH", "ETHUSDT", "ETHUSDC"];
+    const listSymbols = [
+      "USDCBNB",
+      "BTCUSDT",
+      "BTCUSDC",
+      "BTCETH",
+      "ETHUSDT",
+      "ETHUSDC",
+    ];
     const symbols = filterSymbolByBaseAsset(listSymbols, baseAsset);
 
     // access Date.now() will result in the date set above

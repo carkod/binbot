@@ -1,0 +1,12 @@
+charting_library/
+node_modules/
+dist/
+**.json
+**.md
+**.lock
+vite.config.js
+*.html
+**/.git
+*/.*
+*.*.yml
+

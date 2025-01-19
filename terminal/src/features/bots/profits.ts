@@ -45,7 +45,7 @@ function getInterestsShortMargin(bot) {
  */
 export function computeSingleBotProfit(
   bot: Bot,
-  realTimeCurrPrice: number | null = null
+  realTimeCurrPrice: number | null = null,
 ) {
   if (bot.deal && bot.base_order_size > 0) {
     if (bot.deal.opening_price > 0) {
@@ -60,9 +60,11 @@ export function computeSingleBotProfit(
       return +profitChange.toFixed(2);
     } else if (bot.deal.closing_price > 0) {
       // Completed margin short
-      
+
       let profitChange =
-        ((bot.deal.opening_price - bot.deal.closing_price) / bot.deal.opening_price) * 100;
+        ((bot.deal.opening_price - bot.deal.closing_price) /
+          bot.deal.opening_price) *
+        100;
       return roundDecimals(profitChange, 2);
     } else {
       // Not completed margin_short
@@ -75,7 +77,9 @@ export function computeSingleBotProfit(
       }
 
       let profitChange =
-        ((bot.deal.opening_price - bot.deal.closing_price) / bot.deal.opening_price) * 100;
+        ((bot.deal.opening_price - bot.deal.closing_price) /
+          bot.deal.opening_price) *
+        100;
       return roundDecimals(profitChange, 2);
     }
   } else {
@@ -114,7 +118,7 @@ export function computeTotalProfit(bots) {
           currTotalProfit = getProfit(
             enterPositionPrice,
             exitPositionPrice,
-            bot.strategy
+            bot.strategy,
           );
         }
       }

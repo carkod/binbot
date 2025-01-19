@@ -10,10 +10,13 @@ export default function spotTrading(
 ): OrderLine[] {
   const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];
-  if (bot.deal.opening_price && bot.deal.opening_price > 0 && bot.status === BotStatus.ACTIVE) {
+  if (
+    bot.deal.opening_price &&
+    bot.deal.opening_price > 0 &&
+    bot.status === BotStatus.ACTIVE
+  ) {
     currentPrice = bot.deal.opening_price;
   }
-
 
   if (bot.base_order_size && currentPrice) {
     if (bot.deal.closing_price && bot.deal.closing_price > 0) {
@@ -145,7 +148,8 @@ export default function spotTrading(
       let stopLossPrice = 0;
       if (bot.deal.opening_price) {
         stopLossPrice =
-          bot.deal.opening_price - bot.deal.opening_price * (bot.stop_loss / 100);
+          bot.deal.opening_price -
+          bot.deal.opening_price * (bot.stop_loss / 100);
       } else {
         stopLossPrice = currentPrice - currentPrice * (bot.stop_loss / 100);
       }

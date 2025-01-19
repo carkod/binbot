@@ -51,7 +51,15 @@ const ChartContainer: FC = () => {
         dispatch(setCurrentPrice(currentChartPrice));
       }
     }
-  }, [currentChartPrice, bot, setCurrentOrderLines, setBotProfit, botProfit, dispatch, initialBotProfit]);
+  }, [
+    currentChartPrice,
+    bot,
+    setCurrentOrderLines,
+    setBotProfit,
+    botProfit,
+    dispatch,
+    initialBotProfit,
+  ]);
 
   return (
     <Card style={{ minHeight: "650px" }}>
