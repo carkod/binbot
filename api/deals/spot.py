@@ -47,12 +47,12 @@ class SpotLongDeal(DealAbstract):
         # Reset bot operations
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
         new_bot.strategy = Strategy.margin_short
+        new_bot.logs = []
 
         bot_table = self.controller.create(data=new_bot)
         self.active_bot = BotModel.dump_from_table(bot_table)
 
         margin_strategy_deal = MarginDeal(bot=self.active_bot, db_table=self.db_table)
-
         self.active_bot = margin_strategy_deal.margin_short_base_order()
 
         return self.active_bot
