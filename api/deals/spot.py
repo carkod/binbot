@@ -45,7 +45,7 @@ class SpotLongDeal(DealAbstract):
         )
 
         # Reset bot operations
-        new_bot = BotBase.model_construct(**self.active_bot.model_dump())
+        new_bot = BotBase.model_validate(self.active_bot.model_dump())
         new_bot.strategy = Strategy.margin_short
 
         bot_table = self.controller.create(data=new_bot)
@@ -55,7 +55,6 @@ class SpotLongDeal(DealAbstract):
 
         self.active_bot = margin_strategy_deal.margin_short_base_order()
 
-        self.controller.save(self.active_bot)
         return self.active_bot
 
     def execute_stop_loss(self) -> BotModel:
@@ -79,11 +78,15 @@ class SpotLongDeal(DealAbstract):
             if not closed_orders:
                 order = self.verify_deal_close_order()
                 if order:
-                    self.active_bot.logs.append("Execute stop loss previous order found! Appending...")
+                    self.active_bot.logs.append(
+                        "Execute stop loss previous order found! Appending..."
+                    )
                     self.active_bot.orders.append(order)
                     self.controller.save(self.active_bot)
                 else:
-                    self.active_bot.logs.append("No quantity in balance, no closed orders. Cannot execute update stop limit.")
+                    self.active_bot.logs.append(
+                        "No quantity in balance, no closed orders. Cannot execute update stop limit."
+                    )
                     self.active_bot.status = Status.error
                     self.controller.save(self.active_bot)
                     return self.active_bot
@@ -140,8 +143,9 @@ class SpotLongDeal(DealAbstract):
             qty = self.active_bot.deal.buy_total_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
+            logging.error(f"trailling_profit qty: {qty}")
             # Already sold?
-            if qty > 0:
+            if qty == 0:
                 closed_orders = self.close_open_orders(self.active_bot.pair)
                 if not closed_orders:
                     order = self.verify_deal_close_order()
@@ -180,13 +184,13 @@ class SpotLongDeal(DealAbstract):
 
         order_data = OrderModel(
             timestamp=res["transactTime"],
-            order_id=res["orderId"],
+            order_id=int(res["orderId"]),
             deal_type=DealType.take_profit,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
-            price=res["price"],
-            qty=res["origQty"],
+            price=float(res["price"]),
+            qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
         )
@@ -199,11 +203,21 @@ class SpotLongDeal(DealAbstract):
 
         self.active_bot.deal.take_profit_price = res["price"]
         self.active_bot.deal.trailling_profit_price = res["price"]
+
+        # to be deprecated
         self.active_bot.deal.sell_price = res["price"]
         self.active_bot.deal.sell_qty = res["origQty"]
         self.active_bot.deal.sell_timestamp = res["transactTime"]
+
+        # new deal parameters to replace previous
+        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+
         self.active_bot.status = Status.completed
-        self.active_bot.logs.append(f"Completed take profit after failing to break trailling {self.active_bot.pair}")
+        self.active_bot.logs.append(
+            f"Completed take profit after failing to break trailling {self.active_bot.pair}"
+        )
         self.controller.save(self.active_bot)
         return self.active_bot
 
@@ -254,6 +268,10 @@ class SpotLongDeal(DealAbstract):
                 new_trailling_stop_loss: float = close_price - (
                     close_price * ((self.active_bot.trailling_deviation) / 100)
                 )
+
+                # Avoid duplicate logs
+                trailling_profit_price = self.active_bot.deal.trailling_profit_price
+
                 # Update deal take_profit
                 self.active_bot.deal.take_profit_price = new_take_profit
                 # take_profit but for trailling, to avoid confusion
@@ -272,10 +290,14 @@ class SpotLongDeal(DealAbstract):
                         new_trailling_stop_loss
                     )
 
-                self.controller.update_logs(
-                    f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}",
-                    self.active_bot,
-                )
+                if (
+                    self.active_bot.deal.trailling_profit_price
+                    != trailling_profit_price
+                ):
+                    self.active_bot.logs.append(
+                        f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
+                    )
+
                 self.controller.save(self.active_bot)
 
             # Direction 2 (downward): breaking the trailling_stop_loss
@@ -293,29 +315,6 @@ class SpotLongDeal(DealAbstract):
                     self.active_bot,
                 )
                 self.trailling_profit()
-
-        # Update unfilled orders
-        unupdated_order = next(
-            (
-                deal
-                for deal in self.active_bot.orders
-                if deal.deal_type == "NEW" or deal.price == 0
-            ),
-            None,
-        )
-        if unupdated_order:
-            order_response = self.get_all_orders(
-                self.active_bot.pair, unupdated_order.order_id
-            )
-            logging.info(f"Unfilled orders response{order_response}")
-            if order_response[0]["status"] == "FILLED":
-                for i, order in enumerate(self.active_bot.orders):
-                    if order.order_id == order_response["orderId"]:
-                        self.active_bot.orders[i].price = order_response["price"]
-                        self.active_bot.orders[i].qty = order_response["origQty"]
-                        self.active_bot.orders[i].status = order_response["status"]
-
-            self.controller.save(self.active_bot)
 
         self.base_producer.update_required(
             self.producer, "EXECUTE_SPOT_STREAMING_UPDATES"

@@ -2,6 +2,8 @@ import os
 from sqlalchemy import create_engine, pool
 from sqlmodel import Session
 from time import time
+from typing import Annotated
+from pydantic import BeforeValidator
 
 # This allows testing/Github action dummy envs
 db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@{os.getenv("POSTGRES_HOSTNAME", "localhost")}:{os.getenv("POSTGRES_PORT", 5432)}/{os.getenv("POSTGRES_DB", "postgres")}'
@@ -22,3 +24,16 @@ def independent_session() -> Session:
 
 def timestamp() -> float:
     return int(round(time() * 1000))
+
+
+def _prepare_comma_seperated_float(value: str | float) -> float | str:
+    if isinstance(value, str):
+        return value.replace(",", ".")
+
+    return value
+
+
+Amount = Annotated[
+    float,
+    BeforeValidator(_prepare_comma_seperated_float),
+]

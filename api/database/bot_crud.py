@@ -1,8 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from fastapi import Query
-from sqlmodel import Session, asc, desc, or_, select, case
-from database.utils import timestamp
+from sqlmodel import Session, asc, desc, select, case
 from bots.models import BotModel
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
@@ -12,7 +11,7 @@ from tools.enum_definitions import BinbotEnums, Status
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
-from tools.exceptions import SaveBotError
+from tools.exceptions import SaveBotError, BinbotErrors
 
 
 class BotTableCrud:
@@ -272,37 +271,35 @@ class BotTableCrud:
             return []
         return list(pairs)
 
+    def get_order(self, order_id: int) -> ExchangeOrderTable:
+        """
+        Get one order by order_id
+        """
+        statement = select(ExchangeOrderTable).where(
+            ExchangeOrderTable.order_id == order_id
+        )
+        order = self.session.exec(statement).first()
+        # self.session.close()
+        if order:
+            return order
+        else:
+            raise BinbotErrors("Order not found")
+
     def update_order(
         self, order: ExchangeOrderTable, commission: float
     ) -> ExchangeOrderTable:
         """
         Update order data
         """
-        statement = select(ExchangeOrderTable).where(
-            ExchangeOrderTable.order_id == order.order_id
-        )
-        initial_order = self.session.exec(statement).first()
 
-        if not initial_order:
-            raise ValueError("Order not found")
-
-        initial_order.status = order.status
-        initial_order.qty = order.qty
-        initial_order.order_side = order.order_side
-        initial_order.order_type = order.order_type
-        initial_order.timestamp = order.timestamp
-        initial_order.pair = order.pair
-        initial_order.time_in_force = order.time_in_force
-        initial_order.price = order.price
-
-        initial_bot = self.get_one(bot_id=str(initial_order.bot_id))
+        initial_bot = self.get_one(bot_id=str(order.bot_id))
         initial_bot.total_commission += commission
         initial_bot.logs.append("Order status updated")
 
-        self.session.add(initial_order)
+        self.session.add(order)
         self.session.add(initial_bot)
         self.session.commit()
-        self.session.refresh(initial_order)
+        self.session.refresh(order)
         self.session.refresh(initial_bot)
         self.session.close()
         return order

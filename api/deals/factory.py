@@ -120,7 +120,7 @@ class DealAbstract(BaseDeal):
         base_asset = self.find_baseAsset(pair)
         balance = self.get_single_raw_balance(base_asset)
         if balance > 0:
-            qty = round_numbers(balance["free"], self.qty_precision)
+            qty = round_numbers(balance, self.qty_precision)
             price: float = float(self.matching_engine(pair, True, qty))
             price = round_numbers(price, self.price_precision)
 
@@ -293,7 +293,11 @@ class DealAbstract(BaseDeal):
 
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
-        price = float(self.matching_engine(self.active_bot.pair, True, qty=self.active_bot.base_order_size))
+        price = float(
+            self.matching_engine(
+                self.active_bot.pair, True, qty=self.active_bot.base_order_size
+            )
+        )
         qty = round_numbers(
             (float(self.active_bot.base_order_size) / float(price)),
             self.qty_precision,

@@ -3,7 +3,6 @@ import json
 from apis import BinanceApi
 from streaming.socket_client import SpotWebsocketStreamClient
 from database.db import Database
-from database.models.order_table import ExchangeOrderTable
 from database.bot_crud import BotTableCrud
 from database.utils import independent_session
 
@@ -19,7 +18,7 @@ class UserDataStreaming(Database, BinanceApi):
         logging.error(f"User data streaming error: {error}")
         pass
 
-    def update_order_data(self, result, db_collection: str = "bots"):
+    def update_order_data(self, result):
         """
         Keep order data up to date
 
@@ -28,31 +27,35 @@ class UserDataStreaming(Database, BinanceApi):
         This keeps order data up to date as they are executed
         throught the executionReport websocket
 
+        Paper trading does not update orders. Orders are simulated.
+
         Args:
             result (dict): executionReport websocket result
             db_collection (str, optional): Defaults to "bots".
 
         """
 
-        update = ExchangeOrderTable(
-            order_id=int(result["i"]),
-            status=result["X"],
-            qty=float(result["q"]),
-            order_side=result["S"],
-            order_type=result["o"],
-            timestamp=result["T"],
-            pair=result["s"],
-            time_in_force=result["f"],
-        )
+        initial_order = self.bot_controller.get_order(order_id=int(result["i"]))
 
         if float(result["p"]) > 0:
-            update.price = float(result["p"])
+            price = float(result["p"])
         else:
-            update.price = float(result["L"])
+            price = float(result["L"])
+
+        initial_order.order_id = int(result["i"])
+        initial_order.status = result["X"]
+        initial_order.qty = float(result["q"])
+        initial_order.order_side = result["S"]
+        initial_order.order_type = result["o"]
+        initial_order.timestamp = result["T"]
+        initial_order.pair = result["s"]
+        initial_order.time_in_force = result["f"]
+        initial_order.price = price
 
         order_result = self.bot_controller.update_order(
-            order=update, commission=float(result["n"])
+            order=initial_order, commission=float(result["n"])
         )
+
         return order_result
 
     def get_user_data(self):

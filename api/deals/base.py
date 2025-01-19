@@ -205,7 +205,7 @@ class BaseDeal(OrderController):
                         # transfer from wallet
                         transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
                         available_balance = self.get_single_raw_balance(quote)
-                        amount_to_transfer = 15  # Min amount
+                        amount_to_transfer: float = 15  # Min amount
                         if available_balance < 15:
                             amount_to_transfer = available_balance
                         self.transfer_spot_to_isolated_margin(

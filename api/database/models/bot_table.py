@@ -69,11 +69,11 @@ class BotTable(SQLModel, table=True):
         back_populates="bot",
         sa_relationship_kwargs={"lazy": "joined"},
     )
-    deal_id: Optional[UUID] = Field(default=None, foreign_key="deal.id", ondelete="CASCADE")
-    # lazy option will allow objects to be nested when transformed for json return
-    deal: DealTable = Relationship(
-        sa_relationship_kwargs={"lazy": "joined"}
+    deal_id: Optional[UUID] = Field(
+        default=None, foreign_key="deal.id", ondelete="CASCADE"
     )
+    # lazy option will allow objects to be nested when transformed for json return
+    deal: DealTable = Relationship(sa_relationship_kwargs={"lazy": "joined"})
 
     model_config = {
         "from_attributes": True,
