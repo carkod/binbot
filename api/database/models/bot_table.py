@@ -60,20 +60,17 @@ class BotTable(SQLModel, table=True):
     )
     trailling_profit: float = Field(default=0)
     strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
-    total_commission: float = Field(
-        default=0, description="autoswitch to short_strategy"
-    )
 
     # Table relationships filled up internally
     orders: list[ExchangeOrderTable] = Relationship(
         back_populates="bot",
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
     )
     deal_id: Optional[UUID] = Field(
         default=None, foreign_key="deal.id", ondelete="CASCADE"
     )
     # lazy option will allow objects to be nested when transformed for json return
-    deal: DealTable = Relationship(sa_relationship_kwargs={"lazy": "joined"})
+    deal: DealTable = Relationship(sa_relationship_kwargs={"lazy": "joined", "single_parent": True})
 
     model_config = {
         "from_attributes": True,

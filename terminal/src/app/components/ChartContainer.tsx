@@ -31,7 +31,7 @@ const ChartContainer: FC = () => {
   };
 
   const handleInitialPrice = (price) => {
-    if (!bot.deal.buy_price && bot.status !== "active") {
+    if (!bot.deal.opening_price && bot.status !== "active") {
       setCurrentChartPrice(price);
     }
     const newOrderLines = updateOrderLines(bot, price);
@@ -51,7 +51,15 @@ const ChartContainer: FC = () => {
         dispatch(setCurrentPrice(currentChartPrice));
       }
     }
-  }, [currentChartPrice, bot, setCurrentOrderLines, setBotProfit, botProfit, dispatch, initialBotProfit]);
+  }, [
+    currentChartPrice,
+    bot,
+    setCurrentOrderLines,
+    setBotProfit,
+    botProfit,
+    dispatch,
+    initialBotProfit,
+  ]);
 
   return (
     <Card style={{ minHeight: "650px" }}>

@@ -1,4 +1,4 @@
-import { type FC } from "react";
+import React, { type FC } from "react";
 import { Form, InputGroup } from "react-bootstrap";
 import { type FieldErrors } from "react-hook-form";
 import { type Bot } from "../../features/bots/botInitialState";

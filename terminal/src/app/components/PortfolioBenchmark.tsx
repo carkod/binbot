@@ -8,8 +8,8 @@ import {
   Tooltip as Tip,
   Title,
 } from "chart.js";
-import { useEffect, type FC } from "react";
-import { Card, Col, Container, Row } from "react-bootstrap";
+import React, { type FC } from "react";
+import { Card, Col, Row } from "react-bootstrap";
 import { Line } from "react-chartjs-2";
 import { type BenchmarkSeriesData } from "../../features/balanceApiSlice";
 import { listCssColors } from "../../utils/validations";
@@ -22,7 +22,7 @@ ChartJS.register(
   LineElement,
   Title,
   Tip,
-  Legend
+  Legend,
 );
 
 const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
@@ -102,7 +102,9 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
             />
           </Col>
           <Col lg="11" md="11" sm="11">
-            <Card.Title as="h5" className="mt-0">Portfolio benchmarking</Card.Title>
+            <Card.Title as="h5" className="mt-0">
+              Portfolio benchmarking
+            </Card.Title>
             <div>
               <p className="u-text-left">
                 Compare portfolio against BTC.

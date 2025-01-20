@@ -23,13 +23,3 @@ export interface OrderLine {
   color: string;
   lineStyle?: number;
 }
-
-interface Deal {
-  buy_price?: number;
-  original_buy_price?: number;
-  sell_price?: number;
-  buy_total_qty?: number;
-  trailling_stop_loss_price?: number;
-  trailling_profit_price?: number;
-  take_profit_price?: number;
-}

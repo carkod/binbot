@@ -21,7 +21,7 @@ export const PaperTradingPage: FC = () => {
   const navigate = useNavigate();
   const currentTs = new Date().getTime();
   const oneWeekAgo = weekAgo();
-  const [removeBots ] = useDeleteTestBotMutation();
+  const [removeBots] = useDeleteTestBotMutation();
   const [deactivateBot] = useDeactivateTestBotMutation();
 
   // Component states
@@ -94,7 +94,7 @@ export const PaperTradingPage: FC = () => {
           status: filterStatus,
           startDate: ts,
           endDate: endDate,
-        })
+        }),
       );
     }
   };
@@ -109,7 +109,7 @@ export const PaperTradingPage: FC = () => {
           status: filterStatus,
           startDate: startDate,
           endDate: ts,
-        })
+        }),
       );
     }
   };

@@ -1,9 +1,7 @@
-from time import time
 from typing import Union
-from sqlmodel import Session, or_, select, case, desc, asc
+from sqlmodel import Session, select, case, desc, asc
 from database.models.bot_table import PaperTradingTable
 from bots.models import BotModel, BotBase
-from database.models.deal_table import DealTable
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from collections.abc import Sequence
@@ -123,42 +121,23 @@ class PaperTradingTableCrud:
         statement = select(PaperTradingTable)
 
         if status and status in BinbotEnums.statuses:
-            statement.where(PaperTradingTable.status == status)
+            statement = statement.where(PaperTradingTable.status == status)
 
         if start_date:
-            statement.where(PaperTradingTable.created_at >= start_date)
+            statement = statement.where(PaperTradingTable.created_at >= start_date)
 
         if end_date:
-            statement.where(PaperTradingTable.created_at <= end_date)
-
-        if status and no_cooldown:
-            current_timestamp = time()
-            cooldown_condition = cooldown_condition = or_(
-                PaperTradingTable.status == status,
-                case(
-                    (
-                        (DealTable.sell_timestamp > 0),
-                        current_timestamp - DealTable.sell_timestamp
-                        < (PaperTradingTable.cooldown * 1000),
-                    ),
-                    else_=(
-                        current_timestamp - PaperTradingTable.created_at
-                        < (PaperTradingTable.cooldown * 1000)
-                    ),
-                ),
-            )
-
-            statement.where(cooldown_condition)
+            statement = statement.where(PaperTradingTable.created_at <= end_date)
 
         # sorting
-        statement.order_by(
+        statement = statement.order_by(
             desc(PaperTradingTable.created_at),
             case((PaperTradingTable.status == Status.active, 1), else_=2),
             asc(PaperTradingTable.pair),
         )
 
         # pagination
-        statement.limit(limit).offset(offset)
+        statement = statement.limit(limit).offset(offset)
 
         bots = self.session.exec(statement).all()
         self.session.close()

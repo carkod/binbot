@@ -61,8 +61,7 @@ class BinanceApi:
     isolated_fee_url = f"{BASE}/sapi/v1/margin/isolatedMarginData"
     isolated_account_url = f"{BASE}/sapi/v1/margin/isolated/account"
     margin_isolated_transfer_url = f"{BASE}/sapi/v1/margin/isolated/transfer"
-    loan_record_url = f"{BASE}/sapi/v1/margin/loan"
-    margin_repay_url = f"{BASE}/sapi/v1/margin/repay"
+    loan_record_url = f"{BASE}/sapi/v1/margin/borrow-repay"
     isolated_hourly_interest = f"{BASE}/sapi/v1/margin/next-hourly-interest-rate"
     margin_order = f"{BASE}/sapi/v1/margin/order"
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
@@ -267,6 +266,7 @@ class BinanceApi:
                 "symbol": symbol,
                 "amount": amount,
                 "isIsolated": isIsolated,
+                "type": "BORROW",
             },
         )
 
@@ -276,29 +276,24 @@ class BinanceApi:
             payload={"asset": asset, "isolatedSymbol": isolated_symbol},
         )
 
-    def get_margin_loan_details(self, asset: str, isolatedSymbol: str):
+    def get_margin_loan_details(self, loan_id: int):
         return self.signed_request(
             self.loan_record_url,
-            payload={"asset": asset, "isolatedSymbol": isolatedSymbol},
-        )
-
-    def get_margin_repay_details(self, asset: str, isolatedSymbol: str):
-        return self.signed_request(
-            self.margin_repay_url,
-            payload={"asset": asset, "isolatedSymbol": isolatedSymbol},
+            payload={"txId": loan_id},
         )
 
     def repay_margin_loan(
         self, asset: str, symbol: str, amount: float | int, isIsolated: str
     ):
         return self.signed_request(
-            self.margin_repay_url,
+            self.loan_record_url,
             method="POST",
             payload={
                 "asset": asset,
                 "symbol": symbol,
                 "amount": amount,
                 "isIsolated": isIsolated,
+                "type": "REPAY",
             },
         )
 

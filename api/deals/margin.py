@@ -7,7 +7,7 @@ from database.paper_trading_crud import PaperTradingTableCrud
 from tools.enum_definitions import CloseConditions, DealType, OrderSide, Strategy
 from bots.models import BotModel, OrderModel, BotBase
 from tools.enum_definitions import Status
-from tools.exceptions import BinanceErrors, MarginShortError
+from tools.exceptions import BinanceErrors, MarginShortError, BinbotErrors
 from tools.round_numbers import (
     round_numbers,
     supress_notation,
@@ -162,26 +162,15 @@ class MarginDeal(DealAbstract):
                     self.terminate_failed_transactions()
                     raise MarginShortError("Isolated margin not available")
 
-        self.create_margin_loan(asset=asset, symbol=self.active_bot.pair, amount=qty)
-        loan_details = self.get_margin_loan_details(
-            asset=asset, isolatedSymbol=self.active_bot.pair
+        loan_created = self.create_margin_loan(
+            asset=asset, symbol=self.active_bot.pair, amount=qty
         )
 
-        self.active_bot.deal.margin_short_loan_principal = float(
-            loan_details["rows"][0]["principal"]
-        )
-        self.active_bot.deal.margin_loan_id = loan_details["rows"][0]["txId"]
-
-        # Estimate interest to add to total cost
-        # This interest rate is much more accurate than any of the others
-        hourly_fees = self.signed_request(
-            url=self.isolated_hourly_interest,
-            payload={"assets": asset, "isIsolated": "TRUE"},
-        )
-        self.active_bot.deal.hourly_interest_rate = float(
-            hourly_fees[0]["nextHourlyInterestRate"]
-        )
-        self.active_bot.deal.margin_short_base_order = qty
+        self.active_bot.deal.margin_loan_id = loan_created["tranId"]
+        # in this new data system there is only one field for qty
+        # so loan_amount == opening_qty
+        # that makes sense, because we want to sell what we borrowed
+        self.active_bot.deal.opening_qty = qty
 
         return self.active_bot
 
@@ -209,12 +198,15 @@ class MarginDeal(DealAbstract):
             # repay
             qty, free = self.compute_margin_buy_back()
             repay_amount = qty
+
+            if self.active_bot.deal.margin_loan_id < 0:
+                raise BinbotErrors("No loan found for this bot")
+
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
-            query_loan: dict = self.signed_request(
-                url=self.loan_record_url,
-                payload={"asset": asset, "isolatedSymbol": self.active_bot.pair},
+            query_loan: dict = self.get_margin_loan_details(
+                self.active_bot.deal.margin_loan_id
             )
             if float(query_loan["total"]) > 0 and repay_amount > 0:
                 # Only supress trailling 0s, so that everything is paid
@@ -239,19 +231,13 @@ class MarginDeal(DealAbstract):
                     # most likely it is still possible to update bot
                     pass
 
-                repay_details_res = self.get_margin_repay_details(
-                    asset=asset, isolatedSymbol=self.active_bot.pair
+                repay_details_res = self.get_margin_loan_details(
+                    loan_id=self.active_bot.deal.margin_loan_id
                 )
+
                 if len(repay_details_res["rows"]) > 0:
-                    repay_details = repay_details_res["rows"][0]
-                    self.active_bot.deal.margin_short_loan_interest = repay_details[
+                    self.active_bot.deal.total_interests = repay_details_res["rows"][0][
                         "interest"
-                    ]
-                    self.active_bot.deal.margin_short_loan_principal = repay_details[
-                        "principal"
-                    ]
-                    self.active_bot.deal.margin_short_loan_timestamp = repay_details[
-                        "timestamp"
                     ]
 
                 self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
@@ -281,12 +267,12 @@ class MarginDeal(DealAbstract):
                         status=res["status"],
                     )
 
-                    self.active_bot.total_commission = self.calculate_total_commissions(
-                        res["fills"]
+                    self.active_bot.deal.total_commissions = (
+                        self.calculate_total_commissions(res["fills"])
                     )
 
                     self.active_bot.orders.append(sell_back_order)
-                    self.active_bot.deal.buy_total_qty = res["origQty"]
+                    self.active_bot.deal.opening_qty = float(res["origQty"])
                     self.active_bot.status = Status.completed
                     self.controller.update_logs(
                         "Margin_short bot repaid, deal completed."
@@ -347,7 +333,7 @@ class MarginDeal(DealAbstract):
             self.init_margin_short(initial_price)
             order_res = self.sell_margin_order(
                 symbol=self.active_bot.pair,
-                qty=self.active_bot.deal.margin_short_base_order,
+                qty=self.active_bot.deal.opening_qty,
             )
         else:
             order_res = self.simulate_margin_order(
@@ -367,18 +353,17 @@ class MarginDeal(DealAbstract):
             status=order_res["status"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             order_res["fills"]
         )
 
         self.active_bot.orders.append(order_data)
 
-        self.active_bot.deal.margin_short_sell_timestamp = round_timestamp(
+        self.active_bot.deal.opening_timestamp = round_timestamp(
             order_res["transactTime"]
         )
-        self.active_bot.deal.margin_short_sell_price = float(order_res["price"])
-        self.active_bot.deal.buy_total_qty = float(order_res["origQty"])
-        self.active_bot.deal.margin_short_base_order = float(order_res["origQty"])
+        self.active_bot.deal.opening_price = float(order_res["price"])
+        self.active_bot.deal.opening_qty = float(order_res["origQty"])
 
         # Activate bot
         self.active_bot.status = Status.active
@@ -394,33 +379,23 @@ class MarginDeal(DealAbstract):
 
         price = float(close_price)
         self.active_bot.deal.current_price = price
-        self.active_bot.deal.stop_loss_price = (
-            self.active_bot.deal.margin_short_sell_price
-            + (
-                self.active_bot.deal.margin_short_sell_price
-                * (float(self.active_bot.stop_loss) / 100)
-            )
+        self.active_bot.deal.stop_loss_price = self.active_bot.deal.closing_price + (
+            self.active_bot.deal.closing_price
+            * (float(self.active_bot.stop_loss) / 100)
         )
-        self.active_bot.deal.margin_short_loan_interest = float(
-            self.active_bot.deal.margin_short_loan_principal
-        ) * float(self.active_bot.deal.hourly_interest_rate)
-        # Add it to as part of total_commission for easy profit calculation
-        self.active_bot.total_commission += float(
-            self.active_bot.deal.margin_short_loan_principal
-        ) * float(self.active_bot.deal.hourly_interest_rate)
 
         # bugs, normally this should be set at deal opening
         if (
             self.active_bot.deal.take_profit_price == 0
             and self.active_bot.take_profit > 0
         ):
-            price = self.active_bot.deal.margin_short_sell_price
+            price = self.active_bot.deal.closing_price
             self.active_bot.deal.take_profit_price = price - (
                 price * (float(self.active_bot.take_profit) / 100)
             )
 
         logging.debug(
-            f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price} and interests {self.active_bot.deal.margin_short_loan_interest}"
+            f"margin_short streaming updating {self.active_bot.pair} @ {self.active_bot.deal.stop_loss_price}"
         )
 
         self.controller.save(self.active_bot)
@@ -434,7 +409,7 @@ class MarginDeal(DealAbstract):
         ):
             if (
                 self.active_bot.trailling == "true" or self.active_bot.trailling
-            ) and self.active_bot.deal.margin_short_sell_price > 0:
+            ) and self.active_bot.deal.closing_price > 0:
                 self.update_trailling_profit(price)
                 self.controller.save(self.active_bot)
 
@@ -491,7 +466,7 @@ class MarginDeal(DealAbstract):
         """
         Sets take_profit for margin_short at initial activation
         """
-        price = float(self.active_bot.deal.margin_short_sell_price)
+        price = float(self.active_bot.deal.closing_price)
         if (
             hasattr(self.active_bot, "take_profit")
             and float(self.active_bot.take_profit) > 0
@@ -511,7 +486,7 @@ class MarginDeal(DealAbstract):
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_margin_order(
-                self.active_bot.deal.buy_total_qty, OrderSide.buy
+                self.active_bot.deal.opening_qty, OrderSide.buy
             )
         else:
             res = self.margin_liquidation(self.active_bot.pair)
@@ -529,21 +504,12 @@ class MarginDeal(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             res["fills"]
         )
 
         self.active_bot.orders.append(stop_loss_order)
 
-        # Guard against type errors
-        # These errors are sometimes hard to debug, it takes hours
-        self.active_bot.deal.margin_short_buy_back_price = float(res["price"])
-        self.active_bot.deal.buy_total_qty = float(res["origQty"])
-        self.active_bot.deal.margin_short_buy_back_timestamp = float(
-            res["transactTime"]
-        )
-
-        # Future overrides
         self.active_bot.deal.closing_price = float(res["price"])
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = float(res["transactTime"])
@@ -572,7 +538,7 @@ class MarginDeal(DealAbstract):
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_margin_order(
-                self.active_bot.deal.buy_total_qty, OrderSide.buy
+                self.active_bot.deal.opening_qty, OrderSide.buy
             )
         else:
             res = self.margin_liquidation(self.active_bot.pair)
@@ -593,14 +559,13 @@ class MarginDeal(DealAbstract):
                 status=res["status"],
             )
 
-            self.active_bot.total_commission = self.calculate_total_commissions(
+            self.active_bot.deal.total_commissions = self.calculate_total_commissions(
                 res["fills"]
             )
 
             self.active_bot.orders.append(take_profit_order)
-            self.active_bot.deal.margin_short_buy_back_price = res["price"]
-            self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
-            self.active_bot.deal.margin_short_buy_back_timestamp = res["transactTime"]
+            self.active_bot.deal.closing_price = float(res["price"])
+            self.active_bot.deal.closing_timestamp = float(res["transactTime"])
             msg = "Completed Take profit!"
 
         else:
@@ -631,6 +596,8 @@ class MarginDeal(DealAbstract):
         # Create new bot as you'd do through Dashboard terminal
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
         new_bot.strategy = Strategy.long
+        new_bot.status = Status.inactive
+        new_bot.logs = []
         created_bot = self.controller.create(new_bot)
 
         # to avoid circular imports make network request
@@ -651,17 +618,15 @@ class MarginDeal(DealAbstract):
         # Breaking trailling_stop_loss
         if self.active_bot.deal.trailling_stop_loss_price == 0:
             trailling_take_profit: float = 0
-            trailling_take_profit = float(
-                self.active_bot.deal.margin_short_sell_price
-            ) - (
-                self.active_bot.deal.margin_short_sell_price
+            trailling_take_profit = float(self.active_bot.deal.closing_price) - (
+                self.active_bot.deal.closing_price
                 * ((self.active_bot.take_profit) / 100)
             )
             stop_loss_trailling_price = trailling_take_profit - (
                 trailling_take_profit * ((self.active_bot.trailling_deviation) / 100)
             )
             # If trailling_stop_loss not below initial margin_short_sell price
-            if stop_loss_trailling_price < self.active_bot.deal.margin_short_sell_price:
+            if stop_loss_trailling_price < self.active_bot.deal.closing_price:
                 self.active_bot.deal.trailling_stop_loss_price = (
                     stop_loss_trailling_price
                 )
@@ -687,7 +652,7 @@ class MarginDeal(DealAbstract):
             self.active_bot.deal.trailling_stop_loss_price > 0
             and self.active_bot.deal.trailling_profit_price > 0
             and self.active_bot.deal.trailling_stop_loss_price
-            < self.active_bot.deal.margin_short_sell_price
+            < self.active_bot.deal.closing_price
         ):
             self.active_bot.deal.trailling_stop_loss_price = (
                 self.active_bot.deal.trailling_profit_price
@@ -716,7 +681,7 @@ class MarginDeal(DealAbstract):
             self.active_bot.deal.trailling_profit_price = new_take_profit
 
             # Update trailling_stop_loss
-            if new_trailling_stop_loss < self.active_bot.deal.margin_short_sell_price:
+            if new_trailling_stop_loss < self.active_bot.deal.closing_price:
                 # Selling below buy_price will cause a loss
                 # instead let it drop until it hits safety order or stop loss
                 # Update trailling_stop_loss
@@ -735,7 +700,7 @@ class MarginDeal(DealAbstract):
             self.render_market_domination_reversal()
             if (
                 self.market_domination_reversal
-                and current_price > self.active_bot.deal.buy_price
+                and current_price > self.active_bot.deal.opening_price
             ):
                 self.controller.update_logs(
                     f"Closing bot according to close_condition: {self.active_bot.close_condition}",

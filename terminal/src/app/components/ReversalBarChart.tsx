@@ -1,4 +1,4 @@
-import { type FC } from "react";
+import React, { type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
 import { type GainerLosersData } from "../../features/marketApiSlice";
 import { useBreakpoint } from "../hooks";
@@ -43,7 +43,9 @@ const ReversalBarChart: FC<ReversalBarChartProps> = ({ chartData, legend }) => {
             />
           </Col>
           <Col lg="11" md="11" sm="11">
-            <Card.Title as="h5" className="mt-0">Gainers vs. Losers by Volume</Card.Title>
+            <Card.Title as="h5" className="mt-0">
+              Gainers vs. Losers by Volume
+            </Card.Title>
             <p className="u-text-left">
               Market evolution of gainers vs losers by volume. This graph shows
               indications of market reversal

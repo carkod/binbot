@@ -40,12 +40,12 @@ orders = [
 
 
 deal_table = DealTable(
-    buy_price=1.3,
-    buy_total_qty=0,
-    buy_timestamp=0,
+    opening_price=1.3,
+    opening_qty=0,
+    opening_timestamp=0,
     current_price=0,
     sd=0,
-    avg_buy_price=0,
+    avg_opening_price=0,
     take_profit_price=0,
     sell_timestamp=0,
     sell_price=0,
@@ -54,19 +54,8 @@ deal_table = DealTable(
     trailling_profit_price=0,
     stop_loss_price=0,
     trailling_profit=0,
-    original_buy_price=0,
     short_sell_price=0,
-    margin_short_loan_principal=0,
     margin_loan_id=0,
-    hourly_interest_rate=0,
-    margin_short_sell_price=0,
-    margin_short_loan_interest=0,
-    margin_short_buy_back_price=0,
-    margin_short_sell_qty=0,
-    margin_short_buy_back_timestamp=0,
-    margin_short_base_order=0,
-    margin_short_sell_timestamp=0,
-    margin_short_loan_timestamp=0,
 )
 
 
@@ -75,7 +64,7 @@ mocked_db_data = BotTable(
     pair="ADXUSDC",
     fiat="USDC",
     base_order_size=15,
-    buy_price=1.222,
+    opening_price=1.222,
     candlestick_interval="15m",
     close_condition="dynamic_trailling",
     dynamic_trailling=False,

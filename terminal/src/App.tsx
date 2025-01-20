@@ -11,9 +11,9 @@ import BotsPage from "./app/pages/Bots";
 import DashboardPage from "./app/pages/Dashboard";
 import LoginPage from "./app/pages/Login";
 import BlacklistPage from "./app/pages/BlacklistPage";
-import NotFound from './app/pages/NotFound';
+import NotFound from "./app/pages/NotFound";
 import { store } from "./app/store";
-import { getToken, removeToken } from './utils/login';
+import { getToken, removeToken } from "./utils/login";
 import PaperTradingPage from "./app/pages/PaperTradingPage";
 import PaperTradingDetail from "./app/pages/PaperTradingDetail";
 
@@ -22,7 +22,7 @@ export type Routes = {
   name?: string;
   icon?: string;
   link?: string; // Decides if shows on Sidebar
-  element: JSX.Element;
+  element: React.FC;
   id: string; // Unique name to match path
 };
 
@@ -110,44 +110,46 @@ export const routes = [
   {
     path: "*",
     element: <NotFound />,
-  }
+  },
 ];
 
-const rootRouter = createBrowserRouter([
-  {
-    path: "/login",
-    Component: () => {
-      const token = getToken();
-      if (token) {
-        return <Navigate to="/" replace />
-      } else {
-        return <LoginPage />;
-      }
+const rootRouter = createBrowserRouter(
+  [
+    {
+      path: "/login",
+      Component: () => {
+        const token = getToken();
+        if (token) {
+          return <Navigate to="/" replace />;
+        } else {
+          return <LoginPage />;
+        }
+      },
     },
-  },
-  {
-    id: "root",
-    path: "/",
-    element: <Layout />,
-    hydrateFallbackElement: <div>Loading...</div>,
-    children: routes,
-  },
-  {
-    path: "/logout",
-    Component: () => {
-      removeToken();
-      return <Navigate to="/login" replace />
+    {
+      id: "root",
+      path: "/",
+      element: <Layout />,
+      hydrateFallbackElement: <div>Loading...</div>,
+      children: routes,
     },
-  },
-],
-{
-  future: {
-    v7_partialHydration: true,
-    v7_fetcherPersist: true,
-    v7_normalizeFormMethod: true,
-    v7_skipActionErrorRevalidation: true,
+    {
+      path: "/logout",
+      Component: () => {
+        removeToken();
+        return <Navigate to="/login" replace />;
+      },
+    },
+  ],
+  {
+    future: {
+      v7_partialHydration: true,
+      v7_fetcherPersist: true,
+      v7_normalizeFormMethod: true,
+      v7_skipActionErrorRevalidation: true,
+    },
   }
-});
+);
 
 export const App = () => {
   return (

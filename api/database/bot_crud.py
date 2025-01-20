@@ -293,7 +293,7 @@ class BotTableCrud:
         """
 
         initial_bot = self.get_one(bot_id=str(order.bot_id))
-        initial_bot.total_commission += commission
+        initial_bot.deal.total_commissions += commission
         initial_bot.logs.append("Order status updated")
 
         self.session.add(order)

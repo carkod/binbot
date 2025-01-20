@@ -1,4 +1,4 @@
-import { useEffect, type FC } from "react";
+import React, { useEffect, type FC } from "react";
 import { Button, Card, Col, Container, Form, Row } from "react-bootstrap";
 import { useForm, type FieldValues } from "react-hook-form";
 import {
@@ -7,7 +7,6 @@ import {
 } from "../../features/autotradeApiSlice";
 import {
   selectSettings,
-  setSettings,
   setSettingsField,
   setSettingsToggle,
 } from "../../features/autotradeSlice";
@@ -94,8 +93,11 @@ export const AutotradePage: FC<{}> = () => {
                         onChange={(e) => {
                           const { value } = e.target;
                           dispatch(
-                            setSettingsField({ name: "candlestick_interval", value })
-                          )
+                            setSettingsField({
+                              name: "candlestick_interval",
+                              value,
+                            }),
+                          );
                         }}
                         onBlur={handleBlur}
                         defaultValue={settings.candlestick_interval}
@@ -103,18 +105,23 @@ export const AutotradePage: FC<{}> = () => {
                           required: true,
                         })}
                       >
-                        {Object.values(BinanceKlineintervals).map((interval) => 
-                          <option value={interval.toString()}>{interval.toString()}</option>
+                        {Object.values(BinanceKlineintervals).map(
+                          (interval) => (
+                            <option value={interval.toString()}>
+                              {interval.toString()}
+                            </option>
+                          ),
                         )}
-                      </ Form.Select>
+                      </Form.Select>
                       {errors.candlestick_interval && (
                         <Form.Control.Feedback>
                           {errors.candlestick_interval.message as string}
                         </Form.Control.Feedback>
                       )}
                       <Form.Control.Feedback tooltip>
-                        Autotrade uses this interval to get candlestick data for technical analysis
-                        and decides to trade using this horizon.
+                        Autotrade uses this interval to get candlestick data for
+                        technical analysis and decides to trade using this
+                        horizon.
                       </Form.Control.Feedback>
                     </Form.Group>
                   </Col>
@@ -134,7 +141,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />
@@ -155,7 +162,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />
@@ -213,7 +220,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: "trailling",
                             value: !settings.trailling,
-                          })
+                          }),
                         );
                       }}
                       {...register("trailling", { required: true })}

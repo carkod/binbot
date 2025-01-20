@@ -2,7 +2,7 @@ import { notifification } from "../../utils/api";
 import { userApiSlice } from "../userApiSlice";
 import type { Bot } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
-import type { GetBotsParams, GetBotsResponse } from "./bots";
+import type { CreateBotResponse, EditBotParams, GetBotsParams, GetBotsResponse } from "./bots";
 import { botsAdapter } from "./botsApiSlice";
 
 export const papertradingApiSlice = userApiSlice.injectEndpoints({
@@ -31,7 +31,9 @@ export const papertradingApiSlice = userApiSlice.injectEndpoints({
       query: (id) => ({
         url: `${import.meta.env.VITE_TEST_BOT}/${id}` || "/paper-trading",
         method: "GET",
-        providesTags: (result) => [{ type: "paper-trading", id: result.bot.id }],
+        providesTags: (result) => [
+          { type: "paper-trading", id: result.bot.id },
+        ],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {

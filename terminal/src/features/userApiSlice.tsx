@@ -1,6 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { binbotBaseQuery, notifification } from "../utils/api";
-import { set } from "react-hook-form";
 import { setToken } from "../utils/login";
 
 export interface LoginCredentials {

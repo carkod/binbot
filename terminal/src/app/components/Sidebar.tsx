@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import React, { type FC } from "react";
 import { Nav } from "react-bootstrap";
 import { useLocation } from "react-router";
 import { Link, NavLink } from "react-router-dom";
@@ -14,12 +14,12 @@ export const Sidebar: FC = () => {
   return (
     <div className={`sidebar nav-open`}>
       <div className="logo">
-        <span
-          className="logo__link text-decoration-none text-info"
-        >
+        <span className="logo__link text-decoration-none text-info">
           <i className="fa-solid fa-wave-square" />
           <h1 className="fs-4 ps-3">
-            <Link className="btn-reset btn" to="/">Binbot</Link>
+            <Link className="btn-reset btn" to="/">
+              Binbot
+            </Link>
           </h1>
         </span>
       </div>

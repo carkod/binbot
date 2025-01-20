@@ -43,12 +43,12 @@ class DealAbstract(BaseDeal):
         - take_profit order can ONLY be executed once base order is filled (on Binance)
         """
 
-        deal_buy_price = self.active_bot.deal.buy_price
-        buy_total_qty = self.active_bot.deal.buy_total_qty
+        deal_buy_price = self.active_bot.deal.opening_price
+        buy_total_qty = self.active_bot.deal.opening_qty
         price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
 
         if self.db_table == PaperTradingTable:
-            qty = self.active_bot.deal.buy_total_qty
+            qty = self.active_bot.deal.opening_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
 
@@ -79,15 +79,15 @@ class DealAbstract(BaseDeal):
             status=res["status"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             res["fills"]
         )
 
         self.active_bot.orders.append(order_data)
-        self.active_bot.deal.take_profit_price = res["price"]
-        self.active_bot.deal.sell_price = res["price"]
-        self.active_bot.deal.sell_qty = res["origQty"]
-        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.deal.take_profit_price = float(res["price"])
+        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
         self.active_bot.status = Status.completed
 
         bot = self.controller.save(self.active_bot)
@@ -140,9 +140,9 @@ class DealAbstract(BaseDeal):
             )
 
         self.active_bot.orders.append(order_data)
-        self.active_bot.deal.sell_price = res["price"]
-        self.active_bot.deal.sell_qty = res["origQty"]
-        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.deal.closing_price = res["price"]
+        self.active_bot.deal.closing_qty = res["origQty"]
+        self.active_bot.deal.closing_timestamp = res["transactTime"]
 
         self.controller.update_logs(
             "Panic sell triggered. All active orders closed", self.active_bot
@@ -165,7 +165,7 @@ class DealAbstract(BaseDeal):
                 (order.order_id == order_id for order in bot.orders), None
             )
             if find_base_order:
-                so_deal_price = bot.deal.buy_price
+                so_deal_price = bot.deal.opening_price
                 # Create new take profit order
                 new_tp_price = float(so_deal_price) + (
                     float(so_deal_price) * float(bot.take_profit) / 100
@@ -210,7 +210,7 @@ class DealAbstract(BaseDeal):
                 # Append now new take_profit deal
                 new_deals.append(take_profit_order)
                 self.active_bot.orders = new_deals
-                self.active_bot.total_commission = total_commission
+                self.active_bot.deal.total_commissions = total_commission
                 self.controller.save(self.active_bot)
                 self.controller.update_logs("take_profit deal successfully updated")
                 return self.active_bot
@@ -237,12 +237,12 @@ class DealAbstract(BaseDeal):
                 self.active_bot.strategy == Strategy.margin_short
                 and self.active_bot.stop_loss > 0
             ):
-                price = self.active_bot.deal.margin_short_sell_price
+                price = self.active_bot.deal.closing_price
                 self.active_bot.deal.stop_loss_price = price + (
                     price * (self.active_bot.stop_loss / 100)
                 )
             else:
-                buy_price = float(self.active_bot.deal.buy_price)
+                buy_price = float(self.active_bot.deal.opening_price)
                 stop_loss_price = buy_price - (
                     buy_price * float(self.active_bot.stop_loss) / 100
                 )
@@ -256,7 +256,7 @@ class DealAbstract(BaseDeal):
             and self.active_bot.strategy == Strategy.margin_short
         ):
             if self.active_bot.take_profit:
-                price = float(self.active_bot.deal.margin_short_sell_price)
+                price = float(self.active_bot.deal.closing_price)
                 take_profit_price = price - (
                     price * (self.active_bot.take_profit) / 100
                 )
@@ -267,9 +267,9 @@ class DealAbstract(BaseDeal):
         if (
             self.active_bot.deal.trailling_stop_loss_price > 0
             or self.active_bot.deal.trailling_stop_loss_price
-            < self.active_bot.deal.buy_price
+            < self.active_bot.deal.opening_price
         ):
-            take_profit_price = float(self.active_bot.deal.buy_price) * (
+            take_profit_price = float(self.active_bot.deal.opening_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )
             self.active_bot.deal.take_profit_price = take_profit_price
@@ -336,10 +336,10 @@ class DealAbstract(BaseDeal):
         tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
 
         self.active_bot.deal = DealModel(
-            buy_timestamp=res["transactTime"],
-            buy_price=res["price"],
-            buy_total_qty=res["origQty"],
-            current_price=res["price"],
+            opening_timestamp=float(res["transactTime"]),
+            opening_price=float(res["price"]),
+            opening_qty=float(res["origQty"]),
+            current_price=float(res["price"]),
             take_profit_price=tp_price,
             stop_loss_price=stop_loss_price,
         )

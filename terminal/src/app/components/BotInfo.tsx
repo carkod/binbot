@@ -13,7 +13,7 @@ import { renderDuration, formatTimestamp } from "../../utils/time";
 
 export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
-    bot.orders?.length > 0
+    bot.orders?.length > 0,
   );
   return (
     <Card>
@@ -82,7 +82,7 @@ export default function BotInfo({ bot }) {
                 {Object.keys(bot.deal).map((k, i) => {
                   if (typeof bot.deal[k] !== "object") {
                     let dealData = bot.deal[k];
-                    if (k === "buy_timestamp" || k === "sell_timestamp") {
+                    if (k === "opening_timestamp" || k === "closing_timestamp") {
                       dealData =
                         bot.deal[k] === 0 || formatTimestamp(bot.deal[k]);
                     }

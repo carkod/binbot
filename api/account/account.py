@@ -260,8 +260,8 @@ class Account(BinbotApi):
         so that order can immediately buy/sell
         If it doesn't match, do split order
         @param: order_side -
-            Buy order = get bid prices = True
-            Sell order = get ask prices = False
+            Buy order = get bid prices = False
+            Sell order = get ask prices = True
         @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
         data = self.get_book_depth(symbol)

@@ -15,7 +15,7 @@ type GetBotsResponse = {
 export const buildGetBotsPath = (
   status: string = BotStatus.ALL,
   startDate: number = weekAgo(),
-  endDate: number = new Date().getTime()
+  endDate: number = new Date().getTime(),
 ): string => {
   const params = new URLSearchParams({
     start_date: startDate.toString(),
@@ -105,7 +105,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: `${import.meta.env.VITE_GET_BOTS}` || "/bot",
         method: "DELETE",
         body: ids,
-        invalidatesTags: ["bots"]
+        invalidatesTags: ["bots"],
       }),
       transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {

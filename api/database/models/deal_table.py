@@ -9,81 +9,43 @@ if TYPE_CHECKING:
 
 
 class DealBase(SQLModel):
-    buy_price: float = Field(default=0)
-    buy_total_qty: float = Field(default=0)
-    buy_timestamp: float = Field(
-        default=0,
-        description="Deal timestamps in general should be set by the moment deal action happens, so no default values",
-        sa_column=Column(BigInteger()),
-    )
     current_price: float = Field(default=0)
-    sd: float = Field(default=0)
-    avg_buy_price: float = Field(default=0)
-    take_profit_price: float = Field(default=0)
-    sell_timestamp: float = Field(default=0, sa_column=Column(BigInteger()))
-    sell_price: float = Field(default=0)
-    sell_qty: float = Field(default=0)
+    take_profit_price: float = Field(
+        default=0,
+        description="derived from take_profit, while this price gets updated according to market, take_profit percentage doesn't",
+    )
     trailling_stop_loss_price: float = Field(
         default=0,
         description="take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price",
     )
     trailling_profit_price: float = Field(default=0)
     stop_loss_price: float = Field(default=0)
-    trailling_profit: float = Field(
-        default=0, description="to be deprecated, duplicate field"
-    )
-    original_buy_price: float = Field(default=0)
 
     # fields for margin trading
-    margin_short_loan_principal: float = Field(default=0)
+    total_interests: float = Field(default=0, gt=-1)
+    total_commissions: float = Field(default=0, gt=-1)
     margin_loan_id: float = Field(default=0)
-    hourly_interest_rate: float = Field(
-        default=0,
-        description="to be deprecated, only used for interest calculation",
-        sa_column=Column(BigInteger()),
-    )
-    margin_short_sell_price: float = Field(
-        default=0, description="to be deprecated, use opening_price instead"
-    )
-    margin_short_loan_interest: float = Field(default=0)
-    margin_short_buy_back_price: float = Field(
-        default=0, description="to be deprecated, use opening_price instead"
-    )
-    margin_short_sell_qty: float = Field(
-        default=0, description="to be deprecated, use closing_qty instead"
-    )
-    margin_short_buy_back_timestamp: int = Field(
-        default=0,
-        description="to be deprecated, use opening_timestamp",
-        sa_column=Column(BigInteger()),
-    )
-    margin_short_base_order: float = Field(
-        default=0, description="To be merged with base_order"
-    )
-    margin_short_sell_timestamp: int = Field(default=0, sa_column=Column(BigInteger()))
-    margin_short_loan_timestamp: int = Field(default=0, sa_column=Column(BigInteger()))
 
     # Refactored deal prices that combine both margin and spot
-    opening_price: Optional[float] = Field(
+    opening_price: float = Field(
         default=0,
-        description="replaces previous buy_price or short_sell_price/margin_short_sell_price",
+        description="buy price (long spot) or short sell price (short margin trading)",
     )
-    opening_qty: Optional[float] = Field(
+    opening_qty: float = Field(
         default=0,
-        description="replaces previous buy_total_qty or short_sell_qty/margin_short_sell_qty",
+        description="buy quantity (long spot) or short sell quantity (short margin trading)",
     )
-    opening_timestamp: Optional[int] = Field(default=0, sa_column=Column(BigInteger()))
-    closing_price: Optional[float] = Field(
+    opening_timestamp: int = Field(default=0, sa_column=Column(BigInteger()))
+    closing_price: float = Field(
         default=0,
-        description="replaces previous sell_price or short_sell_price/margin_short_sell_price",
+        description="sell price (long spot) or buy back price (short margin trading)",
     )
-    closing_qty: Optional[float] = Field(
+    closing_qty: float = Field(
         default=0,
-        description="replaces previous sell_qty or short_sell_qty/margin_short_sell_qty",
+        description="sell quantity (long spot) or buy back quantity (short margin trading)",
     )
-    closing_timestamp: Optional[int] = Field(
+    closing_timestamp: int = Field(
         default=0,
-        description="replaces previous buy_timestamp or margin/short_sell timestamps",
         sa_column=Column(BigInteger()),
     )
 

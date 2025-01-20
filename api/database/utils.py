@@ -26,14 +26,14 @@ def timestamp() -> float:
     return int(round(time() * 1000))
 
 
-def _prepare_comma_seperated_float(value: str | float) -> float | str:
-    if isinstance(value, str):
-        return value.replace(",", ".")
+def ensure_float(value: str | float | int) -> float:
+    if isinstance(value, str) or isinstance(value, int):
+        return float(value)
 
     return value
 
 
 Amount = Annotated[
     float,
-    BeforeValidator(_prepare_comma_seperated_float),
+    BeforeValidator(ensure_float),
 ]

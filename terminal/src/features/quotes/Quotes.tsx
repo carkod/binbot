@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import styles from "./Quotes.module.css";
 import { useGetQuotesQuery } from "./quotesApiSlice";
 

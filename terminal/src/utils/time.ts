@@ -18,7 +18,7 @@ export function weekAgo() {
   const lastWeek = new Date(
     today.getFullYear(),
     today.getMonth(),
-    today.getDate() - 7
+    today.getDate() - 7,
   );
   return lastWeek.getTime();
 }
@@ -58,19 +58,19 @@ export function renderDuration(bot) {
   let exitPositionTs = new Date().getTime();
 
   // Duration for long positions
-  if (bot.deal.buy_timestamp > 0) {
-    enterPositionTs = bot.deal.buy_timestamp;
+  if (bot.deal.opening_timestamp > 0) {
+    enterPositionTs = bot.deal.opening_timestamp;
   }
-  if (bot.deal.sell_timestamp > 0) {
-    exitPositionTs = bot.deal.sell_timestamp;
+  if (bot.deal.closing_timestamp > 0) {
+    exitPositionTs = bot.deal.closing_timestamp;
   }
 
   // Duration for short positions
-  if (bot.deal.margin_short_sell_timestamp > 0) {
-    enterPositionTs = bot.deal.margin_short_sell_timestamp;
+  if (bot.deal.opening_timestamp > 0) {
+    enterPositionTs = bot.deal.opening_timestamp;
   }
-  if (bot.deal.margin_short_buy_back_timestamp > 0) {
-    exitPositionTs = bot.deal.margin_short_buy_back_timestamp;
+  if (bot.deal.closing_timestamp > 0) {
+    exitPositionTs = bot.deal.closing_timestamp;
   }
 
   const duration = botDuration(enterPositionTs, exitPositionTs);

@@ -155,13 +155,14 @@ class BaseDeal(OrderController):
         if there are any SELL orders
         """
         all_orders = self.get_all_orders(
-            self.active_bot.pair, int(self.active_bot.deal.buy_timestamp)
+            self.active_bot.pair,
+            start_time=float(self.active_bot.deal.opening_timestamp),
         )
         for order in all_orders:
             if (
                 order["side"] == "SELL"
                 and order["price"] == self.active_bot.deal.take_profit_price
-                and order["origQty"] == self.active_bot.deal.buy_total_qty
+                and order["origQty"] == self.active_bot.deal.opening_qty
             ):
                 return order
 

@@ -47,12 +47,13 @@ class SpotLongDeal(DealAbstract):
         # Reset bot operations
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
         new_bot.strategy = Strategy.margin_short
+        new_bot.status = Status.inactive
+        new_bot.logs = []
 
         bot_table = self.controller.create(data=new_bot)
         self.active_bot = BotModel.dump_from_table(bot_table)
 
         margin_strategy_deal = MarginDeal(bot=self.active_bot, db_table=self.db_table)
-
         self.active_bot = margin_strategy_deal.margin_short_base_order()
 
         return self.active_bot
@@ -67,7 +68,7 @@ class SpotLongDeal(DealAbstract):
         """
         self.controller.update_logs("Executing stop loss...", self.active_bot)
         if isinstance(self.controller, PaperTradingTableCrud):
-            qty = self.active_bot.deal.buy_total_qty
+            qty = self.active_bot.deal.opening_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
 
@@ -116,14 +117,14 @@ class SpotLongDeal(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             res["fills"]
         )
 
         self.active_bot.orders.append(stop_loss_order)
-        self.active_bot.deal.sell_price = res["price"]
-        self.active_bot.deal.sell_qty = res["origQty"]
-        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
         msg = "Completed Stop loss."
         if self.active_bot.margin_short_reversal:
             msg += " Scheduled to switch strategy"
@@ -140,7 +141,7 @@ class SpotLongDeal(DealAbstract):
         """
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            qty = self.active_bot.deal.buy_total_qty
+            qty = self.active_bot.deal.opening_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
             logging.error(f"trailling_profit qty: {qty}")
@@ -195,7 +196,7 @@ class SpotLongDeal(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.total_commission = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             res["fills"]
         )
 
@@ -205,9 +206,9 @@ class SpotLongDeal(DealAbstract):
         self.active_bot.deal.trailling_profit_price = res["price"]
 
         # to be deprecated
-        self.active_bot.deal.sell_price = res["price"]
-        self.active_bot.deal.sell_qty = res["origQty"]
-        self.active_bot.deal.sell_timestamp = res["transactTime"]
+        self.active_bot.deal.closing_price = res["price"]
+        self.active_bot.deal.closing_qty = res["origQty"]
+        self.active_bot.deal.closing_timestamp = res["transactTime"]
 
         # new deal parameters to replace previous
         self.active_bot.deal.closing_price = float(res["price"])
@@ -247,10 +248,10 @@ class SpotLongDeal(DealAbstract):
             return
 
         # Take profit trailling
-        if self.active_bot.trailling and float(self.active_bot.deal.buy_price) > 0:
+        if self.active_bot.trailling and float(self.active_bot.deal.opening_price) > 0:
             # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
             if self.active_bot.deal.trailling_stop_loss_price == 0:
-                trailling_price = float(self.active_bot.deal.buy_price) * (
+                trailling_price = float(self.active_bot.deal.opening_price) * (
                     1 + (float(self.active_bot.take_profit) / 100)
                 )
             else:
@@ -279,7 +280,7 @@ class SpotLongDeal(DealAbstract):
                 self.active_bot.deal.trailling_profit_price = new_take_profit
 
                 if (
-                    new_trailling_stop_loss > self.active_bot.deal.buy_price
+                    new_trailling_stop_loss > self.active_bot.deal.opening_price
                     and new_trailling_stop_loss
                     > self.active_bot.deal.trailling_stop_loss_price
                 ):
@@ -331,7 +332,7 @@ class SpotLongDeal(DealAbstract):
             self.render_market_domination_reversal()
             if (
                 self.market_domination_reversal
-                and current_price < self.active_bot.deal.buy_price
+                and current_price < self.active_bot.deal.opening_price
             ):
                 self.execute_stop_loss()
                 self.base_producer.update_required(
@@ -355,12 +356,12 @@ class SpotLongDeal(DealAbstract):
                 self.active_bot.strategy == Strategy.margin_short
                 and self.active_bot.stop_loss > 0
             ):
-                price = self.active_bot.deal.margin_short_sell_price
+                price = self.active_bot.deal.closing_price
                 self.active_bot.deal.stop_loss_price = price + (
                     price * (self.active_bot.stop_loss / 100)
                 )
             else:
-                buy_price = float(self.active_bot.deal.buy_price)
+                buy_price = float(self.active_bot.deal.opening_price)
                 stop_loss_price = buy_price - (
                     buy_price * float(self.active_bot.stop_loss) / 100
                 )
@@ -373,9 +374,9 @@ class SpotLongDeal(DealAbstract):
         if (
             self.active_bot.deal.trailling_stop_loss_price > 0
             or self.active_bot.deal.trailling_stop_loss_price
-            < self.active_bot.deal.buy_price
+            < self.active_bot.deal.opening_price
         ):
-            take_profit_price = float(self.active_bot.deal.buy_price) * (
+            take_profit_price = float(self.active_bot.deal.opening_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )
             self.active_bot.deal.take_profit_price = take_profit_price

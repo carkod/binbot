@@ -82,6 +82,8 @@ def get_one_by_id(id: str, session: Session = Depends(get_session)):
             }
     except ValidationError as error:
         return BotResponse(message="Bot not found.", error=1, data=error.json())
+    except ValueError as error:
+        return BotResponse(message="Bot not found.", error=1, data=str(error))
 
 
 @bot_blueprint.get("/bot/symbol/{symbol}", tags=["bots"])
@@ -95,7 +97,8 @@ def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
             return BotResponse(message="Successfully found one bot.", data=data)
     except ValidationError as error:
         return BotResponse(message="Bot not found.", error=1, data=error.json())
-
+    except ValueError as error:
+        return BotResponse(message="Bot not found.", error=1, data=str(error))
 
 @bot_blueprint.post("/bot", tags=["bots"], response_model=BotResponse)
 def create(
@@ -117,7 +120,6 @@ def edit(
     session: Session = Depends(get_session),
 ):
     try:
-
         controller = BotTableCrud(session=session)
         bot_table = controller.get_one(id)
         bot_table.sqlmodel_update(bot_item)
@@ -136,6 +138,8 @@ def edit(
         return BotResponse(message=f"Failed to edit bot: {error.json()}", error=1)
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
+    except ValueError as error:
+        return BotResponse(message="Bot not found.", error=1, data=str(error))
 
 
 @bot_blueprint.delete("/bot", response_model=IResponseBase, tags=["bots"])
@@ -182,6 +186,8 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
     except BinanceErrors as error:
         deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
         return BotResponse(message=error.message, error=1)
+    except ValueError as error:
+        return BotResponse(message="Bot not found.", error=1, data=str(error))
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", response_model=BotResponse, tags=["bots"])
@@ -209,6 +215,8 @@ def deactivation(id: str, session: Session = Depends(get_session)):
         }
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
+    except ValueError as error:
+        return BotResponse(message="Bot not found.", error=1, data=str(error))
 
 
 @bot_blueprint.post("/bot/errors/{bot_id}", response_model=BotResponse, tags=["bots"])
@@ -231,3 +239,5 @@ def bot_errors(
         return BotResponse(message="Errors posted successfully.", data=response_data)
     except ValidationError as error:
         return BotResponse(message="Failed to post errors", data=error.json(), error=1)
+    except ValueError as error:
+        return BotResponse(message="Bot not found.", error=1, data=str(error))

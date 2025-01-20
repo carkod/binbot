@@ -89,9 +89,7 @@ class BotBase(BaseModel):
     )
     trailling_profit: Amount = Field(default=0, ge=-1, le=101)
     strategy: Strategy = Field(default=Strategy.long)
-    total_commission: float = Field(
-        default=0, description="autoswitch to short_strategy"
-    )
+
 
 class BotModel(BotBase):
     """
