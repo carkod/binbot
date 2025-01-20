@@ -596,6 +596,7 @@ class MarginDeal(DealAbstract):
         # Create new bot as you'd do through Dashboard terminal
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
         new_bot.strategy = Strategy.long
+        new_bot.status = Status.inactive
         new_bot.logs = []
         created_bot = self.controller.create(new_bot)
 
