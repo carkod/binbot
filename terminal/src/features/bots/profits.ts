@@ -16,32 +16,10 @@ export function getProfit(base_price, current_price, strategy = "long") {
 }
 
 /**
- * Calculate interests based on hourly interest rate
- * @param {bot} bot object
- * @returns {float}
- */
-function getInterestsShortMargin(bot) {
-  let closeTimestamp = bot.deal.closing_timestamp;
-  if (closeTimestamp === 0) {
-    closeTimestamp = new Date().getTime();
-  }
-  const closeTotal = bot.deal.closing_price;
-  const openTotal = bot.deal.opening_price;
-  return {
-    openTotal: openTotal,
-    closeTotal: closeTotal,
-  };
-}
-
-/**
  * This function calculates the profit (not including commissions/fees)
  * for a single bot, namely the BotForm and TestBotForm components
  * by using input data from that individual bot as opposed to computeTotalProfit
  * function which uses an accumulator function to aggregate all profits of all bots
- *
- * @param { BotModel } bot
- * @param { number } realTimeCurrPrice
- * @returns { number }
  */
 export function computeSingleBotProfit(
   bot: Bot,
@@ -57,7 +35,7 @@ export function computeSingleBotProfit(
       if (currentPrice === 0) {
         profitChange = 0;
       }
-      return +profitChange.toFixed(2);
+      return parseFloat(profitChange.toFixed(2));
     } else if (bot.deal.closing_price > 0) {
       // Completed margin short
 
@@ -87,14 +65,14 @@ export function computeSingleBotProfit(
   }
 }
 
-export function computeTotalProfit(bots) {
+export function computeTotalProfit(bots: Bot[]) {
   let currTotalProfit: number = 0;
   const totalProfit = bots
     .map((bot) => bot)
     .reduce((accumulator, bot) => {
       if (
         bot?.deal?.take_profit_price &&
-        parseFloat(bot?.deal?.take_profit_price) > 0
+        bot?.deal?.take_profit_price > 0
       ) {
         let enterPositionPrice = 0;
         let exitPositionPrice = bot.deal.current_price;
@@ -122,7 +100,7 @@ export function computeTotalProfit(bots) {
           );
         }
       }
-      return parseFloat(accumulator) + currTotalProfit;
+      return accumulator + currTotalProfit;
     }, 0);
   return roundDecimals(totalProfit, 2);
 }
