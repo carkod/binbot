@@ -1,13 +1,15 @@
+import { BotStrategy } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { type Bot } from "./botInitialState";
 
-export function getProfit(base_price, current_price, strategy = "long") {
+export function getProfit(
+  base_price: number,
+  current_price: number,
+  strategy = BotStrategy.LONG
+) {
   if (base_price && current_price) {
-    let percent =
-      ((parseFloat(current_price) - parseFloat(base_price)) /
-        parseFloat(base_price)) *
-      100;
-    if (strategy === "margin_short") {
+    let percent = ((current_price - base_price) / base_price) * 100;
+    if (strategy === BotStrategy.MARGIN_SHORT) {
       percent = percent * -1;
     }
     return parseFloat(percent.toFixed(2));
@@ -23,7 +25,7 @@ export function getProfit(base_price, current_price, strategy = "long") {
  */
 export function computeSingleBotProfit(
   bot: Bot,
-  realTimeCurrPrice: number | null = null,
+  realTimeCurrPrice: number | null = null
 ) {
   if (bot.deal && bot.base_order_size > 0) {
     if (bot.deal.opening_price > 0) {
@@ -70,35 +72,24 @@ export function computeTotalProfit(bots: Bot[]) {
   const totalProfit = bots
     .map((bot) => bot)
     .reduce((accumulator, bot) => {
-      if (
-        bot?.deal?.take_profit_price &&
-        bot?.deal?.take_profit_price > 0
-      ) {
-        let enterPositionPrice = 0;
-        let exitPositionPrice = bot.deal.current_price;
+      let openingPrice = 0;
+      let closingPrice = bot.deal.current_price;
 
-        if (bot.deal.opening_price > 0) {
-          enterPositionPrice = bot.deal.opening_price;
-        }
-        if (bot.deal.closing_price > 0) {
-          enterPositionPrice = bot.deal.closing_price;
-        }
-        if (bot.deal.closing_price > 0) {
-          exitPositionPrice = bot.deal.closing_price;
-        }
-        if (bot.deal.closing_price > 0) {
-          exitPositionPrice = bot.deal.closing_price;
-        }
+      if (bot.deal.opening_price > 0) {
+        openingPrice = bot.deal.opening_price;
+      }
+      if (bot.deal.closing_price > 0) {
+        closingPrice = bot.deal.closing_price;
+      }
 
-        if (exitPositionPrice === 0 || enterPositionPrice === 0) {
-          currTotalProfit = 0;
-        } else {
-          currTotalProfit = getProfit(
-            enterPositionPrice,
-            exitPositionPrice,
-            bot.strategy,
-          );
-        }
+      if (closingPrice === 0 || openingPrice === 0) {
+        currTotalProfit = 0;
+      } else {
+        currTotalProfit = getProfit(
+          openingPrice,
+          closingPrice,
+          bot.strategy
+        );
       }
       return accumulator + currTotalProfit;
     }, 0);

@@ -122,9 +122,9 @@ class SpotLongDeal(DealAbstract):
         )
 
         self.active_bot.orders.append(stop_loss_order)
-        self.active_bot.deal.closing_price = res["price"]
-        self.active_bot.deal.closing_qty = res["origQty"]
-        self.active_bot.deal.closing_timestamp = res["transactTime"]
+        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
         msg = "Completed Stop loss."
         if self.active_bot.margin_short_reversal:
             msg += " Scheduled to switch strategy"

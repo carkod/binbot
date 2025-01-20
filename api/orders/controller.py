@@ -81,7 +81,7 @@ class OrderController(Account):
         - side: buy or sell
         """
         qty = 1
-        price = float(self.matching_engine(pair, True, qty))
+        price = float(self.matching_engine(pair, False, qty))
         order = {
             "symbol": pair,
             "orderId": self.generate_id().int,
@@ -108,7 +108,7 @@ class OrderController(Account):
         If price is not provided by matching engine,
         sell at market price
         """
-        price = float(self.matching_engine(symbol, False, qty))
+        price = float(self.matching_engine(symbol, True, qty))
         if price:
             payload = {
                 "symbol": symbol,
