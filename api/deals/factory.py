@@ -278,7 +278,11 @@ class DealAbstract(BaseDeal):
 
         self.active_bot.status = Status.active
         self.controller.save(self.active_bot)
-        self.controller.update_logs("Bot activated", self.active_bot)
+        if self.active_bot.status == Status.inactive:
+            self.controller.update_logs("Bot activated", self.active_bot)
+        else:
+            self.controller.update_logs("Bot deal updated", self.active_bot)
+
         return self.active_bot
 
     def base_order(self) -> BotModel:

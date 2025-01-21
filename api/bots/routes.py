@@ -122,11 +122,16 @@ def edit(
     try:
         controller = BotTableCrud(session=session)
         bot_table = controller.get_one(id)
-        bot_table.sqlmodel_update(bot_item)
+        # client should not change deal and orders
+        # these are internally generated
+        deal = bot_table.deal
+        orders = bot_table.orders
 
         # bottable crud save only accepts BotModel
         # this is to keep consistency across the entire app
-        bot_model = BotModel.model_validate(bot_table.model_dump())
+        bot_model = BotModel.dump_from_table(bot_item)
+        bot_model.deal = deal
+        bot_model.orders = orders
         bot = controller.save(bot_model)
 
         data = BotModelResponse.model_construct(**bot.model_dump())
