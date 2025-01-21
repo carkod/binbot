@@ -33,7 +33,7 @@ const SymbolSearch: FC<{
     if (value) {
       setState(value);
     }
-    // BTCUSDT, BTCUSDC, BTCETH, ETHUSDT, ETHUSDC -> BTCUSDC
+    // BTCUSDC, BTCUSDC, BTCETH, ETHUSDT, ETHUSDC -> BTCUSDC
     // check test for examples
     if (options && options.length > 0) {
       let updatedOptions = options;

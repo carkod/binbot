@@ -83,7 +83,7 @@ def patch_total_fiat(monkeypatch):
 
     monkeypatch.setattr(Assets, "get_wallet_balance", lambda self: account_data)
     monkeypatch.setattr(
-        Assets, "ticker", lambda self, symbol="BTCUSDT", json=False: {"price": "20000"}
+        Assets, "ticker", lambda self, symbol="BTCUSDC", json=False: {"price": "20000"}
     )
 
 
