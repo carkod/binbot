@@ -56,9 +56,14 @@ class BotTable(SQLModel, table=True):
         default=0,
         ge=-1,
         le=101,
-        description="Trailling activation (first take profit hit)",
+        description="Set trailling_deviation once trailling_profit is broken first time",
     )
-    trailling_profit: float = Field(default=0)
+    trailling_profit: float = Field(
+        default=0,
+        ge=-1,
+        le=101,
+        description="Equivalent to take_profit but it moves dynamically based on current price",
+    )
     strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
 
     # Table relationships filled up internally
@@ -70,7 +75,9 @@ class BotTable(SQLModel, table=True):
         default=None, foreign_key="deal.id", ondelete="CASCADE"
     )
     # lazy option will allow objects to be nested when transformed for json return
-    deal: DealTable = Relationship(sa_relationship_kwargs={"lazy": "joined", "single_parent": True})
+    deal: DealTable = Relationship(
+        sa_relationship_kwargs={"lazy": "joined", "single_parent": True}
+    )
 
     model_config = {
         "from_attributes": True,
@@ -79,6 +86,17 @@ class BotTable(SQLModel, table=True):
 
     @field_validator("logs", mode="before")
     def validate_logs(cls, v, info):
+        return v
+
+    @field_validator("trailling")
+    @classmethod
+    def validate_trailling(cls, v, values):
+        if v and values.get("trailling_deviation") == 0:
+            raise ValueError("Trailling deviation must be set if trailling is enabled")
+
+        if v and values.get("trailling_profit") == 0:
+            raise ValueError("Trailling profit must be set if trailling is enabled")
+
         return v
 
 
