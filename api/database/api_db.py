@@ -125,7 +125,7 @@ class ApiDb:
             time_in_force="GTC",
             timestamp=0,
             order_side="buy",
-            pair="BTCUSDT",
+            pair="BTCUSDC",
             qty=0.000123,
             status="filled",
             price=1.222,
@@ -138,7 +138,7 @@ class ApiDb:
             time_in_force="GTC",
             timestamp=0,
             order_side="sell",
-            pair="BTCUSDT",
+            pair="BTCUSDC",
             qty=0.000123,
             status="filled",
             price=1.222,
@@ -195,7 +195,7 @@ class ApiDb:
             total_commission=0,
         )
         paper_trading_bot = PaperTradingTable(
-            pair="BTCUSDT",
+            pair="BTCUSDC",
             balance_size_to_use=1,
             balance_to_use=1,
             base_order_size=15,

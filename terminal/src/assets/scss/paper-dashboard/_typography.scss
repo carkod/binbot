@@ -30,6 +30,12 @@ a {
     color: $primary-color;
   }
 }
+
+.hr-compact {
+  color: $black-hr;
+  margin: $margin-base-vertical 0;
+}
+
 h1,
 .h1 {
   font-size: $font-size-h1;

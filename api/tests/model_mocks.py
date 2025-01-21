@@ -5,7 +5,7 @@ from bots.models import BotModelResponse
 id = "02031768-fbb9-4cc7-b549-642f15ab787b"
 ts = 1733973560249.0
 
-active_pairs = ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
+active_pairs = ["BTCUSDC", "ETHUSDT", "ADAUSDT"]
 
 deal_model = DealModel(
     opening_price=1.3,
@@ -61,7 +61,7 @@ orders_model = [
         time_in_force="GTC",
         timestamp=0,
         order_side="buy",
-        pair="BTCUSDT",
+        pair="BTCUSDC",
         qty=0.000123,
         status="filled",
         price=1.222,
@@ -75,7 +75,7 @@ orders_model = [
         time_in_force="GTC",
         timestamp=0,
         order_side="sell",
-        pair="BTCUSDT",
+        pair="BTCUSDC",
         qty=0.000123,
         status="filled",
         price=1.222,

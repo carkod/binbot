@@ -33,18 +33,20 @@ export function computeSingleBotProfit(
         ? bot.deal.closing_price
         : realTimeCurrPrice || bot.deal.current_price;
       const buyPrice = bot.deal.opening_price;
-      let profitChange = ((currentPrice - buyPrice) / buyPrice) * 100;
-      if (currentPrice === 0) {
-        profitChange = 0;
+      let profitChange = 0;
+      if (currentPrice !== 0) {
+        profitChange = getProfit(buyPrice, currentPrice, bot.strategy);
+        return roundDecimals(profitChange, 2);
+      } else {
+        return 0;
       }
-      return parseFloat(profitChange.toFixed(2));
     } else if (bot.deal.closing_price > 0) {
       // Completed margin short
-
-      let profitChange =
-        ((bot.deal.opening_price - bot.deal.closing_price) /
-          bot.deal.opening_price) *
-        100;
+      const profitChange = getProfit(
+        bot.deal.opening_price,
+        bot.deal.closing_price,
+        bot.strategy
+      );
       return roundDecimals(profitChange, 2);
     } else {
       // Not completed margin_short
@@ -52,14 +54,15 @@ export function computeSingleBotProfit(
         bot.deal.closing_price > 0
           ? bot.deal.closing_price
           : realTimeCurrPrice || bot.deal.current_price;
+
       if (closePrice === 0) {
         return 0;
       }
-
-      let profitChange =
-        ((bot.deal.opening_price - bot.deal.closing_price) /
-          bot.deal.opening_price) *
-        100;
+      const profitChange = getProfit(
+        bot.deal.opening_price,
+        closePrice,
+        bot.strategy
+      );
       return roundDecimals(profitChange, 2);
     }
   } else {
@@ -85,11 +88,7 @@ export function computeTotalProfit(bots: Bot[]) {
       if (closingPrice === 0 || openingPrice === 0) {
         currTotalProfit = 0;
       } else {
-        currTotalProfit = getProfit(
-          openingPrice,
-          closingPrice,
-          bot.strategy
-        );
+        currTotalProfit = getProfit(openingPrice, closingPrice, bot.strategy);
       }
       return accumulator + currTotalProfit;
     }, 0);

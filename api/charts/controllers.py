@@ -6,7 +6,7 @@ from database.autotrade_crud import AutotradeCrud
 from charts.models import MarketDominationSeriesStore
 from apis import BinbotApi
 from database.db import Database, setup_db, setup_kafka_db
-
+from pandas import DataFrame
 
 class KlinesSchema(Database):
     """
@@ -259,3 +259,25 @@ class MarketDominationController(Database, BinbotApi):
             reverse=True,
         )
         return fiat_market_data[:10]
+
+
+class BtcCorrelation(Database, BinbotApi):
+    """
+    CRUD operations for BTC correlation
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.collection = Candlestick()
+
+    def get_btc_correlation(self, asset_symbol: str):
+        """
+        Get BTC correlation data
+        TODO: wait for BTCUSDC data to populate by Binquant
+        """
+        asset_data = self.collection.get_timeseries(asset_symbol)
+        btc_data = self.collection.get_timeseries("BTCUSDT")
+        asset_df = DataFrame(asset_data, columns=["close"])
+        btc_df = DataFrame(btc_data, columns=["close"])
+        p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
+        return p_correlation

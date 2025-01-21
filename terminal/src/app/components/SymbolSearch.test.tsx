@@ -6,7 +6,6 @@ describe("Search symbols", () => {
     const baseAsset = "USDC";
     const listSymbols = [
       "USDCBNB",
-      "BTCUSDT",
       "BTCUSDC",
       "BTCETH",
       "ETHUSDT",

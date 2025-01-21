@@ -6,6 +6,7 @@ import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
 import { BotStatus } from "../../utils/enums";
 import { formatTimestamp, renderDuration } from "../../utils/time";
+import { getQuoteAsset } from "../../utils/api";
 
 type handleCallback = (id: string) => void;
 
@@ -97,6 +98,18 @@ const BotCard: FC<BotCardProps> = ({
               </p>
             </Col>
           </Row>
+          {bot.deal?.opening_timestamp > 0 && (
+            <Row>
+              <Col md="6" xs="7">
+                <p className="small">Open time</p>
+              </Col>
+              <Col md="6" xs="5">
+                <p className="small">
+                  {formatTimestamp(bot.deal.opening_timestamp)}
+                </p>
+              </Col>
+            </Row>
+          )}
           <Row>
             <Col md="6" xs="7">
               <p className="small">Take profit</p>
@@ -143,54 +156,39 @@ const BotCard: FC<BotCardProps> = ({
           {bot.deal?.total_interests > 0 && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Comissions</p>
+                <p className="small">Interests</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">{`${bot.deal.total_interests} BNB`}</p>
+                <p className="small">{`${bot.deal.total_interests} ${getQuoteAsset(bot)}`}</p>
               </Col>
             </Row>
           )}
-          {Boolean(bot.deal?.opening_timestamp) && (
+
+          {bot.deal?.closing_timestamp > 0 && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Buy time</p>
+                <p className="small">Close time</p>
               </Col>
               <Col md="6" xs="5">
                 <p className="small">
-                  {formatTimestamp(bot.deal.opening_timestamp)}
+                  {formatTimestamp(bot.deal.closing_timestamp)}
                 </p>
               </Col>
             </Row>
           )}
-          {bot.status === BotStatus.COMPLETED &&
-            Boolean(bot.deal?.closing_timestamp) && (
-              <Row>
-                <Col md="6" xs="7">
-                  <p className="small">Sell time</p>
-                </Col>
-                <Col md="6" xs="5">
-                  <p className="small">
-                    {formatTimestamp(bot.deal.closing_timestamp)}
-                  </p>
-                </Col>
-              </Row>
-            )}
-          {bot.status === BotStatus.COMPLETED &&
-            Boolean(
-              bot.deal?.opening_timestamp && bot.deal?.closing_timestamp,
-            ) && (
-              <Row>
-                <Col md="6" xs="7">
-                  <p className="small">Duration</p>
-                </Col>
-                <Col md="6" xs="5">
-                  <p className="small">{renderDuration(bot)}</p>
-                </Col>
-              </Row>
-            )}
+          {bot.deal?.closing_timestamp > 0 && (
+            <Row>
+              <Col md="6" xs="7">
+                <p className="small">Duration</p>
+              </Col>
+              <Col md="6" xs="5">
+                <p className="small">{renderDuration(bot)}</p>
+              </Col>
+            </Row>
+          )}
         </Container>
       </Card.Body>
-      <hr />
+      <hr className="hr-compact" />
       <Card.Footer className="d-flex flex-row justify-content-between">
         <Button
           variant="info"

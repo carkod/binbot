@@ -43,7 +43,7 @@ export const DashboardPage: FC<{}> = () => {
     if (benchmark) {
       if (benchmark.benchmarkData) {
         const { revenue, percentage } = calculateTotalRevenue(
-          benchmark.benchmarkData,
+          benchmark.benchmarkData
         );
         setRevenue(revenue);
         setPercentageRevenue(percentage);
@@ -143,7 +143,7 @@ export const DashboardPage: FC<{}> = () => {
                   <p>(Current - Last balance)</p>
                 </Col>
                 <Col>
-                  <p className=" text-end">{roundDecimals(revenue)} USDC</p>
+                  <p className="text-end">{roundDecimals(revenue)} USDC</p>
                 </Col>
               </Row>
             </Card.Footer>

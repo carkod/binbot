@@ -171,7 +171,7 @@ export const BotsPage: FC<{}> = () => {
           </Stack>
         </div>
       </div>
-      <Row md="4">
+      <Row md="3" xs="1" lg="4">
         {props?.bots?.ids.length > 0
           ? Object.values(props?.bots?.entities).map((x, i) => (
               <Col key={i}>
