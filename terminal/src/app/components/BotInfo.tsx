@@ -13,7 +13,7 @@ import { renderDuration, formatTimestamp } from "../../utils/time";
 
 export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
-    bot.orders?.length > 0,
+    bot.orders?.length > 0
   );
   return (
     <Card>
@@ -80,44 +80,26 @@ export default function BotInfo({ bot }) {
               </Row>
               <ListGroup className="list-group-flush">
                 {Object.keys(bot.deal).map((k, i) => {
-                  if (typeof bot.deal[k] !== "object") {
-                    let dealData = bot.deal[k];
-                    if (k === "opening_timestamp" || k === "closing_timestamp") {
-                      dealData =
-                        bot.deal[k] === 0 || formatTimestamp(bot.deal[k]);
-                    }
-                    return (
-                      <ListGroup.Item
-                        action
-                        as="h5"
-                        key={i}
-                        className="d-flex justify-content-between align-items-start"
-                      >
-                        <small>{k}</small>
-                        {dealData || dealData > 0 ? (
-                          <Badge bg="secondary">{dealData}</Badge>
-                        ) : (
-                          <small>{dealData}</small>
-                        )}
-                      </ListGroup.Item>
-                    );
-                  } else {
-                    return (
-                      <ListGroup key={i} variant="flush">
-                        {Object.keys(bot.deal[k]).map((l, j) => (
-                          <ListGroup.Item
-                            key={j}
-                            as="h5"
-                            className="d-flex justify-content-between align-items-start"
-                          >
-                            <div className="ms-2 me-auto">
-                              {l}:{bot.deal[k][l]}
-                            </div>
-                          </ListGroup.Item>
-                        ))}
-                      </ListGroup>
-                    );
+                  let dealData = bot.deal[k];
+                  if (k === "opening_timestamp" || k === "closing_timestamp") {
+                    dealData =
+                      bot.deal[k] === 0 || formatTimestamp(bot.deal[k]);
                   }
+                  return (
+                    <ListGroup.Item
+                      action
+                      as="h5"
+                      key={i}
+                      className="d-flex justify-content-between align-items-start"
+                    >
+                      <small>{k}</small>
+                      {dealData || dealData > 0 ? (
+                        <Badge bg="secondary">{dealData}</Badge>
+                      ) : (
+                        <small>{dealData}</small>
+                      )}
+                    </ListGroup.Item>
+                  );
                 })}
                 <ListGroup.Item
                   as="h5"

@@ -7,7 +7,6 @@ describe("Search symbols", () => {
     const listSymbols = [
       "USDCBNB",
       "BTCUSDC",
-      "BTCUSDC",
       "BTCETH",
       "ETHUSDT",
       "ETHUSDC",

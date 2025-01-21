@@ -273,11 +273,7 @@ class BtcCorrelation(Database, BinbotApi):
     def get_btc_correlation(self, asset_symbol: str):
         """
         Get BTC correlation data
-
-        Args:
-            size (int, optional): Number of data points to retrieve. Defaults to 7 (1 week).
-        Returns:
-            dict: A dictionary containing the BTC correlation data, including correlation values and dates.
+        TODO: wait for BTCUSDC data to populate by Binquant
         """
         asset_data = self.collection.get_timeseries(asset_symbol)
         btc_data = self.collection.get_timeseries("BTCUSDT")
