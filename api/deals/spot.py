@@ -203,7 +203,9 @@ class SpotLongDeal(DealAbstract):
         self.active_bot.orders.append(order_data)
 
         self.active_bot.deal.trailling_profit_price = float(res["price"])
-        self.active_bot.deal.trailling_stop_loss_price = float(res["price"]) - (float(res["price"]) * (self.active_bot.trailling_deviation / 100))
+        self.active_bot.deal.trailling_stop_loss_price = float(res["price"]) - (
+            float(res["price"]) * (self.active_bot.trailling_deviation / 100)
+        )
 
         # new deal parameters to replace previous
         self.active_bot.deal.closing_price = float(res["price"])

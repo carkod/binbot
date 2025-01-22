@@ -8,6 +8,7 @@ from apis import BinbotApi
 from database.db import Database, setup_db, setup_kafka_db
 from pandas import DataFrame
 
+
 class KlinesSchema(Database):
     """
     Candlestick data CRUD operations

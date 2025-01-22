@@ -6,7 +6,7 @@ from tools.exceptions import TakeProfitError
 from tools.handle_error import (
     handle_binance_errors,
 )
-from tools.round_numbers import round_numbers, supress_notation
+from tools.round_numbers import round_numbers
 from deals.base import BaseDeal
 from deals.models import DealModel
 from database.paper_trading_crud import PaperTradingTableCrud
@@ -247,10 +247,7 @@ class DealAbstract(BaseDeal):
                 )
 
         # Bot has only take_profit set
-        if (
-            self.active_bot.take_profit > 0
-            and not self.active_bot.trailling
-        ):
+        if self.active_bot.take_profit > 0 and not self.active_bot.trailling:
             if self.active_bot.strategy == Strategy.margin_short:
                 price = self.active_bot.deal.opening_price
                 take_profit_price = price - (
@@ -265,27 +262,21 @@ class DealAbstract(BaseDeal):
 
         # Bot has trailling set
         # trailling_profit must also be set
-        if (
-            self.active_bot.trailling
-        ):
+        if self.active_bot.trailling:
             if self.active_bot.strategy == Strategy.margin_short:
                 price = self.active_bot.deal.opening_price
-                trailling_profit = price - (
-                    price * (self.active_bot.take_profit) / 100
-                )
+                trailling_profit = price - (price * (self.active_bot.take_profit) / 100)
                 trailling_deviation = trailling_profit + (
                     price * (self.active_bot.take_profit) / 100
-                ) 
+                )
                 self.active_bot.deal.trailling_profit_price = trailling_profit
                 self.active_bot.deal.trailling_stop_loss_price = trailling_deviation
             else:
                 price = self.active_bot.deal.opening_price
-                trailling_profit = price + (
-                    price * (self.active_bot.take_profit) / 100
-                )
+                trailling_profit = price + (price * (self.active_bot.take_profit) / 100)
                 trailling_deviation = trailling_profit - (
                     price * (self.active_bot.take_profit) / 100
-                ) 
+                )
                 self.active_bot.deal.trailling_profit_price = trailling_profit
                 self.active_bot.deal.trailling_stop_loss_price = trailling_deviation
 
@@ -333,7 +324,6 @@ class DealAbstract(BaseDeal):
             res = self.buy_order(
                 symbol=self.active_bot.pair,
                 qty=qty,
-                price=supress_notation(price, self.price_precision),
             )
 
         order_data = OrderModel(

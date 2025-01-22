@@ -134,6 +134,7 @@ class BinanceApi:
     """
     No security endpoints
     """
+
     def ticker_24(self, type: str = "FULL", symbol: str | None = None):
         """
         Weight 40 without symbol
@@ -173,6 +174,7 @@ class BinanceApi:
     """
     USER_DATA endpoints
     """
+
     def get_account_balance(self):
         """
         Get account balance

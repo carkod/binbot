@@ -369,30 +369,30 @@ class MarginDeal(DealAbstract):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def streaming_updates(self, close_price: str) -> BotModel:
+    def streaming_updates(self, close_price: float) -> BotModel:
         """
         Margin_short streaming updates
         """
 
-        self.close_conditions(float(close_price))
+        self.close_conditions(close_price)
 
-        price = float(close_price)
-        self.active_bot.deal.current_price = price
+        self.active_bot.deal.current_price = close_price
         self.active_bot.deal.stop_loss_price = self.active_bot.deal.closing_price + (
             self.active_bot.deal.closing_price
             * (float(self.active_bot.stop_loss) / 100)
         )
+        self.controller.save(self.active_bot)
 
         if (
-            price > 0
+            close_price > 0
             and self.active_bot.trailling
             and self.active_bot.trailling_profit > 0
             and self.active_bot.trailling_deviation > 0
         ):
             # Direction 1.1: downward trend (short)
             # Breaking trailling
-            if price < self.active_bot.deal.trailling_profit_price:
-                self.update_trailling_profit(price)
+            if close_price < self.active_bot.deal.trailling_profit_price:
+                self.update_trailling_profit(close_price)
                 self.controller.save(self.active_bot)
 
                 # Execute the usual non-trailling take_profit
@@ -408,7 +408,7 @@ class MarginDeal(DealAbstract):
             # Direction 2: upward trend (short). breaking the trailling_stop_loss
             # Make sure it's red candlestick, to avoid slippage loss
             # Sell after hitting trailling stop_loss and if price already broken trailling
-            if price >= self.active_bot.deal.trailling_stop_loss_price:
+            if close_price >= self.active_bot.deal.trailling_stop_loss_price:
                 self.controller.update_logs(
                     f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}",
                     self.active_bot,
@@ -421,7 +421,7 @@ class MarginDeal(DealAbstract):
 
             # Direction 1.3: upward trend (short)
             # Breaking trailling_stop_loss, completing trailling
-            if price > self.active_bot.deal.stop_loss_price:
+            if close_price > self.active_bot.deal.stop_loss_price:
                 self.controller.update_logs(
                     f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}"
                 )

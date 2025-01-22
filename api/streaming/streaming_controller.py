@@ -74,11 +74,11 @@ class StreamingController(BaseStreaming):
         # Margin short
         if current_bot.strategy == Strategy.margin_short:
             margin_deal = MarginDeal(current_bot, db_table=db_table)
-            margin_deal.streaming_updates(close_price)
+            margin_deal.streaming_updates(float(close_price))
 
         elif current_bot.strategy == Strategy.long:
             spot_long_deal = SpotLongDeal(current_bot, db_table=db_table)
-            spot_long_deal.streaming_updates(close_price, open_price)
+            spot_long_deal.streaming_updates(float(close_price), float(open_price))
 
         pass
 

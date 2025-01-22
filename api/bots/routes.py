@@ -100,6 +100,7 @@ def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
     except ValueError as error:
         return BotResponse(message="Bot not found.", error=1, data=str(error))
 
+
 @bot_blueprint.post("/bot", tags=["bots"], response_model=BotResponse)
 def create(
     bot_item: BotBase,
