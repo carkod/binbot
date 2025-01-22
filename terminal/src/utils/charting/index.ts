@@ -79,7 +79,7 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
         label: label,
         tooltip: [
           `${order.deal_type}`,
-          ` ${order.price} ${bot.balance_to_use} / ${order.qty} ${quoteAsset}`,
+          ` ${order.price} ${bot.fiat} / ${order.qty} ${quoteAsset}`,
         ],
         time: matchTsToTimescale(order.timestamp),
         color: color,

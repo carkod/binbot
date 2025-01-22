@@ -114,7 +114,7 @@ class OrderController(Account):
                 "symbol": symbol,
                 "side": OrderSide.sell,
                 "type": OrderType.limit,
-                "timeInForce": TimeInForce.fok,
+                "timeInForce": TimeInForce.gtc,
                 "price": supress_notation(price, self.price_precision),
                 "quantity": supress_notation(qty, self.qty_precision),
             }
@@ -155,7 +155,7 @@ class OrderController(Account):
                 "symbol": symbol,
                 "side": OrderSide.buy,
                 "type": OrderType.limit,
-                "timeInForce": TimeInForce.fok,
+                "timeInForce": TimeInForce.gtc,
                 "price": supress_notation(book_price, self.price_precision),
                 "quantity": supress_notation(qty, self.qty_precision),
             }

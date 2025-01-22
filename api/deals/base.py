@@ -161,8 +161,8 @@ class BaseDeal(OrderController):
         for order in all_orders:
             if (
                 order["side"] == "SELL"
-                and order["price"] == self.active_bot.deal.take_profit_price
-                and order["origQty"] == self.active_bot.deal.opening_qty
+                and float(order["price"]) == self.active_bot.deal.take_profit_price
+                and float(order["origQty"]) == self.active_bot.deal.opening_qty
             ):
                 return order
 
