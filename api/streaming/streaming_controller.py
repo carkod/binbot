@@ -168,7 +168,9 @@ class BbspreadsUpdater(BaseStreaming):
             close_timestamp = int(datetime.now().timestamp() * 1000)
 
         asset = bot.pair.split(bot.fiat)[0]
-        interest_details = self.binance_api.get_interest_history(asset=asset, symbol=bot.pair)
+        interest_details = self.binance_api.get_interest_history(
+            asset=asset, symbol=bot.pair
+        )
 
         if len(interest_details["rows"]) > 0:
             interests = interest_details["rows"][0]["interests"]

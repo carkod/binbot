@@ -231,7 +231,7 @@ class BaseDeal(OrderController):
                             qty = round_numbers_ceiling(15 / price)
 
                         buy_margin_response = self.buy_margin_order(
-                            pair, supress_notation(qty, self.qty_precision)
+                            pair, round_numbers(qty, self.qty_precision)
                         )
                         repay_amount, free = self.compute_margin_buy_back()
                         pass

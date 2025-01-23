@@ -288,6 +288,16 @@ class BinanceApi:
             },
         )
 
+    def get_repay_details(self, loan_id: int, isolated_symbol: str):
+        return self.signed_request(
+            self.loan_record_url,
+            payload={
+                "txId": loan_id,
+                "type": "REPAY",
+                "isolatedSymbol": isolated_symbol,
+            },
+        )
+
     def repay_margin_loan(
         self, asset: str, symbol: str, amount: float | int, isIsolated: str = "TRUE"
     ):

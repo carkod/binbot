@@ -202,21 +202,26 @@ class MarginDeal(DealAbstract):
             if self.active_bot.deal.margin_loan_id == 0:
                 raise BinbotErrors("No loan found for this bot")
 
-            # Check if there is a loan
-            # Binance may reject loans if they don't have asset
-            # or binbot errors may transfer funds but no loan is created
+            # Repay and Borrow have different ids
+            # Check first if there is a repay before repaying
             query_loan: dict = self.get_margin_loan_details(
                 loan_id=self.active_bot.deal.margin_loan_id,
                 isolated_symbol=self.active_bot.pair,
             )
 
-            if float(query_loan["total"]) > 0 and repay_amount > 0:
+            if (
+                self.active_bot.deal.margin_repay_id == 0
+                and float(query_loan["total"]) > 0
+                and repay_amount > 0
+            ):
                 # Only supress trailling 0s, so that everything is paid
                 amount = round_numbers_ceiling(repay_amount, self.qty_precision)
                 try:
-                    self.repay_margin_loan(
+                    repay_data = self.repay_margin_loan(
                         asset=asset, symbol=self.active_bot.pair, amount=amount
                     )
+                    self.active_bot.deal.margin_repay_id = int(repay_data["tranId"])
+                    self.controller.save(self.active_bot)
                 except BinanceErrors as error:
                     if error.code == -3041:
                         self.controller.update_logs(error.message)
@@ -378,10 +383,16 @@ class MarginDeal(DealAbstract):
         self.close_conditions(close_price)
 
         self.active_bot.deal.current_price = close_price
-        self.active_bot.deal.stop_loss_price = self.active_bot.deal.closing_price + (
-            self.active_bot.deal.closing_price
-            * (float(self.active_bot.stop_loss) / 100)
-        )
+
+        if self.active_bot.deal.stop_loss_price == 0:
+            self.active_bot.deal.stop_loss_price = (
+                self.active_bot.deal.opening_price
+                + (
+                    self.active_bot.deal.opening_price
+                    * (self.active_bot.stop_loss / 100)
+                )
+            )
+
         self.controller.save(self.active_bot)
 
         if (
@@ -392,24 +403,14 @@ class MarginDeal(DealAbstract):
         ):
             # Direction 1.1: downward trend (short)
             # Breaking trailling
+            # Trailling only to update when it's above opening_price
             if close_price < self.active_bot.deal.trailling_profit_price:
                 self.update_trailling_profit(close_price)
-                self.controller.save(self.active_bot)
-
-                # Execute the usual non-trailling take_profit
-                self.controller.update_logs(
-                    f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.stop_loss_price}",
-                    self.active_bot,
-                )
-                self.execute_take_profit()
-                self.base_producer.update_required(
-                    self.producer, "EXECUTE_MARGIN_TAKE_PROFIT"
-                )
 
             # Direction 2: upward trend (short). breaking the trailling_stop_loss
             # Make sure it's red candlestick, to avoid slippage loss
             # Sell after hitting trailling stop_loss and if price already broken trailling
-            if close_price >= self.active_bot.deal.trailling_stop_loss_price:
+            if close_price > self.active_bot.deal.trailling_stop_loss_price:
                 self.controller.update_logs(
                     f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}",
                     self.active_bot,
@@ -435,6 +436,17 @@ class MarginDeal(DealAbstract):
                     self.base_producer.update_required(
                         self.producer, "EXECUTE_MARGIN_SWITCH_TO_LONG"
                     )
+
+        if not self.active_bot.trailling and self.active_bot.deal.take_profit_price > 0:
+            # Not a trailling bot, just simple take profit
+            if close_price <= self.active_bot.deal.take_profit_price:
+                self.controller.update_logs(
+                    f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.take_profit_price}"
+                )
+                self.execute_take_profit()
+                self.base_producer.update_required(
+                    self.producer, "EXECUTE_MARGIN_TAKE_PROFIT"
+                )
 
         return self.active_bot
 
@@ -509,7 +521,11 @@ class MarginDeal(DealAbstract):
         - Buy back asset sold
         """
         if isinstance(self.controller, BotTableCrud):
-            self.cancel_open_orders(DealType.take_profit)
+            try:
+                self.cancel_open_orders(DealType.take_profit)
+            except Exception:
+                # Regardless opened orders or not continue
+                pass
 
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
@@ -517,37 +533,38 @@ class MarginDeal(DealAbstract):
                 self.active_bot.deal.opening_qty, OrderSide.buy
             )
         else:
-            res = self.margin_liquidation(self.active_bot.pair)
+            self.controller.update_logs("Attempting to liquidate loan", self.active_bot)
+            try:
+                res = self.margin_liquidation(self.active_bot.pair)
+            except BinanceErrors as error:
+                self.active_bot.logs.append(error.message)
+                self.active_bot.status = Status.error
+                self.controller.save(self.active_bot)
+                return self.active_bot
 
-        if res:
-            # No res means it wasn't properly closed/completed
+        # No res means it wasn't properly closed/completed
+        take_profit_order = OrderModel(
+            timestamp=res["transactTime"],
+            deal_type=DealType.take_profit,
+            order_id=int(res["orderId"]),
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=float(res["price"]),
+            qty=float(res["origQty"]),
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
 
-            take_profit_order = OrderModel(
-                timestamp=res["transactTime"],
-                deal_type=DealType.take_profit,
-                order_id=res["orderId"],
-                pair=res["symbol"],
-                order_side=res["side"],
-                order_type=res["type"],
-                price=res["price"],
-                qty=res["origQty"],
-                time_in_force=res["timeInForce"],
-                status=res["status"],
-            )
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+            res["fills"]
+        )
 
-            self.active_bot.deal.total_commissions = self.calculate_total_commissions(
-                res["fills"]
-            )
-
-            self.active_bot.orders.append(take_profit_order)
-            self.active_bot.deal.closing_price = float(res["price"])
-            self.active_bot.deal.closing_timestamp = float(res["transactTime"])
-            msg = "Completed Take profit!"
-
-        else:
-            msg = "Re-completed take profit"
-
-        self.controller.update_logs(msg)
+        self.active_bot.orders.append(take_profit_order)
+        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.logs.append("Completed Take profit!")
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 
@@ -587,38 +604,29 @@ class MarginDeal(DealAbstract):
         return self.active_bot
 
     def update_trailling_profit(self, close_price: float) -> BotModel:
-        price = float(close_price)
-        # Direction: downward trend (short)
-        # Breaking trailling_stop_loss
+        # Direction 1: downward trend (short)
         if self.active_bot.deal.trailling_stop_loss_price == 0:
-            trailling_take_profit = self.active_bot.deal.closing_price - (
-                self.active_bot.deal.closing_price
-                * ((self.active_bot.take_profit) / 100)
+            price = (
+                close_price
+                if close_price < self.active_bot.deal.opening_price
+                else self.active_bot.deal.opening_price
+            )
+            trailling_take_profit = price - (
+                price * ((self.active_bot.take_profit) / 100)
             )
             stop_loss_trailling_price = trailling_take_profit - (
                 trailling_take_profit * ((self.active_bot.trailling_deviation) / 100)
             )
-            # If trailling_stop_loss not below initial margin_short_sell price
-            if stop_loss_trailling_price < self.active_bot.deal.closing_price:
+            # If trailling_stop_loss is above (margin) the opening_price do not update trailling stop loss, because it'll close at a loss
+            # stop_loss is the safe net in this case
+            if stop_loss_trailling_price < self.active_bot.deal.opening_price:
                 self.active_bot.deal.trailling_stop_loss_price = (
                     stop_loss_trailling_price
                 )
-                self.controller.save(self.active_bot)
-                self.controller.update_logs(
-                    f"{self.active_bot.pair} Setting trailling_stop_loss (short) and saved to DB",
-                    self.active_bot,
+                self.active_bot.logs.append(
+                    f"{self.active_bot.pair} below opening_price, setting trailling_stop_loss (margin_short)"
                 )
-
-        if self.active_bot.deal.trailling_profit_price == 0:
-            # Current take profit + next take_profit
-            trailling_price = float(self.active_bot.deal.take_profit_price) - (
-                float(self.active_bot.deal.take_profit_price)
-                * (float(self.active_bot.take_profit) / 100)
-            )
-            self.active_bot.deal.trailling_profit_price = trailling_price
-            logging.info(
-                f"{self.active_bot.pair} Updated (Didn't break trailling), updating trailling price (short)"
-            )
+                self.controller.save(self.active_bot)
 
         # Keep trailling_stop_loss up to date
         if (
@@ -640,17 +648,14 @@ class MarginDeal(DealAbstract):
             )
 
         # Direction 1 (downward): breaking the current trailling
-        if price <= self.active_bot.deal.trailling_profit_price:
-            new_take_profit: float = price - (
-                price * (float(self.active_bot.take_profit) / 100)
+        if close_price <= self.active_bot.deal.trailling_profit_price:
+            new_take_profit: float = close_price - (
+                close_price * (float(self.active_bot.take_profit) / 100)
             )
-            new_trailling_stop_loss = price * (
+            new_trailling_stop_loss = close_price * (
                 1 + (self.active_bot.trailling_deviation / 100)
             )
-            # Update deal take_profit
-            self.active_bot.deal.take_profit_price = new_take_profit
-            # take_profit but for trailling, to avoid confusion
-            # trailling_profit_price always be > trailling_stop_loss_price
+            # Update deal trailling profit
             self.active_bot.deal.trailling_profit_price = new_take_profit
 
             # Update trailling_stop_loss
@@ -659,6 +664,8 @@ class MarginDeal(DealAbstract):
                 # instead let it drop until it hits safety order or stop loss
                 # Update trailling_stop_loss
                 self.active_bot.deal.trailling_stop_loss_price = new_trailling_stop_loss
+
+        self.controller.save(self.active_bot)
 
         return self.active_bot
 

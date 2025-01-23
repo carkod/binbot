@@ -128,7 +128,12 @@ class OrderController(Account):
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         if data["status"] != "FILLED" and iteration == 0:
-            self.delete_opened_order(symbol, data["orderId"])
+            try:
+                self.delete_opened_order(symbol, data["orderId"])
+            except Exception:
+                # Most likely order has been executed by now
+                pass
+
             self.sell_order(symbol, qty, price, iteration + 1)
 
         if float(data["price"]) == 0:
@@ -170,7 +175,10 @@ class OrderController(Account):
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         if data["status"] != "FILLED" and iteration == 0:
-            self.delete_opened_order(symbol, data["orderId"])
+            try:
+                self.delete_opened_order(symbol, data["orderId"])
+            except Exception:
+                pass
             self.buy_order(symbol, qty, price, iteration + 1)
 
         if float(data["price"]) == 0:
@@ -251,7 +259,10 @@ class OrderController(Account):
             url=self.margin_order, method="POST", payload=payload
         )
         if data["status"] != "FILLED" and iteration == 0:
-            self.cancel_margin_order(symbol, data["orderId"])
+            try:
+                self.cancel_margin_order(symbol, data["orderId"])
+            except Exception:
+                pass
             self.buy_margin_order(symbol, qty, price, iteration + 1)
 
         return data
@@ -284,7 +295,11 @@ class OrderController(Account):
             url=self.margin_order, method="POST", payload=payload
         )
         if data["status"] != "FILLED" and iteration == 0:
-            self.cancel_margin_order(symbol, data["orderId"])
+            try:
+                self.cancel_margin_order(symbol, data["orderId"])
+            except Exception:
+                pass
+
             self.sell_margin_order(symbol, qty, price, iteration + 1)
 
         if float(data["price"]) == 0:

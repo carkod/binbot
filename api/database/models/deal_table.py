@@ -25,7 +25,13 @@ class DealBase(SQLModel):
     # fields for margin trading
     total_interests: float = Field(default=0, gt=-1)
     total_commissions: float = Field(default=0, gt=-1)
-    margin_loan_id: int = Field(default=0)
+    margin_loan_id: int = Field(
+        default=0,
+        description="Txid from Binance. This is used to check if there is a loan, 0 means no loan",
+    )
+    margin_repay_id: int = Field(
+        default=0, gt=-1, description="= 0, it has not been repaid"
+    )
 
     # Refactored deal prices that combine both margin and spot
     opening_price: float = Field(

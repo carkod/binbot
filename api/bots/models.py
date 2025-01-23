@@ -233,7 +233,7 @@ class BotListResponse(IResponseBase):
     serialize nested table objects (deal, orders)
     """
 
-    data: list[BotModelResponse] = Field(default=[])
+    data: list = Field(default=[])
 
 
 class ErrorsRequestBody(BaseModel):
