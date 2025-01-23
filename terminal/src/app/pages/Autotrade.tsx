@@ -23,8 +23,6 @@ export const AutotradePage: FC<{}> = () => {
   const [updateSettings] = useEditSettingsMutation();
 
   const {
-    control,
-    watch,
     register,
     setValue,
     reset,
@@ -96,7 +94,7 @@ export const AutotradePage: FC<{}> = () => {
                             setSettingsField({
                               name: "candlestick_interval",
                               value,
-                            }),
+                            })
                           );
                         }}
                         onBlur={handleBlur}
@@ -110,7 +108,7 @@ export const AutotradePage: FC<{}> = () => {
                             <option value={interval.toString()}>
                               {interval.toString()}
                             </option>
-                          ),
+                          )
                         )}
                       </Form.Select>
                       {errors.candlestick_interval && (
@@ -141,7 +139,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          }),
+                          })
                         );
                       }}
                     />
@@ -162,7 +160,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          }),
+                          })
                         );
                       }}
                     />
@@ -199,9 +197,9 @@ export const AutotradePage: FC<{}> = () => {
                   </Col>
                   <Col md="3">
                     <SettingsInput
-                      value={settings.trailling_deviation}
-                      name={"trailling_deviation"}
-                      label={"Trailling deviation"}
+                      value={settings.stop_loss}
+                      name={"stop_loss"}
+                      label={"Stop loss"}
                       type="number"
                       register={register}
                     />
@@ -220,7 +218,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: "trailling",
                             value: !settings.trailling,
-                          }),
+                          })
                         );
                       }}
                       {...register("trailling", { required: true })}
@@ -229,18 +227,30 @@ export const AutotradePage: FC<{}> = () => {
                     </Button>
                   </Col>
                 </Row>
-                {settings.trailling && (
+                {settings.trailling ? (
                   <Row>
                     <Col md="3">
                       <SettingsInput
-                        value={settings.stop_loss}
-                        name={"stop_loss"}
-                        label={"Stop loss"}
+                        value={settings.trailling_deviation}
+                        name={"trailling_deviation"}
+                        label={"Trailling stop loss"}
                         type="number"
                         infoText="Should be kept as small as possible as this will increase funds needed to start base_order_size"
                         register={register}
                       />
                     </Col>
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.trailling_profit}
+                        name={"trailling_profit"}
+                        label={"Trail profit"}
+                        type="number"
+                        register={register}
+                      />
+                    </Col>
+                  </Row>
+                ) : (
+                  <Row>
                     <Col md="3">
                       <SettingsInput
                         value={settings.take_profit}
