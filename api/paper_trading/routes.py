@@ -5,13 +5,14 @@ from tools.enum_definitions import Status, Strategy
 from database.models.bot_table import PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.utils import get_session
-from deals.factory import DealAbstract
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.handle_error import api_response
 from bots.models import BotModel, BotResponse, BotListResponse
 from typing import List, Union
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
+from bots.models import BotModelResponse
+
 
 paper_trading_blueprint = APIRouter()
 
@@ -132,12 +133,19 @@ def deactivate(id: str, session: Session = Depends(get_session)):
     if not bot_model:
         return api_response("No active bot found. Can't deactivate")
 
-    bot = BotModel.model_construct(**bot_model.model_dump())
-    bot_instance = DealAbstract(bot, PaperTradingTable)
+    bot_model = BotModel.model_construct(**bot_model.model_dump())
+    if bot_model.strategy == Strategy.margin_short:
+        deal_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(bot_model)
+    else:
+        deal_instance = SpotLongDeal(bot_model)
     try:
-        bot_instance.close_all()
-        return api_response("Active orders closed, sold base asset, deactivated")
-
+        data = deal_instance.close_all()
+        response_data = BotModelResponse(**data.model_dump())
+        return {
+            "message": "Successfully triggered panic sell! Bot deactivated.",
+            "data": response_data,
+        }
     except BinbotErrors as error:
-        bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
-        return api_response(error.message, error=1)
+        return BotResponse(message=error.message, error=1)
+    except ValueError as error:
+        return BotResponse(message="Bot not found.", error=1, data=str(error))

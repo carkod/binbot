@@ -228,7 +228,7 @@ class OrderController(Account):
         python-binance wrapper function to make it less verbose and less dependant
         """
         if iteration == 0:
-            price = float(self.matching_engine(symbol, True, qty))
+            price = self.matching_engine(symbol, True, qty)
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,

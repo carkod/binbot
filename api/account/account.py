@@ -241,11 +241,20 @@ class Account(BinbotApi):
                 balances.append(item)
         return balances
 
-    def get_single_raw_balance(self, asset) -> float:
+    def get_single_raw_balance(self, asset, fiat="USDC") -> float:
         data = self.get_account_balance()
         for x in data["balances"]:
             if x["asset"] == asset:
                 return float(x["free"])
+        else:
+            symbol = asset + fiat
+            data = self.get_isolated_balance(symbol)
+            if len(data) > 0:
+                qty = float(data[0]["baseAsset"]["free"]) + float(
+                    data[0]["baseAsset"]["borrowed"]
+                )
+                if qty > 0:
+                    return qty
         return 0
 
     def get_margin_balance(self, symbol="BTC") -> float:

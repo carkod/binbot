@@ -73,17 +73,14 @@ def get_one_by_id(id: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=id)
         data = BotModelResponse.dump_from_table(bot)
+        
         if not bot:
             return BotResponse(message="Bot not found.", error=1)
         else:
-            return {
-                "message": "Successfully found one bot.",
-                "data": data,
-            }
+            return BotResponse(message="Successfully found one bot.", data=data)
+
     except ValidationError as error:
         return BotResponse(message="Bot not found.", error=1, data=error.json())
-    except ValueError as error:
-        return BotResponse(message="Bot not found.", error=1, data=str(error))
 
 
 @bot_blueprint.get("/bot/symbol/{symbol}", tags=["bots"])
@@ -184,7 +181,7 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.open_deal()
-        response_data = BotModelResponse(**data.model_dump())
+        response_data = BotModelResponse.model_dump(data)
         return BotResponse(message="Successfully activated bot.", data=response_data)
     except BinbotErrors as error:
         deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
@@ -192,8 +189,8 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
     except BinanceErrors as error:
         deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
         return BotResponse(message=error.message, error=1)
-    except ValueError as error:
-        return BotResponse(message="Bot not found.", error=1, data=str(error))
+    except ValueError:
+        return BotResponse(message="Bot not found.", error=1)
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", response_model=BotResponse, tags=["bots"])
@@ -206,7 +203,7 @@ def deactivation(id: str, session: Session = Depends(get_session)):
     if not bot_table:
         return BotResponse(message="No active bot found.")
 
-    bot_model = BotModel.model_construct(**bot_table.model_dump())
+    bot_model = BotModel.dump_from_table(bot_table)
     if bot_model.strategy == Strategy.margin_short:
         deal_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(bot_model)
     else:
@@ -221,8 +218,6 @@ def deactivation(id: str, session: Session = Depends(get_session)):
         }
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
-    except ValueError as error:
-        return BotResponse(message="Bot not found.", error=1, data=str(error))
 
 
 @bot_blueprint.post("/bot/errors/{bot_id}", response_model=BotResponse, tags=["bots"])

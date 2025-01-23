@@ -10,7 +10,6 @@ from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors, MarginShortError, BinbotErrors
 from tools.round_numbers import (
     round_numbers,
-    supress_notation,
     round_numbers_ceiling,
     round_timestamp,
 )
@@ -166,11 +165,11 @@ class MarginDeal(DealAbstract):
             asset=asset, symbol=self.active_bot.pair, amount=qty
         )
 
-        self.active_bot.deal.margin_loan_id = loan_created["tranId"]
+        self.active_bot.deal.margin_loan_id = int(loan_created["tranId"])
         # in this new data system there is only one field for qty
         # so loan_amount == opening_qty
         # that makes sense, because we want to sell what we borrowed
-        self.active_bot.deal.opening_qty = qty
+        self.active_bot.deal.opening_qty = float(qty)
 
         return self.active_bot
 
@@ -187,8 +186,9 @@ class MarginDeal(DealAbstract):
         2. Exchange asset to quote asset (USDC)
         3. Transfer back to spot
         """
-        logging.info(
-            f"Terminating margin_short {self.active_bot.pair} for real bots trading"
+        self.controller.update_logs(
+            f"Terminating margin_short {self.active_bot.pair} for real bots trading",
+            self.active_bot,
         )
 
         # Check margin account balance first
@@ -199,24 +199,23 @@ class MarginDeal(DealAbstract):
             qty, free = self.compute_margin_buy_back()
             repay_amount = qty
 
-            if self.active_bot.deal.margin_loan_id < 0:
+            if self.active_bot.deal.margin_loan_id == 0:
                 raise BinbotErrors("No loan found for this bot")
 
             # Check if there is a loan
             # Binance may reject loans if they don't have asset
             # or binbot errors may transfer funds but no loan is created
             query_loan: dict = self.get_margin_loan_details(
-                self.active_bot.deal.margin_loan_id
+                loan_id=self.active_bot.deal.margin_loan_id,
+                isolated_symbol=self.active_bot.pair,
             )
+
             if float(query_loan["total"]) > 0 and repay_amount > 0:
                 # Only supress trailling 0s, so that everything is paid
                 amount = round_numbers_ceiling(repay_amount, self.qty_precision)
                 try:
                     self.repay_margin_loan(
-                        asset=asset,
-                        symbol=self.active_bot.pair,
-                        amount=amount,
-                        isIsolated="TRUE",
+                        asset=asset, symbol=self.active_bot.pair, amount=amount
                     )
                 except BinanceErrors as error:
                     if error.code == -3041:
@@ -231,57 +230,59 @@ class MarginDeal(DealAbstract):
                     # most likely it is still possible to update bot
                     pass
 
-                repay_details_res = self.get_margin_loan_details(
-                    loan_id=self.active_bot.deal.margin_loan_id
+                interests_data = self.get_interest_history(
+                    asset=asset, symbol=self.active_bot.pair
                 )
 
-                if len(repay_details_res["rows"]) > 0:
-                    self.active_bot.deal.total_interests = repay_details_res["rows"][0][
-                        "interest"
-                    ]
-
-                self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-                sell_back_qty = supress_notation(
-                    self.isolated_balance[0]["baseAsset"]["free"],
-                    self.qty_precision,
-                )
-
-                if buy_back_fiat and float(sell_back_qty):
-                    # Sell quote and get base asset (USDC)
-                    # In theory, we should sell self.active_bot.base_order
-                    # but this can be out of sync
-
-                    res = self.sell_margin_order(
-                        symbol=self.active_bot.pair, qty=sell_back_qty
-                    )
-                    sell_back_order = OrderModel(
-                        timestamp=res["transactTime"],
-                        deal_type=DealType.take_profit,
-                        order_id=res["orderId"],
-                        pair=res["symbol"],
-                        order_side=res["side"],
-                        order_type=res["type"],
-                        price=res["price"],
-                        qty=res["origQty"],
-                        time_in_force=res["timeInForce"],
-                        status=res["status"],
-                    )
-
-                    self.active_bot.deal.total_commissions = (
-                        self.calculate_total_commissions(res["fills"])
-                    )
-
-                    self.active_bot.orders.append(sell_back_order)
-                    self.active_bot.deal.opening_qty = float(res["origQty"])
-                    self.active_bot.status = Status.completed
-                    self.controller.update_logs(
-                        "Margin_short bot repaid, deal completed."
-                    )
+                self.active_bot.deal.total_interests = interests_data["rows"][0][
+                    "interest"
+                ]
 
             else:
-                self.controller.update_logs("Loan not found for this bot.")
+                self.controller.update_logs(
+                    "Loan not found for this deal, or it's been repaid.",
+                    self.active_bot,
+                )
 
-            # Save in two steps, because it takes time for Binance to process repayments
+            # Get updated balance
+            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
+            sell_back_qty = round_numbers(
+                self.isolated_balance[0]["baseAsset"]["free"],
+                self.qty_precision,
+            )
+
+            if buy_back_fiat and sell_back_qty > 0:
+                # Sell quote and get base asset (USDC)
+                # In theory, we should sell self.active_bot.base_order
+                # but this can be out of sync
+
+                res = self.sell_margin_order(
+                    symbol=self.active_bot.pair, qty=sell_back_qty
+                )
+                sell_back_order = OrderModel(
+                    timestamp=res["transactTime"],
+                    deal_type=DealType.take_profit,
+                    order_id=int(res["orderId"]),
+                    pair=res["symbol"],
+                    order_side=res["side"],
+                    order_type=res["type"],
+                    price=float(res["price"]),
+                    qty=float(res["origQty"]),
+                    time_in_force=res["timeInForce"],
+                    status=res["status"],
+                )
+
+                self.active_bot.deal.total_commissions = (
+                    self.calculate_total_commissions(res["fills"])
+                )
+
+                self.active_bot.orders.append(sell_back_order)
+                self.active_bot.deal.closing_price = float(res["price"])
+                self.active_bot.deal.closing_qty = float(res["origQty"])
+                self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+                self.active_bot.logs.append("Margin_short bot repaid, deal completed.")
+
+            # Order and deal section completed, back to bot level
             self.controller.save(self.active_bot)
 
             try:
@@ -303,7 +304,7 @@ class MarginDeal(DealAbstract):
             except Exception as error:
                 error_msg = f"Failed to transfer isolated assets to spot: {error}"
                 logging.error(error_msg)
-                self.controller.update_logs(error_msg)
+                self.controller.update_logs(error_msg, self.active_bot)
                 return self.active_bot
 
             self.active_bot.status = Status.completed
@@ -684,6 +685,35 @@ class MarginDeal(DealAbstract):
                 )
 
         pass
+
+    def close_all(self) -> BotModel:
+        """
+        Close all deals and sell pair
+        1. Close all deals
+        2. Sell Coins
+        3. Delete bot
+        """
+        orders = self.active_bot.orders
+
+        # Close all active orders
+        if len(orders) > 0:
+            for d in orders:
+                if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
+                    self.controller.update_logs(
+                        "Failed to close all active orders (status NEW), retrying...",
+                        self.active_bot,
+                    )
+                    try:
+                        self.cancel_margin_order(
+                            symbol=self.active_bot.pair, order_id=d.order_id
+                        )
+                    except BinanceErrors:
+                        break
+
+        # Sell everything
+        self.terminate_margin_short()
+
+        return self.active_bot
 
     def open_deal(self) -> BotModel:
         """

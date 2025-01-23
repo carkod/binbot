@@ -167,10 +167,11 @@ class BbspreadsUpdater(BaseStreaming):
         if close_timestamp == 0:
             close_timestamp = int(datetime.now().timestamp() * 1000)
 
-        loan_details = self.binance_api.get_margin_loan_details(bot.deal.margin_loan_id)
+        asset = bot.pair.split(bot.fiat)[0]
+        interest_details = self.binance_api.get_interest_history(asset=asset, symbol=bot.pair)
 
-        if len(loan_details["rows"]) > 0:
-            interests = loan_details["rows"][0]["interests"]
+        if len(interest_details["rows"]) > 0:
+            interests = interest_details["rows"][0]["interests"]
         else:
             interests = 0
 

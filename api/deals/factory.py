@@ -96,62 +96,6 @@ class DealAbstract(BaseDeal):
 
         return bot
 
-    def close_all(self) -> BotModel:
-        """
-        Close all deals and sell pair
-        1. Close all deals
-        2. Sell Coins
-        3. Delete bot
-        """
-        orders = self.active_bot.orders
-
-        # Close all active orders
-        if len(orders) > 0:
-            for d in orders:
-                if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
-                    self.controller.update_logs(
-                        "Failed to close all active orders (status NEW), retrying...",
-                        self.active_bot,
-                    )
-                    self.replace_order(d.order_id)
-
-        # Sell everything
-        pair = self.active_bot.pair
-        base_asset = self.find_baseAsset(pair)
-        balance = self.get_single_raw_balance(base_asset)
-        if balance > 0:
-            qty = round_numbers(balance, self.qty_precision)
-            price: float = float(self.matching_engine(pair, True, qty))
-            price = round_numbers(price, self.price_precision)
-
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
-
-            order_data = OrderModel(
-                timestamp=res["transactTime"],
-                order_id=res["orderId"],
-                deal_type=DealType.take_profit,
-                pair=res["symbol"],
-                order_side=res["side"],
-                order_type=res["type"],
-                price=res["price"],
-                qty=res["origQty"],
-                time_in_force=res["timeInForce"],
-                status=res["status"],
-            )
-
-        self.active_bot.orders.append(order_data)
-        self.active_bot.deal.closing_price = res["price"]
-        self.active_bot.deal.closing_qty = res["origQty"]
-        self.active_bot.deal.closing_timestamp = res["transactTime"]
-
-        self.controller.update_logs(
-            "Panic sell triggered. All active orders closed", self.active_bot
-        )
-        self.active_bot.status = Status.completed
-        self.controller.save(self.active_bot)
-
-        return self.active_bot
-
     def update_take_profit(self, order_id: int) -> BotModel:
         """
         Update take profit after websocket order endpoint triggered
@@ -247,7 +191,7 @@ class DealAbstract(BaseDeal):
                 )
 
         # Bot has only take_profit set
-        if self.active_bot.take_profit > 0 and not self.active_bot.trailling:
+        if not self.active_bot.trailling and self.active_bot.take_profit > 0:
             if self.active_bot.strategy == Strategy.margin_short:
                 price = self.active_bot.deal.opening_price
                 take_profit_price = price - (
@@ -265,20 +209,18 @@ class DealAbstract(BaseDeal):
         if self.active_bot.trailling:
             if self.active_bot.strategy == Strategy.margin_short:
                 price = self.active_bot.deal.opening_price
-                trailling_profit = price - (price * (self.active_bot.take_profit) / 100)
-                trailling_deviation = trailling_profit + (
-                    price * (self.active_bot.take_profit) / 100
+                trailling_profit = price - (
+                    price * (self.active_bot.trailling_profit) / 100
                 )
                 self.active_bot.deal.trailling_profit_price = trailling_profit
-                self.active_bot.deal.trailling_stop_loss_price = trailling_deviation
+                # do not set trailling_stop_loss_price until trailling_profit_price is broken
             else:
                 price = self.active_bot.deal.opening_price
-                trailling_profit = price + (price * (self.active_bot.take_profit) / 100)
-                trailling_deviation = trailling_profit - (
-                    price * (self.active_bot.take_profit) / 100
+                trailling_profit = price + (
+                    price * (self.active_bot.trailling_profit) / 100
                 )
                 self.active_bot.deal.trailling_profit_price = trailling_profit
-                self.active_bot.deal.trailling_stop_loss_price = trailling_deviation
+                # do not set trailling_stop_loss_price until trailling_profit_price is broken
 
         self.active_bot.status = Status.active
         self.controller.save(self.active_bot)

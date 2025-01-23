@@ -148,7 +148,7 @@ class BotModel(BotBase):
         """
         if isinstance(bot, BotTable):
             model = BotModel.model_construct(**bot.model_dump())
-            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            deal_model = DealModel.model_validate(bot.deal.model_dump())
             order_models = [
                 OrderModel.model_construct(**order.model_dump()) for order in bot.orders
             ]
@@ -180,7 +180,7 @@ class BotModel(BotBase):
 
 class BotModelResponse(BotBase):
     id: str | UUID = Field(default="")
-    deal: DealModel = Field(default_factory=DealModel)
+    deal: DealModel = Field(...)
     orders: List[OrderModel] = Field(default=[])
 
     model_config = {
@@ -201,7 +201,7 @@ class BotModelResponse(BotBase):
         """
         if isinstance(bot, BotTable):
             model = BotModelResponse.model_construct(**bot.model_dump())
-            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            deal_model = DealModel.model_validate(bot.deal.model_dump())
             order_models = [
                 OrderModel.model_construct(**order.model_dump()) for order in bot.orders
             ]

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, field_serializer
 from database.utils import Amount
 
 
@@ -58,3 +58,19 @@ class DealModel(BaseModel):
         elif isinstance(v, str):
             return float(v)
         return v
+
+    @field_validator("margin_loan_id", mode="before")
+    @classmethod
+    def validate_margin_loan_id(cls, value):
+        if isinstance(value, float):
+            return int(value)
+        else:
+            value
+
+    @field_validator("margin_loan_id", mode="after")
+    @classmethod
+    def cast_float(cls, value):
+        if isinstance(value, float):
+            return int(value)
+        else:
+            return value

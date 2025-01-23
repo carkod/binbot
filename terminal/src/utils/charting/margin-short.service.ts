@@ -51,16 +51,8 @@ export default function marginTrading(
       });
     }
 
-    if (
-      bot.trailling &&
-      bot.deal.trailling_stop_loss_price > 0 &&
-      bot.deal.trailling_profit_price > 0
-    ) {
-      if (
-        bot.status === BotStatus.ACTIVE &&
-        bot.deal.trailling_stop_loss_price &&
-        bot.deal.trailling_stop_loss_price > 0
-      ) {
+    if (bot.trailling && bot.status === BotStatus.ACTIVE) {
+      if (bot.deal.trailling_profit_price > 0) {
         totalOrderLines.push({
           id: "trailling_profit",
           text: `Trail profit ${bot.take_profit}%`,
@@ -69,6 +61,9 @@ export default function marginTrading(
           price: bot.deal.trailling_profit_price,
           color: dealColors.trailling_profit,
         });
+      }
+
+      if (bot.deal.trailling_stop_loss_price > 0) {
         totalOrderLines.push({
           id: "trailling_stop_loss",
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
@@ -77,32 +72,34 @@ export default function marginTrading(
           price: bot.deal.trailling_stop_loss_price,
           color: dealColors.take_profit,
         });
-      } else if (
-        bot.status === BotStatus.COMPLETED &&
-        bot.deal.closing_price > 0
-      ) {
-        // completed bot
-        totalOrderLines.push({
-          id: "trailling_profit",
-          text: `Trail profit ${bot.trailling_profit}%`,
-          tooltip: [bot.status, " Breakpoint to increase Take profit"],
-          quantity: `${bot.base_order_size} ${quoteAsset}`,
-          price: bot.deal.trailling_profit_price,
-          color: dealColors.trailling_profit,
-          lineStyle: 2,
-        });
-        totalOrderLines.push({
-          id: "trailling_stop_loss",
-          text: `Trailling stop loss -${bot.trailling_deviation}%`,
-          tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${bot.deal.opening_qty || bot.base_order_size} ${quoteAsset}`,
-          price: bot.deal.trailling_stop_loss_price,
-          color: dealColors.take_profit,
-        });
-      } else {
-        // Inactive bot
-        const traillingProfitPrice =
-          currentPrice * (1 - bot.trailling_profit / 100);
+      }
+    } else if (
+      bot.status === BotStatus.COMPLETED &&
+      bot.deal.closing_price > 0
+    ) {
+      // completed bot
+      totalOrderLines.push({
+        id: "trailling_profit",
+        text: `Trail profit ${bot.trailling_profit}%`,
+        tooltip: [bot.status, " Breakpoint to increase Take profit"],
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        price: bot.deal.trailling_profit_price,
+        color: dealColors.trailling_profit,
+        lineStyle: 2,
+      });
+      totalOrderLines.push({
+        id: "trailling_stop_loss",
+        text: `Trailling stop loss -${bot.trailling_deviation}%`,
+        tooltip: [bot.status, " Sell order when prices drop here"],
+        quantity: `${bot.deal.opening_qty || bot.base_order_size} ${quoteAsset}`,
+        price: bot.deal.trailling_stop_loss_price,
+        color: dealColors.take_profit,
+      });
+    } else {
+      // Inactive bot
+      const traillingProfitPrice =
+        currentPrice * (1 - bot.trailling_profit / 100);
+      if (bot.deal.trailling_profit_price > 0) {
         totalOrderLines.push({
           id: "trailling_profit",
           text: `Take profit (trailling) ${bot.take_profit}%`,
@@ -112,6 +109,9 @@ export default function marginTrading(
           color: dealColors.trailling_profit,
           lineStyle: 2,
         });
+      }
+
+      if (bot.deal.trailling_stop_loss_price > 0) {
         totalOrderLines.push({
           id: "trailling_stop_loss",
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
@@ -121,32 +121,29 @@ export default function marginTrading(
           color: dealColors.take_profit,
         });
       }
+    }
+  } else {
+    if (bot.status === BotStatus.COMPLETED && bot.deal.take_profit_price > 0) {
+      // No trailling take profit
+      totalOrderLines.push({
+        id: "take_profit",
+        text: `Take profit ${bot.take_profit}% (Margin)`,
+        tooltip: [bot.status, " Buy back Order "],
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        price: bot.deal.take_profit_price,
+        color: dealColors.take_profit,
+      });
     } else {
-      if (
-        bot.status === BotStatus.COMPLETED &&
-        bot.deal.take_profit_price > 0
-      ) {
-        // No trailling take profit
-        totalOrderLines.push({
-          id: "take_profit",
-          text: `Take profit ${bot.take_profit}% (Margin)`,
-          tooltip: [bot.status, " Buy back Order "],
-          quantity: `${bot.base_order_size} ${quoteAsset}`,
-          price: bot.deal.take_profit_price,
-          color: dealColors.take_profit,
-        });
-      } else {
-        // Inactive bot
-        const price = currentPrice * (1 + bot.take_profit / 100);
-        totalOrderLines.push({
-          id: "take_profit",
-          text: `Take profit ${bot.take_profit}% (Margin)`,
-          tooltip: [bot.status, " Buy back Order "],
-          quantity: `${bot.base_order_size} ${quoteAsset}`,
-          price: price,
-          color: dealColors.take_profit,
-        });
-      }
+      // Inactive bot
+      const price = currentPrice * (1 + bot.take_profit / 100);
+      totalOrderLines.push({
+        id: "take_profit",
+        text: `Take profit ${bot.take_profit}% (Margin)`,
+        tooltip: [bot.status, " Buy back Order "],
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        price: price,
+        color: dealColors.take_profit,
+      });
     }
   }
 
