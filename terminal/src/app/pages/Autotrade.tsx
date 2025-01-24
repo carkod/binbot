@@ -94,7 +94,7 @@ export const AutotradePage: FC<{}> = () => {
                             setSettingsField({
                               name: "candlestick_interval",
                               value,
-                            })
+                            }),
                           );
                         }}
                         onBlur={handleBlur}
@@ -108,7 +108,7 @@ export const AutotradePage: FC<{}> = () => {
                             <option value={interval.toString()}>
                               {interval.toString()}
                             </option>
-                          )
+                          ),
                         )}
                       </Form.Select>
                       {errors.candlestick_interval && (
@@ -139,7 +139,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />
@@ -160,7 +160,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />
@@ -218,7 +218,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: "trailling",
                             value: !settings.trailling,
-                          })
+                          }),
                         );
                       }}
                       {...register("trailling", { required: true })}

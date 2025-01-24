@@ -206,7 +206,7 @@ class MarginDeal(DealAbstract):
             # Check first if there is a repay before repaying
             query_loan: dict = self.get_margin_loan_details(
                 loan_id=self.active_bot.deal.margin_loan_id,
-                isolated_symbol=self.active_bot.pair,
+                symbol=self.active_bot.pair,
             )
 
             if (
@@ -252,7 +252,7 @@ class MarginDeal(DealAbstract):
             # Get updated balance
             self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
             sell_back_qty = round_numbers(
-                self.isolated_balance[0]["baseAsset"]["free"],
+                float(self.isolated_balance[0]["baseAsset"]["free"]),
                 self.qty_precision,
             )
 
@@ -650,7 +650,7 @@ class MarginDeal(DealAbstract):
         # Direction 1 (downward): breaking the current trailling
         if close_price <= self.active_bot.deal.trailling_profit_price:
             new_take_profit: float = close_price - (
-                close_price * (float(self.active_bot.take_profit) / 100)
+                close_price * (self.active_bot.take_profit / 100)
             )
             new_trailling_stop_loss = close_price * (
                 1 + (self.active_bot.trailling_deviation / 100)
@@ -695,10 +695,11 @@ class MarginDeal(DealAbstract):
 
     def close_all(self) -> BotModel:
         """
-        Close all deals and sell pair
-        1. Close all deals
-        2. Sell Coins
-        3. Delete bot
+        Deactivation + liquidation of loans
+
+        1. Close all orders if there any are still opened
+        2. Terminate margin deal (repay loan, sell assets, transfer funds back to SPOT)
+        3. Update bot status to completed
         """
         orders = self.active_bot.orders
 

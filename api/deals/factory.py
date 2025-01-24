@@ -197,12 +197,16 @@ class DealAbstract(BaseDeal):
                 take_profit_price = price - (
                     price * (self.active_bot.take_profit) / 100
                 )
-                self.active_bot.deal.take_profit_price = take_profit_price
+                self.active_bot.deal.take_profit_price = round_numbers(
+                    take_profit_price, self.price_precision
+                )
             else:
                 take_profit_price = float(self.active_bot.deal.opening_price) * (
                     1 + (float(self.active_bot.take_profit) / 100)
                 )
-                self.active_bot.deal.take_profit_price = take_profit_price
+                self.active_bot.deal.take_profit_price = round_numbers(
+                    take_profit_price, self.price_precision
+                )
 
         # Bot has trailling set
         # trailling_profit must also be set
@@ -210,16 +214,20 @@ class DealAbstract(BaseDeal):
             if self.active_bot.strategy == Strategy.margin_short:
                 price = self.active_bot.deal.opening_price
                 trailling_profit = price - (
-                    price * (self.active_bot.trailling_profit) / 100
+                    price * (self.active_bot.trailling_profit / 100)
                 )
-                self.active_bot.deal.trailling_profit_price = trailling_profit
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    trailling_profit, self.price_precision
+                )
                 # do not set trailling_stop_loss_price until trailling_profit_price is broken
             else:
                 price = self.active_bot.deal.opening_price
                 trailling_profit = price + (
-                    price * (self.active_bot.trailling_profit) / 100
+                    price * (self.active_bot.trailling_profit / 100)
                 )
-                self.active_bot.deal.trailling_profit_price = trailling_profit
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    trailling_profit, self.price_precision
+                )
                 # do not set trailling_stop_loss_price until trailling_profit_price is broken
 
         self.active_bot.status = Status.active
@@ -290,7 +298,7 @@ class DealAbstract(BaseDeal):
             opening_qty=float(res["origQty"]),
             current_price=float(res["price"]),
             take_profit_price=tp_price,
-            stop_loss_price=stop_loss_price,
+            stop_loss_price=round_numbers(stop_loss_price, self.price_precision),
         )
 
         # temporary measures to keep deal up to date

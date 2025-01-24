@@ -5,7 +5,7 @@ from database.models.bot_table import BotTable, PaperTradingTable
 from database.bot_crud import BotTableCrud
 from database.paper_trading_crud import PaperTradingTableCrud
 from orders.controller import OrderController
-from tools.round_numbers import round_numbers, supress_notation, round_numbers_ceiling
+from tools.round_numbers import round_numbers, round_numbers_ceiling
 from tools.exceptions import (
     BinanceErrors,
     DealCreationError,
@@ -216,7 +216,7 @@ class BaseDeal(OrderController):
                         )
                         buy_margin_response = self.buy_margin_order(
                             pair,
-                            supress_notation(transfer_diff_qty, self.qty_precision),
+                            round_numbers(transfer_diff_qty, self.qty_precision),
                         )
                         repay_amount, free = self.compute_margin_buy_back()
                         pass

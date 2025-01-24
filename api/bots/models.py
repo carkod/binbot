@@ -198,12 +198,14 @@ class BotModelResponse(BotBase):
         """
         Same as model_dump() but from
         BotTable
+
+        Use model_validate to cast/pre-validate data to avoid unecessary validation errors
         """
         if isinstance(bot, BotTable):
             model = BotModelResponse.model_construct(**bot.model_dump())
             deal_model = DealModel.model_validate(bot.deal.model_dump())
             order_models = [
-                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+                OrderModel.model_validate(order.model_dump()) for order in bot.orders
             ]
             model.deal = deal_model
             model.orders = order_models

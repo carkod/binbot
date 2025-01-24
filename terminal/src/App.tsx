@@ -148,7 +148,7 @@ const rootRouter = createBrowserRouter(
       v7_normalizeFormMethod: true,
       v7_skipActionErrorRevalidation: true,
     },
-  }
+  },
 );
 
 export const App = () => {

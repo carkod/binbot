@@ -231,7 +231,7 @@ class OrderController(Account):
             resp = json_response_message("No open orders found!")
         return resp
 
-    def buy_margin_order(self, symbol, qty, price=None, iteration=0):
+    def buy_margin_order(self, symbol: str, qty: float, price=None, iteration=0):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
@@ -260,14 +260,14 @@ class OrderController(Account):
         )
         if data["status"] != "FILLED" and iteration == 0:
             try:
-                self.cancel_margin_order(symbol, data["orderId"])
+                self.cancel_margin_order(symbol, int(data["orderId"]))
             except Exception:
                 pass
             self.buy_margin_order(symbol, qty, price, iteration + 1)
 
         return data
 
-    def sell_margin_order(self, symbol, qty, price=None, iteration=0):
+    def sell_margin_order(self, symbol: str, qty: float, price=None, iteration=0):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """

@@ -6,7 +6,7 @@ import { BotStatus } from "../enums";
 
 export default function spotTrading(
   bot: Bot,
-  currentPrice: number
+  currentPrice: number,
 ): OrderLine[] {
   const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];
@@ -20,7 +20,9 @@ export default function spotTrading(
         tooltip: [
           bot.status,
           `${
-            bot.deal.opening_qty > 0 ? bot.deal.opening_qty + quoteAsset : ""
+            bot.deal.opening_qty > 0
+              ? `${bot.deal.opening_qty} ${quoteAsset}`
+              : ""
           }`,
         ],
         quantity: `${bot.base_order_size} ${quoteAsset}`,
@@ -39,7 +41,7 @@ export default function spotTrading(
           bot.status,
           `${
             bot.deal.opening_qty && bot.deal.opening_qty > 0
-              ? bot.deal.opening_qty + quoteAsset
+              ? `${bot.deal.opening_qty} ${quoteAsset}`
               : ""
           }`,
         ],

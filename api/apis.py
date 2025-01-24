@@ -196,11 +196,11 @@ class BinanceApi:
         data = self.signed_request(self.wallet_balance_url)
         return data
 
-    def cancel_margin_order(self, symbol, order_id):
+    def cancel_margin_order(self, symbol: str, order_id: int):
         return self.signed_request(
             self.margin_order,
             method="DELETE",
-            payload={"symbol": symbol, "orderId": order_id},
+            payload={"symbol": symbol, "orderId": str(order_id)},
         )
 
     def enable_isolated_margin_account(self, symbol):
@@ -278,23 +278,23 @@ class BinanceApi:
             payload={"asset": asset, "isolatedSymbol": isolated_symbol},
         )
 
-    def get_margin_loan_details(self, loan_id: int, isolated_symbol: str):
+    def get_margin_loan_details(self, loan_id: int, symbol: str):
         return self.signed_request(
             self.loan_record_url,
             payload={
                 "txId": loan_id,
                 "type": "BORROW",
-                "isolatedSymbol": isolated_symbol,
+                "isolatedSymbol": symbol,
             },
         )
 
-    def get_repay_details(self, loan_id: int, isolated_symbol: str):
+    def get_repay_details(self, loan_id: int, symbol: str):
         return self.signed_request(
             self.loan_record_url,
             payload={
                 "txId": loan_id,
                 "type": "REPAY",
-                "isolatedSymbol": isolated_symbol,
+                "isolatedSymbol": symbol,
             },
         )
 

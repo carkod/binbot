@@ -133,7 +133,7 @@ const TakeProfit: FC = () => {
                   variant={bot.trailling ? "primary" : "secondary"}
                   onClick={(e) =>
                     dispatch(
-                      setToggle({ name: "trailling", value: !bot.trailling })
+                      setToggle({ name: "trailling", value: !bot.trailling }),
                     )
                   }
                 >
@@ -164,7 +164,7 @@ const TakeProfit: FC = () => {
                       setToggle({
                         name: "dynamic_trailling",
                         value: !bot.dynamic_trailling,
-                      })
+                      }),
                     )
                   }
                 >

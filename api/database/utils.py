@@ -2,7 +2,7 @@ import os
 from sqlalchemy import create_engine, pool
 from sqlmodel import Session
 from time import time
-from typing import Annotated
+from typing import Annotated, Any
 from pydantic import BeforeValidator
 
 # This allows testing/Github action dummy envs
@@ -26,7 +26,7 @@ def timestamp() -> float:
     return int(round(time() * 1000))
 
 
-def ensure_float(value: str | float | int) -> float:
+def ensure_float(value: Any) -> float:
     if isinstance(value, str) or isinstance(value, int):
         return float(value)
 

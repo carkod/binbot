@@ -20,7 +20,7 @@ def supress_trailling(value: str | float | int) -> float:
     return number
 
 
-def round_numbers(value: float | int, decimals=6):
+def round_numbers(value: float | int, decimals=6) -> float | int:
     decimal_points = 10 ** int(decimals)
     number = float(value)
     result = math.floor(number * decimal_points) / decimal_points
@@ -101,6 +101,6 @@ def round_timestamp(ts: float) -> int:
     """
     digits = int(math.log10(ts)) + 1
     if digits > 10:
-        return round_numbers(ts * 1000, 0)
+        return int(round_numbers(ts * 1000, 0))
     else:
         return int(ts)

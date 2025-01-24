@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator, field_serializer
+from pydantic import BaseModel, Field, field_validator
 from database.utils import Amount
 
 
@@ -22,10 +22,11 @@ class DealModel(BaseModel):
     total_commissions: float = Field(default=0, gt=-1)
     margin_loan_id: int = Field(
         default=0,
+        ge=0,
         description="Txid from Binance. This is used to check if there is a loan, 0 means no loan",
     )
     margin_repay_id: int = Field(
-        default=0, gt=-1, description="= 0, it has not been repaid"
+        default=0, ge=0, description="= 0, it has not been repaid"
     )
 
     # Refactored deal prices that combine both margin and spot
@@ -51,27 +52,13 @@ class DealModel(BaseModel):
         description="replaces previous buy_timestamp or margin/short_sell timestamps",
     )
 
-    @field_validator(
-        "take_profit_price",
-        "trailling_stop_loss_price",
-        "trailling_profit_price",
-        "stop_loss_price",
-    )
-    @classmethod
-    def check_prices(cls, v):
-        if float(v) < 0:
-            raise ValueError("Price must be a positive number")
-        elif isinstance(v, str):
-            return float(v)
-        return v
-
     @field_validator("margin_loan_id", mode="before")
     @classmethod
     def validate_margin_loan_id(cls, value):
         if isinstance(value, float):
             return int(value)
         else:
-            value
+            return value
 
     @field_validator("margin_loan_id", mode="after")
     @classmethod

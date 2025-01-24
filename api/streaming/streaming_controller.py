@@ -173,7 +173,7 @@ class BbspreadsUpdater(BaseStreaming):
         )
 
         if len(interest_details["rows"]) > 0:
-            interests = interest_details["rows"][0]["interests"]
+            interests = float(interest_details["rows"][0]["interests"])
         else:
             interests = 0
 

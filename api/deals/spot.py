@@ -201,8 +201,9 @@ class SpotLongDeal(DealAbstract):
         self.active_bot.orders.append(order_data)
 
         self.active_bot.deal.trailling_profit_price = float(res["price"])
-        self.active_bot.deal.trailling_stop_loss_price = float(res["price"]) - (
-            float(res["price"]) * (self.active_bot.trailling_deviation / 100)
+        self.active_bot.deal.trailling_stop_loss_price = round_numbers(
+            float(res["price"])
+            - (float(res["price"]) * (self.active_bot.trailling_deviation / 100))
         )
 
         # new deal parameters to replace previous
@@ -414,14 +415,14 @@ class SpotLongDeal(DealAbstract):
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
 
             order_data = OrderModel(
-                timestamp=res["transactTime"],
+                timestamp=int(res["transactTime"]),
                 order_id=res["orderId"],
                 deal_type=DealType.take_profit,
                 pair=res["symbol"],
                 order_side=res["side"],
                 order_type=res["type"],
-                price=res["price"],
-                qty=res["origQty"],
+                price=float(res["price"]),
+                qty=float(res["origQty"]),
                 time_in_force=res["timeInForce"],
                 status=res["status"],
             )

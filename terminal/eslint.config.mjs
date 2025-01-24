@@ -26,7 +26,11 @@ export default [
     ],
   },
   ...fixupConfigRules(
-    compat.extends("eslint:recommended", "prettier", "plugin:react/recommended")
+    compat.extends(
+      "eslint:recommended",
+      "prettier",
+      "plugin:react/recommended",
+    ),
   ),
   {
     plugins: {
