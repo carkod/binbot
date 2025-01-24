@@ -104,7 +104,7 @@ class SpotLongDeal(DealAbstract):
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         stop_loss_order = OrderModel(
-            timestamp=float(res["transactTime"]),
+            timestamp=int(res["transactTime"]),
             deal_type=DealType.stop_loss,
             order_id=int(res["orderId"]),
             pair=res["symbol"],
@@ -427,11 +427,14 @@ class SpotLongDeal(DealAbstract):
                 status=res["status"],
             )
 
-        self.active_bot.orders.append(order_data)
-        self.active_bot.deal.closing_price = float(res["price"])
-        self.active_bot.deal.closing_qty = float(res["origQty"])
-        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
-        self.active_bot.logs.append("Panic sell triggered. All active orders closed")
+            self.active_bot.orders.append(order_data)
+            self.active_bot.deal.closing_price = float(res["price"])
+            self.active_bot.deal.closing_qty = float(res["origQty"])
+            self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
+            self.active_bot.logs.append("Panic sell triggered. All active orders closed")
+        else:
+            self.active_bot.logs.append("No balance found. Skipping panic sell")
+
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 

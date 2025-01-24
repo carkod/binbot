@@ -479,31 +479,35 @@ class MarginDeal(DealAbstract):
         else:
             res = self.margin_liquidation(self.active_bot.pair)
 
-        stop_loss_order = OrderModel(
-            timestamp=res["transactTime"],
-            deal_type=DealType.stop_loss,
-            order_id=res["orderId"],
-            pair=res["symbol"],
-            order_side=res["side"],
-            order_type=res["type"],
-            price=res["price"],
-            qty=res["origQty"],
-            time_in_force=res["timeInForce"],
-            status=res["status"],
-        )
+        if res:
+            stop_loss_order = OrderModel(
+                timestamp=res["transactTime"],
+                deal_type=DealType.stop_loss,
+                order_id=res["orderId"],
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=res["price"],
+                qty=res["origQty"],
+                time_in_force=res["timeInForce"],
+                status=res["status"],
+            )
 
-        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
-            res["fills"]
-        )
+            self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+                res["fills"]
+            )
 
-        self.active_bot.orders.append(stop_loss_order)
+            self.active_bot.orders.append(stop_loss_order)
 
-        self.active_bot.deal.closing_price = float(res["price"])
-        self.active_bot.deal.closing_qty = float(res["origQty"])
-        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+            self.active_bot.deal.closing_price = float(res["price"])
+            self.active_bot.deal.closing_qty = float(res["origQty"])
+            self.active_bot.deal.closing_timestamp = float(res["transactTime"])
 
-        self.active_bot.logs.append("Completed Stop loss order")
-        self.active_bot.status = Status.completed
+            self.active_bot.logs.append("Completed Stop loss order")
+            self.active_bot.status = Status.completed
+        else:
+            self.active_bot.logs.append("Unable to complete stop loss")
+
         self.controller.save(self.active_bot)
 
         return self.active_bot
@@ -542,30 +546,35 @@ class MarginDeal(DealAbstract):
                 self.controller.save(self.active_bot)
                 return self.active_bot
 
-        # No res means it wasn't properly closed/completed
-        take_profit_order = OrderModel(
-            timestamp=res["transactTime"],
-            deal_type=DealType.take_profit,
-            order_id=int(res["orderId"]),
-            pair=res["symbol"],
-            order_side=res["side"],
-            order_type=res["type"],
-            price=float(res["price"]),
-            qty=float(res["origQty"]),
-            time_in_force=res["timeInForce"],
-            status=res["status"],
-        )
+        if res:
+            # No res means it wasn't properly closed/completed
+            take_profit_order = OrderModel(
+                timestamp=res["transactTime"],
+                deal_type=DealType.take_profit,
+                order_id=int(res["orderId"]),
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=float(res["price"]),
+                qty=float(res["origQty"]),
+                time_in_force=res["timeInForce"],
+                status=res["status"],
+            )
 
-        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
-            res["fills"]
-        )
+            self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+                res["fills"]
+            )
 
-        self.active_bot.orders.append(take_profit_order)
-        self.active_bot.deal.closing_price = float(res["price"])
-        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
-        self.active_bot.deal.closing_qty = float(res["origQty"])
-        self.active_bot.logs.append("Completed Take profit!")
-        self.active_bot.status = Status.completed
+            self.active_bot.orders.append(take_profit_order)
+            self.active_bot.deal.closing_price = float(res["price"])
+            self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
+            self.active_bot.deal.closing_qty = float(res["origQty"])
+            self.active_bot.logs.append("Completed Take profit!")
+            self.active_bot.status = Status.completed
+
+        else:
+            self.active_bot.logs.append("Unable to complete take profit")
+
         self.controller.save(self.active_bot)
 
         return self.active_bot
