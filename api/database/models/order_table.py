@@ -5,12 +5,12 @@ from sqlmodel import Field, Relationship, SQLModel
 from uuid import UUID, uuid4
 from sqlalchemy import Column, BigInteger
 
-
 if TYPE_CHECKING:
     from database.models.bot_table import BotTable, PaperTradingTable
 
 
 class OrderBase(SQLModel):
+
     order_type: OrderType
     time_in_force: str
     timestamp: int = Field(sa_column=Column(BigInteger()))

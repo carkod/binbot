@@ -20,7 +20,7 @@ from database.utils import Amount
 class OrderModel(BaseModel):
     order_type: OrderType
     time_in_force: str
-    timestamp: Optional[int]
+    timestamp: int = Field(default=0)
     order_id: int
     order_side: str
     pair: str
