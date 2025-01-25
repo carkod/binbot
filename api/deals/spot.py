@@ -1,4 +1,3 @@
-import logging
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
@@ -12,7 +11,7 @@ from tools.enum_definitions import (
 from bots.models import BotModel, OrderModel, BotBase
 from deals.factory import DealAbstract
 from deals.margin import MarginDeal
-from tools.round_numbers import round_numbers
+from tools.round_numbers import round_numbers, round_timestamp
 
 
 class SpotLongDeal(DealAbstract):
@@ -144,7 +143,6 @@ class SpotLongDeal(DealAbstract):
             qty = self.active_bot.deal.opening_qty
         else:
             qty = self.compute_qty(self.active_bot.pair)
-            logging.error(f"trailling_profit qty: {qty}")
             # Already sold?
             if qty == 0:
                 closed_orders = self.close_open_orders(self.active_bot.pair)
@@ -202,13 +200,11 @@ class SpotLongDeal(DealAbstract):
 
         self.active_bot.orders.append(order_data)
 
-        self.active_bot.deal.take_profit_price = res["price"]
-        self.active_bot.deal.trailling_profit_price = res["price"]
-
-        # to be deprecated
-        self.active_bot.deal.closing_price = res["price"]
-        self.active_bot.deal.closing_qty = res["origQty"]
-        self.active_bot.deal.closing_timestamp = res["transactTime"]
+        self.active_bot.deal.trailling_profit_price = float(res["price"])
+        self.active_bot.deal.trailling_stop_loss_price = round_numbers(
+            float(res["price"])
+            - (float(res["price"]) * (self.active_bot.trailling_deviation / 100))
+        )
 
         # new deal parameters to replace previous
         self.active_bot.deal.closing_price = float(res["price"])
@@ -264,7 +260,7 @@ class SpotLongDeal(DealAbstract):
             # Direction 1 (upward): breaking the current trailling
             if close_price >= float(trailling_price):
                 new_take_profit = close_price * (
-                    1 + ((self.active_bot.take_profit) / 100)
+                    1 + ((self.active_bot.trailling_profit) / 100)
                 )
                 new_trailling_stop_loss: float = close_price - (
                     close_price * ((self.active_bot.trailling_deviation) / 100)
@@ -305,11 +301,11 @@ class SpotLongDeal(DealAbstract):
             # Make sure it's red candlestick, to avoid slippage loss
             # Sell after hitting trailling stop_loss and if price already broken trailling
             if (
-                float(self.active_bot.deal.trailling_stop_loss_price) > 0
+                self.active_bot.deal.trailling_stop_loss_price > 0
                 # Broken stop_loss
                 and close_price < float(self.active_bot.deal.trailling_stop_loss_price)
                 # Red candlestick
-                and (float(open_price) > close_price)
+                and open_price > close_price
             ):
                 self.controller.update_logs(
                     f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}",
@@ -386,6 +382,59 @@ class SpotLongDeal(DealAbstract):
         self.active_bot.status = Status.active
         self.active_bot.logs.append("Bot activated")
         self.controller.save(self.active_bot)
+        return self.active_bot
+
+    def close_all(self) -> BotModel:
+        """
+        Close all deals and sell pair
+        1. Close all deals
+        2. Sell Coins
+        3. Delete bot
+        """
+        orders = self.active_bot.orders
+
+        # Close all active orders
+        if len(orders) > 0:
+            for d in orders:
+                if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
+                    self.controller.update_logs(
+                        "Failed to close all active orders (status NEW), retrying...",
+                        self.active_bot,
+                    )
+                    self.replace_order(d.order_id)
+
+        # Sell everything
+        pair = self.active_bot.pair
+        base_asset = self.find_baseAsset(pair)
+        balance = self.get_single_raw_balance(base_asset)
+        if balance > 0:
+            qty = round_numbers(balance, self.qty_precision)
+            price: float = float(self.matching_engine(pair, True, qty))
+            price = round_numbers(price, self.price_precision)
+
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+
+            order_data = OrderModel(
+                timestamp=int(res["transactTime"]),
+                order_id=res["orderId"],
+                deal_type=DealType.take_profit,
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=float(res["price"]),
+                qty=float(res["origQty"]),
+                time_in_force=res["timeInForce"],
+                status=res["status"],
+            )
+
+        self.active_bot.orders.append(order_data)
+        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
+        self.active_bot.logs.append("Panic sell triggered. All active orders closed")
+        self.active_bot.status = Status.completed
+        self.controller.save(self.active_bot)
+
         return self.active_bot
 
     def open_deal(self):

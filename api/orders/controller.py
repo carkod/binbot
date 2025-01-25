@@ -1,7 +1,7 @@
 from time import time
 from uuid import uuid4
 from account.account import Account
-from tools.exceptions import DeleteOrderError, BinanceErrors
+from tools.exceptions import DeleteOrderError
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation, zero_remainder
@@ -103,13 +103,13 @@ class OrderController(Account):
         }
         return order
 
-    def sell_order(self, symbol, qty, price=None):
+    def sell_order(self, symbol: str, qty: float, price=None, iteration=0):
         """
         If price is not provided by matching engine,
         sell at market price
         """
-        price = float(self.matching_engine(symbol, True, qty))
-        if price:
+        if iteration == 0:
+            price = float(self.matching_engine(symbol, True, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
@@ -125,16 +125,16 @@ class OrderController(Account):
                 "type": OrderType.market,
                 "quantity": supress_notation(qty, self.qty_precision),
             }
-            # Because market orders don't have price
-            # get it from fills
 
-        try:
-            data = self.signed_request(
-                url=self.order_url, method="POST", payload=payload
-            )
-        except BinanceErrors as e:
-            # use market order if FOK fails
-            print(e)
+        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        if data["status"] != "FILLED" and iteration == 0:
+            try:
+                self.delete_opened_order(symbol, data["orderId"])
+            except Exception:
+                # Most likely order has been executed by now
+                pass
+
+            self.sell_order(symbol, qty, price, iteration + 1)
 
         if float(data["price"]) == 0:
             total_qty: float = 0
@@ -148,9 +148,9 @@ class OrderController(Account):
 
         return data
 
-    def buy_order(self, symbol, qty, price=None):
-        if price:
-            book_price = float(self.matching_engine(symbol, True, qty))
+    def buy_order(self, symbol: str, qty: float, price=None, iteration=0):
+        if iteration == 0:
+            book_price = self.matching_engine(symbol, False, qty)
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -170,18 +170,18 @@ class OrderController(Account):
                 "symbol": symbol,
                 "side": OrderSide.buy,
                 "type": OrderType.market,
-                "quantity": qty,
+                "quantity": supress_notation(qty, self.qty_precision),
             }
 
-        try:
-            data = self.signed_request(
-                url=self.order_url, method="POST", payload=payload
-            )
-        except BinanceErrors as e:
-            # use market order if FOK fails
-            print(e)
+        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        if data["status"] != "FILLED" and iteration == 0:
+            try:
+                self.delete_opened_order(symbol, data["orderId"])
+            except Exception:
+                pass
+            self.buy_order(symbol, qty, price, iteration + 1)
 
-        if data["price"] == 0:
+        if float(data["price"]) == 0:
             total_qty: float = 0
             weighted_avg: float = 0
             for item in data["fills"]:
@@ -231,12 +231,12 @@ class OrderController(Account):
             resp = json_response_message("No open orders found!")
         return resp
 
-    def buy_margin_order(self, symbol, qty, price=None):
+    def buy_margin_order(self, symbol: str, qty: float, price=None, iteration=0):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
-        if price:
-            price = float(self.matching_engine(symbol, True, qty))
+        if iteration == 0:
+            price = self.matching_engine(symbol, True, qty)
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -258,21 +258,27 @@ class OrderController(Account):
         data = self.signed_request(
             url=self.margin_order, method="POST", payload=payload
         )
+        if data["status"] != "FILLED" and iteration == 0:
+            try:
+                self.cancel_margin_order(symbol, int(data["orderId"]))
+            except Exception:
+                pass
+            self.buy_margin_order(symbol, qty, price, iteration + 1)
 
         return data
 
-    def sell_margin_order(self, symbol, qty, price=None):
+    def sell_margin_order(self, symbol: str, qty: float, price=None, iteration=0):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
-        if price:
+        if iteration == 0:
             price = float(self.matching_engine(symbol, False, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
                 "type": OrderType.limit,
                 "timeInForce": TimeInForce.gtc,
-                "quantity": qty,
+                "quantity": supress_notation(qty, self.qty_precision),
                 "price": price,
                 "isIsolated": "TRUE",
             }
@@ -281,13 +287,20 @@ class OrderController(Account):
                 "symbol": symbol,
                 "side": OrderSide.sell,
                 "type": OrderType.market,
-                "quantity": qty,
+                "quantity": supress_notation(qty, self.qty_precision),
                 "isIsolated": "TRUE",
             }
 
         data = self.signed_request(
             url=self.margin_order, method="POST", payload=payload
         )
+        if data["status"] != "FILLED" and iteration == 0:
+            try:
+                self.cancel_margin_order(symbol, data["orderId"])
+            except Exception:
+                pass
+
+            self.sell_margin_order(symbol, qty, price, iteration + 1)
 
         if float(data["price"]) == 0:
             data["price"] = data["fills"][0]["price"]

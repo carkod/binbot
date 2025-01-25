@@ -74,11 +74,11 @@ class StreamingController(BaseStreaming):
         # Margin short
         if current_bot.strategy == Strategy.margin_short:
             margin_deal = MarginDeal(current_bot, db_table=db_table)
-            margin_deal.streaming_updates(close_price)
+            margin_deal.streaming_updates(float(close_price))
 
         elif current_bot.strategy == Strategy.long:
             spot_long_deal = SpotLongDeal(current_bot, db_table=db_table)
-            spot_long_deal.streaming_updates(close_price, open_price)
+            spot_long_deal.streaming_updates(float(close_price), float(open_price))
 
         pass
 
@@ -167,10 +167,13 @@ class BbspreadsUpdater(BaseStreaming):
         if close_timestamp == 0:
             close_timestamp = int(datetime.now().timestamp() * 1000)
 
-        loan_details = self.binance_api.get_margin_loan_details(bot.deal.margin_loan_id)
+        asset = bot.pair.split(bot.fiat)[0]
+        interest_details = self.binance_api.get_interest_history(
+            asset=asset, symbol=bot.pair
+        )
 
-        if len(loan_details["rows"]) > 0:
-            interests = loan_details["rows"][0]["interests"]
+        if len(interest_details["rows"]) > 0:
+            interests = float(interest_details["rows"][0]["interests"])
         else:
             interests = 0
 

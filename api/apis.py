@@ -45,6 +45,7 @@ class BinanceApi:
     cancel_replace_url = f"{BASE}/api/v3/order/cancelReplace"
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
     wallet_balance_url = f"{BASE}/sapi/v1/asset/wallet/balance"
+    user_asset_url = f"{BASE}/sapi/v3/asset/getUserAsset"
 
     # order, user data, only works with api.binance host
     user_data_stream = "https://api.binance.com/api/v3/userDataStream"
@@ -65,6 +66,7 @@ class BinanceApi:
     isolated_hourly_interest = f"{BASE}/sapi/v1/margin/next-hourly-interest-rate"
     margin_order = f"{BASE}/sapi/v1/margin/order"
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
+    interest_history_url = f"{BASE}/sapi/v1/margin/interestHistory"
 
     def request(
         self,
@@ -134,6 +136,7 @@ class BinanceApi:
     """
     No security endpoints
     """
+
     def ticker_24(self, type: str = "FULL", symbol: str | None = None):
         """
         Weight 40 without symbol
@@ -173,6 +176,7 @@ class BinanceApi:
     """
     USER_DATA endpoints
     """
+
     def get_account_balance(self):
         """
         Get account balance
@@ -192,11 +196,11 @@ class BinanceApi:
         data = self.signed_request(self.wallet_balance_url)
         return data
 
-    def cancel_margin_order(self, symbol, order_id):
+    def cancel_margin_order(self, symbol: str, order_id: int):
         return self.signed_request(
             self.margin_order,
             method="DELETE",
-            payload={"symbol": symbol, "orderId": order_id},
+            payload={"symbol": symbol, "orderId": str(order_id)},
         )
 
     def enable_isolated_margin_account(self, symbol):
@@ -274,25 +278,45 @@ class BinanceApi:
             payload={"asset": asset, "isolatedSymbol": isolated_symbol},
         )
 
-    def get_margin_loan_details(self, loan_id: int):
+    def get_margin_loan_details(self, loan_id: int, symbol: str):
         return self.signed_request(
             self.loan_record_url,
-            payload={"txId": loan_id},
+            payload={
+                "txId": loan_id,
+                "type": "BORROW",
+                "isolatedSymbol": symbol,
+            },
+        )
+
+    def get_repay_details(self, loan_id: int, symbol: str):
+        return self.signed_request(
+            self.loan_record_url,
+            payload={
+                "txId": loan_id,
+                "type": "REPAY",
+                "isolatedSymbol": symbol,
+            },
         )
 
     def repay_margin_loan(
-        self, asset: str, symbol: str, amount: float | int, isIsolated: str
+        self, asset: str, symbol: str, amount: float | int, isIsolated: str = "TRUE"
     ):
         return self.signed_request(
             self.loan_record_url,
             method="POST",
             payload={
                 "asset": asset,
+                "isIsolated": isIsolated,
                 "symbol": symbol,
                 "amount": amount,
-                "isIsolated": isIsolated,
                 "type": "REPAY",
             },
+        )
+
+    def get_interest_history(self, asset: str, symbol: str):
+        return self.signed_request(
+            self.interest_history_url,
+            payload={"asset": asset, "isolatedSymbol": symbol},
         )
 
     def get_isolated_balance(self, symbol=None) -> list:
@@ -393,6 +417,29 @@ class BinanceApi:
         Get order book for a given symbol
         """
         data = self.request(url=f"{self.order_book_url}?symbol={symbol}")
+        return data
+
+    def get_user_asset(self, asset: str, need_btc_valuation: bool = False):
+        """
+        Get user asset
+
+        https://developers.binance.com/docs/wallet/asset/user-assets
+        response:
+        {
+            "asset": "AVAX",
+            "free": "1",
+            "locked": "0",
+            "freeze": "0",
+            "withdrawing": "0",
+            "ipoable": "0",
+            "btcValuation": "0"
+        },
+        """
+        data = self.signed_request(
+            url=self.user_asset_url,
+            method="POST",
+            payload={"asset": asset, "needBtcValuation": need_btc_valuation},
+        )
         return data
 
 

@@ -31,6 +31,7 @@ const TakeProfit: FC = () => {
       take_profit: bot.take_profit,
       trailling: bot.trailling,
       trailling_deviation: bot.trailling_deviation,
+      trailling_profit: bot.trailling_profit,
       dynamic_trailling: bot.dynamic_trailling,
     },
   });
@@ -62,36 +63,63 @@ const TakeProfit: FC = () => {
     <Tab.Pane eventKey={TabsKeys.TAKEPROFIT}>
       <Container>
         <Row className="my-3">
-          <Col md="6" sm="12">
-            <Form.Label htmlFor="take_profit">
-              Take profit at <span className="u-required">*</span>
-            </Form.Label>
-            <InputGroup size="sm">
-              <Form.Control
-                type="number"
-                name="take_profit"
-                id="take_profit"
-                {...register("take_profit", {
-                  required: "Take profit is required",
-                  valueAsNumber: true,
-                  min: {
-                    value: 0,
-                    message: "Minimum take profit is 1",
-                  },
-                  max: {
-                    value: 100,
-                    message: "Maximum take profit is 100",
-                  },
-                })}
-              />
-              <InputGroupText>%</InputGroupText>
-            </InputGroup>
-            {errors.take_profit && (
-              <Form.Control.Feedback type="invalid">
-                {errors.take_profit.message}
-              </Form.Control.Feedback>
-            )}
-          </Col>
+          {bot.trailling ? (
+            <Col md="6" sm="12">
+              <Form.Label htmlFor="trailling_profit">
+                Trail profit at <span className="u-required">*</span>
+              </Form.Label>
+              <InputGroup>
+                <Form.Control
+                  type="number"
+                  name="trailling_profit"
+                  {...register("trailling_profit", {
+                    required:
+                      "Trailling profit in percentage is required when trailling is activated",
+                    valueAsNumber: true,
+                    min: {
+                      value: 0,
+                      message: "Minimum trailling profit is 1",
+                    },
+                    max: {
+                      value: 100,
+                      message: "Maximum trailling profit is 100",
+                    },
+                  })}
+                />
+                <InputGroupText>%</InputGroupText>
+              </InputGroup>
+            </Col>
+          ) : (
+            <Col md="6" sm="12">
+              <Form.Label htmlFor="take_profit">
+                Take profit at <span className="u-required">*</span>
+              </Form.Label>
+              <InputGroup size="sm">
+                <Form.Control
+                  type="number"
+                  name="take_profit"
+                  id="take_profit"
+                  {...register("take_profit", {
+                    valueAsNumber: true,
+                    min: {
+                      value: 0,
+                      message: "Minimum take profit is 1",
+                    },
+                    max: {
+                      value: 100,
+                      message: "Maximum take profit is 100",
+                    },
+                  })}
+                />
+                <InputGroupText>%</InputGroupText>
+              </InputGroup>
+              {errors.take_profit && (
+                <Form.Control.Feedback type="invalid">
+                  {errors.take_profit.message}
+                </Form.Control.Feedback>
+              )}
+            </Col>
+          )}
           <Col md="3" sm="12">
             <Form.Group>
               <Form.Label htmlFor="trailling">Trailling</Form.Label>

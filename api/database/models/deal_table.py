@@ -2,6 +2,7 @@ from uuid import uuid4, UUID
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
 from sqlalchemy import Column, BigInteger
+from pydantic import field_validator
 
 # avoids circular imports
 if TYPE_CHECKING:
@@ -16,7 +17,7 @@ class DealBase(SQLModel):
     )
     trailling_stop_loss_price: float = Field(
         default=0,
-        description="take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price",
+        description="take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price, and it cannot be triggered unless it's above opening_price",
     )
     trailling_profit_price: float = Field(default=0)
     stop_loss_price: float = Field(default=0)
@@ -24,7 +25,13 @@ class DealBase(SQLModel):
     # fields for margin trading
     total_interests: float = Field(default=0, gt=-1)
     total_commissions: float = Field(default=0, gt=-1)
-    margin_loan_id: float = Field(default=0)
+    margin_loan_id: int = Field(
+        default=0,
+        description="Txid from Binance. This is used to check if there is a loan, 0 means no loan",
+    )
+    margin_repay_id: int = Field(
+        default=0, gt=-1, description="= 0, it has not been repaid"
+    )
 
     # Refactored deal prices that combine both margin and spot
     opening_price: float = Field(
@@ -67,3 +74,15 @@ class DealTable(DealBase, table=True):
         cascade_delete=True,
         sa_relationship_kwargs={"viewonly": True},
     )
+
+    @field_validator("margin_loan_id", mode="before")
+    @classmethod
+    def validate_margin_loan_id(cls, value):
+        if isinstance(value, float):
+            return int(value)
+
+    @field_validator("margin_loan_id", mode="after")
+    @classmethod
+    def cast_float(cls, value):
+        if isinstance(value, float):
+            return int(value)

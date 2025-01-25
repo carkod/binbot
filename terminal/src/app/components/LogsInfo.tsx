@@ -19,7 +19,7 @@ const LogInfo: FC<{
       {logInfo && (
         <Card.Body>
           {events.map((item, i) => (
-            <ListGroup className="list-group-flush">
+            <ListGroup key={i} className="list-group-flush">
               <ListGroup.Item
                 action
                 as="small"

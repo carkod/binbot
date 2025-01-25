@@ -148,7 +148,7 @@ class BotModel(BotBase):
         """
         if isinstance(bot, BotTable):
             model = BotModel.model_construct(**bot.model_dump())
-            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            deal_model = DealModel.model_validate(bot.deal.model_dump())
             order_models = [
                 OrderModel.model_construct(**order.model_dump()) for order in bot.orders
             ]
@@ -180,7 +180,7 @@ class BotModel(BotBase):
 
 class BotModelResponse(BotBase):
     id: str | UUID = Field(default="")
-    deal: DealModel = Field(default_factory=DealModel)
+    deal: DealModel = Field(...)
     orders: List[OrderModel] = Field(default=[])
 
     model_config = {
@@ -198,12 +198,14 @@ class BotModelResponse(BotBase):
         """
         Same as model_dump() but from
         BotTable
+
+        Use model_validate to cast/pre-validate data to avoid unecessary validation errors
         """
         if isinstance(bot, BotTable):
             model = BotModelResponse.model_construct(**bot.model_dump())
-            deal_model = DealModel.model_construct(**bot.deal.model_dump())
+            deal_model = DealModel.model_validate(bot.deal.model_dump())
             order_models = [
-                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+                OrderModel.model_validate(order.model_dump()) for order in bot.orders
             ]
             model.deal = deal_model
             model.orders = order_models
@@ -233,7 +235,7 @@ class BotListResponse(IResponseBase):
     serialize nested table objects (deal, orders)
     """
 
-    data: list[BotModelResponse] = Field(default=[])
+    data: list = Field(default=[])
 
 
 class ErrorsRequestBody(BaseModel):

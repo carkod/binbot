@@ -345,7 +345,7 @@ class Assets(AssetsController):
         where there are are still funds in the isolated pair
         """
 
-        bot = self.bot_controller.get_one(symbol=pair)
+        bot = self.bot_controller.get_one(symbol=pair, status=Status.active)
 
         if not bot:
             return bot

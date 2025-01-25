@@ -10,7 +10,7 @@ order_blueprint = APIRouter()
 
 @order_blueprint.post("/buy", tags=["orders"])
 def create_buy_order(item: OrderParams):
-    return OrderController().buy_order(symbol=item.pair, qty=item.qty, price=item.price)
+    return OrderController().buy_order(symbol=item.pair, qty=item.qty)
 
 
 @order_blueprint.post("/sell", tags=["orders"])

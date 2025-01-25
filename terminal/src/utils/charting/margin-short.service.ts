@@ -8,163 +8,165 @@ export default function marginTrading(
   bot: Bot,
   currentPrice: number,
 ): OrderLine[] {
-  let totalOrderLines: OrderLine[] = [];
-  const parsedCurrentPrice = currentPrice;
   const quoteAsset = getQuoteAsset(bot);
+  let totalOrderLines: OrderLine[] = [];
 
-  if (bot.deal.opening_price && bot.deal.opening_price > 0) {
-    totalOrderLines.push({
-      id: "base_order",
-      text: "Base (Margin sell)",
-      tooltip: [
-        bot.status,
-        `${
-          bot.deal.opening_qty && bot.deal.opening_qty > 0
-            ? bot.deal.opening_qty + quoteAsset + "(Avg total)"
-            : ""
-        }`,
-      ],
-      quantity: `${bot.base_order_size} ${quoteAsset}`,
-      price: parseFloat(bot.deal.opening_price?.toString() || "0"),
-      color: dealColors.base_order,
-    });
-
-    if (bot.trailling) {
+  if (bot.base_order_size > 0 && currentPrice) {
+    if (bot.deal.closing_price > 0) {
+      // Completed bot
       totalOrderLines.push({
-        id: "take_profit",
-        text: `Take profit (trailling) -${bot.trailling_deviation}%`,
-        tooltip: [bot.status, " Bot closed here at profit"],
+        id: "base_order",
+        text: "Base (Margin sell)",
+        tooltip: [
+          bot.status,
+          `${
+            bot.deal.opening_qty && bot.deal.opening_qty > 0
+              ? `${bot.deal.opening_qty} ${quoteAsset}`
+              : ""
+          }`,
+        ],
         quantity: `${bot.base_order_size} ${quoteAsset}`,
         price: bot.deal.opening_price,
+        color: dealColors.base_order,
+      });
+    } else {
+      // if no closing_price
+      // bot inactive: currentPrice, bot active: opening_price
+      const price =
+        bot.deal?.opening_price || currentPrice || bot.deal.current_price;
+      totalOrderLines.push({
+        id: "base_order",
+        text: "Base (Margin sell)",
+        tooltip: [
+          bot.status,
+          `${
+            bot.deal.opening_qty && bot.deal.opening_qty > 0
+              ? `${bot.deal.opening_qty} ${quoteAsset}`
+              : ""
+          }`,
+        ],
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        price: price,
+        color: dealColors.base_order,
+      });
+    }
+
+    if (bot.trailling && bot.status === BotStatus.ACTIVE) {
+      if (bot.deal.trailling_profit_price > 0) {
+        totalOrderLines.push({
+          id: "trailling_profit",
+          text: `Trail profit ${bot.take_profit}%`,
+          tooltip: [bot.status, " Trace upward profit"],
+          quantity: `${bot.base_order_size} ${quoteAsset}`,
+          price: bot.deal.trailling_profit_price,
+          color: dealColors.trailling_profit,
+        });
+      }
+
+      if (bot.deal.trailling_stop_loss_price > 0) {
+        totalOrderLines.push({
+          id: "trailling_stop_loss",
+          text: `Trailling stop loss -${bot.trailling_deviation}%`,
+          tooltip: [bot.status, " Sell order when prices drop here"],
+          quantity: `${bot.base_order_size} ${quoteAsset}`,
+          price: bot.deal.trailling_stop_loss_price,
+          color: dealColors.take_profit,
+        });
+      }
+    } else if (
+      bot.status === BotStatus.COMPLETED &&
+      bot.deal.closing_price > 0
+    ) {
+      // completed bot
+      totalOrderLines.push({
+        id: "trailling_profit",
+        text: `Trail profit ${bot.trailling_profit}%`,
+        tooltip: [bot.status, " Breakpoint to increase Take profit"],
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        price: bot.deal.trailling_profit_price,
+        color: dealColors.trailling_profit,
+        lineStyle: 2,
+      });
+      totalOrderLines.push({
+        id: "trailling_stop_loss",
+        text: `Trailling stop loss -${bot.trailling_deviation}%`,
+        tooltip: [bot.status, " Sell order when prices drop here"],
+        quantity: `${bot.deal.opening_qty || bot.base_order_size} ${quoteAsset}`,
+        price: bot.deal.trailling_stop_loss_price,
         color: dealColors.take_profit,
       });
     } else {
-      totalOrderLines.push({
-        id: "take_profit",
-        text: `Take profit ${bot.take_profit}% (Margin buy)`,
-        tooltip: [bot.status, " Margin buy"],
-        quantity: `${bot.base_order_size} ${quoteAsset}`,
-        price: bot.deal.closing_price || 0, // buy_profit * take_profit%
-        color: dealColors.take_profit,
-      });
-    }
-  } else {
-    if (bot.trailling) {
-      if (bot.status === BotStatus.ACTIVE) {
-        if (
-          bot.deal.trailling_stop_loss_price &&
-          bot.deal.trailling_stop_loss_price > 0
-        ) {
-          totalOrderLines.push({
-            id: "trailling_profit",
-            text: `Take profit (trailling) ${bot.take_profit}%`,
-            tooltip: [bot.status, " Trace upward profit"],
-            quantity: `${bot.base_order_size} ${quoteAsset}`,
-            price:
-              bot.deal.trailling_profit_price ||
-              bot.deal.take_profit_price ||
-              0, // take_profit / trailling_profit
-            color: dealColors.trailling_profit,
-          });
-          totalOrderLines.push({
-            id: "trailling_stop_loss",
-            text: `Trailling stop loss -${bot.trailling_deviation}%`,
-            tooltip: [bot.status, " Sell order when prices drop here"],
-            quantity: `${bot.base_order_size} ${quoteAsset}`,
-            price: bot.deal.trailling_stop_loss_price, // take_profit / trailling_profit
-            color: dealColors.take_profit,
-          });
-        } else {
-          const price =
-            bot.deal.closing_price && bot.deal.closing_price > 0
-              ? bot.deal.closing_price
-              : parsedCurrentPrice;
-          totalOrderLines.push({
-            id: "take_profit",
-            text: `Take profit ${bot.take_profit}% (Margin)`,
-            tooltip: [bot.status, " Sell Order "],
-            quantity: `${bot.base_order_size} ${quoteAsset}`,
-            price:
-              price - (price * parseFloat(bot.take_profit.toString())) / 100, // buy_profit * take_profit%
-            color: dealColors.take_profit,
-          });
-        }
-      } else {
-        const trailling_profit =
-          parsedCurrentPrice - parsedCurrentPrice * (bot.take_profit / 100);
-        const trailling_stop_loss_price =
-          trailling_profit - trailling_profit * (bot.trailling_deviation / 100);
-
+      // Inactive bot
+      const price =
+        bot.deal?.opening_price || currentPrice || bot.deal.current_price;
+      const traillingProfitPrice = price * (1 - bot.trailling_profit / 100);
+      if (bot.deal.trailling_profit_price > 0) {
         totalOrderLines.push({
           id: "trailling_profit",
           text: `Take profit (trailling) ${bot.take_profit}%`,
           tooltip: [bot.status, " Breakpoint to increase Take profit"],
           quantity: `${bot.base_order_size} ${quoteAsset}`,
-          price: trailling_profit, // take_profit / trailling_profit
+          price: bot.deal?.trailling_profit_price || traillingProfitPrice,
           color: dealColors.trailling_profit,
           lineStyle: 2,
         });
+      }
+
+      if (bot.deal.trailling_stop_loss_price > 0) {
         totalOrderLines.push({
           id: "trailling_stop_loss",
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${bot.deal.opening_qty || bot.base_order_size} ${quoteAsset}`,
-          price: trailling_stop_loss_price,
+          price:
+            bot.deal?.trailling_profit_price ||
+            traillingProfitPrice * (1 + bot.trailling_deviation / 100),
           color: dealColors.take_profit,
         });
       }
-    } else {
-      const price =
-        bot.deal.opening_price && bot.deal.opening_price > 0
-          ? bot.deal.opening_price
-          : parsedCurrentPrice;
+    }
+  } else {
+    if (bot.status === BotStatus.COMPLETED && bot.deal.take_profit_price > 0) {
+      // No trailling take profit
+      const price = currentPrice * (1 + bot.take_profit / 100);
       totalOrderLines.push({
         id: "take_profit",
         text: `Take profit ${bot.take_profit}% (Margin)`,
-        tooltip: [bot.status, " Sell Order "],
+        tooltip: [bot.status, " Buy back Order "],
         quantity: `${bot.base_order_size} ${quoteAsset}`,
-        price: price - (price * parseFloat(bot.take_profit.toString())) / 100, // buy_profit * take_profit%
+        price: bot.deal.take_profit_price || price,
+        color: dealColors.take_profit,
+      });
+    } else if (bot.status === BotStatus.INACTIVE) {
+      // Inactive bot
+      const price = currentPrice * (1 + bot.take_profit / 100);
+      totalOrderLines.push({
+        id: "take_profit",
+        text: `Take profit ${bot.take_profit}% (Margin)`,
+        tooltip: [bot.status, " Buy back Order "],
+        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        price: price,
         color: dealColors.take_profit,
       });
     }
   }
 
-  if (bot.stop_loss && bot.stop_loss > 0) {
+  if (bot.stop_loss > 0) {
     let stopLossPrice = 0;
-    if (bot.deal.stop_loss_price) {
+    if (bot.deal.closing_price > 0) {
       stopLossPrice = bot.deal.stop_loss_price;
     } else {
-      stopLossPrice = parsedCurrentPrice * (1 + bot.stop_loss / 100);
+      stopLossPrice = currentPrice * (1 + bot.stop_loss / 100);
     }
     totalOrderLines.push({
       id: "stop_loss",
       text: `Stop Loss ${bot.stop_loss}%`,
-      tooltip: [bot.status, " Sell Order "],
+      tooltip: [bot.status, " Buy back order "],
       quantity: `${bot.base_order_size} ${quoteAsset}`,
       price: stopLossPrice, // buy_profit * take_profit%
       color: "red",
     });
   }
-
-  const price =
-    bot.deal.closing_price && bot.deal.closing_price > 0
-      ? bot.deal.closing_price
-      : parsedCurrentPrice;
-  totalOrderLines.push({
-    id: "base_order",
-    text: "Base",
-    tooltip: [
-      bot.status,
-      `${
-        bot.deal.opening_qty && bot.deal.opening_qty > 0
-          ? bot.deal.opening_qty + quoteAsset + "(Avg total)"
-          : ""
-      }`,
-    ],
-    quantity: `${bot.base_order_size} ${quoteAsset}`,
-    price: parseFloat(price.toString()),
-    color: dealColors.base_order,
-  });
 
   return totalOrderLines;
 }

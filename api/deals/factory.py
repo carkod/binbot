@@ -6,7 +6,7 @@ from tools.exceptions import TakeProfitError
 from tools.handle_error import (
     handle_binance_errors,
 )
-from tools.round_numbers import round_numbers, supress_notation
+from tools.round_numbers import round_numbers
 from deals.base import BaseDeal
 from deals.models import DealModel
 from database.paper_trading_crud import PaperTradingTableCrud
@@ -96,62 +96,6 @@ class DealAbstract(BaseDeal):
 
         return bot
 
-    def close_all(self) -> BotModel:
-        """
-        Close all deals and sell pair
-        1. Close all deals
-        2. Sell Coins
-        3. Delete bot
-        """
-        orders = self.active_bot.orders
-
-        # Close all active orders
-        if len(orders) > 0:
-            for d in orders:
-                if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
-                    self.controller.update_logs(
-                        "Failed to close all active orders (status NEW), retrying...",
-                        self.active_bot,
-                    )
-                    self.replace_order(d.order_id)
-
-        # Sell everything
-        pair = self.active_bot.pair
-        base_asset = self.find_baseAsset(pair)
-        balance = self.get_single_raw_balance(base_asset)
-        if balance > 0:
-            qty = round_numbers(balance, self.qty_precision)
-            price: float = float(self.matching_engine(pair, True, qty))
-            price = round_numbers(price, self.price_precision)
-
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
-
-            order_data = OrderModel(
-                timestamp=res["transactTime"],
-                order_id=res["orderId"],
-                deal_type=DealType.take_profit,
-                pair=res["symbol"],
-                order_side=res["side"],
-                order_type=res["type"],
-                price=res["price"],
-                qty=res["origQty"],
-                time_in_force=res["timeInForce"],
-                status=res["status"],
-            )
-
-        self.active_bot.orders.append(order_data)
-        self.active_bot.deal.closing_price = res["price"]
-        self.active_bot.deal.closing_qty = res["origQty"]
-        self.active_bot.deal.closing_timestamp = res["transactTime"]
-
-        self.controller.update_logs(
-            "Panic sell triggered. All active orders closed", self.active_bot
-        )
-        self.active_bot.status = Status.completed
-        self.controller.save(self.active_bot)
-
-        return self.active_bot
-
     def update_take_profit(self, order_id: int) -> BotModel:
         """
         Update take profit after websocket order endpoint triggered
@@ -226,18 +170,14 @@ class DealAbstract(BaseDeal):
         Optional deals section
 
         The following functionality is triggered according to the options set in the bot
-        it comes after SpotConcrete.open_deal or MarginConcrete.open_deal
         The reason why it's put here, it's because it's agnostic of what type of deal
         strategy, we always execute these
         """
 
         # Update stop loss regarless of base order
         if self.active_bot.stop_loss > 0:
-            if (
-                self.active_bot.strategy == Strategy.margin_short
-                and self.active_bot.stop_loss > 0
-            ):
-                price = self.active_bot.deal.closing_price
+            if self.active_bot.strategy == Strategy.margin_short:
+                price = self.active_bot.deal.opening_price
                 self.active_bot.deal.stop_loss_price = price + (
                     price * (self.active_bot.stop_loss / 100)
                 )
@@ -250,35 +190,53 @@ class DealAbstract(BaseDeal):
                     stop_loss_price, self.price_precision
                 )
 
-        # Margin short Take profit
-        if (
-            self.active_bot.take_profit > 0
-            and self.active_bot.strategy == Strategy.margin_short
-        ):
-            if self.active_bot.take_profit:
-                price = float(self.active_bot.deal.closing_price)
+        # Bot has only take_profit set
+        if not self.active_bot.trailling and self.active_bot.take_profit > 0:
+            if self.active_bot.strategy == Strategy.margin_short:
+                price = self.active_bot.deal.opening_price
                 take_profit_price = price - (
                     price * (self.active_bot.take_profit) / 100
                 )
-                self.active_bot.deal.take_profit_price = take_profit_price
+                self.active_bot.deal.take_profit_price = round_numbers(
+                    take_profit_price, self.price_precision
+                )
+            else:
+                take_profit_price = float(self.active_bot.deal.opening_price) * (
+                    1 + (float(self.active_bot.take_profit) / 100)
+                )
+                self.active_bot.deal.take_profit_price = round_numbers(
+                    take_profit_price, self.price_precision
+                )
 
-        # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
-        # if we don't do this, the trailling stop loss will trigger
-        if (
-            self.active_bot.deal.trailling_stop_loss_price > 0
-            or self.active_bot.deal.trailling_stop_loss_price
-            < self.active_bot.deal.opening_price
-        ):
-            take_profit_price = float(self.active_bot.deal.opening_price) * (
-                1 + (float(self.active_bot.take_profit) / 100)
-            )
-            self.active_bot.deal.take_profit_price = take_profit_price
-            # Update trailling_stop_loss
-            self.active_bot.deal.trailling_stop_loss_price = 0
+        # Bot has trailling set
+        # trailling_profit must also be set
+        if self.active_bot.trailling:
+            if self.active_bot.strategy == Strategy.margin_short:
+                price = self.active_bot.deal.opening_price
+                trailling_profit = price - (
+                    price * (self.active_bot.trailling_profit / 100)
+                )
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    trailling_profit, self.price_precision
+                )
+                # do not set trailling_stop_loss_price until trailling_profit_price is broken
+            else:
+                price = self.active_bot.deal.opening_price
+                trailling_profit = price + (
+                    price * (self.active_bot.trailling_profit / 100)
+                )
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    trailling_profit, self.price_precision
+                )
+                # do not set trailling_stop_loss_price until trailling_profit_price is broken
 
         self.active_bot.status = Status.active
         self.controller.save(self.active_bot)
-        self.controller.update_logs("Bot activated", self.active_bot)
+        if self.active_bot.status == Status.inactive:
+            self.controller.update_logs("Bot activated", self.active_bot)
+        else:
+            self.controller.update_logs("Bot deal updated", self.active_bot)
+
         return self.active_bot
 
     def base_order(self) -> BotModel:
@@ -316,7 +274,6 @@ class DealAbstract(BaseDeal):
             res = self.buy_order(
                 symbol=self.active_bot.pair,
                 qty=qty,
-                price=supress_notation(price, self.price_precision),
             )
 
         order_data = OrderModel(
@@ -341,7 +298,7 @@ class DealAbstract(BaseDeal):
             opening_qty=float(res["origQty"]),
             current_price=float(res["price"]),
             take_profit_price=tp_price,
-            stop_loss_price=stop_loss_price,
+            stop_loss_price=round_numbers(stop_loss_price, self.price_precision),
         )
 
         # temporary measures to keep deal up to date

@@ -2,7 +2,12 @@ import { notifification } from "../../utils/api";
 import { userApiSlice } from "../userApiSlice";
 import type { Bot } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
-import type { CreateBotResponse, EditBotParams, GetBotsParams, GetBotsResponse } from "./bots";
+import type {
+  CreateBotResponse,
+  EditBotParams,
+  GetBotsParams,
+  GetBotsResponse,
+} from "./bots";
 import { botsAdapter } from "./botsApiSlice";
 
 export const papertradingApiSlice = userApiSlice.injectEndpoints({

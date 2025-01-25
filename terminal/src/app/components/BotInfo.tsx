@@ -13,7 +13,7 @@ import { renderDuration, formatTimestamp } from "../../utils/time";
 
 export default function BotInfo({ bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
-    bot.orders?.length > 0
+    bot.orders?.length > 0,
   );
   return (
     <Card>
@@ -35,6 +35,7 @@ export default function BotInfo({ bot }) {
                   <th>Order Id</th>
                   <th>Timestamp</th>
                   <th>Deal type</th>
+                  <th>Order type</th>
                   <th>Price</th>
                   <th>Qty</th>
                   <th>Status</th>
@@ -48,6 +49,7 @@ export default function BotInfo({ bot }) {
                       <tr key={order.order_id}>
                         <th scope="row">{order.order_id}</th>
                         <td>{formatTimestamp(parseFloat(order.timestamp))}</td>
+                        <td>{order.deal_type}</td>
                         <td>{order.order_type}</td>
                         <td>{order.price}</td>
                         <td>{parseFloat(order.qty)}</td>
