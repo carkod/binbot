@@ -161,9 +161,16 @@ class MarginDeal(DealAbstract):
                     self.terminate_failed_transactions()
                     raise MarginShortError("Isolated margin not available")
 
-        loan_created = self.create_margin_loan(
-            asset=asset, symbol=self.active_bot.pair, amount=qty
-        )
+        try:
+            loan_created = self.create_margin_loan(
+                asset=asset, symbol=self.active_bot.pair, amount=qty
+            )
+        except BinanceErrors as error:
+            # System does not have enough money to lend
+            # transfer back and left client know (raise exception again)
+            if error.code == -3045:
+                self.terminate_failed_transactions()
+                raise BinanceErrors(error)
 
         self.active_bot.deal.margin_loan_id = int(loan_created["tranId"])
         # in this new data system there is only one field for qty
