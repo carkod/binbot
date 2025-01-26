@@ -12,7 +12,7 @@ from streaming.models import SignalsConsumer
 from tools.enum_definitions import Status, Strategy
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
-from tools.exceptions import BinanceErrors
+from tools.exceptions import BinanceErrors, BinbotErrors
 from datetime import datetime
 from apis import BinanceApi
 
@@ -24,16 +24,26 @@ class BaseStreaming:
         self.paper_trading_controller = PaperTradingTableCrud()
 
     def get_current_bot(self, symbol: str) -> BotModel:
-        current_bot = self.bot_controller.get_one(symbol=symbol, status=Status.active)
-        bot = BotModel.dump_from_table(current_bot)
-        return bot
+        try:
+            current_bot = self.bot_controller.get_one(
+                symbol=symbol, status=Status.active
+            )
+            bot = BotModel.dump_from_table(current_bot)
+            return bot
+        except BinbotErrors:
+            bot = None
+            return bot
 
     def get_current_test_bot(self, symbol: str) -> BotModel:
-        current_test_bot = self.paper_trading_controller.get_one(
-            symbol=symbol, status=Status.active
-        )
-        bot = BotModel.dump_from_table(current_test_bot)
-        return bot
+        try:
+            current_test_bot = self.paper_trading_controller.get_one(
+                symbol=symbol, status=Status.active
+            )
+            bot = BotModel.dump_from_table(current_test_bot)
+            return bot
+        except BinbotErrors:
+            bot = None
+            return bot
 
 
 class StreamingController(BaseStreaming):
@@ -91,17 +101,8 @@ class StreamingController(BaseStreaming):
         close_price = data["close_price"]
         open_price = data["open_price"]
         symbol = data["symbol"]
-        current_bot = None
-        current_test_bot = None
-        try:
-            current_bot = self.get_current_bot(symbol)
-        except ValueError:
-            pass
-
-        try:
-            current_test_bot = self.get_current_test_bot(symbol)
-        except ValueError:
-            pass
+        current_bot = self.get_current_bot(symbol)
+        current_test_bot = self.get_current_test_bot(symbol)
 
         try:
             if current_bot:

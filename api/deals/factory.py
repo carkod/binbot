@@ -3,9 +3,6 @@ from database.models.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import DealType, OrderSide, Status, Strategy
 from tools.exceptions import TakeProfitError
-from tools.handle_error import (
-    handle_binance_errors,
-)
 from tools.round_numbers import round_numbers
 from deals.base import BaseDeal
 from deals.models import DealModel
@@ -69,7 +66,7 @@ class DealAbstract(BaseDeal):
         order_data = OrderModel(
             timestamp=res["transactTime"],
             order_id=res["orderId"],
-            deal_type="take_profit",
+            deal_type=DealType.take_profit,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
@@ -127,21 +124,18 @@ class DealAbstract(BaseDeal):
                     price=round_numbers(new_tp_price, self.price_precision),
                 )
 
-                # New take profit order successfully created
-                order = handle_binance_errors(res)
-
                 # Replace take_profit order
                 take_profit_order = OrderModel(
-                    timestamp=order["transactTime"],
-                    order_id=order["orderId"],
+                    timestamp=res["transactTime"],
+                    order_id=res["orderId"],
                     deal_type=DealType.take_profit,
-                    pair=order["symbol"],
-                    order_side=order["side"],
-                    order_type=order["type"],
-                    price=order["price"],
-                    qty=order["origQty"],
-                    time_in_force=order["timeInForce"],
-                    status=order["status"],
+                    pair=res["symbol"],
+                    order_side=res["side"],
+                    order_type=res["type"],
+                    price=res["price"],
+                    qty=res["origQty"],
+                    time_in_force=res["timeInForce"],
+                    status=res["status"],
                 )
 
                 total_commission = self.calculate_total_commissions(res["fills"])

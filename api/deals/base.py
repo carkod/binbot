@@ -59,7 +59,7 @@ class BaseDeal(OrderController):
         """
         return f"BaseDeal({self.__dict__})"
 
-    def compute_qty(self, pair):
+    def compute_qty(self, pair: str) -> float:
         """
         Helper function to compute buy_price.
         """
@@ -69,10 +69,9 @@ class BaseDeal(OrderController):
         if balance == 0:
             # If spot balance is not found
             # try to get isolated margin balance
-            free = self.get_margin_balance(asset)
-            qty = round_numbers(free, self.qty_precision)
-            if not free:
-                return None
+            balance = self.get_margin_balance(asset)
+            if not balance or balance == 0:
+                return 0
 
         qty = round_numbers(balance, self.qty_precision)
         return qty
@@ -136,8 +135,8 @@ class BaseDeal(OrderController):
                     method="DELETE",
                     payload={"symbol": symbol, "orderId": order["orderId"]},
                 )
-                for order in self.active_bot.orders:
-                    if order.order_id == order["orderId"]:
+                for bot_order in self.active_bot.orders:
+                    if bot_order.order_id == order["orderId"]:
                         self.active_bot.orders.remove(order)
                         self.active_bot.logs.append(
                             "base_order not executed, therefore cancelled"
@@ -189,11 +188,9 @@ class BaseDeal(OrderController):
             # repay_amount contains total borrowed_amount + interests + commissions for buying back
             # borrow amount is only the loan
             repay_amount, free = self.compute_margin_buy_back()
-            repay_amount = round_numbers_ceiling(repay_amount, self.qty_precision)
 
             if free == 0 or free < repay_amount:
                 try:
-                    # lot_size_by_symbol = self.lot_size_by_symbol(pair, "stepSize")
                     qty = round_numbers_ceiling(repay_amount - free, self.qty_precision)
                     buy_margin_response = self.buy_margin_order(
                         symbol=pair,
@@ -235,6 +232,10 @@ class BaseDeal(OrderController):
                         )
                         repay_amount, free = self.compute_margin_buy_back()
                         pass
+            else:
+                msg = "Unable to match isolated balance with repay amount"
+                self.controller.update_logs(msg)
+                raise MarginLoanNotFound(msg)
 
             self.repay_margin_loan(
                 asset=base,

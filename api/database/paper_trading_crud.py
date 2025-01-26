@@ -1,5 +1,6 @@
 from typing import Union
 from sqlmodel import Session, select, case, desc, asc
+from tools.exceptions import BinbotErrors
 from database.models.bot_table import PaperTradingTable
 from bots.models import BotModel, BotBase
 from database.utils import independent_session
@@ -166,7 +167,7 @@ class PaperTradingTableCrud:
             santize_uuid = UUID(bot_id)
             bot = self.session.get(PaperTradingTable, santize_uuid)
             if not bot:
-                raise ValueError("Bot not found")
+                raise BinbotErrors("Bot not found")
             return bot
         elif symbol:
             if status:
@@ -181,10 +182,10 @@ class PaperTradingTableCrud:
                     select(PaperTradingTable).where(PaperTradingTable.pair == symbol)
                 ).first()
             if not bot:
-                raise ValueError("Bot not found")
+                raise BinbotErrors("Bot not found")
             return bot
         else:
-            raise ValueError("Invalid bot id or symbol")
+            raise BinbotErrors("Invalid bot id or symbol")
 
     def get_active_pairs(self):
         """
