@@ -12,7 +12,7 @@ from streaming.models import SignalsConsumer
 from tools.enum_definitions import Status, Strategy
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
-from tools.exceptions import BinanceErrors
+from tools.exceptions import BinanceErrors, BinbotErrors
 from datetime import datetime
 from apis import BinanceApi
 
@@ -95,13 +95,9 @@ class StreamingController(BaseStreaming):
         current_test_bot = None
         try:
             current_bot = self.get_current_bot(symbol)
-        except ValueError:
-            pass
-
-        try:
             current_test_bot = self.get_current_test_bot(symbol)
-        except ValueError:
-            pass
+        except BinbotErrors:
+            return
 
         try:
             if current_bot:
