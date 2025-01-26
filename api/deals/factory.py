@@ -3,9 +3,6 @@ from database.models.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import DealType, OrderSide, Status, Strategy
 from tools.exceptions import TakeProfitError
-from tools.handle_error import (
-    handle_binance_errors,
-)
 from tools.round_numbers import round_numbers
 from deals.base import BaseDeal
 from deals.models import DealModel
