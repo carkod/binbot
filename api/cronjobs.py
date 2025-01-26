@@ -43,7 +43,7 @@ def main():
         trigger="cron",
         timezone=timezone,
         hour=3,
-        minute=1,
+        minute=27,
         id="clean_balance_assets",
     )
     scheduler.add_job(

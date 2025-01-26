@@ -15,8 +15,9 @@ from database.bot_crud import BotTableCrud
 class Assets(AssetsController):
     def __init__(self, session):
         self.usd_balance = 0
-        self.exception_list = []
         self.fiat = AutotradeCrud().get_settings().balance_to_use
+        self.exception_list = ["NFT", "BNB"]
+        self.exception_list.append(self.fiat)
         self.bot_controller = BotTableCrud(session=session)
 
     def get_pnl(self, days=7):
@@ -234,12 +235,9 @@ class Assets(AssetsController):
         data = self.get_account_balance()
         assets = []
 
-        if len(self.exception_list) == 0:
-            self.exception_list = ["USDT", "USDC", "NFT", "BNB"]
-
-        active_bots = list(self._db.bots.find({"status": Status.active}))
-        for bot in active_bots:
-            quote_asset = bot["pair"].replace(bot["balance_to_use"], "")
+        active_bots: list[str] = self.bot_controller.get_active_pairs()
+        for pair in active_bots:
+            quote_asset = pair.replace(self.fiat, "")
             self.exception_list.append(quote_asset)
 
         for item in data["balances"]:
