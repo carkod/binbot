@@ -8,7 +8,7 @@ from deals.factory import DealAbstract
 from tools.handle_error import json_response, json_response_error, json_response_message
 from tools.round_numbers import round_numbers
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
-from tools.enum_definitions import Status, Strategy
+from tools.enum_definitions import Strategy
 from database.bot_crud import BotTableCrud
 
 
@@ -333,17 +333,24 @@ class Assets(AssetsController):
 
         return json_response_message(msg)
 
-    def one_click_liquidation(self, pair: str) -> BotTable:
+    def one_click_liquidation(self, pair: str, market: str = "margin") -> BotTable:
         """
         Emulate Binance Dashboard
         One click liquidation function
 
         This endpoint is different than the margin_liquidation function
         in that it contains some clean up functionality in the cases
-        where there are are still funds in the isolated pair
+        where there are are still funds in the isolated pair.
+        Therefore, it should clean all bots with provided pairs without filtering
+        by status.
+
+        market arg is required, because there can be repeated
+        pairs in both MARGIN and SPOT markets.
         """
 
-        bot = self.bot_controller.get_one(symbol=pair, status=Status.active)
+        strategy = Strategy.margin_short if market == "margin" else Strategy.long
+
+        bot = self.bot_controller.get_one(symbol=pair, strategy=strategy)
 
         if not bot:
             return bot
@@ -351,10 +358,9 @@ class Assets(AssetsController):
         active_bot = BotModel.model_validate(bot.model_dump())
         deal = DealAbstract(active_bot, db_table=BotTable)
 
-        if active_bot.strategy == Strategy.margin_short:
+        if market == "margin":
             deal.margin_liquidation(pair)
-
-        if active_bot.strategy == Strategy.long:
+        else:
             deal.spot_liquidation(pair)
 
         return bot
