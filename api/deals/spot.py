@@ -237,9 +237,6 @@ class SpotLongDeal(DealAbstract):
                 self.base_producer.update_required(
                     self.producer, "EXECUTE_SWITCH_MARGIN_SHORT"
                 )
-                self.controller.update_logs(
-                    "Completed switch to margin short bot", self.active_bot
-                )
 
             return
 

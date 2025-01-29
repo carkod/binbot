@@ -7,7 +7,7 @@ from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
 from database.utils import independent_session
-from tools.enum_definitions import BinbotEnums, Status
+from tools.enum_definitions import BinbotEnums, Status, Strategy
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
@@ -130,6 +130,7 @@ class BotTableCrud:
         bot_id: Optional[str] = None,
         symbol: Optional[str] = None,
         status: Status | None = None,
+        strategy: Optional[Strategy] = None,
     ) -> BotTable:
         """
         Get one bot by id or symbol
@@ -148,6 +149,12 @@ class BotTableCrud:
                 bot = self.session.exec(
                     select(BotTable).where(
                         BotTable.pair == symbol, BotTable.status == status
+                    )
+                ).first()
+            elif strategy:
+                bot = self.session.exec(
+                    select(BotTable).where(
+                        BotTable.pair == symbol, BotTable.strategy == strategy
                     )
                 ).first()
             else:

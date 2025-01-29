@@ -22,7 +22,7 @@ def independent_session() -> Session:
     return Session(engine)
 
 
-def timestamp() -> float:
+def timestamp() -> int:
     return int(round(time() * 1000))
 
 

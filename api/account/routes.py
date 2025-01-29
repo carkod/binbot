@@ -8,7 +8,7 @@ from account.schemas import (
     GainersLosersResponse,
     BalanceSeriesResponse,
 )
-from tools.exceptions import BinanceErrors, LowBalanceCleanupError, MarginLoanNotFound
+from tools.exceptions import BinanceErrors, BinbotErrors, LowBalanceCleanupError, MarginLoanNotFound
 from tools.handle_error import json_response, json_response_error, json_response_message
 from sqlmodel import Session
 from database.utils import get_session
@@ -159,10 +159,10 @@ def check_isolated_symbol(symbol: str, session: Session = Depends(get_session)):
     return isolated_account
 
 
-@account_blueprint.get("/one-click-liquidation/{asset}", tags=["assets"])
-def one_click_liquidation(asset: str, session: Session = Depends(get_session)):
+@account_blueprint.get("/one-click-liquidation/{market}/{asset}", tags=["assets"])
+def one_click_liquidation(asset: str, market: str = "margin", session: Session = Depends(get_session)):
     try:
-        liquidated = Assets(session=session).one_click_liquidation(asset)
+        liquidated = Assets(session=session).one_click_liquidation(asset, market)
         if not liquidated:
             raise HTTPException(
                 status_code=404, detail="Could not liquidate asset that doesn't exist."
@@ -174,3 +174,7 @@ def one_click_liquidation(asset: str, session: Session = Depends(get_session)):
         )
     except BinanceErrors as error:
         return json_response_error(f"Error liquidating {asset}: {error.message}")
+
+    except BinbotErrors as error:
+        return json_response_error(f"Error liquidating {asset}: {error.message}")
+ 
