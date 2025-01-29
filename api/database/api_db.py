@@ -187,6 +187,12 @@ class ApiDb:
             short_sell_price=0,
             total_commission=0,
         )
+
+        statement = select(PaperTradingTable)
+        results = self.session.exec(statement)
+        if results.first():
+            return
+
         paper_trading_bot = PaperTradingTable(
             pair="BTCUSDC",
             balance_size_to_use=1,

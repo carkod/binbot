@@ -74,12 +74,6 @@ class StreamingController(BaseStreaming):
         It updates the bots deals, safety orders, trailling orders, stop loss
         for both paper trading test bots and real bots
         """
-        if len(current_bot.orders) > 0:
-            try:
-                int(current_bot.orders[0].order_id)
-            except Exception:
-                print(current_bot.orders[0].order_id)
-                pass
 
         # Margin short
         if current_bot.strategy == Strategy.margin_short:

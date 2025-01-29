@@ -179,6 +179,7 @@ class OrderController(Account):
                 self.delete_opened_order(symbol, data["orderId"])
             except Exception:
                 pass
+
             self.buy_order(symbol, qty, price, iteration + 1)
 
         if float(data["price"]) == 0:
@@ -236,7 +237,7 @@ class OrderController(Account):
         python-binance wrapper function to make it less verbose and less dependant
         """
         if iteration == 0:
-            price = self.matching_engine(symbol, True, qty)
+            price = self.matching_engine(symbol, False, qty)
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -263,6 +264,7 @@ class OrderController(Account):
                 self.cancel_margin_order(symbol, int(data["orderId"]))
             except Exception:
                 pass
+
             self.buy_margin_order(symbol, qty, price, iteration + 1)
 
         return data
@@ -272,7 +274,7 @@ class OrderController(Account):
         python-binance wrapper function to make it less verbose and less dependant
         """
         if iteration == 0:
-            price = float(self.matching_engine(symbol, False, qty))
+            price = float(self.matching_engine(symbol, True, qty))
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,

@@ -121,7 +121,7 @@ def edit(
         controller = BotTableCrud(session=session)
         bot_table = controller.get_one(id)
         # update model with ne data
-        bot_table.model_copy(update=bot_item.model_dump())
+        bot_table.sqlmodel_update(bot_item.model_dump())
         # client should not change deal and orders
         # these are internally generated
         transform_model = BotModel.dump_from_table(bot_table)

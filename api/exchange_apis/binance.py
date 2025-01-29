@@ -3,10 +3,9 @@ import hmac
 import os
 from random import randrange
 from urllib.parse import urlencode
-from requests import Session, request
-from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from tools.exceptions import IsolateBalanceError
-from py3cw.request import Py3CW
+from requests import Session, request
+from tools.handle_error import handle_binance_errors
 
 
 class BinanceApi:
@@ -200,7 +199,7 @@ class BinanceApi:
         return self.signed_request(
             self.margin_order,
             method="DELETE",
-            payload={"symbol": symbol, "orderId": str(order_id), "isIsolated": "TRUE"},
+            payload={"symbol": symbol, "orderId": str(order_id)},
         )
 
     def enable_isolated_margin_account(self, symbol):
@@ -441,117 +440,3 @@ class BinanceApi:
             payload={"asset": asset, "needBtcValuation": need_btc_valuation},
         )
         return data
-
-
-class BinbotApi(BinanceApi):
-    """
-    API endpoints on this project itself
-    includes Binance Api
-    """
-
-    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
-    bb_24_ticker_url = f"{bb_base_url}/account/ticker24"
-    bb_symbols_raw = f"{bb_base_url}/account/symbols"
-    bb_bot_url = f"{bb_base_url}/bot"
-    bb_activate_bot_url = f"{bb_base_url}/bot/activate"
-
-    # paper-trading
-    bb_paper_trading_url = f"{bb_base_url}/paper-trading"
-    bb_paper_trading_activate_url = f"{bb_base_url}/paper-trading/activate"
-    bb_paper_trading_deactivate_url = f"{bb_base_url}/paper-trading/deactivate"
-
-    # Trade operations
-    bb_buy_order_url = f"{bb_base_url}/order/buy"
-    bb_buy_market_order_url = f"{bb_base_url}/order/buy/market"
-    bb_sell_order_url = f"{bb_base_url}/order/sell"
-    bb_sell_market_order_url = f"{bb_base_url}/order/sell/market"
-    bb_opened_orders_url = f"{bb_base_url}/order/open"
-    bb_close_order_url = f"{bb_base_url}/order/close"
-
-    # balances
-    bb_balance_url = f"{bb_base_url}/account/balance/raw"
-    bb_balance_estimate_url = f"{bb_base_url}/account/balance/estimate"
-    bb_liquidation_url = f"{bb_base_url}/account/one-click-liquidation"
-
-    # research
-    bb_autotrade_settings_url = f"{bb_base_url}/autotrade-settings/bots"
-    bb_blacklist_url = f"{bb_base_url}/research/blacklist"
-    bb_market_domination = f"{bb_base_url}/charts/market-domination"
-
-    def bb_request(self, url, method="GET", params=None, payload=None):
-        """
-        Standard request for binbot API endpoints
-        Authentication required in the future
-        """
-        res = request(method, url=url, params=params, json=payload)
-        data = handle_binance_errors(res)
-        return data
-
-    def get_market_domination_series(self):
-        result = self.bb_request(url=self.bb_market_domination, params={"size": 7})
-        return result
-
-
-class ThreeCommasApiError:
-    """3commas.io API error"""
-
-    def __init__(self, status):
-        self.status = status
-
-    def __str__(self):
-        return "3commas API error: status={}".format(self.status)
-
-
-class ThreeCommasApi:
-    def get_marketplace_presets(self):
-        p3cw = Py3CW(key=os.environ["3C_API_KEY"], secret=os.environ["3C_SECRET"])
-        error, data = p3cw.request(
-            entity="marketplace",
-            action="presets",
-            payload={
-                "sort_direction": "asc",
-                "bot_strategy": "long",
-                "profit_per_day_from": 1,
-            },
-        )
-        if error:
-            error = ThreeCommasApiError(error)
-            return json_response_error(error)
-        else:
-            return json_response(
-                {"message": "Sucessfully retrieved preset bots!", "data": data["bots"]}
-            )
-
-    def get_all_marketplace_item(self):
-        p3cw = Py3CW(key=os.environ["3C_API_KEY"], secret=os.environ["3C_SECRET"])
-        error, data = p3cw.request(
-            entity="marketplace",
-            action="items",
-            payload={
-                "scope": "all",
-                "limit": 1000,
-                "offset": 0,
-                "order": "newest",
-                "locale": "en",
-            },
-        )
-
-        if error:
-            error = ThreeCommasApiError(error["msg"])
-            return error
-        else:
-            return data
-
-    def get_marketplace_item_signals(self, id):
-        p3cw = Py3CW(key=os.environ["3C_API_KEY"], secret=os.environ["3C_SECRET"])
-        error, data = p3cw.request(
-            entity="marketplace",
-            action="signals",
-            action_id=str(id),
-        )
-
-        if error:
-            error = ThreeCommasApiError(error["msg"])
-            return error
-        else:
-            return data
