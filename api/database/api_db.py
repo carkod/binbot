@@ -106,7 +106,7 @@ class ApiDb:
             return
 
         user_data = UserTable(
-            username=username, password=password, email=email, role=UserRoles.superuser
+            username=username, password=password, email=email, role=UserRoles.superuser, full_name="Admin"
         )
 
         self.session.add(user_data)

@@ -52,12 +52,12 @@ class BotTableCrud:
         if bot:
             bot_id = str(bot.id)
         elif not bot and not bot_id:
-            raise ValueError("Bot id or BotModel object is required")
+            raise BinbotErrors("Bot id or BotModel object is required")
 
         bot_result = self.session.get(BotTable, bot_id)
 
         if not bot_result:
-            raise ValueError("Bot not found")
+            raise BinbotErrors("Bot not found")
 
         # Update logs as an SQLAlchemy list
         bot_result.logs = [log_message] + bot_result.logs

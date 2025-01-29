@@ -4,3 +4,5 @@ from .order_table import *  # noqa
 from .deal_table import *  # noqa
 from .bot_table import *  # noqa
 from .autotrade_table import *  # noqa
+from .account_balances import *  # noqa
+from .blacklist import *  # noqa
