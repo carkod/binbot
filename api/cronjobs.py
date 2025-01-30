@@ -24,10 +24,10 @@ def main():
 
     scheduler.add_job(
         func=assets.store_balance,
-        trigger="cron",
+        trigger="interval",
         timezone=timezone,
-        hour=1,
-        minute=1,
+        # hour=1,
+        minutes=5,
         id="store_balance",
     )
     scheduler.add_job(

@@ -4,6 +4,7 @@ from sqlmodel import Session
 from time import time
 from typing import Annotated, Any
 from pydantic import BeforeValidator
+from tools.round_numbers import round_timestamp
 
 # This allows testing/Github action dummy envs
 db_url = f'postgresql://{os.getenv("POSTGRES_USER", "postgres")}:{os.getenv("POSTGRES_PASSWORD", "postgres")}@{os.getenv("POSTGRES_HOSTNAME", "localhost")}:{os.getenv("POSTGRES_PORT", 5432)}/{os.getenv("POSTGRES_DB", "postgres")}'
@@ -23,7 +24,9 @@ def independent_session() -> Session:
 
 
 def timestamp() -> int:
-    return int(round(time() * 1000))
+    ts = time() * 1000
+    rounded_ts = round_timestamp(ts, 0)
+    return rounded_ts
 
 
 def ensure_float(value: Any) -> float:

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
-from bson.objectid import ObjectId
-from account.controller import AssetsController
+from account.account import Account
+from database.models.account_balances import ConsolidatedBalancesTable
+from database.balances_crud import BalancesCrud
 from database.models.bot_table import BotTable
 from database.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
@@ -12,27 +13,22 @@ from tools.enum_definitions import Strategy
 from database.bot_crud import BotTableCrud
 
 
-class Assets(AssetsController):
+class Assets(Account):
     def __init__(self, session):
         self.usd_balance = 0
         self.fiat = AutotradeCrud().get_settings().balance_to_use
         self.exception_list = ["NFT", "BNB"]
         self.exception_list.append(self.fiat)
         self.bot_controller = BotTableCrud(session=session)
+        self.balances_controller = BalancesCrud(session=session)
 
     def get_pnl(self, days=7):
         current_time = datetime.now()
         start = current_time - timedelta(days=days)
-        dummy_id = ObjectId.from_datetime(start)
-        data = list(
-            self._db.balances.find(
-                {
-                    "_id": {
-                        "$gte": dummy_id,
-                    }
-                }
-            )
-        )
+        ts = int(start.timestamp())
+        end_ts = int(current_time.timestamp())
+        data = self.balances_controller.query_balance_series(ts, end_ts)
+
         resp = json_response({"data": data})
         return resp
 
@@ -69,7 +65,7 @@ class Assets(AssetsController):
                 total_wallet_balance += float(item["balance"])
 
         total_usdc = total_wallet_balance * float(rate)
-        response = self.create_balance_series(
+        response = self.balances_controller.create_balance_series(
             itemized_balance, round_numbers(total_usdc, 4)
         )
         return response
@@ -103,34 +99,6 @@ class Assets(AssetsController):
             "asset": self.fiat,
         }
         return balance
-
-    def balance_series(self):
-        """
-        Get series for graph.
-
-        This endpoint uses high weight: 2400
-        it will be easily flagged by binance
-        """
-        snapshot_account_data = self.signed_request(
-            url=self.account_snapshot_url, payload={"type": "SPOT"}
-        )
-        balances = []
-        for datapoint in snapshot_account_data["snapshotVos"]:
-            fiat_rate = self.get_ticker_price(f"BTC{self.fiat}")
-            total_fiat = float(datapoint["data"]["totalAssetOfBtc"]) * float(fiat_rate)
-            balance = {
-                "update_time": datapoint["updateTime"],
-                "balances": datapoint["data"]["balances"],
-                "total_btc": datapoint["data"]["totalAssetOfBtc"],
-                "total_fiat": total_fiat,
-            }
-            balances.append(balance)
-
-        if balance:
-            resp = json_response({"data": balances})
-        else:
-            resp = json_response({"data": [], "error": 1})
-        return resp
 
     async def retrieve_gainers_losers(self, market_asset="USDC"):
         """
@@ -171,21 +139,20 @@ class Assets(AssetsController):
             return None
 
     async def get_balance_series(self, end_date, start_date):
-        balance_series = self.query_balance_series(start_date, end_date)
+        balance_series = self.balances_controller.query_balance_series(
+            start_date, end_date
+        )
 
         if len(balance_series) == 0:
             return json_response_error("No balance series data found.")
 
-        end_time = int(
-            datetime.strptime(balance_series[0]["time"], "%Y-%m-%d").timestamp() * 1000
-        )
         # btc candlestick data series
         klines = self.get_raw_klines(
             # One month - 1 (calculating percentages) worth of data to display
             limit=len(balance_series),
             symbol="BTCUSDC",
             interval="1d",
-            end_time=str(end_time),
+            end_time=str(balance_series[0].id),
         )
 
         balances_series_diff = []
@@ -193,18 +160,14 @@ class Assets(AssetsController):
         balance_btc_diff = []
 
         for index, item in enumerate(balance_series):
-            btc_index = self.consolidate_dates(klines, item["time"], index)
+            btc_index = self.consolidate_dates(klines, item.id, index)
             if btc_index is not None:
-                if "estimated_total_usdc" in balance_series[index]:
+                if hasattr(balance_series[index], "estimated_total_fiat"):
                     balances_series_diff.append(
-                        float(balance_series[index]["estimated_total_usdc"])
+                        float(balance_series[index].estimated_total_fiat)
                     )
-                else:
-                    balances_series_diff.append(
-                        float(balance_series[index]["estimated_total_usdt"])
-                    )
-                balances_series_dates.append(item["time"])
-                balance_btc_diff.append(float(klines[btc_index][4]))
+                    balances_series_dates.append(item["time"])
+                    balance_btc_diff.append(float(klines[btc_index][4]))
             else:
                 continue
 

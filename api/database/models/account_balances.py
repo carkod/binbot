@@ -1,7 +1,8 @@
 from typing import Optional
 from uuid import UUID
 import uuid
-from sqlalchemy import BigInteger, Column
+from numpy import single
+from sqlalchemy import BigInteger, Column, ForeignKey
 from database.utils import timestamp
 from sqlmodel import Relationship, SQLModel, Field
 
@@ -27,7 +28,7 @@ class BalancesTable(SQLModel, table=True):
 
     # Relationships
     consolidated_balances_id: Optional[int] = Field(
-        default=None, foreign_key="consolidated_balances.id", ondelete="CASCADE"
+        default=None, sa_column=Column(BigInteger(), ForeignKey("consolidated_balances.id"))
     )
     consolidated_balances: Optional["ConsolidatedBalancesTable"] = Relationship(
         back_populates="balances"
@@ -65,7 +66,7 @@ class ConsolidatedBalancesTable(SQLModel, table=True):
 
     id: int = Field(
         default_factory=timestamp,
-        sa_column=Column(BigInteger(), primary_key=True, unique=True, index=True),
+        sa_column=Column(BigInteger(), primary_key=True, index=True),
     )
     balances: list[BalancesTable] = Relationship(
         sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
