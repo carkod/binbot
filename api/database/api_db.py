@@ -111,6 +111,8 @@ class ApiDb:
 
         self.session.add(user_data)
         self.session.commit()
+        self.session.refresh(user_data)
+        return user_data
 
     def create_dummy_bot(self):
         """

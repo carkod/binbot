@@ -102,6 +102,56 @@ class MarginDeal(DealAbstract):
         )
         return self.active_bot
 
+    def update_margin_orders(self) -> BotModel:
+        """
+        Keeps self.active_bot.orders up to date
+        as they often don't fullfill immediately
+
+        Used by streaming_controller
+        """
+        for order in self.active_bot.orders:
+            if order.status != "FILLED":
+                try:
+                    self.cancel_margin_order(
+                        symbol=self.active_bot.pair, order_id=order.order_id
+                    )
+                except HTTPError:
+                    # No order to cancel
+                    self.controller.update_logs(
+                        f"Can't find order {order.order_id}", self.active_bot
+                    )
+                    pass
+
+                if order.order_side == OrderSide.buy:
+                    res = self.buy_margin_order(
+                        symbol=self.active_bot.pair, qty=order.qty
+                    )
+                else:
+                    res = self.sell_margin_order(
+                        symbol=self.active_bot.pair, qty=order.qty
+                    )
+
+                # update with new order
+                order.status = res["status"]
+                order.price = float(res["price"])
+                order.qty = float(res["origQty"])
+                order.timestamp = int(res["transactTime"])
+                order.order_id = int(res["orderId"])
+                order.deal_type = order.deal_type
+                order.order_type = res["type"]
+                order.time_in_force = res["timeInForce"]
+                order.order_side = res["side"]
+                order.pair = res["symbol"]
+
+                # update deal
+                self.active_bot.deal.opening_qty = float(res["origQty"])
+                self.active_bot.deal.opening_timestamp = int(res["transactTime"])
+                self.active_bot.deal.opening_price = float(res["price"])
+
+                self.controller.save(self.active_bot)
+
+                return self.active_bot
+
     def init_margin_short(self, initial_price: float) -> BotModel:
         """
         Pre-tasks for bots that use margin_short strategy
@@ -391,6 +441,9 @@ class MarginDeal(DealAbstract):
 
         self.active_bot.deal.current_price = close_price
 
+        # For orders that are status not FILLED
+        self.update_margin_orders()
+
         if self.active_bot.deal.stop_loss_price == 0:
             self.active_bot.deal.stop_loss_price = (
                 self.active_bot.deal.opening_price
@@ -574,7 +627,9 @@ class MarginDeal(DealAbstract):
 
             self.active_bot.orders.append(take_profit_order)
             self.active_bot.deal.closing_price = float(res["price"])
-            self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
+            self.active_bot.deal.closing_timestamp = round_timestamp(
+                res["transactTime"]
+            )
             self.active_bot.deal.closing_qty = float(res["origQty"])
             self.active_bot.logs.append("Completed Take profit!")
             self.active_bot.status = Status.completed
