@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
-from user.models.user import CreateUser
+from user.models.user import UserDetails
 from tools.handle_error import json_response, json_response_error
-from user.schemas import LoginRequest, UserResponse
+from user.models.user import LoginRequest, UserResponse
 from user.services.auth import oauth2_scheme, Token, decode_access_token
 from database.user_crud import UserTableCrud
 from sqlmodel import Session
@@ -49,7 +49,7 @@ def login(data: LoginRequest, session: Session = Depends(get_session)):
 
 
 @user_blueprint.post("/user/register", tags=["users"])
-def add(data: CreateUser, session: Session = Depends(get_session)):
+def add(data: UserDetails, session: Session = Depends(get_session)):
     """
     Create/register a new user
     """
@@ -57,7 +57,7 @@ def add(data: CreateUser, session: Session = Depends(get_session)):
 
 
 @user_blueprint.put("/user", tags=["users"])
-def edit(user: CreateUser, session: Session = Depends(get_session)):
+def edit(user: UserDetails, session: Session = Depends(get_session)):
     """
     Modify details of a user that already exists.
     If the user does not exist, it will return a JSON error message

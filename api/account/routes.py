@@ -101,14 +101,15 @@ async def retrieve_gainers_losers(session: Session = Depends(get_session)):
 @account_blueprint.get(
     "/balance-series", response_model=BalanceSeriesResponse, tags=["assets"]
 )
-async def get_balance_series(session: Session = Depends(get_session)):
+async def get_portfolio_performance(session: Session = Depends(get_session)):
     today = datetime.now()
     month_ago = today - timedelta(30)
     start_date = int(datetime.timestamp(month_ago) * 1000)
     end_date = int(datetime.timestamp(today) * 1000)
-    return await Assets(session=session).get_balance_series(
+    resp = await Assets(session=session).map_balance_with_benchmark(
         start_date=start_date, end_date=end_date
     )
+    return resp
 
 
 @account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])

@@ -1,13 +1,12 @@
 from datetime import datetime, timedelta
 from account.account import Account
-from database.models.account_balances import ConsolidatedBalancesTable
 from database.balances_crud import BalancesCrud
 from database.models.bot_table import BotTable
 from database.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from deals.factory import DealAbstract
 from tools.handle_error import json_response, json_response_error, json_response_message
-from tools.round_numbers import round_numbers
+from tools.round_numbers import round_numbers, ts_to_day
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.enum_definitions import Strategy
 from database.bot_crud import BotTableCrud
@@ -128,17 +127,18 @@ class Assets(Account):
         if i == len(klines):
             return None
 
+        balance_date_day = ts_to_day(balance_date)
+
         for idx, d in enumerate(klines):
-            dt_obj = datetime.fromtimestamp(d[0] / 1000)
-            str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
+            kline_day = ts_to_day(d[0])
 
             # Match balance store dates with btc price dates
-            if str_date == balance_date:
+            if kline_day == balance_date_day:
                 return idx
         else:
             return None
 
-    async def get_balance_series(self, end_date, start_date):
+    async def map_balance_with_benchmark(self, end_date, start_date):
         balance_series = self.balances_controller.query_balance_series(
             start_date, end_date
         )
@@ -166,7 +166,7 @@ class Assets(Account):
                     balances_series_diff.append(
                         float(balance_series[index].estimated_total_fiat)
                     )
-                    balances_series_dates.append(item["time"])
+                    balances_series_dates.append(item.id)
                     balance_btc_diff.append(float(klines[btc_index][4]))
             else:
                 continue

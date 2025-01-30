@@ -72,7 +72,7 @@ class SpotLongDeal(DealAbstract):
 
                 self.controller.save(self.active_bot)
 
-                return self.active_bot
+        return self.active_bot
 
     def switch_to_margin_short(self) -> BotModel:
         """

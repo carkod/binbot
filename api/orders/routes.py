@@ -15,9 +15,7 @@ def create_buy_order(item: OrderParams):
 
 @order_blueprint.post("/sell", tags=["orders"])
 def create_sell_order(item: OrderParams):
-    return OrderController().sell_order(
-        symbol=item.pair, qty=item.qty, price=item.price
-    )
+    return OrderController().sell_order(symbol=item.pair, qty=item.qty)
 
 
 @order_blueprint.delete("/close/{symbol}/{orderid}", tags=["orders"])

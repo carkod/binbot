@@ -160,19 +160,19 @@ class OrderController(Account):
 
         return data
 
-    def delete_order(self, symbol: str, orderId: int):
+    def delete_order(self, symbol: str, order_id: int):
         """
         Cancels single order by symbol
         - Optimal for open orders table
         """
         if not symbol:
             raise DeleteOrderError("Missing symbol parameter")
-        if not orderId:
-            raise DeleteOrderError("Missing orderid parameter")
+        if not order_id:
+            raise DeleteOrderError("Missing order_id parameter")
 
         payload = {
             "symbol": symbol,
-            "orderId": orderId,
+            "orderId": order_id,
         }
         data = self.signed_request(
             url=f"{self.order_url}", method="DELETE", payload=payload

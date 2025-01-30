@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 
 class OrderBase(SQLModel):
-
     order_type: OrderType
     time_in_force: str
     timestamp: int = Field(sa_column=Column(BigInteger()))

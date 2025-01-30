@@ -1,3 +1,4 @@
+from typing import Sequence
 from database.models.account_balances import BalancesTable, ConsolidatedBalancesTable
 from database.utils import independent_session, timestamp
 from sqlmodel import Session, select
@@ -39,10 +40,12 @@ class BalancesCrud:
         self.session.refresh(consolidated_balance_series)
         return consolidated_balance_series
 
-    def query_balance_series(self, start_date: int = 0, end_date: int = 0) -> list[ConsolidatedBalancesTable]:
+    def query_balance_series(
+        self, start_date: int = 0, end_date: int = 0
+    ) -> Sequence[ConsolidatedBalancesTable]:
         """
-        Abstraction to reduce complexity
-        fetches balances DB collection
+        Similar to Binance's balance snapshot (that endpoint has too much weight)
+        this data is stored daily by store_balance cronjob
         """
         query = select(ConsolidatedBalancesTable)
         if start_date > 0:

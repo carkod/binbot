@@ -94,7 +94,7 @@ class UserTableCrud:
             else:
                 raise error
 
-        user_details = UserDetails(
+        user_details = UserTable(
             email=data.email,
             full_name=data.full_name,
             password=data.password,

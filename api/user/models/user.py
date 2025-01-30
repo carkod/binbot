@@ -27,14 +27,12 @@ class UserDetails(BaseModel):
         return v
 
 
-class CreateUser(BaseModel):
+class CreateUser(UserDetails):
     """
     Basic user schema for access to resources
 
     For full customer data create a separate table
     """
-
-    __tablename__ = "binbot_user"
 
     id: Optional[UUID] = Field(
         default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True

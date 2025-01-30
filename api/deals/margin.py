@@ -150,7 +150,7 @@ class MarginDeal(DealAbstract):
 
                 self.controller.save(self.active_bot)
 
-                return self.active_bot
+        return self.active_bot
 
     def init_margin_short(self, initial_price: float) -> BotModel:
         """
@@ -220,7 +220,7 @@ class MarginDeal(DealAbstract):
             # transfer back and left client know (raise exception again)
             if error.code == -3045:
                 self.terminate_failed_transactions()
-                raise BinanceErrors(error.message)
+                raise BinanceErrors(error.message, error.code)
 
         self.active_bot.deal.margin_loan_id = int(loan_created["tranId"])
         # in this new data system there is only one field for qty
