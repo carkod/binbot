@@ -106,11 +106,13 @@ class ApiDb:
             return
 
         user_data = UserTable(
-            username=username, password=password, email=email, role=UserRoles.superuser
+            username=username, password=password, email=email, role=UserRoles.superuser, full_name="Admin"
         )
 
         self.session.add(user_data)
         self.session.commit()
+        self.session.refresh(user_data)
+        return user_data
 
     def create_dummy_bot(self):
         """
@@ -187,6 +189,12 @@ class ApiDb:
             short_sell_price=0,
             total_commission=0,
         )
+
+        statement = select(PaperTradingTable)
+        results = self.session.exec(statement)
+        if results.first():
+            return
+
         paper_trading_bot = PaperTradingTable(
             pair="BTCUSDC",
             balance_size_to_use=1,

@@ -12,6 +12,7 @@ from bots.models import BotModel, OrderModel, BotBase
 from deals.factory import DealAbstract
 from deals.margin import MarginDeal
 from tools.round_numbers import round_numbers, round_timestamp
+from urllib.error import HTTPError
 
 
 class SpotLongDeal(DealAbstract):
@@ -26,6 +27,52 @@ class SpotLongDeal(DealAbstract):
         super().__init__(bot, db_table=db_table)
         self.active_bot: BotModel = bot
         self.db_table = db_table
+
+    def update_spot_orders(self) -> BotModel:
+        """
+        Keeps self.active_bot.orders up to date
+        as they often don't fullfill immediately
+
+        Used by streaming_controller
+        """
+        for order in self.active_bot.orders:
+            if order.status != "FILLED":
+                try:
+                    self.delete_order(
+                        symbol=self.active_bot.pair, order_id=order.order_id
+                    )
+                except HTTPError:
+                    # No order to cancel
+                    self.controller.update_logs(
+                        f"Can't find order {order.order_id}", self.active_bot
+                    )
+                    pass
+
+                if order.order_side == OrderSide.buy:
+                    res = self.buy_order(symbol=self.active_bot.pair, qty=order.qty)
+                else:
+                    res = self.sell_order(symbol=self.active_bot.pair, qty=order.qty)
+
+                # update with new order
+                order.status = res["status"]
+                order.price = float(res["price"])
+                order.qty = float(res["origQty"])
+                order.timestamp = int(res["transactTime"])
+                order.order_id = int(res["orderId"])
+                order.deal_type = order.deal_type
+                order.order_type = res["type"]
+                order.time_in_force = res["timeInForce"]
+                order.order_side = res["side"]
+                order.pair = res["symbol"]
+
+                # update deal
+                self.active_bot.deal.opening_qty = float(res["origQty"])
+                self.active_bot.deal.opening_timestamp = int(res["transactTime"])
+                self.active_bot.deal.opening_price = float(res["price"])
+
+                self.controller.save(self.active_bot)
+
+                return self.active_bot
 
     def switch_to_margin_short(self) -> BotModel:
         """
@@ -178,7 +225,7 @@ class SpotLongDeal(DealAbstract):
             # No price means market order
             res = self.sell_order(
                 symbol=self.active_bot.pair,
-                qty=qty,
+                qty=round_numbers(qty, self.qty_precision),
             )
 
         order_data = OrderModel(
@@ -224,6 +271,9 @@ class SpotLongDeal(DealAbstract):
 
         self.active_bot.deal.current_price = close_price
         self.controller.save(self.active_bot)
+
+        # Update orders if not filled
+        self.update_spot_orders()
 
         # Stop loss
         if (
@@ -406,10 +456,7 @@ class SpotLongDeal(DealAbstract):
         balance = self.get_single_raw_balance(base_asset)
         if balance > 0:
             qty = round_numbers(balance, self.qty_precision)
-            price: float = float(self.matching_engine(pair, True, qty))
-            price = round_numbers(price, self.price_precision)
-
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty, price=price)
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
             order_data = OrderModel(
                 timestamp=int(res["transactTime"]),
@@ -427,8 +474,12 @@ class SpotLongDeal(DealAbstract):
             self.active_bot.orders.append(order_data)
             self.active_bot.deal.closing_price = float(res["price"])
             self.active_bot.deal.closing_qty = float(res["origQty"])
-            self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
-            self.active_bot.logs.append("Panic sell triggered. All active orders closed")
+            self.active_bot.deal.closing_timestamp = round_timestamp(
+                res["transactTime"]
+            )
+            self.active_bot.logs.append(
+                "Panic sell triggered. All active orders closed"
+            )
         else:
             self.active_bot.logs.append("No balance found. Skipping panic sell")
 

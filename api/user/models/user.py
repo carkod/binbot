@@ -4,20 +4,10 @@ from sqlmodel import Field
 from tools.enum_definitions import UserRoles
 from tools.handle_error import StandardResponse
 from uuid import UUID, uuid4
+from database.utils import timestamp
 
 
-class CreateUser(BaseModel):
-    """
-    Basic user schema for access to resources
-
-    For full customer data create a separate table
-    """
-
-    __tablename__ = "user"
-
-    id: Optional[UUID] = Field(
-        default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
-    )
+class UserDetails(BaseModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
     role: UserRoles = Field(default=UserRoles.admin)
@@ -26,10 +16,8 @@ class CreateUser(BaseModel):
     # Email is the main identifier
     username: Optional[str] = Field(default="")
     bio: Optional[str] = Field(default="")
-    # Future: Only required if customer table exists
-    # customer_id: Optional[UUID] = Field(
-    #     default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
-    # )
+    created_at: Optional[int] = Field(default_factory=timestamp)
+    updated_at: Optional[int] = Field(default=timestamp())
 
     @field_validator("role")
     @classmethod
@@ -39,10 +27,37 @@ class CreateUser(BaseModel):
         return v
 
 
+class CreateUser(BaseModel):
+    """
+    Basic user schema for access to resources
+
+    For full customer data create a separate table
+    """
+
+    __tablename__ = "binbot_user"
+
+    id: Optional[UUID] = Field(
+        default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
+    )
+    # Future: Only required if customer table exists
+    # customer_id: Optional[UUID] = Field(
+    #     default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
+    # )
+
+
 class LoginRequest(BaseModel):
     email: str
     password: str
 
 
+class LoggedInDetails(BaseModel):
+    email: str
+    token: str
+
+
 class UserResponse(StandardResponse):
     data: LoginRequest
+
+
+class LoginResponse(StandardResponse):
+    data: Optional[LoggedInDetails]

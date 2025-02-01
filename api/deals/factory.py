@@ -1,3 +1,4 @@
+import re
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
@@ -7,6 +8,7 @@ from tools.round_numbers import round_numbers
 from deals.base import BaseDeal
 from deals.models import DealModel
 from database.paper_trading_crud import PaperTradingTableCrud
+from urllib.error import HTTPError
 
 
 class DealAbstract(BaseDeal):
@@ -106,11 +108,6 @@ class DealAbstract(BaseDeal):
                 (order.order_id == order_id for order in bot.orders), None
             )
             if find_base_order:
-                so_deal_price = bot.deal.opening_price
-                # Create new take profit order
-                new_tp_price = float(so_deal_price) + (
-                    float(so_deal_price) * float(bot.take_profit) / 100
-                )
                 asset = self.find_baseAsset(bot.pair)
 
                 # First cancel old order to unlock balance
@@ -121,7 +118,6 @@ class DealAbstract(BaseDeal):
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=qty,
-                    price=round_numbers(new_tp_price, self.price_precision),
                 )
 
                 # Replace take_profit order

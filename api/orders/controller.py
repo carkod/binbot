@@ -103,13 +103,13 @@ class OrderController(Account):
         }
         return order
 
-    def sell_order(self, symbol: str, qty: float, price=None, iteration=0):
+    def sell_order(self, symbol: str, qty: float):
         """
         If price is not provided by matching engine,
         sell at market price
         """
-        if iteration == 0:
-            price = float(self.matching_engine(symbol, True, qty))
+        price = float(self.matching_engine(symbol, True, qty))
+        if price == 0:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
@@ -127,30 +127,12 @@ class OrderController(Account):
             }
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
-        if data["status"] != "FILLED" and iteration == 0:
-            try:
-                self.delete_opened_order(symbol, data["orderId"])
-            except Exception:
-                # Most likely order has been executed by now
-                pass
-
-            self.sell_order(symbol, qty, price, iteration + 1)
-
-        if float(data["price"]) == 0:
-            total_qty: float = 0
-            weighted_avg: float = 0
-            for item in data["fills"]:
-                weighted_avg += float(item["price"]) * float(item["qty"])
-                total_qty += float(item["qty"])
-
-            weighted_avg_price = weighted_avg / total_qty
-            data["price"] = weighted_avg_price
-
         return data
 
-    def buy_order(self, symbol: str, qty: float, price=None, iteration=0):
-        if iteration == 0:
-            book_price = self.matching_engine(symbol, False, qty)
+    def buy_order(self, symbol: str, qty: float):
+        book_price = self.matching_engine(symbol, False, qty)
+
+        if book_price == 0:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -166,6 +148,7 @@ class OrderController(Account):
                 payload["price"] = supress_notation(book_price, self.price_precision)
 
         else:
+            # Use market price if matching engine can't find a price
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -174,22 +157,6 @@ class OrderController(Account):
             }
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
-        if data["status"] != "FILLED" and iteration == 0:
-            try:
-                self.delete_opened_order(symbol, data["orderId"])
-            except Exception:
-                pass
-            self.buy_order(symbol, qty, price, iteration + 1)
-
-        if float(data["price"]) == 0:
-            total_qty: float = 0
-            weighted_avg: float = 0
-            for item in data["fills"]:
-                weighted_avg += float(item["price"]) * float(item["qty"])
-                total_qty += float(item["qty"])
-
-            weighted_avg_price = weighted_avg / total_qty
-            data["price"] = weighted_avg_price
 
         return data
 
@@ -231,12 +198,13 @@ class OrderController(Account):
             resp = json_response_message("No open orders found!")
         return resp
 
-    def buy_margin_order(self, symbol: str, qty: float, price=None, iteration=0):
+    def buy_margin_order(self, symbol: str, qty: float):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
-        if iteration == 0:
-            price = self.matching_engine(symbol, True, qty)
+        price = self.matching_engine(symbol, False, qty)
+
+        if price == 0:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -258,21 +226,16 @@ class OrderController(Account):
         data = self.signed_request(
             url=self.margin_order, method="POST", payload=payload
         )
-        if data["status"] != "FILLED" and iteration == 0:
-            try:
-                self.cancel_margin_order(symbol, int(data["orderId"]))
-            except Exception:
-                pass
-            self.buy_margin_order(symbol, qty, price, iteration + 1)
 
         return data
 
-    def sell_margin_order(self, symbol: str, qty: float, price=None, iteration=0):
+    def sell_margin_order(self, symbol: str, qty: float):
         """
         python-binance wrapper function to make it less verbose and less dependant
         """
-        if iteration == 0:
-            price = float(self.matching_engine(symbol, False, qty))
+        price = self.matching_engine(symbol, True, qty)
+
+        if price == 0:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
@@ -294,13 +257,6 @@ class OrderController(Account):
         data = self.signed_request(
             url=self.margin_order, method="POST", payload=payload
         )
-        if data["status"] != "FILLED" and iteration == 0:
-            try:
-                self.cancel_margin_order(symbol, data["orderId"])
-            except Exception:
-                pass
-
-            self.sell_margin_order(symbol, qty, price, iteration + 1)
 
         if float(data["price"]) == 0:
             data["price"] = data["fills"][0]["price"]

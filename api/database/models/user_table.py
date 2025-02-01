@@ -2,6 +2,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 from pydantic import EmailStr
 from sqlmodel import Field, SQLModel
+from database.utils import timestamp
 from tools.enum_definitions import UserRoles
 
 
@@ -25,7 +26,13 @@ class UserTable(SQLModel, table=True):
     password: str = Field(min_length=8, max_length=40)
     username: Optional[str] = ""
     bio: Optional[str] = ""
+    created_at: str = Field(default_factory=timestamp)
+    updated_at: str = Field(default=timestamp())
     # Future: Only required if customer table exists
     # customer_id: Optional[UUID] = Field(
     #     default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
     # )
+
+    model_config = {
+        "use_enum_values": True,
+    }
