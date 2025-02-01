@@ -1,21 +1,23 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, SecretStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlmodel import Field
 from tools.enum_definitions import UserRoles
 from tools.handle_error import StandardResponse
 from uuid import UUID, uuid4
 from database.utils import timestamp
+from typing import Sequence
+from database.models.user_table import UserTable
 
 
 class UserDetails(BaseModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
-    is_active: bool = True
-    role: UserRoles = Field(default=UserRoles.admin)
+    is_active: Optional[bool] = True
+    role: Optional[UserRoles] = Field(default=UserRoles.admin)
     full_name: Optional[str] = Field(default="")
-    password: SecretStr = Field(min_length=8, max_length=40)
+    password: Optional[str] = Field(min_length=8, max_length=40, description="Not using SecretStr because not supported by SQLModel")
     # Email is the main identifier
     username: Optional[str] = Field(default="")
-    bio: Optional[str] = Field(default="")
+    description: Optional[str] = Field(default="")
     created_at: Optional[int] = Field(default_factory=timestamp)
     updated_at: Optional[int] = Field(default=timestamp())
 
@@ -44,18 +46,22 @@ class CreateUser(UserDetails):
 
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
 class LoggedInDetails(BaseModel):
-    email: str
+    email: EmailStr
     token: str
 
 
 class UserResponse(StandardResponse):
-    data: LoginRequest
+    data: Sequence[UserTable]
 
 
 class LoginResponse(StandardResponse):
     data: Optional[LoggedInDetails]
+
+
+class GetOneUser(StandardResponse):
+    data: Optional[UserTable]

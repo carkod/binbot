@@ -1,5 +1,11 @@
 const tokenName = "binbot-token";
-export function getToken() {
+
+type Token = {
+  access_token: string;
+  refresh_token: string;
+}
+
+export function getToken(): Token | null {
   const token: string | null = window.localStorage.getItem(tokenName) || null;
   if (
     token === "undefined" ||

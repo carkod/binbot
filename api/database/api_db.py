@@ -109,7 +109,7 @@ class ApiDb:
             username=username,
             password=password,
             email=email,
-            role=UserRoles.superuser,
+            role=UserRoles.admin,
             full_name="Admin",
         )
 

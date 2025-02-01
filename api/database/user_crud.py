@@ -7,7 +7,10 @@ from tools.exceptions import BinbotErrors
 from passlib.hash import pbkdf2_sha256
 from user.models.user import LoginRequest, UserDetails
 from user.services.auth import encode_access_token
+from fastapi.security import OAuth2PasswordBearer
+from typing import Optional
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 class UserTableCrud:
     """
@@ -56,12 +59,20 @@ class UserTableCrud:
 
     def get_one(
         self,
-        email: str,
+        id: Optional[str] = None,
+        email: Optional[str] = None,
     ) -> UserTable:
         """
-        Get one single user by email
+        Get one single user by email or id
         """
-        statement = select(UserTable).where(UserTable.email == email)
+        statement = select(UserTable)
+        if id:
+            statement = statement.where(UserTable.email == email)
+        elif email:
+            statement = statement.where(UserTable.email == email)
+        else:
+            raise BinbotErrors("No email or id provided")
+
         user = self.session.exec(statement).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -99,25 +110,20 @@ class UserTableCrud:
             full_name=data.full_name,
             password=data.password,
             username=data.username,
-            bio=data.bio,
+            description=data.description,
             role=data.role,
         )
-        password = pbkdf2_sha256.encrypt(data.password, rounds=20000, salt_size=16)
-        user_details.password = password
 
-        user_table_model = UserTable.model_dump(user_details)
-        self.session.add(user_table_model)
+        self.session.add(user_details)
         self.session.commit()
-        self.session.refresh(user_table_model)
+        self.session.refresh(user_details)
         self.session.close()
 
-        return user_table_model
+        return user_details
 
     def edit(self, data: UserDetails):
         user = self.get_one(email=data.email)
         user.sqlmodel_update(data)
-
-        user.password = pbkdf2_sha256.encrypt(data.password, rounds=20000, salt_size=16)
 
         self.session.add(user)
         self.session.commit()
