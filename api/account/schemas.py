@@ -9,7 +9,7 @@ class BalanceSchema(BaseModel):
     """
 
     balances: list = []
-    estimated_total_usdc: float = 0
+    estimated_total_fiat: float = 0
 
 
 class BalanceResponse(StandardResponse):

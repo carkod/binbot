@@ -144,7 +144,7 @@ class AutotradeSettingsDocument(str, Enum):
 
 class UserRoles(str, Enum):
     # Full access to all resources
-    superuser = "superuser"
+    user = "user"
     # Access to terminal and customer accounts
     admin = "admin"
     # Only access to funds and client website

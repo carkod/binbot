@@ -1,4 +1,3 @@
-import re
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
@@ -8,7 +7,6 @@ from tools.round_numbers import round_numbers
 from deals.base import BaseDeal
 from deals.models import DealModel
 from database.paper_trading_crud import PaperTradingTableCrud
-from urllib.error import HTTPError
 
 
 class DealAbstract(BaseDeal):

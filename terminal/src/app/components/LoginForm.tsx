@@ -31,15 +31,16 @@ export const LoginForm: FC<{}> = () => {
   });
 
   const onSubmit: SubmitHandler<LoginFormState> = async (values) => {
-    login(values);
+    const formData = new FormData();
+    formData.append("username", values.email);
+    formData.append("password", values.password);
+    login(formData);
   };
 
   useEffect(() => {
-    const token = getToken();
-    if (token || access_token) {
-      if (access_token) {
-        setToken(access_token);
-      }
+    const token: string = getToken();
+    if (token) {
+      setToken(token);
       navigate("/");
     }
   }, [navigate, from, access_token]);

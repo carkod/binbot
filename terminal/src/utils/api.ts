@@ -20,7 +20,7 @@ export const binbotBaseQuery = fetchBaseQuery({
     const token = getToken();
 
     if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
+      headers.set("Authorization", `Bearer ${token.access_token}`);
     }
     return headers;
   },

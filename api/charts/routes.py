@@ -27,7 +27,7 @@ def get_timeseries(symbol: str, limit: int = 500):
 
 
 @charts_blueprint.get(
-    "/market-domination", tags=["assets"], response_model=MarketDominationResponse
+    "/market-domination", tags=["charts"], response_model=MarketDominationResponse
 )
 def market_domination(size: int = 14):
     data = MarketDominationController().get_market_domination(size)
@@ -77,7 +77,7 @@ def market_domination(size: int = 14):
 
 @charts_blueprint.get(
     "/store-market-domination",
-    tags=["assets"],
+    tags=["charts"],
     response_model=GetMarketDominationResponse,
 )
 def store_market_domination():
@@ -89,7 +89,7 @@ def store_market_domination():
         return json_response_error(f"Failed to store market domination data: {error}")
 
 
-@charts_blueprint.get("/md-migration", tags=["assets"])
+@charts_blueprint.get("/md-migration", tags=["charts"])
 def md_migration():
     try:
         response = MarketDominationController().mkdm_migration()
@@ -101,7 +101,7 @@ def md_migration():
         )
 
 
-@charts_blueprint.get("/top-gainers", tags=["assets"])
+@charts_blueprint.get("/top-gainers", tags=["charts"])
 def top_gainers():
     try:
         response = MarketDominationController().top_gainers()

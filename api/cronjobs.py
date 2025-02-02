@@ -22,6 +22,8 @@ def main():
     market_domination = MarketDominationController()
     timezone = "Europe/London"
 
+    # Jobs should be distributed as far as possible from each other
+    # to avoid overloading RAM and also avoid hitting rate limits due to high weight
     scheduler.add_job(
         func=assets.store_balance,
         trigger="cron",

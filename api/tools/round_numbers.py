@@ -1,8 +1,7 @@
-import datetime
 import math
-from decimal import Decimal
 import re
-
+from decimal import Decimal
+from datetime import datetime
 
 def supress_trailling(value: str | float | int) -> float:
     """
@@ -77,7 +76,7 @@ def interval_to_millisecs(interval: str) -> int:
     return 0
 
 
-def format_ts(time: datetime.datetime) -> str:
+def format_ts(time: datetime) -> str:
     """
     Central place to format datetime
     to human-readable date
@@ -95,12 +94,21 @@ def zero_remainder(x):
             number += x
 
 
-def round_timestamp(ts: float) -> int:
+def round_timestamp(ts: float, decimals: int = 0) -> int:
     """
     Round timestamps less than 10 digits to avoid PSQL Big Int error
     """
     digits = int(math.log10(ts)) + 1
     if digits > 10:
-        return int(round_numbers(ts * 1000, 0))
+        return int(round_numbers(ts * 1000, decimals))
     else:
         return int(ts)
+
+
+def ts_to_day(ts: float | int) -> str:
+    """
+    Convert timestamp to date (day) format YYYY-MM-DD
+    """
+    dt_obj = datetime.fromtimestamp(ts / 1000)
+    b_str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
+    return b_str_date

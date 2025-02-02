@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
-
 from account.account import Account
 from account.assets import Assets
 from account.schemas import (
@@ -8,10 +7,17 @@ from account.schemas import (
     GainersLosersResponse,
     BalanceSeriesResponse,
 )
-from tools.exceptions import BinanceErrors, BinbotErrors, LowBalanceCleanupError, MarginLoanNotFound
+from tools.exceptions import (
+    BinanceErrors,
+    BinbotErrors,
+    LowBalanceCleanupError,
+    MarginLoanNotFound,
+)
 from tools.handle_error import json_response, json_response_error, json_response_message
 from sqlmodel import Session
 from database.utils import get_session
+from database.balances_crud import BalancesCrud
+
 
 account_blueprint = APIRouter()
 
@@ -48,18 +54,6 @@ def find_base_asset(pair):
     return Account().find_base_asset_json(pair)
 
 
-@account_blueprint.get("/ticker/{pair}", tags=["account"])
-@account_blueprint.get("/ticker", tags=["account"])
-def ticker(pair: str | None = None):
-    return Account().ticker(pair)
-
-
-@account_blueprint.get("/ticker24/{pair}", tags=["account"])
-@account_blueprint.get("/ticker24", tags=["account"])
-def ticker_24(pair=None):
-    return Account().ticker_24(symbol=pair)
-
-
 @account_blueprint.get("/balance/estimate", tags=["assets"])
 def balance_estimated(session: Session = Depends(get_session)):
     try:
@@ -75,14 +69,16 @@ def balance_estimated(session: Session = Depends(get_session)):
         return json_response_error(f"Failed to estimate balance: {error}")
 
 
-@account_blueprint.get("/balance/series", tags=["assets"])
-def balance_series(session: Session = Depends(get_session)):
-    return Assets(session=session).balance_series()
-
-
 @account_blueprint.get("/pnl", tags=["assets"])
-def get_pnl(session: Session = Depends(get_session)):
-    return Assets(session=session).get_pnl()
+def get_pnl(days: int = 7, session: Session = Depends(get_session)):
+    current_time = datetime.now()
+    start = current_time - timedelta(days=days)
+    ts = int(start.timestamp())
+    end_ts = int(current_time.timestamp())
+    data = BalancesCrud(session=session).query_balance_series(ts, end_ts)
+
+    resp = json_response({"data": data})
+    return resp
 
 
 @account_blueprint.get("/store-balance", tags=["assets"])
@@ -105,12 +101,15 @@ async def retrieve_gainers_losers(session: Session = Depends(get_session)):
 @account_blueprint.get(
     "/balance-series", response_model=BalanceSeriesResponse, tags=["assets"]
 )
-async def get_balance_series(session: Session = Depends(get_session)):
+async def get_portfolio_performance(session: Session = Depends(get_session)):
     today = datetime.now()
     month_ago = today - timedelta(30)
-    return await Assets(session=session).get_balance_series(
-        start_date=datetime.timestamp(month_ago), end_date=datetime.timestamp(today)
+    start_date = int(datetime.timestamp(month_ago) * 1000)
+    end_date = int(datetime.timestamp(today) * 1000)
+    resp = await Assets(session=session).map_balance_with_benchmark(
+        start_date=start_date, end_date=end_date
     )
+    return resp
 
 
 @account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
@@ -125,7 +124,7 @@ def clean_balance(bypass: bool = False, session: Session = Depends(get_session))
 
 
 @account_blueprint.get(
-    "/fiat/available", response_model=BalanceSeriesResponse, tags=["assets"]
+    "/fiat/available", response_model=BalanceSeriesResponse, tags=["account"]
 )
 def fiat_available(session: Session = Depends(get_session)):
     """
@@ -136,7 +135,7 @@ def fiat_available(session: Session = Depends(get_session)):
     return json_response({"data": total_fiat})
 
 
-@account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["assets"])
+@account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["account"])
 def fiat(session: Session = Depends(get_session)):
     """
     Total USDC in balance
@@ -147,20 +146,22 @@ def fiat(session: Session = Depends(get_session)):
 
 
 @account_blueprint.get(
-    "/disable-isolated", response_model=BalanceSeriesResponse, tags=["assets"]
+    "/disable-isolated", response_model=BalanceSeriesResponse, tags=["account"]
 )
 def disable_isolated(session: Session = Depends(get_session)):
     return Assets(session=session).disable_isolated_accounts()
 
 
-@account_blueprint.get("/isolated", tags=["assets"])
+@account_blueprint.get("/isolated", tags=["account"])
 def check_isolated_symbol(symbol: str, session: Session = Depends(get_session)):
     isolated_account = Assets(session=session).get_isolated_account(symbol)
     return isolated_account
 
 
-@account_blueprint.get("/one-click-liquidation/{market}/{asset}", tags=["assets"])
-def one_click_liquidation(asset: str, market: str = "margin", session: Session = Depends(get_session)):
+@account_blueprint.get("/one-click-liquidation/{market}/{asset}", tags=["account"])
+def one_click_liquidation(
+    asset: str, market: str = "margin", session: Session = Depends(get_session)
+):
     try:
         liquidated = Assets(session=session).one_click_liquidation(asset, market)
         if not liquidated:
@@ -177,4 +178,3 @@ def one_click_liquidation(asset: str, market: str = "margin", session: Session =
 
     except BinbotErrors as error:
         return json_response_error(f"Error liquidating {asset}: {error.message}")
- 
