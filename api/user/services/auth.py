@@ -1,22 +1,18 @@
 import os
-
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
-from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
 from typing import Annotated
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import BaseModel
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/user/login")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 Auth = Annotated[str, Depends(oauth2_scheme)]
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
-    expires: str
+FormData = Annotated[OAuth2PasswordRequestForm, Depends()]
 
 
 class TokenData(BaseModel):
@@ -30,15 +26,11 @@ credentials_exception = HTTPException(
 )
 
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
 def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def encode_access_token(password: str, email: str):
+def create_access_token(email: str):
     expires_delta = timedelta(minutes=int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"]))
     if expires_delta:
         expire = datetime.now() + expires_delta
@@ -46,18 +38,17 @@ def encode_access_token(password: str, email: str):
         expire = datetime.now() + timedelta(minutes=15)
 
     data = {
-        "password": password,
-        "email": email,
+        "sub": email,
         "exp": expire,
     }
     encoded_jwt = jwt.encode(data, os.environ["SECRET_KEY"], algorithm="HS256")
-    return encoded_jwt, data
+    return encoded_jwt, expire
 
 
-def decode_access_token(token: str = Depends(oauth2_scheme)):
+def decode_access_token(token: Auth):
     try:
         payload = jwt.decode(token, os.environ["SECRET_KEY"], algorithms=["HS256"])
-        email: str = payload.get("email")
+        email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
     except JWTError:

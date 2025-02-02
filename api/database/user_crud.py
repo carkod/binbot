@@ -4,13 +4,10 @@ from database.models.user_table import UserTable
 from database.utils import independent_session
 from collections.abc import Sequence
 from tools.exceptions import BinbotErrors
-from passlib.hash import pbkdf2_sha256
-from user.models.user import LoginRequest, UserDetails
-from user.services.auth import encode_access_token
-from fastapi.security import OAuth2PasswordBearer
+from user.models.user import UserDetails
+from user.services.auth import create_access_token, FormData, pwd_context
 from typing import Optional
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 class UserTableCrud:
     """
@@ -31,11 +28,6 @@ class UserTableCrud:
         if session is None:
             session = independent_session()
         self.session = session
-
-    def hash_password(self, password):
-        password_bytes = password.encode("utf-8")
-        hash_object = pbkdf2_sha256.encrypt(password_bytes, rounds=20000, salt_size=16)
-        return hash_object.hexdigest()
 
     def get(self, limit: int = 200, offset: int = 0) -> Sequence[UserTable]:
         """
@@ -80,21 +72,27 @@ class UserTableCrud:
             self.session.close()
             return user
 
-    def login(self, data: LoginRequest):
+    def login(self, data: FormData):
         """
         Provided email and password, returns token to login
+
+        OAuth2 forces us to use username and password
+        exactly as they are in a formdata format
         """
-        email = data.email.lower()
+        email = data.username.lower()
         password = data.password
-        statement = select(UserTable).where(
-            UserTable.email == email, UserTable.password == password
-        )
-        user = self.session.exec(statement).first()
-        if user:
-            access_token, data = encode_access_token(password, email)
-            return access_token, data
+        if not email or not password:
+            raise BinbotErrors("Email and password are required")
+
+        user = self.get_one(email=email)
+        if not user:
+            raise BinbotErrors("User not found")
         else:
-            raise BinbotErrors("Invalid email or password")
+            if user.password != password:
+                raise BinbotErrors("Invalid password")
+            else:
+                access_token, expire = create_access_token(email)
+                return access_token, expire
 
     def add(self, data: UserDetails):
         try:

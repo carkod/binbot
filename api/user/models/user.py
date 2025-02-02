@@ -14,7 +14,11 @@ class UserDetails(BaseModel):
     is_active: Optional[bool] = True
     role: Optional[UserRoles] = Field(default=UserRoles.admin)
     full_name: Optional[str] = Field(default="")
-    password: Optional[str] = Field(min_length=8, max_length=40, description="Not using SecretStr because not supported by SQLModel")
+    password: Optional[str] = Field(
+        min_length=8,
+        max_length=40,
+        description="Not using SecretStr because not supported by SQLModel",
+    )
     # Email is the main identifier
     username: Optional[str] = Field(default="")
     description: Optional[str] = Field(default="")
@@ -59,8 +63,14 @@ class UserResponse(StandardResponse):
     data: Sequence[UserTable]
 
 
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: str
+
+
 class LoginResponse(StandardResponse):
-    data: Optional[LoggedInDetails]
+    data: Optional[TokenResponse]
 
 
 class GetOneUser(StandardResponse):

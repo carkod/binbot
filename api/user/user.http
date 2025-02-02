@@ -1,12 +1,12 @@
 ### Get all users
-GET http://localhost:8008/user/ HTTP/1.1
+GET http://localhost:8008/user HTTP/1.1
 Content-Type: application/json
-Authorization: 'bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwYXNzd29yZCI6IjQ4Mjk1NjIwLUoiLCJlbWFpbCI6ImNhcmtvZHdAZ21haWwuY29tIiwiZXhwIjoxNzYxNDIyNzQyfQ.kPE7WqM4QVkv-rQeYFP02W0b7VgX5KcBaUXygVejHS8'
+Authorization: "bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwYXNzd29yZCI6ImNhcmxpdG9zIiwiZW1haWwiOiJjYXJrb2R3QGV4YW1wbGUuY29tIiwiZXhwIjoxNzY5OTkwMDUyfQ.8GNGHJ0bHYbir_8j15NUW3Q8he0aX7EwGBozKrGqUlw"
 
 ### Get user by id
 GET http://localhost:8008/user/carkodw@gmail.com HTTP/1.1
 
-###
+### Add new user
 
 POST http://localhost:8008/user/register HTTP/1.1
 content-Type: application/json
@@ -28,4 +28,13 @@ content-Type: application/json
     "password": "carlos123",
     "fullname": "Carlos Wu",
     "description": "I am a software engineer"
+}
+
+### Login
+POST http://localhost:8008/user/login HTTP/1.1
+content-Type: multipart/form-data
+
+{
+    "email": "carkodw@example.com",
+    "password": "carlos123"
 }

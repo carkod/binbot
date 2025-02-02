@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from fastapi.exceptions import ResponseValidationError
 from user.models.user import UserDetails
-from tools.handle_error import json_response, StandardResponse
-from user.models.user import LoginRequest, UserResponse, GetOneUser
-from user.services.auth import Auth, TokenResponse, decode_access_token
+from tools.handle_error import StandardResponse, BinbotErrors
+from user.models.user import UserResponse, GetOneUser, LoginResponse
+from user.services.auth import decode_access_token, FormData
 from database.user_crud import UserTableCrud
 from sqlmodel import Session
 from database.utils import get_session
@@ -12,18 +12,27 @@ from sqlalchemy.exc import IntegrityError
 user_blueprint = APIRouter()
 
 
-@user_blueprint.get("/user", response_model=UserResponse, tags=["users"])
-def get(session: Session = Depends(get_session)):
+@user_blueprint.get(
+    "/user",
+    dependencies=[Depends(decode_access_token)],
+    response_model=UserResponse,
+    tags=["users"],
+)
+async def get(session: Session = Depends(get_session)):
     """
     Get all users
     """
-    # decode_access_token(token)
     all_users = UserTableCrud(session).get()
     return UserResponse(message="Users found!", data=all_users)
 
 
-@user_blueprint.get("/user/{email}", response_model=GetOneUser, tags=["users"])
-def get_one(email: str, session: Session = Depends(get_session)):
+@user_blueprint.get(
+    "/user/{email}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=GetOneUser,
+    tags=["users"],
+)
+async def get_one(email: str, session: Session = Depends(get_session)):
     """
     Get user by email
     """
@@ -34,28 +43,31 @@ def get_one(email: str, session: Session = Depends(get_session)):
         return StandardResponse(message=str(e), error=1)
 
 
-@user_blueprint.post("/user/login", tags=["users"], response_model=TokenResponse)
-def login(data: LoginRequest, session: Session = Depends(get_session)):
+@user_blueprint.post("/user/login", tags=["users"], response_model=LoginResponse)
+def login(form_data: FormData, session: Session = Depends(get_session)):
     """
     Get an access_token to keep the user in session
     """
     try:
-        access_token, user_data = UserTableCrud(session).login(data)
-        return json_response(
-            {
-                "message": "Successfully logged in",
-                "data": {
-                    "access_token": access_token,
-                    "expires": user_data["exp"],
-                    "email": user_data["email"],
-                },
-            }
+        access_token, expire = UserTableCrud(session).login(form_data)
+        return LoginResponse(
+            message="Successfully logged in!",
+            data={
+                "access_token": access_token,
+                "token_type": "bearer",
+                "expires_in": str(expire),
+            },
         )
-    except Exception as e:
-        return StandardResponse(str(e))
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
 
 
-@user_blueprint.post("/user/register", response_model=GetOneUser | StandardResponse, tags=["users"])
+@user_blueprint.post(
+    "/user/register",
+    dependencies=[Depends(decode_access_token)],
+    response_model=GetOneUser | StandardResponse,
+    tags=["users"],
+)
 def add(data: UserDetails, session: Session = Depends(get_session)):
     """
     Create/register a new user
@@ -67,7 +79,9 @@ def add(data: UserDetails, session: Session = Depends(get_session)):
         return StandardResponse(message=str(error), error=1)
 
 
-@user_blueprint.put("/user", response_model=GetOneUser | StandardResponse, tags=["users"])
+@user_blueprint.put(
+    "/user", response_model=GetOneUser | StandardResponse, tags=["users"]
+)
 def edit(user: UserDetails, session: Session = Depends(get_session)):
     """
     Modify details of a user that already exists.

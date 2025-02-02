@@ -32,11 +32,15 @@ export const userApiSlice = createApi({
   baseQuery: binbotBaseQuery,
   reducerPath: "api",
   endpoints: (build) => ({
-    postLogin: build.mutation<LoginResponsePayload, Partial<LoginCredentials>>({
+    postLogin: build.mutation<LoginResponsePayload, FormData>({
       query: (body) => ({
         url: import.meta.env.VITE_LOGIN || "/login",
         method: "POST",
+        headers: {
+          "Content-Type": undefined,
+        },
         body: body,
+        formData: true,
       }),
       transformErrorResponse: (error) => {
         notifification("error", error.data.message);
