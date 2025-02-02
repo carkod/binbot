@@ -70,11 +70,6 @@ class Account(BinbotApi):
         exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info
 
-    def _ticker_price(self):
-        r = requests.get(url=self.ticker_price_url)
-        data = handle_binance_errors(r)
-        return data
-
     def _get_price_from_book_order(self, data: dict, order_side: bool, index: int):
         """
         Buy order = get bid prices = True
@@ -86,17 +81,6 @@ class Account(BinbotApi):
             price, base_qty = data["asks"][index]
 
         return float(price), float(base_qty)
-
-    def ticker(self, symbol: str | None = None, json: bool = True):
-        params = {}
-        if symbol:
-            params = {"symbol": symbol}
-        res = requests.get(url=self.ticker_price_url, params=params)
-        data = handle_binance_errors(res)
-        if json:
-            return json_response({"data": data})
-        else:
-            return data
 
     def get_ticker_price(self, symbol: str):
         params = {"symbol": symbol}
@@ -159,21 +143,10 @@ class Account(BinbotApi):
             return json_response_message("Pair not found")
 
     def get_symbols(self):
-        symbols = self._ticker_price()
+        symbols = self.ticker()
         symbols_list = [x["symbol"] for x in symbols]
         symbols_list.sort()
         return json_response({"data": symbols_list})
-
-    def get_no_cannibal_symbols(self):
-        """
-        Raw symbols without active bots
-        """
-        symbols = self._ticker_price()
-        symbols_list = [x["symbol"] for x in symbols]
-        active_symbols = list(self.db.bot.find({"status": "active"}))
-
-        no_cannibal_list = [x for x in symbols_list if x not in active_symbols]
-        return json_response({"data": no_cannibal_list, "count": len(no_cannibal_list)})
 
     def get_quote_asset_precision(self, symbol, quote=True):
         """

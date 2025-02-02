@@ -13,7 +13,7 @@ from bots.routes import bot_blueprint
 from charts.routes import charts_blueprint
 from orders.routes import order_blueprint
 from paper_trading.routes import paper_trading_blueprint
-from research.routes import research_blueprint
+from symbols.routes import research_blueprint
 from user.routes import user_blueprint
 
 from database.models import *  # noqa

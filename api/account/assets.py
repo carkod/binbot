@@ -6,10 +6,11 @@ from database.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from deals.factory import DealAbstract
 from tools.handle_error import json_response, json_response_error, json_response_message
-from tools.round_numbers import round_numbers, ts_to_day
-from tools.exceptions import BinanceErrors, LowBalanceCleanupError
+from tools.round_numbers import round_numbers, ts_to_day, round_timestamp
+from tools.exceptions import BinanceErrors, LowBalanceCleanupError, BinbotErrors
 from tools.enum_definitions import Strategy
 from database.bot_crud import BotTableCrud
+from database.symbols_crud import SymbolsCrud
 
 
 class Assets(Account):
@@ -138,9 +139,9 @@ class Assets(Account):
         else:
             return None
 
-    async def map_balance_with_benchmark(self, end_date, start_date):
+    def map_balance_with_benchmark(self, start_date, end_date):
         balance_series = self.balances_controller.query_balance_series(
-            start_date, end_date
+            start_date=start_date, end_date=end_date
         )
 
         if len(balance_series) == 0:
@@ -152,7 +153,7 @@ class Assets(Account):
             limit=len(balance_series),
             symbol="BTCUSDC",
             interval="1d",
-            end_time=str(balance_series[0].id),
+            end_time=str(round_timestamp(balance_series[0].id / 1000)),
         )
 
         balances_series_diff = []
@@ -166,7 +167,7 @@ class Assets(Account):
                     balances_series_diff.append(
                         float(balance_series[index].estimated_total_fiat)
                     )
-                    balances_series_dates.append(item.id)
+                    balances_series_dates.append(item.id // 1000)
                     balance_btc_diff.append(float(klines[btc_index][4]))
             else:
                 continue
@@ -188,6 +189,23 @@ class Assets(Account):
             }
         )
         return resp
+
+    def refresh_symbols_table(self):
+        """
+        Refresh the symbols table
+        """
+        data = self.ticker()
+        symbol_controller = SymbolsCrud()
+        for item in data:
+            try:
+                symbol = symbol_controller.get_symbol(item["symbol"])
+            except BinbotErrors:
+                pass
+
+            if item["symbol"].endswith("USDC") and not symbol:
+                symbol_controller.add_symbol(item["symbol"])
+
+        return json_response_message("Successfully refreshed symbols table.")
 
     def clean_balance_assets(self, bypass=False):
         """

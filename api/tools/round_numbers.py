@@ -3,6 +3,7 @@ import re
 from decimal import Decimal
 from datetime import datetime
 
+
 def supress_trailling(value: str | float | int) -> float:
     """
     Supress trilling 0s
@@ -96,7 +97,8 @@ def zero_remainder(x):
 
 def round_timestamp(ts: float, decimals: int = 0) -> int:
     """
-    Round timestamps less than 10 digits to avoid PSQL Big Int error
+    Round millisecond timestamps to always 13 digits
+    this is the universal format that JS and Python accept
     """
     digits = int(math.log10(ts)) + 1
     if digits > 10:
@@ -109,6 +111,20 @@ def ts_to_day(ts: float | int) -> str:
     """
     Convert timestamp to date (day) format YYYY-MM-DD
     """
-    dt_obj = datetime.fromtimestamp(ts / 1000)
+    digits = int(math.log10(ts)) + 1
+    if digits >= 10:
+        ts = ts // pow(10, digits - 10)
+    else:
+        ts = ts * pow(10, 10 - digits)
+
+    dt_obj = datetime.fromtimestamp(ts)
     b_str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
     return b_str_date
+
+
+def ms_to_sec(ms: int) -> int:
+    return ms // 1000
+
+
+def sec_to_ms(sec: int) -> int:
+    return sec * 1000

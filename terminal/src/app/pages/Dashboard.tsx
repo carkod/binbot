@@ -1,4 +1,4 @@
-import { useEffect, useState, type FC } from "react";
+import React, { useEffect, useState, type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
 import {
   useGetBenchmarkQuery,

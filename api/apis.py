@@ -137,6 +137,16 @@ class BinanceApi:
     No security endpoints
     """
 
+    def ticker(self, symbol: str | None = None, json: bool = True):
+        params = {}
+        if symbol:
+            params = {"symbol": symbol}
+        data = self.request(url=self.ticker_price_url, params=params)
+        if json:
+            return json_response({"data": data})
+        else:
+            return data
+
     def ticker_24(self, type: str = "FULL", symbol: str | None = None):
         """
         Weight 40 without symbol
