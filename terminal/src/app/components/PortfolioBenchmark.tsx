@@ -14,6 +14,7 @@ import { Line } from "react-chartjs-2";
 import { type BenchmarkSeriesData } from "../../features/balanceApiSlice";
 import { listCssColors } from "../../utils/validations";
 import { useBreakpoint } from "../hooks";
+import { formatTimestamp } from "../../utils/time";
 
 ChartJS.register(
   CategoryScale,
@@ -126,7 +127,7 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
         {chartData.datesSeries && (
           <div className="card-stats">
             <i className="fa fa-check" /> Last updated{" "}
-            {chartData.datesSeries[chartData.datesSeries.length - 1]}
+            {formatTimestamp(chartData.datesSeries[chartData.datesSeries.length - 1])}
           </div>
         )}
       </Card.Footer>
