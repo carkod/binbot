@@ -124,7 +124,7 @@ def clean_balance(bypass: bool = False, session: Session = Depends(get_session))
 
 
 @account_blueprint.get(
-    "/fiat/available", response_model=BalanceSeriesResponse, tags=["assets"]
+    "/fiat/available", response_model=BalanceSeriesResponse, tags=["account"]
 )
 def fiat_available(session: Session = Depends(get_session)):
     """
@@ -135,7 +135,7 @@ def fiat_available(session: Session = Depends(get_session)):
     return json_response({"data": total_fiat})
 
 
-@account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["assets"])
+@account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["account"])
 def fiat(session: Session = Depends(get_session)):
     """
     Total USDC in balance
@@ -146,19 +146,19 @@ def fiat(session: Session = Depends(get_session)):
 
 
 @account_blueprint.get(
-    "/disable-isolated", response_model=BalanceSeriesResponse, tags=["assets"]
+    "/disable-isolated", response_model=BalanceSeriesResponse, tags=["account"]
 )
 def disable_isolated(session: Session = Depends(get_session)):
     return Assets(session=session).disable_isolated_accounts()
 
 
-@account_blueprint.get("/isolated", tags=["assets"])
+@account_blueprint.get("/isolated", tags=["account"])
 def check_isolated_symbol(symbol: str, session: Session = Depends(get_session)):
     isolated_account = Assets(session=session).get_isolated_account(symbol)
     return isolated_account
 
 
-@account_blueprint.get("/one-click-liquidation/{market}/{asset}", tags=["assets"])
+@account_blueprint.get("/one-click-liquidation/{market}/{asset}", tags=["account"])
 def one_click_liquidation(
     asset: str, market: str = "margin", session: Session = Depends(get_session)
 ):

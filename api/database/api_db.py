@@ -7,7 +7,7 @@ from database.models.order_table import ExchangeOrderTable
 from database.models.user_table import UserTable
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.models.account_balances import BalancesTable, ConsolidatedBalancesTable
-from database.models.blacklist import Blacklist
+from database.models.blacklist_table import BlacklistTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
@@ -276,11 +276,11 @@ class ApiDb:
         return balance
 
     def create_dummy_blacklist(self):
-        statement = select(Blacklist)
+        statement = select(BlacklistTable)
         results = self.session.exec(statement)
         if results.first():
             return
-        btc_eth = Blacklist(
+        btc_eth = BlacklistTable(
             id="BTCETH",
             reason="Test",
         )

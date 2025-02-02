@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field
 from database.utils import timestamp
 
 
-class Blacklist(SQLModel, table=True):
+class BlacklistTable(SQLModel, table=True):
     __tablename__ = "blacklist"
 
     id: int = Field(primary_key=True, description="Symbol")
