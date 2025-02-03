@@ -56,7 +56,7 @@ app.include_router(bot_blueprint)
 app.include_router(paper_trading_blueprint)
 app.include_router(order_blueprint, prefix="/order")
 app.include_router(charts_blueprint, prefix="/charts")
-app.include_router(research_blueprint, prefix="/research")
+app.include_router(research_blueprint, prefix="/symbol")
 app.include_router(autotrade_settings_blueprint, prefix="/autotrade-settings")
 
 

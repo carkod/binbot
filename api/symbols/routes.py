@@ -7,31 +7,41 @@ from tools.exceptions import BinbotErrors
 research_blueprint = APIRouter()
 
 
-@research_blueprint.post(
-    "/blacklist", response_model=GetOneSymbolResponse, tags=["Symbols"]
-)
-def post_blacklist(symbol: str, reason: str = ""):
+@research_blueprint.get("/", response_model=SymbolsResponse, tags=["Symbols"])
+def get_all_symbols():
     """
-    Create a new Blacklist pair item.
+    Get all active/not blacklisted symbols/pairs
     """
-    data = SymbolsCrud().add_symbol(symbol=symbol, reason=reason, active=True)
+    data = SymbolsCrud().get_all(active=True)
+    return SymbolsResponse(message="Successfully retrieved blacklist", data=data)
+
+
+@research_blueprint.post("/", response_model=GetOneSymbolResponse, tags=["Symbols"])
+def add_symbol(symbol: str, reason: str = "", active: bool = True):
+    """
+    Create a new symbol/pair.
+
+    If active=False, the pair is blacklisted
+    """
+    data = SymbolsCrud().add_symbol(symbol=symbol, reason=reason, active=active)
     return GetOneSymbolResponse(message="Symbols found!", data=data)
 
 
 @research_blueprint.delete(
-    "/blacklist/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
+    "/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
 )
 def delete_symbol(pair: str):
     """
-    Given symbol/pair, delete an already blacklisted item
+    Given symbol/pair, delete a symbol
+
+    Should not be used often. If need to blacklist, simply
+    set active=False
     """
     data = SymbolsCrud().delete_symbol(pair)
     return GetOneSymbolResponse(message="Symbol deleted", data=data)
 
 
-@research_blueprint.put(
-    "/blacklist", response_model=GetOneSymbolResponse, tags=["Symbols"]
-)
+@research_blueprint.put("/", response_model=GetOneSymbolResponse, tags=["Symbols"])
 def edit_symbol(symbol, active: bool = True, reason: str = ""):
     """
     Modify a blacklisted item
@@ -49,7 +59,7 @@ def get_blacklisted_symbols():
     return SymbolsResponse(message="Successfully retrieved blacklist", data=data)
 
 
-@research_blueprint.get("/store-symbols", tags=["Symbols"])
+@research_blueprint.get("/store", tags=["Symbols"])
 def store_symbols():
     """
     Store all symbols from Binance
@@ -69,12 +79,3 @@ def store_symbols():
             symbol_controller.add_symbol(item["symbol"])
 
     return GetOneSymbolResponse(message="Symbols stored!")
-
-
-@research_blueprint.get("/blacklist", response_model=SymbolsResponse, tags=["Symbols"])
-def get_all_symbols():
-    """
-    Get all active/not blacklisted symbols/pairs
-    """
-    data = SymbolsCrud().get_all(active=True)
-    return SymbolsResponse(message="Successfully retrieved blacklist", data=data)

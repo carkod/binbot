@@ -6,8 +6,6 @@ from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
 from database.models.user_table import UserTable
 from database.models.bot_table import BotTable, PaperTradingTable
-from database.models.account_balances import BalancesTable, ConsolidatedBalancesTable
-from database.models.symbol_table import SymbolTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
@@ -19,7 +17,7 @@ from tools.enum_definitions import (
 )
 from alembic.config import Config
 from alembic import command
-from database.utils import engine, timestamp
+from database.utils import engine
 from account.assets import Assets
 
 
@@ -27,6 +25,7 @@ class ApiDb:
     """
     Initialization data for API SQL database
     """
+
     def __init__(self):
         self.session = Session(engine)
         self.assets_collection = Assets(self.session)
@@ -38,7 +37,6 @@ class ApiDb:
         self.init_users()
         self.create_dummy_bot()
         self.init_autotrade_settings()
-        self.create_dummy_balance()
         self.assets_collection.refresh_symbols_table()
         self.assets_collection.store_balance()
         self.session.close()

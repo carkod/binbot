@@ -202,8 +202,12 @@ class Assets(Account):
             except BinbotErrors:
                 pass
 
-            if item["symbol"].endswith("USDC") and not symbol:
-                symbol_controller.add_symbol(item["symbol"])
+            # Only store fiat market, exclude other fiats.
+            if item["symbol"].endswith("USDC") and not symbol and item["symbol"].startswith(("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")):
+                if item["symbol"] == "BTCUSDC":
+                    symbol_controller.add_symbol(symbol=item["symbol"], active=False)
+                else:
+                    symbol_controller.add_symbol(item["symbol"])
 
         return json_response_message("Successfully refreshed symbols table.")
 
