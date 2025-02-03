@@ -3,11 +3,12 @@ from sqlmodel import Session, select
 from database.models.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
+from apis import BinanceApi
 
 
 class SymbolsCrud:
     """
-    Database operations for Autotrade settings
+    Database operations for SymbolTable
     """
 
     def __init__(
@@ -43,25 +44,59 @@ class SymbolsCrud:
         else:
             raise BinbotErrors("Symbol not found")
 
-    def add_symbol(self, symbol: str, active: bool = False, reason: Optional[str] = ""):
+    def add_symbol(
+        self,
+        symbol: str,
+        active: bool = True,
+        reason: Optional[str] = "",
+        price_precision: int = 0,
+        qty_precision: int = 0,
+        min_notional: float = 0,
+    ):
         """
         Add a new blacklisted item
         """
-        blacklist = SymbolTable(id=symbol, blacklist_reason=reason, active=active)
-        self.session.add(blacklist)
+        symbol = SymbolTable(
+            id=symbol,
+            blacklist_reason=reason,
+            active=active,
+            price_precision=price_precision,
+            qty_precision=qty_precision,
+            min_notional=min_notional,
+        )
+        self.session.add(symbol)
         self.session.commit()
-        self.session.refresh(blacklist)
+        self.session.refresh(symbol)
         self.session.close()
-        return blacklist
+        return symbol
 
-    def edit_symbol_item(self, symbol: str, active: bool, reason: Optional[str] = None):
+    def edit_symbol_item(
+        self,
+        symbol: str,
+        active: bool,
+        reason: Optional[str] = None,
+        price_precision: int = 0,
+        qty_precision: int = 0,
+        min_notional: float = 0,
+    ):
         """
         Edit a blacklisted item
         """
         symbol_model = self.get_symbol(symbol)
         symbol_model.active = active
+
         if reason:
             symbol_model.blacklist_reason = reason
+
+        if price_precision > 0:
+            symbol_model.price_precision = price_precision
+
+        if qty_precision > 0:
+            symbol_model.qty_precision = qty_precision
+
+
+        if min_notional > 0:
+            symbol_model.min_notional = min_notional
 
         self.session.add(symbol_model)
         self.session.commit()
@@ -78,3 +113,46 @@ class SymbolsCrud:
         self.session.commit()
         self.session.close()
         return symbol_model
+
+    def refresh_symbols_table(self):
+        """
+        Refresh the symbols table
+
+        Uses ticker instead of exchange_info
+        because weight considerably lower
+        """
+        binance_api = BinanceApi()
+        data = binance_api._exchange_info()["symbols"]
+
+        for item in data:
+            if item["status"] != "TRADING":
+                continue
+            try:
+                symbol = self.get_symbol(item["symbol"])
+            except BinbotErrors:
+                symbol = None
+                pass
+
+            # Only store fiat market, exclude other fiats.
+            if (
+                item["symbol"].endswith("USDC")
+                and not symbol
+                and not item["symbol"].startswith(
+                    ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
+                )
+            ):
+                price_precision = binance_api.calculate_price_precision(item["symbol"])
+                qty_precision = binance_api.calculate_qty_precision(item["symbol"])
+                min_notional = binance_api.min_notional_by_symbol(item["symbol"])
+                active = True
+
+                if item["symbol"] == "BTCUSDC":
+                    active = False
+
+                self.add_symbol(
+                    item["symbol"],
+                    active=active,
+                    price_precision=price_precision,
+                    qty_precision=qty_precision,
+                    min_notional=min_notional,
+                )

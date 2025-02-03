@@ -19,6 +19,7 @@ from alembic.config import Config
 from alembic import command
 from database.utils import engine
 from account.assets import Assets
+from database.symbols_crud import SymbolsCrud
 
 
 class ApiDb:
@@ -29,6 +30,7 @@ class ApiDb:
     def __init__(self):
         self.session = Session(engine)
         self.assets_collection = Assets(self.session)
+        self.symbols = SymbolsCrud(self.session)
         pass
 
     def init_db(self):
@@ -37,7 +39,7 @@ class ApiDb:
         self.init_users()
         self.create_dummy_bot()
         self.init_autotrade_settings()
-        self.assets_collection.refresh_symbols_table()
+        self.symbols.refresh_symbols_table()
         self.assets_collection.store_balance()
         self.session.close()
         logging.info("Finishing db operations")

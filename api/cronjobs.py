@@ -6,7 +6,6 @@ from account.assets import Assets
 from charts.controllers import MarketDominationController
 from database.utils import independent_session
 
-
 logging.Formatter.converter = time.gmtime  # date time in GMT/UTC
 logging.basicConfig(
     level=logging.INFO,
@@ -24,14 +23,6 @@ def main():
 
     # Jobs should be distributed as far as possible from each other
     # to avoid overloading RAM and also avoid hitting rate limits due to high weight
-    scheduler.add_job(
-        func=assets.refresh_symbols_table,
-        trigger="cron",
-        timezone=timezone,
-        hour=4,
-        minute=1,
-        id="store_balance",
-    )
     scheduler.add_job(
         func=assets.store_balance,
         trigger="cron",
