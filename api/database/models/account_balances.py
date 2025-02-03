@@ -18,7 +18,7 @@ class BalancesTable(SQLModel, table=True):
         unique=True,
         index=True,
     )
-    timestamp: int = Field(
+    timestamp: Optional[int] = Field(
         default_factory=timestamp, sa_column=Column(BigInteger(), index=True)
     )
     asset: str = Field(index=True, nullable=False)

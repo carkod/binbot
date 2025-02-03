@@ -20,11 +20,16 @@ from tools.enum_definitions import (
 from alembic.config import Config
 from alembic import command
 from database.utils import engine, timestamp
+from account.assets import Assets
 
 
 class ApiDb:
+    """
+    Initialization data for API SQL database
+    """
     def __init__(self):
         self.session = Session(engine)
+        self.assets_collection = Assets(self.session)
         pass
 
     def init_db(self):
@@ -34,6 +39,8 @@ class ApiDb:
         self.create_dummy_bot()
         self.init_autotrade_settings()
         self.create_dummy_balance()
+        self.assets_collection.refresh_symbols_table()
+        self.assets_collection.store_balance()
         self.session.close()
         logging.info("Finishing db operations")
 
@@ -241,53 +248,3 @@ class ApiDb:
         self.session.commit()
         self.session.close()
         return results.first()
-
-    def create_dummy_balance(self):
-        statement = select(ConsolidatedBalancesTable)
-        results = self.session.exec(statement)
-        if results.first():
-            return
-
-        id = timestamp() / 1000
-        balances = [
-            BalancesTable(asset="BTC", free=0.3, locked=0),
-            BalancesTable(asset="BNB", free=0.00096915, locked=0),
-            BalancesTable(asset="ZEC", free=0.191808, locked=0),
-            BalancesTable(asset="KMD", free=37.81, locked=0),
-            BalancesTable(asset="DUSK", free=294, locked=0),
-            BalancesTable(asset="GBP", free=9.87392004, locked=0),
-            BalancesTable(asset="NFT", free=26387.61, locked=0),
-        ]
-
-        consolidated = ConsolidatedBalancesTable(
-            id=id,
-            balances=balances,
-            estimated_total_fiat=0.0088,
-        )
-        self.session.add(consolidated)
-        self.session.commit()
-        self.session.refresh(consolidated)
-        return consolidated
-
-    def select_balance(self):
-        statement = select(ConsolidatedBalancesTable)
-        results = self.session.exec(statement)
-        balance = results.first()
-        return balance
-
-    def ingest_symbol_data(self):
-        statement = select(SymbolTable)
-        results = self.session.exec(statement)
-        if results.first():
-            return
-
-        symbol_initial_data = SymbolTable(
-            id="BTCUSDC",
-            blacklist_reason="",
-            active=True,
-        )
-
-        self.session.add(symbol_initial_data)
-        self.session.refresh(symbol_initial_data)
-        self.session.commit()
-        return
