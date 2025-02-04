@@ -7,6 +7,9 @@ from requests import Session, request
 from tools.handle_error import handle_binance_errors, json_response, json_response_error
 from tools.exceptions import IsolateBalanceError
 from py3cw.request import Py3CW
+from requests_cache import MongoCache
+from pymongo import MongoClient
+from decimal import Decimal
 
 
 class BinanceApi:
@@ -67,6 +70,17 @@ class BinanceApi:
     margin_order = f"{BASE}/sapi/v1/margin/order"
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
     interest_history_url = f"{BASE}/sapi/v1/margin/interestHistory"
+
+    def setup_mongocache(self):
+        mongo: MongoClient = MongoClient(
+            host=os.getenv("MONGO_HOSTNAME"),
+            port=int(os.getenv("MONGO_PORT", 2017)),
+            authSource="admin",
+            username=os.getenv("MONGO_AUTH_USERNAME"),
+            password=os.getenv("MONGO_AUTH_PASSWORD"),
+        )
+        mongo_cache = MongoCache(connection=mongo)
+        return mongo_cache
 
     def request(
         self,
@@ -136,6 +150,116 @@ class BinanceApi:
     """
     No security endpoints
     """
+
+    def _exchange_info(self, symbol=None):
+        """
+        This must be a separate method because classes use it with inheritance
+
+        This request is used in many places to retrieve data about symbols, precisions etc.
+        It is a high weight endpoint, thus Binance could ban our IP
+        However it is not real-time updated data, so cache is used to avoid hitting endpoint
+        too many times and still be able to re-request data everywhere.
+
+        In addition, it uses MongoDB, with a separate database called "mongo_cache"
+        """
+        params = {}
+        if symbol:
+            params["symbol"] = symbol
+
+        # mongo_cache = self.setup_mongocache()
+        # set up a cache that expires in 1440'' (24hrs)
+        # session = CachedSession("http_cache", backend=mongo_cache, expire_after=1440)
+        exchange_info_res = self.request(url=f"{self.exchangeinfo_url}", params=params)
+        # exchange_info = handle_binance_errors(exchange_info_res)
+        return exchange_info_res
+
+    def price_filter_by_symbol(self, symbol, filter_limit):
+        """
+        PRICE_FILTER restrictions from /exchangeinfo
+        @params:
+            - symbol: string - pair/market e.g. BNBBTC
+            - filter_limit: string - minPrice or maxPrice
+        """
+        symbols = self._exchange_info(symbol)
+        market = symbols["symbols"][0]
+        price_filter = next(
+            (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER")
+        )
+        return price_filter[filter_limit].rstrip(".0")
+
+    def lot_size_by_symbol(self, symbol, lot_size_limit):
+        """
+        LOT_SIZE (quantity) restrictions from /exchangeinfo
+        @params:
+            - symbol: string - pair/market e.g. BNBBTC
+            - lot_size_limit: string - minQty, maxQty, stepSize
+        """
+        symbols = self._exchange_info(symbol)
+        market = symbols["symbols"][0]
+        quantity_filter: list = next(
+            (m for m in market["filters"] if m["filterType"] == "LOT_SIZE")
+        )
+        return quantity_filter[lot_size_limit].rstrip(".0")
+
+    def min_notional_by_symbol(self, symbol, min_notional_limit="minNotional"):
+        """
+        MIN_NOTIONAL (price x quantity) restrictions from /exchangeinfo
+        @params:
+            - symbol: string - pair/market e.g. BNBBTC
+            - min_notional_limit: string - minNotional
+        """
+        symbols = self._exchange_info(symbol)
+        market = symbols["symbols"][0]
+        min_notional_filter = next(
+            m for m in market["filters"] if m["filterType"] == "NOTIONAL"
+        )
+        return min_notional_filter[min_notional_limit]
+
+    def calculate_price_precision(self, symbol) -> int:
+        precision = -1 * (
+            Decimal(str(self.price_filter_by_symbol(symbol, "tickSize")))
+            .as_tuple()
+            .exponent
+        )
+        price_precision = int(precision)
+        return price_precision
+
+    def calculate_qty_precision(self, symbol) -> int:
+        precision = -1 * (
+            Decimal(str(self.lot_size_by_symbol(symbol, "stepSize")))
+            .as_tuple()
+            .exponent
+        )
+        qty_precision = int(precision)
+        return qty_precision
+
+    def find_quoteAsset(self, symbol):
+        """
+        e.g. BNBBTC: base asset = BTC
+        """
+        symbols = self._exchange_info(symbol)
+        quote_asset = symbols["symbols"][0]
+        if quote_asset:
+            quote_asset = quote_asset["quoteAsset"]
+        return quote_asset
+
+    def find_baseAsset(self, symbol):
+        """
+        e.g. BNBBTC: base asset = BNB
+        """
+        symbols = self._exchange_info(symbol)
+        base_asset = symbols["symbols"][0]["baseAsset"]
+        return base_asset
+
+    def ticker(self, symbol: str | None = None, json: bool = True):
+        params = {}
+        if symbol:
+            params = {"symbol": symbol}
+        data = self.request(url=self.ticker_price_url, params=params)
+        if json:
+            return json_response({"data": data})
+        else:
+            return data
 
     def ticker_24(self, type: str = "FULL", symbol: str | None = None):
         """

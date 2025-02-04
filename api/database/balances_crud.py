@@ -1,7 +1,7 @@
 from typing import Sequence
 from database.models.account_balances import BalancesTable, ConsolidatedBalancesTable
 from database.utils import independent_session, timestamp
-from sqlmodel import Session, select
+from sqlmodel import Session, select, desc
 
 
 class BalancesCrud:
@@ -49,9 +49,10 @@ class BalancesCrud:
         """
         query = select(ConsolidatedBalancesTable)
         if start_date > 0:
-            query = query.where(ConsolidatedBalancesTable.id >= int(start_date))
+            query = query.where(ConsolidatedBalancesTable.id >= int(start_date * 1000))
         if end_date > 0:
-            query = query.where(ConsolidatedBalancesTable.id <= int(end_date))
+            query = query.where(ConsolidatedBalancesTable.id <= int(end_date * 1000))
 
+        query = query.order_by(desc(ConsolidatedBalancesTable.id))
         results = self.session.exec(query).unique().all()
         return results

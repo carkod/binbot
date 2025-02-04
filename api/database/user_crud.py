@@ -5,7 +5,7 @@ from database.utils import independent_session
 from collections.abc import Sequence
 from tools.exceptions import BinbotErrors
 from user.models.user import UserDetails
-from user.services.auth import create_access_token, FormData, pwd_context
+from user.services.auth import create_access_token, FormData
 from typing import Optional
 
 

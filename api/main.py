@@ -13,7 +13,7 @@ from bots.routes import bot_blueprint
 from charts.routes import charts_blueprint
 from orders.routes import order_blueprint
 from paper_trading.routes import paper_trading_blueprint
-from research.routes import research_blueprint
+from symbols.routes import research_blueprint
 from user.routes import user_blueprint
 
 from database.models import *  # noqa
@@ -56,7 +56,7 @@ app.include_router(bot_blueprint)
 app.include_router(paper_trading_blueprint)
 app.include_router(order_blueprint, prefix="/order")
 app.include_router(charts_blueprint, prefix="/charts")
-app.include_router(research_blueprint, prefix="/research")
+app.include_router(research_blueprint, prefix="/symbol")
 app.include_router(autotrade_settings_blueprint, prefix="/autotrade-settings")
 
 

@@ -21,7 +21,9 @@ class UserTable(SQLModel, table=True):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = Field(default=True)
     role: UserRoles = Field(default=UserRoles.user)
-    full_name: str = Field(default="", description="For full name, use internal functions to compose")
+    full_name: str = Field(
+        default="", description="For full name, use internal functions to compose"
+    )
     password: str = Field(min_length=8, max_length=40)
     username: Optional[str] = Field(default="")
     description: Optional[str] = Field(default="")

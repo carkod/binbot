@@ -6,8 +6,7 @@ from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
 from database.models.user_table import UserTable
 from database.models.bot_table import BotTable, PaperTradingTable
-from database.models.account_balances import BalancesTable, ConsolidatedBalancesTable
-from database.models.blacklist_table import BlacklistTable
+from database.models.symbol_table import SymbolTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
@@ -19,22 +18,31 @@ from tools.enum_definitions import (
 )
 from alembic.config import Config
 from alembic import command
-from database.utils import engine, timestamp
+from database.utils import engine
+from account.assets import Assets
+from database.symbols_crud import SymbolsCrud
 
 
 class ApiDb:
+    """
+    Initialization data for API SQL database
+    """
+
     def __init__(self):
         self.session = Session(engine)
+        self.symbols = SymbolsCrud(self.session)
         pass
 
     def init_db(self):
         SQLModel.metadata.create_all(engine)
-        self.run_migrations()
         self.init_users()
-        self.create_dummy_bot()
         self.init_autotrade_settings()
-        self.create_dummy_balance()
-        self.session.close()
+        self.create_dummy_bot()
+        self.init_symbols()
+        # Depends on autotrade settings
+        self.assets_collection = Assets(self.session)
+        self.assets_collection.store_balance()
+        self.run_migrations()
         logging.info("Finishing db operations")
 
     def run_migrations(self):
@@ -242,49 +250,13 @@ class ApiDb:
         self.session.close()
         return results.first()
 
-    def create_dummy_balance(self):
-        statement = select(ConsolidatedBalancesTable)
+    def init_symbols(self):
+        """
+        Heavy operation, only execute if db is empty
+        """
+        statement = select(SymbolTable)
         results = self.session.exec(statement)
-        if results.first():
+        symbol = results.first()
+        if symbol:
             return
-
-        id = timestamp() / 1000
-        balances = [
-            BalancesTable(asset="BTC", free=0.3, locked=0),
-            BalancesTable(asset="BNB", free=0.00096915, locked=0),
-            BalancesTable(asset="ZEC", free=0.191808, locked=0),
-            BalancesTable(asset="KMD", free=37.81, locked=0),
-            BalancesTable(asset="DUSK", free=294, locked=0),
-            BalancesTable(asset="GBP", free=9.87392004, locked=0),
-            BalancesTable(asset="NFT", free=26387.61, locked=0),
-        ]
-
-        consolidated = ConsolidatedBalancesTable(
-            id=id,
-            balances=balances,
-            estimated_total_fiat=0.0088,
-        )
-        self.session.add(consolidated)
-        self.session.commit()
-        self.session.refresh(consolidated)
-        return consolidated
-
-    def select_balance(self):
-        statement = select(ConsolidatedBalancesTable)
-        results = self.session.exec(statement)
-        balance = results.first()
-        return balance
-
-    def create_dummy_blacklist(self):
-        statement = select(BlacklistTable)
-        results = self.session.exec(statement)
-        if results.first():
-            return
-        btc_eth = BlacklistTable(
-            id="BTCETH",
-            reason="Test",
-        )
-        self.session.add(btc_eth)
-        self.session.commit()
-        self.session.refresh(btc_eth)
-        return btc_eth
+        self.symbols.refresh_symbols_table()

@@ -20,7 +20,7 @@ class AutotradeTable(SQLModel, table=True):
     __tablename__ = "autotrade"
 
     id: Optional[str] = Field(
-        default=str(AutotradeSettingsDocument.settings),
+        default=AutotradeSettingsDocument.settings,
         primary_key=True,
         nullable=False,
         unique=True,
@@ -33,7 +33,6 @@ class AutotradeTable(SQLModel, table=True):
         default=BinanceKlineIntervals.fifteen_minutes,
         sa_column=Column(Enum(BinanceKlineIntervals)),
     )
-    test_autotrade: bool = Field(default=False)
     trailling: bool = Field(default=False)
     trailling_deviation: float = Field(default=3)
     trailling_profit: float = Field(default=2.4)
@@ -83,7 +82,10 @@ class TestAutotradeTable(SQLModel, table=True):
     __tablename__ = "test_autotrade"
 
     id: Optional[str] = Field(
-        default="test_autotrade_settings", primary_key=True, nullable=False, unique=True
+        default=AutotradeSettingsDocument.test_autotrade_settings,
+        primary_key=True,
+        nullable=False,
+        unique=True,
     )
     autotrade: bool = Field(default=False)
     updated_at: float = Field(default=time() * 1000)
