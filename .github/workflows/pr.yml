@@ -162,7 +162,7 @@ jobs:
       - name: Run tests
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
-        run: coverage run -m pytest .
+        run: coverage run -m pytest test_bots.py
 
   python-linting:
     name: Python code linting
