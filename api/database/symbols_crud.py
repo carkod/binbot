@@ -146,7 +146,7 @@ class SymbolsCrud:
                 min_notional = binance_api.min_notional_by_symbol(item["symbol"])
                 active = True
 
-                if item["symbol"] == "BTCUSDC":
+                if item["symbol"] == "BTCUSDC" or item["symbol"] == "ETHUSDC" or item["symbol"] == "BNBUSDC":
                     active = False
 
                 self.add_symbol(
@@ -154,5 +154,5 @@ class SymbolsCrud:
                     active=active,
                     price_precision=price_precision,
                     qty_precision=qty_precision,
-                    min_notional=min_notional,
+                    min_notional=float(min_notional),
                 )

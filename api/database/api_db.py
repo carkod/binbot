@@ -6,6 +6,7 @@ from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
 from database.models.user_table import UserTable
 from database.models.bot_table import BotTable, PaperTradingTable
+from database.models.symbol_table import SymbolTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
@@ -21,7 +22,6 @@ from database.utils import engine
 from account.assets import Assets
 from database.symbols_crud import SymbolsCrud
 
-
 class ApiDb:
     """
     Initialization data for API SQL database
@@ -29,19 +29,19 @@ class ApiDb:
 
     def __init__(self):
         self.session = Session(engine)
-        self.assets_collection = Assets(self.session)
         self.symbols = SymbolsCrud(self.session)
         pass
 
     def init_db(self):
         SQLModel.metadata.create_all(engine)
-        self.run_migrations()
         self.init_users()
-        self.create_dummy_bot()
         self.init_autotrade_settings()
-        self.symbols.refresh_symbols_table()
+        self.create_dummy_bot()
+        self.init_symbols()
+        # Depends on autotrade settings
+        self.assets_collection = Assets(self.session)
         self.assets_collection.store_balance()
-        self.session.close()
+        self.run_migrations()
         logging.info("Finishing db operations")
 
     def run_migrations(self):
@@ -248,3 +248,14 @@ class ApiDb:
         self.session.commit()
         self.session.close()
         return results.first()
+
+    def init_symbols(self):
+        """
+        Heavy operation, only execute if db is empty
+        """
+        statement = select(SymbolTable)
+        results = self.session.exec(statement)
+        symbol = results.first()
+        if symbol:
+            return
+        self.symbols.refresh_symbols_table()
