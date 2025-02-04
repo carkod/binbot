@@ -123,8 +123,17 @@ def ts_to_day(ts: float | int) -> str:
 
 
 def ms_to_sec(ms: int) -> int:
+    """
+    JavaScript needs 13 digits (milliseconds)
+    for new Date() to parse timestamps
+    correctly
+    """
     return ms // 1000
 
 
 def sec_to_ms(sec: int) -> int:
+    """
+    Python datetime needs 10 digits (seconds)
+    to parse dates correctly from timestamps
+    """
     return sec * 1000

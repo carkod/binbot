@@ -22,6 +22,7 @@ from database.utils import engine
 from account.assets import Assets
 from database.symbols_crud import SymbolsCrud
 
+
 class ApiDb:
     """
     Initialization data for API SQL database

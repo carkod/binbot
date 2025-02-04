@@ -24,7 +24,9 @@ class SymbolsCrud:
     def get_all(self, active: bool = True):
         """
         Get all symbols
-        this excludes blacklisted items
+        this excludes blacklisted items.
+
+        To get blacklisted items set active to False
         """
         statement = select(SymbolTable).where(SymbolTable.active == active)
 
@@ -34,7 +36,7 @@ class SymbolsCrud:
 
     def get_symbol(self, symbol: str) -> SymbolTable:
         """
-        Get single blacklisted item
+        Get single symbol
         """
         statement = select(SymbolTable).where(SymbolTable.id == symbol)
         result = self.session.exec(statement).first()
@@ -54,7 +56,7 @@ class SymbolsCrud:
         min_notional: float = 0,
     ):
         """
-        Add a new blacklisted item
+        Add a new symbol
         """
         symbol = SymbolTable(
             id=symbol,
@@ -93,7 +95,6 @@ class SymbolsCrud:
 
         if qty_precision > 0:
             symbol_model.qty_precision = qty_precision
-
 
         if min_notional > 0:
             symbol_model.min_notional = min_notional
@@ -146,7 +147,11 @@ class SymbolsCrud:
                 min_notional = binance_api.min_notional_by_symbol(item["symbol"])
                 active = True
 
-                if item["symbol"] == "BTCUSDC" or item["symbol"] == "ETHUSDC" or item["symbol"] == "BNBUSDC":
+                if (
+                    item["symbol"] == "BTCUSDC"
+                    or item["symbol"] == "ETHUSDC"
+                    or item["symbol"] == "BNBUSDC"
+                ):
                     active = False
 
                 self.add_symbol(

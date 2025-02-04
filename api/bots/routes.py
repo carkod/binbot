@@ -227,8 +227,10 @@ def bot_errors(
         data = BotTableCrud(session=session).update_logs(
             log_message=errors, bot_id=bot_id
         )
-        response_data = BotModelResponse(**data.model_dump())
-        return BotResponse(message="Errors posted successfully.", data=response_data)
+        response_data = BotModelResponse.dump_from_table(data)
+        return BotResponse(
+            message="Errors posted successfully.", data=response_data, error=0
+        )
     except ValidationError as error:
         return BotResponse(message="Failed to post errors", data=error.json(), error=1)
     except BinbotErrors as error:
