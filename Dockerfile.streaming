@@ -1,8 +1,9 @@
 FROM python:3.11
 COPY api api
 WORKDIR api
-RUN pip3 install pipenv
-RUN pipenv install --system --deploy --ignore-pipfile --clear
+RUN python3 -m pip install uv
+ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
+RUN uv sync --no-cache --locked --no-dev
 ENTRYPOINT ["python3", "-u", "market_updates.py"]
 
 STOPSIGNAL SIGTERM
