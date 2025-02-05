@@ -63,9 +63,9 @@ class Assets(Account):
             if item["balance"] and float(item["balance"]) > 0:
                 total_wallet_balance += float(item["balance"])
 
-        total_usdc = total_wallet_balance * float(rate)
+        total_fiat = total_wallet_balance * float(rate)
         response = self.balances_controller.create_balance_series(
-            itemized_balance, round_numbers(total_usdc, 4)
+            itemized_balance, round_numbers(total_fiat, 4)
         )
         return response
 
@@ -318,7 +318,7 @@ class Assets(Account):
         if not bot:
             return bot
 
-        active_bot = BotModel.model_validate(bot.model_dump())
+        active_bot = BotModel.model_validate(bot)
         deal = DealAbstract(active_bot, db_table=BotTable)
 
         if market == "margin":

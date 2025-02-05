@@ -179,12 +179,40 @@ class BotModel(BotBase):
 
 
 class BotModelResponse(BotBase):
-    id: str | UUID = Field(default="")
+    id: str = Field(default="")
     deal: DealModel = Field(...)
     orders: List[OrderModel] = Field(default=[])
 
     model_config = {
-        "json_encoders": {UUID: str},
+        "from_attributes": True,
+        "use_enum_values": True,
+        "json_schema_extra": {
+            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Exchange",
+            "examples": [
+                {
+                    "pair": "BNBUSDT",
+                    "fiat": "USDC",
+                    "base_order_size": 15,
+                    "candlestick_interval": "15m",
+                    "cooldown": 0,
+                    "logs": [],
+                    # Manual is triggered by the terminal dashboard, autotrade by research app,
+                    "mode": "manual",
+                    "name": "Default bot",
+                    "orders": [],
+                    "status": "inactive",
+                    "stop_loss": 0,
+                    "take_profit": 2.3,
+                    "trailling": True,
+                    "trailling_deviation": 0.63,
+                    "trailling_profit": 2.3,
+                    "strategy": "long",
+                    "short_buy_price": 0,
+                    "short_sell_price": 0,
+                    "total_commission": 0,
+                }
+            ],
+        },
     }
 
     @field_validator("id", mode="before")
@@ -219,7 +247,7 @@ class BotDataErrorResponse(BotBase):
 
 
 class BotResponse(IResponseBase):
-    data: Optional[BotModelResponse] | Optional[BotDataErrorResponse] = None
+    data: Optional[BotModelResponse] = Field(default=None)
 
 
 class ActivePairsResponse(IResponseBase):

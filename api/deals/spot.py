@@ -488,7 +488,7 @@ class SpotLongDeal(DealAbstract):
 
         return self.active_bot
 
-    def open_deal(self):
+    def open_deal(self) -> BotModel:
         """
         Bot activation requires:
 

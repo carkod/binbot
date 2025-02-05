@@ -1,20 +1,29 @@
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
-import pytest
+from pytest import fixture
 from account.assets import Assets
 from main import app
 from mongomock import MongoClient
+from database.utils import get_session
+
 
 client: MongoClient = MongoClient()
 db = client.db
 
-app_client = TestClient(app)
 
 MockAutotradeCrud = MagicMock()
 MockAutotradeCrud.return_value.get_settings.return_value.balance_to_use = "USDC"
 
 
-@pytest.fixture()
+session_mock = MagicMock()
+session_mock.add.return_value = MagicMock(return_value=None)
+session_mock.commit.return_value = MagicMock(return_value=None)
+session_mock.refresh.return_value = MagicMock(return_value=None)
+app.dependency_overrides[get_session] = lambda: session_mock
+app_client = TestClient(app)
+
+
+@fixture()
 def patch_database(monkeypatch):
     itemized_balance = [
         {"asset": "BTC", "free": 6.51e-06, "locked": 0.0},
@@ -23,16 +32,12 @@ def patch_database(monkeypatch):
         {"asset": "NFT", "free": 1, "locked": 0.0},
     ]
 
-    def new_init(self):
-        self._db = db
-
-    monkeypatch.setattr(Assets, "_db", new_init)
     monkeypatch.setattr(
         Assets, "get_raw_balance", lambda self, asset=None: itemized_balance
     )
 
 
-@pytest.fixture()
+@fixture()
 def patch_raw_balances(monkeypatch):
     """
     Input data from API
@@ -63,7 +68,7 @@ def patch_raw_balances(monkeypatch):
     )
 
 
-@pytest.fixture()
+@fixture()
 def patch_total_fiat(monkeypatch):
     """
     Input data from API
@@ -87,7 +92,7 @@ def patch_total_fiat(monkeypatch):
     )
 
 
-@pytest.fixture()
+@fixture()
 def patch_store_balance(monkeypatch):
     """
     Input data from API
@@ -100,7 +105,7 @@ def patch_store_balance(monkeypatch):
     monkeypatch.setattr(Assets, "get_ticker_price", lambda self, pair: "59095.79000000")
     monkeypatch.setattr(
         Assets,
-        "create_balance_series",
+        "map_balance_with_benchmark",
         lambda self, total_balance, total_estimated_fiat: None,
     )
 
