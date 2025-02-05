@@ -109,7 +109,7 @@ class OrderController(Account):
         sell at market price
         """
         price = float(self.matching_engine(symbol, True, qty))
-        if price == 0:
+        if price > 0:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
@@ -132,7 +132,7 @@ class OrderController(Account):
     def buy_order(self, symbol: str, qty: float):
         book_price = self.matching_engine(symbol, False, qty)
 
-        if book_price == 0:
+        if book_price > 0:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -204,7 +204,7 @@ class OrderController(Account):
         """
         price = self.matching_engine(symbol, False, qty)
 
-        if price == 0:
+        if price > 0:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.buy,
@@ -235,7 +235,7 @@ class OrderController(Account):
         """
         price = self.matching_engine(symbol, True, qty)
 
-        if price == 0:
+        if price > 0:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
