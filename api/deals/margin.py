@@ -321,6 +321,11 @@ class MarginDeal(DealAbstract):
                 res = self.sell_margin_order(
                     symbol=self.active_bot.pair, qty=sell_back_qty
                 )
+
+                price = float(res["price"])
+                if price == 0:
+                    price = self.calculate_avg_price(res["fills"])
+
                 sell_back_order = OrderModel(
                     timestamp=res["transactTime"],
                     deal_type=DealType.take_profit,
@@ -328,7 +333,7 @@ class MarginDeal(DealAbstract):
                     pair=res["symbol"],
                     order_side=res["side"],
                     order_type=res["type"],
-                    price=float(res["price"]),
+                    price=price,
                     qty=float(res["origQty"]),
                     time_in_force=res["timeInForce"],
                     status=res["status"],
@@ -339,7 +344,7 @@ class MarginDeal(DealAbstract):
                 )
 
                 self.active_bot.orders.append(sell_back_order)
-                self.active_bot.deal.closing_price = float(res["price"])
+                self.active_bot.deal.closing_price = price
                 self.active_bot.deal.closing_qty = float(res["origQty"])
                 self.active_bot.deal.closing_timestamp = float(res["transactTime"])
                 self.active_bot.logs.append("Margin_short bot repaid, deal completed.")
@@ -402,6 +407,10 @@ class MarginDeal(DealAbstract):
                 pair=self.active_bot, side=OrderSide.sell
             )
 
+        price = float(order_res["price"])
+        if price == 0:
+            price = self.calculate_avg_price(order_res["fills"])
+
         order_data = OrderModel(
             timestamp=order_res["transactTime"],
             order_id=int(order_res["orderId"]),
@@ -409,7 +418,7 @@ class MarginDeal(DealAbstract):
             pair=order_res["symbol"],
             order_side=order_res["side"],
             order_type=order_res["type"],
-            price=float(order_res["price"]),
+            price=price,
             qty=float(order_res["origQty"]),
             time_in_force=order_res["timeInForce"],
             status=order_res["status"],
@@ -424,7 +433,7 @@ class MarginDeal(DealAbstract):
         self.active_bot.deal.opening_timestamp = round_timestamp(
             order_res["transactTime"]
         )
-        self.active_bot.deal.opening_price = float(order_res["price"])
+        self.active_bot.deal.opening_price = price
         self.active_bot.deal.opening_qty = float(order_res["origQty"])
 
         # Activate bot
@@ -539,16 +548,20 @@ class MarginDeal(DealAbstract):
         else:
             res = self.margin_liquidation(self.active_bot.pair)
 
+        price = float(res["price"])
+        if price == 0:
+            price = self.calculate_avg_price(res["fills"])
+
         if res:
             stop_loss_order = OrderModel(
-                timestamp=res["transactTime"],
+                timestamp=int(res["transactTime"]),
                 deal_type=DealType.stop_loss,
-                order_id=res["orderId"],
+                order_id=int(res["orderId"]),
                 pair=res["symbol"],
                 order_side=res["side"],
                 order_type=res["type"],
-                price=res["price"],
-                qty=res["origQty"],
+                price=price,
+                qty=float(res["origQty"]),
                 time_in_force=res["timeInForce"],
                 status=res["status"],
             )
@@ -559,7 +572,7 @@ class MarginDeal(DealAbstract):
 
             self.active_bot.orders.append(stop_loss_order)
 
-            self.active_bot.deal.closing_price = float(res["price"])
+            self.active_bot.deal.closing_price = price
             self.active_bot.deal.closing_qty = float(res["origQty"])
             self.active_bot.deal.closing_timestamp = float(res["transactTime"])
 
@@ -607,6 +620,11 @@ class MarginDeal(DealAbstract):
                 return self.active_bot
 
         if res:
+
+            price = float(res["price"])
+            if price == 0:
+                price = self.calculate_avg_price(res["fills"])
+
             # No res means it wasn't properly closed/completed
             take_profit_order = OrderModel(
                 timestamp=res["transactTime"],
@@ -615,7 +633,7 @@ class MarginDeal(DealAbstract):
                 pair=res["symbol"],
                 order_side=res["side"],
                 order_type=res["type"],
-                price=float(res["price"]),
+                price=price,
                 qty=float(res["origQty"]),
                 time_in_force=res["timeInForce"],
                 status=res["status"],
@@ -626,7 +644,7 @@ class MarginDeal(DealAbstract):
             )
 
             self.active_bot.orders.append(take_profit_order)
-            self.active_bot.deal.closing_price = float(res["price"])
+            self.active_bot.deal.closing_price = price
             self.active_bot.deal.closing_timestamp = round_timestamp(
                 res["transactTime"]
             )

@@ -150,6 +150,10 @@ class SpotLongDeal(DealAbstract):
             # Dispatch real order
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
+        price = float(res["price"])
+        if price == 0:
+            price = self.calculate_avg_price(res["fills"])
+
         stop_loss_order = OrderModel(
             timestamp=int(res["transactTime"]),
             deal_type=DealType.stop_loss,
@@ -157,7 +161,7 @@ class SpotLongDeal(DealAbstract):
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
-            price=float(res["price"]),
+            price=price,
             qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
@@ -168,7 +172,7 @@ class SpotLongDeal(DealAbstract):
         )
 
         self.active_bot.orders.append(stop_loss_order)
-        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_price = price
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = float(res["transactTime"])
         msg = "Completed Stop loss."
@@ -228,6 +232,10 @@ class SpotLongDeal(DealAbstract):
                 qty=round_numbers(qty, self.qty_precision),
             )
 
+        price = float(res["price"])
+        if price == 0:
+            price = self.calculate_avg_price(res["fills"])
+
         order_data = OrderModel(
             timestamp=res["transactTime"],
             order_id=int(res["orderId"]),
@@ -235,7 +243,7 @@ class SpotLongDeal(DealAbstract):
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
-            price=float(res["price"]),
+            price=price,
             qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
@@ -254,7 +262,7 @@ class SpotLongDeal(DealAbstract):
         )
 
         # new deal parameters to replace previous
-        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_price = price
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = float(res["transactTime"])
 
@@ -458,6 +466,10 @@ class SpotLongDeal(DealAbstract):
             qty = round_numbers(balance, self.qty_precision)
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
+            price = float(res["price"])
+            if price == 0:
+                price = self.calculate_avg_price(res["fills"])
+
             order_data = OrderModel(
                 timestamp=int(res["transactTime"]),
                 order_id=res["orderId"],
@@ -465,14 +477,14 @@ class SpotLongDeal(DealAbstract):
                 pair=res["symbol"],
                 order_side=res["side"],
                 order_type=res["type"],
-                price=float(res["price"]),
+                price=price,
                 qty=float(res["origQty"]),
                 time_in_force=res["timeInForce"],
                 status=res["status"],
             )
 
             self.active_bot.orders.append(order_data)
-            self.active_bot.deal.closing_price = float(res["price"])
+            self.active_bot.deal.closing_price = price
             self.active_bot.deal.closing_qty = float(res["origQty"])
             self.active_bot.deal.closing_timestamp = round_timestamp(
                 res["transactTime"]
@@ -488,7 +500,7 @@ class SpotLongDeal(DealAbstract):
 
         return self.active_bot
 
-    def open_deal(self):
+    def open_deal(self) -> BotModel:
         """
         Bot activation requires:
 

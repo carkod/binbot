@@ -4,25 +4,25 @@ from database.utils import get_session
 from main import app
 from pytest import fixture
 from tests.model_mocks import (
-    mock_model_data,
-    id,
-    mock_model_data_without_orders,
     DealFactoryMock,
+    id,
 )
 from tests.table_mocks import mocked_db_data
-from fastapi.encoders import jsonable_encoder
 
 
 @fixture()
-def client(pairs=False) -> TestClient:
+def client() -> TestClient:
     session_mock = MagicMock()
     session_mock.connection.return_value.execute.return_value = MagicMock()
     session_mock.exec.return_value.first.return_value = mocked_db_data
-    session_mock.exec.return_value.all.return_value = [mocked_db_data]
+    session_mock.exec.return_value.unique.return_value.all.return_value = [
+        mocked_db_data
+    ]
     session_mock.get.return_value = mocked_db_data
     session_mock.add.return_value = MagicMock(return_value=None)
     session_mock.refresh.return_value = MagicMock(return_value=None)
     session_mock.commit.return_value = MagicMock(return_value=None)
+    session_mock.delete.return_value = MagicMock(return_value=None)
     app.dependency_overrides[get_session] = lambda: session_mock
     client = TestClient(app)
     return client
@@ -33,16 +33,22 @@ def test_get_one_by_id(client: TestClient):
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"] == jsonable_encoder(mock_model_data.model_dump())
+    assert content["data"]["pair"] == "ADXUSDC"
+    assert content["data"]["fiat"] == "USDC"
+    assert content["data"]["base_order_size"] == 15
+    assert content["data"]["cooldown"] == 360
 
 
 def test_get_one_by_symbol(client: TestClient):
-    symbol = "ADXUSDC"
+    symbol = "BTCUSDC"
     response = client.get(f"/bot/symbol/{symbol}")
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"] == jsonable_encoder(mock_model_data.model_dump())
+    assert content["data"]["pair"] == "ADXUSDC"
+    assert content["data"]["fiat"] == "USDC"
+    assert content["data"]["base_order_size"] == 15
+    assert content["data"]["cooldown"] == 360
 
 
 def test_get_bots(client: TestClient):
@@ -50,9 +56,12 @@ def test_get_bots(client: TestClient):
 
     assert response.status_code == 200
     content = response.json()
-    mock_data = jsonable_encoder(mock_model_data.model_dump())
     # Avoid testing internal objects
-    assert content["data"] == [mock_data]
+    # timestamps are generated
+    assert content["data"][0]["pair"] == "ADXUSDC"
+    assert content["data"][0]["fiat"] == "USDC"
+    assert content["data"][0]["base_order_size"] == 15
+    assert content["data"][0]["cooldown"] == 360
 
 
 def test_create_bot(client: TestClient):
@@ -84,7 +93,10 @@ def test_create_bot(client: TestClient):
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"] == mock_model_data_without_orders.model_dump()
+    assert content["data"]["pair"] == "ADXUSDC"
+    assert content["data"]["fiat"] == "USDC"
+    assert content["data"]["base_order_size"] == 15
+    assert content["data"]["cooldown"] == 360
 
 
 def test_edit_bot(client: TestClient):
@@ -116,18 +128,24 @@ def test_edit_bot(client: TestClient):
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"] == jsonable_encoder(mock_model_data.model_dump())
+    assert content["data"]["pair"] == "ADXUSDC"
+    assert content["data"]["fiat"] == "USDC"
+    assert content["data"]["base_order_size"] == 15
+    assert content["data"]["cooldown"] == 360
 
 
 def test_delete_bot():
     # Fix missing json arg for delete tests
     class CustomTestClient(TestClient):
         def delete_with_payload(self, **kwargs):
+            session_mock = MagicMock()
+            session_mock.exec.return_value.first.return_value = mocked_db_data
+            session_mock.delete.return_value = MagicMock(return_value=None)
+            app.dependency_overrides[get_session] = lambda: session_mock
             return self.request(method="DELETE", **kwargs)
 
     client = CustomTestClient(app)
-    payload = [id]
-    response = client.delete_with_payload(url="/bot", json=payload)
+    response = client.delete_with_payload(url="/bot", json=[id])
 
     assert response.status_code == 200
     content = response.json()
@@ -140,7 +158,10 @@ def test_activate_by_id(client: TestClient):
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"] == mock_model_data.model_dump()
+    assert content["data"]["pair"] == "ADXUSDC"
+    assert content["data"]["fiat"] == "USDC"
+    assert content["data"]["base_order_size"] == 15
+    assert content["data"]["cooldown"] == 360
 
 
 @patch("bots.routes.SpotLongDeal", DealFactoryMock)
@@ -149,7 +170,10 @@ def test_deactivate(client: TestClient):
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"] == mock_model_data.model_dump()
+    assert content["data"]["pair"] == "ADXUSDC"
+    assert content["data"]["fiat"] == "USDC"
+    assert content["data"]["base_order_size"] == 15
+    assert content["data"]["cooldown"] == 360
 
 
 def test_post_bot_errors_str(client: TestClient):

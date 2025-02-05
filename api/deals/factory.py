@@ -33,6 +33,17 @@ class DealAbstract(BaseDeal):
         self.active_bot = bot
         self.db_table = db_table
 
+    def calculate_avg_price(self, fills: list[dict]) -> float:
+        """
+        Calculate average price of fills
+        """
+        total_qty: float = 0
+        total_price: float = 0
+        for fill in fills:
+            total_qty += float(fill["qty"])
+            total_price += float(fill["price"]) * float(fill["qty"])
+        return total_price / total_qty
+
     def take_profit_order(self) -> BotModel:
         """
         take profit order (Binance take_profit)
@@ -63,15 +74,20 @@ class DealAbstract(BaseDeal):
         if "error" in res:
             raise TakeProfitError(res["error"])
 
+        price = float(res["price"])
+        if price == 0:
+            # Market orders return 0
+            price = self.calculate_avg_price(res["fills"])
+
         order_data = OrderModel(
-            timestamp=res["transactTime"],
-            order_id=res["orderId"],
+            timestamp=int(res["transactTime"]),
+            order_id=int(res["orderId"]),
             deal_type=DealType.take_profit,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
-            price=res["price"],
-            qty=res["origQty"],
+            price=price,
+            qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
         )
@@ -81,8 +97,7 @@ class DealAbstract(BaseDeal):
         )
 
         self.active_bot.orders.append(order_data)
-        self.active_bot.deal.take_profit_price = float(res["price"])
-        self.active_bot.deal.closing_price = float(res["price"])
+        self.active_bot.deal.closing_price = price
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = float(res["transactTime"])
         self.active_bot.status = Status.completed
@@ -118,16 +133,21 @@ class DealAbstract(BaseDeal):
                     qty=qty,
                 )
 
+                price = float(res["price"])
+                if price == 0:
+                    # Market orders return 0
+                    price = self.calculate_avg_price(res["fills"])
+
                 # Replace take_profit order
                 take_profit_order = OrderModel(
-                    timestamp=res["transactTime"],
-                    order_id=res["orderId"],
+                    timestamp=int(res["transactTime"]),
+                    order_id=int(res["orderId"]),
                     deal_type=DealType.take_profit,
                     pair=res["symbol"],
                     order_side=res["side"],
                     order_type=res["type"],
-                    price=res["price"],
-                    qty=res["origQty"],
+                    price=price,
+                    qty=float(res["origQty"]),
                     time_in_force=res["timeInForce"],
                     status=res["status"],
                 )
@@ -264,15 +284,20 @@ class DealAbstract(BaseDeal):
                 qty=qty,
             )
 
+        price = float(res["price"])
+        if price == 0:
+            # Market orders return 0
+            price = self.calculate_avg_price(res["fills"])
+
         order_data = OrderModel(
-            timestamp=res["transactTime"],
+            timestamp=int(res["transactTime"]),
             order_id=res["orderId"],
             deal_type=DealType.base_order,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
-            price=res["price"],
-            qty=res["origQty"],
+            price=price,
+            qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
         )
@@ -282,10 +307,10 @@ class DealAbstract(BaseDeal):
 
         self.active_bot.deal = DealModel(
             opening_timestamp=float(res["transactTime"]),
-            opening_price=float(res["price"]),
+            opening_price=price,
             opening_qty=float(res["origQty"]),
             current_price=float(res["price"]),
-            take_profit_price=tp_price,
+            take_profit_price=round_numbers(tp_price, self.price_precision),
             stop_loss_price=round_numbers(stop_loss_price, self.price_precision),
         )
 

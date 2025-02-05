@@ -98,18 +98,6 @@ class BotTableCrud:
         if end_date:
             statement = statement.where(BotTable.created_at <= end_date)
 
-        # Rethink cooldown filtering
-        # for now, include all inactive bots within a day
-        # if include_cooldown:
-        #     current_timestamp = timestamp()
-        #     cooldown_condition = or_(
-        #         current_timestamp - DealTable.sell_timestamp
-        #         < (BotTable.cooldown * 1000),
-        #         current_timestamp - BotTable.created_at < (BotTable.cooldown * 1000),
-        #     )
-
-        #     statement = statement.where(cooldown_condition)
-
         # sorting
         statement = statement.order_by(
             desc(BotTable.created_at),
