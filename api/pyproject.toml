@@ -1,0 +1,51 @@
+[project]
+name = "Binbot"
+version = "2.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "uvicorn",
+    "fastapi[standard]>=0.115.6",
+    "httpx",
+    "pymongo>=4.6.3",
+    "python-jose",
+    "passlib",
+    "numpy>=1.26.4",
+    "pandas>=2.2.3",
+    "requests>=2.28.1",
+    "websocket-client>=1.5.0",
+    "scipy>=1.10.0",
+    "requests-html>=0.10.0",
+    "py3cw>=0.0.39",
+    "apscheduler>=3.6.3",
+    "requests-cache>=1.2.0",
+    "kafka-python>=2.0.2",
+    "pyarrow>=15.0.2",
+    "py4j>=0.10.9",
+    "sqlalchemy>=2.0.30",
+    "sqlmodel",
+    "alembic",
+    "psycopg2",
+    "pydantic[email]",
+    "alembic-postgresql-enum",
+    "python-dotenv",
+    "psycopg",
+    "pybit",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.1.1",
+    "mongomock>=4.1.2",
+    "httpx",
+    "mypy",
+    "types-requests",
+    "coverage",
+    "ruff",
+]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
