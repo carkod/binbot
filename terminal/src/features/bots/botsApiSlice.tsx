@@ -5,7 +5,13 @@ import { userApiSlice } from "../userApiSlice";
 import type { Bot, BotEntity } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
 import { BotStatus } from "../../utils/enums";
-import { type GetBotsParams } from "./bots";
+import type {
+  CreateBotResponse,
+  DefaultBotsResponse,
+  EditBotParams,
+  SingleBotResponse,
+  GetBotsParams,
+} from "./bots";
 
 type GetBotsResponse = {
   bots: BotEntity;
@@ -15,7 +21,7 @@ type GetBotsResponse = {
 export const buildGetBotsPath = (
   status: string = BotStatus.ALL,
   startDate: number = weekAgo(),
-  endDate: number = new Date().getTime(),
+  endDate: number = new Date().getTime()
 ): string => {
   const params = new URLSearchParams({
     start_date: startDate.toString(),
@@ -40,8 +46,6 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
-        } else {
-          notifification("success", message);
         }
 
         const totalProfit = computeTotalProfit(data);
@@ -53,16 +57,15 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
     }),
     getSingleBot: build.query<SingleBotResponse, string>({
       query: (id) => ({
-        url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
+        url: `${import.meta.env.VITE_GET_BOTS}/${id}`,
         method: "GET",
         providesTags: (result) => [{ type: "bot", id: result.bot.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
-        } else {
-          notifification("success", message);
         }
+
         return {
           bot: data,
         };
@@ -70,10 +73,10 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
     }),
     createBot: build.mutation<CreateBotResponse, Bot>({
       query: (body) => ({
-        url: import.meta.env.VITE_GET_BOTS || "/bot",
+        url: import.meta.env.VITE_GET_BOTS,
         method: "POST",
         body: body,
-        providesTags: (result) => [{ type: "bot", id: id }],
+        providesTags: (result) => [{ type: "bot", id: body.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -86,7 +89,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
     }),
     editBot: build.mutation<CreateBotResponse, EditBotParams>({
       query: ({ body, id }) => ({
-        url: `${import.meta.env.VITE_GET_BOTS}/${id}` || "/bot",
+        url: `${import.meta.env.VITE_GET_BOTS}/${id}`,
         method: "PUT",
         body: body,
         invalidatesTags: (result) => [{ type: "bot", id: id }],
@@ -119,7 +122,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
     }),
     activateBot: build.query<DefaultBotsResponse, string>({
       query: (id) => ({
-        url: `${import.meta.env.VITE_ACTIVATE_BOT}/${id}` || "/bot/activate",
+        url: `${import.meta.env.VITE_ACTIVATE_BOT}/${id}`,
         method: "GET",
         invalidatesTags: (result) => [{ type: "bot", id: id }],
       }),
@@ -134,8 +137,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
     }),
     deactivateBot: build.mutation<DefaultBotsResponse, string>({
       query: (id: string) => ({
-        url:
-          `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}` || "/bot/deactivate",
+        url: `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}`,
         method: "DELETE",
         invalidatesTags: (result) => [{ type: "bot", id: id }],
       }),

@@ -11,7 +11,7 @@ export type LoginFormState = {
 };
 
 export const LoginForm: FC<{}> = () => {
-  const [login, { data: access_token }] = usePostLoginMutation();
+  const [login, { data: login_data }] = usePostLoginMutation();
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -43,7 +43,7 @@ export const LoginForm: FC<{}> = () => {
       setToken(token);
       navigate("/");
     }
-  }, [navigate, from, access_token]);
+  }, [navigate, from, login_data]);
 
   return (
     <Container className="my-4">

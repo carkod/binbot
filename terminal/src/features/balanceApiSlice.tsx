@@ -44,8 +44,6 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
-        } else {
-          notifification("success", message);
         }
 
         return data;
@@ -59,8 +57,6 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
-        } else {
-          notifification("success", message);
         }
 
         return data;
@@ -74,9 +70,8 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
-        } else {
-          notifification("success", message);
         }
+
         // Convert to % so graph is normalized
         data.dates.shift();
         let percentageSeries = {

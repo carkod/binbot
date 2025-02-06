@@ -6,10 +6,11 @@ import { getQuoteAsset } from "../api";
 
 export default function marginTrading(
   bot: Bot,
-  currentPrice: number,
+  currentPrice: number
 ): OrderLine[] {
   const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];
+  const qtyText = bot.deal ? String(bot.deal.opening_qty) : "";
 
   if (bot.base_order_size > 0 && currentPrice) {
     if (bot.deal.closing_price > 0) {
@@ -25,7 +26,7 @@ export default function marginTrading(
               : ""
           }`,
         ],
-        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        quantity: `${qtyText} ${quoteAsset}`,
         price: bot.deal.opening_price,
         color: dealColors.base_order,
       });
@@ -45,7 +46,7 @@ export default function marginTrading(
               : ""
           }`,
         ],
-        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        quantity: `${qtyText} ${quoteAsset}`,
         price: price,
         color: dealColors.base_order,
       });
@@ -57,7 +58,7 @@ export default function marginTrading(
           id: "trailling_profit",
           text: `Trail profit ${bot.take_profit}%`,
           tooltip: [bot.status, " Trace upward profit"],
-          quantity: `${bot.base_order_size} ${quoteAsset}`,
+          quantity: `${qtyText} ${quoteAsset}`,
           price: bot.deal.trailling_profit_price,
           color: dealColors.trailling_profit,
         });
@@ -68,7 +69,7 @@ export default function marginTrading(
           id: "trailling_stop_loss",
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${bot.base_order_size} ${quoteAsset}`,
+          quantity: `${qtyText} ${quoteAsset}`,
           price: bot.deal.trailling_stop_loss_price,
           color: dealColors.take_profit,
         });
@@ -82,7 +83,7 @@ export default function marginTrading(
         id: "trailling_profit",
         text: `Trail profit ${bot.trailling_profit}%`,
         tooltip: [bot.status, " Breakpoint to increase Take profit"],
-        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        quantity: `${qtyText} ${quoteAsset}`,
         price: bot.deal.trailling_profit_price,
         color: dealColors.trailling_profit,
         lineStyle: 2,
@@ -105,7 +106,7 @@ export default function marginTrading(
           id: "trailling_profit",
           text: `Take profit (trailling) ${bot.take_profit}%`,
           tooltip: [bot.status, " Breakpoint to increase Take profit"],
-          quantity: `${bot.base_order_size} ${quoteAsset}`,
+          quantity: `${qtyText} ${quoteAsset}`,
           price: bot.deal?.trailling_profit_price || traillingProfitPrice,
           color: dealColors.trailling_profit,
           lineStyle: 2,
@@ -133,7 +134,7 @@ export default function marginTrading(
         id: "take_profit",
         text: `Take profit ${bot.take_profit}% (Margin)`,
         tooltip: [bot.status, " Buy back Order "],
-        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        quantity: `${qtyText} ${quoteAsset}`,
         price: bot.deal.take_profit_price || price,
         color: dealColors.take_profit,
       });
@@ -144,7 +145,7 @@ export default function marginTrading(
         id: "take_profit",
         text: `Take profit ${bot.take_profit}% (Margin)`,
         tooltip: [bot.status, " Buy back Order "],
-        quantity: `${bot.base_order_size} ${quoteAsset}`,
+        quantity: `${qtyText} ${quoteAsset}`,
         price: price,
         color: dealColors.take_profit,
       });
@@ -162,7 +163,7 @@ export default function marginTrading(
       id: "stop_loss",
       text: `Stop Loss ${bot.stop_loss}%`,
       tooltip: [bot.status, " Buy back order "],
-      quantity: `${bot.base_order_size} ${quoteAsset}`,
+      quantity: `${qtyText} ${quoteAsset}`,
       price: stopLossPrice, // buy_profit * take_profit%
       color: "red",
     });

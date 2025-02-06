@@ -46,8 +46,6 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
-        } else {
-          notifification("success", message);
         }
 
         const historicalGLdata = {

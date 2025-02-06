@@ -13,7 +13,7 @@ from bots.models import (
     IResponseBase,
     ActivePairsResponse,
 )
-from typing import List, Union
+from typing import List, Union, Optional
 from tools.exceptions import BinanceErrors, BinbotErrors
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
@@ -27,16 +27,15 @@ bot_ta = TypeAdapter(BotModelResponse)
 @bot_blueprint.get("/bot", response_model=None, tags=["bots"])
 def get(
     status: Status = Status.all,
-    start_date: float | None = None,
-    end_date: float | None = None,
-    include_cooldown: bool = False,
+    start_date: Optional[int] = None,
+    end_date: Optional[int] = None,
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
 ):
     try:
         bots = BotTableCrud(session=session).get(
-            status, start_date, end_date, include_cooldown, limit, offset
+            status, start_date, end_date, limit, offset
         )
         # Has to be converted to BotModel to
         # be able to serialize nested objects
@@ -144,7 +143,7 @@ def delete(
         BotTableCrud(session=session).delete(bot_ids=id)
         return StandardResponse(message="Sucessfully deleted bot.")
     except ValidationError as error:
-        return StandardResponse(
+        return BotResponse(
             message="Failed to delete bot", data=error.json(), error=1
         )
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FC } from "react";
+import React, { useContext, useEffect, useState, type FC } from "react";
 import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
 import { useImmer } from "use-immer";
 import {
@@ -14,13 +14,19 @@ import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
 import { useAppDispatch } from "../hooks";
 import { BotStatus } from "../../utils/enums";
+import { SpinnerContext } from "../Layout";
 
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch();
   const currentTs = new Date().getTime();
   const oneWeekAgo = weekAgo();
-  const [removeBots] = useDeleteBotMutation();
-  const [deactivateBot] = useDeactivateBotMutation();
+  const { spinner, setSpinner } = useContext(SpinnerContext);
+  const [removeBots, { isLoading: isDeleting, isSuccess: isDeleted }] =
+    useDeleteBotMutation();
+  const [
+    deactivateBot,
+    { isLoading: isDeactivating, isSuccess: isDeactivated },
+  ] = useDeactivateBotMutation();
 
   // Component states
   const [selectedCards, selectCards] = useImmer([]);
@@ -35,6 +41,7 @@ export const BotsPage: FC<{}> = () => {
   const {
     refetch,
     data: props,
+    error,
     isFetching,
   } = useGetBotsQuery({
     status: filterStatus,
@@ -89,7 +96,7 @@ export const BotsPage: FC<{}> = () => {
         break;
     }
   };
-  const handleStartDate = (ts) => {
+  const handleStartDate = (ts: number) => {
     setStartDate(ts);
     if (ts > endDate) {
       setDateFilterError("Start date cannot be greater than end date");
@@ -98,7 +105,7 @@ export const BotsPage: FC<{}> = () => {
       dispatch(() => refetch());
     }
   };
-  const handleEndDate = (ts) => {
+  const handleEndDate = (ts: number) => {
     setEndDate(ts);
     if (ts < startDate) {
       setDateFilterError("End date cannot be less than start date");
@@ -109,104 +116,117 @@ export const BotsPage: FC<{}> = () => {
   };
 
   useEffect(() => {
-    if (isFetching) {
-      dispatch(setSpinner(true));
+    if (isFetching || isDeactivating || isDeleting) {
+      setSpinner(true);
     }
     if (props?.bots) {
-      dispatch(setSpinner(false));
+      setSpinner(false);
     }
-  }, [props?.bots, dispatch, isFetching, startDate, filterStatus, endDate]);
+  }, [
+    props?.bots,
+    dispatch,
+    isFetching,
+    startDate,
+    filterStatus,
+    endDate,
+    isDeactivating,
+    isDeleting,
+    isDeleted,
+    isDeactivated,
+  ]);
 
   return (
-    <Container fluid>
-      <div className="mb-3 d-flex flex-column flex-lg-row justify-content-between align-items-center">
-        <div id="bot-profits">
-          <h4>
-            {props?.bots?.ids.length > 0 && (
-              <Badge bg={props?.totalProfit > 0 ? "success" : "danger"}>
-                <i className="fas fa-building-columns" />{" "}
-                <span className="visually-hidden">Profit</span>
-                {(props?.totalProfit || 0) + "%"}
-              </Badge>
-            )}
-          </h4>
-        </div>
-        <div id="filters" className="mx-3 d-flex flex-column flex-md-row">
-          <Stack
-            direction="horizontal"
-            className="mx-3 d-flex flex-column flex-md-row"
-          >
-            <div className="p-3">
-              <BotsActions
-                defaultValue={bulkActions}
-                handleChange={(e) =>
-                  setBulkActions(e.target.value as BulkAction)
-                }
-              />
-            </div>
-            <div className="p-3">
-              <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
-            </div>
-          </Stack>
-          <Stack
-            direction="horizontal"
-            className="mx-3 d-flex flex-column flex-md-row"
-          >
-            <div className="p-3">
-              <BotsDateFilter
-                title="Filter by start date"
-                controlId="startDate"
-                selectedDate={startDate}
-                handleDateChange={handleStartDate}
-              />
-            </div>
-            <div className="p-3">
-              <BotsDateFilter
-                title="Filter by end date"
-                controlId="endDate"
-                selectedDate={endDate}
-                handleDateChange={handleEndDate}
-              />
-            </div>
-          </Stack>
-        </div>
-      </div>
-      <Row md="3" xs="1" lg="4">
-        {props?.bots?.ids.length > 0
-          ? Object.values(props?.bots?.entities).map((x, i) => (
-              <Col key={i}>
-                <BotCard
-                  botIndex={i}
-                  bot={x}
-                  selectedCards={selectedCards}
-                  handleDelete={handleDelete}
-                  handleSelection={handleSelection}
+    <SpinnerContext.Provider value={spinner}>
+      <Container fluid>
+        <div className="mb-3 d-flex flex-column flex-lg-row justify-content-between align-items-center">
+          <div id="bot-profits">
+            <h4>
+              {props?.bots?.ids.length > 0 && (
+                <Badge bg={props?.totalProfit > 0 ? "success" : "danger"}>
+                  <i className="fas fa-building-columns" />{" "}
+                  <span className="visually-hidden">Profit</span>
+                  {(props?.totalProfit || 0) + "%"}
+                </Badge>
+              )}
+            </h4>
+          </div>
+          <div id="filters" className="mx-3 d-flex flex-column flex-md-row">
+            <Stack
+              direction="horizontal"
+              className="mx-3 d-flex flex-column flex-md-row"
+            >
+              <div className="p-3">
+                <BotsActions
+                  defaultValue={bulkActions}
+                  handleChange={(e) =>
+                    setBulkActions(e.target.value as BulkAction)
+                  }
                 />
-              </Col>
-            ))
-          : ""}
-      </Row>
-      <ConfirmModal
-        show={!!botToDelete}
-        handleActions={confirmDelete}
-        primary={
-          <>
-            <i className="fa-solid fa-trash" />
-            <span className="visually-hidden">Delete</span>
-          </>
-        }
-        secondary={
-          <>
-            <i className="fa-solid fa-power-off" />
-            <span title="Deactivate" className="visually-hidden">
-              Deactivate
-            </span>
-          </>
-        }
-      >
-        To close orders, please deactivate. Deleting will only remove the bot.
-      </ConfirmModal>
-    </Container>
+              </div>
+              <div className="p-3">
+                <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
+              </div>
+            </Stack>
+            <Stack
+              direction="horizontal"
+              className="mx-3 d-flex flex-column flex-md-row"
+            >
+              <div className="p-3">
+                <BotsDateFilter
+                  title="Filter by start date"
+                  controlId="startDate"
+                  selectedDate={startDate}
+                  handleDateChange={handleStartDate}
+                />
+              </div>
+              <div className="p-3">
+                <BotsDateFilter
+                  title="Filter by end date"
+                  controlId="endDate"
+                  selectedDate={endDate}
+                  handleDateChange={handleEndDate}
+                />
+              </div>
+            </Stack>
+          </div>
+        </div>
+        <Row md="3" xs="1" lg="4">
+          {props?.bots?.ids.length > 0
+            ? Object.values(props?.bots?.entities).map((x, i) => (
+                <Col key={i}>
+                  <BotCard
+                    botIndex={i}
+                    bot={x}
+                    selectedCards={selectedCards}
+                    handleDelete={handleDelete}
+                    handleSelection={handleSelection}
+                  />
+                </Col>
+              ))
+            : ""}
+        </Row>
+        <ConfirmModal
+          show={!!botToDelete}
+          handleActions={confirmDelete}
+          primary={
+            <>
+              <i className="fa-solid fa-trash" />
+              <span className="visually-hidden">Delete</span>
+            </>
+          }
+          secondary={
+            <>
+              <i className="fa-solid fa-power-off" />
+              <span title="Deactivate" className="visually-hidden">
+                Deactivate
+              </span>
+            </>
+          }
+        >
+          To close orders, please deactivate. Deleting will only remove the bot.
+        </ConfirmModal>
+      </Container>
+    </SpinnerContext.Provider>
   );
 };
 

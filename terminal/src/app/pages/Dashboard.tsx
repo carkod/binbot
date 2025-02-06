@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type FC } from "react";
+import React, { useContext, useEffect, useState, type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
 import {
   useGetBenchmarkQuery,
@@ -14,23 +14,32 @@ import { listCssColors } from "../../utils/validations";
 import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import ReversalBarChart from "../components/ReversalBarChart";
+import { SpinnerContext } from "../Layout";
 
 export const DashboardPage: FC<{}> = () => {
-  const { data: accountData } = useGetEstimateQuery();
-  const { data: activeBotEntities } = useGetBotsQuery({
-    status: BotStatus.ACTIVE,
-  });
-  const { data: errorBotEntities } = useGetBotsQuery({
-    status: BotStatus.ACTIVE,
-  });
-  const { data: benchmark } = useGetBenchmarkQuery();
-  const { data: gainersLosersData } = useGainerLosersQuery();
-  const { data: gainersLosersSeries } = useGainerLosersSeriesQuery();
+  const { data: accountData, isLoading: loadingEstimates } =
+    useGetEstimateQuery();
+  const { data: activeBotEntities, isLoading: loadingActiveBots } =
+    useGetBotsQuery({
+      status: BotStatus.ACTIVE,
+    });
+  const { data: errorBotEntities, isLoading: loadingErrorBots } =
+    useGetBotsQuery({
+      status: BotStatus.ACTIVE,
+    });
+  const { data: benchmark, isLoading: loadingBenchmark } =
+    useGetBenchmarkQuery();
+  const { data: gainersLosersData, isLoading: loadingGL } =
+    useGainerLosersQuery();
+  const { data: gainersLosersSeries, isLoading: loadingGLSeries } =
+    useGainerLosersSeriesQuery();
 
   const [activeBotsCount, setActiveBotsCount] = useState(0);
   const [errorBotsCount, setErrorBotsCount] = useState(0);
   const [revenue, setRevenue] = useState<number>(0);
   const [percentageRevenue, setPercentageRevenue] = useState<number>(0);
+
+  const { spinner, setSpinner } = useContext(SpinnerContext);
 
   useEffect(() => {
     if (activeBotEntities) {
@@ -43,11 +52,24 @@ export const DashboardPage: FC<{}> = () => {
     if (benchmark) {
       if (benchmark.benchmarkData) {
         const { revenue, percentage } = calculateTotalRevenue(
-          benchmark.benchmarkData,
+          benchmark.benchmarkData
         );
         setRevenue(revenue);
         setPercentageRevenue(percentage);
       }
+    }
+
+    if (
+      !loadingActiveBots &&
+      !loadingBenchmark &&
+      !loadingEstimates &&
+      !loadingErrorBots &&
+      !loadingGL &&
+      !loadingGLSeries
+    ) {
+      setSpinner(false);
+    } else {
+      setSpinner(true);
     }
   }, [
     accountData,
@@ -55,6 +77,12 @@ export const DashboardPage: FC<{}> = () => {
     errorBotEntities,
     benchmark,
     gainersLosersData,
+    loadingActiveBots,
+    loadingBenchmark,
+    loadingEstimates,
+    loadingErrorBots,
+    loadingGL,
+    loadingGLSeries,
   ]);
 
   return (

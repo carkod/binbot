@@ -1,4 +1,4 @@
-import { type FocusEvent, type FC } from "react";
+import React, { type FC } from "react";
 import { Form } from "react-bootstrap";
 
 type SettingsInputProps = {
@@ -6,7 +6,7 @@ type SettingsInputProps = {
   name?: string;
   label: string;
   handleChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleBlur?: (e: FocusEvent<HTMLInputElement>) => void;
+  handleBlur?: (e: FocusEvent) => void;
   errorMsg?: string;
   infoText?: string;
   type?: "text" | "number";

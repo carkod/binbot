@@ -95,14 +95,16 @@ def zero_remainder(x):
             number += x
 
 
-def round_timestamp(ts: float, decimals: int = 0) -> int:
+def round_timestamp(ts: int | float) -> int:
     """
     Round millisecond timestamps to always 13 digits
     this is the universal format that JS and Python accept
     """
     digits = int(math.log10(ts)) + 1
-    if digits > 10:
-        return int(round_numbers(ts * 1000, decimals))
+    if digits > 13:
+        decimals = digits - 13
+        multiplier = 10 ** decimals
+        return int(round_numbers(ts * multiplier, decimals))
     else:
         return int(ts)
 
@@ -137,3 +139,10 @@ def sec_to_ms(sec: int) -> int:
     to parse dates correctly from timestamps
     """
     return sec * 1000
+
+
+def ts_to_humandate(ts: int) -> str:
+    """
+    Convert timestamp to human-readable date
+    """
+    return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")

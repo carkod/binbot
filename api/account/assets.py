@@ -6,7 +6,7 @@ from database.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from deals.factory import DealAbstract
 from tools.handle_error import json_response, json_response_error, json_response_message
-from tools.round_numbers import round_numbers, ts_to_day, round_timestamp
+from tools.round_numbers import round_numbers, ts_to_day, round_timestamp, ts_to_humandate
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.enum_definitions import Strategy
 from database.bot_crud import BotTableCrud
@@ -166,7 +166,8 @@ class Assets(Account):
                     balances_series_diff.append(
                         float(balance_series[index].estimated_total_fiat)
                     )
-                    balances_series_dates.append(item.id // 1000)
+                    human_date = ts_to_humandate(item.id // 1000000)
+                    balances_series_dates.append(human_date)
                     balance_btc_diff.append(float(klines[btc_index][4]))
             else:
                 continue
@@ -318,7 +319,7 @@ class Assets(Account):
         if not bot:
             return bot
 
-        active_bot = BotModel.model_validate(bot)
+        active_bot = BotModel.dump_from_table(bot)
         deal = DealAbstract(active_bot, db_table=BotTable)
 
         if market == "margin":

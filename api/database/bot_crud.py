@@ -75,7 +75,6 @@ class BotTableCrud:
         status: Status | None = None,
         start_date: float | None = None,
         end_date: float | None = None,
-        include_cooldown=False,
         limit: int = 200,
         offset: int = 0,
     ) -> Sequence[BotTable]:
@@ -89,14 +88,14 @@ class BotTableCrud:
         """
         statement = select(BotTable)
 
-        if status and status in BinbotEnums.statuses:
+        if status and status in BinbotEnums.statuses and status != Status.all:
             statement = statement.where(BotTable.status == status)
 
         if start_date:
-            statement = statement.where(BotTable.created_at >= start_date)
+            statement = statement.where(BotTable.created_at >= int(start_date))
 
         if end_date:
-            statement = statement.where(BotTable.created_at <= end_date)
+            statement = statement.where(BotTable.created_at <= int(end_date))
 
         # sorting
         statement = statement.order_by(

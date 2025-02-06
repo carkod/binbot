@@ -148,21 +148,21 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
       # Setup Python (faster than using Python container)
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install pipenv
-        run: python3 -m pip install pipenv
-      - name: Install dependencies
+          python-version-file: "./api/.python-version"
+
+      - name: Install the project
         run: |
-          pipenv install --dev --system --deploy --ignore-pipfile --clear
-          pipenv install httpx coverage
+          uv sync --all-extras --dev
       - name: Run tests
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
-        run: coverage run -m pytest .
+        run: uv run coverage run -m pytest .
 
   python-linting:
     name: Python code linting
@@ -173,21 +173,21 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
       # Setup Python (faster than using Python container)
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install pipenv
-        run: python3 -m pip install pipenv
-      - name: Install dependencies
-        run: |
-          pipenv install --dev --system --deploy --ignore-pipfile --clear
-          pipenv install httpx
+          python-version-file: "./api/.python-version"
+      - name: Install the project
+        run: uv sync --all-extras --dev
       - name: Run linters
         run: |
-          pipenv run ruff check .
-          pipenv run mypy .
+          uv run ruff check .
+          uv run mypy .
 
   frontend-tests:
     name: React app tests

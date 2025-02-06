@@ -155,7 +155,7 @@ class BaseDeal(OrderController):
         """
         all_orders = self.get_all_orders(
             self.active_bot.pair,
-            start_time=float(self.active_bot.deal.opening_timestamp),
+            start_time=int(self.active_bot.deal.opening_timestamp),
         )
         for order in all_orders:
             if (
