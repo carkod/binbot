@@ -137,3 +137,10 @@ def sec_to_ms(sec: int) -> int:
     to parse dates correctly from timestamps
     """
     return sec * 1000
+
+
+def ts_to_humandate(ts: int) -> str:
+    """
+    Convert timestamp to human-readable date
+    """
+    return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
