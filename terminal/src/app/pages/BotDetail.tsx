@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import React, { useContext, type FC } from "react";
 import { useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
 import { useMatch, useParams } from "react-router";
@@ -12,14 +12,19 @@ import LogsInfo from "../components/LogsInfo";
 import BalanceAnalysis from "../components/BalanceAnalysis";
 import { useGetEstimateQuery } from "../../features/balanceApiSlice";
 import { singleBot } from "../../features/bots/botInitialState";
+import { SpinnerContext } from "../Layout";
 
 export const BotDetail: FC<{}> = () => {
   const { id } = useParams();
   const matchNewRoute = useMatch("/bots/new");
   const dispatch = useAppDispatch();
   const { bot } = useAppSelector(selectBot);
-  const { data } = useGetSingleBotQuery(id, { skip: Boolean(!id) });
-  const { data: accountData } = useGetEstimateQuery();
+  const { data, isLoading: loadingBot } = useGetSingleBotQuery(id, {
+    skip: Boolean(!id),
+  });
+  const { data: accountData, isLoading: loadingEstimates } =
+    useGetEstimateQuery();
+  const { spinner, setSpinner } = useContext(SpinnerContext);
 
   useEffect(() => {
     if (data && !matchNewRoute) {
@@ -28,10 +33,16 @@ export const BotDetail: FC<{}> = () => {
       dispatch(
         setBot({
           bot: singleBot,
-        }),
+        })
       );
     }
-  }, [data, matchNewRoute, dispatch]);
+
+    if (!loadingBot && !loadingEstimates) {
+      setSpinner(false);
+    } else {
+      setSpinner(true);
+    }
+  }, [data, matchNewRoute, dispatch, loadingBot, loadingEstimates]);
 
   return (
     <div className="content">

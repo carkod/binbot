@@ -1,8 +1,8 @@
+import React, { type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
-import { type FC } from "react";
 import { type BalanceEstimateData } from "../../features/balanceApiSlice";
 
-const accountDataAnalysis: FC<{
+const BalanceAnalysis: FC<{
   accountData: BalanceEstimateData;
 }> = ({ accountData }) => {
   return (
@@ -59,4 +59,4 @@ const accountDataAnalysis: FC<{
   );
 };
 
-export default accountDataAnalysis;
+export default BalanceAnalysis;

@@ -1,4 +1,4 @@
-import { type FC, useEffect, useState } from "react";
+import React, { type FC, useContext, useEffect, useState } from "react";
 import {
   Badge,
   Col,
@@ -20,6 +20,7 @@ import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useParams } from "react-router";
+import { SpinnerContext } from "../Layout";
 
 interface ErrorsState {
   pair?: string;
@@ -30,7 +31,8 @@ const BaseOrderTab: FC = () => {
   const dispatch: AppDispatch = useAppDispatch();
   const { data } = useGetSymbolsQuery();
   const { bot } = useAppSelector(selectBot);
-  const { data: autotradeSettings } = useGetSettingsQuery();
+  const { data: autotradeSettings, isLoading: loadingSettings } =
+    useGetSettingsQuery();
   const [quoteAsset, setQuoteAsset] = useState<string>("");
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
@@ -50,6 +52,7 @@ const BaseOrderTab: FC = () => {
       strategy: bot.strategy,
     },
   });
+  const { spinner, setSpinner } = useContext(SpinnerContext);
 
   const addMin = () => {
     dispatch(setField({ name: "base_order_size", value: 0.001 }));
@@ -112,6 +115,12 @@ const BaseOrderTab: FC = () => {
       setCurrentPrice(bot.deal.current_price);
     }
 
+    if (!loadingSettings && autotradeSettings) {
+      setSpinner(false);
+    } else {
+      setSpinner(true);
+    }
+
     return () => unsubscribe();
   }, [
     data,
@@ -125,6 +134,7 @@ const BaseOrderTab: FC = () => {
     dispatch,
     symbol,
     watch,
+    loadingSettings,
   ]);
 
   return (

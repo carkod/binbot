@@ -5,7 +5,13 @@ import { userApiSlice } from "../userApiSlice";
 import type { Bot, BotEntity } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
 import { BotStatus } from "../../utils/enums";
-import type { CreateBotResponse, DefaultBotsResponse, EditBotParams, SingleBotResponse, GetBotsParams } from "./bots";
+import type {
+  CreateBotResponse,
+  DefaultBotsResponse,
+  EditBotParams,
+  SingleBotResponse,
+  GetBotsParams,
+} from "./bots";
 
 type GetBotsResponse = {
   bots: BotEntity;
@@ -15,7 +21,7 @@ type GetBotsResponse = {
 export const buildGetBotsPath = (
   status: string = BotStatus.ALL,
   startDate: number = weekAgo(),
-  endDate: number = new Date().getTime(),
+  endDate: number = new Date().getTime()
 ): string => {
   const params = new URLSearchParams({
     start_date: startDate.toString(),
@@ -40,8 +46,6 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
-        } else {
-          notifification("success", message);
         }
 
         const totalProfit = computeTotalProfit(data);
@@ -60,9 +64,8 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
-        } else {
-          notifification("success", message);
         }
+
         return {
           bot: data,
         };
@@ -134,8 +137,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
     }),
     deactivateBot: build.mutation<DefaultBotsResponse, string>({
       query: (id: string) => ({
-        url:
-          `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}`,
+        url: `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}`,
         method: "DELETE",
         invalidatesTags: (result) => [{ type: "bot", id: id }],
       }),
