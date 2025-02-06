@@ -75,7 +75,6 @@ class BotTableCrud:
         status: Status | None = None,
         start_date: float | None = None,
         end_date: float | None = None,
-        include_cooldown=False,
         limit: int = 200,
         offset: int = 0,
     ) -> Sequence[BotTable]:
@@ -93,10 +92,10 @@ class BotTableCrud:
             statement = statement.where(BotTable.status == status)
 
         if start_date:
-            statement = statement.where(BotTable.created_at >= start_date)
+            statement = statement.where(BotTable.created_at >= int(start_date * 1000))
 
         if end_date:
-            statement = statement.where(BotTable.created_at <= end_date)
+            statement = statement.where(BotTable.created_at <= int(end_date * 1000))
 
         # sorting
         statement = statement.order_by(
