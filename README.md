@@ -8,14 +8,16 @@
 
 ## Running back-end api
 
-1. Run `pipenv shell` to activate the virtual environment
+1. Run `uv sync` to activate the virtual environment
 2. Comment out api service and `docker-compose up -d`
 3. Run vscode debugger to start the FastAPI application
 
-New packages or installing from scratch:
+### Back-end api developer tooling
 
-- `pipenv lock --clear`
-- `pipenv install`
+- For tests: `uv run pytest api/` or use `.vscode` folder config
+- For linting, recommended vscode plugins, else `uv run ruff format api/` and `uv run mypy api/`.
+- Install new dependencies with: `uv add <package-name>`
+- Formatting with `uv run format` and linting with `uv run lint`
 
 ## Running front-end web app
 
@@ -23,7 +25,7 @@ New packages or installing from scratch:
 2. Run `npm start`
 3. Attach vscode debugger if needed
 
-## Deployment
+## Manual Deployment
 
 1. Merge changes to master
 2. Test on local:
@@ -33,6 +35,8 @@ New packages or installing from scratch:
 - Publish to docker hub `docker build --tag binbot . && docker tag binbot carloswufei/binbot:latest && docker push carloswufei/binbot`
 
 3. Wait for check to pass. Github action will publish to Docker Hub
+
+### Additional steps
 
 If docker-compose doesn't exist: 3. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com`
 4. Modify details to match production needs
