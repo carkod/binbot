@@ -174,7 +174,7 @@ class SpotLongDeal(DealAbstract):
         self.active_bot.orders.append(stop_loss_order)
         self.active_bot.deal.closing_price = price
         self.active_bot.deal.closing_qty = float(res["origQty"])
-        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
         msg = "Completed Stop loss."
         if self.active_bot.margin_short_reversal:
             msg += " Scheduled to switch strategy"
@@ -264,7 +264,7 @@ class SpotLongDeal(DealAbstract):
         # new deal parameters to replace previous
         self.active_bot.deal.closing_price = price
         self.active_bot.deal.closing_qty = float(res["origQty"])
-        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
 
         self.active_bot.status = Status.completed
         self.active_bot.logs.append(
@@ -322,10 +322,9 @@ class SpotLongDeal(DealAbstract):
                 )
 
                 # Avoid duplicate logs
-                trailling_profit_price = self.active_bot.deal.trailling_profit_price
+                old_trailling_profit_price = self.active_bot.deal.trailling_profit_price
+                old_trailling_stop_loss = self.active_bot.deal.trailling_stop_loss_price
 
-                # Update deal take_profit
-                self.active_bot.deal.take_profit_price = new_take_profit
                 # take_profit but for trailling, to avoid confusion
                 # trailling_profit_price always be > trailling_stop_loss_price
                 self.active_bot.deal.trailling_profit_price = new_take_profit
@@ -342,12 +341,14 @@ class SpotLongDeal(DealAbstract):
                         new_trailling_stop_loss
                     )
 
-                if (
-                    self.active_bot.deal.trailling_profit_price
-                    != new_trailling_stop_loss
-                ):
+                if old_trailling_stop_loss != new_trailling_stop_loss:
                     self.active_bot.logs.append(
                         f"Updated trailling_stop_loss_price to {self.active_bot.deal.trailling_stop_loss_price}"
+                    )
+
+                if old_trailling_profit_price != new_take_profit:
+                    self.active_bot.logs.append(
+                        f"Updated trailling_profit_price to {self.active_bot.deal.trailling_profit_price}"
                     )
 
                 self.controller.save(self.active_bot)

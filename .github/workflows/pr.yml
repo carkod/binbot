@@ -173,7 +173,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-      # Setup Python (faster than using Python container)
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:

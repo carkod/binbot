@@ -26,7 +26,7 @@ export default function spotTrading(
               : ""
           }`,
         ],
-        quantity: qtyText,
+        quantity: `${qtyText} ${quoteAsset}`,
         price: bot.deal.opening_price,
         color: dealColors.base_order,
       });

@@ -3,7 +3,7 @@ from database.models.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import DealType, OrderSide, Status, Strategy
 from tools.exceptions import TakeProfitError
-from tools.round_numbers import round_numbers
+from tools.round_numbers import round_numbers, round_timestamp
 from deals.base import BaseDeal
 from deals.models import DealModel
 from database.paper_trading_crud import PaperTradingTableCrud
@@ -99,7 +99,7 @@ class DealAbstract(BaseDeal):
         self.active_bot.orders.append(order_data)
         self.active_bot.deal.closing_price = price
         self.active_bot.deal.closing_qty = float(res["origQty"])
-        self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
         self.active_bot.status = Status.completed
 
         bot = self.controller.save(self.active_bot)
@@ -306,7 +306,7 @@ class DealAbstract(BaseDeal):
         tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
 
         self.active_bot.deal = DealModel(
-            opening_timestamp=float(res["transactTime"]),
+            opening_timestamp=int(res["transactTime"]),
             opening_price=price,
             opening_qty=float(res["origQty"]),
             current_price=float(res["price"]),

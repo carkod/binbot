@@ -346,7 +346,7 @@ class MarginDeal(DealAbstract):
                 self.active_bot.orders.append(sell_back_order)
                 self.active_bot.deal.closing_price = price
                 self.active_bot.deal.closing_qty = float(res["origQty"])
-                self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+                self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
                 self.active_bot.logs.append("Margin_short bot repaid, deal completed.")
 
             # Order and deal section completed, back to bot level
@@ -574,7 +574,7 @@ class MarginDeal(DealAbstract):
 
             self.active_bot.deal.closing_price = price
             self.active_bot.deal.closing_qty = float(res["origQty"])
-            self.active_bot.deal.closing_timestamp = float(res["transactTime"])
+            self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
 
             self.active_bot.logs.append("Completed Stop loss order")
             self.active_bot.status = Status.completed

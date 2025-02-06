@@ -13,7 +13,7 @@ from bots.models import (
     IResponseBase,
     ActivePairsResponse,
 )
-from typing import List, Union
+from typing import List, Union, Optional
 from tools.exceptions import BinanceErrors, BinbotErrors
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
@@ -27,8 +27,8 @@ bot_ta = TypeAdapter(BotModelResponse)
 @bot_blueprint.get("/bot", response_model=None, tags=["bots"])
 def get(
     status: Status = Status.all,
-    start_date: float | None = None,
-    end_date: float | None = None,
+    start_date: Optional[int] = None,
+    end_date: Optional[int] = None,
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),

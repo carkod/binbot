@@ -92,10 +92,10 @@ class BotTableCrud:
             statement = statement.where(BotTable.status == status)
 
         if start_date:
-            statement = statement.where(BotTable.created_at >= int(start_date * 1000))
+            statement = statement.where(BotTable.created_at >= int(start_date))
 
         if end_date:
-            statement = statement.where(BotTable.created_at <= int(end_date * 1000))
+            statement = statement.where(BotTable.created_at <= int(end_date))
 
         # sorting
         statement = statement.order_by(

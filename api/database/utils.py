@@ -25,7 +25,7 @@ def independent_session() -> Session:
 
 def timestamp() -> int:
     ts = time() * 1000
-    rounded_ts = round_timestamp(ts, 0)
+    rounded_ts = round_timestamp(ts)
     return rounded_ts
 
 
