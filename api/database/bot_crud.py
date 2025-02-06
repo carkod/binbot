@@ -88,7 +88,7 @@ class BotTableCrud:
         """
         statement = select(BotTable)
 
-        if status and status in BinbotEnums.statuses:
+        if status and status in BinbotEnums.statuses and status != Status.all:
             statement = statement.where(BotTable.status == status)
 
         if start_date:
