@@ -184,6 +184,8 @@ class MarginDeal(DealAbstract):
                     symbol=self.active_bot.pair,
                     amount=1,
                 )
+                self.enable_isolated_margin_account(symbol=self.active_bot.pair)
+                pass
 
         # Given USDC amount we want to buy,
         # how much can we buy?
@@ -204,6 +206,7 @@ class MarginDeal(DealAbstract):
                     amount=self.active_bot.base_order_size,
                 )
             except BinanceErrors as error:
+                self.controller.update_logs(error.message, self.active_bot)
                 if error.code == -3041:
                     self.terminate_failed_transactions()
                     raise MarginShortError("Spot balance is not enough")
@@ -215,6 +218,7 @@ class MarginDeal(DealAbstract):
             loan_created = self.create_margin_loan(
                 asset=asset, symbol=self.active_bot.pair, amount=qty
             )
+            self.controller.update_logs("Loan created", self.active_bot)
         except BinanceErrors as error:
             # System does not have enough money to lend
             # transfer back and left client know (raise exception again)

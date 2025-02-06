@@ -319,7 +319,7 @@ class Assets(Account):
         if not bot:
             return bot
 
-        active_bot = BotModel.model_validate(bot)
+        active_bot = BotModel.dump_from_table(bot)
         deal = DealAbstract(active_bot, db_table=BotTable)
 
         if market == "margin":
