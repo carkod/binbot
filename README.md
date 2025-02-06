@@ -25,6 +25,12 @@
 2. Run `npm start`
 3. Attach vscode debugger if needed
 
+### Front-end tooling
+- `npm run build` to test a production bundle locally
+- `npm run test` to run unit tests
+- `npm run format` to prettier format files, although this should be set up with the vscode prettier plugin
+
+
 ## Manual Deployment
 
 1. Merge changes to master
