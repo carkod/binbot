@@ -344,10 +344,10 @@ class SpotLongDeal(DealAbstract):
 
                 if (
                     self.active_bot.deal.trailling_profit_price
-                    != trailling_profit_price
+                    != new_trailling_stop_loss
                 ):
                     self.active_bot.logs.append(
-                        f"Updated {self.active_bot.pair} trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}"
+                        f"Updated trailling_stop_loss_price to {self.active_bot.deal.trailling_stop_loss_price}"
                     )
 
                 self.controller.save(self.active_bot)

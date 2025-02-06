@@ -7,7 +7,7 @@ export interface LoginCredentials {
   password: string;
 }
 
-interface LoginResponsePayload {
+export interface LoginResponsePayload {
   email: string;
   expires: number;
   access_token: string;
