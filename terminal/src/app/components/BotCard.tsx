@@ -1,4 +1,4 @@
-import { type FC } from "react";
+import React, { type FC } from "react";
 import { Badge, Button, Card, Col, Container, Row } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import { type Bot } from "../../features/bots/botInitialState";

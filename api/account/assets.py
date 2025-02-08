@@ -6,7 +6,12 @@ from database.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from deals.factory import DealAbstract
 from tools.handle_error import json_response, json_response_error, json_response_message
-from tools.round_numbers import round_numbers, ts_to_day, round_timestamp, ts_to_humandate
+from tools.round_numbers import (
+    round_numbers,
+    ts_to_day,
+    round_timestamp,
+    ts_to_humandate,
+)
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.enum_definitions import Strategy
 from database.bot_crud import BotTableCrud
@@ -166,7 +171,7 @@ class Assets(Account):
                     balances_series_diff.append(
                         float(balance_series[index].estimated_total_fiat)
                     )
-                    human_date = ts_to_humandate(item.id // 1000000)
+                    human_date = ts_to_humandate(item.id // 1000)
                     balances_series_dates.append(human_date)
                     balance_btc_diff.append(float(klines[btc_index][4]))
             else:

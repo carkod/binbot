@@ -3,6 +3,7 @@ from database.utils import timestamp
 from sqlalchemy import BigInteger, Column
 from pydantic import field_validator
 
+
 class SymbolTable(SQLModel, table=True):
     __tablename__ = "symbol"
 
@@ -30,7 +31,9 @@ class SymbolTable(SQLModel, table=True):
     min_notional: float = Field(default=0, description="Minimum price x qty value")
     cooldown: int = Field(default=0, description="Time in seconds between trades")
     cooldown_start_ts: int = Field(
-        default=0, description="Timestamp when cooldown started in milliseconds"
+        default=0,
+        description="Timestamp when cooldown started in milliseconds",
+        sa_type=BigInteger,
     )
 
     @field_validator("cooldown", "cooldown_start_ts")
@@ -41,7 +44,7 @@ class SymbolTable(SQLModel, table=True):
         """
         if value > 0 and cls.cooldown_start_ts == 0:
             raise ValueError("cooldown_start_ts is required when cooldown is filled")
-    
+
         if value > 0 and cls.cooldown == 0:
             raise ValueError("cooldown is required when cooldown timestamp is filled")
 

@@ -143,9 +143,7 @@ def delete(
         BotTableCrud(session=session).delete(bot_ids=id)
         return StandardResponse(message="Sucessfully deleted bot.")
     except ValidationError as error:
-        return BotResponse(
-            message="Failed to delete bot", data=error.json(), error=1
-        )
+        return BotResponse(message="Failed to delete bot", data=error.json(), error=1)
 
 
 @bot_blueprint.get("/bot/activate/{id}", response_model=BotResponse, tags=["bots"])

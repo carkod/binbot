@@ -1,4 +1,4 @@
-import { useEffect, useState, type FC } from "react";
+import React, { useEffect, useState, type FC } from "react";
 import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import { useImmer } from "use-immer";

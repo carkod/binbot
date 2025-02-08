@@ -12,11 +12,16 @@ import type {
   SingleBotResponse,
   GetBotsParams,
 } from "./bots";
+import { type StandardResponse } from "../../utils/api.types";
 
 type GetBotsResponse = {
   bots: BotEntity;
   totalProfit: number;
 };
+
+interface BotResponse extends StandardResponse {
+  data: Bot[];
+}
 
 export const buildGetBotsPath = (
   status: string = BotStatus.ALL,
@@ -110,14 +115,14 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         body: ids,
         invalidatesTags: ["bots"],
       }),
-      transformResponse: ({ botId, message, error }, meta, arg) => {
+      transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
         } else {
           notifification("success", message);
         }
         // Return payload to update UI
-        return arg;
+        return data;
       },
     }),
     activateBot: build.query<DefaultBotsResponse, string>({

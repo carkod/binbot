@@ -42,9 +42,6 @@ export const userApiSlice = createApi({
         body: body,
         formData: true,
       }),
-      transformErrorResponse: (error) => {
-        notifification("error", error.data.message);
-      },
       transformResponse: ({ data, message, error }) => {
         if (error && error === 1) {
           notifification("error", message);

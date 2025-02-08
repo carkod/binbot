@@ -12,7 +12,7 @@ const rootReducer = combineSlices(
   layoutSlice,
   botSlice,
   binanceApiSlice,
-  autotradeSettingsSlice,
+  autotradeSettingsSlice
 );
 
 export type RootState = ReturnType<typeof rootReducer>;

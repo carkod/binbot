@@ -1,7 +1,7 @@
 from typing import Optional, Sequence
 from tools.handle_error import StandardResponse
 from database.models.symbol_table import SymbolTable
-from pydantic import Field
+from pydantic import Field, BaseModel
 
 
 class SymbolsResponse(StandardResponse):
@@ -10,3 +10,11 @@ class SymbolsResponse(StandardResponse):
 
 class GetOneSymbolResponse(StandardResponse):
     data: Optional[SymbolTable] = Field(default=None)
+
+
+class SymbolPayload(BaseModel):
+    id: str
+    blacklist_reason: str = ""
+    active: bool = True
+    cooldown: int = 0
+    cooldown_start_ts: int = 0

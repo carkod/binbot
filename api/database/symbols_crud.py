@@ -4,6 +4,7 @@ from database.models.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
 from apis import BinanceApi
+from symbols.models import SymbolPayload
 
 
 class SymbolsCrud:
@@ -82,30 +83,30 @@ class SymbolsCrud:
 
     def edit_symbol_item(
         self,
-        symbol: str,
-        active: bool,
-        reason: Optional[str] = None,
-        price_precision: int = 0,
-        qty_precision: int = 0,
-        min_notional: float = 0,
+        data: SymbolPayload,
     ):
         """
-        Edit a blacklisted item
+        Edit a blacklisted item.
+
+        Editable fields are different from SymbolTable
+        fields like qty_precision, price_precision, etc.
+        should be given by the exchange not modified
+        by clients/users, it can lead to inconsistencies across
+        the entire API.
         """
-        symbol_model = self.get_symbol(symbol)
-        symbol_model.active = active
 
-        if reason:
-            symbol_model.blacklist_reason = reason
+        data = SymbolPayload.model_validate(data)
+        symbol_model = self.get_symbol(data.id)
+        symbol_model.active = data.active
 
-        if price_precision > 0:
-            symbol_model.price_precision = price_precision
+        if data.blacklist_reason:
+            symbol_model.blacklist_reason = data.blacklist_reason
 
-        if qty_precision > 0:
-            symbol_model.qty_precision = qty_precision
+        if data.cooldown:
+            symbol_model.cooldown = data.cooldown
 
-        if min_notional > 0:
-            symbol_model.min_notional = min_notional
+        if data.cooldown_start_ts:
+            symbol_model.cooldown_start_ts = data.cooldown_start_ts
 
         self.session.add(symbol_model)
         self.session.commit()
