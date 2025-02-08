@@ -43,9 +43,20 @@ dev = [
     "ruff",
 ]
 
+
+[project.urls]
+Documentation = "https://carkod.github.io/binbot/"
+Repository = "https://github.com/carkod/binbot"
+
+
 [tool.uv]
 package = false
 
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"
+
+[project.scripts]
+format = "ruff format api/"
+lint = "ruff check api/ && mypy check api/"
+
