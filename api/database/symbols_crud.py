@@ -49,11 +49,15 @@ class SymbolsCrud:
     def add_symbol(
         self,
         symbol: str,
+        quote_asset: str,
+        base_asset: str,
         active: bool = True,
         reason: Optional[str] = "",
         price_precision: int = 0,
         qty_precision: int = 0,
         min_notional: float = 0,
+        cooldown: int = 0,
+        cooldown_start_ts: int = 0,
     ):
         """
         Add a new symbol
@@ -65,6 +69,10 @@ class SymbolsCrud:
             price_precision=price_precision,
             qty_precision=qty_precision,
             min_notional=min_notional,
+            quote_asset=quote_asset,
+            base_asset=base_asset,
+            cooldown=cooldown,
+            cooldown_start_ts=cooldown_start_ts,
         )
         self.session.add(symbol)
         self.session.commit()
@@ -160,4 +168,6 @@ class SymbolsCrud:
                     price_precision=price_precision,
                     qty_precision=qty_precision,
                     min_notional=float(min_notional),
+                    quote_asset=item["quoteAsset"],
+                    base_asset=item["baseAsset"],
                 )

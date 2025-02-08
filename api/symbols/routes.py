@@ -5,10 +5,10 @@ from database.utils import get_session
 from sqlmodel import Session
 from tools.handle_error import StandardResponse, BinbotErrors
 
-research_blueprint = APIRouter()
+symbols_blueprint = APIRouter()
 
 
-@research_blueprint.get("/", response_model=SymbolsResponse, tags=["Symbols"])
+@symbols_blueprint.get("/symbol", response_model=SymbolsResponse, tags=["Symbols"])
 def get_all_symbols(session: Session = Depends(get_session)):
     """
     Get all active/not blacklisted symbols/pairs
@@ -17,7 +17,7 @@ def get_all_symbols(session: Session = Depends(get_session)):
     return SymbolsResponse(message="Successfully retrieved blacklist", data=data)
 
 
-@research_blueprint.post("/", response_model=GetOneSymbolResponse, tags=["Symbols"])
+@symbols_blueprint.post("/symbol", response_model=GetOneSymbolResponse, tags=["Symbols"])
 def add_symbol(
     symbol: str,
     reason: str = "",
@@ -35,8 +35,8 @@ def add_symbol(
     return GetOneSymbolResponse(message="Symbols found!", data=data)
 
 
-@research_blueprint.delete(
-    "/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
+@symbols_blueprint.delete(
+    "/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
 )
 def delete_symbol(pair: str, session: Session = Depends(get_session)):
     """
@@ -49,7 +49,7 @@ def delete_symbol(pair: str, session: Session = Depends(get_session)):
     return GetOneSymbolResponse(message="Symbol deleted", data=data)
 
 
-@research_blueprint.put("/", response_model=GetOneSymbolResponse, tags=["Symbols"])
+@symbols_blueprint.put("/symbol", response_model=GetOneSymbolResponse, tags=["Symbols"])
 def edit_symbol(
     symbol,
     active: bool = True,
@@ -65,7 +65,7 @@ def edit_symbol(
     return GetOneSymbolResponse(message="Symbol edited", data=data)
 
 
-@research_blueprint.get("/blacklist", response_model=SymbolsResponse, tags=["Symbols"])
+@symbols_blueprint.get("/blacklist", response_model=SymbolsResponse, tags=["Symbols"])
 def get_blacklisted_symbols(session: Session = Depends(get_session)):
     """
     Get all symbols/pairs blacklisted
@@ -74,7 +74,7 @@ def get_blacklisted_symbols(session: Session = Depends(get_session)):
     return SymbolsResponse(message="Successfully retrieved blacklist", data=data)
 
 
-@research_blueprint.get("/store", tags=["Symbols"])
+@symbols_blueprint.get("/store", tags=["Symbols"])
 def store_symbols(session: Session = Depends(get_session)):
     """
     Store all symbols from Binance
