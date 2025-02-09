@@ -12,7 +12,6 @@ import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
-import { useGetSymbolsQuery } from "../../features/symbolApiSlice";
 import { getQuoteAsset } from "../../utils/api";
 import { BotStatus, BotStrategy, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
@@ -21,6 +20,7 @@ import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
+import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
 
 interface ErrorsState {
   pair?: string;
@@ -29,7 +29,7 @@ interface ErrorsState {
 const BaseOrderTab: FC = () => {
   const { symbol } = useParams();
   const dispatch: AppDispatch = useAppDispatch();
-  const { data } = useGetSymbolsQuery();
+  const { data: symbols } = useGetSymbolsQuery();
   const { bot } = useAppSelector(selectBot);
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
@@ -90,8 +90,9 @@ const BaseOrderTab: FC = () => {
       }
     });
 
-    if (data) {
-      setSymbolsList(data);
+    if (symbols) {
+      const pairs = symbols.map((symbol) => symbol.id);
+      setSymbolsList(pairs);
     }
 
     if (bot.pair) {
@@ -123,7 +124,7 @@ const BaseOrderTab: FC = () => {
 
     return () => unsubscribe();
   }, [
-    data,
+    symbols,
     symbolsList,
     setSymbolsList,
     bot,

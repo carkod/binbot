@@ -22,9 +22,10 @@ const LightSwitch: FC<LightSwitchProps> = (
   return (
     <ToggleButtonGroup type="checkbox">
       <ToggleButton
+        type="button"
         name={name}
         checked={value}
-        color={value ? "success" : "secondary"}
+        variant={value ? "success" : "secondary"}
         defaultValue={value}
         onClick={(e) => toggle(name, value)}
         {...register(name, { required: required })}

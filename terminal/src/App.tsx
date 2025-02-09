@@ -1,3 +1,4 @@
+import React from "react";
 import { Provider } from "react-redux";
 import {
   createBrowserRouter,
@@ -10,12 +11,12 @@ import BotDetail from "./app/pages/BotDetail";
 import BotsPage from "./app/pages/Bots";
 import DashboardPage from "./app/pages/Dashboard";
 import LoginPage from "./app/pages/Login";
-import BlacklistPage from "./app/pages/BlacklistPage";
 import NotFound from "./app/pages/NotFound";
 import { store } from "./app/store";
 import { getToken, removeToken } from "./utils/login";
 import PaperTradingPage from "./app/pages/PaperTradingPage";
 import PaperTradingDetail from "./app/pages/PaperTradingDetail";
+import SymbolsPage from "./app/pages/Symbols";
 
 export type Routes = {
   path: string;
@@ -99,12 +100,12 @@ export const routes = [
     nav: false,
   },
   {
-    path: "blacklist",
-    link: "/blacklist",
+    path: "symbols",
+    link: "/symbols",
     icon: "fas fa-ban",
-    name: "Blacklist",
-    element: <BlacklistPage />,
-    id: "blacklist",
+    name: "symbols",
+    element: <SymbolsPage />,
+    id: "symbols",
     nav: true,
   },
   {

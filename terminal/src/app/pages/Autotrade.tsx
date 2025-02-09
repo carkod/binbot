@@ -94,7 +94,7 @@ export const AutotradePage: FC<{}> = () => {
                             setSettingsField({
                               name: "candlestick_interval",
                               value,
-                            }),
+                            })
                           );
                         }}
                         onBlur={handleBlur}
@@ -104,11 +104,11 @@ export const AutotradePage: FC<{}> = () => {
                         })}
                       >
                         {Object.values(BinanceKlineintervals).map(
-                          (interval) => (
-                            <option value={interval.toString()}>
+                          (interval, i) => (
+                            <option key={i} value={interval.toString()}>
                               {interval.toString()}
                             </option>
-                          ),
+                          )
                         )}
                       </Form.Select>
                       {errors.candlestick_interval && (
@@ -139,7 +139,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          }),
+                          })
                         );
                       }}
                     />
@@ -155,12 +155,12 @@ export const AutotradePage: FC<{}> = () => {
                       name="autotrade"
                       register={register}
                       toggle={(name, value) => {
-                        setValue(name, value);
+                        setValue(name, !value);
                         dispatch(
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          }),
+                          })
                         );
                       }}
                     />
@@ -209,22 +209,20 @@ export const AutotradePage: FC<{}> = () => {
                   <Col md="3">
                     <label htmlFor="trailling">Trailling</label>
                     <br />
-                    <Button
+                    <LightSwitch
+                      value={settings.trailling}
                       name="trailling"
-                      color={settings.trailling ? "success" : "secondary"}
-                      onClick={() => {
-                        setValue("trailling", !settings.trailling);
+                      register={register}
+                      toggle={(name, value) => {
+                        setValue("trailling", !value);
                         dispatch(
                           setSettingsToggle({
-                            name: "trailling",
-                            value: !settings.trailling,
-                          }),
+                            name: name,
+                            value: !value,
+                          })
                         );
                       }}
-                      {...register("trailling", { required: true })}
-                    >
-                      {settings.trailling ? "On" : "Off"}
-                    </Button>
+                    />
                   </Col>
                 </Row>
                 {settings.trailling ? (

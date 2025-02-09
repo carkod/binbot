@@ -6,7 +6,6 @@ import {
   useDeleteBotMutation,
   useGetBotsQuery,
 } from "../../features/bots/botsApiSlice";
-import { setSpinner } from "../../features/layoutSlice";
 import { weekAgo } from "../../utils/time";
 import BotCard from "../components/BotCard";
 import BotsActions, { BulkAction } from "../components/BotsActions";
@@ -40,7 +39,7 @@ export const BotsPage: FC<{}> = () => {
   // Fetch bots which require filter dependencies
   const {
     refetch,
-    data: props,
+    data,
     error,
     isFetching,
   } = useGetBotsQuery({
@@ -79,7 +78,7 @@ export const BotsPage: FC<{}> = () => {
         dispatch(() => refetch());
         break;
       case BulkAction.SELECT_ALL:
-        selectCards(Object.keys(props.bots.entities));
+        selectCards(Object.keys(data?.bots?.entities));
         break;
       case BulkAction.COMPLETED:
         setBulkActions(BulkAction.COMPLETED);
@@ -119,11 +118,11 @@ export const BotsPage: FC<{}> = () => {
     if (isFetching || isDeactivating || isDeleting) {
       setSpinner(true);
     }
-    if (props?.bots) {
+    if (data?.bots.ids.length > 0) {
       setSpinner(false);
     }
   }, [
-    props?.bots,
+    data?.bots?.ids,
     dispatch,
     isFetching,
     startDate,
@@ -136,16 +135,16 @@ export const BotsPage: FC<{}> = () => {
   ]);
 
   return (
-    <SpinnerContext.Provider value={spinner}>
+    <SpinnerContext.Provider value={{ spinner, setSpinner }}>
       <Container fluid>
         <div className="mb-3 d-flex flex-column flex-lg-row justify-content-between align-items-center">
           <div id="bot-profits">
             <h4>
-              {props?.bots?.ids.length > 0 && (
-                <Badge bg={props?.totalProfit > 0 ? "success" : "danger"}>
+              {data?.bots?.ids.length > 0 && (
+                <Badge bg={data.totalProfit > 0 ? "success" : "danger"}>
                   <i className="fas fa-building-columns" />{" "}
                   <span className="visually-hidden">Profit</span>
-                  {(props?.totalProfit || 0) + "%"}
+                  {(data.totalProfit || 0) + "%"}
                 </Badge>
               )}
             </h4>
@@ -191,8 +190,8 @@ export const BotsPage: FC<{}> = () => {
           </div>
         </div>
         <Row md="3" xs="1" lg="4">
-          {props?.bots?.ids.length > 0
-            ? Object.values(props?.bots?.entities).map((x, i) => (
+          {data?.bots?.ids.length > 0
+            ? Object.values(data.bots?.entities).map((x, i) => (
                 <Col key={i}>
                   <BotCard
                     botIndex={i}

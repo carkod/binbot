@@ -12,7 +12,7 @@ export const initialAutotradeSettings: AutotradeSettings = {
   trailling_profit: 0,
   stop_loss: 0,
   take_profit: 0,
-  balance_to_use: 100,
+  balance_to_use: "USDC",
   balance_size_to_use: 0,
   max_request: 0,
   system_logs: [],

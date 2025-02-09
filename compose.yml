@@ -45,7 +45,7 @@ services:
       start_period: 40s
 
   kafka:
-    image: docker.io/bitnami/kafka:3.4
+    image: docker.io/bitnami/kafka:3.9
     container_name: binquant_kafka
     networks:
       - kafka_network

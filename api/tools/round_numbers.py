@@ -103,7 +103,7 @@ def round_timestamp(ts: int | float) -> int:
     digits = int(math.log10(ts)) + 1
     if digits > 13:
         decimals = digits - 13
-        multiplier = 10 ** decimals
+        multiplier = 10**decimals
         return int(round_numbers(ts * multiplier, decimals))
     else:
         return int(ts)

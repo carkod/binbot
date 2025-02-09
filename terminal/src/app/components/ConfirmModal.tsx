@@ -1,11 +1,11 @@
-import { useEffect, useState, type FC } from "react";
+import React, { type ReactElement, useEffect, useState, type FC } from "react";
 import { Button, Modal } from "react-bootstrap";
 
 type ConfirmModalProps = {
   handleActions: (value: number) => void;
   show: boolean;
-  primary?: string | JSX.Element;
-  secondary?: string | JSX.Element;
+  primary?: ReactElement | string;
+  secondary?: ReactElement | string;
   children?: React.ReactNode;
 };
 
@@ -37,9 +37,11 @@ const ConfirmModal: FC<ConfirmModalProps> = ({
           <Button variant="danger" onClick={() => handleActions(1)}>
             {primary}
           </Button>
-          <Button variant="warning" onClick={() => handleActions(2)}>
-            {secondary}
-          </Button>
+          {secondary && (
+            <Button variant="warning" onClick={() => handleActions(2)}>
+              {secondary}
+            </Button>
+          )}
         </Modal.Footer>
       </Modal.Dialog>
     </Modal>

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FC } from "react";
+import React, { type ChangeEvent, useEffect, useState, type FC } from "react";
 import { Typeahead } from "react-bootstrap-typeahead";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import Form from "react-bootstrap/Form";
@@ -13,7 +13,7 @@ const SymbolSearch: FC<{
   defaultValue?: string;
   required?: boolean;
   disabled?: boolean;
-  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (e: ChangeEvent<HTMLInputElement>) => void;
   errors?: object;
 }> = ({
   name,
