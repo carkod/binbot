@@ -7,7 +7,7 @@ import { botSlice } from "../features/bots/botSlice";
 import { binanceApiSlice } from "../features/binanceApiSlice";
 import { autotradeSettingsSlice } from "../features/autotradeSlice";
 
-const rootReducer = combineSlices(
+export const rootReducer = combineSlices(
   userApiSlice,
   layoutSlice,
   botSlice,

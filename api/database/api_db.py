@@ -65,7 +65,7 @@ class ApiDb:
 
         autotrade_data = AutotradeTable(
             id=AutotradeSettingsDocument.settings,
-            balance_to_use="USDC",
+            fiat="USDC",
             base_order_size=20,
             candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
             max_active_autotrade_bots=3,
@@ -81,7 +81,7 @@ class ApiDb:
 
         test_autotrade_data = TestAutotradeTable(
             id=AutotradeSettingsDocument.test_autotrade_settings,
-            balance_to_use="USDC",
+            fiat="USDC",
             base_order_size=15,
             candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
             max_active_autotrade_bots=1,
@@ -210,7 +210,7 @@ class ApiDb:
         paper_trading_bot = PaperTradingTable(
             pair="BTCUSDC",
             balance_size_to_use=1,
-            balance_to_use=1,
+            fiat=1,
             base_order_size=15,
             deal=deal,
             cooldown=0,

@@ -12,7 +12,7 @@ export const initialAutotradeSettings: AutotradeSettings = {
   trailling_profit: 0,
   stop_loss: 0,
   take_profit: 0,
-  balance_to_use: "USDC",
+  fiat: "USDC",
   balance_size_to_use: 0,
   max_request: 0,
   system_logs: [],
@@ -39,7 +39,7 @@ interface AutotradeSettingsObject {
 }
 
 // In general, this will be unused
-// future plans include using it for bots e.g. to get balance_to_use
+// future plans include using it for bots e.g. to get fiat
 // or default candlestick_interval for all bots
 export const autotradeSettingsSlice = createAppSlice({
   name: "autotradeSettings",

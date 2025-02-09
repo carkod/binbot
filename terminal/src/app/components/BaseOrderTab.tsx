@@ -96,7 +96,7 @@ const BaseOrderTab: FC = () => {
     }
 
     if (bot.pair) {
-      setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.balance_to_use));
+      setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.fiat));
     }
 
     if (bot.pair && bot.base_order_size) {
@@ -131,7 +131,7 @@ const BaseOrderTab: FC = () => {
     quoteAsset,
     setQuoteAsset,
     reset,
-    autotradeSettings?.balance_to_use,
+    autotradeSettings?.fiat,
     dispatch,
     symbol,
     watch,
@@ -168,7 +168,7 @@ const BaseOrderTab: FC = () => {
                 label="Base order size"
                 errors={errors}
                 required={true}
-                secondaryText={autotradeSettings?.balance_to_use}
+                secondaryText={autotradeSettings?.fiat}
               >
                 <Form.Control
                   type="number"

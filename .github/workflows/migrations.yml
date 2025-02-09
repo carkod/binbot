@@ -1,4 +1,8 @@
 name: Alembic migrations
+env:
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  POSTGRES_DB: "postgres"
 on:
   pull_request:
     paths:
@@ -34,3 +38,13 @@ jobs:
             fi
           done < files.txt
           echo "::set-output name=run_job::$run_job"
+
+  alembic_migration_check:
+    name: Check Alembic Migration Version
+    uses: DevGlitch/alembic-migration-checker@v1.1
+    with:
+      db_host: ${{ secrets.DB_HOST }}
+      db_user: ${{ secrets.DB_USER }}
+      db_password: ${{ secrets.DB_PASSWORD }}
+      db_name: ${{ secrets.DB_NAME }}
+      migrations_path: ./api/alembic/

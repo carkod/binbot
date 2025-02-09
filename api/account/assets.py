@@ -20,7 +20,7 @@ from database.bot_crud import BotTableCrud
 class Assets(Account):
     def __init__(self, session):
         self.usd_balance = 0
-        self.fiat = AutotradeCrud().get_settings().balance_to_use
+        self.fiat = AutotradeCrud().get_settings().fiat
         self.exception_list = ["NFT", "BNB"]
         self.exception_list.append(self.fiat)
         self.bot_controller = BotTableCrud(session=session)

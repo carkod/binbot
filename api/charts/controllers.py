@@ -184,7 +184,7 @@ class MarketDominationController(Database, BinbotApi):
         try:
             for item in get_ticker_data:
                 if (
-                    item["symbol"].endswith(self.autotrade_settings.balance_to_use)
+                    item["symbol"].endswith(self.autotrade_settings.fiat)
                     and float(item["lastPrice"]) > 0
                 ):
                     model_data = MarketDominationSeriesStore(
