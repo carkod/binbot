@@ -5,7 +5,7 @@ from database.models.bot_table import BotTable
 from database.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from deals.factory import DealAbstract
-from tools.handle_error import json_response, json_response_error, json_response_message
+from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import (
     round_numbers,
     ts_to_day,
@@ -15,7 +15,9 @@ from tools.round_numbers import (
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.enum_definitions import Strategy
 from database.bot_crud import BotTableCrud
-
+from account.schemas import BalanceSeries
+from tools.enum_definitions import BinanceKlineIntervals
+from charts.controllers import Candlestick
 
 class Assets(Account):
     def __init__(self, session):
@@ -143,21 +145,22 @@ class Assets(Account):
         else:
             return None
 
-    def map_balance_with_benchmark(self, start_date, end_date):
+    def map_balance_with_benchmark(self, start_date, end_date) -> BalanceSeries:
         balance_series = self.balances_controller.query_balance_series(
             start_date=start_date, end_date=end_date
         )
 
         if len(balance_series) == 0:
-            return json_response_error("No balance series data found.")
+            raise BinanceErrors("No balance data found.")
 
         # btc candlestick data series
-        klines = self.get_raw_klines(
+        cs = Candlestick()
+        klines = cs.raw_klines(
             # One month - 1 (calculating percentages) worth of data to display
             limit=len(balance_series),
             symbol="BTCUSDC",
-            interval="1d",
-            end_time=str(round_timestamp(balance_series[0].id / 1000)),
+            interval=BinanceKlineIntervals.four_hours,
+            end_time=str(round_timestamp(balance_series[0].id)),
         )
 
         balances_series_diff = []
@@ -171,7 +174,7 @@ class Assets(Account):
                     balances_series_diff.append(
                         float(balance_series[index].estimated_total_fiat)
                     )
-                    human_date = ts_to_humandate(item.id // 1000)
+                    human_date = ts_to_humandate(item.id / 1000)
                     balances_series_dates.append(human_date)
                     balance_btc_diff.append(float(klines[btc_index][4]))
             else:
@@ -182,18 +185,7 @@ class Assets(Account):
         balances_series_dates.reverse()
         balance_btc_diff.reverse()
 
-        resp = json_response(
-            {
-                "message": "Sucessfully rendered benchmark data.",
-                "data": {
-                    "usdc": balances_series_diff,
-                    "btc": balance_btc_diff,
-                    "dates": balances_series_dates,
-                },
-                "error": 0,
-            }
-        )
-        return resp
+        return BalanceSeries(usdc=balances_series_diff, btc=balance_btc_diff, dates=balances_series_dates)
 
     def clean_balance_assets(self, bypass=False):
         """

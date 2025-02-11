@@ -53,7 +53,7 @@ def get_active_pairs(
     session: Session = Depends(get_session),
 ):
     try:
-        bot = BotTableCrud(session=session).get_active_pairs()
+        bot = BotTableCrud(session=session).get(status=Status.active)
         if not bot:
             return ActivePairsResponse(message="Bot not found.", error=1, data=[])
         else:

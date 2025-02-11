@@ -25,8 +25,6 @@ def main():
     mu = StreamingController(consumer)
     bbu = BbspreadsUpdater()
     for message in consumer:
-        if message.topic == KafkaTopics.restart_streaming.value:
-            mu.load_data_on_start()
         if message.topic == KafkaTopics.klines_store_topic.value:
             mu.process_klines(message.value)
         if message.topic == KafkaTopics.signals.value:

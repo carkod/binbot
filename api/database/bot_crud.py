@@ -250,21 +250,6 @@ class BotTableCrud:
         self.save(bot)
         return bot
 
-    def get_active_pairs(self) -> list:
-        """
-        Get all active pairs
-
-        a replacement of the previous "distinct pairs" query
-        """
-        statement = (
-            select(BotTable.pair).where(BotTable.status == Status.active).distinct()
-        )
-        pairs = self.session.exec(statement).all()
-        self.session.close()
-        if not pairs:
-            return []
-        return list(pairs)
-
     def get_order(self, order_id: int) -> ExchangeOrderTable:
         """
         Get one order by order_id

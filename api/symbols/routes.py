@@ -5,16 +5,20 @@ from database.utils import get_session
 from sqlmodel import Session
 from tools.handle_error import StandardResponse, BinbotErrors
 from symbols.models import SymbolPayload
+from typing import Optional
 
 symbols_blueprint = APIRouter()
 
 
 @symbols_blueprint.get("/symbol", response_model=SymbolsResponse, tags=["Symbols"])
-def get_all_symbols(session: Session = Depends(get_session)):
+def get_all_symbols(active: Optional[bool] = None, session: Session = Depends(get_session)):
     """
-    Get all active/not blacklisted symbols/pairs
+    Get all symbols/pairs
+
+    Args:
+    - Active: includes symbols set as True and also cooldown delta is negative
     """
-    data = SymbolsCrud(session=session).get_all(active=True)
+    data = SymbolsCrud(session=session).get_all(active=active)
     return SymbolsResponse(message="Successfully retrieved blacklist", data=data)
 
 

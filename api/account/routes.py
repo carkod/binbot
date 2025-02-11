@@ -101,10 +101,12 @@ def get_portfolio_performance(session: Session = Depends(get_session)):
     month_ago = today - timedelta(30)
     start_date = int(datetime.timestamp(month_ago) * 1000)
     end_date = int(datetime.timestamp(today) * 1000)
-    resp = Assets(session=session).map_balance_with_benchmark(
+    data = Assets(session=session).map_balance_with_benchmark(
         start_date=start_date, end_date=end_date
     )
-    return resp
+    return BalanceSeriesResponse(
+        data=data, message="Successfully retrieved balance series."
+    )
 
 
 @account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
