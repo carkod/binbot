@@ -82,7 +82,7 @@ class Candlestick(BinbotApi):
             list: 15m Klines
         """
         if interval == BinanceKlineIntervals.five_minutes:
-            query = self.db.kline.find(
+            result = self.db.kline.find(
                 {"symbol": symbol},
                 {"_id": 0, "candle_closed": 0},
                 limit=limit,
@@ -90,21 +90,21 @@ class Candlestick(BinbotApi):
                 sort=[("_id", DESCENDING)],
             )
         else:
+            query = []
             group_stage = self.build_query(interval)
             match_stage = {"symbol": symbol}
 
-            if int(start_time) > 0:
-                match_stage["close_time"] = {"$gte": start_time}
-            if int(end_time) > 0:
-                match_stage["close_time"] = {"$lte": end_time}
+            query.append({"$match": match_stage})
+            query.append(group_stage)
 
-            result = self.db.kline.aggregate(
-                [
-                    {"$match": match_stage},
-                    {"$sort": {"close_time": DESCENDING}},
-                    group_stage,
-                ]
-            )
+            if int(start_time) > 0:
+                st_dt = datetime.fromtimestamp(start_time / 1000)
+                query.append({"$match": {"_id.time": {"$gte": start_time}}})
+            if int(end_time) > 0:
+                st_dt = datetime.fromtimestamp(end_time / 1000)
+                query.append({"$match": {"_id.time": {"$lte": st_dt}}})
+
+            result = self.db.kline.aggregate(query)
         data = list(result)
         return data
 

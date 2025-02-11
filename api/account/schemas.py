@@ -70,11 +70,11 @@ class EstimatedBalancesResponse(StandardResponse):
     data: EstimatedBalance
 
 
-class BalanceSeries(StandardResponse):
-    usdc: list[float]
-    btc: list[float]
-    dates: list[str]
+class BalanceSeries(BaseModel):
+    usdc: list
+    btc: list
+    dates: list
 
 
 class BalanceSeriesResponse(StandardResponse):
-    data: list[BalanceSeries]
+    data: BalanceSeries

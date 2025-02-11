@@ -40,8 +40,7 @@ class ApiDb:
         self.create_dummy_bot()
         self.init_symbols()
         # Depends on autotrade settings
-        self.assets_collection = Assets(self.session)
-        self.assets_collection.store_balance()
+        self.init_balances()
         self.run_migrations()
         logging.info("Finishing db operations")
 
@@ -260,3 +259,13 @@ class ApiDb:
         if symbol:
             return
         self.symbols.refresh_symbols_table()
+
+    def init_balances(self):
+        statement = select(UserTable)
+        results = self.session.exec(statement)
+        balances = results.first()
+        if balances:
+            return
+        assets = Assets(self.session)
+        assets.store_balance()
+        pass

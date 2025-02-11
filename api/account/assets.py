@@ -9,7 +9,6 @@ from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import (
     round_numbers,
     ts_to_day,
-    round_timestamp,
     ts_to_humandate,
 )
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
@@ -18,6 +17,7 @@ from database.bot_crud import BotTableCrud
 from account.schemas import BalanceSeries
 from tools.enum_definitions import BinanceKlineIntervals
 from charts.controllers import Candlestick
+
 
 class Assets(Account):
     def __init__(self, session):
@@ -137,7 +137,7 @@ class Assets(Account):
         balance_date_day = ts_to_day(balance_date)
 
         for idx, d in enumerate(klines):
-            kline_day = ts_to_day(d[0])
+            kline_day = d["_id"]["time"].strftime("%Y-%m-%d")
 
             # Match balance store dates with btc price dates
             if kline_day == balance_date_day:
@@ -155,12 +155,20 @@ class Assets(Account):
 
         # btc candlestick data series
         cs = Candlestick()
+        end_time = int(
+            (
+                datetime.fromtimestamp(balance_series[0].id / 1000)
+                .replace(hour=0, minute=0, second=0)
+                .timestamp()
+            )
+            * 1000
+        )
         klines = cs.raw_klines(
             # One month - 1 (calculating percentages) worth of data to display
             limit=len(balance_series),
             symbol="BTCUSDC",
-            interval=BinanceKlineIntervals.four_hours,
-            end_time=str(round_timestamp(balance_series[0].id)),
+            interval=BinanceKlineIntervals.one_day,
+            end_time=end_time,
         )
 
         balances_series_diff = []
@@ -172,11 +180,12 @@ class Assets(Account):
             if btc_index is not None:
                 if hasattr(balance_series[index], "estimated_total_fiat"):
                     balances_series_diff.append(
-                        float(balance_series[index].estimated_total_fiat)
+                        round_numbers(balance_series[index].estimated_total_fiat, 4)
                     )
-                    human_date = ts_to_humandate(item.id / 1000)
-                    balances_series_dates.append(human_date)
-                    balance_btc_diff.append(float(klines[btc_index][4]))
+                    balances_series_dates.append(
+                        int(klines[btc_index]["_id"]["time"].timestamp() * 1000)
+                    )
+                    balance_btc_diff.append(float(klines[btc_index]["close"]))
             else:
                 continue
 
@@ -185,7 +194,9 @@ class Assets(Account):
         balances_series_dates.reverse()
         balance_btc_diff.reverse()
 
-        return BalanceSeries(usdc=balances_series_diff, btc=balance_btc_diff, dates=balances_series_dates)
+        return BalanceSeries(
+            usdc=balances_series_diff, btc=balance_btc_diff, dates=balances_series_dates
+        )
 
     def clean_balance_assets(self, bypass=False):
         """
