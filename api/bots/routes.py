@@ -11,7 +11,6 @@ from bots.models import (
     BotBase,
     BotListResponse,
     IResponseBase,
-    ActivePairsResponse,
 )
 from typing import List, Union, Optional
 from tools.exceptions import BinanceErrors, BinbotErrors
@@ -44,27 +43,6 @@ def get(
         return BotListResponse(message="Successfully found bots!", data=data)
     except ValidationError as error:
         return BotResponse(message="Failed to find bots!", data=error.json(), error=1)
-
-
-@bot_blueprint.get(
-    "/bot/active-pairs", response_model=ActivePairsResponse, tags=["bots"]
-)
-def get_active_pairs(
-    session: Session = Depends(get_session),
-):
-    try:
-        bot = BotTableCrud(session=session).get(status=Status.active)
-        if not bot:
-            return ActivePairsResponse(message="Bot not found.", error=1, data=[])
-        else:
-            return ActivePairsResponse(
-                message="Successfully retrieved active pairs.", data=bot
-            )
-
-    except ValidationError as error:
-        return BotResponse(
-            data=error.json(), error=1, message="Failed to find active pairs."
-        )
 
 
 @bot_blueprint.get("/bot/{id}", response_model=BotResponse, tags=["bots"])

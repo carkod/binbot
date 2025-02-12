@@ -9,7 +9,6 @@ from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import (
     round_numbers,
     ts_to_day,
-    ts_to_humandate,
 )
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.enum_definitions import Strategy
