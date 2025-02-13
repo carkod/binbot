@@ -447,6 +447,106 @@ class MarginDeal(DealAbstract):
         self.controller.save(self.active_bot)
         return self.active_bot
 
+    def short_open_deal_trailling_parameters(self):
+        """
+        Updates stop loss and trailling paramaters for deal
+        during deal opening.
+
+        """
+
+        # Update stop loss regarless of base order
+        if self.active_bot.stop_loss > 0:
+            price = self.active_bot.deal.opening_price
+            self.active_bot.deal.stop_loss_price = price + (
+                price * (self.active_bot.stop_loss / 100)
+            )
+
+        # Bot has only take_profit set
+        if not self.active_bot.trailling and self.active_bot.take_profit > 0:
+            if self.active_bot.strategy == Strategy.margin_short:
+                price = self.active_bot.deal.opening_price
+                take_profit_price = price - (
+                    price * (self.active_bot.take_profit) / 100
+                )
+                self.active_bot.deal.take_profit_price = round_numbers(
+                    take_profit_price, self.price_precision
+                )
+            else:
+                take_profit_price = float(self.active_bot.deal.opening_price) * (
+                    1 + (float(self.active_bot.take_profit) / 100)
+                )
+                self.active_bot.deal.take_profit_price = round_numbers(
+                    take_profit_price, self.price_precision
+                )
+
+        # Bot has trailling set
+        # trailling_profit must also be set
+        if self.active_bot.trailling:
+            if self.active_bot.strategy == Strategy.margin_short:
+                price = self.active_bot.deal.opening_price
+                trailling_profit = price - (
+                    price * (self.active_bot.trailling_profit / 100)
+                )
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    trailling_profit, self.price_precision
+                )
+                # do not set trailling_stop_loss_price until trailling_profit_price is broken
+            else:
+                price = self.active_bot.deal.opening_price
+                trailling_profit = price + (
+                    price * (self.active_bot.trailling_profit / 100)
+                )
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    trailling_profit, self.price_precision
+                )
+                # do not set trailling_stop_loss_price until trailling_profit_price is broken
+
+        self.active_bot.status = Status.active
+        self.controller.save(self.active_bot)
+        if self.active_bot.status == Status.inactive:
+            self.controller.update_logs("Bot activated", self.active_bot)
+        else:
+            self.controller.update_logs("Bot deal updated", self.active_bot)
+
+        return self.active_bot
+
+    def short_update_deal_trailling_parameters(self):
+        """
+        Same as open_deal_trailling_parameters
+        but for updating when deal is already activated
+
+        This makes sure deal trailling values are up to date and
+        not out of sync with the bot parameters
+        """
+        if self.active_bot.deal.stop_loss_price == 0:
+            self.active_bot.deal.stop_loss_price = (
+                self.active_bot.deal.opening_price
+                + (
+                    self.active_bot.deal.opening_price
+                    * (self.active_bot.stop_loss / 100)
+                )
+            )
+
+        if self.active_bot.trailling:
+            price = self.active_bot.deal.opening_price
+            if self.active_bot.deal.trailling_profit_price == 0:
+                trailling_profit = price - (
+                    price * (self.active_bot.trailling_profit / 100)
+                )
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    trailling_profit, self.price_precision
+                )
+            
+            if self.active_bot.deal.trailling_stop_loss_price == 0:
+                trailling_stop_loss = price + (
+                    price * (self.active_bot.trailling_deviation / 100)
+                )
+                self.active_bot.deal.trailling_stop_loss_price = round_numbers(
+                    trailling_stop_loss, self.price_precision
+                )
+ 
+
+
     def streaming_updates(self, close_price: float) -> BotModel:
         """
         Margin_short streaming updates
@@ -847,6 +947,11 @@ class MarginDeal(DealAbstract):
             )
             self.margin_short_base_order()
 
-        self.active_bot = self.open_deal_trailling_parameters()
+        # Update bot no activation required
+        if self.active_bot.status == Status.active or self.active_bot.deal.opening_price > 0:
+            self.active_bot = self.short_update_deal_trailling_parameters()
+        else:
+            # Activation required
+            self.active_bot = self.short_open_deal_trailling_parameters()
         self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_OPEN_DEAL")
         return self.active_bot

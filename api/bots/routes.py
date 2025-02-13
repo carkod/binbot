@@ -146,7 +146,11 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
     try:
         data = deal_instance.open_deal()
         response_data = BotModelResponse.model_construct(**data.model_dump())
-        return BotResponse(message="Successfully activated bot.", data=response_data)
+        message = "Successfully activated bot."
+        if bot.status == Status.active:
+            message = "Successfully updated bot."
+
+        return BotResponse(message=message, data=response_data)
     except BinbotErrors as error:
         deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
         return StandardResponse(message=error.message, error=1)
