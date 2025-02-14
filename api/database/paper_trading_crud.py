@@ -192,7 +192,9 @@ class PaperTradingTableCrud:
         Get all active bots
         """
         bots = self.session.exec(
-            select(PaperTradingTable).where(PaperTradingTable.status == Status.active)
+            select(PaperTradingTable.pair).where(
+                PaperTradingTable.status == Status.active
+            )
         ).all()
         self.session.close()
         return bots

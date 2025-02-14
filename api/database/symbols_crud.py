@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from database.models.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
-from apis import BinanceApi
+from exchange_apis.binance import BinanceApi
 from symbols.models import SymbolPayload
 
 
@@ -139,7 +139,7 @@ class SymbolsCrud:
         because weight considerably lower
         """
         binance_api = BinanceApi()
-        data = binance_api._exchange_info()["symbols"]
+        data = binance_api.exchange_info()["symbols"]
 
         for item in data:
             if item["status"] != "TRADING":

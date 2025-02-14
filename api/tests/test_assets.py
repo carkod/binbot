@@ -88,7 +88,7 @@ def patch_total_fiat(monkeypatch):
 
     monkeypatch.setattr(Assets, "get_wallet_balance", lambda self: account_data)
     monkeypatch.setattr(
-        Assets, "ticker", lambda self, symbol="BTCUSDC", json=False: {"price": "20000"}
+        Assets, "get_ticker_price", lambda self, symbol: "98418.60000000"
     )
 
 
@@ -138,7 +138,7 @@ def test_total_fiat(patch_total_fiat):
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"] == 20
+    assert content["data"] == 98.41860000000001
 
 
 @patch("account.assets.AutotradeCrud", MockAutotradeCrud)

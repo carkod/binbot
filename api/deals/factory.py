@@ -121,7 +121,7 @@ class DealAbstract(BaseDeal):
                 (order.order_id == order_id for order in bot.orders), None
             )
             if find_base_order:
-                asset = self.find_baseAsset(bot.pair)
+                asset = self.base_asset(bot.pair)
 
                 # First cancel old order to unlock balance
                 self.delete_order(bot.pair, order_id)

@@ -1,11 +1,6 @@
 import requests
 from apis import BinbotApi
-from tools.handle_error import (
-    handle_binance_errors,
-    json_response,
-    json_response_message,
-    json_response_error,
-)
+from tools.handle_error import handle_binance_errors
 
 
 class Account(BinbotApi):
@@ -29,61 +24,6 @@ class Account(BinbotApi):
         res = requests.get(url=self.ticker_price_url, params=params)
         data = handle_binance_errors(res)
         return data["price"]
-
-    def find_base_asset_json(self, symbol):
-        data = self.find_baseAsset(symbol)
-        return json_response({"data": data})
-
-    def find_quote_asset_json(self, symbol):
-        data = self.find_quoteAsset(symbol)
-        return json_response({"data": data})
-
-    def find_market(self, quote):
-        symbols = self._exchange_info()
-        market = [
-            symbol["symbol"]
-            for symbol in symbols["symbols"]
-            if symbol["baseAsset"] == quote
-        ]
-        if len(market) > 1:
-            # Match BTC first
-            # DUSKBNB does not exist in the market but provided (Binance bug?)
-            match_btc = next((s for s in market if "BTC" in s), None)
-            if match_btc:
-                return match_btc
-            match_bnb = next((s for s in market if "BNB" in s), None)
-            if match_bnb:
-                return match_bnb
-            return market[0]
-
-    def get_symbol_info(self, pair):
-        symbols = self._exchange_info(pair)
-        if not symbols:
-            return json_response_error("Symbol not found!")
-        symbol = symbols["symbols"][0]
-        if symbol:
-            return json_response({"data": symbol})
-        else:
-            return json_response_message("Pair not found")
-
-    def get_symbols(self):
-        symbols = self.ticker()
-        symbols_list = [x["symbol"] for x in symbols]
-        symbols_list.sort()
-        return json_response({"data": symbols_list})
-
-    def get_quote_asset_precision(self, symbol, quote=True):
-        """
-        Get Maximum precision (maximum number of decimal points)
-        @params quote: boolean - quote=True, base=False
-        @params symbol: string - market e.g. BNBBTC
-        """
-        symbols = self._exchange_info(symbol)
-        market = symbols["symbols"][0]
-        asset_precision = (
-            market["quoteAssetPrecision"] if quote else market["baseAssetPrecision"]
-        )
-        return asset_precision
 
     def get_raw_balance(self) -> list:
         """

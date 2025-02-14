@@ -243,9 +243,9 @@ class Assets(Account):
             then converted into USDC
         """
         wallet_balance = self.get_wallet_balance()
-        get_usdc_btc_rate = self.ticker(symbol=f"BTC{self.fiat}", json=False)
+        get_usdc_btc_rate = self.get_ticker_price(symbol=f"BTC{self.fiat}")
         total_balance: float = 0
-        rate = float(get_usdc_btc_rate["price"])
+        rate = float(get_usdc_btc_rate)
         for item in wallet_balance:
             if item["activate"]:
                 total_balance += float(item["balance"])

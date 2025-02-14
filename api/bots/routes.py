@@ -45,6 +45,22 @@ def get(
         return BotResponse(message="Failed to find bots!", data=error.json(), error=1)
 
 
+@bot_blueprint.get("/bot/active-pairs", response_model=BotListResponse, tags=["bots"])
+def get_active_pairs(session: Session = Depends(get_session)):
+    """
+    Get active pairs
+    """
+    try:
+        data = BotTableCrud(session=session).get_active_pairs()
+        return BotListResponse(message="Successfully found active pairs.", data=data)
+    except ValidationError as error:
+        return BotResponse(
+            message="Failed to find active pairs.", data=error.json(), error=1
+        )
+    except BinbotErrors as error:
+        return BotResponse(message=error.message, error=1)
+
+
 @bot_blueprint.get("/bot/{id}", response_model=BotResponse, tags=["bots"])
 def get_one_by_id(id: str, session: Session = Depends(get_session)):
     try:
