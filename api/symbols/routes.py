@@ -11,7 +11,9 @@ symbols_blueprint = APIRouter()
 
 
 @symbols_blueprint.get("/symbol", response_model=SymbolsResponse, tags=["Symbols"])
-def get_all_symbols(active: Optional[bool] = None, session: Session = Depends(get_session)):
+def get_all_symbols(
+    active: Optional[bool] = None, session: Session = Depends(get_session)
+):
     """
     Get all symbols/pairs
 

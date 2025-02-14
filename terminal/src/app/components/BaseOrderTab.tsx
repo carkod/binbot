@@ -35,7 +35,7 @@ const BaseOrderTab: FC = () => {
     useGetSettingsQuery();
   const [quoteAsset, setQuoteAsset] = useState<string>("");
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
-  const [symbolsList, setSymbolsList] = useState<string[]>([]);
+  const [symbolsList, setSymbolsList] = useImmer<string[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const {
     register,
@@ -90,16 +90,16 @@ const BaseOrderTab: FC = () => {
       }
     });
 
-    if (symbols) {
+    if (symbols && symbolsList.length === 0) {
       const pairs = symbols.map((symbol) => symbol.id);
       setSymbolsList(pairs);
     }
 
-    if (bot.pair) {
+    if (bot.pair !== quoteAsset) {
       setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.fiat));
     }
 
-    if (bot.pair && bot.base_order_size) {
+    if (symbol) {
       reset({
         name: bot.name,
         base_order_size: bot.base_order_size,
@@ -112,30 +112,22 @@ const BaseOrderTab: FC = () => {
       dispatch(setField({ name: "pair", value: symbol }));
     }
 
-    if (bot.deal?.current_price) {
+    if (bot.deal?.current_price !== currentPrice) {
       setCurrentPrice(bot.deal.current_price);
     }
 
     if (!loadingSettings && autotradeSettings) {
       setSpinner(false);
-    } else {
-      setSpinner(true);
     }
 
     return () => unsubscribe();
   }, [
     symbols,
     symbolsList,
-    setSymbolsList,
     bot,
-    quoteAsset,
-    setQuoteAsset,
     reset,
-    autotradeSettings?.fiat,
     dispatch,
-    symbol,
     watch,
-    loadingSettings,
   ]);
 
   return (

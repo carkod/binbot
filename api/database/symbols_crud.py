@@ -34,7 +34,9 @@ class SymbolsCrud:
         if active is not None:
             # cooldown_start_ts is in milliseconds
             # cooldown is in seconds
-            statement = statement.where(SymbolTable.active == active).where(SymbolTable.cooldown_start_ts < (SymbolTable.cooldown * 1000))
+            statement = statement.where(SymbolTable.active == active).where(
+                SymbolTable.cooldown_start_ts < (SymbolTable.cooldown * 1000)
+            )
 
         results = self.session.exec(statement).all()
         self.session.close()

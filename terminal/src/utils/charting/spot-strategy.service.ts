@@ -33,8 +33,6 @@ export default function spotTrading(
     } else {
       // if no closing_price
       // bot inactive: currentPrice, bot active: opening_price
-      const price =
-        bot.deal.opening_price || currentPrice || bot.deal.current_price;
       totalOrderLines.push({
         id: "base_order",
         text: "Base",
@@ -47,7 +45,7 @@ export default function spotTrading(
           }`,
         ],
         quantity: `${qtyText} ${quoteAsset}`,
-        price: price,
+        price: bot.deal.opening_price || currentPrice,
         color: dealColors.base_order,
       });
     }

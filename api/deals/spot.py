@@ -273,7 +273,7 @@ class SpotLongDeal(DealAbstract):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def streaming_updates(self, close_price, open_price):
+    def streaming_updates(self, close_price: float, open_price):
         close_price = float(close_price)
         self.close_conditions(close_price)
 
@@ -409,7 +409,6 @@ class SpotLongDeal(DealAbstract):
                 price * (self.active_bot.stop_loss / 100)
             )
 
-
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
         # if we don't do this, the trailling stop loss will trigger
         if (
@@ -446,16 +445,16 @@ class SpotLongDeal(DealAbstract):
             self.active_bot.deal.stop_loss_price = round_numbers(
                 stop_loss_price, self.price_precision
             )
-        
+
         if self.active_bot.trailling:
             if self.active_bot.deal.trailling_profit_price == 0:
-                take_profit_price = float(self.active_bot.deal.opening_price) * (
+                trailling_profit_price = float(self.active_bot.deal.opening_price) * (
                     1 + (float(self.active_bot.take_profit) / 100)
                 )
-                self.active_bot.deal.take_profit_price = round_numbers(
-                    take_profit_price, self.price_precision
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    trailling_profit_price, self.price_precision
                 )
-            
+
             if self.active_bot.deal.trailling_stop_loss_price == 0:
                 trailling_stop_loss = float(self.active_bot.deal.opening_price) * (
                     1 - (float(self.active_bot.trailling_deviation) / 100)
@@ -465,7 +464,6 @@ class SpotLongDeal(DealAbstract):
                 )
 
         return self.active_bot
-
 
     def close_all(self) -> BotModel:
         """
@@ -555,9 +553,14 @@ class SpotLongDeal(DealAbstract):
             self.base_order()
 
         # Update bot no activation required
-        if self.active_bot.status == Status.active or self.active_bot.deal.opening_price > 0:
+        if (
+            self.active_bot.status == Status.active
+            or self.active_bot.deal.opening_price > 0
+        ):
             self.active_bot = self.long_update_deal_trailling_parameters()
         else:
             # Activation required
             self.active_bot = self.long_open_deal_trailling_parameters()
+
+        self.controller.save(self.active_bot)
         return self.active_bot
