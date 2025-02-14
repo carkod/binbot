@@ -134,6 +134,21 @@ class BinanceKlineIntervals(str, Enum):
     one_week = "1w"
     one_month = "1M"
 
+    def bin_size(self):
+        return int(self.value[:-1])
+
+    def unit(self):
+        if self.value[-1:] == "m":
+            return "minute"
+        elif self.value[-1:] == "h":
+            return "hour"
+        elif self.value[-1:] == "d":
+            return "day"
+        elif self.value[-1:] == "w":
+            return "week"
+        elif self.value[-1:] == "M":
+            return "month"
+
 
 class AutotradeSettingsDocument(str, Enum):
     # Autotrade settings for test bots

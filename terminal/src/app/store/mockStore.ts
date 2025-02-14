@@ -1,20 +1,9 @@
-import { configureStore } from '@reduxjs/toolkit';
-import rootReducer from './rootReducer'; // Import your root reducer
+import { configureStore } from "@reduxjs/toolkit";
+import { rootReducer } from "../store";
 
-const initialState = {
-  // Define your initial state here
-  bots: {
-    entities: {},
-    ids: [],
-    totalProfit: 0,
-  },
-  // ...other slices
-};
-
-const mockStore = (state = initialState) => {
+const mockStore = () => {
   return configureStore({
     reducer: rootReducer,
-    preloadedState: state,
   });
 };
 

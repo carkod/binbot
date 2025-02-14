@@ -1,4 +1,4 @@
-import { useEffect, useState, type FC } from "react";
+import React, { useEffect, useState, type FC } from "react";
 import { Badge, Card, Col, Row } from "react-bootstrap";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { selectBot, setCurrentPrice } from "../../features/bots/botSlice";
@@ -39,7 +39,7 @@ const ChartContainer: FC = () => {
   };
 
   useEffect(() => {
-    if (initialBotProfit !== botProfit) {
+    if (initialBotProfit) {
       setBotProfit(initialBotProfit);
     }
 
@@ -78,9 +78,9 @@ const ChartContainer: FC = () => {
                 }
               >
                 {botProfit ? botProfit + "%" : "0%"}
-                {botProfit > 0 && botProfit - bot.commissions > 0 && (
+                {botProfit > 0 && bot.deal?.total_commissions > 0 && botProfit - bot.deal.total_commissions > 0 && (
                   <small className="fs-6 fw-light">
-                    {roundDecimals(botProfit - bot.commissions) + "%"}
+                    {roundDecimals(botProfit - bot.deal.total_commissions) + "%"}
                   </small>
                 )}
               </Badge>{" "}

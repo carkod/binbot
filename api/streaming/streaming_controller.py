@@ -53,14 +53,6 @@ class StreamingController(BaseStreaming):
         self.consumer = consumer
         self.autotrade_controller = AutotradeCrud()
 
-    def load_data_on_start(self) -> None:
-        """
-        Load data on start and on update_required
-        """
-        self.list_bots = self.bot_controller.get_active_pairs()
-        # Load paper trading bot settings
-        self.list_paper_trading_bots = self.paper_trading_controller.get_active_pairs()
-
     def execute_strategies(
         self,
         current_bot: BotModel,

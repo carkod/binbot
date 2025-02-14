@@ -12,7 +12,7 @@ db = client.db
 
 
 MockAutotradeCrud = MagicMock()
-MockAutotradeCrud.return_value.get_settings.return_value.balance_to_use = "USDC"
+MockAutotradeCrud.return_value.get_settings.return_value.fiat = "USDC"
 
 
 session_mock = MagicMock()

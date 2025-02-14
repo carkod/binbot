@@ -37,15 +37,15 @@ const SymbolSearch: FC<{
     // check test for examples
     if (options && options.length > 0) {
       let updatedOptions = options;
-      if (autotradeSettings?.balance_to_use) {
+      if (autotradeSettings?.fiat) {
         updatedOptions = filterSymbolByBaseAsset(
           options,
-          autotradeSettings.balance_to_use,
+          autotradeSettings.fiat,
         );
       }
       setOptionsState(updatedOptions);
     }
-  }, [value, options, autotradeSettings?.balance_to_use]);
+  }, [value, options, autotradeSettings?.fiat]);
 
   return (
     <Form.Group>

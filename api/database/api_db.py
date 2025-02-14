@@ -40,8 +40,7 @@ class ApiDb:
         self.create_dummy_bot()
         self.init_symbols()
         # Depends on autotrade settings
-        self.assets_collection = Assets(self.session)
-        self.assets_collection.store_balance()
+        self.init_balances()
         self.run_migrations()
         logging.info("Finishing db operations")
 
@@ -65,7 +64,7 @@ class ApiDb:
 
         autotrade_data = AutotradeTable(
             id=AutotradeSettingsDocument.settings,
-            balance_to_use="USDC",
+            fiat="USDC",
             base_order_size=20,
             candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
             max_active_autotrade_bots=3,
@@ -81,7 +80,7 @@ class ApiDb:
 
         test_autotrade_data = TestAutotradeTable(
             id=AutotradeSettingsDocument.test_autotrade_settings,
-            balance_to_use="USDC",
+            fiat="USDC",
             base_order_size=15,
             candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
             max_active_autotrade_bots=1,
@@ -210,7 +209,7 @@ class ApiDb:
         paper_trading_bot = PaperTradingTable(
             pair="BTCUSDC",
             balance_size_to_use=1,
-            balance_to_use=1,
+            fiat=1,
             base_order_size=15,
             deal=deal,
             cooldown=0,
@@ -260,3 +259,13 @@ class ApiDb:
         if symbol:
             return
         self.symbols.refresh_symbols_table()
+
+    def init_balances(self):
+        statement = select(UserTable)
+        results = self.session.exec(statement)
+        balances = results.first()
+        if balances:
+            return
+        assets = Assets(self.session)
+        assets.store_balance()
+        pass

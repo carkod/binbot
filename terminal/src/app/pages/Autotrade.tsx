@@ -187,9 +187,9 @@ export const AutotradePage: FC<{}> = () => {
                   </Col>
                   <Col md="3">
                     <SettingsInput
-                      value={settings.balance_to_use}
-                      name={"balance_to_use"}
-                      label={"Balance to use"}
+                      value={settings.fiat}
+                      name={"fiat"}
+                      label={"Fiat currency to use for trading, currently USDC"}
                       type="text"
                       register={register}
                       infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"

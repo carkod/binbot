@@ -22,14 +22,21 @@ class SymbolsCrud:
             session = independent_session()
         self.session = session
 
-    def get_all(self, active: bool = True):
+    def get_all(self, active: Optional[bool] = True):
         """
         Get all symbols
         this excludes blacklisted items.
 
         To get blacklisted items set active to False
         """
-        statement = select(SymbolTable).where(SymbolTable.active == active)
+
+        statement = select(SymbolTable)
+        if active is not None:
+            # cooldown_start_ts is in milliseconds
+            # cooldown is in seconds
+            statement = statement.where(SymbolTable.active == active).where(
+                SymbolTable.cooldown_start_ts < (SymbolTable.cooldown * 1000)
+            )
 
         results = self.session.exec(statement).all()
         self.session.close()

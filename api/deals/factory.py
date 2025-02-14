@@ -1,7 +1,7 @@
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
-from tools.enum_definitions import DealType, OrderSide, Status, Strategy
+from tools.enum_definitions import DealType, OrderSide, Status
 from tools.exceptions import TakeProfitError
 from tools.round_numbers import round_numbers, round_timestamp
 from deals.base import BaseDeal
@@ -171,80 +171,6 @@ class DealAbstract(BaseDeal):
                 "Error: Bot does not contain a base order deal", self.active_bot
             )
             raise ValueError("Bot does not contain a base order deal")
-        return self.active_bot
-
-    def open_deal_trailling_parameters(self):
-        """
-        Optional deals section
-
-        The following functionality is triggered according to the options set in the bot
-        The reason why it's put here, it's because it's agnostic of what type of deal
-        strategy, we always execute these
-        """
-
-        # Update stop loss regarless of base order
-        if self.active_bot.stop_loss > 0:
-            if self.active_bot.strategy == Strategy.margin_short:
-                price = self.active_bot.deal.opening_price
-                self.active_bot.deal.stop_loss_price = price + (
-                    price * (self.active_bot.stop_loss / 100)
-                )
-            else:
-                buy_price = float(self.active_bot.deal.opening_price)
-                stop_loss_price = buy_price - (
-                    buy_price * float(self.active_bot.stop_loss) / 100
-                )
-                self.active_bot.deal.stop_loss_price = round_numbers(
-                    stop_loss_price, self.price_precision
-                )
-
-        # Bot has only take_profit set
-        if not self.active_bot.trailling and self.active_bot.take_profit > 0:
-            if self.active_bot.strategy == Strategy.margin_short:
-                price = self.active_bot.deal.opening_price
-                take_profit_price = price - (
-                    price * (self.active_bot.take_profit) / 100
-                )
-                self.active_bot.deal.take_profit_price = round_numbers(
-                    take_profit_price, self.price_precision
-                )
-            else:
-                take_profit_price = float(self.active_bot.deal.opening_price) * (
-                    1 + (float(self.active_bot.take_profit) / 100)
-                )
-                self.active_bot.deal.take_profit_price = round_numbers(
-                    take_profit_price, self.price_precision
-                )
-
-        # Bot has trailling set
-        # trailling_profit must also be set
-        if self.active_bot.trailling:
-            if self.active_bot.strategy == Strategy.margin_short:
-                price = self.active_bot.deal.opening_price
-                trailling_profit = price - (
-                    price * (self.active_bot.trailling_profit / 100)
-                )
-                self.active_bot.deal.trailling_profit_price = round_numbers(
-                    trailling_profit, self.price_precision
-                )
-                # do not set trailling_stop_loss_price until trailling_profit_price is broken
-            else:
-                price = self.active_bot.deal.opening_price
-                trailling_profit = price + (
-                    price * (self.active_bot.trailling_profit / 100)
-                )
-                self.active_bot.deal.trailling_profit_price = round_numbers(
-                    trailling_profit, self.price_precision
-                )
-                # do not set trailling_stop_loss_price until trailling_profit_price is broken
-
-        self.active_bot.status = Status.active
-        self.controller.save(self.active_bot)
-        if self.active_bot.status == Status.inactive:
-            self.controller.update_logs("Bot activated", self.active_bot)
-        else:
-            self.controller.update_logs("Bot deal updated", self.active_bot)
-
         return self.active_bot
 
     def base_order(self) -> BotModel:

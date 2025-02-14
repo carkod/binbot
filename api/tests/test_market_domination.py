@@ -31,7 +31,7 @@ class AutotradeSettingsMock(BaseModel):
     trailling_profit: float = 2.4
     stop_loss: float = 0
     take_profit: float = 2.3
-    balance_to_use: str = "USDC"
+    fiat: str = "USDC"
     balance_size_to_use: float = 100
     max_request: int = 950
     system_logs: list[str] = []
