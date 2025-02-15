@@ -133,6 +133,15 @@ class SymbolsCrud:
         self.session.close()
         return symbol_model
 
+    def base_asset(self, symbol: str):
+        """
+        Finds base asset using Symbols database
+        e.g. BTCUSDC -> BTC
+        """
+        query = select(SymbolTable.base_asset).where(SymbolTable.id == symbol)
+        base_asset = self.session.exec(query).first()
+        return base_asset
+
     def refresh_symbols_table(self):
         """
         Refresh the symbols table

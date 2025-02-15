@@ -1,6 +1,7 @@
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
+from database.symbols_crud import SymbolsCrud
 from tools.enum_definitions import (
     CloseConditions,
     DealType,
@@ -27,6 +28,7 @@ class SpotLongDeal(DealAbstract):
         super().__init__(bot, db_table=db_table)
         self.active_bot: BotModel = bot
         self.db_table = db_table
+        self.symbols_crud = SymbolsCrud()
 
     def update_spot_orders(self) -> BotModel:
         """
@@ -486,7 +488,7 @@ class SpotLongDeal(DealAbstract):
 
         # Sell everything
         pair = self.active_bot.pair
-        base_asset = self.base_asset(pair)
+        base_asset = self.symbols_crud.base_asset(pair)
         balance = self.get_single_raw_balance(base_asset)
         if balance > 0:
             qty = round_numbers(balance, self.qty_precision)

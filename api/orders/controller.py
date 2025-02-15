@@ -29,14 +29,6 @@ class OrderController(Account):
     def generate_id(self):
         return uuid4()
 
-    def base_asset(self, symbol: str):
-        """
-        Finds base asset using Symbols database
-        e.g. BTCUSDC -> BTC
-        """
-        symbol_data = self.symbols_crud.get_symbol(symbol)
-        return symbol_data.base_asset
-
     def simulate_order(self, pair, side, qty=1):
         """
         Price is determined by market
