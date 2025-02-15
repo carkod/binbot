@@ -4,6 +4,7 @@ from bots.models import BotModel
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.bot_crud import BotTableCrud
 from database.paper_trading_crud import PaperTradingTableCrud
+from database.symbols_crud import SymbolsCrud
 from orders.controller import OrderController
 from tools.round_numbers import round_numbers, round_numbers_ceiling
 from tools.exceptions import (
@@ -36,6 +37,7 @@ class BaseDeal(OrderController):
         bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ):
+        super().__init__()
         db_controller: Type[Union[PaperTradingTableCrud, BotTableCrud]]
         if db_table == PaperTradingTable:
             db_controller = PaperTradingTableCrud
@@ -49,6 +51,7 @@ class BaseDeal(OrderController):
         self.qty_precision = self.calculate_qty_precision(bot.pair)
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
+        self.symbols_crud = SymbolsCrud()
 
         if self.active_bot.strategy == Strategy.margin_short:
             self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
@@ -64,7 +67,7 @@ class BaseDeal(OrderController):
         Helper function to compute buy_price.
         """
 
-        asset = self.find_baseAsset(pair)
+        asset = self.symbols_crud.base_asset(pair)
         balance = self.get_single_raw_balance(asset)
         if balance == 0:
             # If spot balance is not found

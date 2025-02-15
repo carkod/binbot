@@ -8,7 +8,6 @@ from apis import BinbotApi
 from database.db import Database, setup_kafka_db
 from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
-from charts.models import KlineProduceModel
 
 
 class Candlestick(BinbotApi):
@@ -73,7 +72,7 @@ class Candlestick(BinbotApi):
         offset=0,
         start_time=0,
         end_time=0,
-    ) -> list[KlineProduceModel]:
+    ) -> list[dict]:
         """
         Query specifically for display or analytics,
         returns klines ordered by close_time, from oldest to newest

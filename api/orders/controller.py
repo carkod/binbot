@@ -5,6 +5,7 @@ from tools.exceptions import DeleteOrderError
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation, zero_remainder
+from database.symbols_crud import SymbolsCrud
 
 
 class OrderController(Account):
@@ -22,6 +23,7 @@ class OrderController(Account):
         # Inherted attributes
         self.price_precision: int
         self.qty_precision: int
+        self.symbols_crud = SymbolsCrud()
         pass
 
     def generate_id(self):

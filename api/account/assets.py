@@ -16,6 +16,8 @@ from database.bot_crud import BotTableCrud
 from account.schemas import BalanceSeries
 from tools.enum_definitions import BinanceKlineIntervals
 from charts.controllers import Candlestick
+from tools.exceptions import BinbotErrors
+from typing import Sequence
 
 
 class Assets(Account):
@@ -150,7 +152,7 @@ class Assets(Account):
         )
 
         if len(balance_series) == 0:
-            raise BinanceErrors("No balance data found.")
+            raise BinbotErrors("No balance data found.")
 
         # btc candlestick data series
         cs = Candlestick()
@@ -181,8 +183,9 @@ class Assets(Account):
                     balances_series_diff.append(
                         round_numbers(balance_series[index].estimated_total_fiat, 4)
                     )
+                    time: int = int(klines[btc_index]["_id"]["time"].timestamp() * 1000)
                     balances_series_dates.append(
-                        int(klines[btc_index]["_id"]["time"].timestamp() * 1000)
+                        time
                     )
                     balance_btc_diff.append(float(klines[btc_index]["close"]))
             else:
@@ -206,7 +209,7 @@ class Assets(Account):
         data = self.get_account_balance()
         assets = []
 
-        active_bots: list[str] = self.bot_controller.get_active_pairs()
+        active_bots: Sequence[str] = self.bot_controller.get_active_pairs()
         for pair in active_bots:
             quote_asset = pair.replace(self.fiat, "")
             self.exception_list.append(quote_asset)
@@ -243,9 +246,9 @@ class Assets(Account):
             then converted into USDC
         """
         wallet_balance = self.get_wallet_balance()
-        get_usdc_btc_rate = self.ticker(symbol=f"BTC{self.fiat}", json=False)
+        get_usdc_btc_rate = self.get_ticker_price(symbol=f"BTC{self.fiat}")
         total_balance: float = 0
-        rate = float(get_usdc_btc_rate["price"])
+        rate = float(get_usdc_btc_rate)
         for item in wallet_balance:
             if item["activate"]:
                 total_balance += float(item["balance"])

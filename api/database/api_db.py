@@ -37,6 +37,7 @@ class ApiDb:
         SQLModel.metadata.create_all(engine)
         self.init_users()
         self.init_autotrade_settings()
+        self.init_test_autotrade_settings()
         self.create_dummy_bot()
         self.init_symbols()
         # Depends on autotrade settings
@@ -78,23 +79,32 @@ class ApiDb:
             autotrade=True,
         )
 
+        self.session.add(autotrade_data)
+        pass
+
+    def init_test_autotrade_settings(self):
+        statement = select(TestAutotradeTable).where(
+            TestAutotradeTable.id == AutotradeSettingsDocument.test_autotrade_settings
+        )
+        results = self.session.exec(statement)
+        if results.first():
+            return
+
         test_autotrade_data = TestAutotradeTable(
             id=AutotradeSettingsDocument.test_autotrade_settings,
             fiat="USDC",
-            base_order_size=15,
+            base_order_size=20,
             candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
-            max_active_autotrade_bots=1,
+            max_active_autotrade_bots=3,
             max_request=500,
-            stop_loss=0,
+            stop_loss=3,
             take_profit=2.3,
             telegram_signals=True,
             trailling=True,
-            trailling_deviation=0.63,
+            trailling_deviation=1.63,
             trailling_profit=2.3,
             autotrade=False,
         )
-
-        self.session.add(autotrade_data)
         self.session.add(test_autotrade_data)
         self.session.commit()
         pass

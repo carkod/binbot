@@ -1,5 +1,6 @@
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
+from database.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import DealType, OrderSide, Status
 from tools.exceptions import TakeProfitError
@@ -32,6 +33,7 @@ class DealAbstract(BaseDeal):
         super().__init__(bot, db_table)
         self.active_bot = bot
         self.db_table = db_table
+        self.symbols_crud = SymbolsCrud()
 
     def calculate_avg_price(self, fills: list[dict]) -> float:
         """
@@ -121,7 +123,7 @@ class DealAbstract(BaseDeal):
                 (order.order_id == order_id for order in bot.orders), None
             )
             if find_base_order:
-                asset = self.find_baseAsset(bot.pair)
+                asset = self.symbols_crud.base_asset(bot.pair)
 
                 # First cancel old order to unlock balance
                 self.delete_order(bot.pair, order_id)

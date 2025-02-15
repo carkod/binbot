@@ -1,28 +1,34 @@
 from time import time
-from pydantic import BaseModel
-from tools.enum_definitions import AutotradeSettingsDocument, BinanceKlineIntervals
+from pydantic import BaseModel, Field
+from tools.enum_definitions import (
+    AutotradeSettingsDocument,
+    BinanceKlineIntervals,
+    CloseConditions,
+)
 from tools.handle_error import StandardResponse
 
 
 class AutotradeSettingsSchema(BaseModel):
     id: AutotradeSettingsDocument = AutotradeSettingsDocument.settings
-    autotrade: bool = False
-    updated_at: float = time() * 1000
+    candlestick_interval: BinanceKlineIntervals = Field(
+        default=BinanceKlineIntervals.fifteen_minutes,
+    )
+    close_condition: CloseConditions = Field(
+        default=CloseConditions.dynamic_trailling,
+    )
+    autotrade: bool = Field(default=False)
+    updated_at: float = Field(default=time() * 1000)
     # Assuming 10 USDC is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
-    base_order_size: float = 15
-    candlestick_interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes
-    test_autotrade: bool = False
-    trailling: bool = False
-    trailling_deviation: float = 3
-    trailling_profit: float = 2.4
-    stop_loss: float = 0
-    take_profit: float = 2.3
-    fiat: str = "USDC"
-    balance_size_to_use: float = 100
-    max_request: int = 950
-    # Number of times update is requested
-    telegram_signals: bool = True
-    max_active_autotrade_bots: int = 1
+    base_order_size: float = Field(default=15)
+    trailling: bool = Field(default=False)
+    trailling_deviation: float = Field(default=3)
+    trailling_profit: float = Field(default=2.4)
+    stop_loss: float = Field(default=0)
+    take_profit: float = Field(default=2.3)
+    fiat: str = Field(default="USDC")
+    max_request: int = Field(default=950)
+    telegram_signals: bool = Field(default=True)
+    max_active_autotrade_bots: int = Field(default=1)
 
 
 class AutotradeSettingsResponse(StandardResponse):
@@ -31,19 +37,22 @@ class AutotradeSettingsResponse(StandardResponse):
 
 class TestAutotradeSettingsSchema(BaseModel):
     id: AutotradeSettingsDocument = AutotradeSettingsDocument.settings
-    autotrade: bool = False
-    updated_at: float = time() * 1000
+    candlestick_interval: BinanceKlineIntervals = Field(
+        default=BinanceKlineIntervals.fifteen_minutes,
+    )
+    close_condition: CloseConditions = Field(
+        default=CloseConditions.dynamic_trailling,
+    )
+    autotrade: bool = Field(default=False)
+    updated_at: float = Field(default=time() * 1000)
     # Assuming 10 USDC is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
-    base_order_size: float = 15
-    candlestick_interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes
-    trailling: bool = False
-    trailling_deviation: float = 3
-    trailling_profit: float = 2.4
-    stop_loss: float = 0
-    take_profit: float = 2.3
-    fiat: str = "USDC"
-    balance_size_to_use: float = 100
-    max_request: int = 950
-    # Number of times update is requested
-    telegram_signals: bool = True
-    max_active_autotrade_bots: int = 1
+    base_order_size: float = Field(default=15)
+    trailling: bool = Field(default=False)
+    trailling_deviation: float = Field(default=3)
+    trailling_profit: float = Field(default=2.4)
+    stop_loss: float = Field(default=0)
+    take_profit: float = Field(default=2.3)
+    fiat: str = Field(default="USDC")
+    max_request: int = Field(default=950)
+    telegram_signals: bool = Field(default=True)
+    max_active_autotrade_bots: int = Field(default=1)

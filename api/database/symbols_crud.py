@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from database.models.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
-from apis import BinanceApi
+from exchange_apis.binance import BinanceApi
 from symbols.models import SymbolPayload
 
 
@@ -66,6 +66,7 @@ class SymbolsCrud:
         min_notional: float = 0,
         cooldown: int = 0,
         cooldown_start_ts: int = 0,
+        is_margin_trading_allowed: bool = False,
     ):
         """
         Add a new symbol
@@ -81,6 +82,7 @@ class SymbolsCrud:
             base_asset=base_asset,
             cooldown=cooldown,
             cooldown_start_ts=cooldown_start_ts,
+            is_margin_trading_allowed=is_margin_trading_allowed,
         )
         self.session.add(symbol)
         self.session.commit()
@@ -131,6 +133,15 @@ class SymbolsCrud:
         self.session.close()
         return symbol_model
 
+    def base_asset(self, symbol: str):
+        """
+        Finds base asset using Symbols database
+        e.g. BTCUSDC -> BTC
+        """
+        query = select(SymbolTable.base_asset).where(SymbolTable.id == symbol)
+        base_asset = self.session.exec(query).first()
+        return base_asset
+
     def refresh_symbols_table(self):
         """
         Refresh the symbols table
@@ -139,7 +150,7 @@ class SymbolsCrud:
         because weight considerably lower
         """
         binance_api = BinanceApi()
-        data = binance_api._exchange_info()["symbols"]
+        data = binance_api.exchange_info()["symbols"]
 
         for item in data:
             if item["status"] != "TRADING":
@@ -178,4 +189,5 @@ class SymbolsCrud:
                     min_notional=float(min_notional),
                     quote_asset=item["quoteAsset"],
                     base_asset=item["baseAsset"],
+                    is_margin_trading_allowed=item["isMarginTradingAllowed"],
                 )
