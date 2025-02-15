@@ -17,6 +17,8 @@ from account.schemas import BalanceSeries
 from tools.enum_definitions import BinanceKlineIntervals
 from charts.controllers import Candlestick
 from tools.exceptions import BinbotErrors
+from typing import Sequence
+
 
 class Assets(Account):
     def __init__(self, session):
@@ -150,7 +152,7 @@ class Assets(Account):
         )
 
         if len(balance_series) == 0:
-            raise BinbotErrors(message="No balance data found.", code=2)
+            raise BinbotErrors("No balance data found.")
 
         # btc candlestick data series
         cs = Candlestick()
@@ -181,8 +183,9 @@ class Assets(Account):
                     balances_series_diff.append(
                         round_numbers(balance_series[index].estimated_total_fiat, 4)
                     )
+                    time: int = int(klines[btc_index]["_id"]["time"].timestamp() * 1000)
                     balances_series_dates.append(
-                        int(klines[btc_index]["_id"]["time"].timestamp() * 1000)
+                        time
                     )
                     balance_btc_diff.append(float(klines[btc_index]["close"]))
             else:
@@ -206,7 +209,7 @@ class Assets(Account):
         data = self.get_account_balance()
         assets = []
 
-        active_bots: list[str] = self.bot_controller.get_active_pairs()
+        active_bots: Sequence[str] = self.bot_controller.get_active_pairs()
         for pair in active_bots:
             quote_asset = pair.replace(self.fiat, "")
             self.exception_list.append(quote_asset)
