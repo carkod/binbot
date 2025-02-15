@@ -16,7 +16,7 @@ from database.bot_crud import BotTableCrud
 from account.schemas import BalanceSeries
 from tools.enum_definitions import BinanceKlineIntervals
 from charts.controllers import Candlestick
-
+from tools.exceptions import BinbotErrors
 
 class Assets(Account):
     def __init__(self, session):
@@ -150,7 +150,7 @@ class Assets(Account):
         )
 
         if len(balance_series) == 0:
-            raise BinanceErrors("No balance data found.")
+            raise BinbotErrors(message="No balance data found.", code=2)
 
         # btc candlestick data series
         cs = Candlestick()

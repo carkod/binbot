@@ -66,6 +66,7 @@ class SymbolsCrud:
         min_notional: float = 0,
         cooldown: int = 0,
         cooldown_start_ts: int = 0,
+        is_margin_trading_allowed: bool = False,
     ):
         """
         Add a new symbol
@@ -81,6 +82,7 @@ class SymbolsCrud:
             base_asset=base_asset,
             cooldown=cooldown,
             cooldown_start_ts=cooldown_start_ts,
+            is_margin_trading_allowed=is_margin_trading_allowed,
         )
         self.session.add(symbol)
         self.session.commit()
@@ -178,4 +180,5 @@ class SymbolsCrud:
                     min_notional=float(min_notional),
                     quote_asset=item["quoteAsset"],
                     base_asset=item["baseAsset"],
+                    is_margin_trading_allowed=item["isMarginTradingAllowed"],
                 )
