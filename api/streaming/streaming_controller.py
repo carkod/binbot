@@ -14,7 +14,7 @@ from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from tools.exceptions import BinanceErrors, BinbotErrors
 from datetime import datetime
-from apis import BinanceApi
+from exchange_apis.binance import BinanceApi
 
 
 class BaseStreaming:

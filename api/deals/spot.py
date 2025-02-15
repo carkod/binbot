@@ -486,7 +486,7 @@ class SpotLongDeal(DealAbstract):
 
         # Sell everything
         pair = self.active_bot.pair
-        base_asset = self.find_baseAsset(pair)
+        base_asset = self.base_asset(pair)
         balance = self.get_single_raw_balance(base_asset)
         if balance > 0:
             qty = round_numbers(balance, self.qty_precision)

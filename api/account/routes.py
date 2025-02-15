@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
-from account.account import Account
 from account.assets import Assets
 from account.schemas import (
     BalanceResponse,
@@ -26,27 +25,6 @@ account_blueprint = APIRouter()
 def raw_balance(session: Session = Depends(get_session)):
     data = Assets(session=session).get_raw_balance()
     return json_response({"data": data})
-
-
-@account_blueprint.get("/symbols", tags=["account"])
-def get_symbols():
-    return Account().get_symbols()
-
-
-@account_blueprint.get("/symbol/{pair}", tags=["account"])
-@account_blueprint.get("/symbol", tags=["account"])
-def get_symbol_info(pair):
-    return Account().get_symbol_info(pair)
-
-
-@account_blueprint.get("/find-quote/{pair}", tags=["account"])
-def find_quote_asset(pair):
-    return Account().find_quote_asset_json(pair)
-
-
-@account_blueprint.get("/find-base/{pair}", tags=["account"])
-def find_base_asset(pair):
-    return Account().find_base_asset_json(pair)
 
 
 @account_blueprint.get("/balance/estimate", tags=["assets"])

@@ -64,7 +64,7 @@ class BaseDeal(OrderController):
         Helper function to compute buy_price.
         """
 
-        asset = self.find_baseAsset(pair)
+        asset = self.base_asset(pair)
         balance = self.get_single_raw_balance(asset)
         if balance == 0:
             # If spot balance is not found

@@ -282,3 +282,12 @@ class BotTableCrud:
         self.session.refresh(initial_bot)
         self.session.close()
         return order
+
+    def get_active_pairs(self) -> Sequence[str]:
+        """
+        Get all active pairs
+        """
+        statement = select(BotTable.pair).where(BotTable.status == Status.active)
+        pairs = self.session.exec(statement).all()
+        self.session.close()
+        return pairs

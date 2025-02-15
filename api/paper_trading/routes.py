@@ -149,3 +149,14 @@ def deactivate(id: str, session: Session = Depends(get_session)):
         return BotResponse(message=error.message, error=1)
     except ValueError as error:
         return BotResponse(message="Bot not found.", error=1, data=str(error))
+
+
+@paper_trading_blueprint.get("paper-trading/active-pairs", tags=["paper trading"])
+def get_active_pairs(session: Session = Depends(get_session)):
+    try:
+        pairs = PaperTradingTableCrud(session=session).get_active_pairs()
+        return BotResponse(message="Successfully found active pairs!", data=pairs)
+    except BinbotErrors as error:
+        return BotResponse(message=error.message, error=1)
+    except ValueError:
+        return BotResponse(message="No active pairs found!", error=1)

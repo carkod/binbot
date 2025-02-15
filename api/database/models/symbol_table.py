@@ -16,6 +16,7 @@ class SymbolTable(SQLModel, table=True):
     )
     active: bool = Field(default=True, description="Blacklisted items = false")
     blacklist_reason: str = Field(default="")
+    is_margin_trading_allowed: bool = Field(default=False)
     quote_asset: str = Field(
         default="", description="in BTCUSDC, BTC would be quote asset"
     )

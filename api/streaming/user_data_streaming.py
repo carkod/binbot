@@ -1,6 +1,6 @@
 import logging
 import json
-from apis import BinanceApi
+from exchange_apis.binance import BinanceApi
 from streaming.socket_client import SpotWebsocketStreamClient
 from database.db import Database
 from database.bot_crud import BotTableCrud

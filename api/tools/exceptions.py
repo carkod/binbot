@@ -20,6 +20,7 @@ class NotEnoughFunds(BinanceErrors):
 class BinbotErrors(Exception):
     def __init__(self, msg, code=None):
         self.message = msg
+        self.code = code
         super().__init__(self.message)
         return None
 
