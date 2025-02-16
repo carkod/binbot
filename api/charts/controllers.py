@@ -8,9 +8,10 @@ from apis import BinbotApi
 from database.db import Database, setup_kafka_db
 from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
+from bson.objectid import ObjectId
 
 
-class Candlestick(BinbotApi):
+class Candlestick(Database):
     """
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
@@ -18,12 +19,6 @@ class Candlestick(BinbotApi):
 
     def __init__(self) -> None:
         self.db = setup_kafka_db()
-        self.default_projection = {
-            "$project": {
-                "candle_closed": 0,
-                "_id": 0,
-            }
-        }
 
     def build_query(self, interval: BinanceKlineIntervals):
         bin_size = interval.bin_size()
@@ -59,10 +54,8 @@ class Candlestick(BinbotApi):
         Returns:
             list: 15m Klines
         """
-        self.db = setup_kafka_db()
         query = self.db.kline.find(
             {"symbol": symbol},
-            self.default_projection,
             limit=limit,
             skip=offset,
             sort=[("_id", DESCENDING)],
@@ -89,7 +82,12 @@ class Candlestick(BinbotApi):
         if interval == BinanceKlineIntervals.five_minutes:
             result = self.db.kline.find(
                 {"symbol": symbol},
-                self.default_projection,
+                {
+                    "projection": {
+                        "candle_closed": "0",
+                        "_id": "0",
+                    }
+                },
                 limit=limit,
                 skip=offset,
                 sort=[("_id", DESCENDING)],
@@ -104,40 +102,27 @@ class Candlestick(BinbotApi):
 
             if int(start_time) > 0:
                 st_dt = datetime.fromtimestamp(start_time / 1000)
-                query.append({"$match": {"_id.time": {"$gte": start_time}}})
+                query.append({"$match": {"_id.time": {"$gte": st_dt}}})
+
             if int(end_time) > 0:
                 et_dt = datetime.fromtimestamp(end_time / 1000)
                 query.append({"$match": {"_id.time": {"$lte": et_dt}}})
-
-            query.append(self.default_projection)
 
             result = self.db.kline.aggregate(query)
         data = list(result)
         return data
 
-    def ticket_24(self, symbol: str):
+    def ticker_24(self, symbol: str):
         """
         Get 24 hour ticker price change
         """
-        query = []
-        group_stage = self.build_query(BinanceKlineIntervals.one_day)
-        match_stage = {"symbol": symbol}
-
-        query.append({"$match": match_stage})
-        query.append(group_stage)
-
         start_time = datetime.now() - timedelta(days=1)
-        query.append({"$match": {"_id.time": {"$gte": start_time}}})
-
-        end_time = datetime.now()
-        query.append({"$match": {"_id.time": {"$lte": end_time}}})
-
-        query.append(self.default_projection)
-
-        result = self.db.kline.aggregate(query)
-
-        data = list(result)
-        return self.client.get_ticker_24hr()
+        data = self.raw_klines(
+            symbol,
+            BinanceKlineIntervals.one_day,
+            start_time=int(start_time.timestamp()),
+        )
+        return data
 
 
 class MarketDominationController(Database, BinbotApi):
