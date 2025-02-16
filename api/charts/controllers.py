@@ -18,6 +18,12 @@ class Candlestick(BinbotApi):
 
     def __init__(self) -> None:
         self.db = setup_kafka_db()
+        self.default_projection = {
+            "$project": {
+                "candle_closed": 0,
+                "_id": 0,
+            }
+        }
 
     def build_query(self, interval: BinanceKlineIntervals):
         bin_size = interval.bin_size()
@@ -56,7 +62,7 @@ class Candlestick(BinbotApi):
         self.db = setup_kafka_db()
         query = self.db.kline.find(
             {"symbol": symbol},
-            {"_id": 0, "candle_closed": 0},
+            self.default_projection,
             limit=limit,
             skip=offset,
             sort=[("_id", DESCENDING)],
@@ -83,7 +89,7 @@ class Candlestick(BinbotApi):
         if interval == BinanceKlineIntervals.five_minutes:
             result = self.db.kline.find(
                 {"symbol": symbol},
-                {"_id": 0, "candle_closed": 0},
+                self.default_projection,
                 limit=limit,
                 skip=offset,
                 sort=[("_id", DESCENDING)],
@@ -100,12 +106,38 @@ class Candlestick(BinbotApi):
                 st_dt = datetime.fromtimestamp(start_time / 1000)
                 query.append({"$match": {"_id.time": {"$gte": start_time}}})
             if int(end_time) > 0:
-                st_dt = datetime.fromtimestamp(end_time / 1000)
-                query.append({"$match": {"_id.time": {"$lte": st_dt}}})
+                et_dt = datetime.fromtimestamp(end_time / 1000)
+                query.append({"$match": {"_id.time": {"$lte": et_dt}}})
+
+            query.append(self.default_projection)
 
             result = self.db.kline.aggregate(query)
         data = list(result)
         return data
+
+    def ticket_24(self, symbol: str):
+        """
+        Get 24 hour ticker price change
+        """
+        query = []
+        group_stage = self.build_query(BinanceKlineIntervals.one_day)
+        match_stage = {"symbol": symbol}
+
+        query.append({"$match": match_stage})
+        query.append(group_stage)
+
+        start_time = datetime.now() - timedelta(days=1)
+        query.append({"$match": {"_id.time": {"$gte": start_time}}})
+
+        end_time = datetime.now()
+        query.append({"$match": {"_id.time": {"$lte": end_time}}})
+
+        query.append(self.default_projection)
+
+        result = self.db.kline.aggregate(query)
+
+        data = list(result)
+        return self.client.get_ticker_24hr()
 
 
 class MarketDominationController(Database, BinbotApi):
