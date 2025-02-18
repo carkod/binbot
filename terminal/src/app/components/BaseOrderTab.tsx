@@ -166,6 +166,7 @@ const BaseOrderTab: FC = () => {
                   type="number"
                   name="base_order_size"
                   autoComplete="off"
+                  defaultValue={bot.base_order_size}
                   required
                   disabled={
                     bot.status === BotStatus.ACTIVE ||
