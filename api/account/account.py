@@ -1,6 +1,7 @@
 import requests
 from apis import BinbotApi
 from tools.handle_error import handle_binance_errors
+from tools.round_numbers import round_numbers
 
 
 class Account(BinbotApi):
@@ -98,5 +99,5 @@ class Account(BinbotApi):
         """
         total_commission: float = 0
         for chunk in fills:
-            total_commission += float(chunk["commission"])
+            total_commission += round_numbers(float(chunk["commission"]))
         return total_commission
