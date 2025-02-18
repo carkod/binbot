@@ -27,7 +27,8 @@ interface ErrorsState {
 }
 
 const BaseOrderTab: FC = () => {
-  const { symbol } = useParams();
+  const { symbol, id} = useParams();
+  console.log(id);
   const dispatch: AppDispatch = useAppDispatch();
   const { data: symbols } = useGetSymbolsQuery();
   const { bot } = useAppSelector(selectBot);
@@ -99,17 +100,25 @@ const BaseOrderTab: FC = () => {
       setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.fiat));
     }
 
-    if (symbol) {
+    if (symbol && !id) {
       reset({
         name: bot.name,
         base_order_size: bot.base_order_size,
         cooldown: bot.cooldown,
         strategy: bot.strategy,
+        pair: symbol,
       });
+      dispatch(setField({ name: "pair", value: symbol }));
     }
 
-    if (symbol) {
-      dispatch(setField({ name: "pair", value: symbol }));
+    if (id && !symbol) {
+      reset({
+        name: bot.name,
+        base_order_size: bot.base_order_size,
+        cooldown: bot.cooldown,
+        strategy: bot.strategy,
+        pair: id,
+      });
     }
 
     if (bot.deal?.current_price !== currentPrice) {
@@ -166,7 +175,6 @@ const BaseOrderTab: FC = () => {
                   type="number"
                   name="base_order_size"
                   autoComplete="off"
-                  defaultValue={bot.base_order_size}
                   required
                   disabled={
                     bot.status === BotStatus.ACTIVE ||
