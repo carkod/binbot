@@ -11,6 +11,8 @@ export default function marginTrading(
   const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];
   const qtyText = bot.deal ? String(bot.deal.opening_qty) : "";
+  const price =
+    bot.deal?.opening_price || currentPrice || bot.deal.current_price;
 
   if (bot.base_order_size > 0 && currentPrice) {
     if (bot.deal.closing_price > 0) {
@@ -33,8 +35,6 @@ export default function marginTrading(
     } else {
       // if no closing_price
       // bot inactive: currentPrice, bot active: opening_price
-      const price =
-        bot.deal?.opening_price || currentPrice || bot.deal.current_price;
       totalOrderLines.push({
         id: "base_order",
         text: "Base (Margin sell)",
@@ -153,12 +153,8 @@ export default function marginTrading(
   }
 
   if (bot.stop_loss > 0) {
-    let stopLossPrice = 0;
-    if (bot.deal.closing_price > 0) {
-      stopLossPrice = bot.deal.stop_loss_price;
-    } else {
-      stopLossPrice = currentPrice * (1 + bot.stop_loss / 100);
-    }
+    const stopLossPrice =
+      bot.deal.stop_loss_price || currentPrice * (1 + bot.stop_loss / 100);
     totalOrderLines.push({
       id: "stop_loss",
       text: `Stop Loss ${bot.stop_loss}%`,

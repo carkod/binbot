@@ -11,23 +11,34 @@ from tools.handle_error import (
     json_response_message,
 )
 from charts.controllers import Candlestick, MarketDominationController, BtcCorrelation
+from charts.models import CandlestickResponse
 
 charts_blueprint = APIRouter()
 
 
 @charts_blueprint.get(
-    "/timeseries", summary="Retrieve timeseries data", tags=["charts"]
+    "/timeseries",
+    summary="Retrieve timeseries data",
+    response_model=CandlestickResponse,
+    tags=["charts"],
 )
 def get_timeseries(symbol: str, limit: int = 500):
     """
     Retrieve candlesticks data stored in DB from Binance
     in a timeseries format by Binquant
     """
-    return Candlestick().get_timeseries(symbol, limit)
+    data = Candlestick().get_timeseries(symbol, limit)
+    return {
+        "data": data,
+        "message": "Successfully retrieved timeseries data.",
+    }
 
 
 @charts_blueprint.get(
-    "/market-domination", tags=["charts"], response_model=MarketDominationResponse
+    "/market-domination",
+    summary="Market domination (gainers vs losers) data",
+    response_model=MarketDominationResponse,
+    tags=["charts"],
 )
 def market_domination(size: int = 14):
     data = MarketDominationController().get_market_domination(size)
@@ -137,3 +148,18 @@ def get_btc_correlation(symbol: str):
 
     except Exception as error:
         return json_response_error(f"Failed to retrieve BTC correlation data: {error}")
+
+
+@charts_blueprint.get("/ticker-24", tags=["charts"])
+def ticker_24(symbol: str):
+    response = Candlestick().ticker_24(symbol=symbol)
+    if response:
+        return json_response(
+            {
+                "data": response,
+                "message": f"Successfully retrieved 24 hour ticker for {symbol}.",
+                "error": 0,
+            }
+        )
+    else:
+        raise HTTPException(404, detail="No data found")

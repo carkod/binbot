@@ -6,6 +6,40 @@ nav_order: 1
 permalink: /
 ---
 
+# Index
+- [To Develop](#to-develop)
+- [Concept](#concept)
+  - [Filter](#filter)
+  - [Use volatility](#use-volatility)
+  - [Reassure trend](#reassure-trend)
+  - [Look for buy and sell signals](#look-for-buy-and-sell-signals)
+- [Sudden increase Algorithm](#sudden-increase-algorithm)
+  - [Filters](#a-filters)
+  - [Orders](#b-orders)
+- [Autotrade](autotrade.md)
+- [Account](account/)
+  - [Bot](account/bot.md)
+  - [Bot Status](account/bot-status.md)
+  - [Paper Trading](account/paper-trading.md)
+  - [Margin](account/margin.md)
+  - [Hedging](account/hedging.md)
+  - [Bot Strategies](account/bot-strategies.md)
+- [Research](research/)
+  - [QFL Signals](research/qfl_signals.md)
+- [About Back-testing](about-backtesting.md)
+- [Symbol Table vs Candlesticks](symbol-table-vs-candlesticks.md)
+- [Rest API Standards](rest.md)
+- [Reducers](reducers.md)
+- [Klines](klines.md)
+- [Deployment](deployment.md)
+- [Code Styling](code-styling.md)
+- [Binance Teapot Errors](binance-teapot-errors.md)
+- [Architecture](architecture.md)
+- [APIs](apis.md)
+- [Why Not Use Chart.js](why-not-use-chartjs.md)
+- [Webserver Issues](webserver-issues.md)
+- [Tests Types](tests-types.md)
+
 PLOTTING DOES NOT WORK WITH DEBUGGER
 
 ## To Develop
@@ -58,4 +92,3 @@ Buy Filters:
 - Types of orders: limit order, market order, stop limit...  
     Need to make sure order executes
 - Buy / sell order
-    

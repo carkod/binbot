@@ -268,7 +268,7 @@ class ApiDb:
         symbol = results.first()
         if symbol:
             return
-        self.symbols.refresh_symbols_table()
+        self.symbols.symbols_table_ingestion()
 
     def init_balances(self):
         statement = select(UserTable)

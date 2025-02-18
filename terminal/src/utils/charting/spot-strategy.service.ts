@@ -6,10 +6,11 @@ import { BotStatus } from "../enums";
 
 export default function spotTrading(
   bot: Bot,
-  currentPrice: number
+  currentPrice: number = 0
 ): OrderLine[] {
   const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];
+  const price = bot.deal?.opening_price > 0 || currentPrice > 0 || bot.deal.current_price;
 
   if (bot.base_order_size > 0 && currentPrice) {
     const qtyText = bot.deal ? String(bot.deal.opening_qty) : "";
@@ -147,12 +148,13 @@ export default function spotTrading(
 
     // Stop loss remains the same in all situations
     if (bot.stop_loss > 0) {
+      const stop_loss = bot.deal.stop_loss_price || currentPrice * (1 - bot.stop_loss / 100);
       totalOrderLines.push({
         id: "stop_loss",
         text: `Stop Loss ${bot.stop_loss}%`,
         tooltip: [bot.status, " Sell Order "],
         quantity: `${qtyText} ${quoteAsset}`,
-        price: bot.deal.stop_loss_price, // buy_profit * take_profit%
+        price: stop_loss,
         color: "red",
       });
     }

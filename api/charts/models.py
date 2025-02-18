@@ -1,6 +1,7 @@
 import datetime
 from pydantic import BaseModel, field_validator
 from tools.handle_error import StandardResponse
+from bson.objectid import ObjectId
 
 
 class CandlestickItemRequest(BaseModel):
@@ -69,3 +70,20 @@ class MarketDominationSeries(BaseModel):
 
 class GetMarketDominationResponse(StandardResponse):
     data: MarketDominationSeries
+
+
+class CandlestickData(BaseModel):
+    symbol: str
+    interval: str
+    open: float
+    open_time: datetime.datetime
+    volume: float
+    candle_closed: bool
+    high: float
+    close: float
+    low: float
+    end_time: int
+    _id: ObjectId
+
+class CandlestickResponse(StandardResponse):
+    data: list[CandlestickData]

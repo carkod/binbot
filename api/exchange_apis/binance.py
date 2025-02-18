@@ -156,7 +156,6 @@ class BinanceApi:
         # set up a cache that expires in 1440'' (24hrs)
         # session = CachedSession("http_cache", backend=mongo_cache, expire_after=1440)
         exchange_info_res = self.request(url=f"{self.exchangeinfo_url}", params=params)
-        # exchange_info = handle_binance_errors(exchange_info_res)
         return exchange_info_res
 
     def price_filter_by_symbol(self, symbol, filter_limit):

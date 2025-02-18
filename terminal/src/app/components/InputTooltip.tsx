@@ -37,7 +37,7 @@ export const InputTooltip: FC<InputTooltipProps> = ({
       </Form.Control.Feedback>
       {errors[name] && (
         <Form.Control.Feedback type="invalid">
-          {errors[name]}
+          {errors[name]?.message}
         </Form.Control.Feedback>
       )}
     </Form.Group>
