@@ -160,8 +160,8 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
         deal_instance = SpotLongDeal(bot_model)
 
     try:
-        data = deal_instance.open_deal()
-        response_data = BotModelResponse.model_construct(**data.model_dump())
+        # data = deal_instance.open_deal()
+        response_data = BotModelResponse.model_construct(**bot_model.model_dump())
         message = "Successfully activated bot."
         if bot.status == Status.active:
             message = "Successfully updated bot."
