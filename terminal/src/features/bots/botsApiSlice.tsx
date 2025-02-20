@@ -19,10 +19,6 @@ type GetBotsResponse = {
   totalProfit: number;
 };
 
-interface BotResponse extends StandardResponse {
-  data: Bot[];
-}
-
 export const buildGetBotsPath = (
   status: string = BotStatus.ALL,
   startDate: number = weekAgo(),

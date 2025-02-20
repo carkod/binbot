@@ -24,7 +24,6 @@ export interface Bot {
   base_order_size: number;
   candle_interval?: string;
   close_condition?: string;
-  cooldown: number;
   dynamic_trailling: boolean;
   logs: string[];
   mode: string;
@@ -88,6 +87,5 @@ export const singleBot: Bot = {
   orders: [],
   stop_loss: 3,
   margin_short_reversal: true,
-  cooldown: 0,
   strategy: BotStrategy.LONG,
 };
