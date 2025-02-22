@@ -184,9 +184,7 @@ class Assets(Account):
                         round_numbers(balance_series[index].estimated_total_fiat, 4)
                     )
                     time: int = int(klines[btc_index]["_id"]["time"].timestamp() * 1000)
-                    balances_series_dates.append(
-                        time
-                    )
+                    balances_series_dates.append(time)
                     balance_btc_diff.append(float(klines[btc_index]["close"]))
             else:
                 continue

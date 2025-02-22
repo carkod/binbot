@@ -21,7 +21,7 @@ from alembic import command
 from database.utils import engine
 from account.assets import Assets
 from database.symbols_crud import SymbolsCrud
-
+from time import time
 
 class ApiDb:
     """
@@ -268,7 +268,11 @@ class ApiDb:
         symbol = results.first()
         if symbol:
             return
-        self.symbols.refresh_symbols_table()
+        print("Starting symbols ingestion")
+        exec_start_time = time()
+        self.symbols.symbols_table_ingestion()
+        print(f"Symbols ingestion took {time() - exec_start_time} seconds")
+        pass
 
     def init_balances(self):
         statement = select(UserTable)

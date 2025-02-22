@@ -142,18 +142,24 @@ class SymbolsCrud:
         base_asset = self.session.exec(query).first()
         return base_asset
 
-    def refresh_symbols_table(self):
+    def symbols_table_ingestion(self):
         """
-        Refresh the symbols table
+        Full data ingestions of symbol (e.g. ETHUSDC)
+        for the symbols table
 
-        Uses ticker instead of exchange_info
-        because weight considerably lower
+        This populates the table with Binance pairs
+        future: if additional exchanges are added,
+        symbol pairs should be consolidated in this table
         """
         binance_api = BinanceApi()
-        data = binance_api.exchange_info()["symbols"]
+        exchange_info_data = binance_api.exchange_info()
 
-        for item in data:
-            if item["status"] != "TRADING":
+        for item in exchange_info_data["symbols"]:
+            # Only store fiat market exclude other fiats.
+            # Only store pairs that are actually traded
+            if item["status"] != "TRADING" and item["symbol"].startswith(
+                ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
+            ):
                 continue
             try:
                 symbol = self.get_symbol(item["symbol"])
@@ -161,14 +167,7 @@ class SymbolsCrud:
                 symbol = None
                 pass
 
-            # Only store fiat market, exclude other fiats.
-            if (
-                item["symbol"].endswith("USDC")
-                and not symbol
-                and not item["symbol"].startswith(
-                    ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
-                )
-            ):
+            if item["symbol"].endswith("USDC") and symbol is None:
                 price_precision = binance_api.calculate_price_precision(item["symbol"])
                 qty_precision = binance_api.calculate_qty_precision(item["symbol"])
                 min_notional = binance_api.min_notional_by_symbol(item["symbol"])

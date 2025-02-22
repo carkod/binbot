@@ -27,7 +27,7 @@ interface ErrorsState {
 }
 
 const BaseOrderTab: FC = () => {
-  const { symbol } = useParams();
+  const { symbol, id} = useParams();
   const dispatch: AppDispatch = useAppDispatch();
   const { data: symbols } = useGetSymbolsQuery();
   const { bot } = useAppSelector(selectBot);
@@ -48,7 +48,6 @@ const BaseOrderTab: FC = () => {
     defaultValues: {
       name: bot.name,
       base_order_size: bot.base_order_size,
-      cooldown: bot.cooldown,
       strategy: bot.strategy,
     },
   });
@@ -99,17 +98,23 @@ const BaseOrderTab: FC = () => {
       setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.fiat));
     }
 
-    if (symbol) {
+    if (symbol && !id) {
       reset({
         name: bot.name,
         base_order_size: bot.base_order_size,
-        cooldown: bot.cooldown,
         strategy: bot.strategy,
+        pair: symbol,
       });
+      dispatch(setField({ name: "pair", value: symbol }));
     }
 
-    if (symbol) {
-      dispatch(setField({ name: "pair", value: symbol }));
+    if (id && !symbol) {
+      reset({
+        name: bot.name,
+        base_order_size: bot.base_order_size,
+        strategy: bot.strategy,
+        pair: id,
+      });
     }
 
     if (bot.deal?.current_price !== currentPrice) {
@@ -219,22 +224,6 @@ const BaseOrderTab: FC = () => {
                 autoComplete="off"
                 disabled={true}
                 value={bot.base_order_size * currentPrice}
-              />
-            </InputTooltip>
-          </Col>
-        </Row>
-        <Row className="my-3">
-          <Col md="6" sm="12">
-            <InputTooltip
-              name="cooldown"
-              tooltip="Time until next bot activation with same pair"
-              label="Cooldown (seconds)"
-              errors={errors}
-            >
-              <Form.Control
-                type="number"
-                name="cooldown"
-                {...register("cooldown")}
               />
             </InputTooltip>
           </Col>

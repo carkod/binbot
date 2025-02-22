@@ -1,17 +1,19 @@
-import { useState, type FC } from "react";
+import React, { useEffect, useState, type FC } from "react";
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
 import {
   botsApiSlice,
   useCreateBotMutation,
   useEditBotMutation,
+  useLazyActivateBotQuery,
 } from "../../features/bots/botsApiSlice";
-import { selectBot } from "../../features/bots/botSlice";
+import { selectBot, setBot } from "../../features/bots/botSlice";
 import { BotStatus, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import BaseOrderTab from "./BaseOrderTab";
 import StopLossTab from "./StopLossTab";
 import TakeProfit from "./TakeProfitTab";
+import { setSpinner } from "../../features/layoutSlice";
 
 const BotDetailTabs: FC = () => {
   const { bot } = useAppSelector(selectBot);
@@ -21,6 +23,7 @@ const BotDetailTabs: FC = () => {
 
   const [updateBot] = useEditBotMutation();
   const [createBot] = useCreateBotMutation();
+  const [trigger, { isLoading: isActivating, isError, data: refetchedBot, error } ] = useLazyActivateBotQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
 
@@ -28,11 +31,9 @@ const BotDetailTabs: FC = () => {
   // Deals and orders information need to come from the server
   const handleActivation = async (id: string) => {
     await updateBot({ body: bot, id });
-    const result = await dispatch(
-      botsApiSlice.endpoints.activateBot.initiate(id),
-    );
-    if (result.isSuccess) {
-      navigate(`/bots/edit/${id}`);
+    const result = await trigger(id);
+    if (!isActivating && result.data) {
+      dispatch(setBot(result.data));
     }
   };
   const handlePanicSell = async (id: string) => {
@@ -46,9 +47,17 @@ const BotDetailTabs: FC = () => {
     } else {
       const data = await createBot(bot).unwrap();
       setEnableActivation(true);
-      navigate(`/bots/edit/${data.id}`);
+      navigate(`/bots/edit/${data}`);
     }
   };
+
+  useEffect(() => {
+    if (isActivating) {
+      setSpinner(true);
+    } else {
+      setSpinner(false);
+    }
+  }, [isActivating]);
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>

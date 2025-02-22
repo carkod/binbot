@@ -10,7 +10,7 @@ from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
 
 
-class Candlestick(BinbotApi):
+class Candlestick(Database):
     """
     Return Plotly format of Candlestick
     https://plotly.com/javascript/candlestick-charts/
@@ -53,10 +53,8 @@ class Candlestick(BinbotApi):
         Returns:
             list: 15m Klines
         """
-        self.db = setup_kafka_db()
         query = self.db.kline.find(
             {"symbol": symbol},
-            {"_id": 0, "candle_closed": 0},
             limit=limit,
             skip=offset,
             sort=[("_id", DESCENDING)],
@@ -83,7 +81,12 @@ class Candlestick(BinbotApi):
         if interval == BinanceKlineIntervals.five_minutes:
             result = self.db.kline.find(
                 {"symbol": symbol},
-                {"_id": 0, "candle_closed": 0},
+                {
+                    "projection": {
+                        "candle_closed": "0",
+                        "_id": "0",
+                    }
+                },
                 limit=limit,
                 skip=offset,
                 sort=[("_id", DESCENDING)],
@@ -98,13 +101,26 @@ class Candlestick(BinbotApi):
 
             if int(start_time) > 0:
                 st_dt = datetime.fromtimestamp(start_time / 1000)
-                query.append({"$match": {"_id.time": {"$gte": start_time}}})
+                query.append({"$match": {"_id.time": {"$gte": st_dt}}})
+
             if int(end_time) > 0:
-                st_dt = datetime.fromtimestamp(end_time / 1000)
-                query.append({"$match": {"_id.time": {"$lte": st_dt}}})
+                et_dt = datetime.fromtimestamp(end_time / 1000)
+                query.append({"$match": {"_id.time": {"$lte": et_dt}}})
 
             result = self.db.kline.aggregate(query)
         data = list(result)
+        return data
+
+    def ticker_24(self, symbol: str):
+        """
+        Get 24 hour ticker price change
+        """
+        start_time = datetime.now() - timedelta(days=1)
+        data = self.raw_klines(
+            symbol,
+            BinanceKlineIntervals.one_day,
+            start_time=int(start_time.timestamp()),
+        )
         return data
 
 

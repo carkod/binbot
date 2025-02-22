@@ -12,6 +12,7 @@ from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
 from tools.exceptions import SaveBotError, BinbotErrors
+from tools.round_numbers import round_numbers
 
 
 class BotTableCrud:
@@ -272,7 +273,7 @@ class BotTableCrud:
         """
 
         initial_bot = self.get_one(bot_id=str(order.bot_id))
-        initial_bot.deal.total_commissions += commission
+        initial_bot.deal.total_commissions += round_numbers(commission)
         initial_bot.logs.append("Order status updated")
 
         self.session.add(order)

@@ -11,17 +11,13 @@ import type {
   EditBotParams,
   SingleBotResponse,
   GetBotsParams,
+  ActivateBotResponse,
 } from "./bots";
-import { type StandardResponse } from "../../utils/api.types";
 
 type GetBotsResponse = {
   bots: BotEntity;
   totalProfit: number;
 };
-
-interface BotResponse extends StandardResponse {
-  data: Bot[];
-}
 
 export const buildGetBotsPath = (
   status: string = BotStatus.ALL,
@@ -125,11 +121,11 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    activateBot: build.query<DefaultBotsResponse, string>({
+    activateBot: build.query<ActivateBotResponse, string>({
       query: (id) => ({
         url: `${import.meta.env.VITE_ACTIVATE_BOT}/${id}`,
         method: "GET",
-        invalidatesTags: (result) => [{ type: "bot", id: id }],
+        invalidatesTags: (result) => [{ type: "bot", id: result.bot.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -137,6 +133,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message);
         }
+        console.log("activateBot", data);
         return data;
       },
     }),
@@ -165,6 +162,6 @@ export const {
   useCreateBotMutation,
   useEditBotMutation,
   useDeleteBotMutation,
-  useActivateBotQuery,
+  useLazyActivateBotQuery,
   useDeactivateBotMutation,
 } = botsApiSlice;

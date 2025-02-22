@@ -24,7 +24,6 @@ export interface Bot {
   base_order_size: number;
   candle_interval?: string;
   close_condition?: string;
-  cooldown: number;
   dynamic_trailling: boolean;
   logs: string[];
   mode: string;
@@ -35,7 +34,7 @@ export interface Bot {
   take_profit: number;
   trailling: boolean;
   trailling_deviation: number;
-  trailling_profit?: number;
+  trailling_profit: number;
   strategy: BotStrategy;
   balance_available: number;
   deal?: Deal;
@@ -67,6 +66,7 @@ export const singleBot: Bot = {
   take_profit: 2.3,
   trailling: false,
   trailling_deviation: 2.8,
+  trailling_profit: 2.3,
   dynamic_trailling: false,
   deal: {
     current_price: 0,
@@ -87,6 +87,5 @@ export const singleBot: Bot = {
   orders: [],
   stop_loss: 3,
   margin_short_reversal: true,
-  cooldown: 0,
   strategy: BotStrategy.LONG,
 };
