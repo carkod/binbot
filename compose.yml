@@ -4,7 +4,7 @@ networks:
 
 services:
   api_db:
-    image: postgres:latest
+    image: postgres
     container_name: binbot_api_db
     restart: on-failure
     networks:
@@ -23,7 +23,7 @@ services:
       start_period: 30s
 
   data_db:
-    image: mongo:7.0
+    image: mongo:latest
     container_name: binbot_data_db
     restart: on-failure
     networks:

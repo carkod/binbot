@@ -152,9 +152,9 @@ class SymbolsCrud:
         symbol pairs should be consolidated in this table
         """
         binance_api = BinanceApi()
-        data = binance_api.exchange_info()["symbols"]
+        exchange_info_data = binance_api.exchange_info()
 
-        for item in data:
+        for item in exchange_info_data["symbols"]:
             # Only store fiat market exclude other fiats.
             # Only store pairs that are actually traded
             if item["status"] != "TRADING" and item["symbol"].startswith(

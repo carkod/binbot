@@ -343,12 +343,18 @@ class SpotLongDeal(DealAbstract):
                         new_trailling_stop_loss
                     )
 
-                if old_trailling_stop_loss != self.active_bot.deal.trailling_stop_loss_price:
+                if (
+                    old_trailling_stop_loss
+                    != self.active_bot.deal.trailling_stop_loss_price
+                ):
                     self.active_bot.logs.append(
                         f"Updated trailling_stop_loss_price to {self.active_bot.deal.trailling_stop_loss_price}"
                     )
 
-                if old_trailling_profit_price != self.active_bot.deal.trailling_profit_price:
+                if (
+                    old_trailling_profit_price
+                    != self.active_bot.deal.trailling_profit_price
+                ):
                     self.active_bot.logs.append(
                         f"Updated trailling_profit_price to {self.active_bot.deal.trailling_profit_price}"
                     )

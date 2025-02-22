@@ -102,7 +102,7 @@ def store_symbols(session: Session = Depends(get_session)):
     Store all symbols from Binance
     """
     try:
-        SymbolsCrud(session=session).refresh_symbols_table()
+        SymbolsCrud(session=session).symbols_table_ingestion()
         return GetOneSymbolResponse(message="Symbols stored!")
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)

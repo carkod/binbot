@@ -14,6 +14,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from tools.exceptions import SaveBotError, BinbotErrors
 from tools.round_numbers import round_numbers
 
+
 class BotTableCrud:
     """
     CRUD and database operations for the SQL API DB

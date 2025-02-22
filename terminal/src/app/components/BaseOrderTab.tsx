@@ -28,7 +28,6 @@ interface ErrorsState {
 
 const BaseOrderTab: FC = () => {
   const { symbol, id} = useParams();
-  console.log(id);
   const dispatch: AppDispatch = useAppDispatch();
   const { data: symbols } = useGetSymbolsQuery();
   const { bot } = useAppSelector(selectBot);

@@ -28,7 +28,6 @@ class SymbolTable(SQLModel, table=True):
         description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
     )
     qty_precision: int = Field(default=0)
-    min_qty: float = Field(default=0, description="Minimum qty (quote asset) value")
     min_notional: float = Field(default=0, description="Minimum price x qty value")
     cooldown: int = Field(default=0, description="Time in seconds between trades")
     cooldown_start_ts: int = Field(

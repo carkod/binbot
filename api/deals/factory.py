@@ -163,7 +163,9 @@ class DealAbstract(BaseDeal):
                 # Append now new take_profit deal
                 new_deals.append(take_profit_order)
                 self.active_bot.orders = new_deals
-                self.active_bot.deal.total_commissions = self.calculate_total_commissions(res["fills"])
+                self.active_bot.deal.total_commissions = (
+                    self.calculate_total_commissions(res["fills"])
+                )
                 self.controller.save(self.active_bot)
                 self.controller.update_logs("take_profit deal successfully updated")
                 return self.active_bot

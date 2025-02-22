@@ -293,7 +293,9 @@ class MarginDeal(DealAbstract):
                     status=res["status"],
                 )
 
-                self.active_bot.deal.total_commissions = self.calculate_total_commissions(res["fills"])
+                self.active_bot.deal.total_commissions = (
+                    self.calculate_total_commissions(res["fills"])
+                )
 
                 self.active_bot.orders.append(sell_back_order)
                 self.active_bot.deal.closing_price = price

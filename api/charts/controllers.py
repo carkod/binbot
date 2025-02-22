@@ -8,7 +8,6 @@ from apis import BinbotApi
 from database.db import Database, setup_kafka_db
 from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
-from bson.objectid import ObjectId
 
 
 class Candlestick(Database):

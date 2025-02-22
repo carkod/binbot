@@ -85,5 +85,6 @@ class CandlestickData(BaseModel):
     end_time: int
     _id: ObjectId
 
+
 class CandlestickResponse(StandardResponse):
     data: list[CandlestickData]

@@ -21,6 +21,7 @@ def main():
         KafkaTopics.signals.value,
         bootstrap_servers=f'{os.environ["KAFKA_HOST"]}:{os.environ["KAFKA_PORT"]}',
         value_deserializer=lambda m: json.loads(m),
+        api_version=(2, 5, 0),
     )
     mu = StreamingController(consumer)
     bbu = BbspreadsUpdater()

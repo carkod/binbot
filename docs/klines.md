@@ -6,11 +6,11 @@ In this project, the Binance `/klines` endpoint is used to render the candlestic
 
 Because of the recent changes in rate limit weights in this API endpoint on Binance's side, we are constantly banned or returned 418 status code when we try to constantly request data by the research application (/research), therefore I created an internal collection in the DB to store these candlestick datapoints. This internal DB usually updates using the websocket streams (/research/signals.py.start_stream), but if it finds gaps, the API `get_klines()` will automatically re-request data from the Binance API endpoint.
 
-These candlesticks are stored as '1m' intervals. Only storing it with the smallest interval, allows us to then aggregate into buckets (MongDB kafka db under kline collection) to create any other larger intervals (1 hour, 6 hours, 1 day, 1 week, 1 month...). Binance does offer even smaller intervals, which are probably the ones built up from book orders, but the througput can be too high, racking up server costs. At the moment, we don't need less than 1m, as we don't do high frequency trading.
+These candlesticks are stored as '1m' intervals. Only storing it with the smallest interval, allows us to then aggregate into buckets (MongDB kafka db under kline collection) to create any other larger intervals (1 hour, 6 hours, 1 day, 1 week, 1 month...). Binance does offer even smaller intervals, which are probably the ones built up from book orders, but the throughput can be too high, racking up server costs. At the moment, we don't need less than 1m, as we don't do high frequency trading.
 
 ### Grafana
 
-There's a [Grafana dashboard](https://grafana.binbot.in/) to monitor these klines. Because servers can timeout, data may be inconsistently stored, but in theory, the websocket connection should persist 24/7 to store this data. It's crucial to keep it alive, as Binquant analytics relies on this.
+There's a [Grafana dashboard](https://grafana.binbot.in/) to monitor these klines. Because servers can timeout, data may be inconsistently stored, but in theory, the websocket connection should persist 24/7 to store this data. It's crucial to keep it alive, as Binquant analytics relies on this, bot streaming updates rely on this too.
 
 To check these candlesticks go to:
 1. Login into [Grafana dashboard](https://grafana.binbot.in/)
