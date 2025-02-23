@@ -27,6 +27,7 @@ class SymbolsCrud:
     Convert binance tick/step sizes to decimal
     object for calculations
     """
+
     def _convert_to_int(self, value: str) -> int:
         # cast to str to avoid conversion to long decimal
         # e.g. 56.4325 -> 56.4324999... by Decimal
@@ -36,10 +37,9 @@ class SymbolsCrud:
         return exponent
 
     def calculate_precisions(self, item) -> tuple[int, int, float]:
-
         price_precision = 0
         qty_precision = 0
-        min_notional = 0
+        min_notional: float = 0
 
         for filter in item["filters"]:
             if filter["filterType"] == "PRICE_FILTER":
@@ -47,12 +47,11 @@ class SymbolsCrud:
 
             if filter["filterType"] == "LOT_SIZE":
                 qty_precision = self._convert_to_int(filter["stepSize"])
-    
-            if filter["filterType"] == "MIN_NOTIONAL":
-                min_notional = self._convert_to_int(filter["minNotional"])
+
+            if filter["filterType"] == "NOTIONAL":
+                min_notional = float(filter["minNotional"])
 
         return price_precision, qty_precision, min_notional
-
 
     def get_all(self, active: Optional[bool] = True):
         """
@@ -200,7 +199,9 @@ class SymbolsCrud:
                 pass
 
             if item["symbol"].endswith("USDC") and symbol is None:
-                price_precision, qty_precision, min_notional = self.calculate_precisions(item)
+                price_precision, qty_precision, min_notional = (
+                    self.calculate_precisions(item)
+                )
 
                 if (
                     item["symbol"] == "BTCUSDC"

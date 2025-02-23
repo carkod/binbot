@@ -8,7 +8,7 @@ from database.paper_trading_crud import PaperTradingTableCrud
 from database.bot_crud import BotTableCrud
 from deals.factory import DealAbstract
 from tools.round_numbers import round_numbers
-from streaming.models import SignalsConsumer
+from streaming.models import SignalsConsumer, BollinguerSpread
 from tools.enum_definitions import Status, Strategy
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
@@ -216,16 +216,16 @@ class BbspreadsUpdater(BaseStreaming):
     def update_bots_parameters(
         self,
         bot: BotModel,
-        bb_spreads: dict,
         db_table: Type[Union[PaperTradingTable, BotTable]],
         current_price: float,
+        bb_spreads: BollinguerSpread,
     ) -> None:
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
             (
                 abs(
-                    (bb_spreads["bb_high"] - bb_spreads["bb_mid"])
-                    / bb_spreads["bb_high"]
+                    (bb_spreads.bb_high - bb_spreads.bb_mid)
+                    / bb_spreads.bb_high
                 )
                 * 100
             ),
@@ -234,15 +234,15 @@ class BbspreadsUpdater(BaseStreaming):
         whole_spread = round_numbers(
             (
                 abs(
-                    (bb_spreads["bb_high"] - bb_spreads["bb_low"])
-                    / bb_spreads["bb_high"]
+                    (bb_spreads.bb_high - bb_spreads.bb_low)
+                    / bb_spreads.bb_high
                 )
                 * 100
             ),
             2,
         )
         bottom_spread = round_numbers(
-            abs((bb_spreads["bb_mid"] - bb_spreads["bb_low"]) / bb_spreads["bb_mid"])
+            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid)
             * 100,
             2,
         )
@@ -313,16 +313,7 @@ class BbspreadsUpdater(BaseStreaming):
         self.load_current_bots(signalsData.symbol)
 
         bb_spreads = signalsData.bb_spreads
-        if (
-            (self.current_bot or self.current_test_bot)
-            and bb_spreads
-            and "bb_high" in bb_spreads
-            and bb_spreads["bb_high"]  # my-py
-            and "bb_low" in bb_spreads
-            and bb_spreads["bb_low"]
-            and "bb_mide" in bb_spreads
-            and bb_spreads["bb_mid"]
-        ):
+        if self.current_bot or self.current_test_bot:
             if self.current_bot:
                 self.update_bots_parameters(
                     self.current_bot,
