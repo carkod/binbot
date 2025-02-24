@@ -210,13 +210,17 @@ class SymbolsCrud:
                 ):
                     active = False
 
-                self.add_symbol(
-                    item["symbol"],
+                symbol = SymbolTable(
+                    id=item["symbol"],
                     active=active,
                     price_precision=price_precision,
                     qty_precision=qty_precision,
                     min_notional=min_notional,
                     quote_asset=item["quoteAsset"],
                     base_asset=item["baseAsset"],
-                    is_margin_trading_allowed=item["isMarginTradingAllowed"],
+                    is_margin_trading_allowed=item["isMarginTradingAfllowed"],
                 )
+                self.session.add(symbol)
+                self.session.commit()
+
+        self.session.close()

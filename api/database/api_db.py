@@ -263,11 +263,6 @@ class ApiDb:
         """
         Heavy operation, only execute if db is empty
         """
-        statement = select(SymbolTable)
-        results = self.session.exec(statement)
-        symbol = results.first()
-        if symbol:
-            return
         self.symbols.symbols_table_ingestion()
         pass
 
