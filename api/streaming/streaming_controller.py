@@ -222,28 +222,15 @@ class BbspreadsUpdater(BaseStreaming):
     ) -> None:
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
-            (
-                abs(
-                    (bb_spreads.bb_high - bb_spreads.bb_mid)
-                    / bb_spreads.bb_high
-                )
-                * 100
-            ),
+            (abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100),
             2,
         )
         whole_spread = round_numbers(
-            (
-                abs(
-                    (bb_spreads.bb_high - bb_spreads.bb_low)
-                    / bb_spreads.bb_high
-                )
-                * 100
-            ),
+            (abs((bb_spreads.bb_high - bb_spreads.bb_low) / bb_spreads.bb_high) * 100),
             2,
         )
         bottom_spread = round_numbers(
-            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid)
-            * 100,
+            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100,
             2,
         )
 
