@@ -99,5 +99,5 @@ class Account(BinbotApi):
         """
         total_commission: float = 0
         for chunk in fills:
-            total_commission += round_numbers(float(chunk["commission"]))
+            total_commission += round_numbers(float(chunk["commission"]), 2)
         return total_commission

@@ -95,7 +95,8 @@ const BaseOrderTab: FC = () => {
     }
 
     if (bot.pair !== quoteAsset) {
-      setQuoteAsset(getQuoteAsset(bot, autotradeSettings?.fiat));
+      const newQuoteAsset = getQuoteAsset(bot, autotradeSettings?.fiat);
+      setQuoteAsset(newQuoteAsset);
     }
 
     if (symbol && !id) {

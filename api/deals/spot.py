@@ -276,10 +276,10 @@ class SpotLongDeal(DealAbstract):
         return self.active_bot
 
     def streaming_updates(self, close_price: float, open_price):
-        close_price = float(close_price)
-        self.close_conditions(close_price)
+        current_price = float(close_price)
+        self.close_conditions(current_price)
 
-        self.active_bot.deal.current_price = close_price
+        self.active_bot.deal.current_price = current_price
         self.controller.save(self.active_bot)
 
         # Update orders if not filled
@@ -288,7 +288,8 @@ class SpotLongDeal(DealAbstract):
         # Stop loss
         if (
             self.active_bot.stop_loss > 0
-            and self.active_bot.deal.stop_loss_price > close_price
+            # current_price below stop loss
+            and self.active_bot.deal.stop_loss_price < current_price
         ):
             self.execute_stop_loss()
             self.base_producer.update_required(self.producer, "EXECUTE_SPOT_STOP_LOSS")
@@ -300,18 +301,18 @@ class SpotLongDeal(DealAbstract):
 
             return
 
-        # Take profit trailling
+        # Trailling profit
         if self.active_bot.trailling and self.active_bot.deal.opening_price > 0:
-            # If current price didn't break take_profit (first time hitting take_profit or trailling_stop_loss lower than base_order buy_price)
+            # If current price didn't break take_profit_trail (first time hitting take_profit or trailling_deviation lower than base_order buy_price so trailling stop loss is not set at this point)
             if self.active_bot.deal.trailling_stop_loss_price == 0:
                 trailling_price = float(self.active_bot.deal.opening_price) * (
-                    1 + (float(self.active_bot.take_profit) / 100)
+                    1 + (float(self.active_bot.trailling_profit) / 100)
                 )
             else:
-                # Current take profit + next take_profit
+                # new trail price = current trailling stop loss + trail profit
                 trailling_price = float(
                     self.active_bot.deal.trailling_stop_loss_price
-                ) * (1 + (self.active_bot.take_profit / 100))
+                ) * (1 + (self.active_bot.trailling_profit / 100))
 
             self.active_bot.deal.trailling_profit_price = trailling_price
             # Direction 1 (upward): breaking the current trailling
@@ -376,6 +377,13 @@ class SpotLongDeal(DealAbstract):
                     self.active_bot,
                 )
                 self.trailling_profit()
+        
+        elif self.active_bot.take_profit > 0 and self.active_bot.deal.opening_price > 0:
+            # Take profit
+            if current_price >= self.active_bot.deal.take_profit_price:
+                self.take_profit_order()
+                return
+
 
         self.base_producer.update_required(
             self.producer, "EXECUTE_SPOT_STREAMING_UPDATES"
@@ -420,20 +428,16 @@ class SpotLongDeal(DealAbstract):
         # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
         # if we don't do this, the trailling stop loss will trigger
         if self.active_bot.trailling:
-            if (
-                self.active_bot.deal.trailling_stop_loss_price > 0
-                or self.active_bot.deal.trailling_stop_loss_price
-                < self.active_bot.deal.opening_price
-            ):
-                trailling_profit = float(self.active_bot.deal.opening_price) * (
-                    1 + (float(self.active_bot.trailling_profit) / 100)
-                )
-                self.active_bot.deal.trailling_profit_price = trailling_profit
-                # Reset trailling stop loss
-                # this should be updated during streaming
-                self.active_bot.deal.trailling_stop_loss_price = 0
-                # Old property fix
-                self.active_bot.deal.take_profit_price = 0
+            trailling_profit = float(self.active_bot.deal.opening_price) * (
+                1 + (float(self.active_bot.trailling_profit) / 100)
+            )
+            self.active_bot.deal.trailling_profit_price = trailling_profit
+            # Reset trailling stop loss
+            # this should be updated during streaming
+            self.active_bot.deal.trailling_stop_loss_price = 0
+            # Old property fix
+            self.active_bot.deal.take_profit_price = 0
+
         else:
             # No trailling so only update take_profit
             take_profit_price = float(self.active_bot.deal.opening_price) * (
@@ -473,13 +477,10 @@ class SpotLongDeal(DealAbstract):
                     trailling_profit_price, self.price_precision
                 )
 
-            if self.active_bot.deal.trailling_stop_loss_price == 0:
-                trailling_stop_loss = float(self.active_bot.deal.opening_price) * (
-                    1 - (float(self.active_bot.trailling_deviation) / 100)
-                )
-                self.active_bot.deal.trailling_stop_loss_price = round_numbers(
-                    trailling_stop_loss, self.price_precision
-                )
+            if self.active_bot.deal.trailling_stop_loss_price != 0:
+                # trailling_stop_loss_price should be updated during streaming
+                # This resets it after "Update deal" because parameters have changed
+                self.active_bot.deal.trailling_stop_loss_price = 0
 
         return self.active_bot
 

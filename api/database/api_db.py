@@ -6,7 +6,6 @@ from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
 from database.models.user_table import UserTable
 from database.models.bot_table import BotTable, PaperTradingTable
-from database.models.symbol_table import SymbolTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
