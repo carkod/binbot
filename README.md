@@ -69,6 +69,12 @@ Everytime the application runs, it will `alembic upgrade head`. To rollback chan
 
 If files have been modified in the models and no new revisions were created, the Alembic Github action check should fail. In which case, an upgrade and new revision is required.
 
+```
+alembic revision --autogenerate -m "alter commisions column to support Big integers"
+```
+
+Write the commands in the newly generated file and rerun FastApi
+
 ## Detailed documentation
 
 https://carkod.github.io/binbot/

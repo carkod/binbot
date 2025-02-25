@@ -23,8 +23,8 @@ class DealBase(SQLModel):
     stop_loss_price: float = Field(default=0)
 
     # fields for margin trading
-    total_interests: float = Field(default=0, gt=-1)
-    total_commissions: float = Field(default=0, gt=-1)
+    total_interests: float = Field(default=0, gt=-1, sa_column=Column(BigInteger()))
+    total_commissions: float = Field(default=0, gt=-1, sa_column=Column(BigInteger()))
     margin_loan_id: int = Field(
         default=0,
         description="Txid from Binance. This is used to check if there is a loan, 0 means no loan",
