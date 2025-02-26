@@ -8,7 +8,7 @@ from apis import BinbotApi
 from database.db import Database, setup_kafka_db
 from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
-
+from tools.round_numbers import round_numbers
 
 class Candlestick(Database):
     """
@@ -106,6 +106,10 @@ class Candlestick(Database):
             if int(end_time) > 0:
                 et_dt = datetime.fromtimestamp(end_time / 1000)
                 query.append({"$match": {"_id.time": {"$lte": et_dt}}})
+
+            query.append({"$sort": {"_id.time": -1}})
+            query.append({"$limit": limit})
+            query.append({"$skip": offset})
 
             result = self.db.kline.aggregate(query)
         data = list(result)
@@ -289,11 +293,11 @@ class BtcCorrelation(Database, BinbotApi):
     def get_btc_correlation(self, asset_symbol: str):
         """
         Get BTC correlation data
-        TODO: wait for BTCUSDC data to populate by Binquant
+        for 1 day interval
         """
-        asset_data = self.collection.get_timeseries(asset_symbol)
-        btc_data = self.collection.get_timeseries("BTCUSDT")
-        asset_df = DataFrame(asset_data, columns=["close"])
-        btc_df = DataFrame(btc_data, columns=["close"])
+        asset_data = self.collection.raw_klines(symbol=asset_symbol, interval=BinanceKlineIntervals.one_day)
+        btc_data = self.collection.raw_klines(symbol="BTCUSDC", interval=BinanceKlineIntervals.one_day)
+        asset_df = DataFrame(asset_data)
+        btc_df = DataFrame(btc_data)
         p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
-        return p_correlation
+        return round_numbers(p_correlation)
