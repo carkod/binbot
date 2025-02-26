@@ -289,7 +289,7 @@ class SpotLongDeal(DealAbstract):
         if (
             self.active_bot.stop_loss > 0
             # current_price below stop loss
-            and self.active_bot.deal.stop_loss_price < current_price
+            and self.active_bot.deal.stop_loss_price > current_price
         ):
             self.execute_stop_loss()
             self.base_producer.update_required(self.producer, "EXECUTE_SPOT_STOP_LOSS")

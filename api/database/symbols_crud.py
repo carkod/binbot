@@ -218,7 +218,7 @@ class SymbolsCrud:
                     min_notional=min_notional,
                     quote_asset=item["quoteAsset"],
                     base_asset=item["baseAsset"],
-                    is_margin_trading_allowed=item["isMarginTradingAfllowed"],
+                    is_margin_trading_allowed=item["isMarginTradingAllowed"],
                 )
                 self.session.add(symbol)
                 self.session.commit()
