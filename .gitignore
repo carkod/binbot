@@ -32,6 +32,7 @@ mongo_data.old
 mongo_db
 pg_data
 db.dump
+db.dump.backup
 dump_binbot_api.tar.gz
 __pycache__
 .pytest_cache
