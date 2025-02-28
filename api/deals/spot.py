@@ -397,7 +397,6 @@ class SpotLongDeal(DealAbstract):
         Get data from gainers and losers endpoint to analyze market trends
         """
         if self.active_bot.close_condition == CloseConditions.market_reversal:
-            self.render_market_domination_reversal()
             if (
                 self.market_domination_reversal
                 and current_price < self.active_bot.deal.opening_price
