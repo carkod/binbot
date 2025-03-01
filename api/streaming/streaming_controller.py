@@ -303,15 +303,15 @@ class BbspreadsUpdater(BaseStreaming):
         if self.current_bot or self.current_test_bot:
             if self.current_bot:
                 self.update_bots_parameters(
-                    self.current_bot,
-                    bb_spreads,
+                    bot=self.current_bot,
+                    bb_spreads=bb_spreads,
                     db_table=BotTable,
                     current_price=signalsData.current_price,
                 )
             if self.current_test_bot:
                 self.update_bots_parameters(
-                    self.current_test_bot,
-                    bb_spreads,
+                    bot=self.current_test_bot,
+                    bb_spreads=bb_spreads,
                     db_table=PaperTradingTable,
                     current_price=signalsData.current_price,
                 )

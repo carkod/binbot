@@ -25,14 +25,14 @@ def upgrade() -> None:
         "deal",
         "total_commissions",
         existing_type=sa.Float(),
-        type_=sa.BigInteger(),
+        type_=sa.Numeric(20, 2),
         existing_nullable=True,
     )
     op.alter_column(
         "deal",
         "total_interests",
         existing_type=sa.Float(),
-        type_=sa.BigInteger(),
+        type_=sa.Numeric(20, 2),
         existing_nullable=True,
     )
     # ### end Alembic commands ###
@@ -43,14 +43,14 @@ def downgrade() -> None:
     op.alter_column(
         "deal",
         "total_commissions",
-        existing_type=sa.BigInteger(),
+        existing_type=sa.Numeric(20, 2),
         type_=sa.Float(),
         existing_nullable=True,
     )
     op.alter_column(
         "deal",
         "total_interests",
-        existing_type=sa.BigInteger(),
+        existing_type=sa.Numeric(20, 2),
         type_=sa.Float(),
         existing_nullable=True,
     )

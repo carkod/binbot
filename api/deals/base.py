@@ -1,5 +1,4 @@
 from typing import Tuple, Type, Union
-from datetime import datetime
 from bots.models import BotModel
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.bot_crud import BotTableCrud
