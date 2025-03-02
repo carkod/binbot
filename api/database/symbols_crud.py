@@ -202,6 +202,7 @@ class SymbolsCrud:
                 price_precision, qty_precision, min_notional = (
                     self.calculate_precisions(item)
                 )
+                active = True
 
                 if (
                     item["symbol"] == "BTCUSDC"
