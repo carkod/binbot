@@ -275,7 +275,7 @@ class SpotLongDeal(DealAbstract):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def streaming_updates(self, close_price: float, open_price):
+    def streaming_updates(self, close_price: float, open_price: float):
         current_price = float(close_price)
         self.close_conditions(current_price)
 
@@ -316,12 +316,12 @@ class SpotLongDeal(DealAbstract):
 
             self.active_bot.deal.trailling_profit_price = trailling_price
             # Direction 1 (upward): breaking the current trailling
-            if close_price >= float(trailling_price):
-                new_take_profit = close_price * (
+            if current_price >= float(trailling_price):
+                new_take_profit = current_price * (
                     1 + ((self.active_bot.trailling_profit) / 100)
                 )
-                new_trailling_stop_loss: float = close_price - (
-                    close_price * ((self.active_bot.trailling_deviation) / 100)
+                new_trailling_stop_loss: float = current_price - (
+                    current_price * ((self.active_bot.trailling_deviation) / 100)
                 )
 
                 # Avoid duplicate logs
@@ -368,9 +368,9 @@ class SpotLongDeal(DealAbstract):
             if (
                 self.active_bot.deal.trailling_stop_loss_price > 0
                 # Broken stop_loss
-                and close_price < float(self.active_bot.deal.trailling_stop_loss_price)
+                and current_price < self.active_bot.deal.trailling_stop_loss_price
                 # Red candlestick
-                and open_price > close_price
+                and open_price > current_price
             ):
                 self.controller.update_logs(
                     f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}",
