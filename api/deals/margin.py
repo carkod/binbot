@@ -173,6 +173,7 @@ class MarginDeal(DealAbstract):
             # System does not have enough money to lend
             # transfer back and left client know (raise exception again)
             if error.code == -3045:
+                self.controller.update_logs("Not enough money to lend", self.active_bot)
                 self.terminate_failed_transactions()
                 raise BinanceErrors(error.message, error.code)
 
@@ -358,6 +359,8 @@ class MarginDeal(DealAbstract):
                 symbol=self.active_bot.pair,
                 qty=self.active_bot.deal.opening_qty,
             )
+            self.controller.update_logs("Sell margin order executed", self.active_bot)
+            self.controller.save(self.active_bot)
         else:
             order_res = self.simulate_margin_order(
                 pair=self.active_bot, side=OrderSide.sell
@@ -383,6 +386,7 @@ class MarginDeal(DealAbstract):
         self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             order_res["fills"]
         )
+        self.controller.update_logs("total_commissions calculated and set", self.active_bot)
 
         self.active_bot.orders.append(order_data)
 
