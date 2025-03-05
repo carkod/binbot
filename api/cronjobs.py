@@ -1,6 +1,6 @@
 import logging
 import time
-
+import os
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.assets import Assets
 from charts.controllers import MarketDominationController
@@ -8,11 +8,12 @@ from database.utils import independent_session
 
 logging.Formatter.converter = time.gmtime  # date time in GMT/UTC
 logging.basicConfig(
-    level=logging.INFO,
+    level=os.environ["LOG_LEVEL"],
     filename=None,
     format="%(asctime)s.%(msecs)03d UTC %(levelname)s %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+timezone = os.environ["TIMEZONE"]
 
 
 def main():

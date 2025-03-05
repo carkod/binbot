@@ -5,6 +5,7 @@ from typing import Optional
 from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
 from symbols.models import SymbolPayload
+from decimal import Decimal
 
 
 class SymbolsCrud:
@@ -21,6 +22,36 @@ class SymbolsCrud:
         if session is None:
             session = independent_session()
         self.session = session
+
+    """
+    Convert binance tick/step sizes to decimal
+    object for calculations
+    """
+
+    def _convert_to_int(self, value: str) -> int:
+        # cast to str to avoid conversion to long decimal
+        # e.g. 56.4325 -> 56.4324999... by Decimal
+        parsed_value = str(value.rstrip(".0"))
+        decimal = Decimal(parsed_value).as_tuple()
+        exponent = abs(int(decimal.exponent))
+        return exponent
+
+    def calculate_precisions(self, item) -> tuple[int, int, float]:
+        price_precision = 0
+        qty_precision = 0
+        min_notional: float = 0
+
+        for filter in item["filters"]:
+            if filter["filterType"] == "PRICE_FILTER":
+                price_precision = self._convert_to_int(filter["tickSize"])
+
+            if filter["filterType"] == "LOT_SIZE":
+                qty_precision = self._convert_to_int(filter["stepSize"])
+
+            if filter["filterType"] == "NOTIONAL":
+                min_notional = float(filter["minNotional"])
+
+        return price_precision, qty_precision, min_notional
 
     def get_all(self, active: Optional[bool] = True):
         """
@@ -168,9 +199,9 @@ class SymbolsCrud:
                 pass
 
             if item["symbol"].endswith("USDC") and symbol is None:
-                price_precision = binance_api.calculate_price_precision(item["symbol"])
-                qty_precision = binance_api.calculate_qty_precision(item["symbol"])
-                min_notional = binance_api.min_notional_by_symbol(item["symbol"])
+                price_precision, qty_precision, min_notional = (
+                    self.calculate_precisions(item)
+                )
                 active = True
 
                 if (
@@ -180,13 +211,17 @@ class SymbolsCrud:
                 ):
                     active = False
 
-                self.add_symbol(
-                    item["symbol"],
+                symbol = SymbolTable(
+                    id=item["symbol"],
                     active=active,
                     price_precision=price_precision,
                     qty_precision=qty_precision,
-                    min_notional=float(min_notional),
+                    min_notional=min_notional,
                     quote_asset=item["quoteAsset"],
                     base_asset=item["baseAsset"],
                     is_margin_trading_allowed=item["isMarginTradingAllowed"],
                 )
+                self.session.add(symbol)
+                self.session.commit()
+
+        self.session.close()

@@ -161,10 +161,6 @@ class PaperTradingTable(SQLModel, table=True):
     short_sell_price: float = Field(
         default=0, description="autoswitch to short_strategy"
     )
-    total_commission: float = Field(
-        default=0, description="autoswitch to short_strategy"
-    )
-
     # Table relationships filled up internally
     deal_id: Optional[UUID] = Field(default=None, foreign_key="deal.id")
     deal: "DealTable" = Relationship(back_populates="paper_trading")

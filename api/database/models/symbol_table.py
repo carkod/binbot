@@ -14,7 +14,7 @@ class SymbolTable(SQLModel, table=True):
     updated_at: int = Field(
         default_factory=timestamp, sa_column=Column(BigInteger, nullable=False)
     )
-    active: bool = Field(default=True, description="Blacklisted items = false")
+    active: bool = Field(default=True, description="Blacklisted items = False")
     blacklist_reason: str = Field(default="")
     is_margin_trading_allowed: bool = Field(default=False)
     quote_asset: str = Field(

@@ -49,7 +49,3 @@ export interface BotDetailsFormFieldBoolean {
 export interface BotDetailsState {
   bot: Bot;
 }
-
-export interface ActivateBotResponse extends DefaultBotsResponse{
-  bot: Bot;
-}

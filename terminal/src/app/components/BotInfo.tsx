@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Button,
   Card,
@@ -10,8 +10,9 @@ import {
   Badge,
 } from "react-bootstrap";
 import { renderDuration, formatTimestamp } from "../../utils/time";
+import type { Bot } from "../../features/bots/botInitialState";
 
-export default function BotInfo({ bot }) {
+export default function BotInfo({ bot }: { bot: Bot }) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
     bot.orders?.length > 0,
   );

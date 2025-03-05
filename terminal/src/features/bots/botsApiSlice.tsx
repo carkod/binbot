@@ -11,7 +11,7 @@ import type {
   EditBotParams,
   SingleBotResponse,
   GetBotsParams,
-  ActivateBotResponse,
+  BotDetailsState,
 } from "./bots";
 
 type GetBotsResponse = {
@@ -121,7 +121,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    activateBot: build.query<ActivateBotResponse, string>({
+    activateBot: build.query<BotDetailsState, string>({
       query: (id) => ({
         url: `${import.meta.env.VITE_ACTIVATE_BOT}/${id}`,
         method: "GET",
@@ -134,7 +134,9 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
           notifification("success", message);
         }
         console.log("activateBot", data);
-        return data;
+        return {
+          bot: data,
+        };
       },
     }),
     deactivateBot: build.mutation<DefaultBotsResponse, string>({

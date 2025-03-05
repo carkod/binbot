@@ -48,8 +48,8 @@ export const AutotradePage: FC<{}> = () => {
     }
   };
 
-  const saveSettings = async (data) => {
-    await updateSettings(data).unwrap();
+  const saveSettings = async (formData) => {
+    await updateSettings(formData).unwrap();
   };
 
   useEffect(() => {

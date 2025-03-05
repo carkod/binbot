@@ -24,6 +24,7 @@
       "args": ["main:app", "--port", "8008"],
       "justMyCode": true,
       "console": "internalConsole",
+      "envFile": "${workspaceFolder}/.env"
     },
     {
       "name": "Binquant: Producer",
@@ -39,8 +40,8 @@
       "type": "debugpy",
       "request": "launch",
       "program": "binquant/consumer.py",
-
       "console": "internalConsole",
+      "envFile": "${workspaceFolder}/.env",
       "justMyCode": true
     },
     {

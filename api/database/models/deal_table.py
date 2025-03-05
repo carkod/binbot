@@ -1,7 +1,7 @@
 from uuid import uuid4, UUID
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import Column, BigInteger
+from sqlalchemy import Column, BigInteger, Float
 from pydantic import field_validator
 
 # avoids circular imports
@@ -23,8 +23,8 @@ class DealBase(SQLModel):
     stop_loss_price: float = Field(default=0)
 
     # fields for margin trading
-    total_interests: float = Field(default=0, gt=-1)
-    total_commissions: float = Field(default=0, gt=-1)
+    total_interests: float = Field(default=0, gt=-1, sa_column=Column(Float()))
+    total_commissions: float = Field(default=0, gt=-1, sa_column=Column(Float()))
     margin_loan_id: int = Field(
         default=0,
         description="Txid from Binance. This is used to check if there is a loan, 0 means no loan",

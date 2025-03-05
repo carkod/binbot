@@ -6,7 +6,6 @@ from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
 from database.models.user_table import UserTable
 from database.models.bot_table import BotTable, PaperTradingTable
-from database.models.symbol_table import SymbolTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
@@ -21,7 +20,7 @@ from alembic import command
 from database.utils import engine
 from account.assets import Assets
 from database.symbols_crud import SymbolsCrud
-from time import time
+
 
 class ApiDb:
     """
@@ -263,15 +262,7 @@ class ApiDb:
         """
         Heavy operation, only execute if db is empty
         """
-        statement = select(SymbolTable)
-        results = self.session.exec(statement)
-        symbol = results.first()
-        if symbol:
-            return
-        print("Starting symbols ingestion")
-        exec_start_time = time()
         self.symbols.symbols_table_ingestion()
-        print(f"Symbols ingestion took {time() - exec_start_time} seconds")
         pass
 
     def init_balances(self):
