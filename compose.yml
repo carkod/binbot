@@ -101,15 +101,10 @@ services:
   #   networks:
   #     - kafka_network
   #   depends_on:
-  #     - kafka_bitnami
+  #     - kafka
   #     - api
   #   env_file:
   #     - .env
-  #   # environment:
-  #   #   - BOOTSTRAP_SERVERS=${BOOTSTRAP_SERVERS}
-  #     # - KAFKA_TOPIC=${KAFKA_TOPIC}
-  #     # - EVENT_TOPIC=${EVENT_TOPIC}
-  #     # - QUEUE_URL=${QUEUE_URL}
   #   command: ["python3", "-m", "consumer"]
 
   # api:

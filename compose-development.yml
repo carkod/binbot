@@ -1,0 +1,50 @@
+networks:
+  kafka_network:
+    driver: bridge
+
+services:
+  api_db:
+    image: postgres
+    container_name: binbot_api_db
+    restart: on-failure
+    networks:
+      - kafka_network
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 30s
+
+  data_db:
+    image: mongo:latest
+    container_name: binbot_data_db
+    restart: on-failure
+    networks:
+      - kafka_network
+    env_file: .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_AUTH_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_AUTH_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_APP_DATABASE}
+    ports:
+      - 27018:27017
+    volumes:
+      - ./mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "127.0.0.1/test", "--eval", "'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  mongo_data:
+  pg_data:
+
