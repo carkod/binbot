@@ -1,3 +1,8 @@
+@use "mixins/buttons";
+@use "mixins/sidebar";
+@use "mixins/transitions";
+@use "variables" as vars;
+
 .wrapper {
   position: relative;
   top: 0;
@@ -16,7 +21,7 @@
   top: 0;
   height: 100%;
   bottom: 0;
-  width: $navbar-width;
+  width: vars.$navbar-width;
   left: 0;
   z-index: 1030;
   border-right: 1px solid #ddd;
@@ -25,7 +30,7 @@
     position: relative;
     height: calc(100vh - 75px);
     overflow: auto;
-    width: $navbar-width;
+    width: vars.$navbar-width;
     z-index: 4;
     padding-bottom: 100px;
     overflow-x: hidden;
@@ -44,9 +49,8 @@
     right: 20px;
     top: 2px;
     opacity: 1;
-
-    @extend .animation-transition-general;
   }
+
   .logo-tim {
     border-radius: 50%;
     border: 1px solid #333;
@@ -78,21 +82,21 @@
       }
 
       > a {
-        margin: $margin-base-horizontal $margin-base-vertical;
-        color: $white-color;
+        margin: vars.$margin-base-horizontal vars.$margin-base-vertical;
+        color: vars.$white-color;
         display: block;
         text-decoration: none;
         position: relative;
         text-transform: uppercase;
         cursor: pointer;
         font-size: 12px;
-        padding: $padding-base-vertical $padding-btn-horizontal;
+        padding: vars.$padding-base-vertical vars.$padding-btn-horizontal;
         line-height: 30px;
         opacity: 0.7;
       }
 
       .nav > li > a {
-        padding: $padding-base-vertical $padding-btn-horizontal;
+        padding: vars.$padding-base-vertical vars.$padding-btn-horizontal;
       }
 
       &.active > a,
@@ -107,13 +111,13 @@
     }
 
     i {
-      font-size: $btn-icon-font-size-regular;
+      font-size: vars.$btn-icon-font-size-regular;
       float: left;
       margin-right: 12px;
       line-height: 30px;
       width: 34px;
       text-align: center;
-      color: $opacity-5;
+      color: vars.$opacity-5;
       position: relative;
     }
 
@@ -154,7 +158,7 @@
 
   .logo {
     position: relative;
-    padding: 7px $padding-base-horizontal;
+    padding: 7px vars.$padding-base-horizontal;
     z-index: 4;
 
     &__link {
@@ -177,13 +181,8 @@
       font-size: 1rem;
       text-transform: uppercase;
       margin: 10px;
-      color: $white-color;
+      color: vars.$white-color;
       line-height: 20px;
-    }
-
-    a.logo-mini,
-    a.logo-normal {
-      @extend .animation-transition-general;
     }
 
     a.logo-mini {
@@ -199,7 +198,7 @@
       display: block;
       opacity: 1;
       padding: 11px 0 8px;
-      @include transform-translate-x(0px);
+      @include transitions.transform-translate-x(0px);
     }
 
     &:after {
@@ -209,7 +208,7 @@
       right: 15px;
       height: 1px;
       width: calc(100% - 30px);
-      background-color: $opacity-5;
+      background-color: vars.$opacity-5;
     }
   }
 
@@ -241,34 +240,34 @@
   }
 
   &:after {
-    @include icon-gradient($default-color);
+    @include buttons.icon-gradient(vars.$default-color);
     z-index: 3;
   }
 
   &[data-color="white"] {
-    @include sidebar-color($white-color);
-    @include sidebar-text-color($default-color);
+    @include sidebar.sidebar-color(vars.$white-color);
+    @include sidebar.sidebar-text-color(vars.$default-color);
   }
   &[data-color="black"] {
-    @include sidebar-color($dark-color);
+    @include sidebar.sidebar-color(vars.$dark-color);
   }
 
   // Active color changing
 
   &[data-active-color="primary"] {
-    @include sidebar-active-color($primary-color);
+    @include sidebar.sidebar-active-color(vars.$primary-color);
   }
   &[data-active-color="info"] {
-    @include sidebar-active-color($info-color);
+    @include sidebar.sidebar-active-color(vars.$info-color);
   }
   &[data-active-color="success"] {
-    @include sidebar-active-color($success-color);
+    @include sidebar.sidebar-active-color(vars.$success-color);
   }
   &[data-active-color="warning"] {
-    @include sidebar-active-color($warning-color);
+    @include sidebar.sidebar-active-color(vars.$warning-color);
   }
   &[data-active-color="danger"] {
-    @include sidebar-active-color($danger-color);
+    @include sidebar.sidebar-active-color(vars.$danger-color);
   }
 }
 
@@ -283,7 +282,7 @@
   .nav {
     > li > a,
     > li > a:hover {
-      color: $white-color;
+      color: vars.$white-color;
     }
 
     > li > a:focus {
@@ -295,18 +294,18 @@
 .main-panel {
   position: relative;
   float: right;
-  width: $sidebar-width;
+  width: vars.$sidebar-width;
   background-color: #f4f3ef;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 
-  @include transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
+  @include transitions.transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
 
   > .content {
     padding: 0 30px 30px;
     min-height: calc(100vh - 123px);
-    margin-top: $margin-large-vertical;
+    margin-top: vars.$margin-large-vertical;
   }
 
   > .navbar {
@@ -327,7 +326,7 @@
 }
 
 .panel-header {
-  height: $navbar-width;
+  height: vars.$navbar-width;
   padding-top: 80px;
   padding-bottom: 45px;
   background: #141e30; /* fallback for old browsers */
@@ -345,16 +344,16 @@
 
   .header {
     .title {
-      color: $white-color;
+      color: vars.$white-color;
     }
     .category {
       max-width: 600px;
-      color: $opacity-5;
+      color: vars.$opacity-5;
       margin: 0 auto;
       font-size: 13px;
 
       a {
-        color: $white-color;
+        color: vars.$white-color;
       }
     }
   }

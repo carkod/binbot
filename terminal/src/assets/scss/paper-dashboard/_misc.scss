@@ -1,7 +1,11 @@
+@use "mixins/buttons";
+@use "mixins/transitions";
+@use "variables";
+
 body {
-  color: $black-color;
-  font-size: $font-size-base;
-  font-family: $sans-serif-family;
+  color: variables.$black-color;
+  font-size: variables.$font-size-base;
+  font-family: variables.$sans-serif-family;
   -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
 }
@@ -12,7 +16,7 @@ a {
 
 .main {
   position: relative;
-  background: $white-color;
+  background: variables.$white-color;
 }
 /* Animations */
 .nav-pills .nav-link,
@@ -20,25 +24,23 @@ a {
 .nav-tabs .nav-link,
 .sidebar .nav a,
 .sidebar .nav a i,
-.animation-transition-general,
 .tag,
-.tag [data-role="remove"],
 .animation-transition-general {
-  @include transition($general-transition-time, $transition-ease);
+  @include transitions.transition(variables.$general-transition-time, variables.$transition-ease);
 }
 
 //transition for dropdown caret
 .dropdown-toggle:after,
 .bootstrap-switch-label:before,
 .caret {
-  @include transition($fast-transition-time, $transition-ease);
+  @include transitions.transition(variables.$fast-transition-time, variables.$transition-ease);
 }
 
 .dropdown-toggle[aria-expanded="true"]:after,
 a[data-toggle="collapse"][aria-expanded="true"] .caret,
 .card-collapse .card a[data-toggle="collapse"][aria-expanded="true"] i,
 .card-collapse .card a[data-toggle="collapse"].expanded i {
-  @include rotate-180();
+  @include buttons.rotate-180();
 }
 
 .button-bar {
@@ -47,7 +49,7 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
   width: 22px;
   height: 1px;
   border-radius: 1px;
-  background: $white-bg;
+  background: variables.$white-bg;
 
   & + .button-bar {
     margin-top: 7px;
@@ -87,7 +89,7 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
     }
     .navbar-brand,
     .collapse .navbar-nav .nav-link {
-      color: $white-color !important;
+      color: variables.$white-color !important;
     }
   }
   .footer {
@@ -121,25 +123,25 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
 
 .badge {
   &.badge-default {
-    @include badge-color($default-color);
+    @include buttons.badge-color(variables.$default-color);
   }
   &.badge-primary {
-    @include badge-color($primary-color);
+    @include buttons.badge-color(variables.$primary-color);
   }
   &.badge-info {
-    @include badge-color($info-color);
+    @include buttons.badge-color(variables.$info-color);
   }
   &.badge-success {
-    @include badge-color($success-color);
+    @include buttons.badge-color(variables.$success-color);
   }
   &.badge-warning {
-    @include badge-color($warning-color);
+    @include buttons.badge-color(variables.$warning-color);
   }
   &.badge-danger {
-    @include badge-color($danger-color);
+    @include buttons.badge-color(variables.$danger-color);
   }
   &.badge-neutral {
-    @include badge-color($white-color);
+    @include buttons.badge-color(variables.$white-color);
     color: inherit;
   }
 }
@@ -153,13 +155,13 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
 }
 
 .c-loader {
-  @include transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
+  @include transitions.transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
   position: fixed;
   width: 3em;
   height: 3em;
   top: 50%;
   left: 50%;
-  z-index: $zindex-loader;
+  z-index: variables.$zindex-loader;
 }
 
 .u-loading-layer {
@@ -167,7 +169,7 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
   height: 100%;
   background: white;
   opacity: 0.5;
-  z-index: $zindex-loader-bg;
+  z-index: variables.$zindex-loader-bg;
   position: absolute;
 }
 

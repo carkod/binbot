@@ -1,23 +1,25 @@
+@use "variables";
+
 %u-space-between {
   display: flex;
   justify-content: space-between;
 }
 
 .p-line-chart {
-  margin: $margin-base-horizontal;
+  margin: variables.$margin-base-horizontal;
   max-width: 50rem;
-  padding: $padding-base-vertical $padding-base-horizontal;
+  padding: variables.$padding-base-vertical variables.$padding-base-horizontal;
   .p-line-chart__box {
     @extend %u-space-between;
-    border-radius: $border-radius-large;
+    border-radius: variables.$border-radius-large;
     .p-line-chart--left {
-      background: $success-color;
-      padding: $padding-xs-vertical $padding-xs-horizontal;
+      background: variables.$success-color;
+      padding: variables.$padding-xs-vertical variables.$padding-xs-horizontal;
       min-width: 50px;
     }
     .p-line-chart--right {
-      background: $danger-color;
-      padding: $padding-xs-vertical $padding-xs-horizontal;
+      background: variables.$danger-color;
+      padding: variables.$padding-xs-vertical variables.$padding-xs-horizontal;
       min-width: 50px;
     }
   }

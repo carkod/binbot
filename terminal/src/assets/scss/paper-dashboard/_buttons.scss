@@ -1,29 +1,34 @@
+@use "mixins/buttons";
+@use "mixins/transitions";
+@use "mixins/transparency";
+@use "variables";
+
 .btn,
 .navbar .navbar-nav > a.btn {
   & {
-    @include btn-styles($default-color, $default-states-color);
-    @include transition($fast-transition-time, linear);
+    @include buttons.btn-styles(variables.$default-color, variables.$default-states-color);
+    @include transitions.transition(variables.$fast-transition-time, linear);
   }
 
-  border-width: $border-thick;
-  font-weight: $font-weight-semi;
-  font-size: $font-size-small;
-  line-height: $line-height;
+  border-width: variables.$border-thick;
+  font-weight: variables.$font-weight-semi;
+  font-size: variables.$font-size-small;
+  line-height: variables.$line-height;
   text-transform: uppercase;
   border: none;
-  border-radius: $border-radius-small;
-  padding: $padding-btn-vertical $padding-btn-horizontal;
+  border-radius: variables.$border-radius-small;
+  padding: variables.$padding-btn-vertical variables.$padding-btn-horizontal;
   cursor: pointer;
 
   &:hover,
   &:focus {
-    @include opacity(1);
+    @include transparency.opacity(1);
     outline: 0 !important;
   }
   &:active,
   &.active,
   .open > &.dropdown-toggle {
-    @include box-shadow(none);
+    @include buttons.box-shadow(none);
     outline: 0 !important;
   }
 
@@ -42,11 +47,11 @@
 
   &.btn-icon {
     // see above for color variations
-    height: $btn-icon-size-regular;
-    min-width: $btn-icon-size-regular;
-    width: $btn-icon-size-regular;
+    height: variables.$btn-icon-size-regular;
+    min-width: variables.$btn-icon-size-regular;
+    width: variables.$btn-icon-size-regular;
     padding: 0;
-    font-size: $btn-icon-font-size-regular;
+    font-size: variables.$btn-icon-font-size-regular;
     overflow: hidden;
     position: relative;
     line-height: normal;
@@ -56,28 +61,28 @@
     }
 
     &.btn-sm {
-      height: $btn-icon-size-small;
-      min-width: $btn-icon-size-small;
-      width: $btn-icon-size-small;
+      height: variables.$btn-icon-size-small;
+      min-width: variables.$btn-icon-size-small;
+      width: variables.$btn-icon-size-small;
 
       .fa,
       .far,
       .fas,
       .nc-icon {
-        font-size: $btn-icon-font-size-small;
+        font-size: variables.$btn-icon-font-size-small;
       }
     }
 
     &.btn-lg {
-      height: $btn-icon-size-lg;
-      min-width: $btn-icon-size-lg;
-      width: $btn-icon-size-lg;
+      height: variables.$btn-icon-size-lg;
+      min-width: variables.$btn-icon-size-lg;
+      width: variables.$btn-icon-size-lg;
 
       .fa,
       .far,
       .fas,
       .nc-icon {
-        font-size: $btn-icon-font-size-lg;
+        font-size: variables.$btn-icon-font-size-lg;
       }
     }
 
@@ -107,67 +112,67 @@
 // Apply the mixin to the buttons
 // .btn-default { @include btn-styles($default-color, $default-states-color); }
 .btn-primary {
-  @include btn-styles($primary-color, $primary-states-color);
+  @include buttons.btn-styles(variables.$primary-color, variables.$primary-states-color);
 }
 .btn-success {
-  @include btn-styles($success-color, $success-states-color);
+  @include buttons.btn-styles(variables.$success-color, variables.$success-states-color);
 }
 .btn-info {
-  @include btn-styles($info-color, $info-states-color);
+  @include buttons.btn-styles(variables.$info-color, variables.$info-states-color);
 }
 .btn-warning {
-  @include btn-styles($warning-color, $warning-states-color);
+  @include buttons.btn-styles(variables.$warning-color, variables.$warning-states-color);
 }
 .btn-danger {
-  @include btn-styles($danger-color, $danger-states-color);
+  @include buttons.btn-styles(variables.$danger-color, variables.$danger-states-color);
 }
 // .btn-neutral { @include btn-styles($white-color, $white-color); }
 
 .btn-outline-default {
-  @include btn-outline-styles($default-color, $default-states-color);
+  @include buttons.btn-outline-styles(variables.$default-color, variables.$default-states-color);
 }
 .btn-outline-primary {
-  @include btn-outline-styles($primary-color, $primary-states-color);
+  @include buttons.btn-outline-styles(variables.$primary-color, variables.$primary-states-color);
 }
 .btn-outline-success {
-  @include btn-outline-styles($success-color, $success-states-color);
+  @include buttons.btn-outline-styles(variables.$success-color, variables.$success-states-color);
 }
 .btn-outline-info {
-  @include btn-outline-styles($info-color, $info-states-color);
+  @include buttons.btn-outline-styles(variables.$info-color, variables.$info-states-color);
 }
 .btn-outline-warning {
-  @include btn-outline-styles($warning-color, $warning-states-color);
+  @include buttons.btn-outline-styles(variables.$warning-color, variables.$warning-states-color);
 }
 .btn-outline-danger {
-  @include btn-outline-styles($danger-color, $danger-states-color);
+  @include buttons.btn-outline-styles(variables.$danger-color, variables.$danger-states-color);
 }
 .btn-outline-neutral {
-  @include btn-outline-styles($white-color, $default-states-color);
+  @include buttons.btn-outline-styles(variables.$white-color, variables.$default-states-color);
   &:hover,
   &:focus {
-    color: $default-states-color;
-    background-color: $white-color;
+    color: variables.$default-states-color;
+    background-color: variables.$white-color;
   }
 }
 .btn-neutral {
-  @include btn-styles($white-color, $white-color);
-  color: $default-color;
+  @include buttons.btn-styles(variables.$white-color, variables.$white-color);
+  color: variables.$default-color;
   &:hover,
   &:focus {
-    color: $default-states-color;
+    color: variables.$default-states-color;
   }
 
   &.btn-border {
     &:hover,
     &:focus {
-      color: $default-color;
+      color: variables.$default-color;
     }
 
     &:active,
     &.active,
     .open > &.dropdown-toggle {
-      background-color: $white-color;
-      color: $default-color;
+      background-color: variables.$white-color;
+      color: variables.$default-color;
     }
   }
 
@@ -181,15 +186,15 @@
   &:disabled,
   &[disabled],
   &.disabled {
-    @include opacity(0.5);
+    @include transparency.opacity(0.5);
     pointer-events: none;
   }
 }
 .btn-simple {
-  border: $border;
-  border-color: $default-color;
-  padding: $padding-btn-vertical - 1 $padding-round-horizontal - 1;
-  background-color: $transparent-bg;
+  border: variables.$border;
+  border-color: variables.$default-color;
+  padding: variables.$padding-btn-vertical - 1 variables.$padding-round-horizontal - 1;
+  background-color: variables.$transparent-bg;
 }
 
 .btn-simple,
@@ -204,31 +209,31 @@
     &.focus,
     &:active,
     &.active {
-      background-color: $transparent-bg;
+      background-color: variables.$transparent-bg;
     }
   }
 }
 
 .btn-link {
-  border: $none;
-  padding: $padding-base-vertical $padding-base-horizontal;
-  background-color: $transparent-bg;
+  border: variables.$none;
+  padding: variables.$padding-base-vertical variables.$padding-base-horizontal;
+  background-color: variables.$transparent-bg;
 }
 
 .btn-lg {
-  @include btn-size(
-    $padding-large-vertical,
-    $padding-large-horizontal,
-    $font-size-large,
-    $border-radius-large
+  @include buttons.btn-size(
+    variables.$padding-large-vertical,
+    variables.$padding-large-horizontal,
+    variables.$font-size-large,
+    variables.$border-radius-large
   );
 }
 .btn-sm {
-  @include btn-size(
-    $padding-small-vertical,
-    $padding-small-horizontal,
-    $font-size-small,
-    $border-radius-small
+  @include buttons.btn-size(
+    variables.$padding-small-vertical,
+    variables.$padding-small-horizontal,
+    variables.$font-size-small,
+    variables.$border-radius-small
   );
 }
 
@@ -253,19 +258,19 @@
   }
   .btn {
     &:focus {
-      background-color: $info-color !important;
+      background-color: variables.$info-color !important;
     }
   }
 }
 
 .btn-round {
-  border-width: $border-thin;
-  border-radius: $btn-round-radius;
-  padding-right: $padding-round-horizontal;
-  padding-left: $padding-round-horizontal;
+  border-width: variables.$border-thin;
+  border-radius: variables.$btn-round-radius;
+  padding-right: variables.$padding-round-horizontal;
+  padding-left: variables.$padding-round-horizontal;
 
   &.btn-simple {
-    padding: $padding-btn-vertical - 1 $padding-round-horizontal - 1;
+    padding: variables.$padding-btn-vertical - 1 variables.$padding-round-horizontal - 1;
   }
 }
 
@@ -288,16 +293,16 @@
 }
 
 .btn-margin-right {
-  margin-right: $margin-base-vertical;
+  margin-right: variables.$margin-base-vertical;
 }
 
 .btn--tooltip {
   @extend .btn-reset;
 
-  color: $dark-gray;
+  color: variables.$dark-gray;
   font-size: 9.0852px; // Equalize with card label size
   &::after {
     content: "\24D8";
-    margin-left: $margin-base-vertical;
+    margin-left: variables.$margin-base-vertical;
   }
 }

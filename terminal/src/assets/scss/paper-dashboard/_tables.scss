@@ -1,3 +1,5 @@
+@use "variables";
+
 .table {
   .img-wrapper {
     width: 40px;
@@ -47,7 +49,7 @@
 
   > thead > tr > th {
     font-size: 14px;
-    font-weight: $font-weight-bold;
+    font-weight: variables.$font-weight-bold;
     padding-bottom: 0;
     text-transform: uppercase;
     border: 0;
@@ -78,7 +80,7 @@
   > thead > tr > td,
   > tbody > tr > td,
   > tfoot > tr > td {
-    padding: $padding-base-horizontal $padding-base-vertical;
+    padding: variables.$padding-base-horizontal variables.$padding-base-vertical;
     vertical-align: middle;
   }
 
@@ -87,15 +89,15 @@
   }
   .td-price {
     font-size: 26px;
-    font-weight: $font-weight-light;
+    font-weight: variables.$font-weight-light;
     margin-top: 5px;
     position: relative;
     top: 4px;
     text-align: right;
   }
   .td-total {
-    font-weight: $font-weight-bold;
-    font-size: $font-size-h5;
+    font-weight: variables.$font-weight-bold;
+    font-size: variables.$font-size-h5;
     padding-top: 20px;
     text-align: right;
   }
@@ -111,11 +113,11 @@
 
 .table-shopping {
   > thead > tr > th {
-    font-size: $font-size-h6;
+    font-size: variables.$font-size-h6;
     text-transform: uppercase;
   }
   > tbody > tr > td {
-    font-size: $font-paragraph;
+    font-size: variables.$font-paragraph;
 
     b {
       display: block;
@@ -123,17 +125,17 @@
     }
   }
   .td-name {
-    font-weight: $font-weight-normal;
+    font-weight: variables.$font-weight-normal;
     font-size: 1.5em;
     small {
-      color: $dark-gray;
+      color: variables.$dark-gray;
       font-size: 0.75em;
-      font-weight: $font-weight-light;
+      font-weight: variables.$font-weight-light;
     }
   }
   .td-number {
-    font-weight: $font-weight-light;
-    font-size: $font-size-h4;
+    font-weight: variables.$font-weight-light;
+    font-size: variables.$font-size-h4;
   }
   .td-name {
     min-width: 200px;

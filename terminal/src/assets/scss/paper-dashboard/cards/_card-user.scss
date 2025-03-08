@@ -1,3 +1,5 @@
+@use "../variables";
+
 .card-user {
   .image {
     height: 130px;
@@ -20,7 +22,7 @@
   .avatar {
     width: 124px;
     height: 124px;
-    border: 1px solid $white-color;
+    border: 1px solid variables.$white-color;
     position: relative;
   }
 
@@ -42,10 +44,5 @@
   .button-container {
     margin-bottom: 6px;
     text-align: center;
-  }
-
-  .inconspicious-text {
-    @extend .text-muted;
-    font-size: $font-size-xs;
   }
 }
