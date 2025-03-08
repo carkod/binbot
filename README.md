@@ -1,10 +1,22 @@
 [![Test Production](https://github.com/carkod/binbot/actions/workflows/pr.yml/badge.svg)](https://github.com/carkod/binbot/actions/workflows/pr.yml)
 
+# Development instructions
+
 ## Requirements
 
 - Docker and docker-compose
 - Python 3
 - Pipenv. If not installed, run `pip install pipenv`
+
+## Run services
+
+`docker compose -f compose-development.yml --pull always -d --build`
+
+This should create and set up the Mongo and Postgres databases.
+
+> Open source note:
+> you'll need data for the entire project to work,
+> which I do not provide
 
 ## Running back-end api
 
