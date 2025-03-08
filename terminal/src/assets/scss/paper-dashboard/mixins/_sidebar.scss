@@ -1,3 +1,6 @@
+@use "../variables";
+@use "transitions";
+
 @mixin sidebar-color($color) {
   &:after {
     background: $color;
@@ -71,47 +74,47 @@
 @mixin sidebar-toggle($invert: false) {
   // Sidebar toggle
   .nav-open {
-    @include transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
+    @include transitions.transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
     .main-panel {
       @if $invert {
-        @include transform-translate-x(0);
+        @include transitions.transform-translate-x(0);
         width: 100vw;
       } @else {
-        @include transform-translate-x($navbar-width);
+        @include transitions.transform-translate-x(variables.$navbar-width);
       }
     }
 
     .sidebar {
       @if $invert {
-        @include transform-translate-x(-$navbar-width);
+        @include transitions.transform-translate-x(-(variables.$navbar-width));
       } @else {
-        @include transform-translate-x(0);
+        @include transitions.transform-translate-x(0);
       }
     }
 
     .menu-on-right {
       .main-panel {
         @if $invert {
-          @include transform-translate-x(-$navbar-width);
+          @include transitions.transform-translate-x(-(variables.$navbar-width));
         } @else {
-          @include transform-translate-x($navbar-width);
+          @include transitions.transform-translate-x(variables.$navbar-width);
         }
       }
 
       .navbar-collapse,
       .sidebar {
         @if $invert {
-          @include transform-translate-x(-$navbar-width);
+          @include transitions.transform-translate-x(-(variables.$navbar-width));
         } @else {
-          @include transform-translate-x(0);
+          @include transitions.transform-translate-x(0);
         }
       }
 
       .navbar-translate {
         @if $invert {
-          @include transform-translate-x(-$navbar-width);
+          @include transitions.transform-translate-x(-(variables.$navbar-width));
         } @else {
-          @include transform-translate-x($navbar-width);
+          @include transitions.transform-translate-x(variables.$navbar-width);
         }
       }
     }

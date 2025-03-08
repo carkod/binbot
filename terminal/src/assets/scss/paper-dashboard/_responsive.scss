@@ -1,3 +1,7 @@
+@use "mixins/sidebar";
+@use "mixins/transitions";
+@use "variables";
+
 @media screen and (max-width: 991px) {
   .navbar {
     padding: 0;
@@ -7,7 +11,7 @@
     }
   }
 
-  @include sidebar-toggle(false);
+  @include sidebar.sidebar-toggle(false);
 
   .button-dropdown {
     display: none;
@@ -66,12 +70,12 @@
 
     .dropdown-menu .dropdown-item:focus,
     .dropdown-menu .dropdown-item:hover {
-      color: $white-color;
+      color: variables.$white-color;
     }
 
     &.bg-white .dropdown-menu .dropdown-item:focus,
     &.bg-white .dropdown-menu .dropdown-item:hover {
-      color: $default-color;
+      color: variables.$default-color;
     }
 
     .navbar-toggler-bar {
@@ -80,7 +84,7 @@
       width: 22px;
       height: 1px;
       border-radius: 1px;
-      background: $default-color;
+      background: variables.$default-color;
 
       & + .navbar-toggler-bar {
         margin-top: 7px;
@@ -97,7 +101,7 @@
     }
 
     &.bg-white:not(.navbar-transparent) .navbar-toggler-bar {
-      background-color: $default-color;
+      background-color: variables.$default-color;
     }
 
     & .toggled .navbar-toggler-bar {
@@ -134,16 +138,16 @@
     display: block;
     top: 0;
     height: 100%;
-    width: $navbar-width;
+    width: variables.$navbar-width;
     right: auto;
     left: 0;
     z-index: 1032;
     visibility: visible;
     overflow-y: visible;
     padding: 0;
-    @include transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
+    @include transitions.transition(0.5s, cubic-bezier(0.685, 0.0473, 0.346, 1));
 
-    @include transform-translate-x(-$navbar-width);
+    @include transitions.transform-translate-x(-(variables.$navbar-width));
   }
 
   .main-panel {
@@ -198,7 +202,7 @@
 }
 
 @media screen and (min-width: 992px) {
-  @include sidebar-toggle(true);
+  @include sidebar.sidebar-toggle(true);
   .navbar-collapse {
     background: none !important;
   }
@@ -228,7 +232,7 @@
         > a:not([data-toggle="collapse"]),
         > [data-toggle="collapse"] + div .nav li {
           &:before {
-            border-right: 17px solid $medium-gray;
+            border-right: 17px solid variables.$medium-gray;
             border-top: 17px solid transparent;
             border-bottom: 17px solid transparent;
             content: "";
@@ -241,7 +245,7 @@
           }
 
           &:after {
-            border-right: 17px solid $default-body-bg;
+            border-right: 17px solid variables.$default-body-bg;
             border-top: 17px solid transparent;
             border-bottom: 17px solid transparent;
             content: "";

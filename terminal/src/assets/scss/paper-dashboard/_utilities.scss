@@ -1,9 +1,11 @@
+@use "variables";
+
 .u-notification--zindex {
-  z-index: $zindex-notification;
+  z-index: variables.$zindex-notification;
 }
 
 .u-modal--zindex {
-  z-index: $zindex-modal;
+  z-index: variables.$zindex-modal;
 }
 
 .u-center {
@@ -21,7 +23,7 @@
 
 .u-flex-left {
   display: flex;
-  margin-right: $margin-base-horizontal;
+  margin-right: variables.$margin-base-horizontal;
 }
 
 .u-margin-bottom {
@@ -41,11 +43,11 @@
 }
 
 .u-primary-color {
-  color: $primary-color;
+  color: variables.$primary-color;
 }
 
 .u-required {
-  color: $danger-color;
+  color: variables.$danger-color;
 }
 
 .u-margin-left {
@@ -58,21 +60,21 @@
 }
 
 .u-green-badge {
-  color: $white-color;
-  background-color: $success-color;
+  color: variables.$white-color;
+  background-color: variables.$success-color;
   padding: 0.3em;
 }
 
 .u-td-bg-color--success {
-  background-color: $success-color;
+  background-color: variables.$success-color;
 }
 
 .u-td-bg-color--danger {
-  background-color: $danger-color;
+  background-color: variables.$danger-color;
 }
 
 .u-td-bg-color--disabled {
-  background-color: $link-disabled-color;
+  background-color: variables.$link-disabled-color;
 }
 
 .input-group-text {
@@ -80,7 +82,7 @@
 }
 
 .badge {
-  color: $white-color;
+  color: variables.$white-color;
 }
 
 .u-disable-events {

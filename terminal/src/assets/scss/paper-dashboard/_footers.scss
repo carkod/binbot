@@ -1,3 +1,5 @@
+@use "variables";
+
 .footer {
   padding: 24px 0;
 
@@ -21,8 +23,8 @@
 
       a {
         color: inherit;
-        padding: $padding-base-vertical;
-        font-size: $font-size-small;
+        padding: variables.$padding-base-vertical;
+        font-size: variables.$font-size-small;
         text-transform: uppercase;
         text-decoration: none;
 
@@ -34,7 +36,7 @@
   }
 
   .copyright {
-    font-size: $font-size-small;
+    font-size: variables.$font-size-small;
     line-height: 1.8;
   }
 

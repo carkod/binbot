@@ -1,35 +1,37 @@
+@use "variables";
+
 @use "sass:color";
 
 .alert {
   border: 0;
-  border-radius: $border-radius-small;
-  color: $white-color;
+  border-radius: variables.$border-radius-small;
+  color: variables.$white-color;
   padding-top: 0.9rem;
   padding-bottom: 0.9rem;
   position: relative;
 
   &.alert-success {
-    background-color: color.adjust($success-color, $lightness: 5%);
+    background-color: color.adjust(variables.$success-color, $lightness: 5%);
   }
 
   &.alert-danger {
-    background-color: color.adjust($danger-color, $lightness: 5%);
+    background-color: color.adjust(variables.$danger-color, $lightness: 5%);
   }
 
   &.alert-warning {
-    background-color: color.adjust($warning-color, $lightness: 5%);
+    background-color: color.adjust(variables.$warning-color, $lightness: 5%);
   }
 
   &.alert-info {
-    background-color: color.adjust($info-color, $lightness: 5%);
+    background-color: color.adjust(variables.$info-color, $lightness: 5%);
   }
 
   &.alert-primary {
-    background-color: color.adjust($primary-color, $lightness: 5%);
+    background-color: color.adjust(variables.$primary-color, $lightness: 5%);
   }
 
   .close {
-    color: $white-color;
+    color: variables.$white-color;
     opacity: 0.9;
     text-shadow: none;
     line-height: 0;

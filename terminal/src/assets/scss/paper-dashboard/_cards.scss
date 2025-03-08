@@ -1,8 +1,10 @@
+@use "variables";
+
 .card {
-  border-radius: $border-radius-extreme;
+  border-radius: variables.$border-radius-extreme;
   box-shadow: 0 6px 10px -4px rgba(0, 0, 0, 0.15);
   background-color: #ffffff;
-  color: $card-black-color;
+  color: variables.$card-black-color;
   margin-bottom: 20px;
   position: relative;
   border: 0 none;
@@ -32,7 +34,7 @@
   }
 
   .map {
-    border-radius: $border-radius-small;
+    border-radius: variables.$border-radius-small;
 
     &.map-big {
       height: 400px;
@@ -40,33 +42,33 @@
   }
 
   &[data-background-color="orange"] {
-    background-color: $primary-color;
+    background-color: variables.$primary-color;
 
     .card-header {
-      background-color: $primary-color;
+      background-color: variables.$primary-color;
     }
 
     .card-footer {
       .stats {
-        color: $white-color;
+        color: variables.$white-color;
       }
     }
   }
 
   &[data-background-color="red"] {
-    background-color: $danger-color;
+    background-color: variables.$danger-color;
   }
 
   &[data-background-color="yellow"] {
-    background-color: $warning-color;
+    background-color: variables.$warning-color;
   }
 
   &[data-background-color="blue"] {
-    background-color: $info-color;
+    background-color: variables.$info-color;
   }
 
   &[data-background-color="green"] {
-    background-color: $success-color;
+    background-color: variables.$success-color;
   }
 
   .image {
@@ -96,7 +98,7 @@
 
   label {
     margin-bottom: 5px;
-    color: $dark-gray;
+    color: variables.$dark-gray;
   }
 
   .card-footer {
@@ -108,7 +110,7 @@
         margin-right: 5px;
         position: relative;
         top: 0px;
-        color: $default-color;
+        color: variables.$default-color;
       }
     }
   }
@@ -124,7 +126,7 @@
     }
 
     img {
-      border-radius: $border-radius-extreme;
+      border-radius: variables.$border-radius-extreme;
     }
   }
 }

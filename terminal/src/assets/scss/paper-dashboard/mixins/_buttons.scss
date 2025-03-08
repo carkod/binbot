@@ -1,3 +1,6 @@
+@use "../variables";
+@use "transparency";
+
 // Mixin for generating new styles
 @mixin btn-styles($btn-color, $btn-states-color) {
   background-color: $btn-color;
@@ -14,7 +17,7 @@
   .show > &.dropdown-toggle:focus,
   .show > &.dropdown-toggle:hover {
     background-color: $btn-states-color;
-    color: $white-color;
+    color: variables.$white-color;
     box-shadow: none;
   }
 
@@ -38,61 +41,61 @@
   }
 
   // btn-neutral style
-  @if $btn-color == $white-color {
-    color: $primary-color;
+  @if $btn-color == variables.$white-color {
+    color: variables.$primary-color;
 
     &.btn-danger {
-      color: $danger-color;
+      color: variables.$danger-color;
 
       &:hover,
       &:focus,
       &:active,
       &:active:focus {
-        color: $danger-states-color !important;
+        color: variables.$danger-states-color !important;
       }
     }
 
     &.btn-info {
-      color: $info-color !important;
+      color: variables.$info-color !important;
 
       &:hover,
       &:focus,
       &:active,
       &:active:focus {
-        color: $info-states-color !important;
+        color: variables.$info-states-color !important;
       }
     }
 
     &.btn-warning {
-      color: $warning-color !important;
+      color: variables.$warning-color !important;
 
       &:hover,
       &:focus,
       &:active,
       &:active:focus {
-        color: $warning-states-color !important;
+        color: variables.$warning-states-color !important;
       }
     }
 
     &.btn-success {
-      color: $success-color !important;
+      color: variables.$success-color !important;
 
       &:hover,
       &:focus,
       &:active,
       &:active:focus {
-        color: $success-states-color !important;
+        color: variables.$success-states-color !important;
       }
     }
 
     &.btn-default {
-      color: $default-color !important;
+      color: variables.$default-color !important;
 
       &:hover,
       &:focus,
       &:active,
       &:active:focus {
-        color: $default-states-color !important;
+        color: variables.$default-states-color !important;
       }
     }
 
@@ -105,14 +108,14 @@
     .show > &.dropdown-toggle,
     .show > &.dropdown-toggle:focus,
     .show > &.dropdown-toggle:hover {
-      background-color: $white-color !important;
-      color: $primary-states-color !important;
+      background-color: variables.$white-color !important;
+      color: variables.$primary-states-color !important;
       box-shadow: none !important;
     }
 
     &:hover,
     &:focus {
-      color: $primary-states-color !important;
+      color: variables.$primary-states-color !important;
 
       &:not(.nav-link) {
         box-shadow: none;
@@ -120,7 +123,7 @@
     }
   } @else {
     & {
-      color: $white-color;
+      color: variables.$white-color;
     }
   }
 
@@ -131,7 +134,7 @@
     &:hover,
     &:focus,
     &:active {
-      background-color: $transparent-bg;
+      background-color: variables.$transparent-bg;
       color: $btn-states-color;
       border-color: $btn-states-color;
       box-shadow: none;
@@ -145,7 +148,7 @@
     &:focus,
     &:active,
     &:active:focus {
-      background-color: $transparent-bg;
+      background-color: variables.$transparent-bg;
       color: $btn-states-color;
       text-decoration: none;
       box-shadow: none;
@@ -154,10 +157,10 @@
 }
 
 @mixin btn-outline-styles($btn-color, $btn-states-color) {
-  background: $transparent-bg;
+  background: variables.$transparent-bg;
   border: 2px solid $btn-color !important;
   color: $btn-color;
-  @include opacity(1);
+  @include transparency.opacity(1);
 
   &:hover,
   &:focus,
@@ -166,15 +169,15 @@
   &.active,
   .open > &.dropdown-toggle {
     background-color: $btn-color !important;
-    color: $fill-font-color !important;
+    color: variables.$fill-font-color !important;
     border-color: $btn-color !important;
     .caret {
-      border-top-color: $fill-font-color !important;
+      border-top-color: variables.$fill-font-color !important;
     }
   }
 
   .caret {
-    border-top-color: $white-color !important;
+    border-top-color: variables.$white-color !important;
   }
 
   &.disabled,
@@ -187,7 +190,7 @@
     &.focus,
     &:active,
     &.active {
-      background-color: $transparent-bg !important;
+      background-color: variables.$transparent-bg !important;
       border-color: $btn-color !important;
     }
   }

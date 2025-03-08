@@ -1,3 +1,6 @@
+@use "mixins/transitions";
+@use "variables";
+
 .from-check,
 .form-check-radio {
   margin-bottom: 12px;
@@ -48,7 +51,7 @@
   }
   &.disabled {
     .form-check-label {
-      color: $dark-gray;
+      color: variables.$dark-gray;
       opacity: 0.5;
       cursor: not-allowed;
     }
@@ -90,7 +93,7 @@
   }
   &.disabled {
     .form-check-label {
-      color: $dark-gray;
+      color: variables.$dark-gray;
       opacity: 0.5;
       cursor: not-allowed;
     }
@@ -117,7 +120,7 @@
 .form-check-radio input[type="radio"] + .form-check-sign:after,
 .form-check-radio input[type="radio"] {
   opacity: 0;
-  @include transition-opacity(0.3s, linear);
+  @include transitions.transition-opacity(0.3s, linear);
   content: " ";
   display: block;
 }
@@ -138,5 +141,5 @@
 
 .form-check-radio input[type="radio"]:disabled + .form-check-sign::before,
 .form-check-radio input[type="radio"]:disabled + .form-check-sign::after {
-  color: $dark-gray;
+  color: variables.$dark-gray;
 }
