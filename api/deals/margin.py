@@ -359,7 +359,6 @@ class MarginDeal(DealAbstract):
                 symbol=self.active_bot.pair,
                 qty=self.active_bot.deal.opening_qty,
             )
-            self.controller.update_logs("Sell margin order executed", self.active_bot)
             self.controller.save(self.active_bot)
         else:
             order_res = self.simulate_margin_order(
@@ -369,6 +368,9 @@ class MarginDeal(DealAbstract):
         price = float(order_res["price"])
         if price == 0:
             price = self.calculate_avg_price(order_res["fills"])
+
+        self.controller.update_logs("Populating order model", self.active_bot)
+
 
         order_data = OrderModel(
             timestamp=order_res["transactTime"],
