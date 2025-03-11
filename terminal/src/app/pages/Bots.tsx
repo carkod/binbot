@@ -78,7 +78,9 @@ export const BotsPage: FC<{}> = () => {
         dispatch(() => refetch());
         break;
       case BulkAction.SELECT_ALL:
-        selectCards(Object.keys(data?.bots?.entities));
+        if (data?.bots?.ids.length > 0) {
+          selectCards(Object.keys(data.bots.entities));
+        }
         break;
       case BulkAction.COMPLETED:
         setBulkActions(BulkAction.COMPLETED);
