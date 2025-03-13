@@ -10,6 +10,7 @@ from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
 from tools.round_numbers import round_numbers
 
+
 class Candlestick(Database):
     """
     Return Plotly format of Candlestick
@@ -295,8 +296,12 @@ class BtcCorrelation(Database, BinbotApi):
         Get BTC correlation data
         for 1 day interval
         """
-        asset_data = self.collection.raw_klines(symbol=asset_symbol, interval=BinanceKlineIntervals.one_day)
-        btc_data = self.collection.raw_klines(symbol="BTCUSDC", interval=BinanceKlineIntervals.one_day)
+        asset_data = self.collection.raw_klines(
+            symbol=asset_symbol, interval=BinanceKlineIntervals.one_day
+        )
+        btc_data = self.collection.raw_klines(
+            symbol="BTCUSDC", interval=BinanceKlineIntervals.one_day
+        )
         asset_df = DataFrame(asset_data)
         btc_df = DataFrame(btc_data)
         p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")

@@ -67,6 +67,7 @@ class BinanceApi:
     margin_order = f"{BASE}/sapi/v1/margin/order"
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
     interest_history_url = f"{BASE}/sapi/v1/margin/interestHistory"
+    manual_liquidation_url = f"{BASE}/sapi/v1/margin/manual-liquidation"
 
     def request(
         self,
@@ -391,6 +392,19 @@ class BinanceApi:
                 "symbol": symbol,
                 "amount": amount,
                 "type": "REPAY",
+            },
+        )
+
+    def manual_liquidation(self, symbol: str):
+        """
+        Not supported in region
+        """
+        return self.signed_request(
+            self.manual_liquidation_url,
+            method="POST",
+            payload={
+                "symbol": symbol,
+                "type": "ISOLATED",
             },
         )
 

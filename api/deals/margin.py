@@ -1,4 +1,3 @@
-import logging
 from typing import Type, Union
 from urllib.error import HTTPError
 from database.bot_crud import BotTableCrud
@@ -185,161 +184,6 @@ class MarginDeal(DealAbstract):
 
         return self.active_bot
 
-    def terminate_margin_short(self, buy_back_fiat: bool = True) -> BotModel:
-        """
-
-        Args:
-        - buy_back_fiat. By default it will buy back USDC (sell asset and transform into USDC)
-
-        In the case of reversal, we don't want to do this additional transaction, as it will incur
-        in an additional cost. So this is added to skip that section
-
-        1. Repay loan
-        2. Exchange asset to quote asset (USDC)
-        3. Transfer back to spot
-        """
-        self.controller.update_logs(
-            f"Terminating margin_short {self.active_bot.pair} for real bots trading",
-            self.active_bot,
-        )
-
-        # Check margin account balance first
-        balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
-        asset = self.isolated_balance[0]["baseAsset"]["asset"]
-        if balance > 0:
-            # repay
-            qty, free = self.compute_margin_buy_back()
-            repay_amount = qty
-
-            if self.active_bot.deal.margin_loan_id == 0:
-                raise BinbotErrors("No loan found for this bot")
-
-            # Repay and Borrow have different ids
-            # Check first if there is a repay before repaying
-            query_loan: dict = self.get_margin_loan_details(
-                loan_id=self.active_bot.deal.margin_loan_id,
-                symbol=self.active_bot.pair,
-            )
-
-            if (
-                self.active_bot.deal.margin_repay_id == 0
-                and float(query_loan["total"]) > 0
-                and repay_amount > 0
-            ):
-                # Only supress trailling 0s, so that everything is paid
-                amount = round_numbers_ceiling(repay_amount, self.qty_precision)
-                try:
-                    repay_data = self.repay_margin_loan(
-                        asset=asset, symbol=self.active_bot.pair, amount=amount
-                    )
-                    self.active_bot.deal.margin_repay_id = int(repay_data["tranId"])
-                    self.controller.save(self.active_bot)
-                except BinanceErrors as error:
-                    if error.code == -3041:
-                        self.controller.update_logs(error.message)
-                        pass
-                    if error.code == -3015:
-                        # false alarm
-                        pass
-                except Exception as error:
-                    logging.error(error)
-                    # Continue despite errors to avoid losses
-                    # most likely it is still possible to update bot
-                    pass
-
-                interests_data = self.get_interest_history(
-                    asset=asset, symbol=self.active_bot.pair
-                )
-
-                self.active_bot.deal.total_interests = interests_data["rows"][0][
-                    "interest"
-                ]
-
-            else:
-                self.controller.update_logs(
-                    "Loan not found for this deal, or it's been repaid.",
-                    self.active_bot,
-                )
-
-            # Get updated balance
-            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-            sell_back_qty = round_numbers(
-                float(self.isolated_balance[0]["baseAsset"]["free"]),
-                self.qty_precision,
-            )
-
-            if buy_back_fiat and sell_back_qty > 0:
-                # Sell quote and get base asset (USDC)
-                # In theory, we should sell self.active_bot.base_order
-                # but this can be out of sync
-
-                res = self.sell_margin_order(
-                    symbol=self.active_bot.pair, qty=sell_back_qty
-                )
-
-                price = float(res["price"])
-                if price == 0:
-                    price = self.calculate_avg_price(res["fills"])
-
-                sell_back_order = OrderModel(
-                    timestamp=res["transactTime"],
-                    deal_type=DealType.take_profit,
-                    order_id=int(res["orderId"]),
-                    pair=res["symbol"],
-                    order_side=res["side"],
-                    order_type=res["type"],
-                    price=price,
-                    qty=float(res["origQty"]),
-                    time_in_force=res["timeInForce"],
-                    status=res["status"],
-                )
-
-                self.active_bot.deal.total_commissions = (
-                    self.calculate_total_commissions(res["fills"])
-                )
-
-                self.active_bot.orders.append(sell_back_order)
-                self.active_bot.deal.closing_price = price
-                self.active_bot.deal.closing_qty = float(res["origQty"])
-                self.active_bot.deal.closing_timestamp = round_timestamp(
-                    res["transactTime"]
-                )
-                self.active_bot.logs.append("Margin_short bot repaid, deal completed.")
-
-            # Order and deal section completed, back to bot level
-            self.controller.save(self.active_bot)
-
-            try:
-                # get new balance
-                self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-                if float(self.isolated_balance[0]["quoteAsset"]["free"]) != 0:
-                    # transfer back to SPOT account
-                    self.transfer_isolated_margin_to_spot(
-                        asset=self.active_bot.fiat,
-                        symbol=self.active_bot.pair,
-                        amount=self.isolated_balance[0]["quoteAsset"]["free"],
-                    )
-                if float(self.isolated_balance[0]["baseAsset"]["free"]) != 0:
-                    self.transfer_isolated_margin_to_spot(
-                        asset=asset,
-                        symbol=self.active_bot.pair,
-                        amount=self.isolated_balance[0]["baseAsset"]["free"],
-                    )
-            except Exception as error:
-                error_msg = f"Failed to transfer isolated assets to spot: {error}"
-                logging.error(error_msg)
-                self.controller.update_logs(error_msg, self.active_bot)
-                return self.active_bot
-
-            self.active_bot.status = Status.completed
-            self.controller.update_logs(
-                f"{self.active_bot.pair} ISOLATED margin funds transferred back to SPOT.",
-                self.active_bot,
-            )
-
-        self.controller.save(self.active_bot)
-        return self.active_bot
-
     def margin_short_base_order(self) -> BotModel:
         """
         Same functionality as usual base_order
@@ -371,7 +215,6 @@ class MarginDeal(DealAbstract):
 
         self.controller.update_logs("Populating order model", self.active_bot)
 
-
         order_data = OrderModel(
             timestamp=order_res["transactTime"],
             order_id=int(order_res["orderId"]),
@@ -388,7 +231,9 @@ class MarginDeal(DealAbstract):
         self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             order_res["fills"]
         )
-        self.controller.update_logs("total_commissions calculated and set", self.active_bot)
+        self.controller.update_logs(
+            "total_commissions calculated and set", self.active_bot
+        )
 
         self.active_bot.orders.append(order_data)
 
@@ -867,7 +712,49 @@ class MarginDeal(DealAbstract):
                         break
 
         # Sell everything
-        self.terminate_margin_short()
+        if isinstance(self.controller, PaperTradingTableCrud):
+            res = self.simulate_margin_order(
+                self.active_bot.deal.opening_qty, OrderSide.buy
+            )
+        else:
+            res = self.margin_liquidation(self.active_bot.pair)
+
+        price = float(res["price"])
+        if price == 0:
+            price = self.calculate_avg_price(res["fills"])
+
+        if res:
+            order = OrderModel(
+                timestamp=int(res["transactTime"]),
+                deal_type=DealType.panic_close,
+                order_id=int(res["orderId"]),
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=price,
+                qty=float(res["origQty"]),
+                time_in_force=res["timeInForce"],
+                status=res["status"],
+            )
+
+            self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+                res["fills"]
+            )
+
+            self.active_bot.orders.append(order)
+
+            self.active_bot.deal.closing_price = price
+            self.active_bot.deal.closing_qty = float(res["origQty"])
+            self.active_bot.deal.closing_timestamp = round_timestamp(
+                res["transactTime"]
+            )
+
+            self.active_bot.logs.append("Completed Stop loss order")
+            self.active_bot.status = Status.completed
+        else:
+            self.active_bot.logs.append("Unable to complete stop loss")
+
+        self.controller.save(self.active_bot)
 
         return self.active_bot
 
