@@ -238,7 +238,7 @@ class BaseDeal(OrderController):
                         pass
             else:
                 msg = "Unable to match isolated balance with repay amount"
-                self.controller.update_logs(msg)
+                self.controller.update_logs(msg, self.active_bot)
                 raise MarginLoanNotFound(msg)
 
             self.repay_margin_loan(

@@ -167,7 +167,9 @@ class DealAbstract(BaseDeal):
                     self.calculate_total_commissions(res["fills"])
                 )
                 self.controller.save(self.active_bot)
-                self.controller.update_logs("take_profit deal successfully updated")
+                self.controller.update_logs(
+                    "take_profit deal successfully updated", self.active_bot
+                )
                 return self.active_bot
         else:
             self.controller.update_logs(

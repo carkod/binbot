@@ -29,7 +29,8 @@ def main():
         if message.topic == KafkaTopics.klines_store_topic.value:
             mu.process_klines(message.value)
         if message.topic == KafkaTopics.signals.value:
-            bbu.update_close_conditions(message.value)
+            # Update bot parameters should not be the same as close conditions
+            bbu.dynamic_trailling(message.value)
 
 
 if __name__ == "__main__":

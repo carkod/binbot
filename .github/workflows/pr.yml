@@ -34,7 +34,7 @@ jobs:
           --health-retries 5
 
       data_db:
-        image: mongo:7.0
+        image: mongo:latest
         options: >-
           --health-cmd mongosh
           --health-interval 10s
@@ -52,7 +52,9 @@ jobs:
       - name: Build image
         run: docker build --tag binbot .
       - name: Run docker container
-        run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d binbot
+        run: |
+          docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d binbot
+          docker ps
 
       - name: Test back-end
         run: curl --fail --retry-delay 8 --retry 3 --retry-connrefused localhost:8006

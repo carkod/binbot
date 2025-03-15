@@ -6,7 +6,7 @@ from database.paper_trading_crud import PaperTradingTableCrud
 from tools.enum_definitions import CloseConditions, DealType, OrderSide, Strategy
 from bots.models import BotModel, OrderModel, BotBase
 from tools.enum_definitions import Status
-from tools.exceptions import BinanceErrors, MarginShortError, BinbotErrors
+from tools.exceptions import BinanceErrors, MarginShortError
 from tools.round_numbers import (
     round_numbers,
     round_numbers_ceiling,
@@ -366,7 +366,24 @@ class MarginDeal(DealAbstract):
                 )
             )
 
-        self.controller.save(self.active_bot)
+        # Direction 3: upward trend (short)
+        # Breaking trailling_stop_loss, sell for safety
+        if close_price > self.active_bot.deal.stop_loss_price:
+            self.controller.update_logs(
+                f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}",
+                self.active_bot,
+            )
+            self.execute_stop_loss()
+            self.base_producer.update_required(
+                self.producer, "EXECUTE_MARGIN_STOP_LOSS"
+            )
+            if self.active_bot.margin_short_reversal:
+                self.switch_to_long_bot()
+                self.base_producer.update_required(
+                    self.producer, "EXECUTE_MARGIN_SWITCH_TO_LONG"
+                )
+
+            self.controller.save(self.active_bot)
 
         if (
             close_price > 0
@@ -394,27 +411,12 @@ class MarginDeal(DealAbstract):
                     self.producer, "EXECUTE_MARGIN_TRAILLING_PROFIT"
                 )
 
-            # Direction 1.3: upward trend (short)
-            # Breaking trailling_stop_loss, completing trailling
-            if close_price > self.active_bot.deal.stop_loss_price:
-                self.controller.update_logs(
-                    f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}"
-                )
-                self.execute_stop_loss()
-                self.base_producer.update_required(
-                    self.producer, "EXECUTE_MARGIN_STOP_LOSS"
-                )
-                if self.active_bot.margin_short_reversal:
-                    self.switch_to_long_bot()
-                    self.base_producer.update_required(
-                        self.producer, "EXECUTE_MARGIN_SWITCH_TO_LONG"
-                    )
-
         if not self.active_bot.trailling and self.active_bot.deal.take_profit_price > 0:
             # Not a trailling bot, just simple take profit
             if close_price <= self.active_bot.deal.take_profit_price:
                 self.controller.update_logs(
-                    f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.take_profit_price}"
+                    f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.take_profit_price}",
+                    self.active_bot,
                 )
                 self.execute_take_profit()
                 self.base_producer.update_required(
@@ -593,7 +595,8 @@ class MarginDeal(DealAbstract):
             url=self.bb_activate_bot_url, payload={"id": str(created_bot.id)}
         )
         self.controller.update_logs(
-            f"Switched margin_short to long strategy. New bot id: {bot_id}"
+            f"Switched margin_short to long strategy. New bot id: {bot_id}",
+            self.active_bot,
         )
         return self.active_bot
 
