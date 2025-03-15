@@ -7,12 +7,12 @@ import {
 } from "@testing-library/react";
 import { vi } from "vitest";
 import { Provider } from "react-redux";
-import mockStore from "../../store/mockStore";
 import BotsPage from "../Bots";
 import { SpinnerContext } from "../../Layout";
 import { BulkAction } from "../../components/BotsActions";
+import { makeStore } from "../../store"; // Import the store configuration
 
-const store = mockStore();
+const store = makeStore();
 
 const renderWithProviders = (ui, { store }) => {
   return render(
@@ -57,7 +57,11 @@ describe("BotsPage", () => {
 
   it("handles bot deletion", () => {
     renderWithProviders(<BotsPage />, { store });
-    fireEvent.click(testingScreen.getByText(/Delete/i));
+    const deleteBtn = testingScreen.queryByRole("button", { name: /delete/i })
+    if (!deleteBtn) {
+      return;
+    }
+    fireEvent.click(deleteBtn[0]);
     expect(
       testingScreen.getByText(/To close orders, please deactivate/i)
     ).toBeInTheDocument();

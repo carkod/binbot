@@ -85,7 +85,18 @@ If files have been modified in the models and no new revisions were created, the
 alembic revision --autogenerate -m "alter commisions column to support Big integers"
 ```
 
+> If you don't want to populate, remove the `--autogenerate`
+> so you can write it yourself or ask AI to write it for you
+
 Write the commands in the newly generated file and rerun FastApi
+
+### To remove a previously created migration
+
+```
+alembic stamp 113eb73ebba8
+```
+
+where 113eb73ebba8 is the supposed last "good" migration that you want to revert to.
 
 ## Detailed documentation
 

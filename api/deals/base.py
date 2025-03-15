@@ -99,8 +99,10 @@ class BaseDeal(OrderController):
         qty = (
             float(self.isolated_balance[0]["baseAsset"]["borrowed"])
             + float(self.isolated_balance[0]["baseAsset"]["interest"])
-            + float(self.isolated_balance[0]["baseAsset"]["borrowed"])
-            * ESTIMATED_COMMISSIONS_RATE
+            + (
+                float(self.isolated_balance[0]["baseAsset"]["borrowed"])
+                * ESTIMATED_COMMISSIONS_RATE
+            )
         )
 
         qty = round_numbers_ceiling(qty, self.qty_precision)

@@ -28,9 +28,13 @@ class DealBase(SQLModel):
     margin_loan_id: int = Field(
         default=0,
         description="Txid from Binance. This is used to check if there is a loan, 0 means no loan",
+        sa_column=Column(BigInteger()),
     )
     margin_repay_id: int = Field(
-        default=0, gt=-1, description="= 0, it has not been repaid"
+        default=0,
+        gt=-1,
+        description="= 0, it has not been repaid",
+        sa_column=Column(BigInteger()),
     )
 
     # Refactored deal prices that combine both margin and spot

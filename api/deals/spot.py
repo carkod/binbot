@@ -377,13 +377,12 @@ class SpotLongDeal(DealAbstract):
                     self.active_bot,
                 )
                 self.trailling_profit()
-        
+
         elif self.active_bot.take_profit > 0 and self.active_bot.deal.opening_price > 0:
             # Take profit
             if current_price >= self.active_bot.deal.take_profit_price:
                 self.take_profit_order()
                 return
-
 
         self.base_producer.update_required(
             self.producer, "EXECUTE_SPOT_STREAMING_UPDATES"
