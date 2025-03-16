@@ -52,9 +52,7 @@ jobs:
       - name: Build image
         run: docker build --tag binbot .
       - name: Run docker container
-        run: |
-          docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d binbot
-          docker ps
+        run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d binbot
 
       - name: Test back-end
         run: curl --fail --retry-delay 8 --retry 3 --retry-connrefused localhost:8006

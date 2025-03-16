@@ -17,8 +17,6 @@ logging.basicConfig(
 def main():
     consumer = KafkaConsumer(
         KafkaTopics.klines_store_topic.value,
-        KafkaTopics.restart_streaming.value,
-        KafkaTopics.signals.value,
         bootstrap_servers=f'{os.environ["KAFKA_HOST"]}:{os.environ["KAFKA_PORT"]}',
         value_deserializer=lambda m: json.loads(m),
         api_version=(2, 5, 0),
@@ -28,8 +26,6 @@ def main():
     for message in consumer:
         if message.topic == KafkaTopics.klines_store_topic.value:
             mu.process_klines(message.value)
-        if message.topic == KafkaTopics.signals.value:
-            # Update bot parameters should not be the same as close conditions
             bbu.dynamic_trailling(message.value)
 
 

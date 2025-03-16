@@ -221,10 +221,10 @@ def bot_errors(
             return BotResponse(message="Bot not found.", error=1)
 
         if isinstance(errors, str):
-            log_messages = [errors]
+            errors = [errors]
 
         data = BotTableCrud(session=session).update_logs(
-            log_message=log_messages, bot=bot_model
+            log_message=errors, bot=bot_model
         )
         response_data = BotModelResponse.dump_from_table(data)
         return BotResponse(
