@@ -458,9 +458,9 @@ class SpotLongDeal(DealAbstract):
         """
 
         if self.active_bot.deal.stop_loss_price == 0:
-            buy_price = float(self.active_bot.deal.opening_price)
+            buy_price = self.active_bot.deal.opening_price
             stop_loss_price = buy_price - (
-                buy_price * float(self.active_bot.stop_loss) / 100
+                buy_price * (self.active_bot.stop_loss / 100)
             )
             self.active_bot.deal.stop_loss_price = round_numbers(
                 stop_loss_price, self.price_precision
