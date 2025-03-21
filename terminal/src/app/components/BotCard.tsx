@@ -110,24 +110,36 @@ const BotCard: FC<BotCardProps> = ({
               </Col>
             </Row>
           )}
-          <Row>
-            <Col md="6" xs="7">
-              <p className="small">Take profit</p>
-            </Col>
-            <Col md="6" xs="5">
-              <p className="small">{roundDecimals(bot.take_profit) + "%"}</p>
-            </Col>
-          </Row>
-
-          {bot.trailling && (
+          {bot.trailling ? (
+            <>
+              <Row>
+                <Col md="6" xs="7">
+                  <p className="small">Trailling profit</p>
+                </Col>
+                <Col md="6" xs="5">
+                  <p className="small">
+                    {roundDecimals(bot.trailling_profit) + "%"}
+                  </p>
+                </Col>
+              </Row>
+              <Row>
+                <Col md="6" xs="7">
+                  <p className="small">Trailling deviation</p>
+                </Col>
+                <Col md="6" xs="5">
+                  <p className="small">
+                    {roundDecimals(bot.trailling_deviation) + "%"}
+                  </p>
+                </Col>
+              </Row>
+            </>
+          ) : (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Trailling loss</p>
+                <p className="small">Take profit</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">
-                  {roundDecimals(bot.trailling_deviation) + "%"}
-                </p>
+                <p className="small">{roundDecimals(bot.take_profit) + "%"}</p>
               </Col>
             </Row>
           )}

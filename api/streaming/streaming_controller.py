@@ -8,13 +8,15 @@ from database.paper_trading_crud import PaperTradingTableCrud
 from database.bot_crud import BotTableCrud
 from deals.factory import DealAbstract
 from tools.round_numbers import round_numbers
-from streaming.models import SignalsConsumer, BollinguerSpread
+from streaming.models import BollinguerSpread, SingleCandle
 from tools.enum_definitions import Status, Strategy
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from tools.exceptions import BinanceErrors, BinbotErrors
 from datetime import datetime
 from exchange_apis.binance import BinanceApi
+from charts.controllers import Candlestick
+import pandas as pd
 
 
 class BaseStreaming:
@@ -22,6 +24,7 @@ class BaseStreaming:
         self.binance_api = BinanceApi()
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
+        self.cs = Candlestick()
 
     def get_current_bot(self, symbol: str) -> BotModel:
         try:
@@ -44,6 +47,34 @@ class BaseStreaming:
         except BinbotErrors:
             bot = None
             return bot
+
+    def build_bb_spreads(self, last_candle: SingleCandle) -> BollinguerSpread:
+        """
+        Builds the bollinguer bands spreads without using pandas_ta
+        """
+        data = self.cs.raw_klines(symbol=last_candle.symbol, limit=200)
+        if len(data) < 200:
+            return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
+
+        df = pd.DataFrame(data)
+        df.drop(columns=['_id'], inplace=True)
+        close_prices = df['close']
+        rolling_mean = close_prices.rolling(window=20).mean()
+        rolling_std = close_prices.rolling(window=20).std()
+
+        df["bb_high"] = rolling_mean + (rolling_std * 2)
+        df["bb_mid"] = rolling_mean
+        df["bb_low"] = rolling_mean - (rolling_std * 2)
+
+        df.reset_index(drop=True, inplace=True)        
+
+        bb_spreads = BollinguerSpread(
+            bb_high=df["bb_high"].iloc[-1],
+            bb_mid=df["bb_mid"].iloc[-1],
+            bb_low=df["bb_low"].iloc[-1],
+        )
+
+        return bb_spreads
 
 
 class StreamingController(BaseStreaming):
@@ -71,6 +102,7 @@ class StreamingController(BaseStreaming):
         if current_bot.strategy == Strategy.margin_short:
             margin_deal = MarginDeal(current_bot, db_table=db_table)
             margin_deal.streaming_updates(float(close_price))
+
 
         elif current_bot.strategy == Strategy.long:
             spot_long_deal = SpotLongDeal(current_bot, db_table=db_table)
@@ -171,17 +203,15 @@ class BbspreadsUpdater(BaseStreaming):
 
     def compute_single_bot_profit(self, bot: BotModel, current_price: float) -> float:
         if bot.deal and bot.base_order_size > 0:
+            price = (
+                bot.deal.closing_price if bot.deal.closing_price > 0 else current_price
+            )
             if bot.deal.opening_price > 0:
-                current_price = (
-                    bot.deal.closing_price
-                    if bot.deal.closing_price
-                    else current_price or bot.deal.current_price
-                )
                 buy_price = bot.deal.opening_price
-                profit_change = ((current_price - buy_price) / buy_price) * 100
-                if current_price == 0:
+                profit_change = ((price - buy_price) / buy_price) * 100
+                if price == 0:
                     profit_change = 0
-                return round(profit_change, 2)
+                return round_numbers(profit_change)
             elif bot.deal.opening_price > 0:
                 # Completed margin short
                 if bot.deal.closing_price > 0:
@@ -220,6 +250,11 @@ class BbspreadsUpdater(BaseStreaming):
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
+        
+        # not enough data
+        if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0 or bb_spreads.bb_mid == 0:
+            return
+
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
             (abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100),
@@ -234,84 +269,97 @@ class BbspreadsUpdater(BaseStreaming):
             2,
         )
 
-        # Otherwise it'll close too soon
-        if 8 > whole_spread > 2:
-            # check we are not duplicating the update
-            if (
-                bot.take_profit == top_spread
-                and bot.stop_loss == whole_spread
-                and bot.trailling_deviation == bottom_spread
-            ):
-                return
+        # Otherwise it'll close too soon or incur too much loss
+        if whole_spread > 8:
+            whole_spread = 8
+            top_spread = 6
+            bottom_spread = 4
 
-            bot.trailling = True
-            # reset values to avoid too much risk when there's profit
-            bot_profit = self.compute_single_bot_profit(bot, current_price)
-            # when prices go up only
-            if bot.strategy == Strategy.long:
-                if bot_profit > 6:
-                    bot.take_profit = 2.8
-                    bot.trailling_deviation = 2.6
-                    bot.stop_loss = 3.6
-                # Only when TD_2 > TD_1
-                elif bottom_spread > bot.trailling_deviation:
-                    bot.take_profit = top_spread
-                    # too much risk, reduce stop loss
-                    bot.trailling_deviation = bottom_spread
+        if whole_spread < 2:
+            whole_spread = 2
+            top_spread = 1.5
+            bottom_spread = 1
 
-                spot_deal = SpotLongDeal(bot, db_table=db_table)
-                # reactivate includes saving
-                spot_deal.open_deal()
+        # check we are not duplicating the update
+        if (
+            bot.trailling_profit == top_spread
+            and bot.stop_loss == whole_spread
+            and bot.trailling_deviation == bottom_spread
+        ):
+            return
 
-                # No need to continue
-                # Bots can only be either long or short
-                return
+        bot.trailling = True
+        # reset values to avoid too much risk when there's profit
+        bot_profit = self.compute_single_bot_profit(bot, current_price)
+        # when prices go up only
+        if bot.strategy == Strategy.long:
+            # Only when TD_2 > TD_1
+            bot.trailling_profit = top_spread
+            # too much risk, reduce stop loss
+            bot.trailling_deviation = bottom_spread
 
-            if bot.strategy == Strategy.margin_short:
-                if bot_profit > 6:
-                    bot.take_profit = 2.8
-                    bot.trailling_deviation = 2.6
-                    bot.stop_loss = 3.6
+            # Already decent profit, do not increase risk
+            if bot_profit > 6:
+                bot.trailling_profit = 2.8
+                bot.trailling_deviation = 2.6
+                bot.stop_loss = 3.2
 
-                # Decrease risk for margin shorts
-                # as volatility is higher, we want to keep parameters tighter
-                # also over time we'll be paying more interest, so better to liquidate sooner
-                # that means smaller trailing deviation to close deal earlier
-                elif bot.trailling_deviation > bottom_spread:
-                    bot.take_profit = bottom_spread
-                    bot.trailling_deviation = top_spread
+            self.bot_controller.save(bot)
+            spot_deal = SpotLongDeal(bot, db_table=db_table)
+            # reactivate includes saving
+            spot_deal.open_deal()
 
-                margin_deal = MarginDeal(bot, db_table=db_table)
-                # reactivate includes saving
-                margin_deal.open_deal()
+            # No need to continue
+            # Bots can only be either long or short
+            return
+
+        if bot.strategy == Strategy.margin_short:
+            if bot_profit > 6:
+                bot.trailling_profit = 2.8
+                bot.trailling_deviation = 2.6
+                bot.stop_loss = 3.6
+
+            # Decrease risk for margin shorts
+            # as volatility is higher, we want to keep parameters tighter
+            # also over time we'll be paying more interest, so better to liquidate sooner
+            # that means smaller trailing deviation to close deal earlier
+            elif bot.trailling_deviation > bottom_spread:
+                bot.trailling_profit = bottom_spread
+                bot.trailling_deviation = top_spread
+
+            margin_deal = MarginDeal(bot, db_table=db_table)
+            # reactivate includes saving
+            margin_deal.open_deal()
 
     # To find a better interface for bb_xx once mature
     @no_type_check
-    def update_close_conditions(self, message):
+    def dynamic_trailling(self, message) -> None:
         """
         Update bot with dynamic trailling enabled to update
         take_profit and trailling according to bollinguer bands
         dynamic movements in the market
         """
         data = json.loads(message)
-        signalsData = SignalsConsumer.model_validate(data)
+        single_candle = SingleCandle.model_validate(data)
 
         # Check if it matches any active bots
-        self.load_current_bots(signalsData.symbol)
+        self.load_current_bots(single_candle.symbol)
 
-        bb_spreads = signalsData.bb_spreads
-        if self.current_bot or self.current_test_bot:
-            if self.current_bot:
-                self.update_bots_parameters(
-                    bot=self.current_bot,
-                    bb_spreads=bb_spreads,
-                    db_table=BotTable,
-                    current_price=signalsData.current_price,
-                )
-            if self.current_test_bot:
-                self.update_bots_parameters(
-                    bot=self.current_test_bot,
-                    bb_spreads=bb_spreads,
-                    db_table=PaperTradingTable,
-                    current_price=signalsData.current_price,
-                )
+        bb_spreads = self.build_bb_spreads(single_candle)
+        if self.current_bot and self.current_bot.dynamic_trailling:
+            self.update_bots_parameters(
+                bot=self.current_bot,
+                bb_spreads=bb_spreads,
+                db_table=BotTable,
+                current_price=single_candle.close_price,
+            )
+
+        if self.current_test_bot and self.current_test_bot.dynamic_trailling:
+            self.update_bots_parameters(
+                bot=self.current_test_bot,
+                bb_spreads=bb_spreads,
+                db_table=PaperTradingTable,
+                current_price=single_candle.close_price,
+            )
+
+            pass

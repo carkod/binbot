@@ -48,7 +48,8 @@ def get(
 @bot_blueprint.get("/bot/active-pairs", response_model=BotListResponse, tags=["bots"])
 def get_active_pairs(session: Session = Depends(get_session)):
     """
-    Get active pairs
+    Get pairs/symbols that have active bots
+    and cooldown bots (bots we don't want to open for a while)
     """
     try:
         data = BotTableCrud(session=session).get_active_pairs()
@@ -168,10 +169,10 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
 
         return BotResponse(message=message, data=response_data)
     except BinbotErrors as error:
-        deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
+        deal_instance.controller.update_logs(bot=bot_model, log_message=error.message)
         return StandardResponse(message=error.message, error=1)
     except BinanceErrors as error:
-        deal_instance.controller.update_logs(bot_id=id, log_message=error.message)
+        deal_instance.controller.update_logs(bot=bot_model, log_message=error.message)
         return StandardResponse(message=error.message, error=1)
 
 
@@ -214,9 +215,19 @@ def bot_errors(
     """
     try:
         request_body = ErrorsRequestBody.model_dump(bot_errors)
-        errors = request_body.get("errors", None)
+        errors = request_body.get("errors", [])
+        bot_table = BotTableCrud(session=session).get_one(bot_id=bot_id)
+        bot_model = BotModel.dump_from_table(bot_table)
+        if not bot_model:
+            return BotResponse(message="Bot not found.", error=1)
+
+        if isinstance(errors, str):
+            log_message = [errors]
+        else:
+            log_message = errors
+
         data = BotTableCrud(session=session).update_logs(
-            log_message=errors, bot_id=bot_id
+            log_message=log_message, bot=bot_model
         )
         response_data = BotModelResponse.dump_from_table(data)
         return BotResponse(

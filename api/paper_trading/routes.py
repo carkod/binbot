@@ -114,10 +114,10 @@ def activate(id: str, session: Session = Depends(get_session)):
         return BotResponse(message="Successfully activated bot!", data=bot_model)
 
     except BinbotErrors as error:
-        bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
+        bot_instance.controller.update_logs(bot=bot_model, log_message=error.message)
         return BotResponse(message=error.message, error=1)
     except BinanceErrors as error:
-        bot_instance.controller.update_logs(bot_id=id, log_message=error.message)
+        bot_instance.controller.update_logs(bot=bot_model, log_message=error.message)
         return BotResponse(message=error.message, error=1)
 
 

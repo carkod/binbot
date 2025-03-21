@@ -12,7 +12,7 @@ symbols_blueprint = APIRouter()
 
 @symbols_blueprint.get("/symbol", response_model=SymbolsResponse, tags=["Symbols"])
 def get_all_symbols(
-    active: Optional[bool] = None, session: Session = Depends(get_session)
+    active: Optional[bool] = True, session: Session = Depends(get_session)
 ):
     """
     Get all symbols/pairs
@@ -21,7 +21,7 @@ def get_all_symbols(
     - Active: includes symbols set as True and also cooldown delta is negative
     """
     data = SymbolsCrud(session=session).get_all(active=active)
-    return SymbolsResponse(message="Successfully retrieved blacklist", data=data)
+    return SymbolsResponse(message="Successfully retrieved active symbols", data=data)
 
 
 @symbols_blueprint.post(
@@ -85,15 +85,6 @@ def edit_symbol(
     """
     data = SymbolsCrud(session=session).edit_symbol_item(data)
     return GetOneSymbolResponse(message="Symbol edited", data=data)
-
-
-@symbols_blueprint.get("/blacklist", response_model=SymbolsResponse, tags=["Symbols"])
-def get_blacklisted_symbols(session: Session = Depends(get_session)):
-    """
-    Get all symbols/pairs blacklisted
-    """
-    data = SymbolsCrud(session=session).get_all(active=False)
-    return SymbolsResponse(message="Successfully retrieved blacklist", data=data)
 
 
 @symbols_blueprint.get("/store", tags=["Symbols"])

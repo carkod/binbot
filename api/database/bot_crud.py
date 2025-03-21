@@ -37,22 +37,20 @@ class BotTableCrud:
 
     def update_logs(
         self,
-        log_message: str,
-        bot: Optional[BotModel] = None,
-        bot_id: str | None = None,
+        log_message: str | list[str],
+        bot: BotModel,
     ) -> BotTable:
         """
         Update logs for a bot
 
         Args:
-        - bot_id: str
         - bot: BotModel
 
         Either id or bot has to be passed
         """
         if bot:
             bot_id = str(bot.id)
-        elif not bot and not bot_id:
+        else:
             raise BinbotErrors("Bot id or BotModel object is required")
 
         bot_result = self.session.get(BotTable, bot_id)
