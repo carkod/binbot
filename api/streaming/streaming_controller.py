@@ -53,21 +53,27 @@ class BaseStreaming:
         Builds the bollinguer bands spreads without using pandas_ta
         """
         data = self.cs.raw_klines(symbol=last_candle.symbol, limit=200)
+        if len(data) < 200:
+            return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
+
         df = pd.DataFrame(data)
         df.drop(columns=['_id'], inplace=True)
         close_prices = df['close']
         rolling_mean = close_prices.rolling(window=20).mean()
         rolling_std = close_prices.rolling(window=20).std()
 
-        bb_high = rolling_mean + (rolling_std * 2)
-        bb_mid = rolling_mean
-        bb_low = rolling_mean - (rolling_std * 2)
+        df["bb_high"] = rolling_mean + (rolling_std * 2)
+        df["bb_mid"] = rolling_mean
+        df["bb_low"] = rolling_mean - (rolling_std * 2)
+
+        df.reset_index(drop=True, inplace=True)        
 
         bb_spreads = BollinguerSpread(
-            bb_high=bb_high.iloc[-1],
-            bb_mid=bb_mid.iloc[-1],
-            bb_low=bb_low.iloc[-1],
+            bb_high=df["bb_high"].iloc[-1],
+            bb_mid=df["bb_mid"].iloc[-1],
+            bb_low=df["bb_low"].iloc[-1],
         )
+
         return bb_spreads
 
 
@@ -244,6 +250,11 @@ class BbspreadsUpdater(BaseStreaming):
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
+        
+        # not enough data
+        if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0 or bb_spreads.bb_mid == 0:
+            return
+
         # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
             (abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100),
