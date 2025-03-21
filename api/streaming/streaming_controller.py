@@ -17,7 +17,6 @@ from datetime import datetime
 from exchange_apis.binance import BinanceApi
 from charts.controllers import Candlestick
 import pandas as pd
-import pandas_ta as ta
 
 
 class BaseStreaming:

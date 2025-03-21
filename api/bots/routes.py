@@ -48,7 +48,8 @@ def get(
 @bot_blueprint.get("/bot/active-pairs", response_model=BotListResponse, tags=["bots"])
 def get_active_pairs(session: Session = Depends(get_session)):
     """
-    Get active pairs
+    Get pairs/symbols that have active bots
+    and cooldown bots (bots we don't want to open for a while)
     """
     try:
         data = BotTableCrud(session=session).get_active_pairs()
@@ -221,10 +222,12 @@ def bot_errors(
             return BotResponse(message="Bot not found.", error=1)
 
         if isinstance(errors, str):
-            errors = [errors]
+            log_message = [errors]
+        else:
+            log_message = errors
 
         data = BotTableCrud(session=session).update_logs(
-            log_message=errors, bot=bot_model
+            log_message=log_message, bot=bot_model
         )
         response_data = BotModelResponse.dump_from_table(data)
         return BotResponse(

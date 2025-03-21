@@ -6,7 +6,7 @@ from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
 from symbols.models import SymbolPayload
 from decimal import Decimal
-
+from time import time
 
 class SymbolsCrud:
     """
@@ -61,13 +61,12 @@ class SymbolsCrud:
         To get blacklisted items set active to False
         """
 
-        statement = select(SymbolTable)
-        if active is not None:
-            # cooldown_start_ts is in milliseconds
-            # cooldown is in seconds
-            statement = statement.where(SymbolTable.active == active).where(
-                SymbolTable.cooldown_start_ts < (SymbolTable.cooldown * 1000)
-            )
+        statement = select(SymbolTable).where(SymbolTable.active == active)
+        # cooldown_start_ts is in milliseconds
+        # cooldown is in seconds
+        statement = statement.where(
+            SymbolTable.cooldown_start_ts + (SymbolTable.cooldown * 1000) < (time() * 1000)
+        )
 
         results = self.session.exec(statement).all()
         self.session.close()

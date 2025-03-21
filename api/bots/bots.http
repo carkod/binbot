@@ -2,3 +2,9 @@
 
 DELETE http://localhost:8008/bot/deactivate/66edb7789c9b682fbfcd53cf HTTP/1.1
 content-Type: application/json
+
+
+### Active pairs
+
+GET http://localhost:8008/bot/active-pairs HTTP/1.1
+content-Type: application/json
