@@ -29,6 +29,22 @@ class OrderController(Account):
     def generate_id(self):
         return uuid4()
 
+    def calculate_price_precision(self, symbol: str) -> int:
+        """
+        Calculate the price precision for the symbol
+        taking data from API db
+        """
+        symbol_info = self.symbols_crud.get_symbol(symbol)
+        return symbol_info.price_precision
+
+    def calculate_qty_precision(self, symbol: str) -> int:
+        """
+        Calculate the quantity precision for the symbol
+        taking data from API db
+        """
+        symbol_info = self.symbols_crud.get_symbol(symbol)
+        return symbol_info.qty_precision
+
     def simulate_order(self, pair, side, qty=1):
         """
         Price is determined by market
