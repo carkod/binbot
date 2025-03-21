@@ -248,7 +248,7 @@ class MarginDeal(DealAbstract):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def short_open_deal_trailling_parameters(self):
+    def short_open_deal_trailling_parameters(self) -> BotModel:
         """
         Updates stop loss and trailling paramaters for deal
         during deal opening.
@@ -311,7 +311,7 @@ class MarginDeal(DealAbstract):
 
         return self.active_bot
 
-    def short_update_deal_trailling_parameters(self):
+    def short_update_deal_trailling_parameters(self) -> BotModel:
         """
         Same as open_deal_trailling_parameters
         but for updating when deal is already activated
@@ -345,6 +345,7 @@ class MarginDeal(DealAbstract):
                 self.active_bot.deal.trailling_stop_loss_price = round_numbers(
                     trailling_stop_loss, self.price_precision
                 )
+        return self.active_bot
 
     def streaming_updates(self, close_price: float) -> BotModel:
         """
@@ -798,5 +799,5 @@ class MarginDeal(DealAbstract):
         else:
             # Activation required
             self.active_bot = self.short_open_deal_trailling_parameters()
-        self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_OPEN_DEAL")
+
         return self.active_bot

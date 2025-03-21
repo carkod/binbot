@@ -83,3 +83,7 @@ _site
 .jekyll-cache
 .jekyll-metadata
 vendor
+
+
+# Ignore submodules
+binquant/

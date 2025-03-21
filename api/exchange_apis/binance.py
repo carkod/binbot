@@ -201,7 +201,7 @@ class BinanceApi:
         )
         return min_notional_filter[min_notional_limit]
 
-    def calculate_price_precision(self, symbol) -> int:
+    def _calculate_price_precision(self, symbol) -> int:
         precision = -1 * (
             Decimal(str(self.price_filter_by_symbol(symbol, "tickSize")))
             .as_tuple()
@@ -210,7 +210,7 @@ class BinanceApi:
         price_precision = int(precision)
         return price_precision
 
-    def calculate_qty_precision(self, symbol) -> int:
+    def _calculate_qty_precision(self, symbol) -> int:
         precision = -1 * (
             Decimal(str(self.lot_size_by_symbol(symbol, "stepSize")))
             .as_tuple()
