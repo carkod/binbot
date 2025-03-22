@@ -6,7 +6,7 @@ from database.autotrade_crud import AutotradeCrud
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.bot_crud import BotTableCrud
-from deals.factory import DealAbstract
+from api.deals.abstractions.factory import DealAbstract
 from tools.round_numbers import round_numbers
 from streaming.models import SignalsConsumer, BollinguerSpread
 from tools.enum_definitions import Status, Strategy
