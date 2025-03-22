@@ -189,7 +189,9 @@ class BinanceApi:
 
     def min_notional_by_symbol(self, symbol, min_notional_limit="minNotional"):
         """
-        MIN_NOTIONAL (price x quantity) restrictions from /exchangeinfo
+        MIN_NOTIONAL (price x quantity) restrictions
+        from Binance /exchangeinfo
+        @deprecated
         @params:
             - symbol: string - pair/market e.g. BNBBTC
             - min_notional_limit: string - minNotional
@@ -202,6 +204,10 @@ class BinanceApi:
         return min_notional_filter[min_notional_limit]
 
     def _calculate_price_precision(self, symbol) -> int:
+        """
+        Decimals needed for Binance price
+        @deprecated - use calculate_price_precision
+        """
         precision = -1 * (
             Decimal(str(self.price_filter_by_symbol(symbol, "tickSize")))
             .as_tuple()
@@ -211,6 +217,10 @@ class BinanceApi:
         return price_precision
 
     def _calculate_qty_precision(self, symbol) -> int:
+        """
+        Decimals needed for Binance quantity
+        @deprecated - use calculate_qty_precision
+        """
         precision = -1 * (
             Decimal(str(self.lot_size_by_symbol(symbol, "stepSize")))
             .as_tuple()

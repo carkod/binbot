@@ -1,22 +1,23 @@
 import json
+from datetime import datetime
 from typing import Type, Union, no_type_check
-from kafka import KafkaConsumer
+
+import pandas as pd
 from bots.models import BotModel
+from charts.controllers import Candlestick
 from database.autotrade_crud import AutotradeCrud
+from database.bot_crud import BotTableCrud
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
-from database.bot_crud import BotTableCrud
-from deals.factory import DealAbstract
-from tools.round_numbers import round_numbers
-from streaming.models import BollinguerSpread, SingleCandle
-from tools.enum_definitions import Status, Strategy
+from deals.abstractions.factory import DealAbstract
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
-from tools.exceptions import BinanceErrors, BinbotErrors
-from datetime import datetime
 from exchange_apis.binance import BinanceApi
-from charts.controllers import Candlestick
-import pandas as pd
+from kafka import KafkaConsumer
+from streaming.models import BollinguerSpread, SingleCandle
+from tools.enum_definitions import Status, Strategy
+from tools.exceptions import BinanceErrors, BinbotErrors
+from tools.round_numbers import round_numbers
 
 
 class BaseStreaming:
