@@ -135,10 +135,11 @@ class BotModel(BotBase):
     }
 
     @field_validator("id")
+    @classmethod
     def deserialize_id(cls, v):
         if isinstance(v, UUID):
             return str(v)
-        return True
+        return v
 
     @classmethod
     def dump_from_table(cls, bot):
@@ -218,8 +219,9 @@ class BotModelResponse(BotBase):
     @field_validator("id", mode="before")
     def deserialize_id(cls, v):
         if isinstance(v, UUID):
+            cls.id = str(v)
             return str(v)
-        return True
+        return v
 
     @classmethod
     def dump_from_table(cls, bot):

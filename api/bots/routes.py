@@ -162,7 +162,7 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.open_deal()
-        response_data = BotModelResponse.model_construct(**data.model_dump())
+        response_data = BotModelResponse.model_validate(data.model_dump())
         message = "Successfully activated bot."
         if bot.status == Status.active:
             message = "Successfully updated bot."

@@ -4,7 +4,7 @@ from database.balances_crud import BalancesCrud
 from database.models.bot_table import BotTable
 from database.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
-from deals.factory import DealAbstract
+from deals.abstractions.factory import DealAbstract
 from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import (
     round_numbers,
