@@ -1,0 +1,32 @@
+interactions:
+- request:
+    body: '["02031768-fbb9-4cc7-b549-642f15ab787b"]'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '40'
+      content-type:
+      - application/json
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: DELETE
+    uri: http://testserver/bot
+  response:
+    body:
+      string: '{"message":"Sucessfully deleted bot.","error":0}'
+    headers:
+      content-length:
+      - '48'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

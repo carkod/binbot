@@ -1,35 +1,27 @@
-from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
-from database.utils import get_session
 from main import app
-from pytest import fixture
-from tests.model_mocks import (
-    DealFactoryMock,
-    id,
-)
-from tests.table_mocks import mocked_db_data
-
+from pytest import fixture, mark
 
 @fixture()
 def client() -> TestClient:
-    session_mock = MagicMock()
-    session_mock.connection.return_value.execute.return_value = MagicMock()
-    session_mock.exec.return_value.first.return_value = mocked_db_data
-    session_mock.exec.return_value.unique.return_value.all.return_value = [
-        mocked_db_data
-    ]
-    session_mock.get.return_value = mocked_db_data
-    session_mock.add.return_value = MagicMock(return_value=None)
-    session_mock.refresh.return_value = MagicMock(return_value=None)
-    session_mock.commit.return_value = MagicMock(return_value=None)
-    session_mock.delete.return_value = MagicMock(return_value=None)
-    app.dependency_overrides[get_session] = lambda: session_mock
     client = TestClient(app)
     return client
 
 
+@fixture(scope='module')
+def vcr_config():
+    return {
+        # Replace the Authorization request header with "DUMMY" in cassettes
+        "filter_headers": [('authorization', 'DUMMY')],
+    }
+
+
+mock_id = "cff9e468-87ee-46fa-8678-17af132b8434"
+mock_symbol = "ADXUSDC"
+
+@mark.vcr('cassettes/test_get_one_by_id.yaml')
 def test_get_one_by_id(client: TestClient):
-    response = client.get(f"/bot/{id}")
+    response = client.get(f"/bot/{mock_id}")
 
     assert response.status_code == 200
     content = response.json()
@@ -39,9 +31,9 @@ def test_get_one_by_id(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
+@mark.vcr('cassettes/test_get_one_by_symbol.yaml')
 def test_get_one_by_symbol(client: TestClient):
-    symbol = "BTCUSDC"
-    response = client.get(f"/bot/symbol/{symbol}")
+    response = client.get(f"/bot/symbol/{mock_symbol}")
 
     assert response.status_code == 200
     content = response.json()
@@ -51,6 +43,7 @@ def test_get_one_by_symbol(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
+@mark.vcr('cassettes/test_get_bots.yaml')
 def test_get_bots(client: TestClient):
     response = client.get("/bot")
 
@@ -64,6 +57,7 @@ def test_get_bots(client: TestClient):
     assert content["data"][0]["cooldown"] == 360
 
 
+@mark.vcr('cassettes/test_create_bot.yaml')
 def test_create_bot(client: TestClient):
     payload = {
         "pair": "ADXUSDC",
@@ -99,6 +93,7 @@ def test_create_bot(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
+@mark.vcr('cassettes/test_edit_bot.yaml')
 def test_edit_bot(client: TestClient):
     payload = {
         "pair": "ADXUSDC",
@@ -124,7 +119,7 @@ def test_edit_bot(client: TestClient):
         "total_commission": 0.0,
     }
 
-    response = client.put(f"/bot/{id}", json=payload)
+    response = client.put(f"/bot/{mock_id}", json=payload)
 
     assert response.status_code == 200
     content = response.json()
@@ -134,27 +129,25 @@ def test_edit_bot(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
+@mark.vcr('cassettes/test_delete_bot.yaml')
 def test_delete_bot():
     # Fix missing json arg for delete tests
     class CustomTestClient(TestClient):
         def delete_with_payload(self, **kwargs):
-            session_mock = MagicMock()
-            session_mock.exec.return_value.first.return_value = mocked_db_data
-            session_mock.delete.return_value = MagicMock(return_value=None)
-            app.dependency_overrides[get_session] = lambda: session_mock
             return self.request(method="DELETE", **kwargs)
 
     client = CustomTestClient(app)
-    response = client.delete_with_payload(url="/bot", json=[id])
+    delete_ids = ['7079023a-e3da-4049-8b31-7384dff94d1f', '260c4c9c-68bf-458f-9f00-bea4d1c57147']
+    response = client.delete_with_payload(url="/bot", json=[delete_ids])
 
     assert response.status_code == 200
     content = response.json()
     assert content["message"] == "Sucessfully deleted bot."
 
 
-@patch("bots.routes.SpotLongDeal", DealFactoryMock)
+@mark.vcr('cassettes/test_activate_by_id.yaml')
 def test_activate_by_id(client: TestClient):
-    response = client.get(f"/bot/activate/{id}")
+    response = client.get(f"/bot/activate/{mock_id}")
 
     assert response.status_code == 200
     content = response.json()
@@ -164,7 +157,7 @@ def test_activate_by_id(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
-@patch("bots.routes.SpotLongDeal", DealFactoryMock)
+@mark.vcr('cassettes/test_deactivate.yaml')
 def test_deactivate(client: TestClient):
     response = client.delete(f"/bot/deactivate/{id}")
 
@@ -176,26 +169,28 @@ def test_deactivate(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
+@mark.vcr('cassettes/test_post_bot_errors_str.yaml')
 def test_post_bot_errors_str(client: TestClient):
     """
     Test submitting bot errors with a single string
     """
     payload = {"errors": "failed to create bot"}
 
-    response = client.post(f"/bot/errors/{id}", json=payload)
+    response = client.post(f"/bot/errors/{mock_id}", json=payload)
 
     assert response.status_code == 200
     content = response.json()
     assert content["message"] == "Errors posted successfully."
 
 
+@mark.vcr('cassettes/test_post_bot_errors_list.yaml')
 def test_post_bot_errors_list(client: TestClient):
     """
     Test submitting bot errors with a list of strings
     """
     payload = {"errors": ["failed to create bot", "failed to create deal"]}
 
-    response = client.post(f"/bot/errors/{id}", json=payload)
+    response = client.post(f"/bot/errors/{mock_id}", json=payload)
 
     assert response.status_code == 200
     content = response.json()
