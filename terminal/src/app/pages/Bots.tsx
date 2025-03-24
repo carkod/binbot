@@ -37,12 +37,7 @@ export const BotsPage: FC<{}> = () => {
   const [filterStatus, setFilterStatus] = useState<BotStatus>(BotStatus.ALL);
 
   // Fetch bots which require filter dependencies
-  const {
-    refetch,
-    data,
-    error,
-    isFetching,
-  } = useGetBotsQuery({
+  const { refetch, data, error, isFetching } = useGetBotsQuery({
     status: filterStatus,
     startDate,
     endDate,
@@ -120,7 +115,7 @@ export const BotsPage: FC<{}> = () => {
     if (isFetching || isDeactivating || isDeleting) {
       setSpinner(true);
     }
-    if (data?.bots.ids.length > 0) {
+    if (data?.bots) {
       setSpinner(false);
     }
   }, [
