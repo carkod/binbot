@@ -1,0 +1,32 @@
+interactions:
+- request:
+    body: '{"active":true,"blacklist_reason":"","quote_asset":"USDC","price_precision":6,"min_notional":1.0,"cooldown_start_ts":0,"created_at":1742518875379,"updated_at":1742518875379,"id":"BOMEUSDC","is_margin_trading_allowed":true,"base_asset":"BOME","qty_precision":0,"cooldown":0}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '273'
+      content-type:
+      - application/json
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: POST
+    uri: http://testserver/bot
+  response:
+    body:
+      string: '{"message":[{"type":"missing","loc":["body","pair"],"msg":"Field required","input":{"active":true,"blacklist_reason":"","quote_asset":"USDC","price_precision":6,"min_notional":1.0,"cooldown_start_ts":0,"created_at":1742518875379,"updated_at":1742518875379,"id":"BOMEUSDC","is_margin_trading_allowed":true,"base_asset":"BOME","qty_precision":0,"cooldown":0}}],"data":{"active":true,"blacklist_reason":"","quote_asset":"USDC","price_precision":6,"min_notional":1.0,"cooldown_start_ts":0,"created_at":1742518875379,"updated_at":1742518875379,"id":"BOMEUSDC","is_margin_trading_allowed":true,"base_asset":"BOME","qty_precision":0,"cooldown":0},"error":1}'
+    headers:
+      content-length:
+      - '650'
+      content-type:
+      - application/json
+    status:
+      code: 422
+      message: Unprocessable Entity
+version: 1

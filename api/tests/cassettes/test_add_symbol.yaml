@@ -1,0 +1,30 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '0'
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: POST
+    uri: http://testserver/symbol?symbol=BOMEUSDC&active=true&blacklist_reason=&quote_asset=USDC&price_precision=6&min_notional=1.0&cooldown_start_ts=0&created_at=1742518875379&updated_at=1742518875379&id=BOMEUSDC&is_margin_trading_allowed=true&base_asset=BOME&qty_precision=0&cooldown=0
+  response:
+    body:
+      string: '{"message":"Symbols found!","error":0,"data":{"created_at":1742962001403,"updated_at":1742962001403,"active":true,"is_margin_trading_allowed":false,"base_asset":"BOME","qty_precision":0,"cooldown":0,"id":"BOMEUSDC","blacklist_reason":"","quote_asset":"USDC","price_precision":6,"min_notional":1.0,"cooldown_start_ts":0}}'
+    headers:
+      content-length:
+      - '320'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

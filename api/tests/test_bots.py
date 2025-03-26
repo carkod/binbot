@@ -2,24 +2,18 @@ from fastapi.testclient import TestClient
 from main import app
 from pytest import fixture, mark
 
+
 @fixture()
 def client() -> TestClient:
     client = TestClient(app)
     return client
 
 
-@fixture(scope='module')
-def vcr_config():
-    return {
-        # Replace the Authorization request header with "DUMMY" in cassettes
-        "filter_headers": [('authorization', 'DUMMY')],
-    }
-
-
 mock_id = "cff9e468-87ee-46fa-8678-17af132b8434"
 mock_symbol = "ADXUSDC"
 
-@mark.vcr('cassettes/test_get_one_by_id.yaml')
+
+@mark.vcr("cassettes/test_get_one_by_id.yaml")
 def test_get_one_by_id(client: TestClient):
     response = client.get(f"/bot/{mock_id}")
 
@@ -31,7 +25,7 @@ def test_get_one_by_id(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
-@mark.vcr('cassettes/test_get_one_by_symbol.yaml')
+@mark.vcr("cassettes/test_get_one_by_symbol.yaml")
 def test_get_one_by_symbol(client: TestClient):
     response = client.get(f"/bot/symbol/{mock_symbol}")
 
@@ -43,7 +37,7 @@ def test_get_one_by_symbol(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
-@mark.vcr('cassettes/test_get_bots.yaml')
+@mark.vcr("cassettes/test_get_bots.yaml")
 def test_get_bots(client: TestClient):
     response = client.get("/bot")
 
@@ -57,7 +51,7 @@ def test_get_bots(client: TestClient):
     assert content["data"][0]["cooldown"] == 360
 
 
-@mark.vcr('cassettes/test_create_bot.yaml')
+@mark.vcr("cassettes/test_create_bot.yaml")
 def test_create_bot(client: TestClient):
     payload = {
         "pair": "ADXUSDC",
@@ -93,7 +87,7 @@ def test_create_bot(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
-@mark.vcr('cassettes/test_edit_bot.yaml')
+@mark.vcr("cassettes/test_edit_bot.yaml")
 def test_edit_bot(client: TestClient):
     payload = {
         "pair": "ADXUSDC",
@@ -129,7 +123,7 @@ def test_edit_bot(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
-@mark.vcr('cassettes/test_delete_bot.yaml')
+@mark.vcr("cassettes/test_delete_bot.yaml")
 def test_delete_bot():
     # Fix missing json arg for delete tests
     class CustomTestClient(TestClient):
@@ -137,7 +131,10 @@ def test_delete_bot():
             return self.request(method="DELETE", **kwargs)
 
     client = CustomTestClient(app)
-    delete_ids = ['7079023a-e3da-4049-8b31-7384dff94d1f', '260c4c9c-68bf-458f-9f00-bea4d1c57147']
+    delete_ids = [
+        "7079023a-e3da-4049-8b31-7384dff94d1f",
+        "260c4c9c-68bf-458f-9f00-bea4d1c57147",
+    ]
     response = client.delete_with_payload(url="/bot", json=[delete_ids])
 
     assert response.status_code == 200
@@ -145,7 +142,7 @@ def test_delete_bot():
     assert content["message"] == "Sucessfully deleted bot."
 
 
-@mark.vcr('cassettes/test_activate_by_id.yaml')
+@mark.vcr("cassettes/test_activate_by_id.yaml")
 def test_activate_by_id(client: TestClient):
     response = client.get(f"/bot/activate/{mock_id}")
 
@@ -157,7 +154,7 @@ def test_activate_by_id(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
-@mark.vcr('cassettes/test_deactivate.yaml')
+@mark.vcr("cassettes/test_deactivate.yaml")
 def test_deactivate(client: TestClient):
     response = client.delete(f"/bot/deactivate/{id}")
 
@@ -169,7 +166,7 @@ def test_deactivate(client: TestClient):
     assert content["data"]["cooldown"] == 360
 
 
-@mark.vcr('cassettes/test_post_bot_errors_str.yaml')
+@mark.vcr("cassettes/test_post_bot_errors_str.yaml")
 def test_post_bot_errors_str(client: TestClient):
     """
     Test submitting bot errors with a single string
@@ -183,7 +180,7 @@ def test_post_bot_errors_str(client: TestClient):
     assert content["message"] == "Errors posted successfully."
 
 
-@mark.vcr('cassettes/test_post_bot_errors_list.yaml')
+@mark.vcr("cassettes/test_post_bot_errors_list.yaml")
 def test_post_bot_errors_list(client: TestClient):
     """
     Test submitting bot errors with a list of strings

@@ -10,7 +10,7 @@ from typing import Optional
 symbols_blueprint = APIRouter()
 
 
-@symbols_blueprint.get("/symbol", response_model=SymbolsResponse, tags=["Symbols"])
+@symbols_blueprint.get("/symbols", response_model=SymbolsResponse, tags=["Symbols"])
 def get_all_symbols(
     active: Optional[bool] = True, session: Session = Depends(get_session)
 ):
@@ -22,6 +22,19 @@ def get_all_symbols(
     """
     data = SymbolsCrud(session=session).get_all(active=active)
     return SymbolsResponse(message="Successfully retrieved active symbols", data=data)
+
+
+@symbols_blueprint.get("/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"])
+def get_one_symbol(pair: Optional[str] = None, session: Session = Depends(get_session)):
+    """
+    Get all symbols/pairs
+
+    Args:
+    - Active: includes symbols set as True and also cooldown delta is negative
+    """
+    data = SymbolsCrud(session=session).get_all(pair=pair)
+    single_symbol_data = data[0] if data else None
+    return GetOneSymbolResponse(message="Successfully retrieved active symbols", data=single_symbol_data)
 
 
 @symbols_blueprint.post(

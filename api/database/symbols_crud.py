@@ -53,7 +53,7 @@ class SymbolsCrud:
 
         return price_precision, qty_precision, min_notional
 
-    def get_all(self, active: Optional[bool] = True):
+    def get_all(self, active: Optional[bool] = True, pair: Optional[str] = None):
         """
         Get all symbols
         this excludes blacklisted items.
@@ -61,12 +61,16 @@ class SymbolsCrud:
         To get blacklisted items set active to False
         """
 
-        statement = select(SymbolTable).where(SymbolTable.active == active)
-        # cooldown_start_ts is in milliseconds
-        # cooldown is in seconds
-        statement = statement.where(
-            SymbolTable.cooldown_start_ts + (SymbolTable.cooldown * 1000) < (time() * 1000)
-        )
+        statement = select(SymbolTable)
+        if pair:
+            statement = statement.where(SymbolTable.id == pair)
+        else:
+            statement =  statement.where(SymbolTable.active == active)
+            # cooldown_start_ts is in milliseconds
+            # cooldown is in seconds
+            statement = statement.where(
+                SymbolTable.cooldown_start_ts + (SymbolTable.cooldown * 1000) < (time() * 1000)
+            )
 
         results = self.session.exec(statement).all()
         self.session.close()
