@@ -1,0 +1,29 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: DELETE
+    uri: http://testserver/symbol/BOMEUSDC
+  response:
+    body:
+      string: '{"message":"Symbol deleted","error":0,"data":{"created_at":1742960362837,"updated_at":1742960362837,"active":true,"is_margin_trading_allowed":true,"base_asset":"BOME","qty_precision":0,"cooldown":0,"id":"BOMEUSDC","blacklist_reason":"test
+        blacklist reason","quote_asset":"USDC","price_precision":6,"min_notional":1.0,"cooldown_start_ts":0}}'
+    headers:
+      content-length:
+      - '340'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

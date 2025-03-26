@@ -17,6 +17,7 @@ import { getToken, removeToken } from "./utils/login";
 import PaperTradingPage from "./app/pages/PaperTradingPage";
 import PaperTradingDetail from "./app/pages/PaperTradingDetail";
 import SymbolsPage from "./app/pages/Symbols";
+import TestAutotradePage from "./app/pages/TestAutotrade";
 
 export type Routes = {
   path: string;
@@ -98,6 +99,15 @@ export const routes = [
     element: <PaperTradingDetail />,
     id: "edit-test-bot",
     nav: false,
+  },
+  {
+    path: "test-autotrade",
+    link: "/test-autotrade",
+    icon: "fas fa-chart-simple",
+    name: "Test Autotrade",
+    element: <TestAutotradePage />,
+    id: "test-autotrade",
+    nav: true,
   },
   {
     path: "symbols",

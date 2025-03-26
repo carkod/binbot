@@ -1,0 +1,28 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/symbol/BTCUSDT
+  response:
+    body:
+      string: '{"message":"Successfully retrieved active symbols","error":0,"data":null}'
+    headers:
+      content-length:
+      - '73'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

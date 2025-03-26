@@ -1,0 +1,29 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/bot
+  response:
+    body:
+      string: '{"message":"Successfully found bots!","error":0,"data":[{"fiat":"USDC","name":"Default
+        bot","base_order_size":15.0,"status":"inactive","pair":"ADXUSDC","close_condition":"dynamic_trailling","mode":"manual","margin_short_reversal":false,"candlestick_interval":"15m","cooldown":360,"take_profit":2.3,"created_at":1733973560249.0,"trailling":true,"id":"cff9e468-87ee-46fa-8678-17af132b8434","updated_at":1733973560249.0,"trailling_deviation":3.0,"dynamic_trailling":false,"stop_loss":3.0,"trailling_profit":0.0,"logs":[],"strategy":"long","orders":[],"deal":{"take_profit_price":0.0,"trailling_profit_price":0.0,"total_interests":0.0,"total_commissions":0.0,"margin_loan_id":0,"margin_repay_id":0,"opening_price":0.0,"opening_timestamp":0,"closing_price":0.0,"closing_timestamp":0,"current_price":0.0,"trailling_stop_loss_price":0.0,"stop_loss_price":0.0,"opening_qty":0.0,"closing_qty":0.0}}]}'
+    headers:
+      content-length:
+      - '243538'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

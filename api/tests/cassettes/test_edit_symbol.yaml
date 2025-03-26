@@ -1,0 +1,33 @@
+interactions:
+- request:
+    body: '{"active":true,"blacklist_reason":"test blacklist reason","quote_asset":"USDC","price_precision":6,"min_notional":1.0,"cooldown_start_ts":0,"created_at":1742960362837,"updated_at":1742960362837,"id":"BOMEUSDC","is_margin_trading_allowed":true,"base_asset":"BOME","qty_precision":0,"cooldown":0}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '294'
+      content-type:
+      - application/json
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: PUT
+    uri: http://testserver/symbol
+  response:
+    body:
+      string: '{"message":"Symbol edited","error":0,"data":{"active":true,"blacklist_reason":"test
+        blacklist reason","is_margin_trading_allowed":true,"base_asset":"BOME","qty_precision":0,"cooldown":0,"cooldown_start_ts":0,"created_at":1742960362837,"updated_at":1742960362837,"id":"BOMEUSDC","quote_asset":"USDC","price_precision":6,"min_notional":1.0}}'
+    headers:
+      content-length:
+      - '339'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

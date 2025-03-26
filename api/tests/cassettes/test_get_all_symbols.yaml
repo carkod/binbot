@@ -1,0 +1,28 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/symbols
+  response:
+    body:
+      string: '{"message":"Successfully retrieved active symbols","error":0,"data":[{"created_at":1742518873414,"updated_at":1742518873414,"active":true,"is_margin_trading_allowed":true,"base_asset":"XRP","qty_precision":0,"cooldown":0,"blacklist_reason":"","id":"XRPUSDC","quote_asset":"USDC","price_precision":4,"min_notional":5.0,"cooldown_start_ts":0}]}'
+    headers:
+      content-length:
+      - '49646'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1
