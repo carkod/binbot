@@ -1,0 +1,382 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.28.1
+    method: GET
+    uri: https://api3.binance.com/api/v3/time
+  response:
+    body:
+      string: '{"serverTime":1743278455785}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '28'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Sat, 29 Mar 2025 20:00:55 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      x-mbx-used-weight:
+      - '21'
+      x-mbx-used-weight-1m:
+      - '21'
+      x-mbx-uuid:
+      - 2d4f732a-67e0-4442-bd45-12dec6e106bc
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.28.1
+      X-MBX-APIKEY:
+      - AwcS21suSOpowy54mp52ubS8Zf5CO7ltVd7xsbLg9ouo76Z1QFtC5Tp93RihBBdm
+    method: GET
+    uri: https://api1.binance.com/api/v3/account?omitZeroBalances=true&recvWindow=9000&timestamp=1743278455785&signature=c1bf4d783fc2ebba2b9ce9afedd3bbee1ef7756ccf86db2ebf8b39008eaad770
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/42TW2+bQBBG/8s8r9Bw817eYpu4lVLbMqStVEXRBsYqMga6LK0iK/+9wpcAadqa
+        tznaw7fzCQ6w1zsys2q/z5smr0pQLjKw78Gn9nkMkUFDRfEHTF/HjbbUgDqcUkABOogudg+cU97C
+        Y8oZ4gWeYsb0hUGqy8TojEBZ09Jx/pLb75nRvwZoTnXV5PZCnky1I0MZqK0uGmJg6EebG4qp2B7f
+        tjb0k0p73OZ8pD6huDKvqK0zbSnJ9wTK5YHvTYQMpBScgU7Tqi1t8lwTKIjXq6TbSxe6TLs2vh1A
+        Nw1ZUDBdToHB1hBddhPoBwEwKKp0191xvHFvRqu4N/3ACfqy/qfex/NZ77rcQdcLkfPwCnd5mwxi
+        XQ9DR/KQy3fdkfk1mo1Wdd8ao9M3d4Oc0AkDieFEXFVM8uH24zDJk5OJ5NK7wp2uPkWDZlx0hP/P
+        a66j5eK+NzzfkVKiEH/v8oFBTeb8e3QfA9xFn6PNzSKaA4NkM39cbNaPiN5okvDAoM0zUJ5ALkLh
+        v/wGSZQq+7oDAAA=
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '410'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Sat, 29 Mar 2025 20:00:57 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      content-encoding:
+      - gzip
+      x-mbx-used-weight:
+      - '41'
+      x-mbx-used-weight-1m:
+      - '41'
+      x-mbx-uuid:
+      - a4533867-01c5-480e-9d9b-df2e57c63a5c
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.28.1
+    method: GET
+    uri: https://api3.binance.com/api/v3/time
+  response:
+    body:
+      string: '{"serverTime":1743278458416}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '28'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Sat, 29 Mar 2025 20:00:58 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      x-mbx-used-weight:
+      - '42'
+      x-mbx-used-weight-1m:
+      - '42'
+      x-mbx-uuid:
+      - a39e378d-4e92-46fb-8dde-1aa30329d6f2
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.28.1
+      X-MBX-APIKEY:
+      - AwcS21suSOpowy54mp52ubS8Zf5CO7ltVd7xsbLg9ouo76Z1QFtC5Tp93RihBBdm
+    method: GET
+    uri: https://api-gcp.binance.com/sapi/v1/margin/isolated/account?symbols=TRXUSDC&recvWindow=9000&timestamp=1743278458416&signature=06bbda892dc94f5fc0d60e1f7c0e48088223dce8a7b28f9dece5392c04731c25
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAEA81RwU7DMAz9F5934LJDc2OlByQk0MrQpGkHt3VRtKxhjguaqv47bkkKgh/gFPu9
+        F/vZHgBDIAlgDgNUGOh2SsEMXzgYeN7uYQWVZ/YfRYeVowaMcE8JnHK4UU3LRDG0nRBT0EIz43x9
+        WmQdSWwycyl9bDdSRz3TG16XZi26oN3EC7rvn+MKLr2Xv4Z35V3+Xx2H67nyTqfUrUafNniHQk3O
+        ND1g4rhn5FfbPdA7Tfosy3SmH1gpKL2eDYp9XpTl/Uux8FsU65VZK+LspbeNFn5iW6frLKAqEyaM
+        Df1eOaV7z57G4/gJW7HK5S8CAAA=
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json
+      Date:
+      - Sat, 29 Mar 2025 20:00:58 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept-Encoding
+      Via:
+      - 1.1 google
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Sapi-Used-Ip-Weight-1m:
+      - '10'
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: ''
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.28.1
+    method: GET
+    uri: https://api-gcp.binance.com/api/v3/depth?symbol=TRXUSDC
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/21YPa6cNwy8y9YPC/5T8g1ygFSGCwdOESRFALsLcvfgxavRA4bbcvVJGo6GQ/7z
+        +Ovr9x+//v3t64/ff/n2+OShLSG23x6//fHt++PT588PeZq7iog83h6m2+255Ofv8eXtFZdX3MPX
+        4rjtE9d2tafRH9brDyq59CkU7xNfIvksitc5YMqe1ucr3uExLI9XOMWXPZvifrZXt/bhgob9zZ5O
+        4YPfEothtdzPu3BcD3zdok+l8AHPpLv49No4XAtfXg92tTyeSeEDnVrtNSwP7C7pMRzvgNeazqlR
+        QFftDJ2Cep7OxFFAZ6LF0MmBTl1jwlYOeG66+HRysAtJvpoc6PyddZvCBzorHUgrB7mtogy8HNxM
+        O4ePGw7ez6Doga0yBsbJgc3Ek0C3vRHeLnRv22Bc5B6WH9Baaoge0Nqbbm0bdNPcw84Hs15Bt7Z9
+        IPMqliHbBzKdVMD2xWwIHsQ8Szm8gJhtypUt4MUPwNbVtuIrLSgbp9FW3hNz8NJr+CwUzRcT2xYe
+        ZSsJii3I2YQEgPLmpQ2cohmnPjiVNwPV0DEx4zP3ASM1hk8fNKqGpXhLxRfqW/xsFTO2UNyk+dMF
+        fVnKOSrkXoLrqtVJvroFiZ8V9GWgVZ0Luy6Go5D/YumxAh4a/IDrAKJrqIU/S/HPU71LKlEvIcnC
+        TsASFLBk+iQoYFwILQ9cGYxHHrCc/YHlASvCh10PWFk+3AeqIs0FxhJoqQ9amYLwkuGhBtjli28c
+        QEudkxxglzfzOi651pDluEI8yFJAh23Y9yASNeQw8J6qhjzFAaQ2s8NRjmN4aw4noz2sPRfawody
+        yMOAsuOxBFuQl317Z8cagqgpxQbB4JutuIYbTO0khna9xR7yA0fbaUP0HHl9DH55e3z9/ucH1w9i
+        Zxr7E6Biy5vz7IA0MoOZ78iH6R7elSObGntzfXO/dXM3s8EdRTd797A/SlFVb94fRIzdLmw9wWMV
+        WYNxjgtf99BUBPCLxcxxvDDzYE76fZ62F/PD43ZES4YwwDMtLqYOYXm3RcwghyyZ6oA9VM1yceFy
+        aGLqYmXyvN1UCQOb1xjLkBdoudrWZHfrtxJUsmo6qohbMnCoQO/9xPDt62Bk+DRQyxraCVRO1bWZ
+        MLfudjrDgqJtU8JR8M271rAaqIUNXd61GkP3DptisnNgA1yOxdAG1aUaP3KYq7TiSzUAs2HqcI2b
+        Dxfua3G3s63zPoANJtfhJpf2HtbiceYgPF1YPBDsg8udogBLi/kFdx3BxdPhzCsHa+5w9ZMYoyGo
+        oVI5Wg3dNex70Ihmn+G3wSkbZBDdUcl0rKvxqcNsA22Zcy/paOlMJ9aiHUzrYayBZtJ00Bh0osvY
+        iji62NXDlW8LLDLUDfTPKkNnv69DZvagb4+2oWag7S9ZPHF4gf+/MLpyxxGYOaSzXQjMK9Zm8gWG
+        He/zQ157xYl1MeSWwuDOLzCkiWzCKzDgcQYzMBxSW6xcIVfOmQKB0ZQPjzEw1yrjD+sH60CkD729
+        OzfnoR9fG4GBWaAO07TAoHFZchYwpgwfhi+BIaf6gBUsZ07Ba7A3y1rAzIbyme9oV8zpmcadHFfw
+        iwgMniNYm8Juq7oYabj3sAGOOzNfPFcMeOvg6hJw1j6UxPD7GISP7Fc8uPTE9dT18bpf/v0PvkHv
+        SwoYAAA=
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Sat, 29 Mar 2025 20:00:59 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Transfer-Encoding:
+      - chunked
+      Via:
+      - 1.1 google
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Mbx-Used-Weight:
+      - '47'
+      X-Mbx-Used-Weight-1m:
+      - '47'
+      X-Mbx-Uuid:
+      - c297b235-db5f-4fbd-989b-b5cf7ca33843
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: DELETE
+    uri: http://testserver/paper-trading/deactivate/3c3dd13e-4233-4e91-b27b-97459ff33fe7
+  response:
+    body:
+      string: '{"message":"Successfully triggered panic sell! Bot deactivated.","data":{"pair":"TRXUSDC","fiat":"USDC","base_order_size":2.0,"candlestick_interval":"15m","close_condition":"dynamic_trailling","cooldown":0,"created_at":1743217392564.0,"updated_at":1743217392564.0,"dynamic_trailling":true,"logs":["No
+        balance found. Skipping panic sell","Panic sell triggered. All active orders
+        closed"],"mode":"manual","name":"terminal_1743217337463","status":"completed","stop_loss":3.0,"margin_short_reversal":true,"take_profit":2.3,"trailling":true,"trailling_deviation":2.8,"trailling_profit":2.3,"strategy":"long","id":"3c3dd13e-4233-4e91-b27b-97459ff33fe7","deal":{"current_price":0.0,"take_profit_price":0.0,"trailling_stop_loss_price":0.0,"trailling_profit_price":0.0,"stop_loss_price":0.0,"total_interests":0.0,"total_commissions":0.0,"margin_loan_id":0,"margin_repay_id":0,"opening_price":0.0,"opening_qty":0.0,"opening_timestamp":0,"closing_price":0.2331,"closing_qty":1.0,"closing_timestamp":1743278459398},"orders":[{"order_type":"LIMIT","time_in_force":"GTC","timestamp":1743278459398,"order_id":16429450,"order_side":"SELL","pair":"TRXUSDC","qty":1.0,"status":"FILLED","price":0.2331,"deal_type":"take_profit"}]}}'
+    headers:
+      content-length:
+      - '1212'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

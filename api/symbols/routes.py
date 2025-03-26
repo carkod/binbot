@@ -24,7 +24,9 @@ def get_all_symbols(
     return SymbolsResponse(message="Successfully retrieved active symbols", data=data)
 
 
-@symbols_blueprint.get("/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"])
+@symbols_blueprint.get(
+    "/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
+)
 def get_one_symbol(pair: Optional[str] = None, session: Session = Depends(get_session)):
     """
     Get all symbols/pairs
@@ -34,7 +36,9 @@ def get_one_symbol(pair: Optional[str] = None, session: Session = Depends(get_se
     """
     data = SymbolsCrud(session=session).get_all(pair=pair)
     single_symbol_data = data[0] if data else None
-    return GetOneSymbolResponse(message="Successfully retrieved active symbols", data=single_symbol_data)
+    return GetOneSymbolResponse(
+        message="Successfully retrieved active symbols", data=single_symbol_data
+    )
 
 
 @symbols_blueprint.post(

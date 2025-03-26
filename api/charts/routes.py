@@ -12,6 +12,7 @@ from tools.handle_error import (
 )
 from charts.controllers import Candlestick, MarketDominationController, BtcCorrelation
 from charts.models import CandlestickResponse
+from tools.handle_error import StandardResponse
 
 charts_blueprint = APIRouter()
 
@@ -131,23 +132,21 @@ def top_gainers():
         return json_response_error(f"Failed to retrieve top gainers data: {error}")
 
 
-@charts_blueprint.get("/btc-correlation", tags=["charts"])
+@charts_blueprint.get(
+    "/btc-correlation", response_model=StandardResponse, tags=["charts"]
+)
 def get_btc_correlation(symbol: str):
-    try:
-        response = BtcCorrelation().get_btc_correlation(asset_symbol=symbol)
-        if response:
-            return json_response(
-                {
-                    "data": response,
-                    "message": "Successfully retrieved BTC correlation data.",
-                    "error": 0,
-                }
-            )
-        else:
-            raise HTTPException(404, detail="No data found")
-
-    except Exception as error:
-        return json_response_error(f"Failed to retrieve BTC correlation data: {error}")
+    data = BtcCorrelation().get_btc_correlation(asset_symbol=symbol)
+    if data:
+        return json_response(
+            {
+                "data": data,
+                "message": "Successfully retrieved BTC correlation data.",
+                "error": 0,
+            }
+        )
+    else:
+        raise HTTPException(404, detail="Not enough one day candlestick data")
 
 
 @charts_blueprint.get("/ticker-24", tags=["charts"])

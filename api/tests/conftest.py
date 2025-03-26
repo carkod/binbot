@@ -20,9 +20,9 @@ def mock_lifespan():
         yield mock_lifespan
 
 
-@fixture(scope='module')
+@fixture(scope="module")
 def vcr_config():
     return {
         # Replace the Authorization request header with "DUMMY" in cassettes
-        "filter_headers": [('authorization', 'DUMMY')],
+        "filter_headers": [("authorization", "DUMMY")],
     }

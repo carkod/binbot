@@ -1,0 +1,202 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.28.1
+    method: GET
+    uri: https://api-gcp.binance.com/api/v3/depth?symbol=TRXUSDC
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/22YO44cRwyG7zLxosFXkSzdwAdQJGywwiow7MDAKjN8d2OkIWuwPyfldHfxKz5+
+        8t/b328fP7/+8/7288cf77cvaux7sfrL7fuf7x+3L9++3egStUVEdHu5cYrx5fT7d3t9edjtYbfl
+        tga7PuySznYR2KXfv0kuBTuXndk3XQJ/oMcfNild/Nms+2H2ILLBnvX+lRSXgT3q/Ep0JZj9YY4w
+        vzaYi56I5mAueJ4eyE6LXXLuwVzohFRtD4fj/kNoDr4XOta0RN+l2bnsK8Bc6MTZh6eLXJDQ8HST
+        Yza8Vum402VrgCMdeDpEhRQ6dlqKYSXFLtUQnBQ4l72QmxQ3EQxoLmghodcCc1GxtQZrQRHzyVxQ
+        lvPw5SIitBld5s5EWTnEKheStWL4dCPhPXldSNY9EuGyqKAwbcfbok5CJsZvUzOj4TaomO1YeDAq
+        ZLYTmVAhYxmIURGzHLKDipfKUDeoeK3cg0eFSy0g/GQXrbUSWMouWBE8PHuyzsEj2Z10incsu3OO
+        1wbQsgtWpIHDsguWuudwrq7zpjY41eGFPeR3Gfr16nvcgzkLl8iGsJbsKqUQHZJFixMrmOTJRnQo
+        1zkxGgvV5uG1XZs0MZ4lu6wHQ9mULFA5kWhQGvhoNCcL5BTFyTUQVHQbJBE8c3RhYhte3W3Oh0c7
+        jRwdiu5gLOkYsV4uKQW+2sslzSFTvO+eTAZzXT6rYH8SL4+3IGkvh5Wx64t3W98YHN442DB/vdOE
+        HC/J6/rvHQwrlqxThQU9Wh0AstCl1QEgjKRXwVoo8WQVKsWmJavbuOnw1UK1XAd/uqZQoDaTdaSj
+        bmS5qM1JQ5pax9agncQ6ehTFiVgHz95DMTyiehBO0pI6BIOn9fJdIACvVsviPtxEa2XfT/f/+nJ7
+        +/jrSfL34ZcLtic9rruaYkO2CiRbIYNmbrDCOmSenovJsIVqoe9V0mQQnh0WoSnYezumfBOWHO2A
+        dEuZTtd3d++Hw9eLnuckDzuPdAUPvnW3us8T+HRn8D3Z0d4VQIV4UFJdP2Kv4Wa6+HgElmrtwiXG
+        GyWAnrK3DENX/XRMxlquXXDF9yBAT7neOgRd13pWZsN0Vj8qgQddHkXOJIZb7UbEW4Z7iSctaKgH
+        NLrlh6Oy0m6Q+z4H4ts75FagSo3iljzo36fGPVk73HiYCFowmG0M1RYb4pGJRFupDKVbW+S4D+K5
+        5RNP00IrLwtskXpEm0sODxcPp+lYzcNkDcWhpaYOt3hkqvpAsyXukhgWES2QhRd61eo6JdCpVuYZ
+        g8tH1hOhWNGeCZiGUXifvo/h06OIEw2R2XOMUy4A8oD/K2lYCALIzgilWMatx6/cqHWtRzcdQtPO
+        2Ge417AeGVkM1az1vHlfS3zmZT2rDnsFO3OuJM451lOyLAwB6xFbh2y0M58LvrhH+3sB+Rz01osB
+        x8pm/JxswKK3Gbx0OFOHB64ErPckKbjpsF6xmA7DpvWChnXgKGeTMRi7iQVOUHa2SticrXdSQYIt
+        yOToIsNksV6XmWHZMjnaPDEke1NnMtA4e75M/G6vCYf1rfWKUQetY3ryhPDIeuoKJr/1ZpR9cFef
+        0gT9KVKLcGa33ujKsO+1lrgShkOf2VMfxyHY7BRhx3WRtW43HcK9dbMzais7qtlo+PBZQzte/1HM
+        ggXcjl6OlUN+tx5WfS4rr//9D3Mkfc8EGAAA
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Sat, 29 Mar 2025 19:01:49 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Transfer-Encoding:
+      - chunked
+      Via:
+      - 1.1 google
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Mbx-Used-Weight:
+      - '15'
+      X-Mbx-Used-Weight-1m:
+      - '15'
+      X-Mbx-Uuid:
+      - 007cbbe7-497d-48e4-bd82-d15a06173629
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.28.1
+    method: GET
+    uri: https://api-gcp.binance.com/api/v3/depth?symbol=TRXUSDC
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/22YO44cRwyG7zLxosFXkSzdwAdQJGywwiow7MDAKjN8d2OkIWuwPyfldHfxKz5+
+        8t/b328fP7/+8/7288cf77cvaux7sfrL7fuf7x+3L9++3egStUVEdHu5cYrx5fT7d3t9edjtYbfl
+        tga7PuySznYR2KXfv0kuBTuXndk3XQJ/oMcfNild/Nms+2H2ILLBnvX+lRSXgT3q/Ep0JZj9YY4w
+        vzaYi56I5mAueJ4eyE6LXXLuwVzohFRtD4fj/kNoDr4XOta0RN+l2bnsK8Bc6MTZh6eLXJDQ8HST
+        Yza8Vum402VrgCMdeDpEhRQ6dlqKYSXFLtUQnBQ4l72QmxQ3EQxoLmghodcCc1GxtQZrQRHzyVxQ
+        lvPw5SIitBld5s5EWTnEKheStWL4dCPhPXldSNY9EuGyqKAwbcfbok5CJsZvUzOj4TaomO1YeDAq
+        ZLYTmVAhYxmIURGzHLKDipfKUDeoeK3cg0eFSy0g/GQXrbUSWMouWBE8PHuyzsEj2Z10incsu3OO
+        1wbQsgtWpIHDsguWuudwrq7zpjY41eGFPeR3Gfr16nvcgzkLl8iGsJbsKqUQHZJFixMrmOTJRnQo
+        1zkxGgvV5uG1XZs0MZ4lu6wHQ9mULFA5kWhQGvhoNCcL5BTFyTUQVHQbJBE8c3RhYhte3W3Oh0c7
+        jRwdiu5gLOkYsV4uKQW+2sslzSFTvO+eTAZzXT6rYH8SL4+3IGkvh5Wx64t3W98YHN442DB/vdOE
+        HC/J6/rvHQwrlqxThQU9Wh0AstCl1QEgjKRXwVoo8WQVKsWmJavbuOnw1UK1XAd/uqZQoDaTdaSj
+        bmS5qM1JQ5pax9agncQ6ehTFiVgHz95DMTyiehBO0pI6BIOn9fJdIACvVsviPtxEa2XfT/f/+nJ7
+        +/jrSfL34ZcLtic9rruaYkO2CiRbIYNmbrDCOmSenovJsIVqoe9V0mQQnh0WoSnYezumfBOWHO2A
+        dEuZTtd3d++Hw9eLnuckDzuPdAUPvnW3us8T+HRn8D3Z0d4VQIV4UFJdP2Kv4Wa6+HgElmrtwiXG
+        GyWAnrK3DENX/XRMxlquXXDF9yBAT7neOgRd13pWZsN0Vj8qgQddHkXOJIZb7UbEW4Z7iSctaKgH
+        NLrlh6Oy0m6Q+z4H4ts75FagSo3iljzo36fGPVk73HiYCFowmG0M1RYb4pGJRFupDKVbW+S4D+K5
+        5RNP00IrLwtskXpEm0sODxcPp+lYzcNkDcWhpaYOt3hkqvpAsyXukhgWES2QhRd61eo6JdCpVuYZ
+        g8tH1hOhWNGeCZiGUXifvo/h06OIEw2R2XOMUy4A8oD/K2lYCALIzgilWMatx6/cqHWtRzcdQtPO
+        2Ge417AeGVkM1az1vHlfS3zmZT2rDnsFO3OuJM451lOyLAwB6xFbh2y0M58LvrhH+3sB+Rz01osB
+        x8pm/JxswKK3Gbx0OFOHB64ErPckKbjpsF6xmA7DpvWChnXgKGeTMRi7iQVOUHa2SticrXdSQYIt
+        yOToIsNksV6XmWHZMjnaPDEke1NnMtA4e75M/G6vCYf1rfWKUQetY3ryhPDIeuoKJr/1ZpR9cFef
+        0gT9KVKLcGa33ujKsO+1lrgShkOf2VMfxyHY7BRhx3WRtW43HcK9dbMzais7qtlo+PBZQzte/1HM
+        ggXcjl6OlUN+tx5WfS4rr//9D3Mkfc8EGAAA
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Sat, 29 Mar 2025 19:01:49 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Transfer-Encoding:
+      - chunked
+      Via:
+      - 1.1 google
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Mbx-Used-Weight:
+      - '20'
+      X-Mbx-Used-Weight-1m:
+      - '20'
+      X-Mbx-Uuid:
+      - 53bac561-e310-403c-b9c7-f269db5ea16d
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/paper-trading/activate/b687d14a-747e-4b76-b89b-cd05aaf6aa46
+  response:
+    body:
+      string: '{"message":"Successfully activated bot!","error":0,"data":{"pair":"TRXUSDC","fiat":"USDC","base_order_size":2.0,"candlestick_interval":"15m","close_condition":"dynamic_trailling","cooldown":0,"created_at":1743217480091.0,"updated_at":1743217480091.0,"dynamic_trailling":true,"logs":[],"mode":"manual","name":"terminal_1743217337463","status":"active","stop_loss":3.0,"margin_short_reversal":true,"take_profit":2.3,"trailling":true,"trailling_deviation":2.8,"trailling_profit":2.3,"strategy":"long","id":"b687d14a-747e-4b76-b89b-cd05aaf6aa46","deal":{"current_price":0.2345,"take_profit_price":0.2575,"trailling_stop_loss_price":0.0,"trailling_profit_price":0.2398,"stop_loss_price":0.2274,"total_interests":0.0,"total_commissions":0.0,"margin_loan_id":0,"margin_repay_id":0,"opening_price":0.2345,"opening_qty":1.0,"opening_timestamp":1743274909753,"closing_price":0.0,"closing_qty":0.0,"closing_timestamp":0},"orders":[{"order_type":"LIMIT","time_in_force":"GTC","timestamp":1743274909753,"order_id":21686176,"order_side":"BUY","pair":"TRXUSDC","qty":1.0,"status":"FILLED","price":0.2345,"deal_type":"base_order"}]}}'
+    headers:
+      content-length:
+      - '1117'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

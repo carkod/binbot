@@ -15,11 +15,9 @@ export const initialAutotradeSettings: AutotradeSettings = {
   fiat: "USDC",
   balance_size_to_use: 0,
   max_request: 0,
-  update_required: 0,
   telegram_signals: true,
   max_active_autotrade_bots: 0,
   base_order_size: 0,
-  test_autotrade: false,
   updated_at: 0,
   close_condition: CloseConditions.DYNAMIC_TRAILLING,
 };

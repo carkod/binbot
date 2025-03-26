@@ -46,7 +46,8 @@ class BotTableCrud:
         Args:
         - bot: BotModel
 
-        Either id or bot has to be passed
+        bot has to be passed
+        for bot_id use endpoint function to get BotModel
         """
         if bot:
             bot_id = str(bot.id)
@@ -163,7 +164,6 @@ class BotTableCrud:
         Args:
         - data: BotBase includes only flat properties (excludes deal and orders which are generated internally)
         """
-
         new_bot = BotTable(**data.model_dump(), deal=DealTable(), orders=[])
 
         # db operations

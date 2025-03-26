@@ -66,6 +66,7 @@ def test_one_symbol_error(client: TestClient):
     content = response.json()
     assert content["data"] is None
 
+
 @mark.vcr("cassettes/test_add_existing_symbol.yaml")
 def test_add_existing_symbol(client: TestClient):
     payload = {

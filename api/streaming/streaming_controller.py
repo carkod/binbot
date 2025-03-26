@@ -58,8 +58,8 @@ class BaseStreaming:
             return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
 
         df = pd.DataFrame(data)
-        df.drop(columns=['_id'], inplace=True)
-        close_prices = df['close']
+        df.drop(columns=["_id"], inplace=True)
+        close_prices = df["close"]
         rolling_mean = close_prices.rolling(window=20).mean()
         rolling_std = close_prices.rolling(window=20).std()
 
@@ -67,7 +67,7 @@ class BaseStreaming:
         df["bb_mid"] = rolling_mean
         df["bb_low"] = rolling_mean - (rolling_std * 2)
 
-        df.reset_index(drop=True, inplace=True)        
+        df.reset_index(drop=True, inplace=True)
 
         bb_spreads = BollinguerSpread(
             bb_high=df["bb_high"].iloc[-1],
@@ -103,7 +103,6 @@ class StreamingController(BaseStreaming):
         if current_bot.strategy == Strategy.margin_short:
             margin_deal = MarginDeal(current_bot, db_table=db_table)
             margin_deal.streaming_updates(float(close_price))
-
 
         elif current_bot.strategy == Strategy.long:
             spot_long_deal = SpotLongDeal(current_bot, db_table=db_table)
@@ -251,7 +250,6 @@ class BbspreadsUpdater(BaseStreaming):
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
-        
         # not enough data
         if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0 or bb_spreads.bb_mid == 0:
             return
