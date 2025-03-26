@@ -1,9 +1,9 @@
 import { notifification } from "../utils/api";
-import { type BinanceKlineintervals } from "../utils/enums";
+import { type CloseConditions, type BinanceKlineintervals } from "../utils/enums";
 import { userApiSlice } from "./userApiSlice";
 
 export interface AutotradeSettings {
-  _id: "settings";
+  id: "autotrade_settings" | "test_autotrade_settings";
   candlestick_interval: BinanceKlineintervals;
   autotrade: boolean;
   trailling: boolean;
@@ -14,13 +14,11 @@ export interface AutotradeSettings {
   fiat: string;
   balance_size_to_use: number;
   max_request: number;
-  system_logs: [];
-  update_required: number;
   telegram_signals: boolean;
   max_active_autotrade_bots: number;
   base_order_size: number;
-  test_autotrade: boolean;
   updated_at: number;
+  close_condition: CloseConditions;
 }
 
 export const autotradeApiSlice = userApiSlice.injectEndpoints({

@@ -56,3 +56,9 @@ export enum TabsKeys {
   STOPLOSS = "stop-loss",
   TAKEPROFIT = "take-profit",
 }
+
+export enum CloseConditions {
+  DYNAMIC_TRAILLING = "dynamic_trailling",
+  TIMESTAMP = "timestamp",
+  MARKET_REVERSAL = "market_reversal",
+}

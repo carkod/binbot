@@ -1,10 +1,12 @@
 import { BinanceKlineintervals, CloseConditions } from "../utils/enums";
 import { createAppSlice } from "../app/createAppSlice";
-import { type AutotradeSettings } from "./autotradeApiSlice";
 import { type PayloadAction } from "@reduxjs/toolkit";
+import type { AutotradeSettingsFormBoolean, AutotradeSettingsFormField, AutotradeSettingsObject } from "./autotradeSlice";
+import { type AutotradeSettings } from "./autotradeApiSlice";
 
 export const initialAutotradeSettings: AutotradeSettings = {
-  id: "autotrade_settings",
+  id: "test_autotrade_settings",
+  balance_size_to_use: 0,
   candlestick_interval: BinanceKlineintervals.ONE_HOUR,
   autotrade: true,
   trailling: true,
@@ -13,61 +15,45 @@ export const initialAutotradeSettings: AutotradeSettings = {
   stop_loss: 0,
   take_profit: 0,
   fiat: "USDC",
-  balance_size_to_use: 0,
   max_request: 0,
-  update_required: 0,
   telegram_signals: true,
   max_active_autotrade_bots: 0,
   base_order_size: 0,
-  test_autotrade: false,
   updated_at: 0,
   close_condition: CloseConditions.DYNAMIC_TRAILLING,
 };
 
-export interface AutotradeSettingsFormField {
-  name: string;
-  value: string | number;
-}
-
-export interface AutotradeSettingsFormBoolean {
-  name: string;
-  value: boolean;
-}
-
-export interface AutotradeSettingsObject {
-  settings: AutotradeSettings;
-}
 
 // In general, this will be unused
 // future plans include using it for bots e.g. to get fiat
 // or default candlestick_interval for all bots
-export const autotradeSettingsSlice = createAppSlice({
-  name: "autotradeSettings",
+export const testAutotradeSettingsSlice = createAppSlice({
+  name: "testAutotradeSettings",
   initialState: {
     settings: initialAutotradeSettings,
   },
   reducers: (create) => ({
-    setSettingsField: create.reducer(
+    setTestSettingsField: create.reducer(
       (state, { payload }: PayloadAction<AutotradeSettingsFormField>) => {
         state.settings[payload.name] = payload.value;
       },
     ),
-    setSettingsToggle: create.reducer(
+    setTestSettingsToggle: create.reducer(
       (state, { payload }: PayloadAction<AutotradeSettingsFormBoolean>) => {
         state.settings[payload.name] = payload.value;
       },
     ),
-    setSettings: create.reducer(
+    setTestSettings: create.reducer(
       (state, { payload }: PayloadAction<AutotradeSettingsObject>) => {
         state.settings = payload.settings;
       },
     ),
   }),
   selectors: {
-    selectSettings: (state) => state,
+    selectTestSettings: (state) => state,
   },
 });
 
-export const { setSettingsField, setSettingsToggle, setSettings } =
-  autotradeSettingsSlice.actions;
-export const { selectSettings } = autotradeSettingsSlice.selectors;
+export const { setTestSettingsField, setTestSettingsToggle, setTestSettings } =
+  testAutotradeSettingsSlice.actions;
+export const { selectTestSettings } = testAutotradeSettingsSlice.selectors;
