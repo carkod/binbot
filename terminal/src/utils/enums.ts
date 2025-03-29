@@ -62,3 +62,8 @@ export enum CloseConditions {
   TIMESTAMP = "timestamp",
   MARKET_REVERSAL = "market_reversal",
 }
+
+export enum BotType {
+  BOTS = "bots",
+  PAPER_TRADING = "paper-trading",
+}

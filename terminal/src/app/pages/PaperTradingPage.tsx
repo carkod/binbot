@@ -15,6 +15,7 @@ import BotsActions, { BulkAction } from "../components/BotsActions";
 import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
 import { useAppDispatch } from "../hooks";
+import { BotStatus } from "../../utils/enums";
 
 export const PaperTradingPage: FC = () => {
   const dispatch = useAppDispatch();
@@ -31,9 +32,9 @@ export const PaperTradingPage: FC = () => {
   const [bulkActions, setBulkActions] = useState<BulkAction>(BulkAction.NONE);
   const [startDate, setStartDate] = useState(oneWeekAgo);
   const [endDate, setEndDate] = useState(currentTs);
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState<BotStatus>(BotStatus.ALL);
 
-  const { data: props, isFetching } = useGetTestBotsQuery({
+  const { refetch, data, isFetching } = useGetTestBotsQuery({
     status: filterStatus,
     startDate,
     endDate,
@@ -68,13 +69,17 @@ export const PaperTradingPage: FC = () => {
         selectCards([]);
         break;
       case BulkAction.SELECT_ALL:
-        selectCards(Object.keys(props.paperTrading.entities));
+        if (data?.bots?.ids.length > 0) {
+          selectCards(Object.keys(data.bots.entities));
+        }
         break;
       case BulkAction.COMPLETED:
-        setFilterStatus(BulkAction.COMPLETED);
+        setBulkActions(BulkAction.COMPLETED);
+        setFilterStatus(BotStatus.COMPLETED);
         break;
       case BulkAction.ACTIVE:
-        setFilterStatus(BulkAction.ACTIVE);
+        setBulkActions(BulkAction.ACTIVE);
+        setFilterStatus(BotStatus.ACTIVE);
         break;
       case BulkAction.UNSELECT_ALL:
         selectCards([]);
@@ -94,7 +99,7 @@ export const PaperTradingPage: FC = () => {
           status: filterStatus,
           startDate: ts,
           endDate: endDate,
-        }),
+        })
       );
     }
   };
@@ -109,7 +114,7 @@ export const PaperTradingPage: FC = () => {
           status: filterStatus,
           startDate: startDate,
           endDate: ts,
-        }),
+        })
       );
     }
   };
@@ -118,10 +123,10 @@ export const PaperTradingPage: FC = () => {
     if (isFetching) {
       dispatch(setSpinner(true));
     }
-    if (props?.paperTrading) {
+    if (data?.bots) {
       dispatch(setSpinner(false));
     }
-  }, [props, dispatch, isFetching]);
+  }, [data, dispatch, isFetching]);
 
   return (
     <Container fluid>
@@ -131,11 +136,11 @@ export const PaperTradingPage: FC = () => {
       >
         <div id="bot-profits">
           <h4>
-            {props?.paperTrading?.ids.length > 0 && (
-              <Badge bg={props?.totalProfit > 0 ? "success" : "danger"}>
+            {data?.bots?.ids.length > 0 && (
+              <Badge bg={data.totalProfit > 0 ? "success" : "danger"}>
                 <i className="fas fa-building-columns" />{" "}
                 <span className="visually-hidden">Profit</span>
-                {(props?.totalProfit || 0) + "%"}
+                {(data.totalProfit || 0) + "%"}
               </Badge>
             )}
           </h4>
@@ -173,8 +178,8 @@ export const PaperTradingPage: FC = () => {
         </div>
       </Stack>
       <Row md="4">
-        {props?.paperTrading?.ids.length > 0
-          ? Object.values(props?.paperTrading?.entities).map((x, i) => (
+        {data?.bots?.ids.length > 0
+          ? Object.values(data?.bots?.entities).map((x, i) => (
               <Col key={i}>
                 <BotCard
                   botIndex={i}

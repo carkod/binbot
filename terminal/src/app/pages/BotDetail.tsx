@@ -3,7 +3,11 @@ import { useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
 import { useMatch, useParams } from "react-router";
 import { useGetSingleBotQuery } from "../../features/bots/botsApiSlice";
-import { selectBot, setBot } from "../../features/bots/botSlice";
+import {
+  selectBot,
+  setBot,
+  setCurrentPrice,
+} from "../../features/bots/botSlice";
 import BotDetailTabs from "../components/BotDetailTabs";
 import BotInfo from "../components/BotInfo";
 import ChartContainer from "../components/ChartContainer";
@@ -49,7 +53,7 @@ export const BotDetail: FC<{}> = () => {
       <Container fluid>
         <Row>
           <Col md="12" sm="12">
-            <ChartContainer />
+            <ChartContainer bot={bot} setCurrentPrice={setCurrentPrice} />
           </Col>
         </Row>
         {bot && id && (

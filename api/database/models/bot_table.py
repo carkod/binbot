@@ -1,6 +1,6 @@
 from uuid import uuid4, UUID
 from typing import Optional
-from pydantic import Json, field_validator
+from pydantic import field_validator
 from sqlalchemy import JSON, Column, Enum
 from database.utils import timestamp
 from tools.enum_definitions import (
@@ -137,7 +137,7 @@ class PaperTradingTable(SQLModel, table=True):
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
     dynamic_trailling: bool = Field(default=False)
-    logs: list[Json[str]] = Field(default=[], sa_column=Column(JSON))
+    logs: list = Field(default=[], sa_column=Column(JSON))
     mode: str = Field(default="manual")
     name: str = Field(default="Default bot")
     status: Status = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
@@ -153,19 +153,26 @@ class PaperTradingTable(SQLModel, table=True):
         le=101,
         description="Trailling activation (first take profit hit)",
     )
-    trailling_profit: float = Field(default=0)
+    trailling_profit: float = Field(
+        default=0,
+        ge=-1,
+        le=101,
+        description="Equivalent to take_profit but it moves dynamically based on current price",
+    )
     strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
-    short_buy_price: float = Field(
-        default=0, description="autoswitch to short_strategy"
-    )
-    short_sell_price: float = Field(
-        default=0, description="autoswitch to short_strategy"
-    )
+
     # Table relationships filled up internally
-    deal_id: Optional[UUID] = Field(default=None, foreign_key="deal.id")
-    deal: "DealTable" = Relationship(back_populates="paper_trading")
-    orders: Optional[list["ExchangeOrderTable"]] = Relationship(
-        back_populates="paper_trading"
+    orders: list[ExchangeOrderTable] = Relationship(
+        back_populates="paper_trading",
+        sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
+    )
+    deal_id: Optional[UUID] = Field(
+        default=None, foreign_key="deal.id", ondelete="CASCADE"
+    )
+
+    # lazy option will allow objects to be nested when transformed for json return
+    deal: DealTable = Relationship(
+        sa_relationship_kwargs={"lazy": "joined", "single_parent": True}
     )
 
     model_config = {

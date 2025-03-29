@@ -1,0 +1,29 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/paper-trading/symbol/ADXUSDC
+  response:
+    body:
+      string: '{"message":"Successfully found one bot.","error":0,"data":{"pair":"ADXUSDC","fiat":"USDC","base_order_size":15.0,"candlestick_interval":"15m","close_condition":"dynamic_trailling","cooldown":360,"created_at":1733973560249.0,"updated_at":1733973560249.0,"dynamic_trailling":false,"logs":[],"mode":"manual","name":"Default
+        bot","status":"inactive","stop_loss":3.0,"margin_short_reversal":false,"take_profit":2.3,"trailling":true,"trailling_deviation":3.0,"trailling_profit":0.0,"strategy":"long","id":"87c18ab2-5575-4330-aa14-95d3fbbe99d7","orders":[],"deal":{"current_price":0.0,"take_profit_price":0.0,"trailling_stop_loss_price":0.0,"trailling_profit_price":0.0,"stop_loss_price":0.0,"total_interests":0.0,"total_commissions":0.0,"margin_loan_id":0,"margin_repay_id":0,"opening_price":0.0,"opening_qty":0.0,"opening_timestamp":0,"closing_price":0.0,"closing_qty":0.0,"closing_timestamp":0}}}'
+    headers:
+      content-length:
+      - '892'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

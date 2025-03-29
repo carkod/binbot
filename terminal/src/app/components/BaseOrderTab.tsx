@@ -13,24 +13,37 @@ import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
 import { getQuoteAsset } from "../../utils/api";
-import { BotStatus, BotStrategy, TabsKeys } from "../../utils/enums";
+import { BotStatus, BotStrategy, BotType, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
-import { useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
 import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
+import {
+  selectTestBot,
+  setTestBotField,
+  setTestBotToggle,
+} from "../../features/bots/paperTradingSlice";
 
 interface ErrorsState {
   pair?: string;
 }
 
-const BaseOrderTab: FC = () => {
-  const { symbol, id} = useParams();
+const BaseOrderTab: FC<{
+  botType?: BotType;
+}> = ({ botType = BotType.BOTS }) => {
+  const { symbol, id } = useParams();
+  const { pathname } = useLocation();
   const dispatch: AppDispatch = useAppDispatch();
   const { data: symbols } = useGetSymbolsQuery();
-  const { bot } = useAppSelector(selectBot);
+  let { bot } = useAppSelector(selectBot);
+  if (botType === BotType.PAPER_TRADING) {
+    const testBot = useAppSelector(selectTestBot);
+    bot = testBot.paperTrading;
+  }
+
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
   const [quoteAsset, setQuoteAsset] = useState<string>("");
@@ -53,20 +66,15 @@ const BaseOrderTab: FC = () => {
   });
   const { spinner, setSpinner } = useContext(SpinnerContext);
 
-  const addMin = () => {
-    dispatch(setField({ name: "base_order_size", value: 0.001 }));
-  };
-
-  const addAll = () => {
-    // fix: replace value with the full balance
-    // dispatch(setField({ name: "base_order_size", value: 0.001 }));
-  };
-
   const handlePairBlur = (e) => {
     // Only when selected not typed in
     // this way we avoid any errors
     if (e.target.value) {
-      dispatch(setField({ name: "pair", value: e.target.value }));
+      if (botType ===  BotType.PAPER_TRADING) {
+        dispatch(setTestBotField({ name: "pair", value: e.target.value }));
+      } else {
+        dispatch(setField({ name: "pair", value: e.target.value }));
+      }
       setErrorsState((draft) => {
         delete draft["pair"];
       });
@@ -82,9 +90,17 @@ const BaseOrderTab: FC = () => {
     const { unsubscribe } = watch((v, { name }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
-          dispatch(setToggle({ name, value: v[name] }));
+          if (botType ===  BotType.PAPER_TRADING) {
+            dispatch(setTestBotToggle({ name, value: v[name] }));
+          } else {
+            dispatch(setToggle({ name, value: v[name] }));
+          }
         } else {
-          dispatch(setField({ name, value: v[name] as number | string }));
+          if (botType ===  BotType.PAPER_TRADING) {
+            dispatch(setTestBotField({ name, value: v[name] }));
+          } else {
+            dispatch(setField({ name, value: v[name] }));
+          }
         }
       }
     });
@@ -106,7 +122,11 @@ const BaseOrderTab: FC = () => {
         strategy: bot.strategy,
         pair: symbol,
       });
-      dispatch(setField({ name: "pair", value: symbol }));
+      if (botType ===  BotType.PAPER_TRADING) {
+        dispatch(setTestBotField({ name: "pair", value: symbol }));
+      } else {
+        dispatch(setField({ name: "pair", value: symbol }));
+      }
     }
 
     if (id && !symbol) {
@@ -127,14 +147,7 @@ const BaseOrderTab: FC = () => {
     }
 
     return () => unsubscribe();
-  }, [
-    symbols,
-    symbolsList,
-    bot,
-    reset,
-    dispatch,
-    watch,
-  ]);
+  }, [symbols, symbolsList, bot, reset, dispatch, watch]);
 
   return (
     <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
@@ -193,23 +206,6 @@ const BaseOrderTab: FC = () => {
                 )}
               </InputTooltip>
             </InputGroup>
-            {bot.status !== BotStatus.ACTIVE && (
-              <>
-                <Badge color="secondary" onClick={addMin}>
-                  Min{" "}
-                  {quoteAsset === "BTC"
-                    ? 0.001
-                    : quoteAsset === "BNB"
-                      ? 0.051
-                      : quoteAsset === "USDC"
-                        ? 15
-                        : ""}
-                </Badge>{" "}
-                <Badge color="secondary" onClick={addAll}>
-                  Add all
-                </Badge>
-              </>
-            )}
           </Col>
           <Col md="6" sm="12" className="my-6">
             <InputTooltip

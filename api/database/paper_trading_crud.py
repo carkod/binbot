@@ -1,12 +1,15 @@
-from typing import Union
+from typing import List
 from sqlmodel import Session, select, case, desc, asc
-from tools.exceptions import BinbotErrors
+from tools.exceptions import BinbotErrors, SaveBotError
 from database.models.bot_table import PaperTradingTable
 from bots.models import BotModel, BotBase
 from database.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from collections.abc import Sequence
 from uuid import UUID
+from database.models.deal_table import DealTable
+from database.models.order_table import ExchangeOrderTable
+from sqlalchemy.orm.attributes import flag_modified
 
 
 class PaperTradingTableCrud:
@@ -16,98 +19,42 @@ class PaperTradingTableCrud:
         self.session = session
         pass
 
-    def update_logs(
-        self, log_message: str, bot: BotModel = None, bot_id: str | None = None
-    ) -> BotModel:
+    def update_logs(self, log_message: str, bot: BotModel = None) -> PaperTradingTable:
         """
         Update logs for a bot
 
         Args:
-        - bot_id: str
         - bot: BotModel
 
-        Either id or bot has to be passed
+        bot has to be passed
+        for bot_id use endpoint function to get BotModel
         """
-        if bot_id:
-            bot_obj = self.session.get(PaperTradingTable, bot_id)
-            bot = BotModel.model_validate(bot_obj)
-        elif not bot:
-            raise ValueError("Bot id or BotModel object is required")
+        if bot:
+            bot_id = str(bot.id)
+        else:
+            raise BinbotErrors("Bot id or BotModel object is required")
 
-        current_logs: list[str] = bot.logs
-        if len(current_logs) == 0:
-            current_logs = [log_message]
-        elif len(current_logs) > 0:
-            current_logs.append(log_message)
+        bot_result = self.session.get(PaperTradingTable, bot_id)
 
-        bot.logs = current_logs
+        if not bot_result:
+            raise BinbotErrors("Bot not found")
+
+        # Update logs as an SQLAlchemy list
+        bot_result.logs = [log_message] + bot_result.logs
+        flag_modified(bot_result, "logs")
 
         # db operations
-        self.session.add(bot)
+        self.session.add(bot_result)
         self.session.commit()
-        self.session.refresh(bot)
+        self.session.refresh(bot_result)
         self.session.close()
-        return bot
-
-    def create(self, data: BotBase) -> BotModel:
-        """
-        Create a new paper trading account
-        """
-        bot = BotModel.model_validate(data)
-
-        # Ensure values are reset
-        bot.orders = []
-        bot.logs = []
-        bot.status = Status.inactive
-
-        # db operations
-        self.session.add(bot)
-        self.session.commit()
-        resulted_bot = self.session.get(PaperTradingTable, bot.id)
-        self.session.close()
-        data = BotModel.model_validate(resulted_bot)
-        return data
-
-    def save(self, data: BotModel) -> BotModel:
-        """
-        Save operation
-        This can be editing a bot, or saving the object,
-        or updating a single field.
-        """
-        bot = self.session.get(PaperTradingTable, data.id)
-        if not bot:
-            raise ValueError("Bot not found")
-
-        # double check orders and deal are not overwritten
-        dumped_bot = data.model_dump(exclude_unset=True)
-        bot.sqlmodel_update(dumped_bot)
-        self.session.add(bot)
-        self.session.commit()
-        resulted_bot = self.session.get(PaperTradingTable, bot.id)
-        self.session.close()
-        data = BotModel.model_validate(resulted_bot)
-        return data
-
-    def delete(self, id: Union[list[str], str]) -> bool:
-        """
-        Delete a paper trading account by id
-        """
-        data = self.session.get(PaperTradingTable, id)
-        if not data:
-            return False
-
-        self.session.delete(data)
-        self.session.commit()
-        self.session.refresh(data)
-        self.session.close()
-        return True
+        return bot_result
 
     def get(
         self,
         status: Status | None = None,
         start_date: float | None = None,
         end_date: float | None = None,
-        no_cooldown=False,
         limit: int = 200,
         offset: int = 0,
     ) -> Sequence[PaperTradingTable]:
@@ -140,19 +87,9 @@ class PaperTradingTableCrud:
         # pagination
         statement = statement.limit(limit).offset(offset)
 
-        bots = self.session.exec(statement).all()
+        bots = self.session.exec(statement).unique().all()
         self.session.close()
         return bots
-
-    def update_status(self, paper_trading: BotModel, status: Status) -> BotModel:
-        """
-        Activate a paper trading account
-        """
-        paper_trading.status = status
-        self.session.add(paper_trading)
-        self.session.commit()
-        self.session.close()
-        return paper_trading
 
     def get_one(
         self,
@@ -186,6 +123,95 @@ class PaperTradingTableCrud:
             return bot
         else:
             raise BinbotErrors("Invalid bot id or symbol")
+
+    def create(self, data: BotBase) -> PaperTradingTable:
+        """
+        Create a new paper trading account
+        """
+        bot = PaperTradingTable(**data.model_dump(), deal=DealTable(), orders=[])
+
+        # db operations
+        self.session.add(bot)
+        self.session.commit()
+        self.session.refresh(bot)
+        resulted_bot = bot
+        return resulted_bot
+
+    def save(self, data: BotModel) -> PaperTradingTable:
+        """
+        Save operation
+        This can be editing a bot, or saving the object,
+        or updating a single field.
+        """
+        # due to incompatibility of SQLModel and Pydantic
+        initial_bot = self.get_one(bot_id=str(data.id))
+        deal_id = initial_bot.deal_id
+        initial_bot.sqlmodel_update(data.model_dump())
+
+        # Use deal id from db to avoid creating a new deal
+        # which causes integrity errors
+        # there should always be only 1 deal per bot
+        deal = self.session.get(DealTable, deal_id)
+        if not deal:
+            raise SaveBotError("Bot must be created first before updating")
+        else:
+            deal.sqlmodel_update(data.deal.model_dump())
+
+        if hasattr(data, "orders"):
+            for order in data.orders:
+                # Unlike real exchange orders,
+                # these orders are faked
+                statement = select(ExchangeOrderTable).where(
+                    ExchangeOrderTable.bot_id == data.id,
+                    ExchangeOrderTable.deal_type == order.deal_type,
+                )
+                get_order = self.session.exec(statement).first()
+                if not get_order:
+                    new_order_row = ExchangeOrderTable(
+                        order_type=order.order_type,
+                        time_in_force=order.time_in_force,
+                        timestamp=order.timestamp,
+                        order_id=order.order_id,
+                        order_side=order.order_side,
+                        pair=order.pair,
+                        qty=order.qty,
+                        status=order.status,
+                        price=order.price,
+                        deal_type=order.deal_type,
+                        paper_trading_id=data.id,
+                    )
+                    self.session.add(new_order_row)
+
+        self.session.add(deal)
+        self.session.add(initial_bot)
+        self.session.commit()
+        self.session.refresh(deal)
+        self.session.refresh(initial_bot)
+        resulted_bot = initial_bot
+        return resulted_bot
+
+    def delete(self, bot_ids: List[str]) -> bool:
+        """
+        Delete a paper trading account by id
+        """
+        for id in bot_ids:
+            statement = select(PaperTradingTable).where(PaperTradingTable.id == id)
+            bot = self.session.exec(statement).first()
+            self.session.delete(bot)
+
+        self.session.commit()
+        self.session.close()
+        return True
+
+    def update_status(self, paper_trading: BotModel, status: Status) -> BotModel:
+        """
+        Activate a paper trading account
+        """
+        paper_trading.status = status
+        self.session.add(paper_trading)
+        self.session.commit()
+        self.session.close()
+        return paper_trading
 
     def get_active_pairs(self):
         """

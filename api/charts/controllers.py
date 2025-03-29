@@ -302,6 +302,8 @@ class BtcCorrelation(Database, BinbotApi):
         btc_data = self.collection.raw_klines(
             symbol="BTCUSDC", interval=BinanceKlineIntervals.one_day
         )
+        if len(asset_data) == 0 or len(btc_data) == 0:
+            return None
         asset_df = DataFrame(asset_data)
         btc_df = DataFrame(btc_data)
         p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")

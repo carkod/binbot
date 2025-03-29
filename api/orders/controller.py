@@ -29,6 +29,10 @@ class OrderController(Account):
     def generate_id(self):
         return uuid4()
 
+    def generate_short_id(self):
+        id = uuid4().int
+        return int(str(id)[:8])
+
     def calculate_price_precision(self, symbol: str) -> int:
         """
         Calculate the price precision for the symbol
@@ -45,7 +49,7 @@ class OrderController(Account):
         symbol_info = self.symbols_crud.get_symbol(symbol)
         return symbol_info.qty_precision
 
-    def simulate_order(self, pair, side, qty=1):
+    def simulate_order(self, pair: str, side: OrderSide, qty=1):
         """
         Price is determined by market
         to help trigger the order immediately
@@ -53,7 +57,7 @@ class OrderController(Account):
         price = float(self.matching_engine(pair, True, qty))
         order = {
             "symbol": pair,
-            "orderId": self.generate_id().int,
+            "orderId": self.generate_short_id(),
             "orderListId": -1,
             "clientOrderId": self.generate_id().hex,
             "transactTime": time() * 1000,
@@ -69,11 +73,11 @@ class OrderController(Account):
         }
         return order
 
-    def simulate_response_order(self, pair, side, qty=1):
+    def simulate_response_order(self, pair: str, side: OrderSide, qty=1):
         price = float(self.matching_engine(pair, True, qty))
         response_order = {
             "symbol": pair,
-            "orderId": self.generate_id().int,
+            "orderId": self.generate_short_id(),
             "orderListId": -1,
             "clientOrderId": self.generate_id().hex,
             "transactTime": time() * 1000,
@@ -102,7 +106,7 @@ class OrderController(Account):
         price = float(self.matching_engine(pair, False, qty))
         order = {
             "symbol": pair,
-            "orderId": self.generate_id().int,
+            "orderId": self.generate_short_id(),
             "orderListId": -1,
             "clientOrderId": self.generate_id().hex,
             "transactTime": time() * 1000,

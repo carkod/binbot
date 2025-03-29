@@ -1,39 +1,38 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlmodel import Session
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from tools.enum_definitions import Status, Strategy
 from database.models.bot_table import PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.utils import get_session
 from tools.exceptions import BinanceErrors, BinbotErrors
-from tools.handle_error import api_response
-from bots.models import BotModel, BotResponse, BotListResponse
-from typing import List, Union
+from tools.handle_error import api_response, StandardResponse
+from bots.models import BotModel, BotResponse, BotListResponse, BotBase
+from typing import List, Union, Optional
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from bots.models import BotModelResponse
 
 
 paper_trading_blueprint = APIRouter()
+ta = TypeAdapter(list[BotModelResponse])
 
 
 @paper_trading_blueprint.get(
     "/paper-trading", response_model=BotListResponse, tags=["paper trading"]
 )
 def get(
-    status: Status | None = None,
-    start_date: float | None = None,
-    end_date: float | None = None,
-    no_cooldown=False,
+    status: Status = Status.all,
+    start_date: Optional[int] = None,
+    end_date: Optional[int] = None,
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
 ):
     try:
         bots = PaperTradingTableCrud(session=session).get(
-            status, start_date, end_date, no_cooldown, limit, offset
+            status, start_date, end_date, limit, offset
         )
-        ta = TypeAdapter(List[BotModel])
         data = ta.dump_python(bots)  # type: ignore
         return BotListResponse(
             message="Successfully found paper trading bots!", data=data
@@ -41,29 +40,45 @@ def get(
 
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
+    except ValidationError as error:
+        return BotResponse(message="Failed to find bots!", data=error.json(), error=1)
 
 
-@paper_trading_blueprint.get("/paper-trading/{id}", tags=["paper trading"])
+@paper_trading_blueprint.get(
+    "/paper-trading/{id}", response_model=BotResponse, tags=["paper trading"]
+)
 def get_one(
     id: str,
     session: Session = Depends(get_session),
 ):
     try:
         bot = PaperTradingTableCrud(session=session).get_one(bot_id=id, symbol=None)
+        bot_model = BotModelResponse.dump_from_table(bot)
+        return BotResponse(
+            message="Successfully found one paper trading bot.", data=bot_model
+        )
+    except ValidationError as error:
+        return StandardResponse(message="Bot not found.", error=1, data=error.json())
+    except BinbotErrors as error:
+        return StandardResponse(message=error.message, error=1)
 
-        bot_model = BotModel.model_construct(**bot.model_dump())
-        if not bot:
-            return BotResponse(message="Failed to find paper trading bots!")
-        else:
-            return BotResponse(
-                message="Successfully found paper trading bot!", data=bot_model
-            )
-    except ValueError as error:
-        return BotResponse(message=error.args[0], error=1)
+
+@paper_trading_blueprint.get(
+    "/paper-trading/symbol/{symbol}", response_model=BotResponse, tags=["bots"]
+)
+def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
+    try:
+        bot = PaperTradingTableCrud(session=session).get_one(bot_id=None, symbol=symbol)
+        bot_model = BotModelResponse.dump_from_table(bot)
+        return BotResponse(message="Successfully found one bot.", data=bot_model)
+    except ValidationError as error:
+        return StandardResponse(message="Bot not found.", error=1, data=error.json())
+    except BinbotErrors as error:
+        return StandardResponse(message=error.message, error=1)
 
 
 @paper_trading_blueprint.post("/paper-trading", tags=["paper trading"])
-def create(bot_item: BotModel, session: Session = Depends(get_session)):
+def create(bot_item: BotBase, session: Session = Depends(get_session)):
     try:
         bot = PaperTradingTableCrud(session=session).create(bot_item)
         bot_model = BotModel.model_construct(**bot.model_dump())
@@ -75,7 +90,15 @@ def create(bot_item: BotModel, session: Session = Depends(get_session)):
 @paper_trading_blueprint.put("/paper-trading/{id}", tags=["paper trading"])
 def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
     try:
-        bot = PaperTradingTableCrud(session=session).save(bot_item)
+        controller = PaperTradingTableCrud(session=session)
+        bot_table = controller.get_one(id)
+        # update model with ne data
+        bot_table.sqlmodel_update(bot_item.model_dump())
+        # client should not change deal and orders
+        # these are internally generated
+        transform_model = BotModel.dump_from_table(bot_table)
+        bot = controller.save(transform_model)
+
         bot_model = BotModel.model_construct(**bot.model_dump())
         return BotResponse(message="Bot updated", data=bot_model)
     except BinbotErrors as error:
@@ -83,12 +106,12 @@ def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
 
 
 @paper_trading_blueprint.delete("/paper-trading", tags=["paper trading"])
-def delete(id: List[str] = Query(...), session: Session = Depends(get_session)):
+def delete(id: List[str], session: Session = Depends(get_session)):
     """
     Receives a list of `id=a1b2c3&id=b2c3d4`
     """
     try:
-        PaperTradingTableCrud(session=session).delete(id)
+        PaperTradingTableCrud(session=session).delete(bot_ids=id)
         return BotResponse(message="Successfully deleted bot!")
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
@@ -135,9 +158,11 @@ def deactivate(id: str, session: Session = Depends(get_session)):
 
     bot_model = BotModel.model_construct(**bot_model.model_dump())
     if bot_model.strategy == Strategy.margin_short:
-        deal_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(bot_model)
+        deal_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(
+            bot_model, db_table=PaperTradingTable
+        )
     else:
-        deal_instance = SpotLongDeal(bot_model)
+        deal_instance = SpotLongDeal(bot_model, db_table=PaperTradingTable)
     try:
         data = deal_instance.close_all()
         response_data = BotModelResponse(**data.model_dump())

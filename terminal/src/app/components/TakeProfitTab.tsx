@@ -13,11 +13,21 @@ import InputGroupText from "react-bootstrap/esm/InputGroupText";
 import { useForm } from "react-hook-form";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
 import { useAppDispatch, useAppSelector } from "../hooks";
-import { TabsKeys } from "../../utils/enums";
+import { BotType, TabsKeys } from "../../utils/enums";
+import {
+  selectTestBot,
+  setTestBotField,
+  setTestBotToggle,
+} from "../../features/bots/paperTradingSlice";
 
-const TakeProfit: FC = () => {
+const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
   const dispatch = useAppDispatch();
-  const { bot } = useAppSelector(selectBot);
+  let { bot } = useAppSelector(selectBot);
+
+  if (botType === BotType.PAPER_TRADING) {
+    const testBot = useAppSelector(selectTestBot);
+    bot = testBot.paperTrading;
+  }
 
   const {
     register,
@@ -40,9 +50,19 @@ const TakeProfit: FC = () => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
-          dispatch(setToggle({ name, value: v[name] }));
+          if (botType === BotType.PAPER_TRADING) {
+            dispatch(setTestBotToggle({ name, value: v[name] }));
+          } else {
+            dispatch(setToggle({ name, value: v[name] }));
+          }
         } else {
-          dispatch(setField({ name, value: v[name] as number | string }));
+          if (botType === BotType.PAPER_TRADING) {
+            dispatch(
+              setTestBotField({ name, value: v[name] as number | string })
+            );
+          } else {
+            dispatch(setField({ name, value: v[name] as number | string }));
+          }
         }
       }
     });
@@ -132,11 +152,20 @@ const TakeProfit: FC = () => {
                   checked={bot.trailling}
                   value={1}
                   variant={bot.trailling ? "primary" : "secondary"}
-                  onClick={(e) =>
-                    dispatch(
-                      setToggle({ name: "trailling", value: !bot.trailling })
-                    )
-                  }
+                  onClick={(e) => {
+                    if (botType === BotType.PAPER_TRADING) {
+                      dispatch(
+                        setTestBotToggle({
+                          name: "trailling",
+                          value: !bot.trailling,
+                        })
+                      );
+                    } else {
+                      dispatch(
+                        setToggle({ name: "trailling", value: !bot.trailling })
+                      );
+                    }
+                  }}
                 >
                   {bot.trailling ? "On" : "Off"}
                 </ToggleButton>
@@ -160,14 +189,23 @@ const TakeProfit: FC = () => {
                   checked={bot.dynamic_trailling}
                   value={1}
                   variant={bot.dynamic_trailling ? "primary" : "secondary"}
-                  onClick={(e) =>
-                    dispatch(
-                      setToggle({
-                        name: "dynamic_trailling",
-                        value: !bot.dynamic_trailling,
-                      })
-                    )
-                  }
+                  onClick={(e) => {
+                    if (botType === BotType.PAPER_TRADING) {
+                      dispatch(
+                        setTestBotToggle({
+                          name: "dynamic_trailling",
+                          value: !bot.dynamic_trailling,
+                        })
+                      );
+                    } else {
+                      dispatch(
+                        setToggle({
+                          name: "dynamic_trailling",
+                          value: !bot.dynamic_trailling,
+                        })
+                      );
+                    }
+                  }}
                 >
                   {bot.dynamic_trailling ? "On" : "Off"}
                 </ToggleButton>

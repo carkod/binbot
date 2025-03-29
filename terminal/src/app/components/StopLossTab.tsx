@@ -14,11 +14,22 @@ import { useForm } from "react-hook-form";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
-import { TabsKeys } from "../../utils/enums";
+import { BotType, TabsKeys } from "../../utils/enums";
+import {
+  selectTestBot,
+  setTestBotField,
+  setTestBotToggle,
+} from "../../features/bots/paperTradingSlice";
 
-const StopLossTab: FC<{}> = () => {
+const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
   const dispatch: AppDispatch = useAppDispatch();
-  const { bot } = useAppSelector(selectBot);
+  let { bot } = useAppSelector(selectBot);
+
+  if (botType === BotType.PAPER_TRADING) {
+    const testBot = useAppSelector(selectTestBot);
+    bot = testBot.paperTrading;
+  }
+
   const {
     watch,
     register,
@@ -37,9 +48,19 @@ const StopLossTab: FC<{}> = () => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
-          dispatch(setToggle({ name, value: v[name] }));
+          if (botType === BotType.PAPER_TRADING) {
+            dispatch(setTestBotToggle({ name, value: v[name] }));
+          } else {
+            dispatch(setToggle({ name, value: v[name] }));
+          }
         } else {
-          dispatch(setField({ name, value: v[name] as number | string }));
+          if (botType === BotType.PAPER_TRADING) {
+            dispatch(
+              setTestBotField({ name, value: v[name] as number | string })
+            );
+          } else {
+            dispatch(setField({ name, value: v[name] as number | string }));
+          }
         }
       }
     });
@@ -107,12 +128,21 @@ const StopLossTab: FC<{}> = () => {
                   value={1}
                   checked={bot.margin_short_reversal}
                   onClick={() => {
-                    dispatch(
-                      setToggle({
-                        name: "margin_short_reversal",
-                        value: !bot.margin_short_reversal,
-                      }),
-                    );
+                    if (botType === BotType.PAPER_TRADING) {
+                      dispatch(
+                        setTestBotToggle({
+                          name: "margin_short_reversal",
+                          value: !bot.margin_short_reversal,
+                        })
+                      );
+                    } else {
+                      dispatch(
+                        setToggle({
+                          name: "margin_short_reversal",
+                          value: !bot.margin_short_reversal,
+                        })
+                      );
+                    }
                   }}
                 >
                   {bot.margin_short_reversal ? "On" : "Off"}

@@ -1,0 +1,28 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/paper-trading
+  response:
+    body:
+      string: '{"message":"Successfully found paper trading bots!","error":0,"data":[{"close_condition":"dynamic_trailling","updated_at":1733973560249.0,"mode":"manual","trailling_deviation":3.0,"dynamic_trailling":false,"trailling_profit":0.0,"cooldown":360,"logs":[],"strategy":"long","id":"86da4c65-2728-4625-be61-a1d5f44d706f","fiat":"USDC","name":"Default bot","pair":"ADXUSDC","status":"inactive","base_order_size":15.0,"stop_loss":3.0,"margin_short_reversal":false,"candlestick_interval":"15m","take_profit":2.3,"created_at":1733973560249.0,"trailling":true},{"close_condition":"dynamic_trailling","updated_at":1733973560249.0,"mode":"manual","trailling_deviation":3.0,"dynamic_trailling":false,"trailling_profit":0.0,"cooldown":360,"logs":[],"strategy":"long","id":"87c18ab2-5575-4330-aa14-95d3fbbe99d7","fiat":"USDC","name":"Default bot","pair":"ADXUSDC","status":"inactive","base_order_size":15.0,"stop_loss":3.0,"margin_short_reversal":false,"candlestick_interval":"15m","take_profit":2.3,"created_at":1733973560249.0,"trailling":true}]}'
+    headers:
+      content-length:
+      - '1033'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1
