@@ -7,6 +7,7 @@ from exchange_apis.binance import BinanceApi
 from symbols.models import SymbolPayload
 from decimal import Decimal
 from time import time
+from typing import Sequence
 
 
 class SymbolsCrud:
@@ -54,18 +55,32 @@ class SymbolsCrud:
 
         return price_precision, qty_precision, min_notional
 
-    def get_all(self, active: Optional[bool] = True, pair: Optional[str] = None):
+    def get_all(self, active: Optional[bool] = None) -> Sequence[SymbolTable]:
         """
         Get all symbols
-        this excludes blacklisted items.
 
-        To get blacklisted items set active to False
+        "Active" takes into account that we want
+        symbols still ingesting candlestick data
+        as well as blacklist active symbols also exclude cooldown,
+        which are symbols that are used too much in Binquant
+        and we want to temporarily block them
+
+        For a single symbol, use get_symbol
+        this decouples the logic for easy
+        debugging/fixes and consistent response
+
+        Args:
+        - active: if True, only active symbols are returned (to trade & candlestick data & cooldown)
+        - active: None, all symbols are returned
+
+        Returns:
+        - List: always returns a list,
+        if no results are found, returns empty list
         """
 
         statement = select(SymbolTable)
-        if pair:
-            statement = statement.where(SymbolTable.id == pair)
-        else:
+
+        if active is not None:
             statement = statement.where(SymbolTable.active == active)
             # cooldown_start_ts is in milliseconds
             # cooldown is in seconds
@@ -74,13 +89,15 @@ class SymbolsCrud:
                 < (time() * 1000)
             )
 
-        results = self.session.exec(statement).all()
+        results = self.session.exec(statement).unique().all()
         self.session.close()
         return results
 
     def get_symbol(self, symbol: str) -> SymbolTable:
         """
         Get single symbol
+
+        Returns a single symbol dict
         """
         statement = select(SymbolTable).where(SymbolTable.id == symbol)
         result = self.session.exec(statement).first()
