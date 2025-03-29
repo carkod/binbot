@@ -7,6 +7,7 @@ import type {
   BotDetailsState,
 } from "./bots";
 
+
 export const paperTradingSlice = createAppSlice({
   name: "paperTrading",
   initialState: {
@@ -37,7 +38,11 @@ export const paperTradingSlice = createAppSlice({
     ),
   }),
   selectors: {
-    selectBot: (state) => {
+    selectTestBot: (state) => {
+      return state;
+    },
+    submitTestBot: (state) => {
+      state.paperTrading.id = undefined;
       return state;
     },
   },
@@ -49,4 +54,4 @@ export const {
   setTestBotToggle,
   setTestBotCurrentPrice,
 } = paperTradingSlice.actions;
-export const { selectBot } = paperTradingSlice.selectors;
+export const { selectTestBot, submitTestBot } = paperTradingSlice.selectors;

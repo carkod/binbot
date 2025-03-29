@@ -13,7 +13,7 @@ class OrderBase(SQLModel):
     order_type: OrderType
     time_in_force: str
     timestamp: int = Field(sa_column=Column(BigInteger()))
-    order_id: int = Field(nullable=False)
+    order_id: int = Field(nullable=False, description="For fake orders use -1")
     order_side: str
     pair: str
     qty: float
@@ -50,7 +50,7 @@ class ExchangeOrderTable(OrderBase, table=True):
     )
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
     paper_trading_id: Optional[UUID] = Field(
-        default=None, foreign_key="paper_trading.id"
+        default=None, foreign_key="paper_trading.id", ondelete="CASCADE"
     )
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")
 

@@ -72,7 +72,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         };
       },
     }),
-    createBot: build.mutation<CreateBotResponse, Bot>({
+    createBot: build.mutation<Bot, Bot>({
       query: (body) => ({
         url: import.meta.env.VITE_GET_BOTS,
         method: "POST",

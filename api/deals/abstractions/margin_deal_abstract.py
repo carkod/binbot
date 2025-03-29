@@ -530,7 +530,8 @@ class MarginDealAbstract(DealAbstract):
             url=self.bb_activate_bot_url, payload={"id": str(created_bot.id)}
         )
         self.controller.update_logs(
-            f"Switched margin_short to long strategy. New bot id: {bot_id}", self.active_bot
+            f"Switched margin_short to long strategy. New bot id: {bot_id}",
+            self.active_bot,
         )
         return self.active_bot
 

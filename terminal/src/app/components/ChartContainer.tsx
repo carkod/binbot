@@ -1,7 +1,6 @@
 import React, { useEffect, useState, type FC } from "react";
 import { Badge, Card, Col, Row } from "react-bootstrap";
 import { useAppDispatch, useAppSelector } from "../hooks";
-import { selectBot, setCurrentPrice } from "../../features/bots/botSlice";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
 import { useImmer } from "use-immer";
@@ -12,9 +11,16 @@ import TVChartContainer from "binbot-charts";
 import { type ResolutionString } from "../../../charting_library/charting_library";
 import { type AppDispatch } from "../store";
 import { type Bot } from "../../features/bots/botInitialState";
+import { type PayloadActionCreator } from "@reduxjs/toolkit";
 
-const ChartContainer: FC = () => {
-  const { bot } = useAppSelector(selectBot) as { bot: Bot };
+const ChartContainer: FC<{
+  bot: Bot,
+  setCurrentPrice: PayloadActionCreator<number>,
+}> = ({
+  bot,
+  setCurrentPrice,
+}) => {
+
   const dispatch: AppDispatch = useAppDispatch();
   const initialBotProfit = computeSingleBotProfit(bot);
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0);
@@ -77,12 +83,15 @@ const ChartContainer: FC = () => {
                       : "secondary"
                 }
               >
-                {botProfit ? botProfit + "%" : "0%"}
-                {botProfit > 0 && bot.deal?.total_commissions > 0 && botProfit - bot.deal.total_commissions > 0 && (
-                  <small className="fs-6 fw-light">
-                    {roundDecimals(botProfit - bot.deal.total_commissions) + "%"}
-                  </small>
-                )}
+                {botProfit > 0 ? botProfit + "%" : "0%"}
+                {botProfit > 0 &&
+                  bot.deal?.total_commissions > 0 &&
+                  botProfit - bot.deal.total_commissions > 0 && (
+                    <small className="fs-6 fw-light">
+                      {roundDecimals(botProfit - bot.deal.total_commissions) +
+                        "%"}
+                    </small>
+                  )}
               </Badge>{" "}
               <Badge
                 bg={

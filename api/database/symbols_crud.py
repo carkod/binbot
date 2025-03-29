@@ -8,6 +8,7 @@ from symbols.models import SymbolPayload
 from decimal import Decimal
 from time import time
 
+
 class SymbolsCrud:
     """
     Database operations for SymbolTable
@@ -65,11 +66,12 @@ class SymbolsCrud:
         if pair:
             statement = statement.where(SymbolTable.id == pair)
         else:
-            statement =  statement.where(SymbolTable.active == active)
+            statement = statement.where(SymbolTable.active == active)
             # cooldown_start_ts is in milliseconds
             # cooldown is in seconds
             statement = statement.where(
-                SymbolTable.cooldown_start_ts + (SymbolTable.cooldown * 1000) < (time() * 1000)
+                SymbolTable.cooldown_start_ts + (SymbolTable.cooldown * 1000)
+                < (time() * 1000)
             )
 
         results = self.session.exec(statement).all()

@@ -1,12 +1,10 @@
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
-from tools.enum_definitions import (
-    DealType,
-    Status,
-)
+from tools.enum_definitions import DealType, Status, OrderSide
 from bots.models import BotModel, OrderModel
 from tools.round_numbers import round_numbers, round_timestamp
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
+from database.paper_trading_crud import PaperTradingTableCrud
 
 
 class SpotLongDeal(SpotDealAbstract):
@@ -39,7 +37,6 @@ class SpotLongDeal(SpotDealAbstract):
         return self.active_bot
 
     def streaming_updates(self, close_price: float, open_price: float):
-
         current_price = float(close_price)
 
         self.check_failed_switch_long_bot()
@@ -165,7 +162,7 @@ class SpotLongDeal(SpotDealAbstract):
         orders = self.active_bot.orders
 
         # Close all active orders
-        if len(orders) > 0:
+        if isinstance(self.controller, PaperTradingTableCrud) and len(orders) > 0:
             for d in orders:
                 if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
                     self.controller.update_logs(
@@ -180,39 +177,41 @@ class SpotLongDeal(SpotDealAbstract):
         balance = self.get_single_raw_balance(base_asset)
         if balance > 0:
             qty = round_numbers(balance, self.qty_precision)
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
-
-            price = float(res["price"])
-            if price == 0:
-                price = self.calculate_avg_price(res["fills"])
-
-            order_data = OrderModel(
-                timestamp=int(res["transactTime"]),
-                order_id=res["orderId"],
-                deal_type=DealType.take_profit,
-                pair=res["symbol"],
-                order_side=res["side"],
-                order_type=res["type"],
-                price=price,
-                qty=float(res["origQty"]),
-                time_in_force=res["timeInForce"],
-                status=res["status"],
-            )
-
-            self.active_bot.orders.append(order_data)
-            self.active_bot.deal.closing_price = price
-            self.active_bot.deal.closing_qty = float(res["origQty"])
-            self.active_bot.deal.closing_timestamp = round_timestamp(
-                res["transactTime"]
-            )
-            self.active_bot.logs.append(
-                "Panic sell triggered. All active orders closed"
-            )
-            self.active_bot.status = Status.completed
         else:
             self.active_bot.status = Status.error
             self.active_bot.logs.append("No balance found. Skipping panic sell")
 
+        if isinstance(self.controller, PaperTradingTableCrud):
+            res = self.simulate_order(
+                pair=self.active_bot.pair,
+                side=OrderSide.sell,
+            )
+        else:
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
+
+        price = float(res["price"])
+        if price == 0:
+            price = self.calculate_avg_price(res["fills"])
+
+        order_data = OrderModel(
+            timestamp=int(res["transactTime"]),
+            order_id=res["orderId"],
+            deal_type=DealType.take_profit,
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=price,
+            qty=float(res["origQty"]),
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
+
+        self.active_bot.orders.append(order_data)
+        self.active_bot.deal.closing_price = price
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
+        self.active_bot.logs.append("Panic sell triggered. All active orders closed")
+        self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
         return self.active_bot
 

@@ -1,0 +1,32 @@
+interactions:
+- request:
+    body: '{"status":"inactive","balance_available":0,"base_order_size":2,"fiat":"USDC","logs":[],"mode":"manual","name":"terminal_1743217337463","pair":"TRXUSDC","take_profit":2.3,"trailling":true,"trailling_deviation":2.8,"trailling_profit":2.3,"dynamic_trailling":true,"stop_loss":3,"margin_short_reversal":true,"strategy":"long"}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '322'
+      content-type:
+      - application/json
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: POST
+    uri: http://testserver/paper-trading
+  response:
+    body:
+      string: '{"message":"Bot created","error":0,"data":{"pair":"TRXUSDC","fiat":"USDC","base_order_size":2.0,"candlestick_interval":"15m","close_condition":"dynamic_trailling","cooldown":0,"created_at":1743217480091.0,"updated_at":1743217480091.0,"dynamic_trailling":true,"logs":[],"mode":"manual","name":"terminal_1743217337463","status":"inactive","stop_loss":3.0,"margin_short_reversal":true,"take_profit":2.3,"trailling":true,"trailling_deviation":2.8,"trailling_profit":2.3,"strategy":"long","id":"b687d14a-747e-4b76-b89b-cd05aaf6aa46","deal":{"current_price":0.0,"take_profit_price":0.0,"trailling_stop_loss_price":0.0,"trailling_profit_price":0.0,"stop_loss_price":0.0,"total_interests":0.0,"total_commissions":0.0,"margin_loan_id":0,"margin_repay_id":0,"opening_price":0.0,"opening_qty":0.0,"opening_timestamp":0,"closing_price":0.0,"closing_qty":0.0,"closing_timestamp":0},"orders":[]}}'
+    headers:
+      content-length:
+      - '882'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

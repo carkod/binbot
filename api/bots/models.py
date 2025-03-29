@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 from database.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType
-from database.models.bot_table import BotTable
+from database.models.bot_table import BotTable, PaperTradingTable
 from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
 from database.utils import Amount
@@ -89,6 +89,12 @@ class BotBase(BaseModel):
     )
     trailling_profit: Amount = Field(default=0, ge=-1, le=101)
     strategy: Strategy = Field(default=Strategy.long)
+
+    @field_validator("pair")
+    @classmethod
+    def check_pair_not_empty(cls, v):
+        assert v != "", "Pair field must be filled."
+        return v
 
 
 class BotModel(BotBase):
@@ -231,7 +237,7 @@ class BotModelResponse(BotBase):
 
         Use model_validate to cast/pre-validate data to avoid unecessary validation errors
         """
-        if isinstance(bot, BotTable):
+        if isinstance(bot, BotTable) or isinstance(bot, PaperTradingTable):
             model = BotModelResponse.model_construct(**bot.model_dump())
             deal_model = DealModel.model_validate(bot.deal.model_dump())
             order_models = [

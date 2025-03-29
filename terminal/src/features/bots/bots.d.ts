@@ -22,8 +22,10 @@ export interface SingleBotResponse {
   bot: Bot;
 }
 
-export interface CreateBotResponse extends DefaultBotsResponse {
-  botId: string;
+export interface CreateBotResponse {
+  error: number;
+  data?: Bot;
+  message?: string;
 }
 
 export interface EditBotParams {
@@ -48,4 +50,8 @@ export interface BotDetailsFormFieldBoolean {
 
 export interface BotDetailsState {
   bot: Bot;
+}
+
+export interface PaperTradingDetailsState {
+  paperTrading: Bot;
 }

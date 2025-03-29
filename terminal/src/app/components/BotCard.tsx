@@ -1,6 +1,6 @@
 import React, { type FC } from "react";
 import { Badge, Button, Card, Col, Container, Row } from "react-bootstrap";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { type Bot } from "../../features/bots/botInitialState";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
@@ -34,6 +34,8 @@ const BotCard: FC<BotCardProps> = ({
 }) => {
   const botProfit = computeSingleBotProfit(bot);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
   return (
     <Card
       tabIndex={botIndex}
@@ -206,7 +208,7 @@ const BotCard: FC<BotCardProps> = ({
           variant="info"
           title="Edit this bot"
           onClick={() =>
-            navigate(`/bots/edit/${bot.id}`, {
+            navigate(`${pathname}/edit/${bot.id}`, {
               state: { bot: bot },
             })
           }
