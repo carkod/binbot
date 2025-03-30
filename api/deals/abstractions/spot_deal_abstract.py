@@ -365,7 +365,11 @@ class SpotDealAbstract(DealAbstract):
                 stop_loss_price, self.price_precision
             )
 
-        if self.active_bot.trailling and self.active_bot.trailling_deviation > 0 and self.active_bot.trailling_profit > 0:
+        if (
+            self.active_bot.trailling
+            and self.active_bot.trailling_deviation > 0
+            and self.active_bot.trailling_profit > 0
+        ):
             trailling_profit_price = float(self.active_bot.deal.opening_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )
