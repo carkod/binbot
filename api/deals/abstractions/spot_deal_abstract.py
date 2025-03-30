@@ -356,7 +356,7 @@ class SpotDealAbstract(DealAbstract):
         not out of sync with the bot parameters
         """
 
-        if self.active_bot.deal.stop_loss_price == 0:
+        if self.active_bot.stop_loss > 0:
             buy_price = self.active_bot.deal.opening_price
             stop_loss_price = buy_price - (
                 buy_price * (self.active_bot.stop_loss / 100)
@@ -365,14 +365,13 @@ class SpotDealAbstract(DealAbstract):
                 stop_loss_price, self.price_precision
             )
 
-        if self.active_bot.trailling:
-            if self.active_bot.deal.trailling_profit_price == 0:
-                trailling_profit_price = float(self.active_bot.deal.opening_price) * (
-                    1 + (float(self.active_bot.take_profit) / 100)
-                )
-                self.active_bot.deal.trailling_profit_price = round_numbers(
-                    trailling_profit_price, self.price_precision
-                )
+        if self.active_bot.trailling and self.active_bot.trailling_deviation > 0 and self.active_bot.trailling_profit > 0:
+            trailling_profit_price = float(self.active_bot.deal.opening_price) * (
+                1 + (float(self.active_bot.take_profit) / 100)
+            )
+            self.active_bot.deal.trailling_profit_price = round_numbers(
+                trailling_profit_price, self.price_precision
+            )
 
             if self.active_bot.deal.trailling_stop_loss_price != 0:
                 # trailling_stop_loss_price should be updated during streaming
