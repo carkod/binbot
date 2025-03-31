@@ -130,6 +130,7 @@ class BotTableCrud:
             bot = self.session.get(BotTable, santize_uuid)
             if not bot:
                 raise BinbotErrors("Bot not found")
+            self.session.close()
             return bot
         elif symbol:
             if status:
@@ -150,6 +151,8 @@ class BotTableCrud:
                 ).first()
             if not bot:
                 raise BinbotErrors("Bot not found")
+
+            self.session.close()
             return bot
         else:
             raise BinbotErrors("Invalid bot id or symbol")

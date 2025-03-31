@@ -49,8 +49,8 @@
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/api/market_updates.py",
-      "console": "internalConsole",
-      "justMyCode": false
+      "console": "integratedTerminal",
+      "justMyCode": true
     },
     {
       "name": "Python: order updates",
