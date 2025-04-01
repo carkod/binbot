@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from typing import Type, Union, no_type_check
 
@@ -119,6 +120,7 @@ class StreamingController(BaseStreaming):
         close_price = data["close_price"]
         open_price = data["open_price"]
         symbol = data["symbol"]
+        logging.warning(f"Processing kline stream for {symbol}")
         current_bot = self.get_current_bot(symbol)
         current_test_bot = self.get_current_test_bot(symbol)
 
