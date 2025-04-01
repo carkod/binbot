@@ -10,6 +10,7 @@ from database.autotrade_crud import AutotradeCrud
 from database.bot_crud import BotTableCrud
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
+from database.symbols_crud import SymbolsCrud
 from deals.abstractions.factory import DealAbstract
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
@@ -26,7 +27,23 @@ class BaseStreaming:
         self.binance_api = BinanceApi()
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
+        self.symbols_controller = SymbolsCrud()
         self.cs = Candlestick()
+        self.active_bot_pairs: list = []
+        self.paper_trading_active_bots: list = []
+        self.load_data_on_start()
+
+    def load_data_on_start(self):
+        """
+        Load data on start and on update_required
+        """
+        logging.info(
+            "Loading controller, active bots and available symbols (not blacklisted)..."
+        )
+        # self.autotrade_settings: dict = self.get_autotrade_settings()
+        self.active_bot_pairs = self.bot_controller.get_active_pairs()
+        self.paper_trading_active_bots = self.paper_trading_controller.get_active_pairs()
+        pass
 
     def get_current_bot(self, symbol: str) -> BotModel:
         try:
@@ -112,7 +129,7 @@ class StreamingController(BaseStreaming):
         pass
 
     def process_klines(self, message: str) -> None:
-        """
+        """;m k/
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
@@ -121,44 +138,47 @@ class StreamingController(BaseStreaming):
         open_price = data["open_price"]
         symbol = data["symbol"]
         logging.warning(f"Processing kline stream for {symbol}")
-        current_bot = self.get_current_bot(symbol)
-        current_test_bot = self.get_current_test_bot(symbol)
 
-        try:
-            if current_bot:
-                create_deal_controller = DealAbstract(
-                    bot=current_bot, db_table=BotTable
-                )
-                self.execute_strategies(
-                    current_bot,
-                    close_price,
-                    open_price,
-                    db_table=BotTable,
-                )
-            elif current_test_bot:
-                create_deal_controller = DealAbstract(
-                    bot=current_test_bot, db_table=PaperTradingTable
-                )
-                self.execute_strategies(
-                    current_test_bot,
-                    close_price,
-                    open_price,
-                    db_table=PaperTradingTable,
-                )
-            else:
-                return
-        except BinanceErrors as error:
-            if error.code in (-2010, -1013):
+        if symbol in self.active_bot_pairs or symbol in self.paper_trading_active_bots:
+
+            current_bot = self.get_current_bot(symbol)
+            current_test_bot = self.get_current_test_bot(symbol)
+
+            try:
                 if current_bot:
-                    bot = current_bot
+                    create_deal_controller = DealAbstract(
+                        bot=current_bot, db_table=BotTable
+                    )
+                    self.execute_strategies(
+                        current_bot,
+                        close_price,
+                        open_price,
+                        db_table=BotTable,
+                    )
                 elif current_test_bot:
-                    bot = current_test_bot
+                    create_deal_controller = DealAbstract(
+                        bot=current_test_bot, db_table=PaperTradingTable
+                    )
+                    self.execute_strategies(
+                        current_test_bot,
+                        close_price,
+                        open_price,
+                        db_table=PaperTradingTable,
+                    )
                 else:
                     return
+            except BinanceErrors as error:
+                if error.code in (-2010, -1013):
+                    if current_bot:
+                        bot = current_bot
+                    elif current_test_bot:
+                        bot = current_test_bot
+                    else:
+                        return
 
-                bot.logs.append(error.message)
-                bot.status = Status.error
-                create_deal_controller.controller.save(bot)
+                    bot.logs.append(error.message)
+                    bot.status = Status.error
+                    create_deal_controller.controller.save(bot)
 
         return
 
