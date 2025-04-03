@@ -23,7 +23,7 @@ bot_blueprint = APIRouter()
 bot_ta = TypeAdapter(BotModelResponse)
 
 
-@bot_blueprint.get("/bot", response_model=None, tags=["bots"])
+@bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
 def get(
     status: Status = Status.all,
     start_date: Optional[int] = None,

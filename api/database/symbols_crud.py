@@ -157,7 +157,6 @@ class SymbolsCrud:
         the entire API.
         """
 
-        data = SymbolPayload.model_validate(data)
         symbol_model = self.get_symbol(data.id)
         symbol_model.active = data.active
 
