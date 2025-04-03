@@ -19,7 +19,7 @@ export interface GetBotsParams {
 }
 
 export interface SingleBotResponse {
-  bot: Bot;
+  bot: Bot | null;
 }
 
 export interface CreateBotResponse {

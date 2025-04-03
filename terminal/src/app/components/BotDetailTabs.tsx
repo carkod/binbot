@@ -14,8 +14,6 @@ import BaseOrderTab from "./BaseOrderTab";
 import StopLossTab from "./StopLossTab";
 import TakeProfit from "./TakeProfitTab";
 import { setSpinner } from "../../features/layoutSlice";
-import { Bot } from "../../features/bots/botInitialState";
-import { CreateBotResponse } from "../../features/bots/bots";
 
 const BotDetailTabs: FC = () => {
   const { bot } = useAppSelector(selectBot);

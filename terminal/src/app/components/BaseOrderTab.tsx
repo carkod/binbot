@@ -138,7 +138,7 @@ const BaseOrderTab: FC<{
       });
     }
 
-    if (bot.deal?.current_price !== currentPrice) {
+    if (bot.deal?.current_price !== currentPrice && bot.deal?.closing_price === 0) {
       setCurrentPrice(bot.deal.current_price);
     }
 

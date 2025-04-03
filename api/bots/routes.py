@@ -170,10 +170,10 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
         return BotResponse(message=message, data=response_data)
     except BinbotErrors as error:
         deal_instance.controller.update_logs(bot=bot_model, log_message=error.message)
-        return StandardResponse(message=error.message, error=1)
+        return StandardResponse(data=bot, message=error.message, error=1)
     except BinanceErrors as error:
         deal_instance.controller.update_logs(bot=bot_model, log_message=error.message)
-        return StandardResponse(message=error.message, error=1)
+        return StandardResponse(data=bot, message=error.message, error=1)
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", response_model=BotResponse, tags=["bots"])
