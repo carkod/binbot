@@ -195,6 +195,9 @@ class BotTableCrud:
             deal.sqlmodel_update(data.deal.model_dump())
             initial_bot.deal = deal
 
+        self.session.add(initial_bot)
+        self.session.commit()
+
         # Insert update to DB only if it doesn't exist
         # Assign correct botId in the one side of the one-many relationship
         if hasattr(data, "orders"):
@@ -220,7 +223,6 @@ class BotTableCrud:
                     self.session.add(new_order_row)
 
         self.session.commit()
-        self.session.refresh(deal)
         self.session.refresh(initial_bot)
         resulted_bot = initial_bot
         return resulted_bot

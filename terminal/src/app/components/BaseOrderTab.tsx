@@ -35,7 +35,6 @@ const BaseOrderTab: FC<{
   botType?: BotType;
 }> = ({ botType = BotType.BOTS }) => {
   const { symbol, id } = useParams();
-  const { pathname } = useLocation();
   const dispatch: AppDispatch = useAppDispatch();
   const { data: symbols } = useGetSymbolsQuery();
   let { bot } = useAppSelector(selectBot);

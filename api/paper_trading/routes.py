@@ -138,10 +138,10 @@ def activate(id: str, session: Session = Depends(get_session)):
 
     except BinbotErrors as error:
         bot_instance.controller.update_logs(bot=bot_model, log_message=error.message)
-        return BotResponse(message=error.message, error=1)
+        return BotResponse(data=bot_model, message=error.message, error=1)
     except BinanceErrors as error:
         bot_instance.controller.update_logs(bot=bot_model, log_message=error.message)
-        return BotResponse(message=error.message, error=1)
+        return BotResponse(data=bot_model, message=error.message, error=1)
 
 
 @paper_trading_blueprint.delete(

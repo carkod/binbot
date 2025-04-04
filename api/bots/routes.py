@@ -136,7 +136,7 @@ def delete(
     """
     try:
         BotTableCrud(session=session).delete(bot_ids=id)
-        return StandardResponse(message="Sucessfully deleted bot.")
+        return BotResponse(message="Sucessfully deleted bot.")
     except ValidationError as error:
         return BotResponse(message="Failed to delete bot", data=error.json(), error=1)
 
@@ -170,10 +170,10 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
         return BotResponse(message=message, data=response_data)
     except BinbotErrors as error:
         deal_instance.controller.update_logs(bot=bot_model, log_message=error.message)
-        return StandardResponse(data=bot, message=error.message, error=1)
+        return BotResponse(data=bot_model, message=error.message, error=1)
     except BinanceErrors as error:
         deal_instance.controller.update_logs(bot=bot_model, log_message=error.message)
-        return StandardResponse(data=bot, message=error.message, error=1)
+        return BotResponse(data=bot_model, message=error.message, error=1)
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", response_model=BotResponse, tags=["bots"])
@@ -200,7 +200,7 @@ def deactivation(id: str, session: Session = Depends(get_session)):
             "data": response_data,
         }
     except BinbotErrors as error:
-        return BotResponse(message=error.message, error=1)
+        return BotResponse(data=response_data, message=error.message, error=1)
 
 
 @bot_blueprint.post("/bot/errors/{bot_id}", response_model=BotResponse, tags=["bots"])

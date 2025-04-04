@@ -51,7 +51,7 @@ const BotDetailTabs: FC = () => {
       const submitData = { ...bot, id: undefined };
       const { data } = await createBot(submitData);
       setEnableActivation(true);
-      navigate(`/bots/edit/${data.id}`);
+      navigate(`/bots/edit/${data.bot.id}`);
     }
   };
 

@@ -135,14 +135,8 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message);
         }
-        if (data) {
-          return {
-            bot: data,
-          };
-        } else {
-          return {
-            bot: null,
-          };
+        return {
+          bot: data,
         }
       },
     }),
