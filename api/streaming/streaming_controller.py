@@ -20,6 +20,7 @@ from streaming.models import BollinguerSpread, SingleCandle
 from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.round_numbers import round_numbers
+from typing import Sequence
 
 
 class BaseStreaming:
@@ -29,8 +30,8 @@ class BaseStreaming:
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_controller = SymbolsCrud()
         self.cs = Candlestick()
-        self.active_bot_pairs: list = []
-        self.paper_trading_active_bots: list = []
+        self.active_bot_pairs: Sequence = []
+        self.paper_trading_active_bots: Sequence = []
         self.load_data_on_start()
 
     def load_data_on_start(self):
@@ -42,7 +43,9 @@ class BaseStreaming:
         )
         # self.autotrade_settings: dict = self.get_autotrade_settings()
         self.active_bot_pairs = self.bot_controller.get_active_pairs()
-        self.paper_trading_active_bots = self.paper_trading_controller.get_active_pairs()
+        self.paper_trading_active_bots = (
+            self.paper_trading_controller.get_active_pairs()
+        )
         pass
 
     def get_current_bot(self, symbol: str) -> BotModel:
@@ -140,7 +143,6 @@ class StreamingController(BaseStreaming):
         logging.warning(f"Processing kline stream for {symbol}")
 
         if symbol in self.active_bot_pairs or symbol in self.paper_trading_active_bots:
-
             current_bot = self.get_current_bot(symbol)
             current_test_bot = self.get_current_test_bot(symbol)
 
@@ -272,6 +274,10 @@ class BbspreadsUpdater(BaseStreaming):
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
+
+        # Avoid duplicate updates
+        original_bot = bot
+
         # not enough data
         if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0 or bb_spreads.bb_mid == 0:
             return
@@ -301,14 +307,6 @@ class BbspreadsUpdater(BaseStreaming):
             top_spread = 1.5
             bottom_spread = 1
 
-        # check we are not duplicating the update
-        if (
-            bot.trailling_profit == top_spread
-            and bot.stop_loss == whole_spread
-            and bot.trailling_deviation == bottom_spread
-        ):
-            return
-
         bot.trailling = True
         # reset values to avoid too much risk when there's profit
         bot_profit = self.compute_single_bot_profit(bot, current_price)
@@ -318,12 +316,21 @@ class BbspreadsUpdater(BaseStreaming):
             bot.trailling_profit = top_spread
             # too much risk, reduce stop loss
             bot.trailling_deviation = bottom_spread
+            bot.stop_loss = bottom_spread
 
             # Already decent profit, do not increase risk
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
                 bot.trailling_deviation = 2.6
                 bot.stop_loss = 3.2
+
+             # check we are not duplicating the update
+            if (
+                bot.trailling_profit == original_bot.trailling_profit
+                and bot.stop_loss == original_bot.stop_loss
+                and bot.trailling_deviation == original_bot.trailling_deviation
+            ):
+                return
 
             self.bot_controller.save(bot)
             spot_deal = SpotLongDeal(bot, db_table=db_table)
@@ -347,6 +354,14 @@ class BbspreadsUpdater(BaseStreaming):
             elif bot.trailling_deviation > bottom_spread:
                 bot.trailling_profit = bottom_spread
                 bot.trailling_deviation = top_spread
+
+            # check we are not duplicating the update
+            if (
+                bot.trailling_profit == original_bot.trailling_profit
+                and bot.stop_loss == original_bot.stop_loss
+                and bot.trailling_deviation == original_bot.trailling_deviation
+            ):
+                return
 
             margin_deal = MarginDeal(bot, db_table=db_table)
             # reactivate includes saving
