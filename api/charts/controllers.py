@@ -152,7 +152,7 @@ class MarketDominationController(Database, BinbotApi):
             self.kafka_db.create_collection(
                 "market_domination",
                 # 1 week worth of data
-                expireAfterSeconds=604800,
+                expireAfterSeconds=864000,
                 check_exists=True,
                 timeseries={
                     "timeField": "timestamp",
@@ -224,7 +224,7 @@ class MarketDominationController(Database, BinbotApi):
         except Exception as e:
             print(e)
 
-        response = self.collection.insert_many(coin_data)
+        response = self.collection.insert_many(coin_data, expireAfterSeconds=86400)
         return response
 
     def get_market_domination(self, size=7):

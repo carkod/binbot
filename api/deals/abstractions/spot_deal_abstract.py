@@ -45,7 +45,7 @@ class SpotDealAbstract(DealAbstract):
         Used by streaming_controller
         """
         for order in self.active_bot.orders:
-            if order.status != "FILLED":
+            if order.status == "NEW":
                 try:
                     self.delete_order(
                         symbol=self.active_bot.pair, order_id=order.order_id
@@ -280,10 +280,12 @@ class SpotDealAbstract(DealAbstract):
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
 
-        self.active_bot.status = Status.completed
-        self.active_bot.logs.append(
-            f"Completed take profit after failing to break trailling {self.active_bot.pair}"
-        )
+        if res["status"] != "FILLED" and res["status"] != "NEW":
+            self.active_bot.status = Status.completed
+            self.active_bot.logs.append(
+                f"Completed take profit after failing to break trailling {self.active_bot.pair}"
+            )
+
         self.controller.save(self.active_bot)
         return self.active_bot
 
