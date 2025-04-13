@@ -51,7 +51,7 @@ const ChartContainer: FC<{
 
     if (currentChartPrice !== 0) {
       const newOrderLines = updateOrderLines(bot, currentChartPrice);
-      setCurrentOrderLines(newOrderLines);
+      setCurrentOrderLines((draft) => draft = newOrderLines);
       setBotProfit(computeSingleBotProfit(bot, currentChartPrice));
       if (bot.deal?.current_price !== currentChartPrice) {
         dispatch(setCurrentPrice(currentChartPrice));
@@ -60,7 +60,6 @@ const ChartContainer: FC<{
   }, [
     currentChartPrice,
     bot,
-    setCurrentOrderLines,
     setBotProfit,
     botProfit,
     dispatch,

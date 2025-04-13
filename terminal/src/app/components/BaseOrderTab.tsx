@@ -1,6 +1,5 @@
 import React, { type FC, useContext, useEffect, useState } from "react";
 import {
-  Badge,
   Col,
   Container,
   Form,
@@ -18,7 +17,7 @@ import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
-import { useLocation, useParams } from "react-router";
+import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
 import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
 import {

@@ -10,10 +10,14 @@ export default function spotTrading(
 ): OrderLine[] {
   const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];
-  const price = bot.deal?.opening_price > 0 || currentPrice > 0 || bot.deal.current_price;
+  const price =
+    bot.deal?.opening_price > 0 || currentPrice > 0 || bot.deal.current_price;
 
   if (bot.base_order_size > 0 && currentPrice) {
-    const qtyText = bot.deal ? String(bot.deal.opening_qty) : "";
+    const qtyText =
+      bot.deal.opening_qty > 0
+        ? String(bot.deal.opening_qty)
+        : String(bot.base_order_size);
     if (bot.deal.closing_price > 0) {
       // If there is closing_price, it means it's completed
       totalOrderLines.push({
@@ -53,8 +57,8 @@ export default function spotTrading(
 
     if (
       bot.trailling &&
-      bot.deal.trailling_stop_loss_price > 0 &&
-      bot.deal.trailling_profit_price > 0
+      bot.trailling_deviation > 0 &&
+      bot.trailling_profit > 0
     ) {
       // Bot is sold and completed
       if (bot.status === BotStatus.COMPLETED && bot.deal.closing_price > 0) {
@@ -77,7 +81,6 @@ export default function spotTrading(
         });
       } else if (
         bot.deal.opening_price > 0 &&
-        bot.deal.take_profit_price > 0 &&
         bot.status === BotStatus.ACTIVE
       ) {
         totalOrderLines.push({
@@ -135,20 +138,23 @@ export default function spotTrading(
           color: dealColors.take_profit,
         });
       } else {
-        totalOrderLines.push({
-          id: "take_profit",
-          text: `Take profit ${bot.take_profit}%`,
-          tooltip: [bot.status, " Sell Order "],
-          quantity: `${qtyText} ${quoteAsset}`,
-          price: currentPrice * (1 + bot.take_profit / 100), // buy_profit * take_profit%
-          color: dealColors.take_profit,
-        });
+        if (!bot.trailling) {
+          totalOrderLines.push({
+            id: "take_profit",
+            text: `Take profit ${bot.take_profit}%`,
+            tooltip: [bot.status, " Sell Order "],
+            quantity: `${qtyText} ${quoteAsset}`,
+            price: currentPrice * (1 + bot.take_profit / 100), // buy_profit * take_profit%
+            color: dealColors.take_profit,
+          });
+        }
       }
     }
 
     // Stop loss remains the same in all situations
     if (bot.stop_loss > 0) {
-      const stop_loss = bot.deal.stop_loss_price || currentPrice * (1 - bot.stop_loss / 100);
+      const stop_loss =
+        bot.deal.stop_loss_price || currentPrice * (1 - bot.stop_loss / 100);
       totalOrderLines.push({
         id: "stop_loss",
         text: `Stop Loss ${bot.stop_loss}%`,
