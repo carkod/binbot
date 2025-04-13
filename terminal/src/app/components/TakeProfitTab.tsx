@@ -80,6 +80,20 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
     return () => unsubscribe();
   }, [watch, dispatch, bot, reset]);
 
+  const handleBlur = (e) => {
+    if (e.target.value) {
+      if (botType === BotType.PAPER_TRADING) {
+        dispatch(
+          setTestBotField({ name: e.target.name, value: watch(e.target.name) })
+        );
+      } else {
+        dispatch(
+          setField({ name: e.target.name, value: watch(e.target.name) })
+        );
+      }
+    }
+  };
+
   return (
     <Tab.Pane eventKey={TabsKeys.TAKEPROFIT}>
       <Container>
@@ -93,6 +107,7 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
                 <Form.Control
                   type="number"
                   name="trailling_profit"
+                  onBlur={(e) => handleBlur(e)}
                   {...register("trailling_profit", {
                     required:
                       "Trailling profit in percentage is required when trailling is activated",
@@ -120,6 +135,7 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
                   type="number"
                   name="take_profit"
                   id="take_profit"
+                  onBlur={(e) => handleBlur(e)}
                   {...register("take_profit", {
                     valueAsNumber: true,
                     min: {
@@ -226,6 +242,7 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
                 <Form.Control
                   type="number"
                   name="trailling_deviation"
+                  onBlur={(e) => handleBlur(e)}
                   {...register("trailling_deviation", {
                     required:
                       "Trailling deviation in percentage is required when trailling is activated",

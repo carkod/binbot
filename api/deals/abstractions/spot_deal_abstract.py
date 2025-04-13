@@ -45,7 +45,7 @@ class SpotDealAbstract(DealAbstract):
         Used by streaming_controller
         """
         for order in self.active_bot.orders:
-            if order.status != "FILLED":
+            if order.status == "NEW":
                 try:
                     self.delete_order(
                         symbol=self.active_bot.pair, order_id=order.order_id
@@ -280,10 +280,12 @@ class SpotDealAbstract(DealAbstract):
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
 
-        self.active_bot.status = Status.completed
-        self.active_bot.logs.append(
-            f"Completed take profit after failing to break trailling {self.active_bot.pair}"
-        )
+        if res["status"] != "FILLED" and res["status"] != "NEW":
+            self.active_bot.status = Status.completed
+            self.active_bot.logs.append(
+                f"Completed take profit after failing to break trailling {self.active_bot.pair}"
+            )
+
         self.controller.save(self.active_bot)
         return self.active_bot
 
@@ -356,7 +358,7 @@ class SpotDealAbstract(DealAbstract):
         not out of sync with the bot parameters
         """
 
-        if self.active_bot.deal.stop_loss_price == 0:
+        if self.active_bot.stop_loss > 0:
             buy_price = self.active_bot.deal.opening_price
             stop_loss_price = buy_price - (
                 buy_price * (self.active_bot.stop_loss / 100)
@@ -365,14 +367,17 @@ class SpotDealAbstract(DealAbstract):
                 stop_loss_price, self.price_precision
             )
 
-        if self.active_bot.trailling:
-            if self.active_bot.deal.trailling_profit_price == 0:
-                trailling_profit_price = float(self.active_bot.deal.opening_price) * (
-                    1 + (float(self.active_bot.take_profit) / 100)
-                )
-                self.active_bot.deal.trailling_profit_price = round_numbers(
-                    trailling_profit_price, self.price_precision
-                )
+        if (
+            self.active_bot.trailling
+            and self.active_bot.trailling_deviation > 0
+            and self.active_bot.trailling_profit > 0
+        ):
+            trailling_profit_price = float(self.active_bot.deal.opening_price) * (
+                1 + (float(self.active_bot.take_profit) / 100)
+            )
+            self.active_bot.deal.trailling_profit_price = round_numbers(
+                trailling_profit_price, self.price_precision
+            )
 
             if self.active_bot.deal.trailling_stop_loss_price != 0:
                 # trailling_stop_loss_price should be updated during streaming

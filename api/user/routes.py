@@ -43,7 +43,7 @@ async def get_one(email: str, session: Session = Depends(get_session)):
         return StandardResponse(message=str(e), error=1)
 
 
-@user_blueprint.post("/user/login", tags=["users"], response_model=LoginResponse)
+@user_blueprint.post("/user/login", tags=["users"])
 def login(form_data: FormData, session: Session = Depends(get_session)):
     """
     Get an access_token to keep the user in session
@@ -59,7 +59,7 @@ def login(form_data: FormData, session: Session = Depends(get_session)):
             },
         )
     except BinbotErrors as e:
-        return StandardResponse(message=str(e), error=1)
+        return StandardResponse(message=e.message, error=1)
 
 
 @user_blueprint.post(

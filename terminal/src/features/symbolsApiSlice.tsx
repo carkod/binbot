@@ -37,7 +37,7 @@ export const symbolsApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
     getSymbols: build.query<ISymbol[], void>({
       query: () => ({
-        url: `${import.meta.env.VITE_SYMBOL}`,
+        url: `${import.meta.env.VITE_SYMBOLS}`,
         providesTags: ["symbols"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {

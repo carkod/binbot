@@ -188,6 +188,7 @@ class PaperTradingTableCrud:
         self.session.refresh(deal)
         self.session.refresh(initial_bot)
         resulted_bot = initial_bot
+        self.session.close()
         return resulted_bot
 
     def delete(self, bot_ids: List[str]) -> bool:

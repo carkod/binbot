@@ -34,7 +34,7 @@ export const LoginForm: FC<{}> = () => {
     const formData = new FormData();
     formData.append("username", values.email);
     formData.append("password", values.password);
-    login(formData);
+    await login(formData);
   };
 
   useEffect(() => {

@@ -23,7 +23,7 @@
       "cwd": "${workspaceFolder}/api",
       "args": ["main:app", "--port", "8008"],
       "justMyCode": true,
-      "console": "integratedTerminal",
+      "console": "internalConsole",
       "envFile": "${workspaceFolder}/.env"
     },
     {
@@ -31,7 +31,7 @@
       "type": "debugpy",
       "request": "launch",
       "program": "binquant/producer.py",
-      "console": "integratedTerminal",
+      "console": "internalConsole",
       "justMyCode": true,
       "envFile": "${workspaceFolder}/.env"
     },
@@ -40,7 +40,7 @@
       "type": "debugpy",
       "request": "launch",
       "program": "binquant/consumer.py",
-      "console": "integratedTerminal",
+      "console": "internalConsole",
       "envFile": "${workspaceFolder}/.env",
       "justMyCode": true
     },
@@ -50,14 +50,14 @@
       "request": "launch",
       "program": "${workspaceFolder}/api/market_updates.py",
       "console": "integratedTerminal",
-      "justMyCode": false
+      "justMyCode": true
     },
     {
       "name": "Python: order updates",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/api/order_updates.py",
-      "console": "integratedTerminal",
+      "console": "internalConsole",
       "justMyCode": false
     },
     {
@@ -65,7 +65,7 @@
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/api/cronjobs.py",
-      "console": "integratedTerminal",
+      "console": "internalConsole",
       "justMyCode": true
     },
     {

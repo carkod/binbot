@@ -72,7 +72,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         };
       },
     }),
-    createBot: build.mutation<Bot, Bot>({
+    createBot: build.mutation<SingleBotResponse, Bot>({
       query: (body) => ({
         url: import.meta.env.VITE_GET_BOTS,
         method: "POST",
@@ -85,7 +85,9 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message);
         }
-        return data;
+        return {
+          bot: data,
+        };
       },
     }),
     editBot: build.mutation<CreateBotResponse, EditBotParams>({
@@ -133,13 +135,12 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message);
         }
-        console.log("activateBot", data);
         return {
           bot: data,
-        };
+        }
       },
     }),
-    deactivateBot: build.mutation<DefaultBotsResponse, string>({
+    deactivateBot: build.mutation<SingleBotResponse, string>({
       query: (id: string) => ({
         url: `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}`,
         method: "DELETE",
@@ -151,7 +152,14 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message);
         }
-        return data;
+        if (data) {
+          return {
+            bot: data,
+          };
+        }
+        return {
+          bot: null,
+        };
       },
     }),
   }),

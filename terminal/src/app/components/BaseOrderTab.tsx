@@ -35,7 +35,6 @@ const BaseOrderTab: FC<{
   botType?: BotType;
 }> = ({ botType = BotType.BOTS }) => {
   const { symbol, id } = useParams();
-  const { pathname } = useLocation();
   const dispatch: AppDispatch = useAppDispatch();
   const { data: symbols } = useGetSymbolsQuery();
   let { bot } = useAppSelector(selectBot);
@@ -138,7 +137,7 @@ const BaseOrderTab: FC<{
       });
     }
 
-    if (bot.deal?.current_price !== currentPrice) {
+    if (bot.deal?.current_price !== currentPrice && bot.deal?.closing_price === 0) {
       setCurrentPrice(bot.deal.current_price);
     }
 

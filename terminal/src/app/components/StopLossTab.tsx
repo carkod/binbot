@@ -92,6 +92,20 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
                 type="number"
                 name="stop_loss"
                 isInvalid={!!errors?.stop_loss}
+                onBlur={() => {
+                  if (botType === BotType.PAPER_TRADING) {
+                    dispatch(
+                      setTestBotField({
+                        name: "stop_loss",
+                        value: watch("stop_loss"),
+                      })
+                    );
+                  } else {
+                    dispatch(
+                      setField({ name: "stop_loss", value: watch("stop_loss") })
+                    );
+                  }
+                }}
                 {...register("stop_loss", {
                   required: "Stop loss is required",
                   valueAsNumber: true,
