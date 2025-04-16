@@ -78,8 +78,8 @@ services:
       test:
         [
           "CMD-SHELL",
-          "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines_store_topic --create --if-not-exists",
-          "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines_store_topic --describe",
+          "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines-store-topic --create --if-not-exists",
+          "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines-store-topic --describe",
         ]
       start_period: 10s
       timeout: 10s

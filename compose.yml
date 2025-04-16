@@ -53,7 +53,7 @@ services:
       start_period: 40s
 
   kafka:
-    image: bitnami/kafka:3.9
+    image: bitnami/kafka:4.0.0
     container_name: binquant_kafka
     networks:
       - kafka_network
@@ -79,7 +79,11 @@ services:
       test:
         [
           "CMD-SHELL",
-          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic klines_store_topic --if-not-exists --partitions 1 --replication-factor 1",
+          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic klines-store-topic --if-not-exists",
+          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic technical-indicators --if-not-exists",
+          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic signals --if-not-exists",
+          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic restart-streaming --if-not-exists",
+
         ]
       start_period: 10s
       timeout: 10s
