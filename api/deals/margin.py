@@ -9,6 +9,7 @@ from tools.round_numbers import (
     round_timestamp,
 )
 from deals.abstractions.margin_deal_abstract import MarginDealAbstract
+from base_producer import BaseProducer
 
 
 class MarginDeal(MarginDealAbstract):
@@ -29,6 +30,8 @@ class MarginDeal(MarginDealAbstract):
         super().__init__(bot, db_table)
         self.active_bot = bot
         self.db_table = db_table
+        self.base_producer = BaseProducer()
+        self.producer = self.base_producer.start_producer()
 
     def check_failed_switch_long_bot(self) -> BotModel:
         """
@@ -206,6 +209,9 @@ class MarginDeal(MarginDealAbstract):
             self.active_bot.logs.append("No balance found. Skipping panic sell")
 
         self.controller.save(self.active_bot)
+        self.base_producer.update_required(
+            self.producer, "EXECUTE_MARGIN_PANIC_CLOSE"
+        )
         return self.active_bot
 
     def open_deal(self) -> BotModel:
@@ -246,4 +252,7 @@ class MarginDeal(MarginDealAbstract):
             # Activation required
             self.active_bot = self.short_open_deal_trailling_parameters()
 
+        self.base_producer.update_required(
+            self.producer, "EXECUTE_MARGIN_OPEN_DEAL"
+        )
         return self.active_bot
