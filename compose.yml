@@ -38,7 +38,15 @@ services:
     volumes:
       - ./mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "127.0.0.1/test", "--eval", "'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'"]
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "127.0.0.1/test",
+          "--eval",
+          "'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'",
+        ]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -68,7 +76,11 @@ services:
       - BITNAMI_DEBUG=no
       # - KAFKA_CFG_OFFSETS_TOPIC_SEGMENT_BYTES=104857600
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines_store_topic --create --if-not-exists", "kafka-topics.sh --bootstrap-server kafka:9092 --topic klines_store_topic --describe"]
+      test:
+        [
+          "CMD-SHELL",
+          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic klines_store_topic --if-not-exists --partitions 1 --replication-factor 1",
+        ]
       start_period: 10s
       timeout: 10s
       retries: 5
@@ -141,7 +153,6 @@ services:
   #     - api
   #     - db
 
-
   # crobjobs:
   #   build:
   #     context: .
@@ -173,4 +184,3 @@ services:
 volumes:
   mongo_data:
   pg_data:
-
