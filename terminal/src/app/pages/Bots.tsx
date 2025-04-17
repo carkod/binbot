@@ -115,7 +115,7 @@ export const BotsPage: FC<{}> = () => {
     if (isFetching || isDeactivating || isDeleting) {
       setSpinner(true);
     }
-    if (data?.bots) {
+    if (data?.bots || isDeleted || isDeactivated) {
       setSpinner(false);
     }
   }, [
