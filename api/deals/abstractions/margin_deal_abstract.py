@@ -521,10 +521,14 @@ class MarginDealAbstract(DealAbstract):
         # Create new bot
         created_bot = self.controller.create(new_bot)
 
+        url = self.bb_activate_bot_url
+        if isinstance(self.controller, PaperTradingTableCrud):
+            url = self.bb_paper_trading_activate_url
+
         # to avoid circular imports make network request
         # This class is already imported for switch_to_margin_short
         bot_id = self.request(
-            url=self.bb_activate_bot_url, payload={"id": str(created_bot.id)}
+            url=url, payload={"id": str(created_bot.id)}
         )
         self.controller.update_logs(
             f"Switched margin_short to long strategy. New bot id: {bot_id}",

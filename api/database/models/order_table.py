@@ -46,11 +46,11 @@ class ExchangeOrderTable(OrderBase, table=True):
 
     # Relationships
     bot_id: Optional[UUID] = Field(
-        default=None, foreign_key="bot.id", ondelete="CASCADE"
+        default=None, foreign_key="bot.id", ondelete="CASCADE", index=True
     )
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
     paper_trading_id: Optional[UUID] = Field(
-        default=None, foreign_key="paper_trading.id", ondelete="CASCADE"
+        default=None, foreign_key="paper_trading.id", ondelete="CASCADE", index=True
     )
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")
 

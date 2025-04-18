@@ -209,9 +209,7 @@ class MarginDeal(MarginDealAbstract):
             self.active_bot.logs.append("No balance found. Skipping panic sell")
 
         self.controller.save(self.active_bot)
-        self.base_producer.update_required(
-            self.producer, "EXECUTE_MARGIN_PANIC_CLOSE"
-        )
+        self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_PANIC_CLOSE")
         return self.active_bot
 
     def open_deal(self) -> BotModel:
@@ -252,7 +250,5 @@ class MarginDeal(MarginDealAbstract):
             # Activation required
             self.active_bot = self.short_open_deal_trailling_parameters()
 
-        self.base_producer.update_required(
-            self.producer, "EXECUTE_MARGIN_OPEN_DEAL"
-        )
+        self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_OPEN_DEAL")
         return self.active_bot

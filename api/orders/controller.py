@@ -7,6 +7,7 @@ from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation, zero_remainder, round_timestamp
 from database.symbols_crud import SymbolsCrud
 
+
 class OrderController(Account):
     """
     Always GTC and limit orders
