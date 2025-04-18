@@ -60,4 +60,3 @@ url = "https://pypi.org/simple"
 [project.scripts]
 format = "ruff format api/"
 lint = "ruff check api/ && mypy check api/"
-

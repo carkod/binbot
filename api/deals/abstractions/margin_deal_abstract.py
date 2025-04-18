@@ -147,7 +147,7 @@ class MarginDealAbstract(DealAbstract):
             self.controller.save(self.active_bot)
         else:
             order_res = self.simulate_margin_order(
-                pair=self.active_bot, side=OrderSide.sell
+                pair=self.active_bot.pair, side=OrderSide.sell
             )
 
         price = float(order_res["price"])
@@ -171,9 +171,6 @@ class MarginDealAbstract(DealAbstract):
 
         self.active_bot.deal.total_commissions = self.calculate_total_commissions(
             order_res["fills"]
-        )
-        self.controller.update_logs(
-            "total_commissions calculated and set", self.active_bot
         )
 
         self.active_bot.orders.append(order_data)

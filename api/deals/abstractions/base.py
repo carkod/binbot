@@ -275,6 +275,10 @@ class BaseDeal(OrderController):
             self.disable_isolated_margin_account(pair)
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
+        # Restart streaming
+        self.base_producer.update_required(
+            self.base_producer, "EXECUTE_MARGIN_LIQUIDATION"
+        )
         return buy_margin_response
 
     def spot_liquidation(self, pair: str):

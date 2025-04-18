@@ -75,6 +75,20 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
     return () => unsubscribe();
   }, [watch, dispatch, bot, reset]);
 
+  const handleBlur = (e) => {
+      if (e.target.value) {
+        if (botType === BotType.PAPER_TRADING) {
+          dispatch(
+            setTestBotField({ name: e.target.name, value: watch(e.target.name) })
+          );
+        } else {
+          dispatch(
+            setField({ name: e.target.name, value: watch(e.target.name) })
+          );
+        }
+      }
+    };
+
   return (
     <Tab.Pane
       id={TabsKeys.STOPLOSS}
@@ -92,20 +106,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
                 type="number"
                 name="stop_loss"
                 isInvalid={!!errors?.stop_loss}
-                onBlur={() => {
-                  if (botType === BotType.PAPER_TRADING) {
-                    dispatch(
-                      setTestBotField({
-                        name: "stop_loss",
-                        value: watch("stop_loss"),
-                      })
-                    );
-                  } else {
-                    dispatch(
-                      setField({ name: "stop_loss", value: watch("stop_loss") })
-                    );
-                  }
-                }}
+                onBlur={(e) => handleBlur(e)}
                 {...register("stop_loss", {
                   required: "Stop loss is required",
                   valueAsNumber: true,

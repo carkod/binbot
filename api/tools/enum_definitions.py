@@ -100,11 +100,10 @@ class TrendEnum(str, Enum):
 
 
 class KafkaTopics(str, Enum):
-    klines_store_topic = "klines_store_topic"
-    processed_klines_topic = "processed_klines_topic"
-    technical_indicators = "technical_indicators"
+    klines_store_topic = "klines-store-topic"
+    technical_indicators = "technical-indicators"
     signals = "signals"
-    restart_streaming = "restart_streaming"
+    restart_streaming = "restart-streaming"
 
 
 class DealType(str, Enum):

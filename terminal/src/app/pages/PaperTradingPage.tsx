@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type FC } from "react";
+import React, { useContext, useEffect, useState, type FC } from "react";
 import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import { useImmer } from "use-immer";
@@ -8,7 +8,7 @@ import {
   useDeleteTestBotMutation,
   useGetTestBotsQuery,
 } from "../../features/bots/paperTradingApiSlice";
-import { setSpinner } from "../../features/layoutSlice";
+import { SpinnerContext } from "../Layout";
 import { weekAgo } from "../../utils/time";
 import BotCard from "../components/BotCard";
 import BotsActions, { BulkAction } from "../components/BotsActions";
@@ -22,8 +22,13 @@ export const PaperTradingPage: FC = () => {
   const navigate = useNavigate();
   const currentTs = new Date().getTime();
   const oneWeekAgo = weekAgo();
-  const [removeBots] = useDeleteTestBotMutation();
-  const [deactivateBot] = useDeactivateTestBotMutation();
+  const { spinner, setSpinner } = useContext(SpinnerContext);
+  const [removeBots, { isLoading: isDeleting, isSuccess: isDeleted }] =
+    useDeleteTestBotMutation();
+  const [
+    deactivateBot,
+    { isLoading: isDeactivating, isSuccess: isDeactivated },
+  ] = useDeactivateTestBotMutation();
 
   // Component states
   const [selectedCards, selectCards] = useImmer([]);
@@ -65,8 +70,8 @@ export const PaperTradingPage: FC = () => {
     switch (bulkActions) {
       case BulkAction.DELETE:
         removeBots(selectedCards);
-        navigate("/paper-trading");
         selectCards([]);
+        dispatch(() => refetch());
         break;
       case BulkAction.SELECT_ALL:
         if (data?.bots?.ids.length > 0) {
@@ -109,24 +114,18 @@ export const PaperTradingPage: FC = () => {
       setDateFilterError("End date cannot be less than start date");
     } else {
       setDateFilterError(null);
-      dispatch(
-        papertradingApiSlice.endpoints.getTestBots.initiate({
-          status: filterStatus,
-          startDate: startDate,
-          endDate: ts,
-        })
-      );
+      dispatch(() => refetch());
     }
   };
 
   useEffect(() => {
-    if (isFetching) {
-      dispatch(setSpinner(true));
+    if (isFetching || isDeactivating || isDeleting) {
+      setSpinner(true);
     }
-    if (data?.bots) {
-      dispatch(setSpinner(false));
+    if (data?.bots || isDeactivated || isDeleted) {
+      setSpinner(false);
     }
-  }, [data, dispatch, isFetching]);
+  }, [data?.bots?.ids, dispatch, isFetching, isDeactivating, isDeleting, isDeactivated, isDeleted]);
 
   return (
     <Container fluid>

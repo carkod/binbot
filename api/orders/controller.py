@@ -4,9 +4,8 @@ from account.account import Account
 from tools.exceptions import DeleteOrderError
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_message
-from tools.round_numbers import supress_notation, zero_remainder
+from tools.round_numbers import supress_notation, zero_remainder, round_timestamp
 from database.symbols_crud import SymbolsCrud
-
 
 class OrderController(Account):
     """
@@ -32,6 +31,12 @@ class OrderController(Account):
     def generate_short_id(self):
         id = uuid4().int
         return int(str(id)[:8])
+
+    def get_ts(self):
+        """
+        Get timestamp in milliseconds
+        """
+        return round_timestamp(time() * 1000)
 
     def calculate_price_precision(self, symbol: str) -> int:
         """
@@ -60,7 +65,7 @@ class OrderController(Account):
             "orderId": self.generate_short_id(),
             "orderListId": -1,
             "clientOrderId": self.generate_id().hex,
-            "transactTime": time() * 1000,
+            "transactTime": self.get_ts(),
             "price": price,
             "origQty": qty,
             "executedQty": qty,
@@ -80,7 +85,7 @@ class OrderController(Account):
             "orderId": self.generate_short_id(),
             "orderListId": -1,
             "clientOrderId": self.generate_id().hex,
-            "transactTime": time() * 1000,
+            "transactTime": self.get_ts(),
             "price": price,
             "origQty": qty,
             "executedQty": qty,
@@ -109,7 +114,7 @@ class OrderController(Account):
             "orderId": self.generate_short_id(),
             "orderListId": -1,
             "clientOrderId": self.generate_id().hex,
-            "transactTime": time() * 1000,
+            "transactTime": self.get_ts(),
             "price": price,
             "origQty": qty,
             "executedQty": qty,

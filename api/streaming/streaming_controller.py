@@ -132,7 +132,7 @@ class StreamingController(BaseStreaming):
         pass
 
     def process_klines(self, message: str) -> None:
-        """;m k/
+        """
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
