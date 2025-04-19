@@ -274,7 +274,6 @@ class BbspreadsUpdater(BaseStreaming):
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
-
         # Avoid duplicate updates
         original_bot = bot
 
@@ -324,7 +323,7 @@ class BbspreadsUpdater(BaseStreaming):
                 bot.trailling_deviation = 2.6
                 bot.stop_loss = 3.2
 
-             # check we are not duplicating the update
+            # check we are not duplicating the update
             if (
                 bot.trailling_profit == original_bot.trailling_profit
                 and bot.stop_loss == original_bot.stop_loss

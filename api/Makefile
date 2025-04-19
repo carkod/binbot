@@ -1,4 +1,4 @@
-.PHONY: up down test migrate format
+.PHONY: up down test migrate format delete-revision
 
 ifneq (,$(wildcard ./.env))
     include .env
@@ -6,6 +6,7 @@ ifneq (,$(wildcard ./.env))
 endif
 
 VENV=./.venv
+DATABASE_URL=postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOSTNAME):$(POSTGRES_PORT)/$(POSTGRES_DB)
 
 cmd-exists-%:
 	@hash $(*) > /dev/null 2>&1 || \
@@ -28,3 +29,11 @@ format:
 	ruff format .
 	ruff check .  --fix
 	mypy .
+
+delete-revision:  ## Delete a specific Alembic revision from the database
+	@if [ -z "$(revision)" ]; then \
+		echo "ERROR: You must provide a revision. Usage: make delete-revision revision=<revision>"; \
+		exit 1; \
+	fi
+	@echo "Deleting revision $(revision) from alembic_version table..."
+	docker exec -ti binbot_api_db sh -c "PGPASSWORD=$(POSTGRES_PASSWORD) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c \"DELETE FROM alembic_version WHERE version_num = '$(revision)';\""

@@ -224,7 +224,7 @@ class MarketDominationController(Database, BinbotApi):
         except Exception as e:
             print(e)
 
-        response = self.collection.insert_many(coin_data) 
+        response = self.collection.insert_many(coin_data)
         return response
 
     def get_market_domination(self, size=7):

@@ -88,7 +88,9 @@ alembic revision --autogenerate -m "alter commisions column to support Big integ
 > If you don't want to populate, remove the `--autogenerate`
 > so you can write it yourself or ask AI to write it for you
 
-Write the commands in the newly generated file and rerun FastApi
+Write the commands in the newly generated file and rerun FastAPI.
+
+You can now also use make migrate <message>.
 
 ### To remove a previously created migration
 
@@ -101,16 +103,3 @@ where 113eb73ebba8 is the supposed last "good" migration that you want to revert
 ## Detailed documentation
 
 https://carkod.github.io/binbot/
-
-
-## Recreate Kafka cluster
-
-1. Go into the container and empty data
-```
-docker exec binquant_kafka rm -rf /opt/bitnami/kafka/data/*
-```
-
-2. Restart container. This will also recreate the topics
-```
-docker start binquant_kafka
-```

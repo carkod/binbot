@@ -72,7 +72,7 @@ class BotTable(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
     )
     deal_id: Optional[UUID] = Field(
-        default=None, foreign_key="deal.id", ondelete="CASCADE"
+        default=None, foreign_key="deal.id", ondelete="CASCADE", index=True
     )
     # lazy option will allow objects to be nested when transformed for json return
     deal: DealTable = Relationship(
@@ -164,15 +164,15 @@ class PaperTradingTable(SQLModel, table=True):
     # Table relationships filled up internally
     orders: list[ExchangeOrderTable] = Relationship(
         back_populates="paper_trading",
-        sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
+        sa_relationship_kwargs={"lazy": "selectin", "single_parent": True},
     )
     deal_id: Optional[UUID] = Field(
-        default=None, foreign_key="deal.id", ondelete="CASCADE"
+        default=None, foreign_key="deal.id", ondelete="CASCADE", index=True
     )
 
     # lazy option will allow objects to be nested when transformed for json return
     deal: DealTable = Relationship(
-        sa_relationship_kwargs={"lazy": "joined", "single_parent": True}
+        sa_relationship_kwargs={"lazy": "selectin", "single_parent": True}
     )
 
     model_config = {

@@ -37,6 +37,7 @@ class BaseProducer:
         producer.send(
             KafkaTopics.restart_streaming.value, value=json.dumps(value), partition=0
         )
+        producer.flush()
 
         return
 
