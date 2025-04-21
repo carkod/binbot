@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 class OrderBase(SQLModel):
     order_type: OrderType
     time_in_force: str
-    timestamp: int = Field(sa_column=Column(BigInteger()))
     order_id: int = Field(nullable=False, description="For fake orders use -1")
     order_side: str
     pair: str
@@ -44,15 +43,13 @@ class ExchangeOrderTable(OrderBase, table=True):
         primary_key=True, default_factory=uuid4, nullable=False, unique=True, index=True
     )
 
+    timestamp: int = Field(sa_column=Column(BigInteger()))
+
     # Relationships
     bot_id: Optional[UUID] = Field(
         default=None, foreign_key="bot.id", ondelete="CASCADE", index=True
     )
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
-    paper_trading_id: Optional[UUID] = Field(
-        default=None, foreign_key="paper_trading.id", ondelete="CASCADE", index=True
-    )
-    paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")
 
     @field_validator("price", "qty")
     @classmethod
@@ -65,3 +62,23 @@ class ExchangeOrderTable(OrderBase, table=True):
             return v
         else:
             raise ValueError(f"{info.field_name} must be float")
+
+
+class FakeOrderTable(OrderBase, table=True):
+    """
+    Fake orders for paper trading
+    """
+
+    __tablename__ = "fake_order"
+
+    id: UUID = Field(
+        primary_key=True, default_factory=uuid4, nullable=False, unique=True, index=True
+    )
+
+    timestamp: int = Field(sa_column=Column(BigInteger()))
+
+    # Relationships
+    paper_trading_id: Optional[UUID] = Field(
+        default=None, foreign_key="paper_trading.id", ondelete="CASCADE", index=True
+    )
+    paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")

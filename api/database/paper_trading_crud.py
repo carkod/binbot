@@ -77,7 +77,6 @@ class PaperTradingTableCrud:
         - start_date and end_date are timestamps in milliseconds
         - limit and offset for pagination
         """
-
         statement = select(PaperTradingTable)
 
         if status and status in BinbotEnums.statuses:

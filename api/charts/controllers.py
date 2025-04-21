@@ -201,28 +201,25 @@ class MarketDominationController(Database, BinbotApi):
         """
         get_ticker_data = self.ticker_24()
         coin_data = []
-        try:
-            for item in get_ticker_data:
-                if (
-                    item["symbol"].endswith(self.autotrade_settings.fiat)
-                    and float(item["lastPrice"]) > 0
-                ):
-                    model_data = MarketDominationSeriesStore(
-                        timestamp=datetime.fromtimestamp(
-                            float(item["closeTime"]) / 1000
-                        ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                        time=datetime.fromtimestamp(
-                            float(item["closeTime"]) / 1000
-                        ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                        symbol=item["symbol"],
-                        priceChangePercent=float(item["priceChangePercent"]),
-                        price=float(item["lastPrice"]),
-                        volume=float(item["volume"]),
-                    )
-                    data = model_data.model_dump()
-                    coin_data.append(data)
-        except Exception as e:
-            print(e)
+        for item in get_ticker_data:
+            if (
+                item["symbol"].endswith(self.autotrade_settings.fiat)
+                and float(item["lastPrice"]) > 0
+            ):
+                model_data = MarketDominationSeriesStore(
+                    timestamp=datetime.fromtimestamp(
+                        float(item["closeTime"]) / 1000
+                    ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                    time=datetime.fromtimestamp(
+                        float(item["closeTime"]) / 1000
+                    ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                    symbol=item["symbol"],
+                    priceChangePercent=float(item["priceChangePercent"]),
+                    price=float(item["lastPrice"]),
+                    volume=float(item["volume"]),
+                )
+                data = model_data.model_dump()
+                coin_data.append(data)
 
         response = self.collection.insert_many(coin_data)
         return response

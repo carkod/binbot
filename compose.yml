@@ -71,7 +71,7 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_BROKER_ID=1
       - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_NUM_PARTITIONS=20 # Keep the same as prod (as low as possible to minimize disk space consumption)
+      - KAFKA_CFG_NUM_PARTITIONS=10 # Less than prod to stress test
       - KAFKA_CFG_ENABLE_AUTO_CREATE_TOPICS=true
       - BITNAMI_DEBUG=no
       # - KAFKA_CFG_OFFSETS_TOPIC_SEGMENT_BYTES=104857600

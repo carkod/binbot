@@ -6,7 +6,6 @@ ifneq (,$(wildcard ./.env))
 endif
 
 VENV=./.venv
-DATABASE_URL=postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOSTNAME):$(POSTGRES_PORT)/$(POSTGRES_DB)
 
 cmd-exists-%:
 	@hash $(*) > /dev/null 2>&1 || \

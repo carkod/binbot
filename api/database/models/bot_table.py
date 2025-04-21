@@ -10,7 +10,7 @@ from tools.enum_definitions import (
     Strategy,
 )
 from sqlmodel import Relationship, SQLModel, Field
-from database.models.order_table import ExchangeOrderTable
+from database.models.order_table import ExchangeOrderTable, FakeOrderTable
 from database.models.deal_table import DealTable
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
@@ -162,9 +162,9 @@ class PaperTradingTable(SQLModel, table=True):
     strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
 
     # Table relationships filled up internally
-    orders: list[ExchangeOrderTable] = Relationship(
+    orders: list[FakeOrderTable] = Relationship(
         back_populates="paper_trading",
-        sa_relationship_kwargs={"lazy": "selectin", "single_parent": True},
+        sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
     )
     deal_id: Optional[UUID] = Field(
         default=None, foreign_key="deal.id", ondelete="CASCADE", index=True
