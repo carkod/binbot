@@ -8,9 +8,9 @@ from tools.enum_definitions import BinbotEnums, Status
 from collections.abc import Sequence
 from uuid import UUID
 from database.models.deal_table import DealTable
-from database.models.order_table import ExchangeOrderTable
+from database.models.order_table import FakeOrderTable
 from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy import text  # Ensure this is imported
+from sqlalchemy import text
 
 
 class PaperTradingTableCrud:
@@ -173,13 +173,13 @@ class PaperTradingTableCrud:
             for order in data.orders:
                 # Unlike real exchange orders,
                 # these orders are faked
-                statement = select(ExchangeOrderTable).where(
-                    ExchangeOrderTable.bot_id == data.id,
-                    ExchangeOrderTable.deal_type == order.deal_type,
+                statement = select(FakeOrderTable).where(
+                    FakeOrderTable.paper_trading_id == data.id,
+                    FakeOrderTable.deal_type == order.deal_type,
                 )
                 get_order = self.session.exec(statement).first()
                 if not get_order:
-                    new_order_row = ExchangeOrderTable(
+                    new_order_row = FakeOrderTable(
                         order_type=order.order_type,
                         time_in_force=order.time_in_force,
                         timestamp=order.timestamp,

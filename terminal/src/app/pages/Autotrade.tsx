@@ -1,5 +1,16 @@
 import React, { useEffect, type FC } from "react";
-import { Button, Card, Col, Container, Form, Row } from "react-bootstrap";
+import {
+  Button,
+  Card,
+  Col,
+  Container,
+  Form,
+  Row,
+  ToggleButton,
+  ButtonGroup,
+  InputGroup,
+} from "react-bootstrap";
+import { InputTooltip } from "../components/InputTooltip";
 import { useForm, type FieldValues } from "react-hook-form";
 import {
   useEditSettingsMutation,
@@ -7,6 +18,7 @@ import {
 } from "../../features/autotradeApiSlice";
 import {
   selectSettings,
+  setSettings,
   setSettingsField,
   setSettingsToggle,
 } from "../../features/autotradeSlice";
@@ -24,6 +36,7 @@ export const AutotradePage: FC<{}> = () => {
 
   const {
     register,
+    watch,
     setValue,
     reset,
     handleSubmit,
@@ -33,13 +46,21 @@ export const AutotradePage: FC<{}> = () => {
     reValidateMode: "onBlur",
     defaultValues: {
       candlestick_interval: settings.candlestick_interval,
+      autotrade: settings.autotrade,
+      max_active_autotrade_bots: settings.max_active_autotrade_bots,
+      base_order_size: settings.base_order_size,
+      fiat: settings.fiat,
+      stop_loss: settings.stop_loss,
+      take_profit: settings.take_profit,
+      trailling: settings.trailling,
+      trailling_deviation: settings.trailling_deviation,
+      trailling_profit: settings.trailling_profit,
     },
   });
 
   const handleBlur = (e) => {
-    if (e.target.name && e.target.value) {
-      const name = e.target.name;
-      const value = e.target.value;
+    const { name, value } = e.target;
+    if (name && value) {
       if (typeof value === "string") {
         dispatch(setSettingsField({ name, value }));
       } else {
@@ -53,10 +74,42 @@ export const AutotradePage: FC<{}> = () => {
   };
 
   useEffect(() => {
+
     if (data) {
-      reset(data);
+      dispatch(setSettings(data));
     }
-  }, [data, dispatch, reset, setValue]);
+  }, [data]);
+
+  useEffect(() => {
+    const { unsubscribe } = watch((v, { name, type }) => {
+      if (v && v?.[name]) {
+        if (typeof v[name] === "boolean") {
+          dispatch(setSettingsToggle({ name, value: v[name] }));
+        } else {
+          dispatch(
+            setSettingsField({ name, value: v[name] as number | string })
+          );
+        }
+      }
+    });
+
+    if (settings) {
+      reset({
+        candlestick_interval: settings.candlestick_interval,
+        autotrade: settings.autotrade,
+        max_active_autotrade_bots: settings.max_active_autotrade_bots,
+        base_order_size: settings.base_order_size,
+        fiat: settings.fiat,
+        stop_loss: settings.stop_loss,
+        take_profit: settings.take_profit,
+        trailling: settings.trailling,
+        trailling_deviation: settings.trailling_deviation,
+        trailling_profit: settings.trailling_profit,
+      });
+    }
+
+    return () => unsubscribe();
+  }, [dispatch, settings]);
 
   return (
     <Container>
@@ -98,7 +151,6 @@ export const AutotradePage: FC<{}> = () => {
                           );
                         }}
                         onBlur={handleBlur}
-                        defaultValue={settings.candlestick_interval}
                         {...register("candlestick_interval", {
                           required: true,
                         })}
@@ -150,20 +202,25 @@ export const AutotradePage: FC<{}> = () => {
                   <Col md="3">
                     <label htmlFor="autotrade">Autotrade?</label>
                     <br />
-                    <LightSwitch
-                      value={settings.autotrade}
-                      name="autotrade"
-                      register={register}
-                      toggle={(name, value) => {
-                        setValue(name, !value);
-                        dispatch(
-                          setSettingsToggle({
-                            name: name,
-                            value: !value,
-                          })
-                        );
-                      }}
-                    />
+                    <ButtonGroup>
+                      <ToggleButton
+                        id="autotrade"
+                        className="position-relative"
+                        checked={settings.autotrade}
+                        value={1}
+                        variant={settings.autotrade ? "primary" : "secondary"}
+                        onClick={(e) => {
+                          dispatch(
+                            setSettingsToggle({
+                              name: "autotrade",
+                              value: !settings.autotrade,
+                            })
+                          );
+                        }}
+                      >
+                        {settings.autotrade ? "On" : "Off"}
+                      </ToggleButton>
+                    </ButtonGroup>
                   </Col>
                   <Col md="3">
                     <SettingsInput
@@ -189,7 +246,7 @@ export const AutotradePage: FC<{}> = () => {
                     <SettingsInput
                       value={settings.fiat}
                       name={"fiat"}
-                      label={"Fiat currency to use for trading, currently USDC"}
+                      label={"Fiat currency to use for trading"}
                       type="text"
                       register={register}
                       infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"

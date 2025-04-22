@@ -32,10 +32,6 @@ export interface AutotradeSettingsFormBoolean {
   value: boolean;
 }
 
-export interface AutotradeSettingsObject {
-  settings: AutotradeSettings;
-}
-
 // In general, this will be unused
 // future plans include using it for bots e.g. to get fiat
 // or default candlestick_interval for all bots
@@ -56,8 +52,8 @@ export const autotradeSettingsSlice = createAppSlice({
       },
     ),
     setSettings: create.reducer(
-      (state, { payload }: PayloadAction<AutotradeSettingsObject>) => {
-        state.settings = payload.settings;
+      (state, { payload }: PayloadAction<AutotradeSettings>) => {
+        state.settings = payload;
       },
     ),
   }),
