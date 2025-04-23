@@ -11,7 +11,7 @@ from bots.models import BotModel, BotResponse, BotListResponse, BotBase
 from typing import List, Union, Optional
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
-from bots.models import BotModelResponse
+from bots.models import BotModelResponse, ErrorsRequestBody
 
 
 paper_trading_blueprint = APIRouter()
@@ -121,9 +121,9 @@ def delete(id: List[str], session: Session = Depends(get_session)):
 def activate(id: str, session: Session = Depends(get_session)):
     bot = PaperTradingTableCrud(session=session).get_one(bot_id=id)
     if not bot:
-        return api_response("Bot not found.")
+        return BotResponse(message="Bot not found", error=1)
 
-    bot_model = BotModel.model_construct(**bot.model_dump())
+    bot_model = BotModel.dump_from_table(bot)
 
     if bot_model.strategy == Strategy.margin_short:
         bot_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(
@@ -185,3 +185,39 @@ def get_active_pairs(session: Session = Depends(get_session)):
         return BotResponse(message=error.message, error=1)
     except ValueError:
         return BotResponse(message="No active pairs found!", error=1)
+
+
+@paper_trading_blueprint.post("/paper-trading/errors/{bot_id}", response_model=BotResponse, tags=["bots"])
+def bot_errors(
+    bot_id: str, bot_errors: ErrorsRequestBody, session: Session = Depends(get_session)
+):
+    """
+    POST errors to a bot
+
+    - If error(s) is received from endpoint, get it from request body
+    - Else use `post_errors_by_id` method for internal calls
+    """
+    try:
+        request_body = ErrorsRequestBody.model_dump(bot_errors)
+        errors = request_body.get("errors", [])
+        bot_table = PaperTradingTableCrud(session=session).get_one(bot_id=bot_id)
+        bot_model = BotModel.dump_from_table(bot_table)
+        if not bot_model:
+            return BotResponse(message="Bot not found.", error=1)
+
+        if isinstance(errors, str):
+            log_message = [errors]
+        else:
+            log_message = errors
+
+        data = PaperTradingTableCrud(session=session).update_logs(
+            log_message=log_message, bot=bot_model
+        )
+        response_data = BotModelResponse.dump_from_table(data)
+        return BotResponse(
+            message="Errors posted successfully.", data=response_data, error=0
+        )
+    except ValidationError as error:
+        return BotResponse(message="Failed to post errors", data=error.json(), error=1)
+    except BinbotErrors as error:
+        return BotResponse(message="Bot not found.", error=1, data=str(error))

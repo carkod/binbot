@@ -1,0 +1,334 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.28.1
+    method: GET
+    uri: https://api-gcp.binance.com/api/v3/depth?symbol=EPICUSDC
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/31YO45cOQy8y4sbAkmRlOQb+ACOjAlmMRssdoMFxpnhuxtvPiKb1X6dNaol/opF
+        qn8e/z2//vj2/8vzj7+/vhxffBJP4dvx1z8vr8eX798Pbl07nZ/jdghLM3r/HE+3d1Q2ughR/kSZ
+        FjWqMOXDUtC+PlGd1Liic189RxsVHYEqor7tkrVVUdtn/YFd/US7evOK7mSNKR3hnS02RsN8idIV
+        KusSjWTpEKiDjMvDOx+imEtJJRaEefslMpoWlHo2XLNFO1vm3mZFdz6c4ts7KHMHPAl495GNN6e6
+        wlmP+hNJpaV41EEe3G2bH7O2g6RmUQY0Mdq5hitRo4VYIg4wVjhIR4RmKVUIgqV5dTMlZszKm33V
+        mYmSY17BOK+c4RXtaTW/PMKjAdnnse+1GiiPqLp5pSJbqE2vgbLtQBeDu7bv7YYehZqIA9c4VW7M
+        2gAfhXujONzLG1MjiCZaRwZUdUd3O7Ta/GDDWzRQGUopnNB05El0QZLJI1QcBRTkl7kA5WjJNcAu
+        bbuyRqUhBUk7dA7RdqowjdoKjnoZTtRW0LBTyRO15WnAFH+pLd1U6+z3XKO2ghJdDG5OesolVmpz
+        xXDqpQGozbFRkVXtzqjeOdhKMmZIVzev2Zg9CRtVn2f43AfdE+5Ew64P8Orz66m2NSALEJSYmiah
+        ZgCjtU7drYnsnIqQon26Hc+v/8Zq5GEBR5/uwIYy7BEahF+CZyNlNgENxXk0ry18Z5gj3Xap3AUG
+        svXLmzXOwroWGvnw6E7V7OjT5f5hl6tNUF50Vc3f4Z17gFTh0KSSQlUJNZaTZR3OxlbUQc001kDm
+        B3Zj7+3LKzNUd0RMBkNBdRs+Vzm4eudZacCw1+DGcDgbDWMC+q1p8IL0a2xUXXlUbmisY2eRasAx
+        clwrN3Tt6g/ctpICdNfKZuMog8LTxWKoLPDY0mCeC9GgJLDZQgxnDdWCGEKw8FraJMQ7hOMrLq5H
+        UwF67RGbafQaHI30MwiRrTjaYZGwtMZBfreZ26ELdMhT/1R/PaV3wsz2nhZW2Hw8VBfWOA+CaxcF
+        h2O7YSMQOB+xKwARfQTV6tQ+0RSQgltXBfDgvzLstPvHb61TfBrpxYjL5chDBI4mzWVQ1RGJGk6j
+        xjPCZRleizs5tUeRkRk+QZZmMJzP3tEKx0JWGTMjwcPQaCIx/IMxL9O/QzsTAZvn8jTEqRZ2pY51
+        2LTXvOislQhDfd4TVRrNpBN8j6WH16pYfrCVnUPyc1uk7u/Sus8/2kwiXZ7EkhVkVJMeswzuTD0j
+        4hUdHCNU6rVppewGYJwU5+rtSn9Y3Wegx9eT9UXae6N4rs36bO2NkjAVRTvB9I8C32OpZCdS79X5
+        p1HUc1UeHR3xbGKaWuMZMTzF7gnYcxtPYbg6dQ14dUft6pXmJKsZZco8/foNOqfob84UAAA=
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Wed, 23 Apr 2025 20:35:42 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Transfer-Encoding:
+      - chunked
+      Via:
+      - 1.1 google
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Mbx-Used-Weight:
+      - '5'
+      X-Mbx-Used-Weight-1m:
+      - '5'
+      X-Mbx-Uuid:
+      - 1634ecc0-b291-4dab-aeed-cbc5652efd94
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.28.1
+    method: GET
+    uri: https://api-gcp.binance.com/api/v3/depth?symbol=EPICUSDC
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/31YO45cOQy8y4sbAkmRlOQb+ACOjAlmMRssdoMFxpnhuxtvPiKb1X6dNaol/opF
+        qn8e/z2//vj2/8vzj7+/vhxffBJP4dvx1z8vr8eX798Pbl07nZ/jdghLM3r/HE+3d1Q2ughR/kSZ
+        FjWqMOXDUtC+PlGd1Liic189RxsVHYEqor7tkrVVUdtn/YFd/US7evOK7mSNKR3hnS02RsN8idIV
+        KusSjWTpEKiDjMvDOx+imEtJJRaEefslMpoWlHo2XLNFO1vm3mZFdz6c4ts7KHMHPAl495GNN6e6
+        wlmP+hNJpaV41EEe3G2bH7O2g6RmUQY0Mdq5hitRo4VYIg4wVjhIR4RmKVUIgqV5dTMlZszKm33V
+        mYmSY17BOK+c4RXtaTW/PMKjAdnnse+1GiiPqLp5pSJbqE2vgbLtQBeDu7bv7YYehZqIA9c4VW7M
+        2gAfhXujONzLG1MjiCZaRwZUdUd3O7Ta/GDDWzRQGUopnNB05El0QZLJI1QcBRTkl7kA5WjJNcAu
+        bbuyRqUhBUk7dA7RdqowjdoKjnoZTtRW0LBTyRO15WnAFH+pLd1U6+z3XKO2ghJdDG5OesolVmpz
+        xXDqpQGozbFRkVXtzqjeOdhKMmZIVzev2Zg9CRtVn2f43AfdE+5Ew64P8Orz66m2NSALEJSYmiah
+        ZgCjtU7drYnsnIqQon26Hc+v/8Zq5GEBR5/uwIYy7BEahF+CZyNlNgENxXk0ry18Z5gj3Xap3AUG
+        svXLmzXOwroWGvnw6E7V7OjT5f5hl6tNUF50Vc3f4Z17gFTh0KSSQlUJNZaTZR3OxlbUQc001kDm
+        B3Zj7+3LKzNUd0RMBkNBdRs+Vzm4eudZacCw1+DGcDgbDWMC+q1p8IL0a2xUXXlUbmisY2eRasAx
+        clwrN3Tt6g/ctpICdNfKZuMog8LTxWKoLPDY0mCeC9GgJLDZQgxnDdWCGEKw8FraJMQ7hOMrLq5H
+        UwF67RGbafQaHI30MwiRrTjaYZGwtMZBfreZ26ELdMhT/1R/PaV3wsz2nhZW2Hw8VBfWOA+CaxcF
+        h2O7YSMQOB+xKwARfQTV6tQ+0RSQgltXBfDgvzLstPvHb61TfBrpxYjL5chDBI4mzWVQ1RGJGk6j
+        xjPCZRleizs5tUeRkRk+QZZmMJzP3tEKx0JWGTMjwcPQaCIx/IMxL9O/QzsTAZvn8jTEqRZ2pY51
+        2LTXvOislQhDfd4TVRrNpBN8j6WH16pYfrCVnUPyc1uk7u/Sus8/2kwiXZ7EkhVkVJMeswzuTD0j
+        4hUdHCNU6rVppewGYJwU5+rtSn9Y3Wegx9eT9UXae6N4rs36bO2NkjAVRTvB9I8C32OpZCdS79X5
+        p1HUc1UeHR3xbGKaWuMZMTzF7gnYcxtPYbg6dQ14dUft6pXmJKsZZco8/foNOqfob84UAAA=
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Wed, 23 Apr 2025 20:35:42 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Transfer-Encoding:
+      - chunked
+      Via:
+      - 1.1 google
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Mbx-Used-Weight:
+      - '10'
+      X-Mbx-Used-Weight-1m:
+      - '10'
+      X-Mbx-Uuid:
+      - 5b98d959-eb07-4c85-b5e8-d095fe434434
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.28.1
+    method: GET
+    uri: https://api3.binance.com/api/v3/time
+  response:
+    body:
+      string: '{"serverTime":1745440543457}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '28'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Wed, 23 Apr 2025 20:35:43 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      x-mbx-used-weight:
+      - '11'
+      x-mbx-used-weight-1m:
+      - '11'
+      x-mbx-uuid:
+      - 1634ecc0-b291-4dab-aeed-cbc5652efd94
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.28.1
+      X-MBX-APIKEY:
+      - AwcS21suSOpowy54mp52ubS8Zf5CO7ltVd7xsbLg9ouo76Z1QFtC5Tp93RihBBdm
+    method: POST
+    uri: https://api-gcp.binance.com/api/v3/order?symbol=EPICUSDC&side=BUY&type=LIMIT&timeInForce=FOK&price=1.346&quantity=14.8&recvWindow=9000&timestamp=1745440543457&signature=0eb9a70b4e0922a703b3818b907424a0781d5b03c0da358fa9c7fd1c80fe882a
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/22RX0+DMBTFv8t9RtKOThhv+wMGB27OLdEYYxDuSBXaScvmXPbdTdmmMaFv93fP
+        7T2nPYDaV2+yBB+CeTRePUzGYIGsc6yjHHzHpZQSciYxV9rQK2pBVnIUenYRAt/dkO26KG5D9bX6
+        dpNm8848DyzQdSpUmuklrxB86rI+Y6TPHHfQt2BT8wzBB2o77JqY027nxb3eG8xsj5ALxy/MGo15
+        V6+daaTG1tFJQWzyJ8iaqmrKVPMttrrzJQN70CPeWaN0qhsFPoRRHAcTY55XGIlQ1q3LcDY1bL8x
+        RRwl0dIM8dyUo9UTWLCT9QcXRWfWNS9LBf7zoTv1Z0eqTFYVV4pL8Run57Dev85QKdTGwN3o9No5
+        mg/xHIey44sFCsv10tB5jVsUmkuRyNZy8DiPFsFrMpwGCzj+AKA2xmkKAgAA
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Wed, 23 Apr 2025 20:35:43 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Transfer-Encoding:
+      - chunked
+      Via:
+      - 1.1 google
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Mbx-Order-Count-10s:
+      - '1'
+      X-Mbx-Order-Count-1d:
+      - '1'
+      X-Mbx-Used-Weight:
+      - '12'
+      X-Mbx-Used-Weight-1m:
+      - '12'
+      X-Mbx-Uuid:
+      - ab1bdc11-ee65-4c75-972e-b7771d7804c0
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/bot/activate/44db75ee-15c2-4a48-a346-4ffdc3ac5506
+  response:
+    body:
+      string: '{"message":"Successfully activated bot.","error":0,"data":{"pair":"EPICUSDC","fiat":"USDC","base_order_size":20.0,"candlestick_interval":"15m","close_condition":"dynamic_trailling","cooldown":0,"created_at":1745440425166.0,"updated_at":1745440425166.0,"dynamic_trailling":true,"logs":[],"mode":"manual","name":"terminal_1745440415371","status":"active","stop_loss":3.0,"margin_short_reversal":true,"take_profit":2.3,"trailling":true,"trailling_deviation":2.8,"trailling_profit":2.3,"strategy":"long","id":"44db75ee-15c2-4a48-a346-4ffdc3ac5506","deal":{"current_price":1.346,"take_profit_price":1.369,"trailling_stop_loss_price":0.0,"trailling_profit_price":1.376,"stop_loss_price":1.305,"total_interests":0.0,"total_commissions":0.0,"margin_loan_id":0,"margin_repay_id":0,"opening_price":1.346,"opening_qty":14.8,"opening_timestamp":1745440543795,"closing_price":0.0,"closing_qty":0.0,"closing_timestamp":0},"orders":[{"order_type":"LIMIT","time_in_force":"FOK","timestamp":1745440543795,"order_id":3711100,"order_side":"BUY","pair":"EPICUSDC","qty":14.8,"status":"FILLED","price":1.346,"deal_type":"base_order"}]}}'
+    headers:
+      content-length:
+      - '1115'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -138,7 +138,7 @@ class PaperTradingTableCrud:
 
     def create(self, data: BotBase) -> PaperTradingTable:
         """
-        Create a new paper trading account
+        Create a new paper trading bot
         """
         bot = PaperTradingTable(**data.model_dump(), deal=DealTable(), orders=[])
 

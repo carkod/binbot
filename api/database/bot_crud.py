@@ -39,11 +39,13 @@ class BotTableCrud:
     """
     For Debugging
     """
+
     def _explain_query(self, statement):
         # Print the execution plan using the session
         explain_query = text(f"EXPLAIN {statement}")
         explain_result = self.session.execute(explain_query)
         import logging
+
         for row in explain_result:
             logging.info(row)
 
