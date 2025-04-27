@@ -140,7 +140,6 @@ class StreamingController(BaseStreaming):
         close_price = data["close_price"]
         open_price = data["open_price"]
         symbol = data["symbol"]
-        logging.warning(f"Processing kline stream for {symbol}")
 
         if symbol in self.active_bot_pairs or symbol in self.paper_trading_active_bots:
             current_bot = self.get_current_bot(symbol)

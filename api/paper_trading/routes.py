@@ -187,7 +187,9 @@ def get_active_pairs(session: Session = Depends(get_session)):
         return BotResponse(message="No active pairs found!", error=1)
 
 
-@paper_trading_blueprint.post("/paper-trading/errors/{bot_id}", response_model=BotResponse, tags=["bots"])
+@paper_trading_blueprint.post(
+    "/paper-trading/errors/{bot_id}", response_model=BotResponse, tags=["bots"]
+)
 def bot_errors(
     bot_id: str, bot_errors: ErrorsRequestBody, session: Session = Depends(get_session)
 ):
@@ -205,13 +207,8 @@ def bot_errors(
         if not bot_model:
             return BotResponse(message="Bot not found.", error=1)
 
-        if isinstance(errors, str):
-            log_message = [errors]
-        else:
-            log_message = errors
-
         data = PaperTradingTableCrud(session=session).update_logs(
-            log_message=log_message, bot=bot_model
+            log_message=errors, bot=bot_model
         )
         response_data = BotModelResponse.dump_from_table(data)
         return BotResponse(
