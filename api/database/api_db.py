@@ -287,6 +287,22 @@ class ApiDb:
 
         # Check if the collection exists
         if collection_name in self.kafka_db.list_collection_names():
+            logging.info(f"Checking expireAfterSeconds for {collection_name}...")
+
+            # Get the current indexes for the collection
+            collection = self.kafka_db[collection_name]
+            indexes = collection.index_information()
+
+            # Check if an index with expireAfterSeconds already exists and matches the desired value
+            for index in indexes.values():
+                if (
+                    "expireAfterSeconds" in index
+                    and index["expireAfterSeconds"] == new_expire_after_seconds
+                ):
+                    logging.info(
+                        f"expireAfterSeconds is already set to {new_expire_after_seconds} for {collection_name}. Skipping update."
+                    )
+                    return
             logging.info(f"Updating expireAfterSeconds for {collection_name}...")
 
             # Backup existing data
@@ -304,11 +320,18 @@ class ApiDb:
                     "metaField": "symbol",
                     "granularity": "minutes",
                 },
+            )
+
+            collection.create_index(
+                "timestamp",
                 expireAfterSeconds=new_expire_after_seconds,
+                partialFilterExpression={"symbol": {"$exists": True}},
             )
 
             # Restore the backed-up data
             if data:
                 collection.insert_many(data)
 
-            logging.info(f"expireAfterSeconds updated to {new_expire_after_seconds} for {collection_name}.")
+            logging.info(
+                f"expireAfterSeconds updated to {new_expire_after_seconds} for {collection_name}."
+            )
