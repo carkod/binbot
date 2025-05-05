@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
 from tools.exceptions import SaveBotError, BinbotErrors
 from tools.round_numbers import round_numbers
+from sqlalchemy import text
 
 
 class BotTableCrud:
@@ -34,6 +35,21 @@ class BotTableCrud:
         if session is None:
             session = independent_session()
         self.session = session
+
+    """
+    For Debugging
+    """
+
+    def _explain_query(self, statement):
+        # Print the execution plan using the session
+        explain_query = text(f"EXPLAIN {statement}")
+        explain_result = self.session.execute(explain_query)
+        import logging
+
+        for row in explain_result:
+            logging.info(row)
+
+        pass
 
     def update_logs(
         self,

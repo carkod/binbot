@@ -1,5 +1,13 @@
 # About API `api/bots`
 
+## Bot data
+When working with bot data manipulation, the Python code will always use the Pydantic model BotModel.
+
+However, to work with database, we need to adhere to the SQLAlchemy model, which is parsed using the SQLModel BotTable or PaperTradingTable. There is a utility method in BotModel which helps convert them.
+
+BotModel creates consistency and it is the default way of FastAPI data guards. However, it does not work well with SQLAlchemy (I wish I could just use BotModel and store in the DB but that caused a lot of problems)
+
+
 # Profit canibalization
 
 ## Context

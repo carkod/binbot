@@ -140,7 +140,6 @@ class StreamingController(BaseStreaming):
         close_price = data["close_price"]
         open_price = data["open_price"]
         symbol = data["symbol"]
-        logging.warning(f"Processing kline stream for {symbol}")
 
         if symbol in self.active_bot_pairs or symbol in self.paper_trading_active_bots:
             current_bot = self.get_current_bot(symbol)
@@ -274,7 +273,6 @@ class BbspreadsUpdater(BaseStreaming):
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
-
         # Avoid duplicate updates
         original_bot = bot
 
@@ -324,7 +322,7 @@ class BbspreadsUpdater(BaseStreaming):
                 bot.trailling_deviation = 2.6
                 bot.stop_loss = 3.2
 
-             # check we are not duplicating the update
+            # check we are not duplicating the update
             if (
                 bot.trailling_profit == original_bot.trailling_profit
                 and bot.stop_loss == original_bot.stop_loss

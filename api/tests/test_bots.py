@@ -144,14 +144,14 @@ def test_delete_bot():
 
 @mark.vcr("cassettes/test_activate_by_id.yaml")
 def test_activate_by_id(client: TestClient):
-    response = client.get(f"/bot/activate/{mock_id}")
+    mock_activate_id = "44db75ee-15c2-4a48-a346-4ffdc3ac5506"
+    response = client.get(f"/bot/activate/{mock_activate_id}")
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"]["pair"] == "ADXUSDC"
+    assert content["data"]["pair"] == "EPICUSDC"
     assert content["data"]["fiat"] == "USDC"
-    assert content["data"]["base_order_size"] == 15
-    assert content["data"]["cooldown"] == 360
+    assert content["data"]["base_order_size"] == 20
 
 
 @mark.vcr("cassettes/test_deactivate.yaml")

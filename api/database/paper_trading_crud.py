@@ -8,8 +8,9 @@ from tools.enum_definitions import BinbotEnums, Status
 from collections.abc import Sequence
 from uuid import UUID
 from database.models.deal_table import DealTable
-from database.models.order_table import ExchangeOrderTable
+from database.models.order_table import FakeOrderTable
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy import text
 
 
 class PaperTradingTableCrud:
@@ -50,6 +51,17 @@ class PaperTradingTableCrud:
         self.session.close()
         return bot_result
 
+    def _explain_query(self, statement):
+        """
+        Test performance of a query
+        """
+        explain_query = text(f"EXPLAIN {statement}")
+        explain_result = self.session.execute(explain_query)
+        for row in explain_result:
+            print(row)
+
+        pass
+
     def get(
         self,
         status: Status | None = None,
@@ -63,7 +75,6 @@ class PaperTradingTableCrud:
         Args:
         - status: Status enum
         - start_date and end_date are timestamps in milliseconds
-        - no_cooldown: bool - filter out bots that are in cooldown
         - limit and offset for pagination
         """
         statement = select(PaperTradingTable)
@@ -89,6 +100,7 @@ class PaperTradingTableCrud:
 
         bots = self.session.exec(statement).unique().all()
         self.session.close()
+
         return bots
 
     def get_one(
@@ -126,7 +138,7 @@ class PaperTradingTableCrud:
 
     def create(self, data: BotBase) -> PaperTradingTable:
         """
-        Create a new paper trading account
+        Create a new paper trading bot
         """
         bot = PaperTradingTable(**data.model_dump(), deal=DealTable(), orders=[])
 
@@ -161,13 +173,13 @@ class PaperTradingTableCrud:
             for order in data.orders:
                 # Unlike real exchange orders,
                 # these orders are faked
-                statement = select(ExchangeOrderTable).where(
-                    ExchangeOrderTable.bot_id == data.id,
-                    ExchangeOrderTable.deal_type == order.deal_type,
+                statement = select(FakeOrderTable).where(
+                    FakeOrderTable.paper_trading_id == data.id,
+                    FakeOrderTable.deal_type == order.deal_type,
                 )
                 get_order = self.session.exec(statement).first()
                 if not get_order:
-                    new_order_row = ExchangeOrderTable(
+                    new_order_row = FakeOrderTable(
                         order_type=order.order_type,
                         time_in_force=order.time_in_force,
                         timestamp=order.timestamp,

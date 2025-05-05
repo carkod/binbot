@@ -35,7 +35,7 @@ class OrderModel(BaseModel):
         Same as model_dump() but from
         BotTable
         """
-        if isinstance(bot, BotTable):
+        if isinstance(bot, BotTable) or isinstance(bot, PaperTradingTable):
             model = BotModel.model_construct(**bot.model_dump())
             deal_model = DealModel.model_construct(**bot.deal.model_dump())
             order_models = [
@@ -153,7 +153,7 @@ class BotModel(BotBase):
         Same as model_dump() but from
         BotTable
         """
-        if isinstance(bot, BotTable):
+        if isinstance(bot, BotTable) or isinstance(bot, PaperTradingTable):
             model = BotModel.model_construct(**bot.model_dump())
             deal_model = DealModel.model_validate(bot.deal.model_dump())
             order_models = [
