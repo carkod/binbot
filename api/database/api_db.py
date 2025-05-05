@@ -20,6 +20,7 @@ from alembic import command
 from database.utils import engine
 from account.assets import Assets
 from database.symbols_crud import SymbolsCrud
+from database.db import setup_kafka_db
 
 
 class ApiDb:
@@ -30,6 +31,7 @@ class ApiDb:
     def __init__(self):
         self.session = Session(engine)
         self.symbols = SymbolsCrud(self.session)
+        self.kafka_db = setup_kafka_db()
         pass
 
     def init_db(self):
@@ -38,6 +40,7 @@ class ApiDb:
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
         self.create_dummy_bot()
+        self.update_expire_after_seconds("market_domination", 1728000)
         if os.environ["ENV"] != "ci":
             self.init_symbols()
             # Depends on autotrade settings
@@ -276,3 +279,36 @@ class ApiDb:
         assets = Assets(self.session)
         assets.store_balance()
         pass
+
+    def update_expire_after_seconds(self, collection_name, new_expire_after_seconds):
+        """
+        Update the expireAfterSeconds value for a time-series collection.
+        """
+
+        # Check if the collection exists
+        if collection_name in self.kafka_db.list_collection_names():
+            logging.info(f"Updating expireAfterSeconds for {collection_name}...")
+
+            # Backup existing data
+            collection = self.kafka_db[collection_name]
+            data = list(collection.find({}))
+
+            # Drop the existing collection
+            self.kafka_db.drop_collection(collection_name)
+
+            # Recreate the collection with the new expireAfterSeconds value
+            self.kafka_db.create_collection(
+                collection_name,
+                timeseries={
+                    "timeField": "timestamp",
+                    "metaField": "symbol",
+                    "granularity": "minutes",
+                },
+                expireAfterSeconds=new_expire_after_seconds,
+            )
+
+            # Restore the backed-up data
+            if data:
+                collection.insert_many(data)
+
+            logging.info(f"expireAfterSeconds updated to {new_expire_after_seconds} for {collection_name}.")
