@@ -40,7 +40,7 @@ class ApiDb:
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
         self.create_dummy_bot()
-        self.update_expire_after_seconds("market_domination", 1728000)
+        self.update_expire_after_seconds("kline", 1728000)
         if os.environ["ENV"] != "ci":
             self.init_symbols()
             # Depends on autotrade settings
@@ -316,14 +316,14 @@ class ApiDb:
             self.kafka_db.create_collection(
                 collection_name,
                 timeseries={
-                    "timeField": "timestamp",
+                    "timeField": "close_time",
                     "metaField": "symbol",
                     "granularity": "minutes",
                 },
             )
 
             collection.create_index(
-                "timestamp",
+                "close_time",
                 expireAfterSeconds=new_expire_after_seconds,
                 partialFilterExpression={"symbol": {"$exists": True}},
             )
