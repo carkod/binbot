@@ -39,7 +39,7 @@ export const binanceApiSlice = createApi({
         url: `${import.meta.env.VITE_TICKER_24}` || "/gainers-losers",
         providesTags: ["binance"],
       }),
-      transformResponse: (data, meta, arg) => {
+      transformResponse: (data: BinanceTicker24[], meta) => {
         if (!meta.response.ok) {
           notifification("error", meta.response.statusText);
         }

@@ -3,6 +3,7 @@ import { Card, Col, Row } from "react-bootstrap";
 import { type GainerLosersData } from "../../features/marketApiSlice";
 import { useBreakpoint } from "../hooks";
 import BarChart from "./BarChart";
+import moment from "moment";
 
 type ReversalBarChartProps = {
   chartData: GainerLosersData;
@@ -27,6 +28,7 @@ const ReversalBarChart: FC<ReversalBarChartProps> = ({ chartData, legend }) => {
 
   const gainers = data.gainers_count;
   const losers = data.losers_count;
+
   return (
     <Card className="card-chart">
       <Card.Header>
@@ -74,7 +76,7 @@ const ReversalBarChart: FC<ReversalBarChartProps> = ({ chartData, legend }) => {
         {data.dates && (
           <div className="card-stats">
             <i className="fa fa-check" /> Last updated{" "}
-            {data.dates[data.dates.length - 1]}
+            {moment(data.dates[0]).format("DD/MM/YYYY HH:mm")}
           </div>
         )}
       </Card.Footer>

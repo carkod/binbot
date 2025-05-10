@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
-from bson import ObjectId
 from pymongo import DESCENDING
-from pymongo.errors import CollectionInvalid
 from database.autotrade_crud import AutotradeCrud
 from charts.models import MarketDominationSeriesStore
 from apis import BinbotApi
@@ -139,57 +137,6 @@ class MarketDominationController(Database, BinbotApi):
         self.collection = self.kafka_db.market_domination
         self.autotrade_db = AutotradeCrud()
         self.autotrade_settings = self.autotrade_db.get_settings()
-
-    def mkdm_migration(self):
-        """
-        One time migration of market domination data from MongoDB ordinary db to MongoDB timeseries format
-
-        1. Check if collection exists. If not, code will continue
-        else it will raise an error and finish the task
-        2. Migrate market domination data to time series format
-        """
-        try:
-            self.kafka_db.create_collection(
-                "market_domination",
-                # 1 week worth of data
-                expireAfterSeconds=864000,
-                check_exists=True,
-                timeseries={
-                    "timeField": "timestamp",
-                    "metaField": "symbol",
-                    "granularity": "minutes",
-                },
-            )
-        except CollectionInvalid:
-            return
-
-        # Start migration
-        one_week_ago = datetime.now() - timedelta(weeks=1)
-        one_week_ago_object_id = ObjectId.from_datetime(one_week_ago)
-
-        data = self._db.market_domination.find(
-            {"_id": {"$gte": one_week_ago_object_id}}
-        )
-        data_collection = list(data)
-        formatted_data = []
-
-        for item in data_collection:
-            for ticker in item["data"]:
-                if float(ticker["priceChangePercent"]) > 0:
-                    store_data = MarketDominationSeriesStore(
-                        timestamp=datetime.strptime(
-                            item["time"], "%Y-%m-%d %H:%M:%S.%f"
-                        ),
-                        time=item["time"],
-                        symbol=ticker["symbol"],
-                        priceChangePercent=float(ticker["priceChangePercent"]),
-                        price=float(ticker["price"]),
-                        volume=float(ticker["volume"]),
-                    )
-                    md_data = store_data.model_dump()
-                    formatted_data.append(md_data)
-
-        self.collection.insert_many(formatted_data)
 
     def store_market_domination(self):
         """

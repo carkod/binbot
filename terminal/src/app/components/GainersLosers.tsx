@@ -1,11 +1,17 @@
+import React from "react";
 import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 import { computeWinnerLoserProportions } from "../../utils/dashboard-computations";
 import { roundDecimals } from "../../utils/math";
 import GainersLosersCard from "./GainersLosersCard";
+import { type BinanceTicker24 } from "../../features/binanceApiSlice";
 
-export default function GainersLosers({ data }) {
+export interface GainersLosersProps {
+  data: BinanceTicker24[];
+};
+
+export default function GainersLosers({ data }: GainersLosersProps) {
   const { gainerCount, gainerAccumulator, loserAccumulator, loserCount } =
     computeWinnerLoserProportions(data);
   // Top 10
