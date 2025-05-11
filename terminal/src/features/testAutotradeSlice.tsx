@@ -1,7 +1,7 @@
 import { BinanceKlineintervals, CloseConditions } from "../utils/enums";
 import { createAppSlice } from "../app/createAppSlice";
 import { type PayloadAction } from "@reduxjs/toolkit";
-import type { AutotradeSettingsFormBoolean, AutotradeSettingsFormField, AutotradeSettingsObject } from "./autotradeSlice";
+import type { AutotradeSettingsFormBoolean, AutotradeSettingsFormField } from "./autotradeSlice";
 import { type AutotradeSettings } from "./autotradeApiSlice";
 
 export const initialAutotradeSettings: AutotradeSettings = {
@@ -44,8 +44,8 @@ export const testAutotradeSettingsSlice = createAppSlice({
       },
     ),
     setTestSettings: create.reducer(
-      (state, { payload }: PayloadAction<AutotradeSettingsObject>) => {
-        state.settings = payload.settings;
+      (state, { payload }: PayloadAction<AutotradeSettings>) => {
+        state.settings = payload;
       },
     ),
   }),

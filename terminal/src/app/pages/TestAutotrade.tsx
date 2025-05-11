@@ -7,7 +7,7 @@ import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { BinanceKlineintervals } from "../../utils/enums";
 import { useEditTestSettingsMutation, useGetTestSettingsQuery } from "../../features/testAutotradeApiSlice";
-import { selectTestSettings, setTestSettingsField, setTestSettingsToggle } from "../../features/testAutotradeSlice";
+import { selectTestSettings, setTestSettings, setTestSettingsField, setTestSettingsToggle } from "../../features/testAutotradeSlice";
 
 export const TestAutotradePage: FC<{}> = () => {
   const { data } = useGetTestSettingsQuery();
@@ -20,12 +20,22 @@ export const TestAutotradePage: FC<{}> = () => {
     setValue,
     reset,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<FieldValues>({
     mode: "onTouched",
     reValidateMode: "onBlur",
     defaultValues: {
       candlestick_interval: settings.candlestick_interval,
+      autotrade: settings.autotrade,
+      max_active_autotrade_bots: settings.max_active_autotrade_bots,
+      base_order_size: settings.base_order_size,
+      fiat: settings.fiat,
+      stop_loss: settings.stop_loss,
+      take_profit: settings.take_profit,
+      trailling: settings.trailling,
+      trailling_deviation: settings.trailling_deviation,
+      trailling_profit: settings.trailling_profit,
     },
   });
 
@@ -46,10 +56,42 @@ export const TestAutotradePage: FC<{}> = () => {
   };
 
   useEffect(() => {
+
     if (data) {
-      reset(data);
+      dispatch(setTestSettings(data));
     }
-  }, [data, dispatch, reset, setValue]);
+  }, [data]);
+
+useEffect(() => {
+    const { unsubscribe } = watch((v, { name, type }) => {
+      if (v && v?.[name]) {
+        if (typeof v[name] === "boolean") {
+          dispatch(setTestSettingsToggle({ name, value: v[name] }));
+        } else {
+          dispatch(
+            setTestSettingsField({ name, value: v[name] as number | string })
+          );
+        }
+      }
+    });
+
+    if (settings) {
+      reset({
+        candlestick_interval: settings.candlestick_interval,
+        autotrade: settings.autotrade,
+        max_active_autotrade_bots: settings.max_active_autotrade_bots,
+        base_order_size: settings.base_order_size,
+        fiat: settings.fiat,
+        stop_loss: settings.stop_loss,
+        take_profit: settings.take_profit,
+        trailling: settings.trailling,
+        trailling_deviation: settings.trailling_deviation,
+        trailling_profit: settings.trailling_profit,
+      });
+    }
+
+    return () => unsubscribe();
+  }, [dispatch, settings]);
 
   return (
     <Container>

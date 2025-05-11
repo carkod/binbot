@@ -36,7 +36,7 @@ class AutotradeSettingsResponse(StandardResponse):
 
 
 class TestAutotradeSettingsSchema(BaseModel):
-    id: AutotradeSettingsDocument = AutotradeSettingsDocument.settings
+    id: AutotradeSettingsDocument = AutotradeSettingsDocument.test_autotrade_settings
     candlestick_interval: BinanceKlineIntervals = Field(
         default=BinanceKlineIntervals.fifteen_minutes,
     )
