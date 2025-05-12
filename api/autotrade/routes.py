@@ -4,7 +4,10 @@ from sqlmodel import Session
 from database.autotrade_crud import AutotradeCrud
 from tools.enum_definitions import AutotradeSettingsDocument
 from database.utils import get_session
-from autotrade.schemas import AutotradeSettingsResponse, AutotradeSettingsSchema
+from autotrade.schemas import (
+    AutotradeSettingsSchema,
+    TestAutotradeSettingsSchema,
+)
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
 from tools.handle_error import json_response, json_response_error
@@ -50,7 +53,7 @@ def get_settings(session: Session = Depends(get_session)):
 
 @autotrade_settings_blueprint.get(
     "/paper-trading",
-    response_model=AutotradeSettingsResponse,
+    response_model=TestAutotradeSettingsSchema,
     tags=["autotrade settings"],
 )
 def get_test_autotrade_settings(
@@ -73,7 +76,7 @@ def get_test_autotrade_settings(
 
 @autotrade_settings_blueprint.put("/paper-trading", tags=["autotrade settings"])
 def edit_test_autotrade_settings(
-    item: AutotradeSettingsSchema,
+    item: TestAutotradeSettingsSchema,
     session: Session = Depends(get_session),
 ):
     try:

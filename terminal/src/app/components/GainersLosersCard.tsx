@@ -1,6 +1,12 @@
+import React from "react";
 import { Badge, Card, ListGroup } from "react-bootstrap";
+import { type GainersLosersProps } from "./GainersLosers";
 
-const GainersLosersCard = ({ data, title }) => {
+interface GainersLosersCardProps extends GainersLosersProps {
+  title: string;
+}
+
+const GainersLosersCard = ({ data, title }: GainersLosersCardProps) => {
   return (
     <Card.Body>
       <Card.Title>{title}</Card.Title>
@@ -19,7 +25,7 @@ const GainersLosersCard = ({ data, title }) => {
                   {x.priceChangePercent + "%"}
                 </Badge>
               </ListGroup.Item>
-            ),
+            )
         )}
       </ListGroup>
     </Card.Body>

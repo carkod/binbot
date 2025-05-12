@@ -20,6 +20,7 @@ from alembic import command
 from database.utils import engine
 from account.assets import Assets
 from database.symbols_crud import SymbolsCrud
+from database.db import setup_kafka_db
 
 
 class ApiDb:
@@ -30,6 +31,7 @@ class ApiDb:
     def __init__(self):
         self.session = Session(engine)
         self.symbols = SymbolsCrud(self.session)
+        self.kafka_db = setup_kafka_db()
         pass
 
     def init_db(self):
@@ -276,3 +278,59 @@ class ApiDb:
         assets = Assets(self.session)
         assets.store_balance()
         pass
+
+    def update_expire_after_seconds(self, collection_name, new_expire_after_seconds):
+        """
+        Update the expireAfterSeconds value for a time-series collection.
+        """
+
+        # Check if the collection exists
+        if collection_name in self.kafka_db.list_collection_names():
+            logging.info(f"Checking expireAfterSeconds for {collection_name}...")
+
+            # Get the current indexes for the collection
+            collection = self.kafka_db[collection_name]
+            indexes = collection.index_information()
+
+            # Check if an index with expireAfterSeconds already exists and matches the desired value
+            for index in indexes.values():
+                if (
+                    "expireAfterSeconds" in index
+                    and index["expireAfterSeconds"] == new_expire_after_seconds
+                ):
+                    logging.info(
+                        f"expireAfterSeconds is already set to {new_expire_after_seconds} for {collection_name}. Skipping update."
+                    )
+                    return
+            logging.info(f"Updating expireAfterSeconds for {collection_name}...")
+
+            # Backup existing data
+            collection = self.kafka_db[collection_name]
+            data = list(collection.find({}))
+
+            # Drop the existing collection
+            self.kafka_db.drop_collection(collection_name)
+
+            # Recreate the collection with the new expireAfterSeconds value
+            self.kafka_db.create_collection(
+                collection_name,
+                timeseries={
+                    "timeField": "close_time",
+                    "metaField": "symbol",
+                    "granularity": "minutes",
+                },
+            )
+
+            collection.create_index(
+                "close_time",
+                expireAfterSeconds=new_expire_after_seconds,
+                partialFilterExpression={"symbol": {"$exists": True}},
+            )
+
+            # Restore the backed-up data
+            if data:
+                collection.insert_many(data)
+
+            logging.info(
+                f"expireAfterSeconds updated to {new_expire_after_seconds} for {collection_name}."
+            )
