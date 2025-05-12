@@ -40,7 +40,6 @@ class ApiDb:
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
         self.create_dummy_bot()
-        self.update_expire_after_seconds("kline", 1728000)
         if os.environ["ENV"] != "ci":
             self.init_symbols()
             # Depends on autotrade settings
