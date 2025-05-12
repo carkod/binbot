@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from database.symbols_crud import SymbolsCrud
+from database.db import setup_kafka_db
 from symbols.models import SymbolsResponse, GetOneSymbolResponse
 from database.utils import get_session
 from sqlmodel import Session
@@ -109,8 +110,19 @@ def edit_symbol(
     Modify a blacklisted item
     """
     data = SymbolsCrud(session=session).edit_symbol_item(data)
-    return GetOneSymbolResponse(message="Symbol edited", data=data)
 
+    if not data.active:
+        # Delete klines to save space
+        db = setup_kafka_db()
+        result = db.kline.delete_many({"symbol": data.id})
+        if result.deleted_count > 0:
+            return GetOneSymbolResponse(
+                message="Symbol edited, klines removed", data=data
+            )
+        else:
+            return GetOneSymbolResponse(
+                message="Symbol edited, but no klines found", data=data, error=1
+            )
 
 @symbols_blueprint.get("/store", tags=["Symbols"])
 def store_symbols(session: Session = Depends(get_session)):
