@@ -28,11 +28,11 @@ def main():
         messages = consumer.poll(timeout_ms=1000)
         for topic_partition, message_batch in messages.items():
             for message in message_batch:
+                if message.topic == KafkaTopics.restart_streaming.value:
+                    mu.load_data_on_start()
                 if message.topic == KafkaTopics.klines_store_topic.value:
                     mu.process_klines(message.value)
                     bbu.dynamic_trailling(message.value)
-                if message.topic == KafkaTopics.restart_streaming.value:
-                    mu.load_data_on_start()
 
 
 if __name__ == "__main__":

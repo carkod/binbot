@@ -21,7 +21,7 @@ from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.round_numbers import round_numbers
 from typing import Sequence
-
+from copy import deepcopy
 
 class BaseStreaming:
     def __init__(self) -> None:
@@ -273,8 +273,14 @@ class BbspreadsUpdater(BaseStreaming):
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
+        if db_table == BotTable:
+            self.bot_controller = BotTableCrud()
+        
+        if db_table == PaperTradingTable:
+            self.bot_controller = PaperTradingTableCrud()
+
         # Avoid duplicate updates
-        original_bot = bot
+        original_bot = deepcopy(bot)
 
         # not enough data
         if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0 or bb_spreads.bb_mid == 0:
@@ -310,17 +316,19 @@ class BbspreadsUpdater(BaseStreaming):
         bot_profit = self.compute_single_bot_profit(bot, current_price)
         # when prices go up only
         if bot.strategy == Strategy.long:
+
             # Only when TD_2 > TD_1
-            bot.trailling_profit = top_spread
+            bot.trailling_profit = original_bot.trailling_profit
             # too much risk, reduce stop loss
-            bot.trailling_deviation = bottom_spread
-            bot.stop_loss = bottom_spread
+            bot.trailling_deviation = original_bot.trailling_deviation
+            bot.stop_loss = original_bot.stop_loss
 
             # Already decent profit, do not increase risk
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
                 bot.trailling_deviation = 2.6
                 bot.stop_loss = 3.2
+
 
             # check we are not duplicating the update
             if (
@@ -340,6 +348,7 @@ class BbspreadsUpdater(BaseStreaming):
             return
 
         if bot.strategy == Strategy.margin_short:
+
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
                 bot.trailling_deviation = 2.6
