@@ -35,6 +35,7 @@ class BaseProducer:
         value = {"type": "restart", "action": action}
 
         producer.send(KafkaTopics.restart_streaming.value, value=json.dumps(value))
+        producer.send(KafkaTopics.restart_autotrade.value, value=json.dumps(value))
         producer.flush()
 
         return
@@ -74,7 +75,6 @@ class AsyncBaseProducer:
 
         value = {"type": "restart", "action": action}
 
-        self.producer.send(
-            KafkaTopics.restart_streaming.value, value=json.dumps(value), partition=0
-        )
+        self.producer.send(KafkaTopics.restart_streaming.value, value=json.dumps(value))
+        self.producer.send(KafkaTopics.restart_autotrade.value, value=json.dumps(value))
         self.producer.flush()

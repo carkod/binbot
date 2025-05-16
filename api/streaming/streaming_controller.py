@@ -286,7 +286,6 @@ class BbspreadsUpdater:
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
-
         # Avoid duplicate updates
         original_bot = deepcopy(bot)
 
@@ -344,7 +343,7 @@ class BbspreadsUpdater:
             ):
                 return
 
-            self.bot_controller.save(bot)
+            self.base_streaming.bot_controller.save(bot)
             spot_deal = SpotLongDeal(bot, db_table=db_table)
             # reactivate includes saving
             spot_deal.open_deal()
