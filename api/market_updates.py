@@ -3,7 +3,11 @@ import logging
 import os
 
 from kafka import KafkaConsumer
-from streaming.streaming_controller import BbspreadsUpdater, StreamingController, BaseStreaming
+from streaming.streaming_controller import (
+    BbspreadsUpdater,
+    StreamingController,
+    BaseStreaming,
+)
 from tools.enum_definitions import KafkaTopics
 
 logging.basicConfig(

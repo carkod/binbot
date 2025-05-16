@@ -124,6 +124,7 @@ def edit_symbol(
                 message="Symbol edited, but no klines found", data=data, error=1
             )
 
+
 @symbols_blueprint.get("/store", tags=["Symbols"])
 def store_symbols(session: Session = Depends(get_session)):
     """

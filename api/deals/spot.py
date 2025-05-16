@@ -252,4 +252,5 @@ class SpotLongDeal(SpotDealAbstract):
             self.active_bot = self.long_open_deal_trailling_parameters()
 
         self.controller.save(self.active_bot)
+        self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")
         return self.active_bot

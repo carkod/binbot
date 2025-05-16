@@ -23,6 +23,7 @@ from tools.round_numbers import round_numbers
 from typing import Sequence
 from copy import deepcopy
 
+
 class BaseStreaming:
     def __init__(self) -> None:
         self.binance_api = BinanceApi()
@@ -142,7 +143,10 @@ class StreamingController:
         open_price = data["open_price"]
         symbol = data["symbol"]
 
-        if symbol in self.base_streaming.active_bot_pairs or symbol in self.base_streaming.paper_trading_active_bots:
+        if (
+            symbol in self.base_streaming.active_bot_pairs
+            or symbol in self.base_streaming.paper_trading_active_bots
+        ):
             current_bot = self.base_streaming.get_current_bot(symbol)
             current_test_bot = self.base_streaming.get_current_test_bot(symbol)
 
@@ -191,8 +195,9 @@ class BbspreadsUpdater:
 
     However, BbspreadsUpdater can be created as many times as needed, as this is decoupled from network calls
     and needs to create a clean instance so that there's no overriding from previous data
-    
+
     """
+
     def __init__(self, base: BaseStreaming) -> None:
         self.base_streaming = base
         self.current_bot: BotModel | None = None
@@ -281,11 +286,6 @@ class BbspreadsUpdater:
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
-        if db_table == BotTable:
-            self.bot_controller = BotTableCrud()
-        
-        if db_table == PaperTradingTable:
-            self.bot_controller = PaperTradingTableCrud()
 
         # Avoid duplicate updates
         original_bot = deepcopy(bot)
@@ -324,7 +324,6 @@ class BbspreadsUpdater:
         bot_profit = self.compute_single_bot_profit(bot, current_price)
         # when prices go up only
         if bot.strategy == Strategy.long:
-
             # Only when TD_2 > TD_1
             bot.trailling_profit = original_bot.trailling_profit
             # too much risk, reduce stop loss
@@ -336,7 +335,6 @@ class BbspreadsUpdater:
                 bot.trailling_profit = 2.8
                 bot.trailling_deviation = 2.6
                 bot.stop_loss = 3.2
-
 
             # check we are not duplicating the update
             if (
@@ -356,7 +354,6 @@ class BbspreadsUpdater:
             return
 
         if bot.strategy == Strategy.margin_short:
-
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
                 bot.trailling_deviation = 2.6
