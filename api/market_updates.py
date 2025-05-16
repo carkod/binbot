@@ -3,7 +3,7 @@ import logging
 import os
 
 from kafka import KafkaConsumer
-from streaming.streaming_controller import BbspreadsUpdater, StreamingController
+from streaming.streaming_controller import BbspreadsUpdater, StreamingController, BaseStreaming
 from tools.enum_definitions import KafkaTopics
 
 logging.basicConfig(
@@ -22,17 +22,17 @@ def main():
         value_deserializer=lambda m: json.loads(m),
         api_version=(2, 5, 0),
     )
-    mu = StreamingController(consumer)
-    bbu = BbspreadsUpdater()
+    bs = BaseStreaming()
+    mu = StreamingController(bs, consumer)
     while True:
         messages = consumer.poll(timeout_ms=1000)
         for topic_partition, message_batch in messages.items():
             for message in message_batch:
                 if message.topic == KafkaTopics.restart_streaming.value:
-                    mu.load_data_on_start()
+                    bs.load_data_on_start()
                 if message.topic == KafkaTopics.klines_store_topic.value:
                     mu.process_klines(message.value)
-                    bbu.dynamic_trailling(message.value)
+                    BbspreadsUpdater(base=bs).dynamic_trailling(message.value)
 
 
 if __name__ == "__main__":
