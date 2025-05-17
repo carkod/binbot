@@ -286,6 +286,13 @@ class BbspreadsUpdater:
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
+        controller: Union[PaperTradingTableCrud | BotTableCrud] = (
+            self.base_streaming.bot_controller
+        )
+
+        if db_table == PaperTradingTable:
+            controller = self.base_streaming.paper_trading_controller
+
         # Avoid duplicate updates
         original_bot = deepcopy(bot)
 
@@ -324,11 +331,10 @@ class BbspreadsUpdater:
         # when prices go up only
         if bot.strategy == Strategy.long:
             # Only when TD_2 > TD_1
-            bot.trailling_profit = original_bot.trailling_profit
+            bot.trailling_profit = top_spread
             # too much risk, reduce stop loss
-            bot.trailling_deviation = original_bot.trailling_deviation
-            bot.stop_loss = original_bot.stop_loss
-
+            bot.trailling_deviation = bottom_spread
+            bot.stop_loss = whole_spread
             # Already decent profit, do not increase risk
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
@@ -343,7 +349,7 @@ class BbspreadsUpdater:
             ):
                 return
 
-            self.base_streaming.bot_controller.save(bot)
+            controller.save(bot)
             spot_deal = SpotLongDeal(bot, db_table=db_table)
             # reactivate includes saving
             spot_deal.open_deal()
@@ -409,5 +415,4 @@ class BbspreadsUpdater:
                 db_table=PaperTradingTable,
                 current_price=single_candle.close_price,
             )
-
-            pass
+        pass

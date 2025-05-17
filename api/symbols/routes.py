@@ -123,6 +123,10 @@ def edit_symbol(
             return GetOneSymbolResponse(
                 message="Symbol edited, but no klines found", data=data, error=1
             )
+    else:
+        return GetOneSymbolResponse(
+            message="Symbol edited, but no klines removed", data=data
+        )
 
 
 @symbols_blueprint.get("/store", tags=["Symbols"])

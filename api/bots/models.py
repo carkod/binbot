@@ -258,6 +258,10 @@ class BotResponse(IResponseBase):
     data: Optional[BotModelResponse] = Field(default=None)
 
 
+class BotPairsList(IResponseBase):
+    data: list = Field(default=[])
+
+
 class BotListResponse(IResponseBase):
     """
     Model exclusively used to serialize
