@@ -7,7 +7,7 @@ from database.paper_trading_crud import PaperTradingTableCrud
 from database.utils import get_session
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.handle_error import api_response, StandardResponse
-from bots.models import BotModel, BotResponse, BotListResponse, BotBase
+from bots.models import BotModel, BotResponse, BotListResponse, BotBase, BotPairsList
 from typing import List, Union, Optional
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
@@ -48,11 +48,11 @@ def get(
 def get_active_pairs(session: Session = Depends(get_session)):
     try:
         pairs = PaperTradingTableCrud(session=session).get_active_pairs()
-        return BotResponse(message="Successfully found active pairs!", data=pairs)
+        return BotPairsList(message="Successfully found active pairs!", data=pairs)
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
-    except ValueError:
-        return BotResponse(message="No active pairs found!", error=1)
+    except ValueError as error:
+        return BotResponse(message=f"{error}", error=1)
 
 
 @paper_trading_blueprint.get(

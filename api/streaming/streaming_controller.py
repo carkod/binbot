@@ -21,6 +21,7 @@ from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.round_numbers import round_numbers
 from typing import Sequence
+from copy import deepcopy
 
 
 class BaseStreaming:
@@ -99,12 +100,13 @@ class BaseStreaming:
         return bb_spreads
 
 
-class StreamingController(BaseStreaming):
-    def __init__(self, consumer: KafkaConsumer) -> None:
+class StreamingController:
+    def __init__(self, base: BaseStreaming, consumer: KafkaConsumer) -> None:
         super().__init__()
         # Gets any signal to restart streaming
         self.consumer = consumer
         self.autotrade_controller = AutotradeCrud()
+        self.base_streaming = base
 
     def execute_strategies(
         self,
@@ -141,9 +143,12 @@ class StreamingController(BaseStreaming):
         open_price = data["open_price"]
         symbol = data["symbol"]
 
-        if symbol in self.active_bot_pairs or symbol in self.paper_trading_active_bots:
-            current_bot = self.get_current_bot(symbol)
-            current_test_bot = self.get_current_test_bot(symbol)
+        if (
+            symbol in self.base_streaming.active_bot_pairs
+            or symbol in self.base_streaming.paper_trading_active_bots
+        ):
+            current_bot = self.base_streaming.get_current_bot(symbol)
+            current_test_bot = self.base_streaming.get_current_test_bot(symbol)
 
             try:
                 if current_bot:
@@ -184,19 +189,27 @@ class StreamingController(BaseStreaming):
         return
 
 
-class BbspreadsUpdater(BaseStreaming):
-    def __init__(self) -> None:
-        super().__init__()
+class BbspreadsUpdater:
+    """
+    Base Streaming instance have the collection of network calls, so they should be called once.
+
+    However, BbspreadsUpdater can be created as many times as needed, as this is decoupled from network calls
+    and needs to create a clean instance so that there's no overriding from previous data
+
+    """
+
+    def __init__(self, base: BaseStreaming) -> None:
+        self.base_streaming = base
         self.current_bot: BotModel | None = None
         self.current_test_bot: BotModel | None = None
 
     def load_current_bots(self, symbol: str) -> None:
         try:
-            current_bot_payload = self.get_current_bot(symbol)
+            current_bot_payload = self.base_streaming.get_current_bot(symbol)
             if current_bot_payload:
                 self.current_bot = BotModel.model_validate(current_bot_payload)
 
-            current_test_bot_payload = self.get_current_test_bot(symbol)
+            current_test_bot_payload = self.base_streaming.get_current_test_bot(symbol)
             if current_test_bot_payload:
                 self.current_test_bot = BotModel.model_validate(
                     current_test_bot_payload
@@ -210,7 +223,7 @@ class BbspreadsUpdater(BaseStreaming):
             close_timestamp = int(datetime.now().timestamp() * 1000)
 
         asset = bot.pair.split(bot.fiat)[0]
-        interest_details = self.binance_api.get_interest_history(
+        interest_details = self.base_streaming.binance_api.get_interest_history(
             asset=asset, symbol=bot.pair
         )
 
@@ -273,8 +286,15 @@ class BbspreadsUpdater(BaseStreaming):
         current_price: float,
         bb_spreads: BollinguerSpread,
     ) -> None:
+        controller: Union[PaperTradingTableCrud | BotTableCrud] = (
+            self.base_streaming.bot_controller
+        )
+
+        if db_table == PaperTradingTable:
+            controller = self.base_streaming.paper_trading_controller
+
         # Avoid duplicate updates
-        original_bot = bot
+        original_bot = deepcopy(bot)
 
         # not enough data
         if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0 or bb_spreads.bb_mid == 0:
@@ -314,8 +334,7 @@ class BbspreadsUpdater(BaseStreaming):
             bot.trailling_profit = top_spread
             # too much risk, reduce stop loss
             bot.trailling_deviation = bottom_spread
-            bot.stop_loss = bottom_spread
-
+            bot.stop_loss = whole_spread
             # Already decent profit, do not increase risk
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
@@ -330,7 +349,7 @@ class BbspreadsUpdater(BaseStreaming):
             ):
                 return
 
-            self.bot_controller.save(bot)
+            controller.save(bot)
             spot_deal = SpotLongDeal(bot, db_table=db_table)
             # reactivate includes saving
             spot_deal.open_deal()
@@ -379,7 +398,8 @@ class BbspreadsUpdater(BaseStreaming):
         # Check if it matches any active bots
         self.load_current_bots(single_candle.symbol)
 
-        bb_spreads = self.build_bb_spreads(single_candle)
+        bb_spreads = self.base_streaming.build_bb_spreads(single_candle)
+
         if self.current_bot and self.current_bot.dynamic_trailling:
             self.update_bots_parameters(
                 bot=self.current_bot,
@@ -395,5 +415,4 @@ class BbspreadsUpdater(BaseStreaming):
                 db_table=PaperTradingTable,
                 current_price=single_candle.close_price,
             )
-
-            pass
+        pass

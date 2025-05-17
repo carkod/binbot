@@ -148,10 +148,6 @@ class SpotLongDeal(SpotDealAbstract):
                 self.take_profit_order()
                 return
 
-        self.base_producer.update_required(
-            self.producer, "EXECUTE_SPOT_STREAMING_UPDATES"
-        )
-
     def close_all(self) -> BotModel:
         """
         Close all deals and sell pair
@@ -252,4 +248,5 @@ class SpotLongDeal(SpotDealAbstract):
             self.active_bot = self.long_open_deal_trailling_parameters()
 
         self.controller.save(self.active_bot)
+        self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")
         return self.active_bot
