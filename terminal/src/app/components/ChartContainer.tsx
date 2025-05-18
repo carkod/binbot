@@ -14,13 +14,9 @@ import { type Bot } from "../../features/bots/botInitialState";
 import { type PayloadActionCreator } from "@reduxjs/toolkit";
 
 const ChartContainer: FC<{
-  bot: Bot,
-  setCurrentPrice: PayloadActionCreator<number>,
-}> = ({
-  bot,
-  setCurrentPrice,
-}) => {
-
+  bot: Bot;
+  setCurrentPrice: PayloadActionCreator<number>;
+}> = ({ bot, setCurrentPrice }) => {
   const dispatch: AppDispatch = useAppDispatch();
   const initialBotProfit = computeSingleBotProfit(bot);
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0);
@@ -51,7 +47,7 @@ const ChartContainer: FC<{
 
     if (currentChartPrice !== 0) {
       const newOrderLines = updateOrderLines(bot, currentChartPrice);
-      setCurrentOrderLines((draft) => draft = newOrderLines);
+      setCurrentOrderLines((draft) => (draft = newOrderLines));
       setBotProfit(computeSingleBotProfit(bot, currentChartPrice));
       if (bot.deal?.current_price !== currentChartPrice) {
         dispatch(setCurrentPrice(currentChartPrice));
@@ -87,8 +83,8 @@ const ChartContainer: FC<{
                   bot.deal?.total_commissions > 0 &&
                   botProfit - bot.deal.total_commissions > 0 && (
                     <small className="fs-6 fw-light">
-                      {roundDecimals(botProfit - bot.deal.total_commissions) +
-                        "%"}
+                      {` (${roundDecimals(botProfit - bot.deal.total_commissions)} 
+                        "%")`}
                     </small>
                   )}
               </Badge>{" "}

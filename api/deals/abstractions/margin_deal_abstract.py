@@ -420,7 +420,9 @@ class MarginDealAbstract(DealAbstract):
 
         return self.active_bot
 
-    def execute_take_profit(self) -> BotModel:
+    def execute_take_profit(
+        self, take_profit_type: DealType = DealType.take_profit
+    ) -> BotModel:
         """
         Execute take profit when price is hit.
         This can be a simple take_profit order when take_profit_price is hit or
@@ -434,7 +436,7 @@ class MarginDealAbstract(DealAbstract):
         """
         if isinstance(self.controller, BotTableCrud):
             try:
-                self.cancel_open_orders(DealType.take_profit)
+                self.cancel_open_orders(take_profit_type)
             except Exception:
                 # Regardless opened orders or not continue
                 pass
@@ -462,7 +464,7 @@ class MarginDealAbstract(DealAbstract):
             # No res means it wasn't properly closed/completed
             take_profit_order = OrderModel(
                 timestamp=res["transactTime"],
-                deal_type=DealType.take_profit,
+                deal_type=take_profit_type,
                 order_id=int(res["orderId"]),
                 pair=res["symbol"],
                 order_side=res["side"],
