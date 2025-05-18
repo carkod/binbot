@@ -331,10 +331,11 @@ class BbspreadsUpdater:
         # when prices go up only
         if bot.strategy == Strategy.long:
             # Only when TD_2 > TD_1
-            bot.trailling_profit = top_spread
+            bot.trailling_profit = top_spread if top_spread > 1 else 1
             # too much risk, reduce stop loss
-            bot.trailling_deviation = bottom_spread
-            bot.stop_loss = whole_spread
+            bot.trailling_deviation = bottom_spread if bottom_spread > 1 else 1
+            # avoid stop_loss being too small
+            bot.stop_loss = whole_spread if whole_spread > 3 else 3
             # Already decent profit, do not increase risk
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
@@ -369,8 +370,8 @@ class BbspreadsUpdater:
             # also over time we'll be paying more interest, so better to liquidate sooner
             # that means smaller trailing deviation to close deal earlier
             elif bot.trailling_deviation > bottom_spread:
-                bot.trailling_profit = bottom_spread
-                bot.trailling_deviation = top_spread
+                bot.trailling_profit = bottom_spread if bottom_spread > 1 else 1
+                bot.trailling_deviation = top_spread if top_spread > 1 else 1
 
             # check we are not duplicating the update
             if (
