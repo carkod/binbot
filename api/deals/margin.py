@@ -250,5 +250,6 @@ class MarginDeal(MarginDealAbstract):
             # Activation required
             self.active_bot = self.short_open_deal_trailling_parameters()
 
+        self.controller.save(self.active_bot)
         self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_OPEN_DEAL")
         return self.active_bot
