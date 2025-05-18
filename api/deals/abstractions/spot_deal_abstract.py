@@ -1,3 +1,4 @@
+import logging
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
@@ -319,6 +320,10 @@ class SpotDealAbstract(DealAbstract):
         this one simplifies by separating strategy specific
         """
 
+        if self.active_bot.strategy == Strategy.margin_short:
+            logging.error("Bot executing wrong long_open_deal_trailling_parameters")
+            return self.active_bot
+
         # Update stop loss regarless of base order
         if self.active_bot.stop_loss > 0:
             price = self.active_bot.deal.opening_price
@@ -359,6 +364,10 @@ class SpotDealAbstract(DealAbstract):
         This makes sure deal trailling values are up to date and
         not out of sync with the bot parameters
         """
+
+        if self.active_bot.strategy == Strategy.margin_short:
+            logging.error("Bot executing wrong long_update_deal_trailling_parameters")
+            return self.active_bot
 
         if self.active_bot.stop_loss > 0:
             buy_price = self.active_bot.deal.opening_price

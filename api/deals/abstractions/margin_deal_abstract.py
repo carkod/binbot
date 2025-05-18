@@ -1,6 +1,7 @@
+import logging
+
 from typing import Type, Union
 from urllib.error import HTTPError
-
 from bots.models import BotBase, BotModel, OrderModel
 from database.bot_crud import BotTableCrud
 from database.models.bot_table import BotTable, PaperTradingTable
@@ -194,6 +195,11 @@ class MarginDealAbstract(DealAbstract):
         This makes sure deal trailling values are up to date and
         not out of sync with the bot parameters
         """
+
+        if self.active_bot.strategy == Strategy.margin_short:
+            logging.error("Bot executing wrong short_update_deal_trailling_parameters")
+            return self.active_bot
+
         if self.active_bot.deal.stop_loss_price == 0:
             self.active_bot.deal.stop_loss_price = (
                 self.active_bot.deal.opening_price
@@ -227,7 +233,12 @@ class MarginDealAbstract(DealAbstract):
         Updates stop loss and trailling paramaters for deal
         during deal opening.
 
+        Only use for short margin strategy!
         """
+
+        if self.active_bot.strategy == Strategy.long:
+            logging.error("Bot executing wrong short_open_deal_trailling_parameters")
+            return self.active_bot
 
         # Update stop loss regarless of base order
         if self.active_bot.stop_loss > 0:
@@ -238,21 +249,11 @@ class MarginDealAbstract(DealAbstract):
 
         # Bot has only take_profit set
         if not self.active_bot.trailling and self.active_bot.take_profit > 0:
-            if self.active_bot.strategy == Strategy.margin_short:
-                price = self.active_bot.deal.opening_price
-                take_profit_price = price - (
-                    price * (self.active_bot.take_profit) / 100
-                )
-                self.active_bot.deal.take_profit_price = round_numbers(
-                    take_profit_price, self.price_precision
-                )
-            else:
-                take_profit_price = float(self.active_bot.deal.opening_price) * (
-                    1 + (float(self.active_bot.take_profit) / 100)
-                )
-                self.active_bot.deal.take_profit_price = round_numbers(
-                    take_profit_price, self.price_precision
-                )
+            price = self.active_bot.deal.opening_price
+            take_profit_price = price - (price * (self.active_bot.take_profit) / 100)
+            self.active_bot.deal.take_profit_price = round_numbers(
+                take_profit_price, self.price_precision
+            )
 
         # Bot has trailling set
         # trailling_profit must also be set
