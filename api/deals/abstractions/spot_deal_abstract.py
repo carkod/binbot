@@ -249,6 +249,12 @@ class SpotDealAbstract(DealAbstract):
                 qty=round_numbers(qty, self.qty_precision),
             )
 
+            if res["status"] == "EXPIRED":
+                res = self.sell_order(
+                    symbol=self.active_bot.pair,
+                    qty=round_numbers(qty, self.qty_precision),
+                )
+
         price = float(res["price"])
         if price == 0:
             price = self.calculate_avg_price(res["fills"])
@@ -256,7 +262,7 @@ class SpotDealAbstract(DealAbstract):
         order_data = OrderModel(
             timestamp=res["transactTime"],
             order_id=int(res["orderId"]),
-            deal_type=DealType.take_profit,
+            deal_type=DealType.trailling_profit,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
@@ -283,11 +289,10 @@ class SpotDealAbstract(DealAbstract):
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
 
-        if res["status"] != "FILLED" and res["status"] != "NEW":
-            self.active_bot.status = Status.completed
-            self.active_bot.logs.append(
-                f"Completed take profit after failing to break trailling {self.active_bot.pair}"
-            )
+        self.active_bot.status = Status.completed
+        self.active_bot.logs.append(
+            "Completed take profit after failing to break trailling"
+        )
 
         self.controller.save(self.active_bot)
         return self.active_bot
