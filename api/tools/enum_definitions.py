@@ -85,6 +85,15 @@ class OrderSide(str, Enum):
     sell = "SELL"
 
 
+class OrderStatus(str, Enum):
+    new = "NEW"
+    partially_filled = "PARTIALLY_FILLED"
+    filled = "FILLED"
+    canceled = "CANCELED"
+    rejected = "REJECTED"
+    expired = "EXPIRED"
+
+
 class CloseConditions(str, Enum):
     dynamic_trailling = "dynamic_trailling"
     timestamp = "timestamp"  # No trailling, standard stop loss

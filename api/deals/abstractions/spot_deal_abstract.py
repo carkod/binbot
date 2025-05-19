@@ -9,6 +9,7 @@ from tools.enum_definitions import (
     OrderSide,
     Status,
     Strategy,
+    OrderStatus,
 )
 from bots.models import BotModel, OrderModel, BotBase
 from deals.abstractions.factory import DealAbstract
@@ -164,7 +165,7 @@ class SpotDealAbstract(DealAbstract):
             )
             # Dispatch real order
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
-            if res["status"] != "EXPIRED":
+            if res["status"] == OrderStatus.expired:
                 res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         price = float(res["price"])
@@ -249,7 +250,7 @@ class SpotDealAbstract(DealAbstract):
                 qty=round_numbers(qty, self.qty_precision),
             )
 
-            if res["status"] == "EXPIRED":
+            if res["status"] == OrderStatus.expired:
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=round_numbers(qty, self.qty_precision),
