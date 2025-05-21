@@ -6,13 +6,13 @@ from bots.models import BotModel
 from database.models.bot_table import BotTable
 from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
-from database.utils import independent_session
+from database.utils import independent_session, timestamp
 from tools.enum_definitions import BinbotEnums, Status, Strategy
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
 from tools.exceptions import SaveBotError, BinbotErrors
-from tools.round_numbers import round_numbers
+from tools.round_numbers import round_numbers, ts_to_humandate
 from sqlalchemy import text
 
 
@@ -75,8 +75,20 @@ class BotTableCrud:
         if not bot_result:
             raise BinbotErrors("Bot not found")
 
+        generated_ts = ts_to_humandate(timestamp())
+
+        if isinstance(log_message, list):
+            new_logs: list = []
+            for msg in log_message:
+                new_logs.append(f"[{generated_ts}] {msg}")
+
+            bot_result.logs = new_logs + bot_result.logs
+
+        elif isinstance(log_message, str):
+            msg = f"[{generated_ts}] {log_message}"
+            bot_result.logs.insert(0, msg)
+
         # Update logs as an SQLAlchemy list
-        bot_result.logs = [log_message] + bot_result.logs
         flag_modified(bot_result, "logs")
 
         # db operations

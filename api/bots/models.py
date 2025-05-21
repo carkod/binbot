@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 from database.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType
+from tools.round_numbers import ts_to_humandate
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
@@ -94,6 +95,22 @@ class BotBase(BaseModel):
     @classmethod
     def check_pair_not_empty(cls, v):
         assert v != "", "Pair field must be filled."
+        return v
+
+    # prepend timestamp to logs
+    @field_validator("logs", mode="before")
+    def prepend_timestamp(cls, v):
+        if isinstance(v, list):
+            new_logs = []
+            for log in v:
+                ts = ts_to_humandate(timestamp())
+                new_logs.append(f"[{ts}] {log}")
+
+            return new_logs
+
+        if isinstance(v, str):
+            return [f"[{ts_to_humandate(timestamp())}] {v}"]
+
         return v
 
 

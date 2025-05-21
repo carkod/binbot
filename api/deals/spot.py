@@ -94,7 +94,9 @@ class SpotLongDeal(SpotDealAbstract):
 
                 # take_profit but for trailling, to avoid confusion
                 # trailling_profit_price always be > trailling_stop_loss_price
-                self.active_bot.deal.trailling_profit_price = new_take_profit
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    new_take_profit, self.price_precision
+                )
 
                 if (
                     new_trailling_stop_loss > self.active_bot.deal.opening_price
@@ -104,8 +106,8 @@ class SpotLongDeal(SpotDealAbstract):
                     # Selling below buy_price will cause a loss
                     # instead let it drop until it hits safety order or stop loss
                     # Update trailling_stop_loss
-                    self.active_bot.deal.trailling_stop_loss_price = (
-                        new_trailling_stop_loss
+                    self.active_bot.deal.trailling_stop_loss_price = round_numbers(
+                        new_trailling_stop_loss, self.price_precision
                     )
 
                 if (

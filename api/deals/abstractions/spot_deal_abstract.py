@@ -1,3 +1,4 @@
+import logging
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
@@ -8,6 +9,7 @@ from tools.enum_definitions import (
     OrderSide,
     Status,
     Strategy,
+    OrderStatus,
 )
 from bots.models import BotModel, OrderModel, BotBase
 from deals.abstractions.factory import DealAbstract
@@ -163,7 +165,7 @@ class SpotDealAbstract(DealAbstract):
             )
             # Dispatch real order
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
-            if res["status"] != "EXPIRED":
+            if res["status"] == OrderStatus.expired:
                 res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         price = float(res["price"])
@@ -248,6 +250,12 @@ class SpotDealAbstract(DealAbstract):
                 qty=round_numbers(qty, self.qty_precision),
             )
 
+            if res["status"] == OrderStatus.expired:
+                res = self.sell_order(
+                    symbol=self.active_bot.pair,
+                    qty=round_numbers(qty, self.qty_precision),
+                )
+
         price = float(res["price"])
         if price == 0:
             price = self.calculate_avg_price(res["fills"])
@@ -255,7 +263,7 @@ class SpotDealAbstract(DealAbstract):
         order_data = OrderModel(
             timestamp=res["transactTime"],
             order_id=int(res["orderId"]),
-            deal_type=DealType.take_profit,
+            deal_type=DealType.trailling_profit,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
@@ -282,11 +290,10 @@ class SpotDealAbstract(DealAbstract):
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
 
-        if res["status"] != "FILLED" and res["status"] != "NEW":
-            self.active_bot.status = Status.completed
-            self.active_bot.logs.append(
-                f"Completed take profit after failing to break trailling {self.active_bot.pair}"
-            )
+        self.active_bot.status = Status.completed
+        self.active_bot.logs.append(
+            "Completed take profit after failing to break trailling"
+        )
 
         self.controller.save(self.active_bot)
         return self.active_bot
@@ -318,6 +325,10 @@ class SpotDealAbstract(DealAbstract):
         Inherits from old open_deal method
         this one simplifies by separating strategy specific
         """
+
+        if self.active_bot.strategy == Strategy.margin_short:
+            logging.error("Bot executing wrong long_open_deal_trailling_parameters")
+            return self.active_bot
 
         # Update stop loss regarless of base order
         if self.active_bot.stop_loss > 0:
@@ -359,6 +370,10 @@ class SpotDealAbstract(DealAbstract):
         This makes sure deal trailling values are up to date and
         not out of sync with the bot parameters
         """
+
+        if self.active_bot.strategy == Strategy.margin_short:
+            logging.error("Bot executing wrong long_update_deal_trailling_parameters")
+            return self.active_bot
 
         if self.active_bot.stop_loss > 0:
             buy_price = self.active_bot.deal.opening_price

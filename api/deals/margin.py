@@ -113,7 +113,7 @@ class MarginDeal(MarginDealAbstract):
                     self.active_bot,
                 )
                 # since price is given by matching engine
-                self.execute_take_profit()
+                self.execute_take_profit(DealType.trailling_profit)
                 self.base_producer.update_required(
                     self.producer, "EXECUTE_MARGIN_TRAILLING_PROFIT"
                 )

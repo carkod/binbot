@@ -2,7 +2,7 @@ from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
-from tools.enum_definitions import DealType, OrderSide, Status
+from tools.enum_definitions import DealType, OrderSide, Status, OrderStatus
 from tools.exceptions import TakeProfitError
 from tools.round_numbers import round_numbers, round_timestamp
 from deals.abstractions.base import BaseDeal
@@ -110,74 +110,6 @@ class DealAbstract(BaseDeal):
 
         return bot
 
-    def update_take_profit(self, order_id: int) -> BotModel:
-        """
-        Update take profit after websocket order endpoint triggered
-        - Close current opened take profit order
-        - Create new take profit order
-        - Update database by replacing old take profit deal with new take profit deal
-        """
-        bot = self.active_bot
-        if bot.deal:
-            find_base_order = next(
-                (order.order_id == order_id for order in bot.orders), None
-            )
-            if find_base_order:
-                asset = self.symbols_crud.base_asset(bot.pair)
-
-                # First cancel old order to unlock balance
-                self.delete_order(bot.pair, order_id)
-
-                raw_balance = self.get_single_raw_balance(asset)
-                qty = round_numbers(raw_balance, self.qty_precision)
-                res = self.sell_order(
-                    symbol=self.active_bot.pair,
-                    qty=qty,
-                )
-
-                price = float(res["price"])
-                if price == 0:
-                    # Market orders return 0
-                    price = self.calculate_avg_price(res["fills"])
-
-                # Replace take_profit order
-                take_profit_order = OrderModel(
-                    timestamp=int(res["transactTime"]),
-                    order_id=int(res["orderId"]),
-                    deal_type=DealType.take_profit,
-                    pair=res["symbol"],
-                    order_side=res["side"],
-                    order_type=res["type"],
-                    price=price,
-                    qty=float(res["origQty"]),
-                    time_in_force=res["timeInForce"],
-                    status=res["status"],
-                )
-
-                # Build new deals list
-                new_deals = []
-                for d in bot.orders:
-                    if d.deal_type != DealType.take_profit:
-                        new_deals.append(d)
-
-                # Append now new take_profit deal
-                new_deals.append(take_profit_order)
-                self.active_bot.orders = new_deals
-                self.active_bot.deal.total_commissions = (
-                    self.calculate_total_commissions(res["fills"])
-                )
-                self.controller.save(self.active_bot)
-                self.controller.update_logs(
-                    "take_profit deal successfully updated", self.active_bot
-                )
-                return self.active_bot
-        else:
-            self.controller.update_logs(
-                "Error: Bot does not contain a base order deal", self.active_bot
-            )
-            raise ValueError("Bot does not contain a base order deal")
-        return self.active_bot
-
     def base_order(self) -> BotModel:
         """
         Required initial order to trigger long strategy bot.
@@ -214,6 +146,8 @@ class DealAbstract(BaseDeal):
                 symbol=self.active_bot.pair,
                 qty=qty,
             )
+            if res["status"] == OrderStatus.expired:
+                res = self.buy_order(symbol=self.active_bot.pair, qty=qty)
 
         price = float(res["price"])
         if price == 0:
