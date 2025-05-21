@@ -146,7 +146,7 @@ class DealAbstract(BaseDeal):
                 symbol=self.active_bot.pair,
                 qty=qty,
             )
-            if res["status"] == OrderStatus.expired:
+            if res["status"] == OrderStatus.EXPIRED:
                 res = self.buy_order(symbol=self.active_bot.pair, qty=qty)
 
         price = float(res["price"])

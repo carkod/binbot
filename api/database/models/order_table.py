@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 from pydantic import ValidationInfo, field_validator
-from tools.enum_definitions import DealType, OrderType
+from tools.enum_definitions import DealType, OrderType, OrderStatus
 from sqlmodel import Field, Relationship, SQLModel
 from uuid import UUID, uuid4
 from sqlalchemy import Column, BigInteger
@@ -16,7 +16,7 @@ class OrderBase(SQLModel):
     order_side: str
     pair: str
     qty: float
-    status: str
+    status: OrderStatus
     price: float
     deal_type: DealType
 

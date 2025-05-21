@@ -86,12 +86,17 @@ class OrderSide(str, Enum):
 
 
 class OrderStatus(str, Enum):
-    new = "NEW"
-    partially_filled = "PARTIALLY_FILLED"
-    filled = "FILLED"
-    canceled = "CANCELED"
-    rejected = "REJECTED"
-    expired = "EXPIRED"
+    """
+    Must be all uppercase for SQL alchemy
+    and Alembic to do migration properly
+    """
+
+    NEW = "NEW"
+    PARTIALLY_FILLED = "PARTIALLY_FILLED"
+    FILLED = "FILLED"
+    CANCELED = "CANCELED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
 
 
 class CloseConditions(str, Enum):
