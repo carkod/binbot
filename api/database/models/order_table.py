@@ -21,7 +21,24 @@ class OrderBase(SQLModel):
     deal_type: DealType
 
     model_config = {
+        "from_attributes": True,
         "use_enum_values": True,
+        "json_schema_extra": {
+            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Exchange",
+            "examples": [
+                {
+                    "order_type": "LIMIT",
+                    "time_in_force": "GTC",
+                    "timestamp": 0,
+                    "order_id": 0,
+                    "order_side": "BUY",
+                    "pair": "",
+                    "qty": 0,
+                    "status": "",
+                    "price": 0,
+                }
+            ],
+        },
     }
 
 

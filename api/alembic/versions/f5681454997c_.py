@@ -20,6 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    op.execute("ALTER TYPE dealtype ADD VALUE IF NOT EXISTS 'trailling_profit'")
     # Drop the enum type if it exists before creating it (handles previous bad state)
     op.execute("DROP TYPE IF EXISTS orderstatus;")
     # Explicitly create the enum type before altering columns
