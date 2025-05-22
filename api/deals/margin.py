@@ -1,7 +1,7 @@
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.paper_trading_crud import PaperTradingTableCrud
-from tools.enum_definitions import DealType, OrderSide
+from tools.enum_definitions import DealType, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors
@@ -145,7 +145,10 @@ class MarginDeal(MarginDealAbstract):
         # Close all active orders
         if len(orders) > 0:
             for d in orders:
-                if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
+                if (
+                    d.status == OrderStatus.NEW
+                    or d.status == OrderStatus.PARTIALLY_FILLED
+                ):
                     self.controller.update_logs(
                         "Failed to close all active orders (status NEW), retrying...",
                         self.active_bot,

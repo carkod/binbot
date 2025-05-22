@@ -14,6 +14,7 @@ from tools.enum_definitions import (
     Status,
     Strategy,
     UserRoles,
+    OrderStatus,
 )
 from alembic.config import Config
 from alembic import command
@@ -156,7 +157,7 @@ class ApiDb:
             order_side="buy",
             pair="BTCUSDC",
             qty=0.000123,
-            status="filled",
+            status=OrderStatus.FILLED,
             price=1.222,
             deal_type=DealType.base_order,
             total_commission=0,
@@ -169,7 +170,7 @@ class ApiDb:
             order_side="sell",
             pair="BTCUSDC",
             qty=0.000123,
-            status="filled",
+            status=OrderStatus.FILLED,
             price=1.222,
             deal_type=DealType.take_profit,
             total_commission=0,

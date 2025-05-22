@@ -47,7 +47,7 @@ class SpotDealAbstract(DealAbstract):
         Used by streaming_controller
         """
         for order in self.active_bot.orders:
-            if order.status == "NEW":
+            if order.status == OrderStatus.NEW:
                 try:
                     self.delete_order(
                         symbol=self.active_bot.pair, order_id=order.order_id
@@ -165,7 +165,7 @@ class SpotDealAbstract(DealAbstract):
             )
             # Dispatch real order
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
-            if res["status"] == OrderStatus.expired:
+            if res["status"] == OrderStatus.EXPIRED:
                 res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         price = float(res["price"])
@@ -250,7 +250,7 @@ class SpotDealAbstract(DealAbstract):
                 qty=round_numbers(qty, self.qty_precision),
             )
 
-            if res["status"] == OrderStatus.expired:
+            if res["status"] == OrderStatus.EXPIRED:
                 res = self.sell_order(
                     symbol=self.active_bot.pair,
                     qty=round_numbers(qty, self.qty_precision),

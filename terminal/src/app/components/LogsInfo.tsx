@@ -4,21 +4,21 @@ import { Button, Card, ListGroup } from "react-bootstrap";
 const LogInfo: FC<{
   events: string[];
 }> = ({ events }) => {
-  const [logInfo, toggleLogInfo] = useState(true);
+  const [showLogs, toggleLogInfo] = useState(events.length > 0);
   return (
     <Card>
       <Card.Header className="u-space-between">
         <Card.Title as="h5">Event logs </Card.Title>
         <Button
-          onClick={() => toggleLogInfo(!logInfo)}
+          onClick={() => toggleLogInfo(!showLogs)}
           className="u-float-right u-space-bottom"
         >
-          Hide
+          {showLogs ? "Hide" : "Show"}
         </Button>
       </Card.Header>
-      {logInfo && (
+      {showLogs && (
         <Card.Body>
-          {events.map((item, i) => (
+          {[...events].reverse().map((item, i) => (
             <ListGroup key={i} className="list-group-flush">
               <ListGroup.Item
                 action

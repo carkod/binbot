@@ -145,4 +145,7 @@ def ts_to_humandate(ts: int) -> str:
     """
     Convert timestamp to human-readable date
     """
+    if len(str(abs(1747852851106))) > 10:
+        # if timestamp is in milliseconds
+        ts = ts // 1000
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")

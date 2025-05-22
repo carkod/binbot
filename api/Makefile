@@ -24,6 +24,10 @@ migrate:  ## Apply latest alembic migrations
 	uv run alembic upgrade head
 	uv run alembic revision --autogenerate -m "$(message)" --head head
 
+migrate-reset:  ## downgrade and upgrade
+	uv run alembic downgrade -1
+	uv run alembic upgrade head
+
 format: 
 	ruff format .
 	ruff check .  --fix

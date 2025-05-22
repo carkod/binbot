@@ -12,7 +12,7 @@ from tools.exceptions import (
     InsufficientBalance,
     MarginLoanNotFound,
 )
-from tools.enum_definitions import Status, Strategy
+from tools.enum_definitions import Status, Strategy, OrderStatus
 from base_producer import BaseProducer
 
 
@@ -133,7 +133,7 @@ class BaseDeal(OrderController):
         """
         open_orders = self.query_open_orders(symbol)
         for order in open_orders:
-            if order["status"] == "NEW":
+            if order["status"] == OrderStatus.NEW:
                 self.signed_request(
                     self.order_url,
                     method="DELETE",

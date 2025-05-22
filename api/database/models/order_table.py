@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 from pydantic import ValidationInfo, field_validator
-from tools.enum_definitions import DealType, OrderType
+from tools.enum_definitions import DealType, OrderType, OrderStatus
 from sqlmodel import Field, Relationship, SQLModel
 from uuid import UUID, uuid4
 from sqlalchemy import Column, BigInteger
@@ -16,12 +16,29 @@ class OrderBase(SQLModel):
     order_side: str
     pair: str
     qty: float
-    status: str
+    status: OrderStatus
     price: float
     deal_type: DealType
 
     model_config = {
+        "from_attributes": True,
         "use_enum_values": True,
+        "json_schema_extra": {
+            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Exchange",
+            "examples": [
+                {
+                    "order_type": "LIMIT",
+                    "time_in_force": "GTC",
+                    "timestamp": 0,
+                    "order_id": 0,
+                    "order_side": "BUY",
+                    "pair": "",
+                    "qty": 0,
+                    "status": "",
+                    "price": 0,
+                }
+            ],
+        },
     }
 
 
