@@ -52,6 +52,7 @@ def market_domination(size: int = 14):
             gainers_count: int = 0
             losers_count: int = 0
             total_volume: float = 0
+
             if "data" in item:
                 for crypto in item["data"]:
                     if float(crypto["priceChangePercent"]) > 0:
@@ -64,6 +65,13 @@ def market_domination(size: int = 14):
 
                     if float(crypto["volume"]) > 0:
                         total_volume += float(crypto["volume"]) * float(crypto["price"])
+
+                    if gainers_count > 0 and losers_count > 0:
+                        adr = gainers_count / losers_count
+                        market_domination_series.adr_ratio.append(adr)
+                    else:
+                        market_domination_series.adr_ratio.append(0)
+
 
             market_domination_series.dates.append(format_ts(item["time"]))
             market_domination_series.gainers_percent.append(gainers_percent)
