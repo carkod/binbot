@@ -1,12 +1,13 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pymongo import DESCENDING
 from database.autotrade_crud import AutotradeCrud
-from charts.models import MarketDominationSeriesStore
+from charts.models import MarketDominationSeriesStore, AdrSeriesDb
 from apis import BinbotApi
 from database.db import Database, setup_kafka_db
 from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
 from tools.round_numbers import round_numbers
+from database.symbols_crud import SymbolsCrud
 
 
 class Candlestick(Database):
@@ -114,18 +115,6 @@ class Candlestick(Database):
         data = list(result)
         return data
 
-    def ticker_24(self, symbol: str):
-        """
-        Get 24 hour ticker price change
-        """
-        start_time = datetime.now() - timedelta(days=1)
-        data = self.raw_klines(
-            symbol,
-            BinanceKlineIntervals.one_day,
-            start_time=int(start_time.timestamp()),
-        )
-        return data
-
 
 class MarketDominationController(Database, BinbotApi):
     """
@@ -137,6 +126,7 @@ class MarketDominationController(Database, BinbotApi):
         self.collection = self.kafka_db.market_domination
         self.autotrade_db = AutotradeCrud()
         self.autotrade_settings = self.autotrade_db.get_settings()
+        self.symbols_crud = SymbolsCrud()
 
     def store_market_domination(self):
         """
@@ -148,6 +138,13 @@ class MarketDominationController(Database, BinbotApi):
         """
         get_ticker_data = self.ticker_24()
         coin_data = []
+
+        # ADR data ingestion
+        advancers = 0
+        decliners = 0
+        adr = []
+        total_volume = 0.0
+
         for item in get_ticker_data:
             if (
                 item["symbol"].endswith(self.autotrade_settings.fiat)
@@ -168,7 +165,35 @@ class MarketDominationController(Database, BinbotApi):
                 data = model_data.model_dump()
                 coin_data.append(data)
 
+                # ADR data ingestion starts here
+                price_change_percent = float(item["priceChangePercent"])
+
+                if price_change_percent > 0:
+                    advancers += 1
+                elif price_change_percent < 0:
+                    decliners += 1
+
+                total_volume += float(item["volume"])
+
+                if advancers > 0 and decliners > 0:
+                    adr_ratio = advancers / decliners
+                    adr.append(adr_ratio)
+
         response = self.collection.insert_many(coin_data)
+
+        # Store ADR data
+        if advancers > 0 or decliners > 0:
+            adr_data = AdrSeriesDb(
+                timestamp=datetime.fromtimestamp(
+                    int(float(get_ticker_data[-1]["closeTime"]) / 1000)
+                ),
+                advancers=advancers,
+                decliners=decliners,
+                adr=round_numbers(adr[-1]) if adr else 0.0,
+                total_volume=total_volume,
+            )
+            self.kafka_db.adr.insert_one(adr_data.model_dump())
+
         return response
 
     def get_market_domination(self, size=7):
@@ -202,6 +227,59 @@ class MarketDominationController(Database, BinbotApi):
             ]
         )
         return list(result)
+
+    def get_adrs(self, size=7, window=3):
+        """
+        Get ADRs historical data with moving average of 'adr', using ObjectId _id for date.
+
+        Args:
+            size (int, optional): Number of data points to retrieve. Defaults to 7 (1 week).
+            window (int, optional): Window size for moving average. Defaults to 3.
+        Returns:
+            list: A list of ADR data points with moving average.
+        """
+        fetch_size = size + window - 1
+        pipeline = [
+            {"$addFields": {"timestamp_dt": {"$toDate": "$_id"}}},
+            {"$sort": {"timestamp_dt": 1}},
+            {
+                "$setWindowFields": {
+                    "sortBy": {"timestamp_dt": 1},
+                    "output": {
+                        "adr_ma": {
+                            "$avg": "$adr",
+                            "window": {"documents": [-(window - 1), 0]},
+                        }
+                    },
+                }
+            },
+            {"$sort": {"timestamp_dt": -1}},
+            {"$limit": fetch_size},
+            {
+                "$project": {
+                    "_id": 0,
+                    "timestamp": "$timestamp_dt",
+                    "adr_ma": 1,
+                    "advancers": 1,
+                    "decliners": 1,
+                    "total_volume": 1,
+                    "adr": 1,
+                }
+            },
+            {
+                "$addFields": {
+                    "timestamp": {
+                        "$dateToString": {
+                            "format": "%Y-%m-%d %H:%M:%S",
+                            "date": "$timestamp",
+                        }
+                    }
+                }
+            },
+        ]
+        results = list(self.kafka_db.adr.aggregate(pipeline))
+        filtered = [doc for doc in results if doc.get("adr_ma") is not None][:size]
+        return filtered
 
     def top_gainers(self):
         """

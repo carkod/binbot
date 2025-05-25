@@ -89,3 +89,43 @@ class CandlestickData(BaseModel):
 
 class CandlestickResponse(StandardResponse):
     data: list[CandlestickData]
+
+
+class AdrSeriesDb(BaseModel):
+    """
+    Replacement for MarketDominationSeriesStore
+    which should in theory take less space in the database
+    and still provide the necessary data for market domination analysis.
+    """
+
+    timestamp: datetime.datetime
+    advancers: int
+    decliners: int
+    adr: float
+    total_volume: float
+
+
+class AdrSeries(StandardResponse):
+    adr: float
+    advancers: int
+    decliners: int
+    total_volume: float
+    adr_ma: float = 0
+    timestamp: str
+
+    @field_validator("timestamp", mode="after")
+    @classmethod
+    def format_timestamp(cls, v: datetime.datetime):
+        if isinstance(v, datetime.datetime):
+            return v.strftime("%Y-%m-%d %H:%M:%S")
+
+    @field_validator("timestamp", mode="after")
+    @classmethod
+    def convert_id(cls, v: str):
+        if isinstance(v, ObjectId):
+            return str(v)
+        return v
+
+
+class AdrSeriesResponse(StandardResponse):
+    data: list[AdrSeries]

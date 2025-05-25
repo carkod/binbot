@@ -335,3 +335,38 @@ class ApiDb:
             logging.info(
                 f"expireAfterSeconds updated to {new_expire_after_seconds} for {collection_name}."
             )
+
+    def init_adr_collection(self):
+        """
+        Initialize the ADR collection with the specified expireAfterSeconds.
+        """
+        collection_name = "adr"
+        new_expire_after_seconds = 15552000
+
+        if collection_name in self.kafka_db.list_collection_names():
+            # Check if an index with expireAfterSeconds already exists and matches the desired value
+            for index in self.kafka_db[collection_name].index_information().values():
+                if (
+                    "expireAfterSeconds" in index
+                    and index["expireAfterSeconds"] == new_expire_after_seconds
+                ):
+                    logging.info(
+                        f"expireAfterSeconds is already set to {new_expire_after_seconds} for {collection_name}. Skipping update."
+                    )
+                    return
+
+            # Recreate the collection with the new expireAfterSeconds value
+            self.kafka_db.create_collection(
+                collection_name,
+                timeseries={
+                    "timeField": "timestamp",
+                    "metaField": "symbol",
+                    "granularity": "minutes",
+                },
+            )
+
+            self.kafka_db[collection_name].create_index(
+                "timestamp",
+                expireAfterSeconds=new_expire_after_seconds,
+                partialFilterExpression={"symbol": {"$exists": True}},
+            )
