@@ -24,7 +24,7 @@ export default function BotInfo({ bot }: { bot: Bot }) {
           onClick={() => toggleOrderInfo(!showOrderInfo)}
           className="u-float-right u-space-bottom"
         >
-          Hide
+          {showOrderInfo ? "Hide" : "Show"}
         </Button>
       </Card.Header>
       {showOrderInfo && (

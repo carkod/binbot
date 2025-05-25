@@ -1,6 +1,6 @@
 from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
-from tools.enum_definitions import DealType, Status, OrderSide
+from tools.enum_definitions import DealType, Status, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.round_numbers import round_numbers, round_timestamp
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
@@ -162,7 +162,10 @@ class SpotLongDeal(SpotDealAbstract):
         # Close all active orders
         if isinstance(self.controller, PaperTradingTableCrud) and len(orders) > 0:
             for d in orders:
-                if d.status == "NEW" or d.status == "PARTIALLY_FILLED":
+                if (
+                    d.status == OrderStatus.NEW
+                    or d.status == OrderStatus.PARTIALLY_FILLED
+                ):
                     self.controller.update_logs(
                         "Failed to close all active orders (status NEW), retrying...",
                         self.active_bot,
