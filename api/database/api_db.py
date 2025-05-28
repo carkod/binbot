@@ -41,6 +41,7 @@ class ApiDb:
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
         self.create_dummy_bot()
+        self.init_adr_collection()
         if os.environ["ENV"] != "ci":
             self.init_symbols()
             # Depends on autotrade settings
@@ -338,24 +339,21 @@ class ApiDb:
 
     def init_adr_collection(self):
         """
-        Initialize the ADR collection with the specified expireAfterSeconds.
+        Initialize the ADR collection as a time-series collection with the specified expireAfterSeconds.
         """
-        collection_name = "adr"
+        collection_name = "advancers_decliners"
         new_expire_after_seconds = 15552000
 
-        if collection_name in self.kafka_db.list_collection_names():
-            # Check if an index with expireAfterSeconds already exists and matches the desired value
-            for index in self.kafka_db[collection_name].index_information().values():
-                if (
-                    "expireAfterSeconds" in index
-                    and index["expireAfterSeconds"] == new_expire_after_seconds
-                ):
-                    logging.info(
-                        f"expireAfterSeconds is already set to {new_expire_after_seconds} for {collection_name}. Skipping update."
-                    )
-                    return
+        # Drop if not a time-series collection or does not exist
+        if (
+            collection_name in self.kafka_db.list_collection_names()
+        ):
+            # Backup existing data
+            collection = self.kafka_db[collection_name]
+            data = list(collection.find({}))
+            logging.info(f"Dropping non-timeseries collection '{collection_name}' to recreate as time-series.")
+            self.kafka_db.drop_collection(collection_name)
 
-            # Recreate the collection with the new expireAfterSeconds value
             self.kafka_db.create_collection(
                 collection_name,
                 timeseries={
@@ -364,9 +362,11 @@ class ApiDb:
                     "granularity": "minutes",
                 },
             )
-
             self.kafka_db[collection_name].create_index(
                 "timestamp",
                 expireAfterSeconds=new_expire_after_seconds,
-                partialFilterExpression={"symbol": {"$exists": True}},
             )
+            if data:
+                self.kafka_db[collection_name].insert_many(data)
+
+            logging.info(f"Created '{collection_name}' as time-series collection.")

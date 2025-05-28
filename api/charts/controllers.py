@@ -176,7 +176,7 @@ class MarketDominationController(Database, BinbotApi):
                 total_volume += float(item["volume"])
 
                 if advancers > 0 and decliners > 0:
-                    adr_ratio = advancers / decliners
+                    adr_ratio = (advancers - decliners) / (advancers + decliners)
                     adr.append(adr_ratio)
 
         response = self.collection.insert_many(coin_data)

@@ -15,6 +15,7 @@ import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import ReversalBarChart from "../components/ReversalBarChart";
 import { SpinnerContext } from "../Layout";
+import AdrCard from "../components/AdrCard";
 
 export const DashboardPage: FC<{}> = () => {
   const { data: accountData, isLoading: loadingEstimates } =
@@ -245,6 +246,16 @@ export const DashboardPage: FC<{}> = () => {
                   color: listCssColors[0],
                 },
               ]}
+            />
+          )}
+        </Col>
+      </Row>
+      <Row>
+        <Col lg="6" md="6">
+          {gainersLosersSeries?.adr_ratio && (
+            <AdrCard
+              adr={gainersLosersSeries.adr_ratio}
+              timestamps={gainersLosersSeries.dates}
             />
           )}
         </Col>
