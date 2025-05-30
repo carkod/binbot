@@ -345,13 +345,13 @@ class ApiDb:
         new_expire_after_seconds = 15552000
 
         # Drop if not a time-series collection or does not exist
-        if (
-            collection_name in self.kafka_db.list_collection_names()
-        ):
+        if collection_name in self.kafka_db.list_collection_names():
             # Backup existing data
             collection = self.kafka_db[collection_name]
             data = list(collection.find({}))
-            logging.info(f"Dropping non-timeseries collection '{collection_name}' to recreate as time-series.")
+            logging.info(
+                f"Dropping non-timeseries collection '{collection_name}' to recreate as time-series."
+            )
             self.kafka_db.drop_collection(collection_name)
 
             self.kafka_db.create_collection(

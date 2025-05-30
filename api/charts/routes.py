@@ -10,7 +10,7 @@ from tools.handle_error import (
     json_response_error,
     json_response_message,
 )
-from charts.controllers import Candlestick, MarketDominationController, BtcCorrelation
+from charts.controllers import Candlestick, MarketDominationController
 from charts.models import CandlestickResponse, AdrSeriesResponse
 from tools.handle_error import StandardResponse
 
@@ -131,7 +131,7 @@ def top_gainers():
     "/btc-correlation", response_model=StandardResponse, tags=["charts"]
 )
 def get_btc_correlation(symbol: str):
-    data = BtcCorrelation().get_btc_correlation(asset_symbol=symbol)
+    data = Candlestick().get_btc_correlation(asset_symbol=symbol)
     if data:
         return json_response(
             {

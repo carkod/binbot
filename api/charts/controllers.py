@@ -115,6 +115,24 @@ class Candlestick(Database):
         data = list(result)
         return data
 
+    def get_btc_correlation(self, asset_symbol: str):
+        """
+        Get BTC correlation data
+        for 1 day interval
+        """
+        asset_data = self.raw_klines(
+            symbol=asset_symbol, interval=BinanceKlineIntervals.one_day
+        )
+        btc_data = self.raw_klines(
+            symbol="BTCUSDC", interval=BinanceKlineIntervals.one_day
+        )
+        if len(asset_data) == 0 or len(btc_data) == 0:
+            return None
+        asset_df = DataFrame(asset_data)
+        btc_df = DataFrame(btc_data)
+        p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
+        return round_numbers(p_correlation)
+
 
 class MarketDominationController(Database, BinbotApi):
     """
@@ -302,31 +320,3 @@ class MarketDominationController(Database, BinbotApi):
             reverse=True,
         )
         return fiat_market_data[:10]
-
-
-class BtcCorrelation(Database, BinbotApi):
-    """
-    CRUD operations for BTC correlation
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.collection = Candlestick()
-
-    def get_btc_correlation(self, asset_symbol: str):
-        """
-        Get BTC correlation data
-        for 1 day interval
-        """
-        asset_data = self.collection.raw_klines(
-            symbol=asset_symbol, interval=BinanceKlineIntervals.one_day
-        )
-        btc_data = self.collection.raw_klines(
-            symbol="BTCUSDC", interval=BinanceKlineIntervals.one_day
-        )
-        if len(asset_data) == 0 or len(btc_data) == 0:
-            return None
-        asset_df = DataFrame(asset_data)
-        btc_df = DataFrame(btc_data)
-        p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
-        return round_numbers(p_correlation)
