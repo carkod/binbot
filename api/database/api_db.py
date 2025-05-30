@@ -82,6 +82,7 @@ class ApiDb:
             trailling_deviation=1.63,
             trailling_profit=2.3,
             autotrade=True,
+            autoswitch=False,
         )
 
         self.session.add(autotrade_data)

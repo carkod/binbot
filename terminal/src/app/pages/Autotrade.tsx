@@ -53,6 +53,7 @@ export const AutotradePage: FC<{}> = () => {
       trailling: settings.trailling,
       trailling_deviation: settings.trailling_deviation,
       trailling_profit: settings.trailling_profit,
+      autoswitch: settings.autoswitch,
     },
   });
 
@@ -72,7 +73,6 @@ export const AutotradePage: FC<{}> = () => {
   };
 
   useEffect(() => {
-
     if (data) {
       dispatch(setSettings(data));
     }
@@ -103,6 +103,7 @@ export const AutotradePage: FC<{}> = () => {
         trailling: settings.trailling,
         trailling_deviation: settings.trailling_deviation,
         trailling_profit: settings.trailling_profit,
+        autoswitch: settings.autoswitch,
       });
     }
 
@@ -250,6 +251,9 @@ export const AutotradePage: FC<{}> = () => {
                       infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"
                     />
                   </Col>
+                </Row>
+                <hr />
+                <Row>
                   <Col md="3">
                     <SettingsInput
                       value={settings.stop_loss}
@@ -259,7 +263,31 @@ export const AutotradePage: FC<{}> = () => {
                       register={register}
                     />
                   </Col>
+                  <Col md="3">
+                    <label htmlFor="autoswitch">Autoswitch?</label>
+                    <br />
+                    <ButtonGroup>
+                      <ToggleButton
+                        id="autoswitch"
+                        className="position-relative"
+                        checked={settings.autoswitch}
+                        value={1}
+                        variant={settings.autoswitch ? "primary" : "secondary"}
+                        onClick={(e) => {
+                          dispatch(
+                            setSettingsToggle({
+                              name: "autoswitch",
+                              value: !settings.autoswitch,
+                            })
+                          );
+                        }}
+                      >
+                        {settings.autoswitch ? "On" : "Off"}
+                      </ToggleButton>
+                    </ButtonGroup>
+                  </Col>
                 </Row>
+                <hr />
                 <Row>
                   <Col md="3">
                     <label htmlFor="trailling">Trailling</label>

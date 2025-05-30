@@ -19,6 +19,7 @@ export interface AutotradeSettings {
   base_order_size: number;
   updated_at: number;
   close_condition: CloseConditions;
+  autoswitch: boolean;
 }
 
 export const autotradeApiSlice = userApiSlice.injectEndpoints({

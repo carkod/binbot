@@ -100,7 +100,10 @@ class BotBase(BaseModel):
         le=101,
         description="If stop_loss > 0, allow for reversal",
     )
-    margin_short_reversal: bool = Field(default=False)
+    margin_short_reversal: bool = Field(
+        default=False,
+        description="Autoswitch from long to short or short to long strategy",
+    )
     take_profit: Amount = Field(default=0, ge=-1, le=101)
     trailling: bool = Field(default=False)
     trailling_deviation: Amount = Field(
