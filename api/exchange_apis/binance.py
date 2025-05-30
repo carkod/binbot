@@ -234,15 +234,12 @@ class BinanceApi:
         Weight 40 without symbol
         https://github.com/carkod/binbot/issues/438
 
-        Using cache
+        Cannot use cache, because data would be stale
         """
         params = {"type": type}
         if symbol:
             params["symbol"] = symbol
 
-        # mongo_cache = self.setup_mongocache()
-        # # because candlesticks are 15m
-        # session = CachedSession('ticker_24_cache', backend=mongo_cache, expire_after=15)
         data = self.request(url=self.ticker24_url, params=params)
         return data
 

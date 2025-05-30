@@ -27,6 +27,10 @@ class SettingsDocument(SQLModel):
     max_request: int = Field(default=950)
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)
+    autoswitch: bool = Field(
+        default=True,
+        description="Automatically switch between long bot or short bot based on stop loss a.k.a. margin_short_reversal in bots",
+    )
 
 
 class AutotradeTable(SettingsDocument, table=True):

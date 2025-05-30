@@ -10,6 +10,8 @@ export interface GainerLosersData {
   total_volume: number[];
   gainers: string[];
   losers: string[];
+  adr_ratio: number[];
+  adr_ma: number[];
 }
 
 function computerPercent(data) {
