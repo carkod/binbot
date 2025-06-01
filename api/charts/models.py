@@ -101,7 +101,6 @@ class AdrSeriesDb(BaseModel):
     timestamp: datetime.datetime
     advancers: int
     decliners: int
-    adr: float
     total_volume: float
 
 
@@ -110,7 +109,6 @@ class AdrSeries(StandardResponse):
     advancers: int
     decliners: int
     total_volume: float
-    adr_ma: float = 0
     timestamp: str
 
     @field_validator("timestamp", mode="after")

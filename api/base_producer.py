@@ -16,7 +16,7 @@ class BaseProducer:
         must start from latest offset always.
         """
         kafka_producer = KafkaProducer(
-            bootstrap_servers=f'{os.getenv("KAFKA_HOST", "localhost")}:{os.getenv("KAFKA_PORT", 9092)}',
+            bootstrap_servers=f"{os.getenv('KAFKA_HOST', 'localhost')}:{os.getenv('KAFKA_PORT', 9092)}",
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
             api_version=(3, 4, 1),
         )
@@ -44,7 +44,7 @@ class BaseProducer:
 class AsyncBaseProducer:
     def __init__(self):
         kafka_producer = KafkaProducer(
-            bootstrap_servers=f'{os.getenv("KAFKA_HOST", "localhost")}:{os.getenv("KAFKA_PORT", 9092)}',
+            bootstrap_servers=f"{os.getenv('KAFKA_HOST', 'localhost')}:{os.getenv('KAFKA_PORT', 9092)}",
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
             api_version=(3, 4, 1),
         )
@@ -61,7 +61,7 @@ class AsyncBaseProducer:
         must start from latest offset always.
         """
         kafka_producer = KafkaProducer(
-            bootstrap_servers=f'{os.getenv("KAFKA_HOST", "localhost")}:{os.getenv("KAFKA_PORT", 9092)}',
+            bootstrap_servers=f"{os.getenv('KAFKA_HOST', 'localhost')}:{os.getenv('KAFKA_PORT', 9092)}",
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
             api_version=(3, 4, 1),
         )

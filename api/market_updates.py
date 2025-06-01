@@ -22,7 +22,7 @@ def main():
     consumer = KafkaConsumer(
         KafkaTopics.klines_store_topic.value,
         KafkaTopics.restart_streaming.value,
-        bootstrap_servers=f'{os.environ["KAFKA_HOST"]}:{os.environ["KAFKA_PORT"]}',
+        bootstrap_servers=f"{os.environ['KAFKA_HOST']}:{os.environ['KAFKA_PORT']}",
         value_deserializer=lambda m: json.loads(m),
         group_id="streaming-group",
         api_version=(2, 5, 0),

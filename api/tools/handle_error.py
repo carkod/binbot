@@ -20,7 +20,7 @@ from tools.exceptions import (
 
 
 def post_error(msg):
-    url = f'{os.getenv("FLASK_DOMAIN")}/research/controller'
+    url = f"{os.getenv('FLASK_DOMAIN')}/research/controller"
     res = put(url=url, json={"system_logs": msg})
     handle_binance_errors(res)
     return
@@ -133,7 +133,7 @@ def handle_binance_errors(response: Response) -> dict:
             sleep(60)
 
         if content["code"] == -1121:
-            raise InvalidSymbol(f'Binance error: {content["msg"]}', content["code"])
+            raise InvalidSymbol(f"Binance error: {content['msg']}", content["code"])
 
     return content
 

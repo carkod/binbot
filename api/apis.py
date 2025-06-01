@@ -10,7 +10,7 @@ class BinbotApi(BinanceApi):
     includes Binance Api
     """
 
-    bb_base_url = f'{os.getenv("FLASK_DOMAIN")}'
+    bb_base_url = f"{os.getenv('FLASK_DOMAIN')}"
     bb_symbols_raw = f"{bb_base_url}/account/symbols"
     bb_bot_url = f"{bb_base_url}/bot"
     bb_activate_bot_url = f"{bb_base_url}/bot/activate"
@@ -47,6 +47,6 @@ class BinbotApi(BinanceApi):
         data = handle_binance_errors(res)
         return data
 
-    def get_market_domination_series(self):
-        result = self.bb_request(url=self.bb_market_domination, params={"size": 7})
+    def get_market_domination_series(self, size=7):
+        result = self.bb_request(url=self.bb_market_domination, params={"size": size})
         return result

@@ -49,7 +49,7 @@ class BaseStreaming:
         )
         pass
 
-    def get_current_bot(self, symbol: str) -> BotModel:
+    def get_current_bot(self, symbol: str) -> BotModel | None:
         try:
             current_bot = self.bot_controller.get_one(
                 symbol=symbol, status=Status.active
@@ -60,7 +60,7 @@ class BaseStreaming:
             bot = None
             return bot
 
-    def get_current_test_bot(self, symbol: str) -> BotModel:
+    def get_current_test_bot(self, symbol: str) -> BotModel | None:
         try:
             current_test_bot = self.paper_trading_controller.get_one(
                 symbol=symbol, status=Status.active

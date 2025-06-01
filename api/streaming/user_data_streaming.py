@@ -80,6 +80,6 @@ class UserDataStreaming(Database, BinanceApi):
                 return
 
             elif "outboundAccountPosition" in res["e"]:
-                logging.info(f'Assets changed {res["e"]}')
+                logging.info(f"Assets changed {res['e']}")
             elif "balanceUpdate" in res["e"]:
-                logging.info(f'Funds transferred {res["e"]}')
+                logging.info(f"Funds transferred {res['e']}")

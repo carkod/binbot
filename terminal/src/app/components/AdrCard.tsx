@@ -3,23 +3,19 @@ import Plot from "react-plotly.js";
 import { Card } from "react-bootstrap";
 import moment from "moment";
 
-// Props: expects an array of ADR data objects with at least 'timestamp', 'adr', and optionally 'adr_ma'
 type AdrCardProps = {
   adr: number[];
   timestamps: string[];
 };
 
 const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
-  // const timestamps = adrData.map((d) => d.timestamp);
-  // const adr_ma = adrData.map((d) => d.adr_ma ?? null);
-
   return (
     <Card className="card-chart">
       <Card.Header>
         <Card.Title as="h5">ADP Trend</Card.Title>
         <p className="u-text-left">
-          Shows the Advancers-Decliners percentage difference (ADP).
-          A mark line at 2.0 indicates a potential market reversal threshold.
+          Shows the Advancers-Decliners percentage difference (ADP). Over 0
+          indicates positive reversal Under 0 indicates negative reversal.
         </p>
       </Card.Header>
       <Card.Body>
@@ -30,10 +26,12 @@ const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
               y: adr,
               type: "scatter",
               mode: "lines+markers",
-              name: "ADR",
+              name: "ADP",
               line: { color: "#007bff", width: 2 },
               marker: { size: 6 },
-            }
+              fill: "tozeroy",
+              fillcolor: adr[adr.length - 1] > 0 ? "#28a74533" : "#dc354533", // green if last value positive, else red
+            },
           ]}
           layout={{
             autosize: true,
@@ -45,26 +43,10 @@ const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
               showgrid: false,
             },
             yaxis: {
-              title: "ADR",
+              title: "ADP",
               showgrid: true,
               zeroline: false,
             },
-            shapes: [
-              {
-                type: "line",
-                xref: "paper",
-                x0: 0,
-                x1: 1,
-                y0: 2.0,
-                y1: 2.0,
-                line: {
-                  color: "#e74c3c",
-                  width: 2,
-                  dash: "dot",
-                },
-                name: "Reversal Threshold",
-              },
-            ],
             legend: { orientation: "h", y: -0.2 },
           }}
           config={{ responsive: true, displayModeBar: false }}
@@ -72,13 +54,16 @@ const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
           useResizeHandler={true}
         />
       </Card.Body>
-      <hr />
-      {timestamps && (
-        <div className="card-stats">
-          <i className="fa fa-check" /> Last updated{" "}
-          {moment(timestamps[0]).format("DD/MM/YYYY HH:mm")}
-        </div>
-      )}
+      <Card.Footer className="text-muted">
+        <hr />
+
+        {timestamps && (
+          <div className="card-stats">
+            <i className="fa fa-check" /> Last updated{" "}
+            {moment(timestamps[0]).format("DD/MM/YYYY HH:mm")}
+          </div>
+        )}
+      </Card.Footer>
     </Card>
   );
 };

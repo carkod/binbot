@@ -58,4 +58,3 @@ class TestAutotradeSettingsSchema(BaseModel):
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)
     autoswitch: bool = Field(default=True)
-

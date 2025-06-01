@@ -163,6 +163,18 @@ class MarketDominationController(Database, BinbotApi):
         adr = []
         total_volume = 0.0
 
+        # Store ADR data
+        if advancers > 0 or decliners > 0:
+            adr_data = AdrSeriesDb(
+                timestamp=datetime.fromtimestamp(
+                    int(float(get_ticker_data[-1]["closeTime"]) / 1000)
+                ),
+                advancers=advancers,
+                decliners=decliners,
+                total_volume=total_volume,
+            )
+            self.kafka_db.adr.insert_one(adr_data.model_dump())
+
         for item in get_ticker_data:
             if (
                 item["symbol"].endswith(self.autotrade_settings.fiat)
@@ -198,19 +210,17 @@ class MarketDominationController(Database, BinbotApi):
                     adr.append(adr_ratio)
 
         response = self.collection.insert_many(coin_data)
-
-        # Store ADR data
-        if advancers > 0 or decliners > 0:
-            adr_data = AdrSeriesDb(
-                timestamp=datetime.fromtimestamp(
+        self.kafka_db.advacers_decliners.insert_one(
+            {
+                "timestamp": datetime.fromtimestamp(
                     int(float(get_ticker_data[-1]["closeTime"]) / 1000)
                 ),
-                advancers=advancers,
-                decliners=decliners,
-                adr=round_numbers(adr[-1]) if adr else 0.0,
-                total_volume=total_volume,
-            )
-            self.kafka_db.adr.insert_one(adr_data.model_dump())
+                "advancers": advancers,
+                "decliners": decliners,
+                "adr": adr[-1] if adr else None,
+                "total_volume": total_volume,
+            }
+        )
 
         return response
 
@@ -246,7 +256,7 @@ class MarketDominationController(Database, BinbotApi):
         )
         return list(result)
 
-    def get_adrs(self, size=7, window=3):
+    def get_adrs(self, size=7, window=3) -> dict | None:
         """
         Get ADRs historical data with moving average of 'adr', using ObjectId _id for date.
 
@@ -258,17 +268,33 @@ class MarketDominationController(Database, BinbotApi):
         """
         fetch_size = size + window - 1
         pipeline = [
-            {"$addFields": {"timestamp_dt": {"$toDate": "$_id"}}},
+            {"$addFields": {"timestamp_dt": "$timestamp"}},
             {"$sort": {"timestamp_dt": 1}},
             {
                 "$setWindowFields": {
                     "sortBy": {"timestamp_dt": 1},
                     "output": {
-                        "adr_ma": {
+                        "adp_ma": {
                             "$avg": "$adr",
                             "window": {"documents": [-(window - 1), 0]},
                         }
                     },
+                }
+            },
+            {
+                "$addFields": {
+                    "adp": {
+                        "$cond": [
+                            {"$ne": [{"$add": ["$advancers", "$decliners"]}, 0]},
+                            {
+                                "$divide": [
+                                    {"$subtract": ["$advancers", "$decliners"]},
+                                    {"$add": ["$advancers", "$decliners"]},
+                                ]
+                            },
+                            None,
+                        ]
+                    }
                 }
             },
             {"$sort": {"timestamp_dt": -1}},
@@ -277,11 +303,11 @@ class MarketDominationController(Database, BinbotApi):
                 "$project": {
                     "_id": 0,
                     "timestamp": "$timestamp_dt",
-                    "adr_ma": 1,
+                    "adp_ma": 1,
                     "advancers": 1,
                     "decliners": 1,
                     "total_volume": 1,
-                    "adr": 1,
+                    "adp": 1,
                 }
             },
             {
@@ -294,10 +320,24 @@ class MarketDominationController(Database, BinbotApi):
                     }
                 }
             },
+            {
+                "$group": {
+                    "_id": None,
+                    "timestamp": {"$push": "$timestamp"},
+                    "adp_ma": {"$push": "$adp_ma"},
+                    "advancers": {"$push": "$advancers"},
+                    "decliners": {"$push": "$decliners"},
+                    "total_volume": {"$push": "$total_volume"},
+                    "adp": {"$push": "$adp"},
+                }
+            },
+            {"$project": {"_id": 0}},
         ]
-        results = list(self.kafka_db.adr.aggregate(pipeline))
-        filtered = [doc for doc in results if doc.get("adr_ma") is not None][:size]
-        return filtered
+        results = self.kafka_db.advancers_decliners.aggregate(pipeline)
+        data = list(results)
+        if len(data) > 0:
+            return data[0]
+        return None
 
     def top_gainers(self):
         """

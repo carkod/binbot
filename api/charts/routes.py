@@ -13,6 +13,10 @@ from tools.handle_error import (
 from charts.controllers import Candlestick, MarketDominationController
 from charts.models import CandlestickResponse, AdrSeriesResponse
 from tools.handle_error import StandardResponse
+import logging
+from charts.models import AdrSeriesDb
+from database.db import setup_kafka_db
+
 
 charts_blueprint = APIRouter()
 
@@ -168,3 +172,58 @@ def get_adr_series(size: int = 14):
         return json_response_error(
             f"Failed to retrieve market domination data: {error}"
         )
+
+
+@charts_blueprint.get(
+    "/update-ad-collection",
+    tags=["charts"],
+    summary="Initialize or update the ADR collection as a time-series",
+)
+def init_adr_collection():
+    """
+    Initialize the ADR collection as a time-series
+    and repurpose old data with new shape.
+    """
+    kafka_db = setup_kafka_db()
+    collection_name = "advancers_decliners"
+    new_expire_after_seconds = 15552000
+
+    # Drop if not a time-series collection or does not exist
+    logging.error(
+        f"Dropping non-timeseries collection '{collection_name}' to recreate as time-series."
+    )
+    kafka_db.drop_collection(collection_name)
+
+    kafka_db.create_collection(
+        collection_name,
+        timeseries={
+            "timeField": "timestamp",
+            "metaField": "total_volume",
+            "granularity": "hours",
+        },
+    )
+    kafka_db[collection_name].create_index(
+        "timestamp",
+        expireAfterSeconds=new_expire_after_seconds,
+        partialFilterExpression={"total_volume": {"$exists": True}},
+    )
+    response = MarketDominationController().get_market_domination_series(2000)
+    data = response["data"]
+
+    if data:
+        market_breadth_data = []
+        for index, item in enumerate(data["dates"]):
+            adr_data = AdrSeriesDb(
+                timestamp=item,
+                advancers=data["gainers_count"][index],
+                decliners=data["losers_count"][index],
+                total_volume=data["total_volume"][index],
+            )
+
+            market_breadth_data.append(adr_data.model_dump())
+
+        kafka_db[collection_name].insert_many(market_breadth_data)
+
+    return json_response_message(
+        "Successfully initialized or updated the ADR collection as a time-series."
+    )
