@@ -170,7 +170,7 @@ def get_adr_series(size: int = 14):
 
     except Exception as error:
         return json_response_error(
-            f"Failed to retrieve market domination data: {error}"
+            f"Failed to retrieve ADR series data: {error}"
         )
 
 
