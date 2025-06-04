@@ -169,9 +169,7 @@ def get_adr_series(size: int = 14):
         )
 
     except Exception as error:
-        return json_response_error(
-            f"Failed to retrieve ADR series data: {error}"
-        )
+        return json_response_error(f"Failed to retrieve ADR series data: {error}")
 
 
 @charts_blueprint.get(
@@ -207,7 +205,7 @@ def init_adr_collection():
         expireAfterSeconds=new_expire_after_seconds,
         partialFilterExpression={"total_volume": {"$exists": True}},
     )
-    response = MarketDominationController().get_market_domination_series(2000)
+    response = MarketDominationController().get_market_domination_series(700)
     data = response["data"]
 
     if data:
@@ -227,3 +225,23 @@ def init_adr_collection():
     return json_response_message(
         "Successfully initialized or updated the ADR collection as a time-series."
     )
+
+
+@charts_blueprint.get(
+    "/algorithm-performance",
+    tags=["charts"],
+    summary="Get algorithm profit and loss",
+    response_model=AdrSeriesResponse,
+)
+def algorithm_performance(size: int = 14):
+    algorithm_performance_data = MarketDominationController().algo_performance()
+    if algorithm_performance_data:
+        return json_response(
+            {
+                "data": algorithm_performance_data,
+                "message": "Successfully retrieved algorithm performance data.",
+                "error": 0,
+            }
+        )
+    else:
+        raise HTTPException(404, detail="No algorithm performance data found")
