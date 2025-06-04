@@ -60,14 +60,14 @@ class MarginDealAbstract(DealAbstract):
         """
         if float(self.isolated_balance[0]["quoteAsset"]["borrowed"]) > 0:
             self.active_bot.logs.append(
-                f'Borrowed {self.isolated_balance[0]["quoteAsset"]["asset"]} still remaining, please clear out manually'
+                f"Borrowed {self.isolated_balance[0]['quoteAsset']['asset']} still remaining, please clear out manually"
             )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
 
         if float(self.isolated_balance[0]["baseAsset"]["borrowed"]) > 0:
             self.active_bot.logs.append(
-                f'Borrowed {self.isolated_balance[0]["baseAsset"]["asset"]} still remaining, please clear out manually'
+                f"Borrowed {self.isolated_balance[0]['baseAsset']['asset']} still remaining, please clear out manually"
             )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)

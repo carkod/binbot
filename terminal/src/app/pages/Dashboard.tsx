@@ -6,7 +6,7 @@ import {
 } from "../../features/balanceApiSlice";
 import { useGainerLosersQuery } from "../../features/binanceApiSlice";
 import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
-import { useGainerLosersSeriesQuery } from "../../features/marketApiSlice";
+import { useAdSeriesQuery, useGainerLosersSeriesQuery } from "../../features/marketApiSlice";
 import { calculateTotalRevenue } from "../../utils/dashboard-computations";
 import { BotStatus } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
@@ -15,6 +15,7 @@ import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import ReversalBarChart from "../components/ReversalBarChart";
 import { SpinnerContext } from "../Layout";
+import AdrCard from "../components/AdrCard";
 
 export const DashboardPage: FC<{}> = () => {
   const { data: accountData, isLoading: loadingEstimates } =
@@ -33,6 +34,9 @@ export const DashboardPage: FC<{}> = () => {
     useGainerLosersQuery();
   const { data: gainersLosersSeries, isLoading: loadingGLSeries } =
     useGainerLosersSeriesQuery();
+
+  const { data: adpSeries, isLoading: loadingAdpSeries } =
+    useAdSeriesQuery();
 
   const [activeBotsCount, setActiveBotsCount] = useState(0);
   const [errorBotsCount, setErrorBotsCount] = useState(0);
@@ -245,6 +249,16 @@ export const DashboardPage: FC<{}> = () => {
                   color: listCssColors[0],
                 },
               ]}
+            />
+          )}
+        </Col>
+      </Row>
+      <Row>
+        <Col lg="6" md="6">
+          {adpSeries?.adp && (
+            <AdrCard
+              adr={adpSeries.adp}
+              timestamps={adpSeries.timestamp}
             />
           )}
         </Col>

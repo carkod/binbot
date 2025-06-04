@@ -1,6 +1,5 @@
 import logging
 import os
-
 from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
 from database.models.deal_table import DealTable
 from database.models.order_table import ExchangeOrderTable
@@ -37,6 +36,7 @@ class ApiDb:
 
     def init_db(self):
         SQLModel.metadata.create_all(engine)
+        self.run_migrations()
         self.init_users()
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
@@ -45,7 +45,6 @@ class ApiDb:
             self.init_symbols()
             # Depends on autotrade settings
             self.init_balances()
-            self.run_migrations()
 
         logging.info("Finishing db operations")
 
@@ -81,6 +80,7 @@ class ApiDb:
             trailling_deviation=1.63,
             trailling_profit=2.3,
             autotrade=True,
+            autoswitch=False,
         )
 
         self.session.add(autotrade_data)

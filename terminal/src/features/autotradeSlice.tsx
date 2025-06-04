@@ -20,6 +20,7 @@ export const initialAutotradeSettings: AutotradeSettings = {
   base_order_size: 0,
   updated_at: 0,
   close_condition: CloseConditions.DYNAMIC_TRAILLING,
+  autoswitch: false,
 };
 
 export interface AutotradeSettingsFormField {

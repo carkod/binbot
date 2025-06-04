@@ -8,6 +8,7 @@ import { type AppDispatch } from "../store";
 import { BinanceKlineintervals } from "../../utils/enums";
 import { useEditTestSettingsMutation, useGetTestSettingsQuery } from "../../features/testAutotradeApiSlice";
 import { selectTestSettings, setTestSettings, setTestSettingsField, setTestSettingsToggle } from "../../features/testAutotradeSlice";
+import type { FocusEvent as ReactFocusEvent } from "react";
 
 export const TestAutotradePage: FC<{}> = () => {
   const { data } = useGetTestSettingsQuery();
@@ -36,11 +37,12 @@ export const TestAutotradePage: FC<{}> = () => {
       trailling: settings.trailling,
       trailling_deviation: settings.trailling_deviation,
       trailling_profit: settings.trailling_profit,
+      autoswitch: settings.autoswitch,
     },
   });
 
-  const handleBlur = (e) => {
-    if (e.target.name && e.target.value) {
+  const handleBlur = (e: FocusEvent | ReactFocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (e.target && 'name' in e.target && 'value' in e.target && e.target.name && e.target.value) {
       const name = e.target.name;
       const value = e.target.value;
       if (typeof value === "string") {
@@ -87,6 +89,7 @@ useEffect(() => {
         trailling: settings.trailling,
         trailling_deviation: settings.trailling_deviation,
         trailling_profit: settings.trailling_profit,
+        autoswitch: settings.autoswitch,
       });
     }
 
@@ -231,6 +234,9 @@ useEffect(() => {
                       infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"
                     />
                   </Col>
+                </Row>
+                <hr />
+                <Row>
                   <Col md="3">
                     <SettingsInput
                       value={settings.stop_loss}
@@ -240,7 +246,26 @@ useEffect(() => {
                       register={register}
                     />
                   </Col>
+                  <Col md="3">
+                    <label htmlFor="autoswitch">Autoswitch?</label>
+                    <br />
+                    <LightSwitch
+                      value={settings.autoswitch}
+                      name="autoswitch"
+                      register={register}
+                      toggle={(name, value) => {
+                        setValue(name, !value);
+                        dispatch(
+                          setTestSettingsToggle({
+                            name: name,
+                            value: !value,
+                          })
+                        );
+                      }}
+                    />
+                  </Col>
                 </Row>
+                <hr />
                 <Row>
                   <Col md="3">
                     <label htmlFor="trailling">Trailling</label>

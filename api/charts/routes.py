@@ -10,9 +10,13 @@ from tools.handle_error import (
     json_response_error,
     json_response_message,
 )
-from charts.controllers import Candlestick, MarketDominationController, BtcCorrelation
-from charts.models import CandlestickResponse
+from charts.controllers import Candlestick, MarketDominationController
+from charts.models import CandlestickResponse, AdrSeriesResponse
 from tools.handle_error import StandardResponse
+import logging
+from charts.models import AdrSeriesDb
+from database.db import setup_kafka_db
+
 
 charts_blueprint = APIRouter()
 
@@ -52,6 +56,7 @@ def market_domination(size: int = 14):
             gainers_count: int = 0
             losers_count: int = 0
             total_volume: float = 0
+
             if "data" in item:
                 for crypto in item["data"]:
                     if float(crypto["priceChangePercent"]) > 0:
@@ -64,6 +69,12 @@ def market_domination(size: int = 14):
 
                     if float(crypto["volume"]) > 0:
                         total_volume += float(crypto["volume"]) * float(crypto["price"])
+
+                if gainers_count > 0 and losers_count > 0:
+                    adr = gainers_count / losers_count
+                    market_domination_series.adr_ratio.append(adr)
+                else:
+                    market_domination_series.adr_ratio.append(0)
 
             market_domination_series.dates.append(format_ts(item["time"]))
             market_domination_series.gainers_percent.append(gainers_percent)
@@ -124,7 +135,7 @@ def top_gainers():
     "/btc-correlation", response_model=StandardResponse, tags=["charts"]
 )
 def get_btc_correlation(symbol: str):
-    data = BtcCorrelation().get_btc_correlation(asset_symbol=symbol)
+    data = Candlestick().get_btc_correlation(asset_symbol=symbol)
     if data:
         return json_response(
             {
@@ -137,16 +148,82 @@ def get_btc_correlation(symbol: str):
         raise HTTPException(404, detail="Not enough one day candlestick data")
 
 
-@charts_blueprint.get("/ticker-24", tags=["charts"])
-def ticker_24(symbol: str):
-    response = Candlestick().ticker_24(symbol=symbol)
-    if response:
+@charts_blueprint.get(
+    "/adr-series",
+    tags=["charts"],
+    summary="Similar to market_domination, renamed and lighter data size",
+    response_model=AdrSeriesResponse,
+)
+def get_adr_series(size: int = 14):
+    data = MarketDominationController().get_adrs(size)
+    try:
+        if not data:
+            raise HTTPException(404, detail="No ADR data found")
+
         return json_response(
             {
-                "data": response,
-                "message": f"Successfully retrieved 24 hour ticker for {symbol}.",
+                "data": data,
+                "message": "Successfully retrieved ADR series data.",
                 "error": 0,
             }
         )
-    else:
-        raise HTTPException(404, detail="No data found")
+
+    except Exception as error:
+        return json_response_error(
+            f"Failed to retrieve ADR series data: {error}"
+        )
+
+
+@charts_blueprint.get(
+    "/update-ad-collection",
+    tags=["charts"],
+    summary="Initialize or update the ADR collection as a time-series",
+)
+def init_adr_collection():
+    """
+    Initialize the ADR collection as a time-series
+    and repurpose old data with new shape.
+    """
+    kafka_db = setup_kafka_db()
+    collection_name = "advancers_decliners"
+    new_expire_after_seconds = 15552000
+
+    # Drop if not a time-series collection or does not exist
+    logging.error(
+        f"Dropping non-timeseries collection '{collection_name}' to recreate as time-series."
+    )
+    kafka_db.drop_collection(collection_name)
+
+    kafka_db.create_collection(
+        collection_name,
+        timeseries={
+            "timeField": "timestamp",
+            "metaField": "total_volume",
+            "granularity": "hours",
+        },
+    )
+    kafka_db[collection_name].create_index(
+        "timestamp",
+        expireAfterSeconds=new_expire_after_seconds,
+        partialFilterExpression={"total_volume": {"$exists": True}},
+    )
+    response = MarketDominationController().get_market_domination_series(2000)
+    data = response["data"]
+
+    if data:
+        market_breadth_data = []
+        for index, item in enumerate(data["dates"]):
+            adr_data = AdrSeriesDb(
+                timestamp=item,
+                advancers=data["gainers_count"][index],
+                decliners=data["losers_count"][index],
+                total_volume=data["total_volume"][index],
+            )
+
+            market_breadth_data.append(adr_data.model_dump())
+
+        kafka_db[collection_name].insert_many(market_breadth_data)
+
+    return json_response_message(
+        "Successfully initialized or updated the ADR collection as a time-series."
+    )

@@ -10,6 +10,17 @@ export interface GainerLosersData {
   total_volume: number[];
   gainers: string[];
   losers: string[];
+  adr_ratio: number[];
+  adr_ma: number[];
+}
+
+export interface AdData {
+  timestamp: string[];
+  advancers: number[];
+  decliners: number[];
+  adp: number[];
+  adp_ma: number[];
+  total_volume: number[];
 }
 
 function computerPercent(data) {
@@ -55,7 +66,20 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
         return historicalGLdata;
       },
     }),
+    adSeries: build.query<AdData, void>({
+      query: () => ({
+        url: `${import.meta.env.VITE_AD_SERIES}`,
+        providesTags: ["ad-series"],
+      }),
+      transformResponse: ({ data, message, error }, meta, arg) => {
+        if (error && error === 1) {
+          notifification("error", message);
+        }
+        
+        return data;
+      },
+    }),
   }),
 });
 
-export const { useGainerLosersSeriesQuery } = marketApiSlice;
+export const { useGainerLosersSeriesQuery, useAdSeriesQuery } = marketApiSlice;
