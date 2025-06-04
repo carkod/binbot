@@ -177,17 +177,6 @@ class MarketDominationController(Database, BinbotApi):
 
                 total_volume += float(item["volume"])
 
-                # Store ADR data
-                adr_data = AdrSeriesDb(
-                    timestamp=datetime.fromtimestamp(
-                        int(float(get_ticker_data[-1]["closeTime"]) / 1000)
-                    ),
-                    advancers=advancers,
-                    decliners=decliners,
-                    total_volume=total_volume,
-                )
-                self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
-
                 model_data = MarketDominationSeriesStore(
                     timestamp=datetime.fromtimestamp(
                         float(item["closeTime"]) / 1000
@@ -203,7 +192,19 @@ class MarketDominationController(Database, BinbotApi):
                 data = model_data.model_dump()
                 coin_data.append(data)
 
-        return True
+        # Store ADR data
+        adr_data = AdrSeriesDb(
+            timestamp=datetime.fromtimestamp(
+                float(item["closeTime"]) / 1000
+            ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+            advancers=advancers,
+            decliners=decliners,
+            total_volume=total_volume,
+        )
+        self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
+        response = self.collection.insert_many(coin_data)
+
+        return response
 
     def get_market_domination(self, size=7):
         """
