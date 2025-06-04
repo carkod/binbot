@@ -160,26 +160,34 @@ class MarketDominationController(Database, BinbotApi):
         # ADR data ingestion
         advancers = 0
         decliners = 0
-        adr = []
         total_volume = 0.0
-
-        # Store ADR data
-        if advancers > 0 or decliners > 0:
-            adr_data = AdrSeriesDb(
-                timestamp=datetime.fromtimestamp(
-                    int(float(get_ticker_data[-1]["closeTime"]) / 1000)
-                ),
-                advancers=advancers,
-                decliners=decliners,
-                total_volume=total_volume,
-            )
-            self.kafka_db.adr.insert_one(adr_data.model_dump())
 
         for item in get_ticker_data:
             if (
                 item["symbol"].endswith(self.autotrade_settings.fiat)
                 and float(item["lastPrice"]) > 0
             ):
+                # ADR data ingestion starts here
+                price_change_percent = float(item["priceChangePercent"])
+
+                if price_change_percent > 0:
+                    advancers += 1
+                elif price_change_percent < 0:
+                    decliners += 1
+
+                total_volume += float(item["volume"])
+
+                # Store ADR data
+                adr_data = AdrSeriesDb(
+                    timestamp=datetime.fromtimestamp(
+                        int(float(get_ticker_data[-1]["closeTime"]) / 1000)
+                    ),
+                    advancers=advancers,
+                    decliners=decliners,
+                    total_volume=total_volume,
+                )
+                self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
+
                 model_data = MarketDominationSeriesStore(
                     timestamp=datetime.fromtimestamp(
                         float(item["closeTime"]) / 1000
@@ -195,34 +203,7 @@ class MarketDominationController(Database, BinbotApi):
                 data = model_data.model_dump()
                 coin_data.append(data)
 
-                # ADR data ingestion starts here
-                price_change_percent = float(item["priceChangePercent"])
-
-                if price_change_percent > 0:
-                    advancers += 1
-                elif price_change_percent < 0:
-                    decliners += 1
-
-                total_volume += float(item["volume"])
-
-                if advancers > 0 and decliners > 0:
-                    adr_ratio = (advancers - decliners) / (advancers + decliners)
-                    adr.append(adr_ratio)
-
-        response = self.collection.insert_many(coin_data)
-        self.kafka_db.advacers_decliners.insert_one(
-            {
-                "timestamp": datetime.fromtimestamp(
-                    int(float(get_ticker_data[-1]["closeTime"]) / 1000)
-                ),
-                "advancers": advancers,
-                "decliners": decliners,
-                "adr": adr[-1] if adr else None,
-                "total_volume": total_volume,
-            }
-        )
-
-        return response
+        return True
 
     def get_market_domination(self, size=7):
         """
