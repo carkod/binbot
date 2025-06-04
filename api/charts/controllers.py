@@ -251,18 +251,7 @@ class MarketDominationController(Database, BinbotApi):
         pipeline = [
             {"$addFields": {"timestamp_dt": "$timestamp"}},
             {"$sort": {"timestamp_dt": 1}},
-            {
-                "$setWindowFields": {
-                    "sortBy": {"timestamp_dt": 1},
-                    "output": {
-                        "adp_ma": {
-                            "$avg": "$adr",
-                            "window": {"documents": [-(window - 1), 0]},
-                        }
-                    },
-                }
-            },
-            {
+            {  # Compute adp before window function
                 "$addFields": {
                     "adp": {
                         "$cond": [
@@ -276,6 +265,17 @@ class MarketDominationController(Database, BinbotApi):
                             None,
                         ]
                     }
+                }
+            },
+            {
+                "$setWindowFields": {
+                    "sortBy": {"timestamp_dt": 1},
+                    "output": {
+                        "adp_ma": {
+                            "$avg": "$adp",
+                            "window": {"documents": [-(window - 1), 0]},
+                        }
+                    },
                 }
             },
             {"$sort": {"timestamp_dt": -1}},
