@@ -254,7 +254,7 @@ export const DashboardPage: FC<{}> = () => {
         </Col>
       </Row>
       <Row>
-        <Col lg="6" md="6">
+        <Col lg="12" md="12">
           {adpSeries?.adp && (
             <AdrCard
               adr={adpSeries.adp}

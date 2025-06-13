@@ -68,7 +68,7 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
     }),
     adSeries: build.query<AdData, void>({
       query: () => ({
-        url: `${import.meta.env.VITE_AD_SERIES}`,
+        url: `${import.meta.env.VITE_AD_SERIES}?size=100`,
         providesTags: ["ad-series"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
