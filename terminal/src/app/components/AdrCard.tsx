@@ -1,6 +1,6 @@
 import React from "react";
 import Plot from "react-plotly.js";
-import { Card } from "react-bootstrap";
+import { Card, Row, Col } from "react-bootstrap";
 import moment from "moment";
 
 type AdrCardProps = {
@@ -10,13 +10,25 @@ type AdrCardProps = {
 
 const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
   return (
-    <Card>
+    <Card className="card-chart">
       <Card.Header>
-        <Card.Title as="h5">ADP Trend</Card.Title>
-        <p className="u-text-left">
-          Shows the Advancers-Decliners percentage difference (ADP). Over 0
-          indicates positive reversal Under 0 indicates negative reversal.
-        </p>
+        <Row>
+          <Col lg="1" md="1" sm="1">
+            <i
+              className={`fs-2 fa fa-suitcase ${adr[adr.length - 1] > 0 ? "text-success" : "text-danger"}`}
+            />
+          </Col>
+          <Col lg="11" md="11" sm="11">
+            <Card.Title as="h5" className="mt-0">
+              ADP Trend
+            </Card.Title>
+            <p className="u-text-left">
+              Shows the Advancers-Decliners percentage difference (ADP).<br />
+              Over 0 indicates positive reversal Under 0 indicates negative
+              reversal.
+            </p>
+          </Col>
+        </Row>
       </Card.Header>
       <Card.Body>
         <Plot
