@@ -8,6 +8,9 @@ from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
 from tools.round_numbers import round_numbers
 from database.symbols_crud import SymbolsCrud
+from database.paper_trading_crud import PaperTradingTableCrud
+from database.bot_crud import BotTableCrud
+import re
 
 
 class Candlestick(Database):
@@ -160,26 +163,23 @@ class MarketDominationController(Database, BinbotApi):
         # ADR data ingestion
         advancers = 0
         decliners = 0
-        adr = []
         total_volume = 0.0
-
-        # Store ADR data
-        if advancers > 0 or decliners > 0:
-            adr_data = AdrSeriesDb(
-                timestamp=datetime.fromtimestamp(
-                    int(float(get_ticker_data[-1]["closeTime"]) / 1000)
-                ),
-                advancers=advancers,
-                decliners=decliners,
-                total_volume=total_volume,
-            )
-            self.kafka_db.adr.insert_one(adr_data.model_dump())
 
         for item in get_ticker_data:
             if (
                 item["symbol"].endswith(self.autotrade_settings.fiat)
                 and float(item["lastPrice"]) > 0
             ):
+                # ADR data ingestion starts here
+                price_change_percent = float(item["priceChangePercent"])
+
+                if price_change_percent > 0:
+                    advancers += 1
+                elif price_change_percent < 0:
+                    decliners += 1
+
+                total_volume += float(item["volume"])
+
                 model_data = MarketDominationSeriesStore(
                     timestamp=datetime.fromtimestamp(
                         float(item["closeTime"]) / 1000
@@ -195,32 +195,17 @@ class MarketDominationController(Database, BinbotApi):
                 data = model_data.model_dump()
                 coin_data.append(data)
 
-                # ADR data ingestion starts here
-                price_change_percent = float(item["priceChangePercent"])
-
-                if price_change_percent > 0:
-                    advancers += 1
-                elif price_change_percent < 0:
-                    decliners += 1
-
-                total_volume += float(item["volume"])
-
-                if advancers > 0 and decliners > 0:
-                    adr_ratio = (advancers - decliners) / (advancers + decliners)
-                    adr.append(adr_ratio)
-
-        response = self.collection.insert_many(coin_data)
-        self.kafka_db.advacers_decliners.insert_one(
-            {
-                "timestamp": datetime.fromtimestamp(
-                    int(float(get_ticker_data[-1]["closeTime"]) / 1000)
-                ),
-                "advancers": advancers,
-                "decliners": decliners,
-                "adr": adr[-1] if adr else None,
-                "total_volume": total_volume,
-            }
+        # Store ADR data
+        adr_data = AdrSeriesDb(
+            timestamp=datetime.fromtimestamp(float(item["closeTime"]) / 1000).strftime(
+                "%Y-%m-%d %H:%M:%S.%f"
+            )[:-3],
+            advancers=advancers,
+            decliners=decliners,
+            total_volume=total_volume,
         )
+        self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
+        response = self.collection.insert_many(coin_data)
 
         return response
 
@@ -270,18 +255,7 @@ class MarketDominationController(Database, BinbotApi):
         pipeline = [
             {"$addFields": {"timestamp_dt": "$timestamp"}},
             {"$sort": {"timestamp_dt": 1}},
-            {
-                "$setWindowFields": {
-                    "sortBy": {"timestamp_dt": 1},
-                    "output": {
-                        "adp_ma": {
-                            "$avg": "$adr",
-                            "window": {"documents": [-(window - 1), 0]},
-                        }
-                    },
-                }
-            },
-            {
+            {  # Compute adp before window function
                 "$addFields": {
                     "adp": {
                         "$cond": [
@@ -295,6 +269,17 @@ class MarketDominationController(Database, BinbotApi):
                             None,
                         ]
                     }
+                }
+            },
+            {
+                "$setWindowFields": {
+                    "sortBy": {"timestamp_dt": 1},
+                    "output": {
+                        "adp_ma": {
+                            "$avg": "$adp",
+                            "window": {"documents": [-(window - 1), 0]},
+                        }
+                    },
                 }
             },
             {"$sort": {"timestamp_dt": -1}},
@@ -360,3 +345,43 @@ class MarketDominationController(Database, BinbotApi):
             reverse=True,
         )
         return fiat_market_data[:10]
+
+    def algo_performance(self, paper_trading: bool = False) -> dict:
+        """
+        Get algorithm performance data
+        from bots in the last month
+
+        1. Get bots
+        2. Parse names
+        3. Do an aggregation of all profits and return net profit
+        """
+        algo_performance: dict = {}
+
+        if paper_trading:
+            bots_crud: PaperTradingTableCrud | BotTableCrud = PaperTradingTableCrud()
+
+        else:
+            bots_crud = BotTableCrud()
+
+        bots = bots_crud.get()
+        if not bots:
+            return algo_performance
+        else:
+            for bot in bots:
+                match_name = re.match(
+                    r"^(.*?)(?=_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2})", bot.name
+                )
+                if match_name:
+                    key = match_name.group(1).lower()
+                    if key not in algo_performance:
+                        algo_performance[key] = {"net_profit": 0.0, "bots_count": 0}
+
+                    if bot.deal.closing_price > 0:
+                        algo_performance[key]["net_profit"] += round_numbers(
+                            (bot.deal.closing_price - bot.deal.opening_price)
+                            / bot.deal.closing_price
+                        )
+
+                    algo_performance[key]["bots_count"] += 1
+
+        return algo_performance

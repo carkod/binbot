@@ -10,7 +10,7 @@ type AdrCardProps = {
 
 const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
   return (
-    <Card className="card-chart">
+    <Card>
       <Card.Header>
         <Card.Title as="h5">ADP Trend</Card.Title>
         <p className="u-text-left">
@@ -35,7 +35,7 @@ const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
           ]}
           layout={{
             autosize: true,
-            height: 320,
+            height: 380,
             margin: { t: 30, l: 40, r: 20, b: 40 },
             xaxis: {
               title: "Time",
