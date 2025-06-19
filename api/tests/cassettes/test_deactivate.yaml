@@ -1,0 +1,366 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://data-api.binance.vision/api/v3/time
+  response:
+    body:
+      string: '{"serverTime":1750369477587}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '28'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Thu, 19 Jun 2025 21:44:37 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      x-mbx-used-weight:
+      - '105'
+      x-mbx-used-weight-1m:
+      - '105'
+      x-mbx-uuid:
+      - 7a49a9bd-608f-4322-96ee-51e07f9da270
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+      X-MBX-APIKEY:
+      - xxx
+    method: GET
+    uri: https://api1.binance.com/api/v3/account?omitZeroBalances=true&recvWindow=9000&timestamp=1750369477587&signature=b0bdae6e3ba59011334dcfb066b7cfa25cc826e74dfb0d0008003c5b214c89a3
+  response:
+    body:
+      string: '{"makerCommission":10,"takerCommission":10,"buyerCommission":0,"sellerCommission":0,"commissionRates":{"maker":"0.00100000","taker":"0.00100000","buyer":"0.00000000","seller":"0.00000000"},"canTrade":true,"canWithdraw":true,"canDeposit":true,"brokered":false,"requireSelfTradePrevention":false,"preventSor":false,"updateTime":1750114477837,"accountType":"SPOT","balances":[{"asset":"BNB","free":"0.00039616","locked":"0.00000000"},{"asset":"ADA","free":"39.00000000","locked":"0.00000000"},{"asset":"USDC","free":"1.42643660","locked":"0.00000000"},{"asset":"NFT","free":"31205.975795","locked":"0.000000"},{"asset":"XEC","free":"0.01","locked":"0.00"},{"asset":"APT","free":"0.02976339","locked":"0.00000000"},{"asset":"VELODROME","free":"0.06417500","locked":"0.00000000"},{"asset":"LAYER","free":"0.19851059","locked":"0.00000000"}],"permissions":["LEVERAGED","TRD_GRP_002","TRD_GRP_009"],"uid":28078583}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '390'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Thu, 19 Jun 2025 21:44:38 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      content-encoding:
+      - gzip
+      x-mbx-used-weight:
+      - '125'
+      x-mbx-used-weight-1m:
+      - '125'
+      x-mbx-uuid:
+      - a12b62f3-bc4c-4a0c-80cc-5dea6b3d1cf3
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api.binance.com/api/v3/depth?symbol=ADAUSDC
+  response:
+    body:
+      string: '{"lastUpdateId":1861652987,"bids":[["0.59950000","5327.50000000"],["0.59940000","1950.20000000"],["0.59930000","9180.90000000"],["0.59920000","10874.80000000"],["0.59910000","15417.50000000"],["0.59900000","19750.80000000"],["0.59890000","1150.80000000"],["0.59880000","5147.90000000"],["0.59870000","4557.20000000"],["0.59860000","8591.20000000"],["0.59850000","16229.20000000"],["0.59840000","7126.30000000"],["0.59830000","15372.60000000"],["0.59820000","13273.20000000"],["0.59810000","26152.60000000"],["0.59800000","2159.70000000"],["0.59790000","3374.10000000"],["0.59780000","24283.30000000"],["0.59770000","6848.00000000"],["0.59760000","16593.80000000"],["0.59750000","2830.20000000"],["0.59740000","2590.30000000"],["0.59730000","227.90000000"],["0.59720000","1719.20000000"],["0.59710000","509.80000000"],["0.59700000","1861.20000000"],["0.59690000","1037.20000000"],["0.59680000","363.90000000"],["0.59670000","1858.90000000"],["0.59660000","261.80000000"],["0.59650000","2080.80000000"],["0.59640000","106451.30000000"],["0.59630000","6616.70000000"],["0.59620000","2903.80000000"],["0.59610000","189.90000000"],["0.59600000","33676.40000000"],["0.59590000","17.30000000"],["0.59580000","105.90000000"],["0.59570000","516.50000000"],["0.59560000","33.20000000"],["0.59550000","221.20000000"],["0.59540000","3086.10000000"],["0.59530000","2019.80000000"],["0.59520000","156.20000000"],["0.59510000","190.80000000"],["0.59500000","17140.20000000"],["0.59490000","179.00000000"],["0.59480000","14.70000000"],["0.59470000","316.60000000"],["0.59460000","107.80000000"],["0.59450000","206.20000000"],["0.59440000","238.00000000"],["0.59430000","2325.80000000"],["0.59420000","32.30000000"],["0.59410000","1210.10000000"],["0.59400000","63.80000000"],["0.59390000","22616.50000000"],["0.59380000","35.90000000"],["0.59370000","191.20000000"],["0.59360000","371.30000000"],["0.59350000","411.20000000"],["0.59340000","193.90000000"],["0.59330000","82.90000000"],["0.59320000","2480.60000000"],["0.59310000","179.60000000"],["0.59300000","96.00000000"],["0.59290000","30.90000000"],["0.59280000","228.70000000"],["0.59270000","72.50000000"],["0.59250000","114.60000000"],["0.59240000","2060.00000000"],["0.59230000","154.20000000"],["0.59220000","266.80000000"],["0.59210000","23.80000000"],["0.59190000","935.00000000"],["0.59180000","57.90000000"],["0.59170000","426.60000000"],["0.59160000","16.30000000"],["0.59150000","13092.00000000"],["0.59140000","111.90000000"],["0.59130000","34.80000000"],["0.59120000","80.40000000"],["0.59100000","100.80000000"],["0.59090000","5194.90000000"],["0.59080000","3951.10000000"],["0.59070000","398.10000000"],["0.59060000","62.40000000"],["0.59050000","70.80000000"],["0.59040000","390.10000000"],["0.59030000","421.10000000"],["0.59020000","477.90000000"],["0.59010000","56.60000000"],["0.59000000","11317.10000000"],["0.58990000","49.50000000"],["0.58980000","302.70000000"],["0.58970000","105.30000000"],["0.58960000","13.70000000"],["0.58950000","406.90000000"],["0.58940000","823.20000000"],["0.58930000","662.40000000"]],"asks":[["0.59960000","843.60000000"],["0.59970000","13529.40000000"],["0.59980000","12035.00000000"],["0.59990000","5020.40000000"],["0.60000000","9733.90000000"],["0.60010000","18826.90000000"],["0.60020000","2303.00000000"],["0.60030000","6222.00000000"],["0.60040000","3512.90000000"],["0.60050000","9771.40000000"],["0.60060000","6597.30000000"],["0.60070000","1616.40000000"],["0.60080000","2733.40000000"],["0.60090000","9759.50000000"],["0.60100000","24514.30000000"],["0.60110000","16280.50000000"],["0.60120000","5336.80000000"],["0.60140000","17740.50000000"],["0.60150000","11057.30000000"],["0.60160000","5371.20000000"],["0.60170000","179.30000000"],["0.60180000","2268.70000000"],["0.60190000","5193.30000000"],["0.60200000","18626.20000000"],["0.60210000","3483.70000000"],["0.60220000","214.50000000"],["0.60230000","2056.90000000"],["0.60240000","18.40000000"],["0.60250000","1840.80000000"],["0.60260000","512.00000000"],["0.60270000","1664.90000000"],["0.60280000","539.80000000"],["0.60290000","1727.90000000"],["0.60300000","457.30000000"],["0.60310000","15351.30000000"],["0.60320000","1485.10000000"],["0.60330000","236.50000000"],["0.60340000","411.40000000"],["0.60350000","363.10000000"],["0.60360000","814.10000000"],["0.60370000","175.40000000"],["0.60380000","665.20000000"],["0.60390000","1396.90000000"],["0.60400000","2806.80000000"],["0.60410000","732.70000000"],["0.60420000","278.00000000"],["0.60430000","549.30000000"],["0.60440000","74.60000000"],["0.60450000","8.40000000"],["0.60460000","43.30000000"],["0.60470000","102.20000000"],["0.60480000","73.70000000"],["0.60490000","34.30000000"],["0.60500000","369.40000000"],["0.60510000","283.10000000"],["0.60520000","66.40000000"],["0.60530000","12.60000000"],["0.60540000","79.60000000"],["0.60550000","38.80000000"],["0.60560000","252.10000000"],["0.60570000","712.90000000"],["0.60580000","52.10000000"],["0.60590000","916.20000000"],["0.60600000","130.40000000"],["0.60610000","95.40000000"],["0.60620000","125.30000000"],["0.60630000","94.50000000"],["0.60640000","90.90000000"],["0.60650000","1263.70000000"],["0.60660000","4112.60000000"],["0.60670000","21.40000000"],["0.60680000","82.60000000"],["0.60690000","191.90000000"],["0.60700000","322.40000000"],["0.60710000","242.30000000"],["0.60720000","100.20000000"],["0.60730000","99.20000000"],["0.60740000","18.00000000"],["0.60750000","116.80000000"],["0.60760000","771.00000000"],["0.60770000","27.80000000"],["0.60780000","11.20000000"],["0.60790000","105.30000000"],["0.60800000","421.60000000"],["0.60810000","33.90000000"],["0.60820000","100.30000000"],["0.60830000","16.90000000"],["0.60840000","8190.10000000"],["0.60850000","245.20000000"],["0.60860000","144.70000000"],["0.60870000","82.00000000"],["0.60880000","639.10000000"],["0.60890000","61.10000000"],["0.60900000","112.00000000"],["0.60910000","252.40000000"],["0.60920000","383.30000000"],["0.60930000","164.80000000"],["0.60940000","81.40000000"],["0.60950000","130.10000000"],["0.60960000","95.80000000"]]}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1257'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Thu, 19 Jun 2025 21:44:39 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Via:
+      - 1.1 9793e90da776681e20ee7a8a27bdff7c.cloudfront.net (CloudFront)
+      X-Amz-Cf-Id:
+      - jlUAFFXiE8x5L2lsXvXhJfEiks7AhioeONEUqvwpO0CSrlefs0fKnw==
+      X-Amz-Cf-Pop:
+      - MAD56-P3
+      X-Cache:
+      - Miss from cloudfront
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      content-encoding:
+      - gzip
+      x-mbx-used-weight:
+      - '130'
+      x-mbx-used-weight-1m:
+      - '130'
+      x-mbx-uuid:
+      - 92e8f121-1755-4676-afc9-c6557082582e
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://data-api.binance.vision/api/v3/time
+  response:
+    body:
+      string: '{"serverTime":1750369480367}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '28'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Thu, 19 Jun 2025 21:44:40 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      x-mbx-used-weight:
+      - '131'
+      x-mbx-used-weight-1m:
+      - '131'
+      x-mbx-uuid:
+      - 8834753d-55b4-4415-b36c-e227c5c1a787
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+      X-MBX-APIKEY:
+      - xxx
+    method: POST
+    uri: https://api.binance.com/api/v3/order?symbol=ADAUSDC&side=SELL&type=LIMIT&timeInForce=FOK&price=0.5995&quantity=39.0&recvWindow=9000&timestamp=1750369480367&signature=5eea69af4e6336b1a65c2d3e93d5f9a3f739107f441c8501c8ba04994d6d5934
+  response:
+    body:
+      string: '{"symbol":"ADAUSDC","orderId":991514179,"orderListId":-1,"clientOrderId":"HkHFuYWKBaFCsigZ3Huktt","transactTime":1750369480679,"price":"0.59950000","origQty":"39.00000000","executedQty":"39.00000000","origQuoteOrderQty":"0.00000000","cummulativeQuoteQty":"23.38050000","status":"FILLED","timeInForce":"FOK","type":"LIMIT","side":"SELL","workingTime":1750369480679,"fills":[{"price":"0.59950000","qty":"39.00000000","commission":"0.00002589","commissionAsset":"BNB","tradeId":25558898}],"selfTradePreventionMode":"EXPIRE_MAKER"}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '333'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Thu, 19 Jun 2025 21:44:40 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Via:
+      - 1.1 7651a57609d902a9057a513bda90c5a6.cloudfront.net (CloudFront)
+      X-Amz-Cf-Id:
+      - _X7Z8O6caiak5wT7YG-i9s3MgXmw5tl4QqS4mHGYq9zlLO3qJKeD2g==
+      X-Amz-Cf-Pop:
+      - MAD56-P3
+      X-Cache:
+      - Miss from cloudfront
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      content-encoding:
+      - gzip
+      x-mbx-order-count-10s:
+      - '1'
+      x-mbx-order-count-1d:
+      - '1'
+      x-mbx-used-weight:
+      - '132'
+      x-mbx-used-weight-1m:
+      - '132'
+      x-mbx-uuid:
+      - d4c77797-a9d6-476a-aa78-489c87c4ef39
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: DELETE
+    uri: http://testserver/bot/deactivate/ebda4958-837c-4544-bf97-9bf449698152
+  response:
+    body:
+      string: '{"message":"Successfully triggered panic sell! Bot deactivated.","error":0,"data":{"pair":"ADAUSDC","fiat":"USDC","base_order_size":25.0,"candlestick_interval":"15m","close_condition":"dynamic_trailling","cooldown":360,"created_at":1750114470468.528,"updated_at":1750114470468.529,"dynamic_trailling":true,"logs":["[2025-06-17
+        00:54:38] Succesful bots autotrade, opened with ADAUSDC!","Panic sell triggered.
+        All active orders closed"],"mode":"manual","name":"market_domination_reversal_2025-06-17T00:54","status":"completed","stop_loss":3.0,"margin_short_reversal":true,"take_profit":2.3,"trailling":true,"trailling_deviation":2.6,"trailling_profit":2.2,"strategy":"long","id":"ebda4958-837c-4544-bf97-9bf449698152","deal":{"current_price":0.6443,"take_profit_price":0.6673,"trailling_stop_loss_price":0.0,"trailling_profit_price":0.6591,"stop_loss_price":0.6249,"total_interests":0.0,"total_commissions":0.0,"margin_loan_id":0,"margin_repay_id":0,"opening_price":0.6443,"opening_qty":39.0,"opening_timestamp":1750114477837,"closing_price":0.5995,"closing_qty":39.0,"closing_timestamp":1750369480679},"orders":[{"order_type":"LIMIT","time_in_force":"FOK","timestamp":1750114477837,"order_id":985837777,"order_side":"BUY","pair":"ADAUSDC","qty":39.0,"status":"FILLED","price":0.6443,"deal_type":"base_order"},{"order_type":"LIMIT","time_in_force":"FOK","timestamp":1750369480679,"order_id":991514179,"order_side":"SELL","pair":"ADAUSDC","qty":39.0,"status":"FILLED","price":0.5995,"deal_type":"take_profit"}]}}'
+    headers:
+      content-length:
+      - '1509'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

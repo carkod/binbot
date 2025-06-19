@@ -48,24 +48,6 @@ function computerPercent(data) {
  */
 export const marketApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
-    gainerLosersSeries: build.query<GainerLosersData, void>({
-      query: () => ({
-        url:
-          `${import.meta.env.VITE_GAINERS_LOSERS_SERIES}` || "/gainers-losers",
-        providesTags: ["balances"],
-      }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        }
-
-        const historicalGLdata = {
-          ...data,
-          ...computerPercent(data),
-        };
-        return historicalGLdata;
-      },
-    }),
     adSeries: build.query<AdData, void>({
       query: () => ({
         url: `${import.meta.env.VITE_AD_SERIES}?size=100`,
@@ -82,4 +64,4 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
   }),
 });
 
-export const { useGainerLosersSeriesQuery, useAdSeriesQuery } = marketApiSlice;
+export const { useAdSeriesQuery } = marketApiSlice;

@@ -50,11 +50,11 @@ def main():
         id="clean_balance_assets",
     )
     scheduler.add_job(
-        func=market_domination.store_market_domination,
+        func=market_domination.ingest_adp_data,
         trigger="interval",
         timezone=timezone,
         hours=1,
-        id="market_domination",
+        id="ingest_adp_data",
     )
     scheduler.start()
 
