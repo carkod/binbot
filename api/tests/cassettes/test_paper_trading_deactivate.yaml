@@ -73,7 +73,7 @@ interactions:
       User-Agent:
       - python-requests/2.28.1
       X-MBX-APIKEY:
-      - AwcS21suSOpowy54mp52ubS8Zf5CO7ltVd7xsbLg9ouo76Z1QFtC5Tp93RihBBdm
+      - xxx
     method: GET
     uri: https://api1.binance.com/api/v3/account?omitZeroBalances=true&recvWindow=9000&timestamp=1743278455785&signature=c1bf4d783fc2ebba2b9ce9afedd3bbee1ef7756ccf86db2ebf8b39008eaad770
   response:
@@ -207,7 +207,7 @@ interactions:
       User-Agent:
       - python-requests/2.28.1
       X-MBX-APIKEY:
-      - AwcS21suSOpowy54mp52ubS8Zf5CO7ltVd7xsbLg9ouo76Z1QFtC5Tp93RihBBdm
+      - xxx
     method: GET
     uri: https://api-gcp.binance.com/sapi/v1/margin/isolated/account?symbols=TRXUSDC&recvWindow=9000&timestamp=1743278458416&signature=06bbda892dc94f5fc0d60e1f7c0e48088223dce8a7b28f9dece5392c04731c25
   response:

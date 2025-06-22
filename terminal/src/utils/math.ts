@@ -56,14 +56,10 @@ const replaceZeros = (value) => {
 };
 
 const roundDecimals = (num: number, decimals: number = 2) => {
+  // Use toFixed to avoid floating point issues, then convert back to number
   if (num < 0) return -roundDecimals(-num, decimals);
-  const p = Math.pow(10, decimals);
-  const n = num * p;
-  const f = n - Math.floor(n);
-  const e = Number.EPSILON * n;
-  const number = f >= 0.5 - e ? Math.ceil(n) / p : Math.floor(n) / p;
-
-  return number;
+  const factor = Math.pow(10, decimals);
+  return Number((Math.round(num * factor) / factor).toFixed(decimals));
 };
 
 export {
