@@ -156,14 +156,14 @@ def test_activate_by_id(client: TestClient):
 
 @mark.vcr("cassettes/test_deactivate.yaml")
 def test_deactivate(client: TestClient):
-    response = client.delete(f"/bot/deactivate/{id}")
+    deactivate_id = "ebda4958-837c-4544-bf97-9bf449698152"
+    response = client.delete(f"/bot/deactivate/{deactivate_id}")
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"]["pair"] == "ADXUSDC"
+    assert content["data"]["pair"] == "ADAUSDC"
     assert content["data"]["fiat"] == "USDC"
-    assert content["data"]["base_order_size"] == 15
-    assert content["data"]["cooldown"] == 360
+    assert content["data"]["base_order_size"] == 25
 
 
 @mark.vcr("cassettes/test_post_bot_errors_str.yaml")

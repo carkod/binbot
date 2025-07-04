@@ -6,7 +6,7 @@ import {
 } from "../../features/balanceApiSlice";
 import { useGainerLosersQuery } from "../../features/binanceApiSlice";
 import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
-import { useAdSeriesQuery, useGainerLosersSeriesQuery } from "../../features/marketApiSlice";
+import { useAdSeriesQuery } from "../../features/marketApiSlice";
 import { calculateTotalRevenue } from "../../utils/dashboard-computations";
 import { BotStatus } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
@@ -32,8 +32,6 @@ export const DashboardPage: FC<{}> = () => {
     useGetBenchmarkQuery();
   const { data: gainersLosersData, isLoading: loadingGL } =
     useGainerLosersQuery();
-  const { data: gainersLosersSeries, isLoading: loadingGLSeries } =
-    useGainerLosersSeriesQuery();
 
   const { data: adpSeries, isLoading: loadingAdpSeries } =
     useAdSeriesQuery();
@@ -69,7 +67,7 @@ export const DashboardPage: FC<{}> = () => {
       !loadingEstimates &&
       !loadingErrorBots &&
       !loadingGL &&
-      !loadingGLSeries
+      !loadingAdpSeries
     ) {
       setSpinner(false);
     } else {
@@ -86,7 +84,7 @@ export const DashboardPage: FC<{}> = () => {
     loadingEstimates,
     loadingErrorBots,
     loadingGL,
-    loadingGLSeries,
+    loadingAdpSeries,
   ]);
 
   return (
@@ -240,21 +238,6 @@ export const DashboardPage: FC<{}> = () => {
           )}
         </Col>
         <Col lg="6" md="12">
-          {gainersLosersSeries && (
-            <ReversalBarChart
-              chartData={gainersLosersSeries}
-              legend={[
-                {
-                  name: "Portfolio",
-                  color: listCssColors[0],
-                },
-              ]}
-            />
-          )}
-        </Col>
-      </Row>
-      <Row>
-        <Col lg="12" md="12">
           {adpSeries?.adp && (
             <AdrCard
               adr={adpSeries.adp}

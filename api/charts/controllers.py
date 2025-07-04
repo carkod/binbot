@@ -1,7 +1,7 @@
 from datetime import datetime
 from pymongo import DESCENDING
 from database.autotrade_crud import AutotradeCrud
-from charts.models import MarketDominationSeriesStore, AdrSeriesDb
+from charts.models import AdrSeriesDb
 from apis import BinbotApi
 from database.db import Database, setup_kafka_db
 from pandas import DataFrame
@@ -144,12 +144,11 @@ class MarketDominationController(Database, BinbotApi):
 
     def __init__(self) -> None:
         super().__init__()
-        self.collection = self.kafka_db.market_domination
         self.autotrade_db = AutotradeCrud()
         self.autotrade_settings = self.autotrade_db.get_settings()
         self.symbols_crud = SymbolsCrud()
 
-    def store_market_domination(self):
+    def ingest_adp_data(self):
         """
         Store ticker 24 data every 30 min
         and calculate price change proportion
@@ -158,7 +157,6 @@ class MarketDominationController(Database, BinbotApi):
         The reason is to reduce weight, so as not to be banned by API
         """
         get_ticker_data = self.ticker_24()
-        coin_data = []
 
         # ADR data ingestion
         advancers = 0
@@ -180,21 +178,6 @@ class MarketDominationController(Database, BinbotApi):
 
                 total_volume += float(item["volume"])
 
-                model_data = MarketDominationSeriesStore(
-                    timestamp=datetime.fromtimestamp(
-                        float(item["closeTime"]) / 1000
-                    ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                    time=datetime.fromtimestamp(
-                        float(item["closeTime"]) / 1000
-                    ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                    symbol=item["symbol"],
-                    priceChangePercent=float(item["priceChangePercent"]),
-                    price=float(item["lastPrice"]),
-                    volume=float(item["volume"]),
-                )
-                data = model_data.model_dump()
-                coin_data.append(data)
-
         # Store ADR data
         adr_data = AdrSeriesDb(
             timestamp=datetime.fromtimestamp(float(item["closeTime"]) / 1000).strftime(
@@ -204,42 +187,9 @@ class MarketDominationController(Database, BinbotApi):
             decliners=decliners,
             total_volume=total_volume,
         )
-        self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
-        response = self.collection.insert_many(coin_data)
+        response = self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
 
         return response
-
-    def get_market_domination(self, size=7):
-        """
-        Get gainers vs losers historical data
-
-        Args:
-            size (int, optional): Number of data points to retrieve. Defaults to 7 (1 week).
-        Returns:
-            dict: A dictionary containing the market domination data, including gainers and losers counts, percentages, and dates.
-        """
-        result = self.collection.aggregate(
-            [
-                {
-                    "$group": {
-                        "_id": {
-                            "time": {
-                                "$dateTrunc": {
-                                    "date": "$timestamp",
-                                    "unit": "minute",
-                                    "binSize": 60,
-                                },
-                            },
-                        },
-                        "data": {"$push": "$$ROOT"},
-                    }
-                },
-                {"$sort": {"_id.time": DESCENDING}},
-                {"$project": {"time": "$_id.time", "data": 1, "_id": 0}},
-                {"$limit": size},
-            ]
-        )
-        return list(result)
 
     def get_adrs(self, size=7, window=3) -> dict | None:
         """

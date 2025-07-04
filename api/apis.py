@@ -36,7 +36,6 @@ class BinbotApi(BinanceApi):
     # research
     bb_autotrade_settings_url = f"{bb_base_url}/autotrade-settings/bots"
     bb_blacklist_url = f"{bb_base_url}/research/blacklist"
-    bb_market_domination = f"{bb_base_url}/charts/market-domination"
 
     def bb_request(self, url, method="GET", params=None, payload=None):
         """
@@ -46,7 +45,3 @@ class BinbotApi(BinanceApi):
         res = request(method, url=url, params=params, json=payload)
         data = handle_binance_errors(res)
         return data
-
-    def get_market_domination_series(self, size=7):
-        result = self.bb_request(url=self.bb_market_domination, params={"size": size})
-        return result

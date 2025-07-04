@@ -241,7 +241,7 @@ interactions:
       User-Agent:
       - python-requests/2.28.1
       X-MBX-APIKEY:
-      - AwcS21suSOpowy54mp52ubS8Zf5CO7ltVd7xsbLg9ouo76Z1QFtC5Tp93RihBBdm
+      - xxx
     method: POST
     uri: https://api-gcp.binance.com/api/v3/order?symbol=EPICUSDC&side=BUY&type=LIMIT&timeInForce=FOK&price=1.346&quantity=14.8&recvWindow=9000&timestamp=1745440543457&signature=0eb9a70b4e0922a703b3818b907424a0781d5b03c0da358fa9c7fd1c80fe882a
   response:
