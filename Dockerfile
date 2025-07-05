@@ -14,4 +14,4 @@ RUN rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/*.list
 COPY ./config.json /docker-entrypoint.d/config.json
 
 STOPSIGNAL SIGTERM
-EXPOSE 80 443 8006 5432
+EXPOSE 80 443 8006 5432 8007 81

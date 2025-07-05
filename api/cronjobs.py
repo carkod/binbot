@@ -1,12 +1,10 @@
 import logging
-import time
 import os
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.assets import Assets
 from charts.controllers import MarketDominationController
 from database.utils import independent_session
 
-logging.Formatter.converter = time.gmtime  # date time in GMT/UTC
 logging.basicConfig(
     level=os.environ["LOG_LEVEL"],
     filename=None,
