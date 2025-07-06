@@ -1,7 +1,13 @@
-from typing import Sequence
-from database.models.account_balances import BalancesTable, ConsolidatedBalancesTable
+from typing import Sequence, Union, Type
+from database.models.account_balances import (
+    BalancesTable,
+    ConsolidatedBalancesTable,
+    StagingBalancesTable,
+    StagingConsolidatedBalancesTable,
+)
 from database.utils import independent_session, timestamp
 from sqlmodel import Session, select, desc
+from config import Settings
 
 
 class BalancesCrud:
@@ -16,21 +22,34 @@ class BalancesCrud:
         if session is None:
             session = independent_session()
         self.session = session
+        self.settings = Settings()
 
     def create_balance_series(self, total_balance, total_estimated_fiat: float):
         """
         Abstraction to reduce complexity
         updates balances DB collection
         """
+
+        balances_table: Union[Type[BalancesTable], Type[StagingBalancesTable]] = (
+            BalancesTable
+        )
+        consolidated_balances_table: Union[
+            Type[ConsolidatedBalancesTable], Type[StagingConsolidatedBalancesTable]
+        ] = ConsolidatedBalancesTable
+
+        if self.settings.env == "staging":
+            balances_table = StagingBalancesTable
+            consolidated_balances_table = StagingConsolidatedBalancesTable
+
         ts = timestamp()
         balances = []
         for item in total_balance:
-            balance = BalancesTable(
+            balance = balances_table(
                 asset=item["asset"], quantity=item["free"], timestamp=ts
             )
             balances.append(balance)
 
-        consolidated_balance_series = ConsolidatedBalancesTable(
+        consolidated_balance_series = consolidated_balances_table(
             id=ts,
             balances=balances,
             estimated_total_fiat=total_estimated_fiat,

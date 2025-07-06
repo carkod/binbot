@@ -76,3 +76,54 @@ class ConsolidatedBalancesTable(SQLModel, table=True):
         default=0,
         description="This is derived from free * price of fiat, which is determined in autotrade",
     )
+
+
+class StagingBalancesTable(SQLModel, table=True):
+    """
+    Balances table to store user balances
+    """
+
+    __tablename__ = "staging_balances"
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        unique=True,
+        index=True,
+    )
+    timestamp: int = Field(
+        default_factory=timestamp, sa_column=Column(BigInteger(), index=True)
+    )
+    asset: str = Field(index=True, nullable=False)
+    quantity: Optional[float] = Field(default=0, description="local quantity (asset)")
+
+    # Relationships
+    consolidated_balances_id: Optional[int] = Field(
+        default=None,
+        foreign_key="staging_consolidated_balances.id",  # <-- fixed foreign key
+        ondelete="CASCADE",
+        sa_type=BigInteger,
+    )
+    consolidated_balances: Optional["StagingConsolidatedBalancesTable"] = Relationship(
+        back_populates="balances"
+    )
+
+
+class StagingConsolidatedBalancesTable(SQLModel, table=True):
+    """
+    Staging version of consolidated balances table
+    """
+
+    __tablename__ = "staging_consolidated_balances"
+
+    id: int = Field(
+        default_factory=timestamp,
+        sa_column=Column(BigInteger(), primary_key=True, index=True),
+    )
+    balances: list[StagingBalancesTable] = Relationship(
+        sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
+    )
+    estimated_total_fiat: float = Field(
+        default=0,
+        description="This is derived from free * price of fiat, which is determined in autotrade",
+    )
