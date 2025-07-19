@@ -21,6 +21,7 @@ from database.utils import engine
 from account.assets import Assets
 from database.symbols_crud import SymbolsCrud
 from database.db import setup_kafka_db
+from datetime import datetime, timedelta
 
 
 class ApiDb:
@@ -266,7 +267,19 @@ class ApiDb:
     def init_symbols(self):
         """
         Heavy operation, only execute if db is empty
+
+        First check if symbols have been updated in the last 24 hours.
         """
+
+        symbol_info = self.symbols.get_symbol("BTCUSDC")
+        if (
+            symbol_info
+            and symbol_info.updated_at
+            and symbol_info.updated_at
+            < int((datetime.now() - timedelta(hours=24)).timestamp() * 1000)
+        ):
+            return
+
         self.symbols.symbols_table_ingestion()
         pass
 
