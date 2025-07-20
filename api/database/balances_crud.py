@@ -1,3 +1,4 @@
+import os
 from typing import Sequence, Union, Type
 from database.models.account_balances import (
     BalancesTable,
@@ -7,8 +8,6 @@ from database.models.account_balances import (
 )
 from database.utils import independent_session, timestamp
 from sqlmodel import Session, select, desc
-from config import Settings
-
 
 class BalancesCrud:
     """
@@ -22,7 +21,6 @@ class BalancesCrud:
         if session is None:
             session = independent_session()
         self.session = session
-        self.settings = Settings()
 
     def create_balance_series(self, total_balance, total_estimated_fiat: float):
         """
@@ -37,7 +35,7 @@ class BalancesCrud:
             Type[ConsolidatedBalancesTable], Type[StagingConsolidatedBalancesTable]
         ] = ConsolidatedBalancesTable
 
-        if self.settings.env == "staging":
+        if os.environ["ENV"] == "staging":
             balances_table = StagingBalancesTable
             consolidated_balances_table = StagingConsolidatedBalancesTable
 

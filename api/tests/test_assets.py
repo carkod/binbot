@@ -3,12 +3,7 @@ from fastapi.testclient import TestClient
 from pytest import fixture
 from account.assets import Assets
 from main import app
-from mongomock import MongoClient
 from database.utils import get_session
-
-
-client: MongoClient = MongoClient()
-db = client.db
 
 
 MockAutotradeCrud = MagicMock()
