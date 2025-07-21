@@ -12,7 +12,7 @@ class SymbolTable(SQLModel, table=True):
         default_factory=timestamp, sa_column=Column(BigInteger, nullable=False)
     )
     updated_at: int = Field(
-        default_factory=timestamp, sa_column=Column(BigInteger, nullable=False)
+        default=timestamp(), sa_column=Column(BigInteger, nullable=False)
     )
     active: bool = Field(default=True, description="Blacklisted items = False")
     blacklist_reason: str = Field(default="")
