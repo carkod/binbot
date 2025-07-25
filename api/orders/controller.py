@@ -155,6 +155,12 @@ class OrderController(Account):
             }
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        # Fixed expired orders
+        if data["status"] == "EXPIRED":
+            data = self.signed_request(
+                url=self.order_url, method="POST", payload=payload
+            )
+
         return data
 
     def buy_order(self, symbol: str, qty: float):
@@ -185,6 +191,11 @@ class OrderController(Account):
             }
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+
+        if data["status"] == "EXPIRED":
+            data = self.signed_request(
+                url=self.order_url, method="POST", payload=payload
+            )
 
         return data
 
