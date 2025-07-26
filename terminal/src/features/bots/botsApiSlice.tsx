@@ -22,7 +22,7 @@ type GetBotsResponse = {
 export const buildGetBotsPath = (
   status: string = BotStatus.ALL,
   startDate: number = weekAgo(),
-  endDate: number = new Date().getTime()
+  endDate: number = new Date().getTime(),
 ): string => {
   const params = new URLSearchParams({
     start_date: startDate.toString(),
@@ -137,7 +137,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         }
         return {
           bot: data,
-        }
+        };
       },
     }),
     deactivateBot: build.mutation<SingleBotResponse, string>({

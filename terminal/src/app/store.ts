@@ -16,7 +16,7 @@ export const rootReducer = combineSlices(
   binanceApiSlice,
   autotradeSettingsSlice,
   testAutotradeSettingsSlice,
-  paperTradingSlice
+  paperTradingSlice,
 );
 
 export type RootState = ReturnType<typeof rootReducer>;

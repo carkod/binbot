@@ -23,7 +23,8 @@ const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
               ADP Trend
             </Card.Title>
             <p className="u-text-left">
-              Shows the Advancers-Decliners percentage difference (ADP).<br />
+              Shows the Advancers-Decliners percentage difference (ADP).
+              <br />
               Over 0 indicates positive reversal Under 0 indicates negative
               reversal.
             </p>

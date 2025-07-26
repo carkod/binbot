@@ -1,12 +1,5 @@
 import React, { type FC, useContext, useEffect, useState } from "react";
-import {
-  Col,
-  Container,
-  Form,
-  InputGroup,
-  Row,
-  Tab,
-} from "react-bootstrap";
+import { Col, Container, Form, InputGroup, Row, Tab } from "react-bootstrap";
 import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
@@ -68,7 +61,7 @@ const BaseOrderTab: FC<{
     // Only when selected not typed in
     // this way we avoid any errors
     if (e.target.value) {
-      if (botType ===  BotType.PAPER_TRADING) {
+      if (botType === BotType.PAPER_TRADING) {
         dispatch(setTestBotField({ name: "pair", value: e.target.value }));
       } else {
         dispatch(setField({ name: "pair", value: e.target.value }));
@@ -88,13 +81,13 @@ const BaseOrderTab: FC<{
     const { unsubscribe } = watch((v, { name }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
-          if (botType ===  BotType.PAPER_TRADING) {
+          if (botType === BotType.PAPER_TRADING) {
             dispatch(setTestBotToggle({ name, value: v[name] }));
           } else {
             dispatch(setToggle({ name, value: v[name] }));
           }
         } else {
-          if (botType ===  BotType.PAPER_TRADING) {
+          if (botType === BotType.PAPER_TRADING) {
             dispatch(setTestBotField({ name, value: v[name] }));
           } else {
             dispatch(setField({ name, value: v[name] }));
@@ -120,7 +113,7 @@ const BaseOrderTab: FC<{
         strategy: bot.strategy,
         pair: symbol,
       });
-      if (botType ===  BotType.PAPER_TRADING) {
+      if (botType === BotType.PAPER_TRADING) {
         dispatch(setTestBotField({ name: "pair", value: symbol }));
       } else {
         dispatch(setField({ name: "pair", value: symbol }));
@@ -136,7 +129,10 @@ const BaseOrderTab: FC<{
       });
     }
 
-    if (bot.deal?.current_price !== currentPrice && bot.deal?.closing_price === 0) {
+    if (
+      bot.deal?.current_price !== currentPrice &&
+      bot.deal?.closing_price === 0
+    ) {
       setCurrentPrice(bot.deal.current_price);
     }
 

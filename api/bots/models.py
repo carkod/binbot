@@ -92,7 +92,10 @@ class BotBase(BaseModel):
     dynamic_trailling: bool = Field(default=False)
     logs: list = Field(default=[])
     mode: str = Field(default="manual")
-    name: str = Field(default="Default bot")
+    name: str = Field(
+        default="terminal",
+        description="Algorithm name or 'terminal' if executed from React app",
+    )
     status: Status = Field(default=Status.inactive)
     stop_loss: Amount = Field(
         default=0,

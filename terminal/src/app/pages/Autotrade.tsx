@@ -85,7 +85,7 @@ export const AutotradePage: FC<{}> = () => {
           dispatch(setSettingsToggle({ name, value: v[name] }));
         } else {
           dispatch(
-            setSettingsField({ name, value: v[name] as number | string })
+            setSettingsField({ name, value: v[name] as number | string }),
           );
         }
       }
@@ -146,7 +146,7 @@ export const AutotradePage: FC<{}> = () => {
                             setSettingsField({
                               name: "candlestick_interval",
                               value,
-                            })
+                            }),
                           );
                         }}
                         onBlur={handleBlur}
@@ -159,7 +159,7 @@ export const AutotradePage: FC<{}> = () => {
                             <option key={i} value={interval.toString()}>
                               {interval.toString()}
                             </option>
-                          )
+                          ),
                         )}
                       </Form.Select>
                       {errors.candlestick_interval && (
@@ -190,7 +190,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />
@@ -213,7 +213,7 @@ export const AutotradePage: FC<{}> = () => {
                             setSettingsToggle({
                               name: "autotrade",
                               value: !settings.autotrade,
-                            })
+                            }),
                           );
                         }}
                       >
@@ -278,7 +278,7 @@ export const AutotradePage: FC<{}> = () => {
                             setSettingsToggle({
                               name: "autoswitch",
                               value: !settings.autoswitch,
-                            })
+                            }),
                           );
                         }}
                       >
@@ -302,7 +302,7 @@ export const AutotradePage: FC<{}> = () => {
                           setSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />

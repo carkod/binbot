@@ -25,7 +25,7 @@ const GainersLosersCard = ({ data, title }: GainersLosersCardProps) => {
                   {x.priceChangePercent + "%"}
                 </Badge>
               </ListGroup.Item>
-            )
+            ),
         )}
       </ListGroup>
     </Card.Body>

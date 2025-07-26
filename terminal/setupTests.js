@@ -1,1 +1,1 @@
-window.URL.createObjectURL = function() {};
+window.URL.createObjectURL = function () {};

@@ -2,7 +2,11 @@ import React, { type FC } from "react";
 import { useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
 import { useMatch, useParams } from "react-router";
-import { selectTestBot, setTestBot, setTestBotCurrentPrice } from "../../features/bots/paperTradingSlice";
+import {
+  selectTestBot,
+  setTestBot,
+  setTestBotCurrentPrice,
+} from "../../features/bots/paperTradingSlice";
 import BotInfo from "../components/BotInfo";
 import ChartContainer from "../components/ChartContainer";
 import { useAppDispatch, useAppSelector } from "../hooks";
@@ -38,7 +42,10 @@ export const PaperTradingDetail: FC = () => {
       <Container fluid>
         <Row>
           <Col md="12" sm="12">
-            <ChartContainer bot={paperTrading} setCurrentPrice={setTestBotCurrentPrice} />
+            <ChartContainer
+              bot={paperTrading}
+              setCurrentPrice={setTestBotCurrentPrice}
+            />
           </Col>
         </Row>
         {paperTrading && id && (
@@ -47,7 +54,9 @@ export const PaperTradingDetail: FC = () => {
               <BotInfo bot={paperTrading} />
             </Col>
             <Col md="5" sm="12">
-              {paperTrading.logs?.length > 0 && <LogsInfo events={paperTrading.logs} />}
+              {paperTrading.logs?.length > 0 && (
+                <LogsInfo events={paperTrading.logs} />
+              )}
             </Col>
           </Row>
         )}

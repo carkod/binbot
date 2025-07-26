@@ -104,7 +104,7 @@ export const PaperTradingPage: FC = () => {
           status: filterStatus,
           startDate: ts,
           endDate: endDate,
-        })
+        }),
       );
     }
   };
@@ -125,7 +125,15 @@ export const PaperTradingPage: FC = () => {
     if (data?.bots || isDeactivated || isDeleted) {
       setSpinner(false);
     }
-  }, [data?.bots?.ids, dispatch, isFetching, isDeactivating, isDeleting, isDeactivated, isDeleted]);
+  }, [
+    data?.bots?.ids,
+    dispatch,
+    isFetching,
+    isDeactivating,
+    isDeleting,
+    isDeactivated,
+    isDeleted,
+  ]);
 
   return (
     <Container fluid>

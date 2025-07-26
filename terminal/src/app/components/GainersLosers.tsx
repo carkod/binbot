@@ -9,7 +9,7 @@ import { type BinanceTicker24 } from "../../features/binanceApiSlice";
 
 export interface GainersLosersProps {
   data: BinanceTicker24[];
-};
+}
 
 export default function GainersLosers({ data }: GainersLosersProps) {
   const { gainerCount, gainerAccumulator, loserAccumulator, loserCount } =

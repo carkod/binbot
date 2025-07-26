@@ -1,5 +1,8 @@
 import { notifification } from "../utils/api";
-import { type CloseConditions, type BinanceKlineintervals } from "../utils/enums";
+import {
+  type CloseConditions,
+  type BinanceKlineintervals,
+} from "../utils/enums";
 import { userApiSlice } from "./userApiSlice";
 
 export interface AutotradeSettings {

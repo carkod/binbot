@@ -20,7 +20,7 @@ const renderWithProviders = (ui, { store }) => {
       <SpinnerContext.Provider value={{ spinner: false, setSpinner: vi.fn() }}>
         {ui}
       </SpinnerContext.Provider>
-    </Provider>
+    </Provider>,
   );
 };
 
@@ -48,22 +48,22 @@ describe("BotsPage", () => {
       target: { value: "2023-12-31" },
     });
     expect(testingScreen.getByLabelText(/Filter by start date/i)).toHaveValue(
-      "2023-01-01"
+      "2023-01-01",
     );
     expect(testingScreen.getByLabelText(/Filter by end date/i)).toHaveValue(
-      "2023-12-31"
+      "2023-12-31",
     );
   });
 
   it("handles bot deletion", () => {
     renderWithProviders(<BotsPage />, { store });
-    const deleteBtn = testingScreen.queryByRole("button", { name: /delete/i })
+    const deleteBtn = testingScreen.queryByRole("button", { name: /delete/i });
     if (!deleteBtn) {
       return;
     }
     fireEvent.click(deleteBtn[0]);
     expect(
-      testingScreen.getByText(/To close orders, please deactivate/i)
+      testingScreen.getByText(/To close orders, please deactivate/i),
     ).toBeInTheDocument();
   });
 });
