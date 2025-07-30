@@ -10,11 +10,11 @@ import {
 } from "chart.js";
 import React, { type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
-import { Line } from "react-chartjs-2";
 import { type BenchmarkSeriesData } from "../../features/balanceApiSlice";
 import { listCssColors } from "../../utils/validations";
 import { useBreakpoint } from "../hooks";
 import { formatTimestamp } from "../../utils/time";
+import Plot from "react-plotly.js";
 
 ChartJS.register(
   CategoryScale,
@@ -42,55 +42,45 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
   const lastUsdt = processData.usdcSeries?.[processData.usdcSeries.length - 1];
   const lastBtc = processData.btcSeries?.[processData.btcSeries.length - 1];
 
-  const PBOptions = {
-    maintainAspectRatio: true,
-    responsive: true,
-    scales: {
-      y: {
-        grace: "30%",
-        ticks: {
-          stepSize: 0.1,
-        },
-        grid: {
-          display: true,
-        },
-      },
-      x: {
-        ticks: {
-          display: false,
-        },
-        stacked: true,
-        grid: {
-          display: true,
-        },
-      },
+  // Prepare Plotly data and layout for line plot
+  const plotlyData = [
+    {
+      x: processData.datesSeries,
+      y: processData.usdcSeries,
+      type: "scatter",
+      mode: "lines+markers",
+      name: "Portfolio in USDCSeries",
+      line: { color: listCssColors[0] },
     },
-    plugins: {
-      legend: {
-        labels: {
-          display: breakpoint !== "xs",
-          color: "rgb(255, 99, 132)",
-        },
-      },
+    {
+      x: processData.datesSeries,
+      y: processData.btcSeries,
+      type: "scatter",
+      mode: "lines+markers",
+      name: "BTC prices",
+      line: { color: listCssColors[1] },
     },
-  };
+  ];
 
-  const data = {
-    labels: processData.datesSeries,
-    datasets: [
-      {
-        label: "Portfolio in USDCSeries",
-        data: processData.usdcSeries,
-        backgroundColor: listCssColors[0],
-        borderColor: listCssColors[0],
-      },
-      {
-        label: "BTC prices",
-        data: processData.btcSeries,
-        backgroundColor: listCssColors[1],
-        borderColor: listCssColors[1],
-      },
-    ],
+  const PBLayout = {
+    title: false,
+    autosize: true,
+    margin: { t: 10, l: 40, r: 20, b: 40 },
+    legend: { orientation: "h", x: 0, y: 1.1 },
+    xaxis: {
+      title: "Date",
+      showgrid: true,
+      type: "date",
+      tickformat: "%Y-%m-%d", // Show as YYYY-MM-DD
+      visible: true,
+    },
+    yaxis: {
+      title: "% Difference",
+      showgrid: true,
+      zeroline: true,
+      gridcolor: "#eee",
+    },
+    responsive: true,
   };
 
   return (
@@ -117,17 +107,20 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
         </Row>
       </Card.Header>
       <Card.Body className="px-0 w-10">
-        <Line
-          data={data}
-          options={PBOptions}
-          width={breakpoint === "xs" ? "100%" : ""}
+        <Plot
+          data={plotlyData}
+          layout={PBLayout}
+          style={{ width: breakpoint === "xs" ? "100%" : "100%" }}
+          useResizeHandler
         />
       </Card.Body>
       <Card.Footer>
         {chartData.datesSeries && (
           <div className="card-stats">
             <i className="fa fa-check" /> Last updated{" "}
-            {formatTimestamp(chartData.datesSeries[chartData.datesSeries.length - 1])}
+            {formatTimestamp(
+              chartData.datesSeries[chartData.datesSeries.length - 1],
+            )}
           </div>
         )}
       </Card.Footer>

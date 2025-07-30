@@ -58,7 +58,7 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
         } else {
           if (botType === BotType.PAPER_TRADING) {
             dispatch(
-              setTestBotField({ name, value: v[name] as number | string })
+              setTestBotField({ name, value: v[name] as number | string }),
             );
           } else {
             dispatch(setField({ name, value: v[name] as number | string }));
@@ -84,11 +84,11 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
     if (e.target.value) {
       if (botType === BotType.PAPER_TRADING) {
         dispatch(
-          setTestBotField({ name: e.target.name, value: watch(e.target.name) })
+          setTestBotField({ name: e.target.name, value: watch(e.target.name) }),
         );
       } else {
         dispatch(
-          setField({ name: e.target.name, value: watch(e.target.name) })
+          setField({ name: e.target.name, value: watch(e.target.name) }),
         );
       }
     }
@@ -174,11 +174,11 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
                         setTestBotToggle({
                           name: "trailling",
                           value: !bot.trailling,
-                        })
+                        }),
                       );
                     } else {
                       dispatch(
-                        setToggle({ name: "trailling", value: !bot.trailling })
+                        setToggle({ name: "trailling", value: !bot.trailling }),
                       );
                     }
                   }}
@@ -211,14 +211,14 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
                         setTestBotToggle({
                           name: "dynamic_trailling",
                           value: !bot.dynamic_trailling,
-                        })
+                        }),
                       );
                     } else {
                       dispatch(
                         setToggle({
                           name: "dynamic_trailling",
                           value: !bot.dynamic_trailling,
-                        })
+                        }),
                       );
                     }
                   }}

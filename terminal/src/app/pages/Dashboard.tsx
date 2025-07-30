@@ -33,8 +33,7 @@ export const DashboardPage: FC<{}> = () => {
   const { data: gainersLosersData, isLoading: loadingGL } =
     useGainerLosersQuery();
 
-  const { data: adpSeries, isLoading: loadingAdpSeries } =
-    useAdSeriesQuery();
+  const { data: adpSeries, isLoading: loadingAdpSeries } = useAdSeriesQuery();
 
   const [activeBotsCount, setActiveBotsCount] = useState(0);
   const [errorBotsCount, setErrorBotsCount] = useState(0);
@@ -54,7 +53,7 @@ export const DashboardPage: FC<{}> = () => {
     if (benchmark) {
       if (benchmark.benchmarkData) {
         const { revenue, percentage } = calculateTotalRevenue(
-          benchmark.benchmarkData
+          benchmark.benchmarkData,
         );
         setRevenue(revenue);
         setPercentageRevenue(percentage);
@@ -239,10 +238,7 @@ export const DashboardPage: FC<{}> = () => {
         </Col>
         <Col lg="6" md="12">
           {adpSeries?.adp && (
-            <AdrCard
-              adr={adpSeries.adp}
-              timestamps={adpSeries.timestamp}
-            />
+            <AdrCard adr={adpSeries.adp} timestamps={adpSeries.timestamp} />
           )}
         </Col>
       </Row>

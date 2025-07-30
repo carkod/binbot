@@ -2,7 +2,7 @@ from typing import Type, Union
 from database.models.bot_table import BotTable, PaperTradingTable
 from database.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
-from tools.enum_definitions import DealType, OrderSide, Status, OrderStatus
+from tools.enum_definitions import DealType, OrderSide, Status
 from tools.exceptions import TakeProfitError
 from tools.round_numbers import round_numbers, round_timestamp
 from deals.abstractions.base import BaseDeal
@@ -146,8 +146,6 @@ class DealAbstract(BaseDeal):
                 symbol=self.active_bot.pair,
                 qty=qty,
             )
-            if res["status"] == OrderStatus.EXPIRED:
-                res = self.buy_order(symbol=self.active_bot.pair, qty=qty)
 
         price = float(res["price"])
         if price == 0:

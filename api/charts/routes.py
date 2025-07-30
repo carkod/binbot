@@ -32,12 +32,31 @@ def get_timeseries(symbol: str, limit: int = 500):
 @charts_blueprint.get("/top-gainers", tags=["charts"])
 def top_gainers():
     try:
-        response = MarketDominationController().top_gainers()
-        if response:
+        gainers, losers = MarketDominationController().gainers_losers()
+        if gainers:
             return json_response(
                 {
-                    "data": response,
+                    "data": gainers,
                     "message": "Successfully retrieved top gainers data.",
+                    "error": 0,
+                }
+            )
+        else:
+            raise HTTPException(404, detail="No data found")
+
+    except Exception as error:
+        return json_response_error(f"Failed to retrieve top gainers data: {error}")
+
+
+@charts_blueprint.get("/top-losers", tags=["charts"])
+def top_losers():
+    try:
+        gainers, losers = MarketDominationController().gainers_losers()
+        if losers:
+            return json_response(
+                {
+                    "data": losers,
+                    "message": "Successfully retrieved top losers data.",
                     "error": 0,
                 }
             )

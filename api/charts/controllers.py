@@ -274,7 +274,7 @@ class MarketDominationController(Database, BinbotApi):
             return data[0]
         return None
 
-    def top_gainers(self):
+    def gainers_losers(self):
         """
         Get market top gainers of the day
 
@@ -282,19 +282,30 @@ class MarketDominationController(Database, BinbotApi):
         ticker_24() retrieves all tokens
         """
         fiat = self.autotrade_db.get_fiat()
-        ticket_data = self.ticker_24()
+        ticker_data = self.ticker_24()
 
-        fiat_market_data = sorted(
-            (
+        gainers = sorted(
+            [
                 item
-                for item in ticket_data
-                if item["symbol"].endswith(fiat)
-                and float(item["priceChangePercent"]) > 0
-            ),
-            key=lambda x: x["priceChangePercent"],
+                for item in ticker_data
+                if float(item["priceChangePercent"]) > 0
+                and item["symbol"].endswith(fiat)
+            ],
+            key=lambda x: float(x["priceChangePercent"]),
             reverse=True,
         )
-        return fiat_market_data[:10]
+
+        losers = sorted(
+            [
+                item
+                for item in ticker_data
+                if float(item["priceChangePercent"]) < 0
+                and item["symbol"].endswith(fiat)
+            ],
+            key=lambda x: float(x["priceChangePercent"]),
+        )
+
+        return gainers[:10], losers[:10]
 
     def algo_performance(self, paper_trading: bool = False) -> dict:
         """

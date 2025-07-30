@@ -6,7 +6,7 @@ import { BotStatus } from "../enums";
 
 export default function spotTrading(
   bot: Bot,
-  currentPrice: number = 0
+  currentPrice: number = 0,
 ): OrderLine[] {
   const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];

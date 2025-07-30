@@ -7,7 +7,6 @@ import type {
   BotDetailsState,
 } from "./bots";
 
-
 export const paperTradingSlice = createAppSlice({
   name: "paperTrading",
   initialState: {

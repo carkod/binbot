@@ -6,7 +6,7 @@ import { getQuoteAsset } from "../api";
 
 export default function marginTrading(
   bot: Bot,
-  currentPrice: number
+  currentPrice: number,
 ): OrderLine[] {
   const quoteAsset = getQuoteAsset(bot);
   let totalOrderLines: OrderLine[] = [];

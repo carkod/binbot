@@ -19,10 +19,10 @@ const BarChart: FC<BarChartProps> = ({
 }) => {
   // Parse percentages from string values like "33.89%"
   const gainers_percent = data.gainers.map((v: string) =>
-    typeof v === "string" ? parseFloat(v.replace("%", "")) : v
+    typeof v === "string" ? parseFloat(v.replace("%", "")) : v,
   );
   const losers_percent = data.losers.map((v: string) =>
-    typeof v === "string" ? parseFloat(v.replace("%", "")) : v
+    typeof v === "string" ? parseFloat(v.replace("%", "")) : v,
   );
 
   const reversalIndices: number[] = [];

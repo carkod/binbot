@@ -165,8 +165,6 @@ class SpotDealAbstract(DealAbstract):
             )
             # Dispatch real order
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
-            if res["status"] == OrderStatus.EXPIRED:
-                res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         price = float(res["price"])
         if price == 0:
@@ -249,12 +247,6 @@ class SpotDealAbstract(DealAbstract):
                 symbol=self.active_bot.pair,
                 qty=round_numbers(qty, self.qty_precision),
             )
-
-            if res["status"] == OrderStatus.EXPIRED:
-                res = self.sell_order(
-                    symbol=self.active_bot.pair,
-                    qty=round_numbers(qty, self.qty_precision),
-                )
 
         price = float(res["price"])
         if price == 0:

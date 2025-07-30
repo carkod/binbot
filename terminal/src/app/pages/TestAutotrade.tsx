@@ -6,8 +6,16 @@ import SettingsInput from "../components/SettingsInput";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { BinanceKlineintervals } from "../../utils/enums";
-import { useEditTestSettingsMutation, useGetTestSettingsQuery } from "../../features/testAutotradeApiSlice";
-import { selectTestSettings, setTestSettings, setTestSettingsField, setTestSettingsToggle } from "../../features/testAutotradeSlice";
+import {
+  useEditTestSettingsMutation,
+  useGetTestSettingsQuery,
+} from "../../features/testAutotradeApiSlice";
+import {
+  selectTestSettings,
+  setTestSettings,
+  setTestSettingsField,
+  setTestSettingsToggle,
+} from "../../features/testAutotradeSlice";
 import type { FocusEvent as ReactFocusEvent } from "react";
 
 export const TestAutotradePage: FC<{}> = () => {
@@ -41,8 +49,16 @@ export const TestAutotradePage: FC<{}> = () => {
     },
   });
 
-  const handleBlur = (e: FocusEvent | ReactFocusEvent<HTMLInputElement | HTMLSelectElement>) => {
-    if (e.target && 'name' in e.target && 'value' in e.target && e.target.name && e.target.value) {
+  const handleBlur = (
+    e: FocusEvent | ReactFocusEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    if (
+      e.target &&
+      "name" in e.target &&
+      "value" in e.target &&
+      e.target.name &&
+      e.target.value
+    ) {
       const name = e.target.name;
       const value = e.target.value;
       if (typeof value === "string") {
@@ -58,20 +74,19 @@ export const TestAutotradePage: FC<{}> = () => {
   };
 
   useEffect(() => {
-
     if (data) {
       dispatch(setTestSettings(data));
     }
   }, [data]);
 
-useEffect(() => {
+  useEffect(() => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
         if (typeof v[name] === "boolean") {
           dispatch(setTestSettingsToggle({ name, value: v[name] }));
         } else {
           dispatch(
-            setTestSettingsField({ name, value: v[name] as number | string })
+            setTestSettingsField({ name, value: v[name] as number | string }),
           );
         }
       }
@@ -104,12 +119,14 @@ useEffect(() => {
             <Col md="12">
               <Card.Title>Bot Autotrade settings for test</Card.Title>
               <p className="fs-6 fw-light lh-1">
-                These settings trigger Paper trading bots automatically given the parameters.
-                They use the same services and endpoints as Paper Trading.
-                Since bots don&apos;t trigger in exchange, base order size will not be used
+                These settings trigger Paper trading bots automatically given
+                the parameters. They use the same services and endpoints as
+                Paper Trading. Since bots don&apos;t trigger in exchange, base
+                order size will not be used
               </p>
               <p className="fs-6 fw-light lh-1">
-                Bots that are autotrade will be set with mode: <strong>autotrade</strong>
+                Bots that are autotrade will be set with mode:{" "}
+                <strong>autotrade</strong>
               </p>
             </Col>
           </Row>
@@ -133,7 +150,7 @@ useEffect(() => {
                             setTestSettingsField({
                               name: "candlestick_interval",
                               value,
-                            })
+                            }),
                           );
                         }}
                         onBlur={handleBlur}
@@ -147,7 +164,7 @@ useEffect(() => {
                             <option key={i} value={interval.toString()}>
                               {interval.toString()}
                             </option>
-                          )
+                          ),
                         )}
                       </Form.Select>
                       {errors.candlestick_interval && (
@@ -178,7 +195,7 @@ useEffect(() => {
                           setTestSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />
@@ -199,7 +216,7 @@ useEffect(() => {
                           setTestSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />
@@ -259,7 +276,7 @@ useEffect(() => {
                           setTestSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />
@@ -280,7 +297,7 @@ useEffect(() => {
                           setTestSettingsToggle({
                             name: name,
                             value: !value,
-                          })
+                          }),
                         );
                       }}
                     />

@@ -37,7 +37,7 @@ export const BotDetail: FC<{}> = () => {
       dispatch(
         setBot({
           bot: singleBot,
-        })
+        }),
       );
     }
 

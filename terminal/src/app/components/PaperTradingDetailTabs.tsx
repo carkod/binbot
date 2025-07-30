@@ -45,7 +45,7 @@ const PaperTradingDetailTabs: FC = () => {
   };
   const handlePanicSell = async (id: string) => {
     await dispatch(
-      papertradingApiSlice.endpoints.deactivateTestBot.initiate(id)
+      papertradingApiSlice.endpoints.deactivateTestBot.initiate(id),
     );
   };
 
@@ -55,7 +55,7 @@ const PaperTradingDetailTabs: FC = () => {
         ...paperTrading,
         deal: undefined,
         orders: undefined,
-      }
+      };
       await updateBot({ body: submitData, id });
       navigate(`/paper-trading/edit/${id}`);
     } else {

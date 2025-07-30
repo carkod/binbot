@@ -56,7 +56,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
         } else {
           if (botType === BotType.PAPER_TRADING) {
             dispatch(
-              setTestBotField({ name, value: v[name] as number | string })
+              setTestBotField({ name, value: v[name] as number | string }),
             );
           } else {
             dispatch(setField({ name, value: v[name] as number | string }));
@@ -76,18 +76,18 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
   }, [watch, dispatch, bot, reset]);
 
   const handleBlur = (e) => {
-      if (e.target.value) {
-        if (botType === BotType.PAPER_TRADING) {
-          dispatch(
-            setTestBotField({ name: e.target.name, value: watch(e.target.name) })
-          );
-        } else {
-          dispatch(
-            setField({ name: e.target.name, value: watch(e.target.name) })
-          );
-        }
+    if (e.target.value) {
+      if (botType === BotType.PAPER_TRADING) {
+        dispatch(
+          setTestBotField({ name: e.target.name, value: watch(e.target.name) }),
+        );
+      } else {
+        dispatch(
+          setField({ name: e.target.name, value: watch(e.target.name) }),
+        );
       }
-    };
+    }
+  };
 
   return (
     <Tab.Pane
@@ -148,14 +148,14 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
                         setTestBotToggle({
                           name: "margin_short_reversal",
                           value: !bot.margin_short_reversal,
-                        })
+                        }),
                       );
                     } else {
                       dispatch(
                         setToggle({
                           name: "margin_short_reversal",
                           value: !bot.margin_short_reversal,
-                        })
+                        }),
                       );
                     }
                   }}

@@ -57,7 +57,7 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
         if (error && error === 1) {
           notifification("error", message);
         }
-        
+
         return data;
       },
     }),

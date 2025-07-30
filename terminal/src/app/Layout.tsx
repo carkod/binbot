@@ -21,7 +21,7 @@ export const Layout: FC<{}> = () => {
   // toggle sidebar by default on larger screens
   // collapse sidebar by default on smaller screens
   const [expand, setExpand] = useState(
-    breakpoint === "md" || breakpoint === "lg" || breakpoint === "xl"
+    breakpoint === "md" || breakpoint === "lg" || breakpoint === "xl",
   );
 
   const handleExpand = () => {
