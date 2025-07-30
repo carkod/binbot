@@ -9,7 +9,7 @@ updates:
       prefix: "npm"
     ignore:
       - dependency-name: "*"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+        update-types: ["version-update:semver-patch"]
 
   - package-ecosystem: "pip"
     directory: "/api"
@@ -23,4 +23,4 @@ updates:
       include: "scope"
     ignore:
       - dependency-name: "*"
-        update-types: ["version-update:semver-major", "version-update:semver-patch"]
+        update-types: ["version-update:semver-patch"]
