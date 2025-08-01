@@ -136,6 +136,146 @@ class Candlestick(Database):
         p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
         return round_numbers(p_correlation)
 
+    def get_klines(
+        self,
+        symbol,
+        interval: BinanceKlineIntervals = BinanceKlineIntervals.five_minutes,
+        limit=200,
+        offset=0,
+        start_time=0,
+        end_time=0,
+    ) -> list[list]:
+        """
+        Query klines directly from MongoDB and return in Binance API format as array of arrays.
+
+        Returns:
+            list[list]: Klines in simplified Binance API format:
+            [
+                [
+                    open_time,      // Open time (timestamp)
+                    open,           // Open price
+                    high,           // High price
+                    low,            // Low price
+                    close,          // Close price
+                    volume,         // Volume
+                    close_time      // Close time (timestamp)
+                ]
+            ]
+        """
+        if interval == BinanceKlineIntervals.five_minutes:
+            # Direct query for 5-minute data with projection to format as array
+            pipeline = [
+                {"$match": {"symbol": symbol}},
+                {
+                    "$addFields": {
+                        "open_time_ms": {
+                            "$toLong": {"$multiply": [{"$toLong": "$open_time"}, 1000]}
+                        },
+                        "close_time_ms": {
+                            "$toLong": {"$multiply": [{"$toLong": "$close_time"}, 1000]}
+                        },
+                    }
+                },
+                {"$sort": {"open_time_ms": -1}},
+                {"$skip": offset},
+                {"$limit": limit},
+                {
+                    "$project": {
+                        "_id": 0,
+                        "binance_format": [
+                            "$open_time_ms",
+                            {"$toString": "$open"},
+                            {"$toString": "$high"},
+                            {"$toString": "$low"},
+                            {"$toString": "$close"},
+                            {"$toString": "$volume"},
+                            "$close_time_ms",
+                        ],
+                    }
+                },
+            ]
+        else:
+            # Aggregated query for other intervals
+            bin_size = interval.bin_size()
+            unit = interval.unit()
+
+            pipeline = [
+                {"$match": {"symbol": symbol}},
+            ]
+
+            # Add time range filters if provided
+            if int(start_time) > 0:
+                st_dt = datetime.fromtimestamp(start_time / 1000)
+                pipeline.append({"$match": {"close_time": {"$gte": st_dt}}})
+
+            if int(end_time) > 0:
+                et_dt = datetime.fromtimestamp(end_time / 1000)
+                pipeline.append({"$match": {"close_time": {"$lte": et_dt}}})
+
+            # Group stage for aggregation
+            pipeline.extend(
+                [
+                    {
+                        "$group": {
+                            "_id": {
+                                "time": {
+                                    "$dateTrunc": {
+                                        "date": "$close_time",
+                                        "unit": unit,
+                                        "binSize": bin_size,
+                                    },
+                                },
+                            },
+                            "open": {"$first": "$open"},
+                            "close": {"$last": "$close"},
+                            "high": {"$max": "$high"},
+                            "low": {"$min": "$low"},
+                            "close_time": {"$last": "$close_time"},
+                            "open_time": {"$first": "$open_time"},
+                            "volume": {"$sum": "$volume"},
+                        }
+                    },
+                    {
+                        "$addFields": {
+                            "open_time_ms": {
+                                "$toLong": {
+                                    "$multiply": [{"$toLong": "$_id.time"}, 1000]
+                                }
+                            },
+                            "close_time_ms": {
+                                "$toLong": {
+                                    "$multiply": [{"$toLong": "$close_time"}, 1000]
+                                }
+                            },
+                        }
+                    },
+                    {"$sort": {"open_time_ms": -1}},
+                    {"$skip": offset},
+                    {"$limit": limit},
+                    {
+                        "$project": {
+                            "_id": 0,
+                            "binance_format": [
+                                "$open_time_ms",
+                                {"$toString": "$open"},
+                                {"$toString": "$high"},
+                                {"$toString": "$low"},
+                                {"$toString": "$close"},
+                                {"$toString": "$volume"},
+                                "$close_time_ms",
+                            ],
+                        }
+                    },
+                ]
+            )
+
+        # Execute the aggregation pipeline
+        result = self.db.kline.aggregate(pipeline)
+        data = list(result)
+
+        # Extract the binance_format arrays
+        return [item["binance_format"] for item in data]
+
 
 class MarketDominationController(Database, BinbotApi):
     """

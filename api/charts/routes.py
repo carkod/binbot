@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException
+from tools.enum_definitions import BinanceKlineIntervals
+
 from tools.handle_error import (
     json_response,
     json_response_error,
@@ -126,3 +128,16 @@ def algorithm_performance(size: int = 14):
         )
     else:
         raise HTTPException(404, detail="No algorithm performance data found")
+
+
+@charts_blueprint.get(
+    "/klines",
+    summary="Retrieve candlesticks data stored in DB from Binance in a kline format by Binquant",
+    tags=["charts"],
+)
+def raw_klines(symbol: str, limit: int = 500, interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes):
+    data = Candlestick().get_klines(symbol=symbol, limit=limit, interval=interval)
+    return {
+        "data": data,
+        "message": "Successfully retrieved klines data.",
+    }
