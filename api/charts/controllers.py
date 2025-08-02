@@ -1,16 +1,17 @@
-from datetime import datetime
+import re
+import logging
+from datetime import datetime, timezone
 from pymongo import DESCENDING
 from database.autotrade_crud import AutotradeCrud
 from charts.models import AdrSeriesDb
-from apis import BinbotApi
+from apis import BinanceApi
 from database.db import Database, setup_kafka_db
 from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
-from tools.round_numbers import round_numbers
 from database.symbols_crud import SymbolsCrud
+from tools.round_numbers import round_numbers
 from database.paper_trading_crud import PaperTradingTableCrud
 from database.bot_crud import BotTableCrud
-import re
 
 
 class Candlestick(Database):
@@ -20,7 +21,9 @@ class Candlestick(Database):
     """
 
     def __init__(self) -> None:
+        super().__init__()
         self.db = setup_kafka_db()
+        self.binance_api = BinanceApi()
 
     def build_query(self, interval: BinanceKlineIntervals):
         bin_size = interval.bin_size()
@@ -103,11 +106,11 @@ class Candlestick(Database):
             query.append(group_stage)
 
             if int(start_time) > 0:
-                st_dt = datetime.fromtimestamp(start_time / 1000)
+                st_dt = datetime.fromtimestamp(start_time / 1000, tz=timezone.utc)
                 query.append({"$match": {"_id.time": {"$gte": st_dt}}})
 
             if int(end_time) > 0:
-                et_dt = datetime.fromtimestamp(end_time / 1000)
+                et_dt = datetime.fromtimestamp(end_time / 1000, tz=timezone.utc)
                 query.append({"$match": {"_id.time": {"$lte": et_dt}}})
 
             query.append({"$sort": {"_id.time": -1}})
@@ -139,7 +142,7 @@ class Candlestick(Database):
     def get_klines(
         self,
         symbol,
-        interval: BinanceKlineIntervals = BinanceKlineIntervals.five_minutes,
+        interval: BinanceKlineIntervals = BinanceKlineIntervals.one_minute,
         limit=200,
         offset=0,
         start_time=0,
@@ -147,6 +150,7 @@ class Candlestick(Database):
     ) -> list[list]:
         """
         Query klines directly from MongoDB and return in Binance API format as array of arrays.
+        Data is stored as 1-minute intervals and aggregated to requested interval.
 
         Returns:
             list[list]: Klines in simplified Binance API format:
@@ -162,40 +166,31 @@ class Candlestick(Database):
                 ]
             ]
         """
-        if interval == BinanceKlineIntervals.five_minutes:
-            # Direct query for 5-minute data with projection to format as array
+        if interval == BinanceKlineIntervals.one_minute:
+            # Direct query for 1-minute data (no aggregation needed)
             pipeline = [
                 {"$match": {"symbol": symbol}},
-                {
-                    "$addFields": {
-                        "open_time_ms": {
-                            "$toLong": {"$multiply": [{"$toLong": "$open_time"}, 1000]}
-                        },
-                        "close_time_ms": {
-                            "$toLong": {"$multiply": [{"$toLong": "$close_time"}, 1000]}
-                        },
-                    }
-                },
-                {"$sort": {"open_time_ms": -1}},
+                {"$sort": {"close_time": -1}},
                 {"$skip": offset},
                 {"$limit": limit},
+                {"$sort": {"close_time": 1}},
                 {
                     "$project": {
                         "_id": 0,
-                        "binance_format": [
-                            "$open_time_ms",
+                        "kline": [
+                            {"$toLong": "$open_time"},
                             {"$toString": "$open"},
                             {"$toString": "$high"},
                             {"$toString": "$low"},
                             {"$toString": "$close"},
                             {"$toString": "$volume"},
-                            "$close_time_ms",
+                            {"$toLong": "$close_time"},
                         ],
                     }
                 },
             ]
         else:
-            # Aggregated query for other intervals
+            # Aggregated query for other intervals (5m, 15m, 1h, etc.)
             bin_size = interval.bin_size()
             unit = interval.unit()
 
@@ -203,16 +198,18 @@ class Candlestick(Database):
                 {"$match": {"symbol": symbol}},
             ]
 
-            # Add time range filters if provided
+            # Add time range filters if provided (convert milliseconds to datetime for comparison)
             if int(start_time) > 0:
-                st_dt = datetime.fromtimestamp(start_time / 1000)
-                pipeline.append({"$match": {"close_time": {"$gte": st_dt}}})
+                start_dt = datetime.fromtimestamp(
+                    int(start_time) / 1000, tz=timezone.utc
+                )
+                pipeline.append({"$match": {"close_time": {"$gte": start_dt}}})
 
             if int(end_time) > 0:
-                et_dt = datetime.fromtimestamp(end_time / 1000)
-                pipeline.append({"$match": {"close_time": {"$lte": et_dt}}})
+                end_dt = datetime.fromtimestamp(int(end_time) / 1000, tz=timezone.utc)
+                pipeline.append({"$match": {"close_time": {"$lte": end_dt}}})
 
-            # Group stage for aggregation
+            # Group stage for aggregation using datetime timestamps
             pipeline.extend(
                 [
                     {
@@ -235,34 +232,21 @@ class Candlestick(Database):
                             "volume": {"$sum": "$volume"},
                         }
                     },
-                    {
-                        "$addFields": {
-                            "open_time_ms": {
-                                "$toLong": {
-                                    "$multiply": [{"$toLong": "$_id.time"}, 1000]
-                                }
-                            },
-                            "close_time_ms": {
-                                "$toLong": {
-                                    "$multiply": [{"$toLong": "$close_time"}, 1000]
-                                }
-                            },
-                        }
-                    },
-                    {"$sort": {"open_time_ms": -1}},
+                    {"$sort": {"close_time": -1}},
                     {"$skip": offset},
                     {"$limit": limit},
+                    {"$sort": {"close_time": 1}},
                     {
                         "$project": {
                             "_id": 0,
-                            "binance_format": [
-                                "$open_time_ms",
+                            "kline": [
+                                {"$toLong": "$_id.time"},
                                 {"$toString": "$open"},
                                 {"$toString": "$high"},
                                 {"$toString": "$low"},
                                 {"$toString": "$close"},
                                 {"$toString": "$volume"},
-                                "$close_time_ms",
+                                {"$toLong": "$close_time"},
                             ],
                         }
                     },
@@ -273,11 +257,118 @@ class Candlestick(Database):
         result = self.db.kline.aggregate(pipeline)
         data = list(result)
 
-        # Extract the binance_format arrays
-        return [item["binance_format"] for item in data]
+        # Extract the kline arrays from the documents
+        # return [doc["kline"] for doc in data]
+        return data
 
+    def check_sync_with_binance(self, symbol: str) -> bool:
+        """
+        Check if the second-to-last kline matches Binance API
+        We check the second-to-last because the last one is being updated by websockets
+        Returns True if in sync, False if needs refresh
+        """
+        try:
+            # Get our second-to-last kline (skip the last one as it's being updated)
+            local_query = self.db.kline.find(
+                {"symbol": symbol},
+                {"_id": 0},
+                limit=2,
+                sort=[("close_time", DESCENDING)],  # close_time is now datetime
+            )
+            local_klines = list(local_query)
 
-class MarketDominationController(Database, BinbotApi):
+            if len(local_klines) < 2:
+                logging.info(f"Not enough local data for {symbol}, sync check failed")
+                return False
+
+            # Get the second-to-last kline (index 1)
+            local_second_last = local_klines[1]
+
+            # Fetch last 2 klines from Binance (1-minute interval to match stored data)
+            binance_klines = self.binance_api.get_raw_klines(
+                symbol=symbol, limit=2, interval=BinanceKlineIntervals.one_minute.value
+            )
+
+            if not binance_klines or len(binance_klines) < 2:
+                logging.warning(
+                    f"Failed to fetch comparison data from Binance for {symbol}"
+                )
+                return False
+
+            # Get Binance second-to-last kline (index 1, since they're ordered newest first)
+            binance_second_last = binance_klines[1]
+
+            # Compare key values: close_time, close_price, volume
+            # Convert datetime to milliseconds for comparison
+            local_close_time = int(local_second_last["close_time"].timestamp() * 1000)
+            local_close_price = float(local_second_last["close"])
+            local_volume = float(local_second_last["volume"])
+
+            binance_close_time = int(binance_second_last[6])  # close_time
+            binance_close_price = float(binance_second_last[4])  # close
+            binance_volume = float(binance_second_last[5])  # volume
+
+            # Check if they match (with small tolerance for floating point)
+            time_match = local_close_time == binance_close_time
+            price_match = abs(local_close_price - binance_close_price) < 0.0000001
+            volume_match = abs(local_volume - binance_volume) < 0.0000001
+
+            is_synced = time_match and price_match and volume_match
+
+            return is_synced
+
+        except Exception as e:
+            logging.error(f"Error checking sync for {symbol}: {e}")
+            return False
+
+    def refresh_data_from_binance(self, symbol: str, limit: int = 500):
+        """
+        Delete existing data and fetch fresh data from Binance API
+        This ensures data consistency and eliminates timestamp/pricing discrepancies
+        """
+        is_synced = self.check_sync_with_binance(symbol=symbol)
+
+        if is_synced:
+            return False
+
+        self.db.kline.delete_many({"symbol": symbol})
+
+        # Fetch fresh data from Binance
+        raw_klines = self.binance_api.get_raw_klines(
+            symbol=symbol, limit=limit, interval=BinanceKlineIntervals.one_minute.value
+        )
+
+        if not raw_klines:
+            logging.warning(f"No data received from Binance for {symbol}")
+            return
+
+        # Prepare documents for bulk insert - use raw dict to avoid Pydantic validation issues
+        kline_docs = []
+        for k in raw_klines:
+            if len(k) < 7:
+                continue
+
+            kline_doc = {
+                "symbol": symbol,
+                "end_time": datetime.fromtimestamp(int(k[6]) / 1000, tz=timezone.utc),
+                "open_time": datetime.fromtimestamp(int(k[0]) / 1000, tz=timezone.utc),
+                "close_time": datetime.fromtimestamp(int(k[6]) / 1000, tz=timezone.utc),
+                "open": float(k[1]),
+                "high": float(k[2]),
+                "low": float(k[3]),
+                "close": float(k[4]),
+                "volume": float(k[5]),
+                "candle_closed": True,
+                "interval": BinanceKlineIntervals.one_minute.value,
+            }
+
+            kline_docs.append(kline_doc)
+
+        if kline_docs:
+            self.db.kline.insert_many(kline_docs)
+            return True
+
+class MarketDominationController(Database):
     """
     CRUD operations for market domination
     """
@@ -287,6 +378,7 @@ class MarketDominationController(Database, BinbotApi):
         self.autotrade_db = AutotradeCrud()
         self.autotrade_settings = self.autotrade_db.get_settings()
         self.symbols_crud = SymbolsCrud()
+        self.binance_api = BinanceApi()
 
     def ingest_adp_data(self):
         """
@@ -296,7 +388,7 @@ class MarketDominationController(Database, BinbotApi):
 
         The reason is to reduce weight, so as not to be banned by API
         """
-        get_ticker_data = self.ticker_24()
+        get_ticker_data = self.binance_api.ticker_24()
 
         # ADR data ingestion
         advancers = 0
@@ -320,9 +412,9 @@ class MarketDominationController(Database, BinbotApi):
 
         # Store ADR data
         adr_data = AdrSeriesDb(
-            timestamp=datetime.fromtimestamp(float(item["closeTime"]) / 1000).strftime(
-                "%Y-%m-%d %H:%M:%S.%f"
-            )[:-3],
+            timestamp=datetime.fromtimestamp(
+                float(item["closeTime"]) / 1000, tz=timezone.utc
+            ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
             advancers=advancers,
             decliners=decliners,
             total_volume=total_volume,
@@ -422,7 +514,7 @@ class MarketDominationController(Database, BinbotApi):
         ticker_24() retrieves all tokens
         """
         fiat = self.autotrade_db.get_fiat()
-        ticker_data = self.ticker_24()
+        ticker_data = self.binance_api.ticker_24()
 
         gainers = sorted(
             [

@@ -9,6 +9,7 @@ from database.models.account_balances import (
 from database.utils import independent_session, timestamp
 from sqlmodel import Session, select, desc
 
+
 class BalancesCrud:
     """
     Database operations for Autotrade settings
