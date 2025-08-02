@@ -135,9 +135,54 @@ def algorithm_performance(size: int = 14):
     summary="Retrieve candlesticks data stored in DB from Binance in a kline format by Binquant",
     tags=["charts"],
 )
-def raw_klines(symbol: str, limit: int = 500, interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes):
+def raw_klines(
+    symbol: str,
+    limit: int = 500,
+    interval: BinanceKlineIntervals = BinanceKlineIntervals.one_minute,
+):
     data = Candlestick().get_klines(symbol=symbol, limit=limit, interval=interval)
-    return {
-        "data": data,
-        "message": "Successfully retrieved klines data.",
-    }
+    return json_response(
+        {
+            "data": data,
+            "message": "Successfully retrieved klines data.",
+        }
+    )
+
+
+@charts_blueprint.get(
+    "/refresh-klines",
+    summary="Check sync and refresh klines data from Binance if needed",
+    response_model=StandardResponse,
+    tags=["charts"],
+)
+def refresh_klines(
+    symbol: str,
+    limit: int = 500,
+):
+    """
+    Check if local klines data is synchronized with Binance API.
+    If not synchronized, refresh the data from Binance.
+
+    Args:
+        symbol: Trading pair symbol (e.g., "BTCUSDT")
+        interval: Kline interval (e.g., "15m", "1h", "1d")
+        limit: Number of klines to fetch (default: 500)
+
+    Returns:
+        JSON response indicating sync status and refresh result
+    """
+    try:
+        candlestick = Candlestick()
+        is_refreshed = candlestick.refresh_data_from_binance(symbol, limit)
+
+        if is_refreshed:
+            return StandardResponse(
+                message="Klines data refreshed successfully.",
+            )
+        else:
+            return StandardResponse(
+                message="Klines data is already up-to-date.", error=0
+            )
+
+    except Exception as error:
+        return json_response_error(f"Failed to refresh klines for {symbol}: {error}")

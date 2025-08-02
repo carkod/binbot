@@ -36,7 +36,7 @@ class BinanceApi:
     exchangeinfo_url = f"{MARKET_DATA_BASE}/api/v3/exchangeInfo"
     ticker_price_url = f"{MARKET_DATA_BASE}/api/v3/ticker/price"
     ticker24_url = f"{MARKET_DATA_BASE}/api/v3/ticker/24hr"
-    candlestick_url = f"{MARKET_DATA_BASE}/api/v3/uiKlines"
+    candlestick_url = "https://api3.binance.com/api/v3/uiKlines"
     order_url = f"{BASE}/api/v3/order"
     order_book_url = f"{BASE}/api/v3/depth"
     avg_price = f"{BASE}/api/v3/avgPrice"

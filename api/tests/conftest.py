@@ -36,7 +36,7 @@ def mock_settings_env():
         "BINANCE_SECRET": "binance_fake_secret",
         "TELEGRAM_BOT_KEY": "123",
         "TELEGRAM_USER_ID": "binbot",
-        "GRAFANA_TOKEN": "fake_key"
+        "GRAFANA_TOKEN": "fake_key",
     }
     old_env = os.environ.copy()
     os.environ.update(env)

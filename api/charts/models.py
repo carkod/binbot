@@ -77,7 +77,8 @@ class CandlestickData(BaseModel):
     symbol: str
     interval: str
     open: float
-    open_time: datetime.datetime
+    open_time: int
+    close_time: int
     volume: float
     candle_closed: bool
     high: float
