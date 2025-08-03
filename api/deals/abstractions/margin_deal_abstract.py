@@ -3,9 +3,9 @@ import logging
 from typing import Type, Union
 from urllib.error import HTTPError
 from bots.models import BotBase, BotModel, OrderModel
-from database.bot_crud import BotTableCrud
-from database.models.bot_table import BotTable, PaperTradingTable
-from database.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.bot_crud import BotTableCrud
+from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from deals.abstractions.factory import DealAbstract
 from tools.enum_definitions import (
     CloseConditions,
@@ -20,7 +20,7 @@ from tools.round_numbers import (
     round_numbers_ceiling,
     round_timestamp,
 )
-from database.symbols_crud import SymbolsCrud
+from databases.crud.symbols_crud import SymbolsCrud
 
 
 class MarginDealAbstract(DealAbstract):

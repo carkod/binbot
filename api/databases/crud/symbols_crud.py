@@ -1,6 +1,6 @@
-from database.utils import independent_session
+from databases.utils import independent_session
 from sqlmodel import Session, select
-from database.models.symbol_table import SymbolTable
+from databases.models.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi

@@ -1,9 +1,9 @@
 from typing import Tuple, Type, Union
 from bots.models import BotModel
-from database.models.bot_table import BotTable, PaperTradingTable
-from database.bot_crud import BotTableCrud
-from database.paper_trading_crud import PaperTradingTableCrud
-from database.symbols_crud import SymbolsCrud
+from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
 from orders.controller import OrderController
 from tools.round_numbers import round_numbers, round_numbers_ceiling
 from tools.exceptions import (

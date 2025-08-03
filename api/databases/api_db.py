@@ -1,10 +1,10 @@
 import logging
 import os
-from database.models.autotrade_table import AutotradeTable, TestAutotradeTable
-from database.models.deal_table import DealTable
-from database.models.order_table import ExchangeOrderTable
-from database.models.user_table import UserTable
-from database.models.bot_table import BotTable, PaperTradingTable
+from databases.models.autotrade_table import AutotradeTable, TestAutotradeTable
+from databases.models.deal_table import DealTable
+from databases.models.order_table import ExchangeOrderTable
+from databases.models.user_table import UserTable
+from databases.models.bot_table import BotTable, PaperTradingTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
@@ -17,10 +17,10 @@ from tools.enum_definitions import (
 )
 from alembic.config import Config
 from alembic import command
-from database.utils import engine
+from databases.utils import engine
 from account.assets import Assets
-from database.symbols_crud import SymbolsCrud
-from database.db import setup_kafka_db
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.db import setup_kafka_db
 from datetime import datetime, timedelta
 
 

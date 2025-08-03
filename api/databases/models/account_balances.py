@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID, uuid4
 from sqlalchemy import BigInteger, Column
-from database.utils import timestamp
+from databases.utils import timestamp
 from sqlmodel import Relationship, SQLModel, Field
 
 

@@ -8,14 +8,14 @@ from tools.enum_definitions import (
 )
 from deals.models import DealModel
 from pydantic import BaseModel, Field, field_validator
-from database.utils import timestamp
+from databases.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType, OrderStatus
 from tools.round_numbers import ts_to_humandate
-from database.models.bot_table import BotTable, PaperTradingTable
-from database.models.deal_table import DealTable
-from database.models.order_table import ExchangeOrderTable
-from database.utils import Amount
+from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.models.deal_table import DealTable
+from databases.models.order_table import ExchangeOrderTable
+from databases.utils import Amount
 
 
 class OrderModel(BaseModel):

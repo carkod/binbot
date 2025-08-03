@@ -1,10 +1,10 @@
 from typing import Type, Union
-from database.models.bot_table import BotTable, PaperTradingTable
+from databases.models.bot_table import BotTable, PaperTradingTable
 from tools.enum_definitions import DealType, Status, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.round_numbers import round_numbers, round_timestamp
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
-from database.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
 
 
 class SpotLongDeal(SpotDealAbstract):

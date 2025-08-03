@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field
-from database.utils import timestamp
+from databases.utils import timestamp
 from sqlalchemy import BigInteger, Column
 from pydantic import field_validator
 

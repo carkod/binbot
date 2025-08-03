@@ -5,7 +5,7 @@ from tools.exceptions import DeleteOrderError
 from tools.enum_definitions import OrderType, TimeInForce, OrderSide
 from tools.handle_error import json_response, json_response_message
 from tools.round_numbers import supress_notation, zero_remainder, round_timestamp
-from database.symbols_crud import SymbolsCrud
+from databases.crud.symbols_crud import SymbolsCrud
 
 
 class OrderController(Account):
