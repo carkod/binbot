@@ -8,24 +8,6 @@ from tools.enum_definitions import BinanceKlineIntervals
 from tools.round_numbers import round_numbers
 from databases.crud.symbols_crud import SymbolsCrud
 
-# Configure logging to show INFO level messages
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
-# Configure file logger for debugging
-file_handler = logging.FileHandler("candles_debug.log")
-file_handler.setLevel(logging.DEBUG)
-file_formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-file_handler.setFormatter(file_formatter)
-
-# Create a logger specifically for file logging
-file_logger = logging.getLogger("candles_file_debug")
-file_logger.addHandler(file_handler)
-file_logger.setLevel(logging.DEBUG)
-
 
 class CandlesCrud:
     """

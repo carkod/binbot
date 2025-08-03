@@ -55,9 +55,9 @@ jobs:
         run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d binbot
 
       - name: Test back-end
-        run: curl --verbose --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost:8006
+        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost:8006
       - name: Test front-end
-        run: curl --verbose --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://127.0.0.1
+        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
@@ -87,6 +87,7 @@ jobs:
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e PYTHONUNBUFFERED=TRUE \
           -e ENV=ci -d binbot_streaming
+
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
@@ -116,6 +117,7 @@ jobs:
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e PYTHONUNBUFFERED=TRUE \
           -e ENV=ci -d binbot_cronjobs
+
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
