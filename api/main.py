@@ -25,8 +25,8 @@ async def lifespan(app: FastAPI):
     try:
         api_db = ApiDb()
         api_db.init_db()
-        candles_crud = CandlesCrud()
-        candles_crud.drop_collection_and_refresh_all()
+        # candles_crud = CandlesCrud()
+        # candles_crud.drop_collection_and_refresh_all()
     except Exception as error:
         logging.error(f"Error initializing database: {error}")
         pass
