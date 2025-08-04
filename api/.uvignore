@@ -1,0 +1,9 @@
+# Ignore problematic cache directories
+**/__pycache__/
+**/.pytest_cache/
+**/node_modules/
+**/.mypy_cache/
+**/.ruff_cache/
+# Ignore scikit-learn cache directories that might cause issues
+**/sklearn/
+**/liblinear/
