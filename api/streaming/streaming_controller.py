@@ -80,7 +80,6 @@ class BaseStreaming:
             return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
 
         df = pd.DataFrame(data)
-        df.drop(columns=["_id"], inplace=True)
         close_prices = df["close"]
         rolling_mean = close_prices.rolling(window=20).mean()
         rolling_std = close_prices.rolling(window=20).std()

@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from time import sleep
 from pymongo import DESCENDING
 from apis import BinanceApi
 from databases.db import setup_kafka_db
@@ -7,6 +8,11 @@ from pandas import DataFrame
 from tools.enum_definitions import BinanceKlineIntervals
 from tools.round_numbers import round_numbers
 from databases.crud.symbols_crud import SymbolsCrud
+
+# Configure logging to show INFO level messages
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 class CandlesCrud:
@@ -21,7 +27,9 @@ class CandlesCrud:
         self.binance_api = BinanceApi()
         self.collection_name = "candles"
         self.symbols_crud = SymbolsCrud()
+        # Get logger and ensure it uses the root logger's configuration
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)  # Ensure it respects the basicConfig level
         self.ensure_collection_setup()
 
     def ensure_collection_setup(self, force_recreate=False):
@@ -39,7 +47,7 @@ class CandlesCrud:
                 force_recreate
                 and self.collection_name in self.db.list_collection_names()
             ):
-                logging.info(
+                self.logger.info(
                     f"🗑️ Dropping existing collection {self.collection_name} for recreation"
                 )
                 self.db.drop_collection(self.collection_name)
@@ -52,7 +60,9 @@ class CandlesCrud:
                     "granularity": "minutes",
                 },
             )
-            logging.info(f"✅ Created timeseries collection: {self.collection_name}")
+            self.logger.info(
+                f"✅ Created timeseries collection: {self.collection_name}"
+            )
 
     def build_query(self, interval: BinanceKlineIntervals):
         bin_size = interval.bin_size()
@@ -107,7 +117,8 @@ class CandlesCrud:
     ) -> list[dict]:
         """
         Query specifically for display or analytics,
-        returns klines ordered by time, from newest to oldest
+        returns klines ordered by time,
+         from newest to oldest
 
         Returns:
             list: 15m Klines
@@ -115,11 +126,7 @@ class CandlesCrud:
         if interval == BinanceKlineIntervals.fifteen_minutes:
             result = self.db.candles.find(
                 {"symbol": symbol},
-                {
-                    "projection": {
-                        "_id": "0",
-                    }
-                },
+                {"_id": 0},  # Fixed: removed $ prefix and simplified projection
                 limit=limit,
                 skip=offset,
                 sort=[("time", DESCENDING)],
@@ -308,7 +315,9 @@ class CandlesCrud:
             local_klines = list(local_query)
 
             if len(local_klines) < 3:
-                logging.info(f"Not enough local data for {symbol}, sync check failed")
+                self.logger.info(
+                    f"Not enough local data for {symbol}, sync check failed"
+                )
                 return False
 
             # Get the second-to-last and third-to-last klines
@@ -332,7 +341,7 @@ class CandlesCrud:
             is_valid_interval = abs(time_diff_ms - expected_interval_ms) <= tolerance_ms
 
             if not is_valid_interval:
-                logging.warning(
+                self.logger.warning(
                     f"Invalid interval detected for {symbol}: "
                     f"expected ~{expected_interval_ms}ms, got {time_diff_ms}ms"
                 )
@@ -340,7 +349,7 @@ class CandlesCrud:
             return is_valid_interval
 
         except Exception as e:
-            logging.error(f"Error checking sync for {symbol}: {e}")
+            self.logger.error(f"Error checking sync for {symbol}: {e}")
             return False
 
     def refresh_data_from_binance(
@@ -364,7 +373,7 @@ class CandlesCrud:
         # Delete existing data for this symbol
         delete_result = self.db.candles.delete_many({"symbol": symbol})
         if delete_result.deleted_count > 0:
-            logging.info(
+            self.logger.info(
                 f"🗑️ Deleted {delete_result.deleted_count} existing documents for {symbol}"
             )
 
@@ -376,7 +385,7 @@ class CandlesCrud:
         )
 
         if not raw_klines:
-            logging.warning(f"No data received from Binance for {symbol}")
+            self.logger.warning(f"No data received from Binance for {symbol}")
             return False
 
         # Prepare documents for bulk insert
@@ -404,13 +413,13 @@ class CandlesCrud:
         if kline_docs:
             try:
                 self.db.candles.insert_many(kline_docs)
-                logging.info(
+                self.logger.info(
                     f"✅ Successfully bulk inserted {len(kline_docs)} candles for {symbol}"
                 )
                 return True
 
             except Exception as e:
-                logging.error(f"❌ Failed to insert data for {symbol}: {e}")
+                self.logger.error(f"❌ Failed to insert data for {symbol}: {e}")
                 raise e
 
         return False
@@ -435,67 +444,70 @@ class CandlesCrud:
             current_symbols = self.db.candles.distinct("symbol")
             symbols_count_in_collection = len(current_symbols)
 
-            logging.info(
+            self.logger.info(
                 f"📊 Found {symbols_count_in_collection} symbols in collection vs {total_active_symbols} active symbols"
             )
 
             # If we already have all symbols, skip refresh
             if symbols_count_in_collection >= total_active_symbols:
-                logging.info(
+                self.logger.info(
                     f"✅ Collection already has data for {symbols_count_in_collection} symbols, "
                     f"which matches or exceeds {total_active_symbols} active symbols. Skipping drop and refresh."
                 )
                 return
 
         except Exception as e:
-            logging.warning(
+            self.logger.warning(
                 f"⚠️ Could not check collection state: {e}, proceeding with refresh"
             )
 
         # Drop the entire candles collection
-        logging.info("🗑️ Dropping candles collection...")
+        self.logger.info("🗑️ Dropping candles collection...")
         self.db.drop_collection(self.collection_name)
-        logging.info("✅ Collection dropped successfully")
+        self.logger.info("✅ Collection dropped successfully")
 
         # Recreate the collection with proper settings
         self.ensure_collection_setup(force_recreate=True)
 
         # Process all active symbols
         total_symbols = len(active_symbols)
-        logging.info(f"📊 Found {total_symbols} active symbols to process")
+        self.logger.info(f"📊 Found {total_symbols} active symbols to process")
         count = 0
         successful_count = 0
         failed_count = 0
 
         for symbol_data in active_symbols:
             if not symbol_data.id:
-                logging.warning(f"Symbol not found in data: {symbol_data.id}")
+                self.logger.warning(f"Symbol not found in data: {symbol_data.id}")
                 failed_count += 1
                 continue
 
             count += 1
-            logging.info(f"🔄 Processing {symbol_data.id} ({count}/{total_symbols})")
+            self.logger.info(
+                f"🔄 Processing {symbol_data.id} ({count}/{total_symbols})"
+            )
 
             try:
                 self.refresh_data_from_binance(symbol_data.id, limit)
                 successful_count += 1
             except Exception as e:
                 failed_count += 1
-                logging.error(f"❌ Failed to process {symbol_data.id}: {e}")
+                self.logger.error(f"❌ Failed to process {symbol_data.id}: {e}")
 
-        logging.info(
+        self.logger.info(
             f"✅ Completed processing {count} symbols (Success: {successful_count}, Failed: {failed_count})"
         )
 
         # Log final collection count
         final_count = len(self.db.candles.distinct("symbol"))
-        logging.info(f"📊 Final distinct symbols in collection: {final_count}")
+        self.logger.info(f"📊 Final distinct symbols in collection: {final_count}")
+        sleep(10)
 
         if final_count >= total_active_symbols:
-            logging.info(
+            self.logger.info(
                 f"✅ SUCCESS: All {total_active_symbols} active symbols are in collection"
             )
         else:
-            logging.warning(
+            self.logger.warning(
                 f"⚠️ WARNING: Only {final_count}/{total_active_symbols} symbols in collection"
             )
