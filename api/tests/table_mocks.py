@@ -1,6 +1,6 @@
-from database.models.bot_table import BotTable
-from database.models.deal_table import DealTable
-from database.models.order_table import ExchangeOrderTable
+from databases.models.bot_table import BotTable
+from databases.models.deal_table import DealTable
+from databases.models.order_table import ExchangeOrderTable
 from tools.enum_definitions import DealType, OrderType
 from uuid import UUID
 

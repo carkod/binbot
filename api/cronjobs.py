@@ -3,7 +3,7 @@ import os
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.assets import Assets
 from charts.controllers import MarketDominationController
-from database.utils import independent_session
+from databases.utils import independent_session
 
 logging.basicConfig(
     level=os.environ["LOG_LEVEL"],

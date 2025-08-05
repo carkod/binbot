@@ -2,7 +2,7 @@ from uuid import uuid4, UUID
 from typing import Optional
 from pydantic import field_validator
 from sqlalchemy import JSON, Column, Enum
-from database.utils import timestamp
+from databases.utils import timestamp
 from tools.enum_definitions import (
     BinanceKlineIntervals,
     CloseConditions,
@@ -10,8 +10,8 @@ from tools.enum_definitions import (
     Strategy,
 )
 from sqlmodel import Relationship, SQLModel, Field
-from database.models.order_table import ExchangeOrderTable, FakeOrderTable
-from database.models.deal_table import DealTable
+from databases.models.order_table import ExchangeOrderTable, FakeOrderTable
+from databases.models.deal_table import DealTable
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
 

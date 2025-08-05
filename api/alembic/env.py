@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
-from database.utils import db_url
-from database.models import SQLModel
+from databases.utils import db_url
+from databases.models import SQLModel
 
 
 # Configure logging level and format from environment variables

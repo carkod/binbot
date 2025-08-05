@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 from account.account import Account
-from database.balances_crud import BalancesCrud
-from database.models.bot_table import BotTable
-from database.autotrade_crud import AutotradeCrud
+from databases.crud.balances_crud import BalancesCrud
+from databases.models.bot_table import BotTable
+from databases.crud.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from deals.abstractions.factory import DealAbstract
 from tools.handle_error import json_response, json_response_message
@@ -12,12 +12,12 @@ from tools.round_numbers import (
 )
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
 from tools.enum_definitions import Strategy
-from database.bot_crud import BotTableCrud
+from databases.crud.bot_crud import BotTableCrud
 from account.schemas import BalanceSeries
 from tools.enum_definitions import BinanceKlineIntervals
-from charts.controllers import Candlestick
 from tools.exceptions import BinbotErrors
 from typing import Sequence
+from databases.crud.candles_crud import CandlesCrud
 
 
 class Assets(Account):
@@ -155,7 +155,7 @@ class Assets(Account):
             raise BinbotErrors("No balance data found.")
 
         # btc candlestick data series
-        cs = Candlestick()
+        cs = CandlesCrud()
         end_time = int(
             (
                 datetime.fromtimestamp(balance_series[0].id / 1000)

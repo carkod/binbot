@@ -1,8 +1,8 @@
 import logging
 from typing import Type, Union
-from database.models.bot_table import BotTable, PaperTradingTable
-from database.paper_trading_crud import PaperTradingTableCrud
-from database.symbols_crud import SymbolsCrud
+from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
 from tools.enum_definitions import (
     CloseConditions,
     DealType,

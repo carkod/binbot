@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from sqlmodel import Session, desc, select
-from database.models.user_table import UserTable
-from database.utils import independent_session
+from databases.models.user_table import UserTable
+from databases.utils import independent_session
 from collections.abc import Sequence
 from tools.exceptions import BinbotErrors
 from user.models.user import UserDetails

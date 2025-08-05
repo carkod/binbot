@@ -2,9 +2,9 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 
 from pytest import fixture
-from database.utils import get_session
+from databases.utils import get_session
 from tests.conftest import MockAsyncBaseProducer
-from database.models.autotrade_table import AutotradeTable
+from databases.models.autotrade_table import AutotradeTable
 from main import app
 
 mocked_db_data = AutotradeTable(
@@ -46,7 +46,7 @@ def test_get_autotrade_settings(client: TestClient) -> None:
     assert result["data"] == mocked_db_data.model_dump()
 
 
-@patch("database.autotrade_crud.AsyncBaseProducer", MockAsyncBaseProducer)
+@patch("databases.crud.autotrade_crud.AsyncBaseProducer", MockAsyncBaseProducer)
 def test_edit_autotrade_settings(client: TestClient) -> None:
     r = client.put(
         "/autotrade-settings/bots",

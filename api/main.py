@@ -6,8 +6,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from databases.api_db import ApiDb
+from databases.crud.candles_crud import CandlesCrud
 from account.routes import account_blueprint
-from database.api_db import ApiDb
 from autotrade.routes import autotrade_settings_blueprint
 from bots.routes import bot_blueprint
 from charts.routes import charts_blueprint
@@ -16,7 +17,7 @@ from paper_trading.routes import paper_trading_blueprint
 from symbols.routes import symbols_blueprint
 from user.routes import user_blueprint
 
-from database.models import *  # noqa
+from databases.models import *  # noqa
 
 
 @asynccontextmanager
@@ -24,6 +25,8 @@ async def lifespan(app: FastAPI):
     try:
         api_db = ApiDb()
         api_db.init_db()
+        candles_crud = CandlesCrud()
+        candles_crud.drop_collection_and_refresh_all()
     except Exception as error:
         logging.error(f"Error initializing database: {error}")
         pass

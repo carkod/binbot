@@ -2,7 +2,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 from pydantic import EmailStr
 from sqlmodel import Field, SQLModel
-from database.utils import timestamp
+from databases.utils import timestamp
 from tools.enum_definitions import UserRoles
 
 

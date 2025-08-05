@@ -1,9 +1,9 @@
 from typing import Annotated
 
 from sqlmodel import Session
-from database.autotrade_crud import AutotradeCrud
+from databases.crud.autotrade_crud import AutotradeCrud
 from tools.enum_definitions import AutotradeSettingsDocument
-from database.utils import get_session
+from databases.utils import get_session
 from autotrade.schemas import (
     AutotradeSettingsSchema,
     TestAutotradeSettingsSchema,

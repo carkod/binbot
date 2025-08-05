@@ -4,9 +4,9 @@ from sqlmodel import Field
 from tools.enum_definitions import UserRoles
 from tools.handle_error import StandardResponse
 from uuid import UUID, uuid4
-from database.utils import timestamp
+from databases.utils import timestamp
 from typing import Sequence
-from database.models.user_table import UserTable
+from databases.models.user_table import UserTable
 
 
 class UserDetails(BaseModel):

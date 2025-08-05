@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from database.utils import Amount
+from databases.utils import Amount
 
 
 class DealModel(BaseModel):

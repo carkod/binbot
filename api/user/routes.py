@@ -4,9 +4,9 @@ from user.models.user import UserDetails
 from tools.handle_error import StandardResponse, BinbotErrors
 from user.models.user import UserResponse, GetOneUser, LoginResponse
 from user.services.auth import decode_access_token, FormData
-from database.user_crud import UserTableCrud
+from databases.crud.user_crud import UserTableCrud
 from sqlmodel import Session
-from database.utils import get_session
+from databases.utils import get_session
 from sqlalchemy.exc import IntegrityError
 
 user_blueprint = APIRouter()

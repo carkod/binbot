@@ -5,12 +5,12 @@ from typing import Type, Union, no_type_check
 
 import pandas as pd
 from bots.models import BotModel
-from charts.controllers import Candlestick
-from database.autotrade_crud import AutotradeCrud
-from database.bot_crud import BotTableCrud
-from database.models.bot_table import BotTable, PaperTradingTable
-from database.paper_trading_crud import PaperTradingTableCrud
-from database.symbols_crud import SymbolsCrud
+from databases.crud.autotrade_crud import AutotradeCrud
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.candles_crud import CandlesCrud
+from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
 from deals.abstractions.factory import DealAbstract
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
@@ -30,7 +30,7 @@ class BaseStreaming:
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_controller = SymbolsCrud()
-        self.cs = Candlestick()
+        self.cs = CandlesCrud()
         self.active_bot_pairs: Sequence = []
         self.paper_trading_active_bots: Sequence = []
         self.load_data_on_start()
@@ -80,7 +80,6 @@ class BaseStreaming:
             return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
 
         df = pd.DataFrame(data)
-        df.drop(columns=["_id"], inplace=True)
         close_prices = df["close"]
         rolling_mean = close_prices.rolling(window=20).mean()
         rolling_std = close_prices.rolling(window=20).std()

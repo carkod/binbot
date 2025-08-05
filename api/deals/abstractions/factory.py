@@ -1,13 +1,13 @@
 from typing import Type, Union
-from database.models.bot_table import BotTable, PaperTradingTable
-from database.symbols_crud import SymbolsCrud
+from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import DealType, OrderSide, Status
 from tools.exceptions import TakeProfitError
 from tools.round_numbers import round_numbers, round_timestamp
 from deals.abstractions.base import BaseDeal
 from deals.models import DealModel
-from database.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
 
 
 class DealAbstract(BaseDeal):

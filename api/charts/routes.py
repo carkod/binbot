@@ -5,10 +5,10 @@ from tools.handle_error import (
     json_response,
     json_response_error,
 )
-from charts.controllers import Candlestick, MarketDominationController
+from charts.controllers import MarketDominationController
 from charts.models import CandlestickResponse, AdrSeriesResponse
 from tools.handle_error import StandardResponse
-
+from databases.crud.candles_crud import CandlesCrud
 
 charts_blueprint = APIRouter()
 
@@ -24,7 +24,7 @@ def get_timeseries(symbol: str, limit: int = 500):
     Retrieve candlesticks data stored in DB from Binance
     in a timeseries format by Binquant
     """
-    data = Candlestick().get_timeseries(symbol, limit)
+    data = CandlesCrud().get_timeseries(symbol, limit)
     return {
         "data": data,
         "message": "Successfully retrieved timeseries data.",
@@ -73,7 +73,7 @@ def top_losers():
     "/btc-correlation", response_model=StandardResponse, tags=["charts"]
 )
 def get_btc_correlation(symbol: str):
-    data = Candlestick().get_btc_correlation(asset_symbol=symbol)
+    data = CandlesCrud().get_btc_correlation(asset_symbol=symbol)
     if data:
         return json_response(
             {
@@ -135,9 +135,56 @@ def algorithm_performance(size: int = 14):
     summary="Retrieve candlesticks data stored in DB from Binance in a kline format by Binquant",
     tags=["charts"],
 )
-def raw_klines(symbol: str, limit: int = 500, interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes):
-    data = Candlestick().get_klines(symbol=symbol, limit=limit, interval=interval)
-    return {
-        "data": data,
-        "message": "Successfully retrieved klines data.",
-    }
+def get_candles(
+    symbol: str,
+    limit: int = 500,
+    interval: BinanceKlineIntervals = BinanceKlineIntervals.fifteen_minutes,
+):
+    data = CandlesCrud().get_candles(symbol=symbol, limit=limit, interval=interval)
+    return json_response(
+        {
+            "data": data,
+            "message": "Successfully retrieved klines data.",
+        }
+    )
+
+
+@charts_blueprint.get(
+    "/refresh-klines",
+    summary="Check sync and refresh klines data from Binance if needed",
+    response_model=StandardResponse,
+    tags=["charts"],
+)
+def refresh_klines(
+    symbol: str,
+    limit: int = 500,
+):
+    """
+    Check if local klines data is synchronized with Binance API.
+    If not synchronized, refresh the data from Binance.
+
+    Args:
+        symbol: Trading pair symbol (e.g., "BTCUSDT")
+        interval: Kline interval (e.g., "15m", "1h", "1d")
+        limit: Number of klines to fetch (default: 500)
+
+    Returns:
+        JSON response indicating sync status and refresh result
+    """
+    try:
+        candlestick = CandlesCrud()
+        is_refreshed = candlestick.refresh_data_from_binance(
+            symbol, limit, force_refresh=True
+        )
+
+        if is_refreshed:
+            return StandardResponse(
+                message="Klines data refreshed successfully.",
+            )
+        else:
+            return StandardResponse(
+                message="Klines data is already up-to-date.", error=0
+            )
+
+    except Exception as error:
+        return json_response_error(f"Failed to refresh klines for {symbol}: {error}")

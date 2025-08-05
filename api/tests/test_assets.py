@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from pytest import fixture
 from account.assets import Assets
 from main import app
-from database.utils import get_session
+from databases.utils import get_session
 
 
 MockAutotradeCrud = MagicMock()

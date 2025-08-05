@@ -2,9 +2,9 @@ import logging
 import json
 from exchange_apis.binance import BinanceApi
 from streaming.socket_client import SpotWebsocketStreamClient
-from database.db import Database
-from database.bot_crud import BotTableCrud
-from database.utils import independent_session
+from databases.db import Database
+from databases.crud.bot_crud import BotTableCrud
+from databases.utils import independent_session
 
 
 class UserDataStreaming(Database, BinanceApi):

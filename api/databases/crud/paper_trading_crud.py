@@ -1,14 +1,14 @@
 from typing import List
 from sqlmodel import Session, select, case, desc, asc
 from tools.exceptions import BinbotErrors, SaveBotError
-from database.models.bot_table import PaperTradingTable
+from databases.models.bot_table import PaperTradingTable
 from bots.models import BotModel, BotBase
-from database.utils import independent_session
+from databases.utils import independent_session
 from tools.enum_definitions import BinbotEnums, Status
 from collections.abc import Sequence
 from uuid import UUID
-from database.models.deal_table import DealTable
-from database.models.order_table import FakeOrderTable
+from databases.models.deal_table import DealTable
+from databases.models.order_table import FakeOrderTable
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import text
 

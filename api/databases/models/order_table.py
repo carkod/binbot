@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import Column, BigInteger
 
 if TYPE_CHECKING:
-    from database.models.bot_table import BotTable, PaperTradingTable
+    from databases.models.bot_table import BotTable, PaperTradingTable
 
 
 class OrderBase(SQLModel):
