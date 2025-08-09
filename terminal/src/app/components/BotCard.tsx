@@ -160,7 +160,7 @@ const BotCard: FC<BotCardProps> = ({
           {bot.deal?.total_commissions > 0 && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Comissions</p>
+                <p className="small">Commissions</p>
               </Col>
               <Col md="6" xs="5">
                 <p className="small">{`${bot.deal.total_commissions} BNB`}</p>

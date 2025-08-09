@@ -5,6 +5,7 @@ from pymongo import DESCENDING
 from apis import BinanceApi
 from databases.db import setup_kafka_db
 from pandas import DataFrame
+import pandas as pd
 from tools.enum_definitions import BinanceKlineIntervals
 from tools.round_numbers import round_numbers
 from databases.crud.symbols_crud import SymbolsCrud
@@ -166,11 +167,55 @@ class CandlesCrud:
             symbol="BTCUSDC", interval=BinanceKlineIntervals.one_day
         )
         if len(asset_data) == 0 or len(btc_data) == 0:
-            return None
+            asset_data = self.binance_api.get_raw_klines(
+                symbol=asset_symbol, interval=BinanceKlineIntervals.one_day
+            )
+            btc_data = self.binance_api.get_raw_klines(
+                symbol="BTCUSDC", interval=BinanceKlineIntervals.one_day
+            )
+            if len(asset_data) == 0 or len(btc_data) == 0:
+                self.logger.error(
+                    f"Failed to get BTC correlation data for {asset_symbol} or BTCUSDC"
+                )
+                return None
+
         asset_df = DataFrame(asset_data)
         btc_df = DataFrame(btc_data)
-        p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
-        return round_numbers(p_correlation)
+
+        # Check if we need to set column names for Binance API format
+        if "close" not in asset_df.columns and len(asset_df.columns) >= 5:
+            # Binance API format: [open_time, open, high, low, close, volume, close_time, ...]
+            asset_df.columns = [
+                "open_time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "close_time",
+            ] + [f"col_{i}" for i in range(7, len(asset_df.columns))]
+
+        if "close" not in btc_df.columns and len(btc_df.columns) >= 5:
+            # Binance API format: [open_time, open, high, low, close, volume, close_time, ...]
+            btc_df.columns = [
+                "open_time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "close_time",
+            ] + [f"col_{i}" for i in range(7, len(btc_df.columns))]
+
+        # Ensure close columns are numeric
+        if "close" in asset_df.columns and "close" in btc_df.columns:
+            asset_df["close"] = pd.to_numeric(asset_df["close"], errors="coerce")
+            btc_df["close"] = pd.to_numeric(btc_df["close"], errors="coerce")
+
+            p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
+            return round_numbers(p_correlation)
+        else:
+            return None
 
     def get_candles(
         self,

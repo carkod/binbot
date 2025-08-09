@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from databases.api_db import ApiDb
-from databases.crud.candles_crud import CandlesCrud
 from account.routes import account_blueprint
 from autotrade.routes import autotrade_settings_blueprint
 from bots.routes import bot_blueprint
@@ -25,8 +24,6 @@ async def lifespan(app: FastAPI):
     try:
         api_db = ApiDb()
         api_db.init_db()
-        candles_crud = CandlesCrud()
-        candles_crud.drop_collection_and_refresh_all()
     except Exception as error:
         logging.error(f"Error initializing database: {error}")
         pass

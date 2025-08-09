@@ -31,6 +31,8 @@ dependencies = [
     "psycopg",
     "pybit",
     "pydantic-settings>=2.10.1",
+    "ruff>=0.11.12",
+    "mypy>=1.16.0",
 ]
 
 [project.optional-dependencies]
@@ -53,13 +55,7 @@ Repository = "https://github.com/carkod/binbot"
 
 [tool.uv]
 package = false
-# Disable cache for compiled packages that might cause issues
-cache = false
 
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"
-
-[project.scripts]
-format = "ruff format api/"
-lint = "ruff check api/ && mypy check api/"

@@ -67,20 +67,6 @@
       "program": "${workspaceFolder}/api/cronjobs.py",
       "console": "internalConsole",
       "justMyCode": true
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Web",
-      "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}/web/src",
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/*"
-      },
-      "outFiles": [
-        "${workspaceFolder}/web/**/*.js",
-        "${workspaceFolder}/web/src/node_modules/**"
-      ]
-    },
+    }
   ]
 }
