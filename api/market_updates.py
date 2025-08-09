@@ -118,9 +118,15 @@ def main():
             for message in message_batch:
                 if message.topic == KafkaTopics.restart_streaming.value:
                     payload = _coerce_to_dict(message.value)
-                    if latest_restart_action != payload.get("action", None):
+                    action_raw = payload.get("action", "")
+                    action_str = (
+                        action_raw
+                        if isinstance(action_raw, str)
+                        else str(action_raw or "")
+                    )
+                    if latest_restart_action != action_str:
                         bs.load_data_on_start()
-                        latest_restart_action = payload.get("action", None)
+                        latest_restart_action = action_str
 
                 if message.topic == KafkaTopics.klines_store_topic.value:
                     # Cache last candle per symbol for scheduler
