@@ -73,11 +73,14 @@ def top_losers():
     "/btc-correlation", response_model=StandardResponse, tags=["charts"]
 )
 def get_btc_correlation(symbol: str):
-    data = CandlesCrud().get_btc_correlation(asset_symbol=symbol)
-    if data:
+    corr, btc_price = CandlesCrud().get_btc_correlation(asset_symbol=symbol)
+    if corr:
         return json_response(
             {
-                "data": data,
+                "data": {
+                    "correlation": corr,
+                    "btc_price": btc_price,
+                },
                 "message": "Successfully retrieved BTC correlation data.",
                 "error": 0,
             }

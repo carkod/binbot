@@ -213,7 +213,7 @@ class CandlesCrud:
             btc_df["close"] = pd.to_numeric(btc_df["close"], errors="coerce")
 
             p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
-            return round_numbers(p_correlation)
+            return round_numbers(p_correlation), round_numbers(btc_df["close"].iloc[-1])
         else:
             return None
 
