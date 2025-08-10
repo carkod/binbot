@@ -30,9 +30,6 @@ dependencies = [
     "psycopg",
     "pybit",
     "pydantic-settings>=2.10.1",
-    "ruff>=0.11.12",
-    "mypy>=1.16.0",
-    "types-requests>=2.32.0.20250515",
 ]
 
 [project.optional-dependencies]
@@ -40,11 +37,12 @@ dev = [
     "pytest>=8.1.1",
     "mongomock>=4.1.2",
     "httpx",
-    "mypy",
     "types-requests",
     "coverage",
-    "ruff",
     "pytest-vcr>=1.0.2",
+    "ruff>=0.11.12",
+    "mypy>=1.16.0",
+    "types-requests>=2.32.0.20250515",
 ]
 
 
