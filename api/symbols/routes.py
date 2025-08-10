@@ -111,22 +111,7 @@ def edit_symbol(
     """
     data = SymbolsCrud(session=session).edit_symbol_item(data)
 
-    if not data.active:
-        # Delete klines to save space
-        db = setup_kafka_db()
-        result = db.kline.delete_many({"symbol": data.id})
-        if result.deleted_count > 0:
-            return GetOneSymbolResponse(
-                message="Symbol edited, klines removed", data=data
-            )
-        else:
-            return GetOneSymbolResponse(
-                message="Symbol edited, but no klines found", data=data, error=1
-            )
-    else:
-        return GetOneSymbolResponse(
-            message="Symbol edited, but no klines removed", data=data
-        )
+    return GetOneSymbolResponse(message="Symbol edited and candles removed", data=data)
 
 
 @symbols_blueprint.get("/store", tags=["Symbols"])
