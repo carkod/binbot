@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from time import sleep
 from pymongo import DESCENDING
-from apis import BinanceApi
+from exchange_apis.binance import BinanceApi
 from databases.db import setup_kafka_db
 from pandas import DataFrame
 import pandas as pd
@@ -213,7 +213,11 @@ class CandlesCrud:
             btc_df["close"] = pd.to_numeric(btc_df["close"], errors="coerce")
 
             p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
-            return round_numbers(p_correlation), round_numbers(btc_df["close"].iloc[-1])
+
+            # Use cached call (default 1 hour). For 30 hours, pass ttl_seconds=30*3600
+            price_perct = self.binance_api.ticker_24_last_price_cached(ttl_seconds=3600)
+
+            return round_numbers(p_correlation), round_numbers(price_perct)
         else:
             return None
 

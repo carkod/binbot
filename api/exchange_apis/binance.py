@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 from tools.exceptions import IsolateBalanceError
 from requests import Session, request
 from tools.handle_error import handle_binance_errors
+from tools.cache import cache
 
 
 class BinanceApi:
@@ -543,3 +544,30 @@ class BinanceApi:
             payload={"asset": asset, "needBtcValuation": need_btc_valuation},
         )
         return data
+
+    def ticker_24_pct_change(
+        self, symbol: str = "BTCUSDC", type: str = "FULL"
+    ) -> float:
+        """Return only the last price from Binance 24h ticker for a symbol.
+        Default symbol is BTCUSDC to match project usage elsewhere.
+        """
+        data = self.ticker_24(type=type, symbol=symbol)
+        try:
+            last_price = float(data["priceChangePercent"])  # Binance returns string numbers
+            return last_price
+        except Exception as e:
+            raise RuntimeError(f"Failed to get last price for {symbol}: {e}")
+
+    def ticker_24_last_price_cached(
+        self,
+        ttl_seconds: int = 3600,
+    ) -> float:
+        """Cached version of ticker_24_last_price with TTL (per-process cache).
+        Adjust ttl_seconds as needed (e.g., 30*3600 for 30 hours).
+        """
+
+        @cache(ttl_seconds=ttl_seconds)
+        def _cached() -> float:
+            return self.ticker_24_pct_change(symbol="BTCUSDC", type="FULL")
+
+        return _cached()

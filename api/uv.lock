@@ -133,6 +133,7 @@ dependencies = [
     { name = "scipy" },
     { name = "sqlalchemy" },
     { name = "sqlmodel" },
+    { name = "types-requests" },
     { name = "uvicorn" },
     { name = "websocket-client" },
 ]
@@ -185,6 +186,7 @@ requires-dist = [
     { name = "scipy", specifier = "==1.14.1" },
     { name = "sqlalchemy", specifier = ">=2.0.30" },
     { name = "sqlmodel" },
+    { name = "types-requests", specifier = ">=2.32.0.20250515" },
     { name = "types-requests", marker = "extra == 'dev'" },
     { name = "uvicorn" },
     { name = "websocket-client", specifier = ">=1.5.0" },

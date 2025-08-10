@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends
 from databases.crud.symbols_crud import SymbolsCrud
-from databases.db import setup_kafka_db
 from symbols.models import SymbolsResponse, GetOneSymbolResponse
 from databases.utils import get_session
 from sqlmodel import Session

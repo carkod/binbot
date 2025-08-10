@@ -79,7 +79,7 @@ def get_btc_correlation(symbol: str):
             {
                 "data": {
                     "correlation": corr,
-                    "btc_price": btc_price,
+                    "24hr_price_change": btc_price,
                 },
                 "message": "Successfully retrieved BTC correlation data.",
                 "error": 0,
