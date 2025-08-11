@@ -9,6 +9,7 @@ from charts.controllers import MarketDominationController
 from charts.models import CandlestickResponse, AdrSeriesResponse
 from tools.handle_error import StandardResponse
 from databases.crud.candles_crud import CandlesCrud
+from databases.crud.symbols_crud import SymbolsCrud
 
 charts_blueprint = APIRouter()
 

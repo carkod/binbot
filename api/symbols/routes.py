@@ -6,6 +6,7 @@ from sqlmodel import Session
 from tools.handle_error import StandardResponse, BinbotErrors
 from symbols.models import SymbolPayload
 from typing import Optional
+import time
 
 symbols_blueprint = APIRouter()
 
@@ -28,6 +29,25 @@ def get_all_symbols(
 
     data = SymbolsCrud(session=session).get_all(active=active)
     return SymbolsResponse(message="Successfully retrieved active symbols", data=data)
+
+
+@symbols_blueprint.get(
+    "/symbol/index-classification",
+    summary="Get index classification data",
+    tags=["charts"],
+)
+def get_index_classification(session: Session = Depends(get_session)):
+    try:
+        SymbolsCrud(session=session).index_classification()
+        return StandardResponse(
+            message="Successfully retrieved index classification data.",
+            error=0,
+        )
+    except Exception as error:
+        return StandardResponse(
+            message=f"Failed to retrieve index classification data: {error}",
+            error=1,
+        )
 
 
 @symbols_blueprint.get(
