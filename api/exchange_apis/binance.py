@@ -553,7 +553,9 @@ class BinanceApi:
         """
         data = self.ticker_24(type=type, symbol=symbol)
         try:
-            last_price = float(data["priceChangePercent"])  # Binance returns string numbers
+            last_price = float(
+                data["priceChangePercent"]
+            )  # Binance returns string numbers
             return last_price
         except Exception as e:
             raise RuntimeError(f"Failed to get last price for {symbol}: {e}")
