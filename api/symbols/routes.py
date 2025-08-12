@@ -6,7 +6,6 @@ from sqlmodel import Session
 from tools.handle_error import StandardResponse, BinbotErrors
 from symbols.models import SymbolPayload
 from typing import Optional
-import time
 
 symbols_blueprint = APIRouter()
 

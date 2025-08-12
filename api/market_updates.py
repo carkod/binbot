@@ -27,10 +27,19 @@ def main():
         bootstrap_servers=f"{os.environ['KAFKA_HOST']}:{os.environ['KAFKA_PORT']}",
         value_deserializer=lambda m: json.loads(m),
         group_id="streaming-group",
-        api_version=(2, 5, 0),
+        # Let the client negotiate API version with broker to avoid mismatch issues
+        auto_offset_reset=os.environ.get("KAFKA_AUTO_OFFSET_RESET", "latest"),
     )
     bs = BaseStreaming()
     mu = StreamingController(bs, consumer)
+
+    # Log connection details for debugging
+    logging.info(
+        "market_updates connected to Kafka at %s:%s (group=%s)",
+        os.environ.get("KAFKA_HOST"),
+        os.environ.get("KAFKA_PORT"),
+        "streaming-group",
+    )
 
     # --- Tick scheduler state (Option A) ---
     grace_seconds = int(os.environ.get("TICK_GRACE_SECONDS", "15"))
@@ -100,9 +109,6 @@ def main():
                                 last_processed_close_time_by_symbol[symbol] = int(
                                     payload.get("close_time", 0)
                                 )
-                                logging.debug(
-                                    f"Tick-processed {symbol} at tick {tick} with close_time {payload.get('close_time')}"
-                                )
                             except Exception as e:
                                 logging.error(
                                     f"Tick processing error for {symbol}: {e}",
@@ -116,6 +122,17 @@ def main():
         messages = consumer.poll(timeout_ms=1000)
         for topic_partition, message_batch in messages.items():
             for message in message_batch:
+                # Per-message debug to verify flow/offsets in prod
+                try:
+                    logging.debug(
+                        "Consumed %s [%s] @ offset %s",
+                        message.topic,
+                        getattr(message, "partition", "?"),
+                        getattr(message, "offset", "?"),
+                    )
+                except Exception:
+                    pass
+
                 if message.topic == KafkaTopics.restart_streaming.value:
                     payload = _coerce_to_dict(message.value)
                     action_raw = payload.get("action", "")

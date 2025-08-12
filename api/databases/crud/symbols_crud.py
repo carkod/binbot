@@ -258,19 +258,18 @@ class SymbolsCrud:
             symbol = self.get_symbol(cat_id)
             if symbol:
                 for coin in coins:
-                    all_records.append((
-                        coin["id"],
-                        coin["symbol"],
-                        coin["name"],
-                        cat_id,
-                        coin["market_cap"],
-                        coin["last_updated"]
-                    ))
-                    # Store all records in the database
-                    symbol.sqlmodel_update(
-                        index=coin["id"]
+                    all_records.append(
+                        (
+                            coin["id"],
+                            coin["symbol"],
+                            coin["name"],
+                            cat_id,
+                            coin["market_cap"],
+                            coin["last_updated"],
+                        )
                     )
+                    # Store all records in the database
+                    symbol.index = coin["id"]
                     self.session.commit()
                     self.session.close()
                     sleep(7)
-

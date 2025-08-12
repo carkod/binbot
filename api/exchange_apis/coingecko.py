@@ -22,7 +22,7 @@ class CoinGecko:
             "category": category_id,
             "order": "market_cap_desc",
             "per_page": str(250),
-            "page": str(1)
+            "page": str(1),
         }
         r = requests.get(url, params=params)
         r.raise_for_status()
@@ -35,7 +35,7 @@ class CoinGecko:
                 "category": category_id,
                 "order": "market_cap_desc",
                 "per_page": str(250),
-                "page": str(page)
+                "page": str(page),
             }
             r = requests.get(url, params=params)
             r.raise_for_status()
