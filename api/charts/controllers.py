@@ -32,10 +32,10 @@ class MarketDominationController(Database):
         advancers = 0
         decliners = 0
         total_volume = 0.0
-        gains = []  # positive % changes
-        losses = []  # negative % changes
+        gains = []
+        losses = []
 
-        timestamp = None  # store once
+        timestamp = None
 
         for item in get_ticker_data:
             if (
@@ -56,7 +56,6 @@ class MarketDominationController(Database):
                     float(item["closeTime"]) / 1000, tz=timezone.utc
                 ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
-        # --- Strength Index Calculation ---
         avg_gain = sum(gains) / len(gains) if gains else 0.0
         avg_loss = abs(sum(losses) / len(losses)) if losses else 0.0
 
@@ -65,7 +64,6 @@ class MarketDominationController(Database):
         else:
             strength_index = float("inf") if advancers > 0 else 0.0
 
-        # --- Store ADR + Strength ---
         adr_data = AdrSeriesDb(
             timestamp=timestamp,
             advancers=advancers,
@@ -129,6 +127,7 @@ class MarketDominationController(Database):
                     "adp_ma": 1,
                     "advancers": 1,
                     "decliners": 1,
+                    "strength_index": 1,
                     "total_volume": 1,
                     "adp": 1,
                 }
@@ -152,6 +151,7 @@ class MarketDominationController(Database):
                     "decliners": {"$push": "$decliners"},
                     "total_volume": {"$push": "$total_volume"},
                     "adp": {"$push": "$adp"},
+                    "strength_index": {"$push": "$strength_index"},
                 }
             },
             {"$project": {"_id": 0}},

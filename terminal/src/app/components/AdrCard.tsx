@@ -5,10 +5,15 @@ import moment from "moment";
 
 type AdrCardProps = {
   adr: number[];
+  strengthIndex?: number[];
   timestamps: string[];
 };
 
-const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
+const AdrCard: React.FC<AdrCardProps> = ({
+  adr,
+  strengthIndex,
+  timestamps,
+}) => {
   return (
     <Card className="card-chart">
       <Card.Header>
@@ -45,6 +50,20 @@ const AdrCard: React.FC<AdrCardProps> = ({ adr, timestamps }) => {
               fill: "tozeroy",
               fillcolor: adr[adr.length - 1] > 0 ? "#28a74533" : "#dc354533", // green if last value positive, else red
             },
+            ...(strengthIndex && strengthIndex.length > 0
+              ? [
+                  {
+                    x: timestamps,
+                    y: strengthIndex,
+                    type: "scatter",
+                    mode: "lines+markers",
+                    name: "Strength Index",
+                    line: { color: "#ff9900", width: 2, dash: "dot" },
+                    marker: { size: 6 },
+                    fill: "none",
+                  },
+                ]
+              : []),
           ]}
           layout={{
             autosize: true,
