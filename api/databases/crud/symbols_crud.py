@@ -4,9 +4,10 @@ from databases.models.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
+from exchange_apis.coingecko import CoinGecko
 from symbols.models import SymbolPayload
 from decimal import Decimal
-from time import time
+from time import time, sleep
 from typing import Sequence
 
 
@@ -24,6 +25,7 @@ class SymbolsCrud:
         if session is None:
             session = independent_session()
         self.session = session
+        self.coingecko_api = CoinGecko()
 
     """
     Convert binance tick/step sizes to decimal
@@ -246,3 +248,28 @@ class SymbolsCrud:
                 self.session.commit()
 
         self.session.close()
+
+    def index_classification(self):
+        categories = self.coingecko_api.get_all_categories()
+
+        all_records = []
+        for cat_id in categories:
+            coins = self.coingecko_api.get_coins_in_category(cat_id)
+            symbol = self.get_symbol(cat_id)
+            if symbol:
+                for coin in coins:
+                    all_records.append(
+                        (
+                            coin["id"],
+                            coin["symbol"],
+                            coin["name"],
+                            cat_id,
+                            coin["market_cap"],
+                            coin["last_updated"],
+                        )
+                    )
+                    # Store all records in the database
+                    symbol.index = coin["id"]
+                    self.session.commit()
+                    self.session.close()
+                    sleep(7)

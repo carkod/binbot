@@ -2,9 +2,14 @@ from time import time
 from uuid import uuid4
 from account.account import Account
 from tools.exceptions import DeleteOrderError
-from tools.enum_definitions import OrderType, TimeInForce, OrderSide
+from tools.enum_definitions import OrderType, TimeInForce, OrderSide, OrderStatus
 from tools.handle_error import json_response, json_response_message
-from tools.round_numbers import supress_notation, zero_remainder, round_timestamp
+from tools.round_numbers import (
+    supress_notation,
+    zero_remainder,
+    round_timestamp,
+    round_numbers,
+)
 from databases.crud.symbols_crud import SymbolsCrud
 
 
@@ -156,10 +161,8 @@ class OrderController(Account):
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         # Fixed expired orders
-        if data["status"] == "EXPIRED":
-            data = self.signed_request(
-                url=self.order_url, method="POST", payload=payload
-            )
+        if data["status"] == OrderStatus.EXPIRED.value:
+            self.sell_order(symbol=symbol, qty=round_numbers(qty, self.qty_precision))
 
         return data
 
@@ -192,10 +195,8 @@ class OrderController(Account):
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
 
-        if data["status"] == "EXPIRED":
-            data = self.signed_request(
-                url=self.order_url, method="POST", payload=payload
-            )
+        if data["status"] == OrderStatus.EXPIRED.value:
+            self.buy_order(symbol=symbol, qty=round_numbers(qty, self.qty_precision))
 
         return data
 

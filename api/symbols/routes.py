@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends
 from databases.crud.symbols_crud import SymbolsCrud
-from databases.db import setup_kafka_db
 from symbols.models import SymbolsResponse, GetOneSymbolResponse
 from databases.utils import get_session
 from sqlmodel import Session
@@ -29,6 +28,25 @@ def get_all_symbols(
 
     data = SymbolsCrud(session=session).get_all(active=active)
     return SymbolsResponse(message="Successfully retrieved active symbols", data=data)
+
+
+@symbols_blueprint.get(
+    "/symbol/index-classification",
+    summary="Get index classification data",
+    tags=["charts"],
+)
+def get_index_classification(session: Session = Depends(get_session)):
+    try:
+        SymbolsCrud(session=session).index_classification()
+        return StandardResponse(
+            message="Successfully retrieved index classification data.",
+            error=0,
+        )
+    except Exception as error:
+        return StandardResponse(
+            message=f"Failed to retrieve index classification data: {error}",
+            error=1,
+        )
 
 
 @symbols_blueprint.get(
@@ -111,22 +129,7 @@ def edit_symbol(
     """
     data = SymbolsCrud(session=session).edit_symbol_item(data)
 
-    if not data.active:
-        # Delete klines to save space
-        db = setup_kafka_db()
-        result = db.kline.delete_many({"symbol": data.id})
-        if result.deleted_count > 0:
-            return GetOneSymbolResponse(
-                message="Symbol edited, klines removed", data=data
-            )
-        else:
-            return GetOneSymbolResponse(
-                message="Symbol edited, but no klines found", data=data, error=1
-            )
-    else:
-        return GetOneSymbolResponse(
-            message="Symbol edited, but no klines removed", data=data
-        )
+    return GetOneSymbolResponse(message="Symbol edited and candles removed", data=data)
 
 
 @symbols_blueprint.get("/store", tags=["Symbols"])

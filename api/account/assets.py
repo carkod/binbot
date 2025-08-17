@@ -17,7 +17,6 @@ from account.schemas import BalanceSeries
 from tools.enum_definitions import BinanceKlineIntervals
 from tools.exceptions import BinbotErrors
 from typing import Sequence
-from databases.crud.candles_crud import CandlesCrud
 
 
 class Assets(Account):
@@ -138,7 +137,7 @@ class Assets(Account):
         balance_date_day = ts_to_day(balance_date)
 
         for idx, d in enumerate(klines):
-            kline_day = d["_id"]["time"].strftime("%Y-%m-%d")
+            kline_day = datetime.fromtimestamp(d[6] / 1000).strftime("%Y-%m-%d")
 
             # Match balance store dates with btc price dates
             if kline_day == balance_date_day:
@@ -155,7 +154,6 @@ class Assets(Account):
             raise BinbotErrors("No balance data found.")
 
         # btc candlestick data series
-        cs = CandlesCrud()
         end_time = int(
             (
                 datetime.fromtimestamp(balance_series[0].id / 1000)
@@ -164,8 +162,7 @@ class Assets(Account):
             )
             * 1000
         )
-        klines = cs.raw_klines(
-            # One month - 1 (calculating percentages) worth of data to display
+        klines = self.get_raw_klines(
             limit=len(balance_series),
             symbol="BTCUSDC",
             interval=BinanceKlineIntervals.one_day,
@@ -183,9 +180,9 @@ class Assets(Account):
                     balances_series_diff.append(
                         round_numbers(balance_series[index].estimated_total_fiat, 4)
                     )
-                    time: int = int(klines[btc_index]["_id"]["time"].timestamp() * 1000)
+                    time: int = klines[btc_index][6]
                     balances_series_dates.append(time)
-                    balance_btc_diff.append(float(klines[btc_index]["close"]))
+                    balance_btc_diff.append(float(klines[btc_index][4]))
             else:
                 continue
 

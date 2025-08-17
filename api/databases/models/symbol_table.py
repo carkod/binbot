@@ -35,6 +35,10 @@ class SymbolTable(SQLModel, table=True):
         description="Timestamp when cooldown started in milliseconds",
         sa_type=BigInteger,
     )
+    index: str = Field(
+        default="",
+        description="Index of the symbol, used for classification, e.g. memecoin",
+    )
 
     @field_validator("cooldown", "cooldown_start_ts")
     @classmethod

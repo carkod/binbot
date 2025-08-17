@@ -19,7 +19,6 @@ dependencies = [
     "apscheduler>=3.6.3",
     "requests-cache>=1.2.0",
     "kafka-python>=2.0.2",
-    "pyarrow>=15.0.2",
     "py4j>=0.10.9",
     "sqlalchemy>=2.0.30",
     "sqlmodel",
@@ -38,11 +37,12 @@ dev = [
     "pytest>=8.1.1",
     "mongomock>=4.1.2",
     "httpx",
-    "mypy",
     "types-requests",
     "coverage",
-    "ruff",
     "pytest-vcr>=1.0.2",
+    "ruff>=0.11.12",
+    "mypy>=1.16.0",
+    "types-requests>=2.32.0.20250515",
 ]
 
 
@@ -53,13 +53,7 @@ Repository = "https://github.com/carkod/binbot"
 
 [tool.uv]
 package = false
-# Disable cache for compiled packages that might cause issues
-cache = false
 
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"
-
-[project.scripts]
-format = "ruff format api/"
-lint = "ruff check api/ && mypy check api/"

@@ -76,7 +76,7 @@ class Account(BinbotApi):
         if qty == 0:
             return price
         else:
-            buyable_qty = qty / float(price)
+            buyable_qty = float(qty) / float(price)
             if buyable_qty < base_qty:
                 return price
             else:
