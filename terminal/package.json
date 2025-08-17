@@ -9,7 +9,7 @@
     "build": "vite build && cp -r ./node_modules/binbot-charts/public/charting_library ./dist/charting_library",
     "preview": "vite preview",
     "test": "vitest run",
-    "format": "prettier --write .",
+    "format": "prettier --write . && eslint --fix .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "type-check": "tsc --noEmit",
