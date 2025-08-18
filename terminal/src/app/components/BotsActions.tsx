@@ -1,4 +1,4 @@
-import { type FC } from "react";
+import type { FC, ChangeEvent } from "react";
 import { Form } from "react-bootstrap";
 
 export enum BulkAction {
@@ -11,7 +11,7 @@ export enum BulkAction {
 }
 interface BotsActionsProps {
   defaultValue: string;
-  handleChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  handleChange: (e: ChangeEvent<HTMLSelectElement>) => void;
 }
 
 const BotsActions: FC<BotsActionsProps> = ({ defaultValue, handleChange }) => {

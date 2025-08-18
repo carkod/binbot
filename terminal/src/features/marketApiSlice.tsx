@@ -21,6 +21,7 @@ export interface AdData {
   adp: number[];
   adp_ma: number[];
   total_volume: number[];
+  strength_index: number[];
 }
 
 function computerPercent(data) {

@@ -5,7 +5,7 @@ import { type Bot } from "./botInitialState";
 export function getProfit(
   base_price: number,
   current_price: number,
-  strategy = BotStrategy.LONG
+  strategy = BotStrategy.LONG,
 ) {
   if (base_price && current_price) {
     let percent = ((current_price - base_price) / base_price) * 100;
@@ -25,7 +25,7 @@ export function getProfit(
  */
 export function computeSingleBotProfit(
   bot: Bot,
-  realTimeCurrPrice: number = 0
+  realTimeCurrPrice: number = 0,
 ) {
   if (bot.deal && bot.base_order_size > 0) {
     if (bot.deal.opening_price > 0) {
@@ -49,7 +49,7 @@ export function computeSingleBotProfit(
       const profitChange = getProfit(
         bot.deal.opening_price,
         bot.deal.closing_price,
-        bot.strategy
+        bot.strategy,
       );
       return roundDecimals(profitChange, 2);
     } else {
@@ -65,7 +65,7 @@ export function computeSingleBotProfit(
       const profitChange = getProfit(
         bot.deal.opening_price,
         closePrice,
-        bot.strategy
+        bot.strategy,
       );
       return roundDecimals(profitChange, 2);
     }

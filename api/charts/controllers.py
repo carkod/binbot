@@ -25,44 +25,56 @@ class MarketDominationController(Database):
     def ingest_adp_data(self):
         """
         Store ticker 24 data every 30 min
-        and calculate price change proportion
-        This is how to construct market domination data
-
-        The reason is to reduce weight, so as not to be banned by API
+        and calculate ADR + Strength Index
         """
         get_ticker_data = self.binance_api.ticker_24()
 
-        # ADR data ingestion
         advancers = 0
         decliners = 0
         total_volume = 0.0
+        gains = []
+        losses = []
+
+        timestamp = None
 
         for item in get_ticker_data:
             if (
                 item["symbol"].endswith(self.autotrade_settings.fiat)
                 and float(item["lastPrice"]) > 0
             ):
-                # ADR data ingestion starts here
                 price_change_percent = float(item["priceChangePercent"])
 
                 if price_change_percent > 0:
                     advancers += 1
+                    gains.append(price_change_percent)
                 elif price_change_percent < 0:
                     decliners += 1
+                    losses.append(price_change_percent)
 
                 total_volume += float(item["volume"])
+                timestamp = datetime.fromtimestamp(
+                    float(item["closeTime"]) / 1000, tz=timezone.utc
+                ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
-        # Store ADR data
+        avg_gain = sum(gains) / len(gains) if gains else 0.0
+        avg_loss = abs(sum(losses) / len(losses)) if losses else 0.0
+
+        if decliners > 0 and avg_loss > 0:
+            strength_index = (advancers * avg_gain) / (decliners * avg_loss)
+        else:
+            strength_index = float("inf") if advancers > 0 else 0.0
+
         adr_data = AdrSeriesDb(
-            timestamp=datetime.fromtimestamp(
-                float(item["closeTime"]) / 1000, tz=timezone.utc
-            ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+            timestamp=timestamp,
             advancers=advancers,
             decliners=decliners,
             total_volume=total_volume,
+            strength_index=strength_index,
+            avg_gain=avg_gain,
+            avg_loss=avg_loss,
         )
-        response = self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
 
+        response = self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
         return response
 
     def get_adrs(self, size=7, window=3) -> dict | None:
@@ -115,6 +127,7 @@ class MarketDominationController(Database):
                     "adp_ma": 1,
                     "advancers": 1,
                     "decliners": 1,
+                    "strength_index": 1,
                     "total_volume": 1,
                     "adp": 1,
                 }
@@ -138,6 +151,7 @@ class MarketDominationController(Database):
                     "decliners": {"$push": "$decliners"},
                     "total_volume": {"$push": "$total_volume"},
                     "adp": {"$push": "$adp"},
+                    "strength_index": {"$push": "$strength_index"},
                 }
             },
             {"$project": {"_id": 0}},

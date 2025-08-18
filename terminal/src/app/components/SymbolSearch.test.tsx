@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { filterSymbolByBaseAsset } from "../../utils/api";
 
 describe("Search symbols", () => {
