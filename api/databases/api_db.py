@@ -292,3 +292,9 @@ class ApiDb:
         assets = Assets(self.session)
         assets.store_balance()
         pass
+
+    def ingest_tags(self):
+        """
+        Ingest tags into the database.
+        """
+        pass

@@ -31,13 +31,13 @@ def get_all_symbols(
 
 
 @symbols_blueprint.get(
-    "/symbol/index-classification",
+    "/symbol/create-indexes",
     summary="Get index classification data",
     tags=["charts"],
 )
 def get_index_classification(session: Session = Depends(get_session)):
     try:
-        SymbolsCrud(session=session).index_classification()
+        SymbolsCrud(session=session).ingest_indeces()
         return StandardResponse(
             message="Successfully retrieved index classification data.",
             error=0,
