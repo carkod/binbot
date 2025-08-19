@@ -10,7 +10,9 @@ from exchange_apis.binance import BinanceApi
 from symbols.models import SymbolPayload
 from decimal import Decimal
 from time import time
-from typing import Sequence
+from typing import Sequence, cast
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import QueryableAttribute
 
 
 class SymbolsCrud:
@@ -59,7 +61,9 @@ class SymbolsCrud:
 
         return price_precision, qty_precision, min_notional
 
-    def get_all(self, active: Optional[bool] = None) -> Sequence[SymbolTable]:
+    def get_all(
+        self, active: Optional[bool] = None, index_id: Optional[str] = None
+    ) -> Sequence[SymbolTable]:
         """
         Get all symbols
 
@@ -83,6 +87,16 @@ class SymbolsCrud:
         """
 
         statement = select(SymbolTable)
+
+        if index_id is not None:
+            # cast here is used to avoid mypy complaining
+            statement = (
+                statement.join(cast(QueryableAttribute, SymbolTable.asset_indices))
+                .where(AssetIndexTable.id == index_id)
+                .options(
+                    selectinload(cast(QueryableAttribute, SymbolTable.asset_indices))
+                )
+            )
 
         if active is not None:
             statement = statement.where(SymbolTable.active == active)

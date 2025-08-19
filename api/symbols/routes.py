@@ -12,7 +12,9 @@ symbols_blueprint = APIRouter()
 
 @symbols_blueprint.get("/symbols", tags=["Symbols"])
 def get_all_symbols(
-    active: Optional[bool] = None, session: Session = Depends(get_session)
+    active: Optional[bool] = None,
+    index: Optional[str] = None,
+    session: Session = Depends(get_session),
 ):
     """
     Get all symbols/pairs
@@ -25,11 +27,14 @@ def get_all_symbols(
         - List: always returns a list,
         if no results are found, returns empty list
     """
-
-    response_model = SymbolsCrud(session=session).get_all(active=active)
-    data = SymbolsResponse.dump_from_table(response_model)
-
-    return {"message": "Successfully retrieved active symbols", "data": data}
+    try:
+        response_model = SymbolsCrud(session=session).get_all(
+            active=active, index_id=index
+        )
+        data = SymbolsResponse.dump_from_table(response_model)
+        return {"message": "Successfully retrieved active symbols", "data": data}
+    except Exception as e:
+        return SymbolsResponse(message=f"Error retrieving active symbols: {e}", error=1)
 
 
 @symbols_blueprint.get(
