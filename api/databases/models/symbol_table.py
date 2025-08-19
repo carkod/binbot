@@ -42,7 +42,9 @@ class SymbolTable(SQLModel, table=True):
         sa_type=BigInteger,
     )
     asset_indices: list["AssetIndexTable"] = Relationship(
-        back_populates="symbols", link_model=SymbolIndexLink, sa_relationship_kwargs={"lazy": "joined", "single_parent": True}
+        back_populates="symbols",
+        link_model=SymbolIndexLink,
+        sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
     )
 
     class Config:

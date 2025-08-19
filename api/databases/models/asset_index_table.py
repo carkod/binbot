@@ -11,6 +11,9 @@ class AssetIndexTable(SQLModel, table=True):
 
     id: str = Field(primary_key=True, description="Unique ID")
     name: str = Field(default="", description="Name of the index")
+
     symbols: list["SymbolTable"] = Relationship(
-        back_populates="asset_indices", link_model=SymbolIndexLink
+        back_populates="asset_indices",
+        link_model=SymbolIndexLink,
+        sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
     )

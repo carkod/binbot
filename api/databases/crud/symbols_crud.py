@@ -3,7 +3,6 @@ from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.models.asset_index_table import AssetIndexTable
 from databases.utils import independent_session
 from sqlmodel import Session, select
-from sqlalchemy.orm import joinedload
 from databases.models.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
@@ -221,21 +220,13 @@ class SymbolsCrud:
                 symbol = self.get_symbol(item["symbol"])
             except BinbotErrors:
                 symbol = None
-                pass
-
             if item["symbol"].endswith("USDC") and symbol is None:
                 price_precision, qty_precision, min_notional = (
                     self.calculate_precisions(item)
                 )
                 active = True
-
-                if (
-                    item["symbol"] == "BTCUSDC"
-                    or item["symbol"] == "ETHUSDC"
-                    or item["symbol"] == "BNBUSDC"
-                ):
+                if item["symbol"] in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
                     active = False
-
                 symbol = SymbolTable(
                     id=item["symbol"],
                     active=active,
@@ -248,7 +239,6 @@ class SymbolsCrud:
                 )
                 self.session.add(symbol)
                 self.session.commit()
-
         self.session.close()
 
     def ingest_indeces(self):
@@ -280,7 +270,7 @@ class SymbolsCrud:
                         asset_index = asset_index_crud.add_index(
                             name=tag, id=tag.strip().lower()
                         )
-                except Exception as e:
+                except Exception:
                     self.session.rollback()
                     continue
 

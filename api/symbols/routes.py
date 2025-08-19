@@ -1,4 +1,3 @@
-import logging
 from fastapi import APIRouter, Depends
 from databases.crud.symbols_crud import SymbolsCrud
 from symbols.models import SymbolsResponse, GetOneSymbolResponse
@@ -11,7 +10,7 @@ from typing import Optional
 symbols_blueprint = APIRouter()
 
 
-@symbols_blueprint.get("/symbols", response_model=SymbolsResponse, tags=["Symbols"])
+@symbols_blueprint.get("/symbols", tags=["Symbols"])
 def get_all_symbols(
     active: Optional[bool] = None, session: Session = Depends(get_session)
 ):
@@ -27,16 +26,10 @@ def get_all_symbols(
         if no results are found, returns empty list
     """
 
-    data = SymbolsCrud(session=session).get_all(active=active)
-    result = []
-    for item in data:
-        new_item = item.model_dump()
-        new_item["asset_indices"] = [asset.model_dump() for asset in item.asset_indices]
-        result.append(new_item)
-    return {
-        "message": "Successfully retrieved active symbols",
-        "data": result
-    }
+    response_model = SymbolsCrud(session=session).get_all(active=active)
+    data = SymbolsResponse.dump_from_table(response_model)
+
+    return {"message": "Successfully retrieved active symbols", "data": data}
 
 
 @symbols_blueprint.get(

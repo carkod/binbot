@@ -66,7 +66,11 @@ def upgrade() -> None:
         if_not_exists=True,
     )
     op.create_index(
-        op.f("ix_paper_trading_deal_id"), "paper_trading", ["deal_id"], unique=False, if_not_exists=True
+        op.f("ix_paper_trading_deal_id"),
+        "paper_trading",
+        ["deal_id"],
+        unique=False,
+        if_not_exists=True,
     )
     # ### end Alembic commands ###
 

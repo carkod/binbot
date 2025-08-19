@@ -10,6 +10,7 @@ from tools.handle_error import handle_binance_errors
 from tools.cache import cache
 from requests import HTTPError
 
+
 class BinanceApi:
     """
     Binance API URLs
