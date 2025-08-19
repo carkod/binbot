@@ -26,8 +26,8 @@ def upgrade() -> None:
     op.create_foreign_key(
         None, "paper_trading", "deal", ["deal_id"], ["id"], ondelete="CASCADE"
     )
-    op.drop_column("paper_trading", "short_buy_price")
-    op.drop_column("paper_trading", "short_sell_price")
+    op.drop_column("paper_trading", "short_buy_price", if_exists=True)
+    op.drop_column("paper_trading", "short_sell_price", if_exists=True)
     # ### end Alembic commands ###
 
 

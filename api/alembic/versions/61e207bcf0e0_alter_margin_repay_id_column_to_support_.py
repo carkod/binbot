@@ -28,7 +28,7 @@ def upgrade() -> None:
         type_=sa.BigInteger(),
         nullable=True,
     )
-    op.drop_column("paper_trading", "total_commission")
+    op.drop_column("paper_trading", "total_commission", if_exists=True)
     op.create_unique_constraint(None, "test_autotrade", ["id"])
     # ### end Alembic commands ###
 

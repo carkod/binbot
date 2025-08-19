@@ -26,7 +26,7 @@ def upgrade() -> None:
     op.drop_constraint(
         "exchange_order_paper_trading_id_fkey", "exchange_order", type_="foreignkey"
     )
-    op.drop_column("exchange_order", "paper_trading_id")
+    op.drop_column("exchange_order", "paper_trading_id", if_exists=True)
     # ### end Alembic commands ###
 
 
@@ -49,5 +49,6 @@ def downgrade() -> None:
         "exchange_order",
         ["paper_trading_id"],
         unique=False,
+        if_not_exists=True,
     )
     # ### end Alembic commands ###
