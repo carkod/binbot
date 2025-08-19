@@ -42,6 +42,7 @@ class ApiDb:
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
         self.create_dummy_bot()
+        self.symbols.ingest_indeces()
         if os.environ["ENV"] != "ci":
             self.init_symbols()
             # Depends on autotrade settings
@@ -291,10 +292,4 @@ class ApiDb:
             return
         assets = Assets(self.session)
         assets.store_balance()
-        pass
-
-    def ingest_tags(self):
-        """
-        Ingest tags into the database.
-        """
         pass

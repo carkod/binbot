@@ -9,9 +9,8 @@ if TYPE_CHECKING:
 class AssetIndexTable(SQLModel, table=True):
     __tablename__ = "asset_index"
 
-    id: str = Field(default=None, primary_key=True, description="Unique ID")
+    id: str = Field(primary_key=True, description="Unique ID")
     name: str = Field(default="", description="Name of the index")
-    value: str = Field(default="", description="Value of the index")
     symbols: list["SymbolTable"] = Relationship(
         back_populates="asset_indices", link_model=SymbolIndexLink
     )

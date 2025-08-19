@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends
 from databases.crud.symbols_crud import SymbolsCrud
 from symbols.models import SymbolsResponse, GetOneSymbolResponse
@@ -27,7 +28,15 @@ def get_all_symbols(
     """
 
     data = SymbolsCrud(session=session).get_all(active=active)
-    return SymbolsResponse(message="Successfully retrieved active symbols", data=data)
+    result = []
+    for item in data:
+        new_item = item.model_dump()
+        new_item["asset_indices"] = [asset.model_dump() for asset in item.asset_indices]
+        result.append(new_item)
+    return {
+        "message": "Successfully retrieved active symbols",
+        "data": result
+    }
 
 
 @symbols_blueprint.get(
@@ -35,7 +44,7 @@ def get_all_symbols(
     summary="Get index classification data",
     tags=["charts"],
 )
-def get_index_classification(session: Session = Depends(get_session)):
+def create_indexes(session: Session = Depends(get_session)):
     try:
         SymbolsCrud(session=session).ingest_indeces()
         return StandardResponse(

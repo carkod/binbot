@@ -1,6 +1,9 @@
+import logging
 from databases.crud.asset_index_crud import AssetIndexCrud
+from databases.models.asset_index_table import AssetIndexTable
 from databases.utils import independent_session
 from sqlmodel import Session, select
+from sqlalchemy.orm import joinedload
 from databases.models.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
@@ -92,7 +95,6 @@ class SymbolsCrud:
             )
 
         results = self.session.exec(statement).unique().all()
-        self.session.close()
         return results
 
     def get_symbol(self, symbol: str) -> SymbolTable:
@@ -258,18 +260,33 @@ class SymbolsCrud:
 
         active_symbols = self.get_all(active=True)
 
+        if len(active_symbols[0].asset_indices) > 0:
+            logging.info("Asset indices already exist for active symbols.")
+            return
+
         for symbol in active_symbols:
             data = binance_api.get_tags(symbol.id)
             if not data:
                 continue
 
             for tag in data["tags"]:
-                asset_index = asset_index_crud.add_index(
-                    name=tag, value=tag.strip().lower()
-                )
+                try:
+                    asset_index = self.session.exec(
+                        select(AssetIndexTable).where(
+                            AssetIndexTable.id == tag.strip().lower()
+                        )
+                    ).first()
+                    if not asset_index:
+                        asset_index = asset_index_crud.add_index(
+                            name=tag, id=tag.strip().lower()
+                        )
+                except Exception as e:
+                    self.session.rollback()
+                    continue
+
                 if asset_index not in symbol.asset_indices:
                     symbol.asset_indices.append(asset_index)
-                    symbol.description = f"{tag['an']}"
+                    symbol.description = data["an"]
 
             self.session.add(symbol)
             self.session.commit()

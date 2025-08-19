@@ -29,10 +29,10 @@ class AssetIndexCrud:
         else:
             raise ValueError("Asset index not found")
 
-    def add_index(self, name: str, value: str):
+    def add_index(self, id: str, name: str):
         index = AssetIndexTable(
+            id=id,
             name=name,
-            value=value,
         )
         self.session.add(index)
         self.session.commit()

@@ -1,8 +1,8 @@
 """create asset_index table
 
-Revision ID: 231078b0422d
-Revises: 680413ed7dd3
-Create Date: 2025-08-18 22:58:40.435504
+Revision ID: 28b250221d55
+Revises: 2a7c1f0c1a3b
+Create Date: 2025-08-18 23:38:24.590544
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "231078b0422d"
+revision: str = "28b250221d55"
 down_revision: Union[str, None] = "2a7c1f0c1a3b"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -25,7 +25,6 @@ def upgrade() -> None:
         "asset_index",
         sa.Column("id", sa.String(), primary_key=True),
         sa.Column("name", sa.String(), nullable=False, default=""),
-        sa.Column("value", sa.String(), nullable=False, default=""),
     )
     op.add_column(
         "symbol",

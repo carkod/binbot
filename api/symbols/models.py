@@ -7,6 +7,9 @@ from pydantic import Field, BaseModel
 class SymbolsResponse(StandardResponse):
     data: Sequence[SymbolTable] = Field(default=[])
 
+    class Config:
+        from_attributes = True
+
 
 class GetOneSymbolResponse(StandardResponse):
     data: Optional[SymbolTable] = Field(default=None)

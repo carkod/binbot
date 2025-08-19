@@ -8,7 +8,7 @@ from tools.exceptions import IsolateBalanceError
 from requests import Session, request
 from tools.handle_error import handle_binance_errors
 from tools.cache import cache
-
+from requests import HTTPError
 
 class BinanceApi:
     """
@@ -579,5 +579,7 @@ class BinanceApi:
         """
         Get tags for a specific symbol.
         """
-        data = self.request(self.tags_url, payload={"symbol": symbol})
-        return data
+        response = self.request(self.tags_url, params={"symbol": symbol})
+        if response["success"]:
+            return response["data"]
+        raise HTTPError(response["message"])
