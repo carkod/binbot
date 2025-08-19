@@ -42,10 +42,9 @@ class ApiDb:
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
         self.create_dummy_bot()
-        if os.environ["ENV"] != "ci":
-            self.init_symbols()
-            # Depends on autotrade settings
-            self.init_balances()
+        self.init_symbols()
+        # Depends on autotrade settings
+        self.init_balances()
 
         logging.info("Finishing db operations")
 

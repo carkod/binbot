@@ -46,6 +46,19 @@ def upgrade() -> None:
         unique=False,
         if_not_exists=True,
     )
+    # Add paper_trading_id column only if it does not exist
+    op.execute(
+        """DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name='exchange_order' AND column_name='paper_trading_id'
+            ) THEN
+                ALTER TABLE exchange_order ADD COLUMN paper_trading_id UUID;
+            END IF;
+        END$$;"""
+    )
+    # Create index only if it does not exist (already handled by if_not_exists=True)
     op.create_index(
         op.f("ix_exchange_order_paper_trading_id"),
         "exchange_order",
@@ -53,8 +66,19 @@ def upgrade() -> None:
         unique=False,
         if_not_exists=True,
     )
-    op.drop_constraint(
-        "exchange_order_paper_trading_id_fkey", "exchange_order", type_="foreignkey"
+    # SAFE FIX: Drop constraint only if it exists (works on all Alembic versions)
+    op.execute(
+        """DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.table_constraints
+                WHERE constraint_name = 'exchange_order_paper_trading_id_fkey'
+                  AND table_name = 'exchange_order'
+            ) THEN
+                ALTER TABLE exchange_order DROP CONSTRAINT exchange_order_paper_trading_id_fkey;
+            END IF;
+        END$$;
+        """
     )
     op.create_foreign_key(
         None,
