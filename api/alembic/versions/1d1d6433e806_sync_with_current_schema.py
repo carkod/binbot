@@ -20,15 +20,26 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "symbol",
-        sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    # Only add the column if it does not exist
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name='symbol' AND column_name='description'
+        """)
     )
+    if not result.fetchone():
+        op.add_column(
+            "symbol",
+            sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        )
+        # Set a default value for existing NULLs
+        op.execute("UPDATE symbol SET description = '' WHERE description IS NULL")
+        # Alter the column to be NOT NULL
+        op.alter_column(
+            "symbol", "description", existing_type=sa.String(), nullable=False
+        )
     op.drop_column("symbol", "index")
-    # Set a default value for existing NULLs
-    op.execute("UPDATE symbol SET description = '' WHERE description IS NULL")
-    # Alter the column to be NOT NULL
-    op.alter_column("symbol", "description", existing_type=sa.String(), nullable=False)
 
 
 def downgrade() -> None:
