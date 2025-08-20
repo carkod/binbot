@@ -11,12 +11,20 @@ from databases.models import SQLModel
 
 # Configure logging level and format from environment variables
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
 logger = logging.getLogger(__name__)
+
+logger.info("Env vars in alembic env: %s", dict(os.environ))
 
 config = context.config
 config.set_main_option("sqlalchemy.url", db_url)
 target_metadata = SQLModel.metadata
 load_dotenv("../.env")
+
+logging.info("Env vars in alembic env: ")
+for key, value in os.environ.items():
+    if key.startswith("DB_"):
+        logging.info(f"  {key}: {value}")
 
 
 def run_migrations_offline() -> None:
