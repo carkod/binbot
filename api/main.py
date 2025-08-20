@@ -6,7 +6,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from databases.api_db import ApiDb
 from account.routes import account_blueprint
 from autotrade.routes import autotrade_settings_blueprint
 from bots.routes import bot_blueprint
@@ -22,8 +21,9 @@ from databases.models import *  # noqa
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        api_db = ApiDb()
-        api_db.init_db()
+        # api_db = ApiDb()
+        # api_db.init_db()
+        pass
     except Exception as error:
         logging.error(f"Error initializing database: {error}")
         pass
