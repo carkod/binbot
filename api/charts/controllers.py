@@ -59,10 +59,13 @@ class MarketDominationController(Database):
         avg_gain = sum(gains) / len(gains) if gains else 0.0
         avg_loss = abs(sum(losses) / len(losses)) if losses else 0.0
 
-        if decliners > 0 and avg_loss > 0:
-            strength_index = (advancers * avg_gain) / (decliners * avg_loss)
+        gain_power = advancers * avg_gain
+        loss_power = decliners * avg_loss
+
+        if (gain_power + loss_power) > 0:
+            strength_index = (gain_power - loss_power) / (gain_power + loss_power)
         else:
-            strength_index = float("inf") if advancers > 0 else 0.0
+            strength_index = 0.0
 
         adr_data = AdrSeriesDb(
             timestamp=timestamp,
