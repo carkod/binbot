@@ -14,9 +14,9 @@ from tools.exceptions import (
 )
 from tools.handle_error import json_response, json_response_error, json_response_message
 from sqlmodel import Session
+
 from databases.utils import get_session
 from databases.crud.balances_crud import BalancesCrud
-
 
 account_blueprint = APIRouter()
 

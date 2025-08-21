@@ -1,0 +1,28 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/asset-index/
+  response:
+    body:
+      string: '[{"name":"Test Index","id":"test-index"}]'
+    headers:
+      content-length:
+      - '41'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,0 +1,30 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '0'
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: PUT
+    uri: http://testserver/asset-index/test-index?id=test-index&name=Test+Index
+  response:
+    body:
+      string: '{"name":"Test Index","id":"test-index"}'
+    headers:
+      content-length:
+      - '39'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -40,14 +40,10 @@ class AssetIndexCrud:
         self.session.close()
         return index
 
-    def edit_index(
-        self, index_id: str, name: Optional[str] = None, value: Optional[str] = None
-    ):
+    def edit_index(self, index_id: str, name: Optional[str] = None):
         index = self.get_index(index_id)
         if name is not None:
             index.name = name
-        if value is not None:
-            index.value = value
         self.session.add(index)
         self.session.commit()
         self.session.refresh(index)

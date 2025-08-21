@@ -13,8 +13,6 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 logger = logging.getLogger(__name__)
 
-logger.info("Env vars in alembic env: %s", dict(os.environ))
-
 config = context.config
 config.set_main_option("sqlalchemy.url", db_url)
 target_metadata = SQLModel.metadata

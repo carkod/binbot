@@ -39,7 +39,7 @@ def upgrade() -> None:
         op.alter_column(
             "symbol", "description", existing_type=sa.String(), nullable=False
         )
-    op.drop_column("symbol", "index")
+    op.drop_column("symbol", "index", if_exists=True)
 
 
 def downgrade() -> None:
