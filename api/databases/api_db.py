@@ -1,5 +1,6 @@
 import logging
 import os
+from tools.exceptions import BinbotErrors
 from databases.models.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.models.deal_table import DealTable
 from databases.models.order_table import ExchangeOrderTable
@@ -270,7 +271,12 @@ class ApiDb:
         First check if symbols have been updated in the last 24 hours.
         """
 
-        symbol_info = self.symbols.get_symbol("BTCUSDC")
+        try:
+            symbol_info = self.symbols.get_symbol("BTCUSDC")
+        except BinbotErrors:
+            self.symbols.symbols_table_ingestion()
+            pass
+
         if (
             symbol_info
             and symbol_info.updated_at
