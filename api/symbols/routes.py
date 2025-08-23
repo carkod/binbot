@@ -10,9 +10,11 @@ from typing import Optional
 symbols_blueprint = APIRouter()
 
 
-@symbols_blueprint.get("/symbols", response_model=SymbolsResponse, tags=["Symbols"])
+@symbols_blueprint.get("/symbols", tags=["Symbols"])
 def get_all_symbols(
-    active: Optional[bool] = None, session: Session = Depends(get_session)
+    active: Optional[bool] = None,
+    index: Optional[str] = None,
+    session: Session = Depends(get_session),
 ):
     """
     Get all symbols/pairs
@@ -25,19 +27,24 @@ def get_all_symbols(
         - List: always returns a list,
         if no results are found, returns empty list
     """
-
-    data = SymbolsCrud(session=session).get_all(active=active)
-    return SymbolsResponse(message="Successfully retrieved active symbols", data=data)
+    try:
+        response_model = SymbolsCrud(session=session).get_all(
+            active=active, index_id=index
+        )
+        data = SymbolsResponse.dump_from_table(response_model)
+        return {"message": "Successfully retrieved active symbols", "data": data}
+    except Exception as e:
+        return SymbolsResponse(message=f"Error retrieving active symbols: {e}", error=1)
 
 
 @symbols_blueprint.get(
-    "/symbol/index-classification",
+    "/symbol/create-indexes",
     summary="Get index classification data",
     tags=["charts"],
 )
-def get_index_classification(session: Session = Depends(get_session)):
+def create_indexes(session: Session = Depends(get_session)):
     try:
-        SymbolsCrud(session=session).index_classification()
+        SymbolsCrud(session=session).ingest_indeces()
         return StandardResponse(
             message="Successfully retrieved index classification data.",
             error=0,

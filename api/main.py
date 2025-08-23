@@ -15,6 +15,7 @@ from orders.routes import order_blueprint
 from paper_trading.routes import paper_trading_blueprint
 from symbols.routes import symbols_blueprint
 from user.routes import user_blueprint
+from asset_index.routes import asset_index_blueprint
 
 from databases.models import *  # noqa
 
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI):
     try:
         api_db = ApiDb()
         api_db.init_db()
+        pass
     except Exception as error:
         logging.error(f"Error initializing database: {error}")
         pass
@@ -58,6 +60,7 @@ app.include_router(order_blueprint, prefix="/order")
 app.include_router(charts_blueprint, prefix="/charts")
 app.include_router(symbols_blueprint)
 app.include_router(autotrade_settings_blueprint, prefix="/autotrade-settings")
+app.include_router(asset_index_blueprint, prefix="/asset-index")
 
 
 @app.exception_handler(RequestValidationError)

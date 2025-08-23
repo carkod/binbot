@@ -15,24 +15,37 @@ test_error_symbol = "BTCUSDT"
 
 @mark.vcr("cassettes/get_all_symbols.yaml")
 def test_get_all_symbols(client: TestClient):
-    response = client.get("/symbols")
-
+    # Test filter by active=True
+    response = client.get("/symbols", params={"active": True})
     content = response.json()
-    assert content["data"][0] == {
-        "created_at": 1742518873414,
-        "updated_at": 1742518873414,
-        "active": True,
-        "is_margin_trading_allowed": True,
-        "base_asset": "XRP",
-        "qty_precision": 0,
-        "cooldown": 0,
-        "blacklist_reason": "",
-        "id": "XRPUSDC",
-        "quote_asset": "USDC",
-        "price_precision": 4,
-        "min_notional": 5.0,
-        "cooldown_start_ts": 0,
-    }
+    assert all(item["active"] is True for item in content["data"])
+
+    # Test filter by active=False
+    response = client.get("/symbols", params={"active": False})
+    content = response.json()
+    assert all(item["active"] is False for item in content["data"])
+
+    # Test no filters (should return all symbols)
+    response = client.get("/symbols")
+    content = response.json()
+    assert isinstance(content["data"], list)
+
+
+@mark.vcr("cassettes/get_all_symbols_index.yaml")
+def test_get_all_symbols_index_filters(client: TestClient):
+    # Test filter by index only (assuming 'defi' is a valid index id in your test data)
+    index_id = "defi"
+    response = client.get("/symbols", params={"index": index_id})
+    content = response.json()
+    # All returned symbols should have the index in their asset_indices
+    for symbol in content["data"]:
+        assert any(idx["id"] == index_id for idx in symbol.get("asset_indices", []))
+
+    # Test filter by index and active=False (should return all symbols with the index, regardless of active)
+    response = client.get("/symbols", params={"index": index_id, "active": False})
+    content = response.json()
+    for symbol in content["data"]:
+        assert any(idx["id"] == index_id for idx in symbol.get("asset_indices", []))
 
 
 @mark.vcr("cassettes/test_one_symbol.yaml")

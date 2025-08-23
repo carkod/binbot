@@ -8,6 +8,7 @@ from tools.exceptions import IsolateBalanceError
 from requests import Session, request
 from tools.handle_error import handle_binance_errors
 from tools.cache import cache
+from requests import HTTPError
 
 
 class BinanceApi:
@@ -27,6 +28,7 @@ class BinanceApi:
     MARKET_DATA_BASE = market_api_servers[randrange(3) - 1]
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
+    tags_url = "https://www.binance.com/bapi/asset/v2/public/asset-service/product/get-product-by-symbol"
 
     recvWindow = 9000
     secret: str = os.getenv("BINANCE_SECRET", "abc")
@@ -573,3 +575,12 @@ class BinanceApi:
             return self.ticker_24_pct_change(symbol="BTCUSDC", type="FULL")
 
         return _cached()
+
+    def get_tags(self, symbol: str) -> dict:
+        """
+        Get tags for a specific symbol.
+        """
+        response = self.request(self.tags_url, params={"symbol": symbol})
+        if response["success"]:
+            return response["data"]
+        raise HTTPError(response["message"])

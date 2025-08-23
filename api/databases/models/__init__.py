@@ -6,3 +6,4 @@ from .bot_table import *  # noqa
 from .autotrade_table import *  # noqa
 from .account_balances import *  # noqa
 from .symbol_table import *  # noqa
+from .asset_index_table import *  # noqa

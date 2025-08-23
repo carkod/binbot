@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 import logging
 import os
-from dotenv import load_dotenv
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
@@ -11,12 +10,12 @@ from databases.models import SQLModel
 
 # Configure logging level and format from environment variables
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
 logger = logging.getLogger(__name__)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", db_url)
 target_metadata = SQLModel.metadata
-load_dotenv("../.env")
 
 
 def run_migrations_offline() -> None:

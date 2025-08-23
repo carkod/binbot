@@ -33,4 +33,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Drop the `index` column on downgrade
-    op.drop_column("symbol", "index")
+    op.drop_column("symbol", "index", if_exists=True)

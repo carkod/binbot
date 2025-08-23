@@ -1,7 +1,12 @@
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 from databases.utils import timestamp
 from sqlalchemy import BigInteger, Column
 from pydantic import field_validator
+from databases.models.symbol_index_link import SymbolIndexLink
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from databases.models.asset_index_table import AssetIndexTable
 
 
 class SymbolTable(SQLModel, table=True):
@@ -16,6 +21,7 @@ class SymbolTable(SQLModel, table=True):
     )
     active: bool = Field(default=True, description="Blacklisted items = False")
     blacklist_reason: str = Field(default="")
+    description: str = Field(default="", description="Description of the symbol")
     is_margin_trading_allowed: bool = Field(default=False)
     quote_asset: str = Field(
         default="", description="in BTCUSDC, BTC would be quote asset"
@@ -35,10 +41,14 @@ class SymbolTable(SQLModel, table=True):
         description="Timestamp when cooldown started in milliseconds",
         sa_type=BigInteger,
     )
-    index: str = Field(
-        default="",
-        description="Index of the symbol, used for classification, e.g. memecoin",
+    asset_indices: list["AssetIndexTable"] = Relationship(
+        back_populates="symbols",
+        link_model=SymbolIndexLink,
+        sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
     )
+
+    class Config:
+        from_attributes = True
 
     @field_validator("cooldown", "cooldown_start_ts")
     @classmethod

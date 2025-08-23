@@ -1,14 +1,18 @@
+import logging
+from databases.crud.asset_index_crud import AssetIndexCrud
+from databases.models.asset_index_table import AssetIndexTable
 from databases.utils import independent_session
 from sqlmodel import Session, select
 from databases.models.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
-from exchange_apis.coingecko import CoinGecko
 from symbols.models import SymbolPayload
 from decimal import Decimal
-from time import time, sleep
-from typing import Sequence
+from time import time
+from typing import Sequence, cast
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import QueryableAttribute
 
 
 class SymbolsCrud:
@@ -25,7 +29,7 @@ class SymbolsCrud:
         if session is None:
             session = independent_session()
         self.session = session
-        self.coingecko_api = CoinGecko()
+        self.binance_api = BinanceApi()
 
     """
     Convert binance tick/step sizes to decimal
@@ -57,7 +61,9 @@ class SymbolsCrud:
 
         return price_precision, qty_precision, min_notional
 
-    def get_all(self, active: Optional[bool] = None) -> Sequence[SymbolTable]:
+    def get_all(
+        self, active: Optional[bool] = None, index_id: Optional[str] = None
+    ) -> Sequence[SymbolTable]:
         """
         Get all symbols
 
@@ -82,6 +88,16 @@ class SymbolsCrud:
 
         statement = select(SymbolTable)
 
+        if index_id is not None:
+            # cast here is used to avoid mypy complaining
+            statement = (
+                statement.join(cast(QueryableAttribute, SymbolTable.asset_indices))
+                .where(AssetIndexTable.id == index_id)
+                .options(
+                    selectinload(cast(QueryableAttribute, SymbolTable.asset_indices))
+                )
+            )
+
         if active is not None:
             statement = statement.where(SymbolTable.active == active)
             # cooldown_start_ts is in milliseconds
@@ -92,7 +108,6 @@ class SymbolsCrud:
             )
 
         results = self.session.exec(statement).unique().all()
-        self.session.close()
         return results
 
     def get_symbol(self, symbol: str) -> SymbolTable:
@@ -219,21 +234,13 @@ class SymbolsCrud:
                 symbol = self.get_symbol(item["symbol"])
             except BinbotErrors:
                 symbol = None
-                pass
-
             if item["symbol"].endswith("USDC") and symbol is None:
                 price_precision, qty_precision, min_notional = (
                     self.calculate_precisions(item)
                 )
                 active = True
-
-                if (
-                    item["symbol"] == "BTCUSDC"
-                    or item["symbol"] == "ETHUSDC"
-                    or item["symbol"] == "BNBUSDC"
-                ):
+                if item["symbol"] in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
                     active = False
-
                 symbol = SymbolTable(
                     id=item["symbol"],
                     active=active,
@@ -246,30 +253,46 @@ class SymbolsCrud:
                 )
                 self.session.add(symbol)
                 self.session.commit()
-
         self.session.close()
 
-    def index_classification(self):
-        categories = self.coingecko_api.get_all_categories()
+    def ingest_indeces(self):
+        """
+        Ingest tags from Binance
+        """
+        binance_api = BinanceApi()
+        asset_index_crud = AssetIndexCrud()
 
-        all_records = []
-        for cat_id in categories:
-            coins = self.coingecko_api.get_coins_in_category(cat_id)
-            symbol = self.get_symbol(cat_id)
-            if symbol:
-                for coin in coins:
-                    all_records.append(
-                        (
-                            coin["id"],
-                            coin["symbol"],
-                            coin["name"],
-                            cat_id,
-                            coin["market_cap"],
-                            coin["last_updated"],
+        active_symbols = self.get_all(active=True)
+
+        if len(active_symbols[0].asset_indices) > 0:
+            logging.info("Asset indices already exist for active symbols.")
+            return
+
+        for symbol in active_symbols:
+            data = binance_api.get_tags(symbol.id)
+            if not data:
+                continue
+
+            for tag in data["tags"]:
+                try:
+                    asset_index = self.session.exec(
+                        select(AssetIndexTable).where(
+                            AssetIndexTable.id == tag.strip().lower()
                         )
-                    )
-                    # Store all records in the database
-                    symbol.index = coin["id"]
-                    self.session.commit()
-                    self.session.close()
-                    sleep(7)
+                    ).first()
+                    if not asset_index:
+                        asset_index = asset_index_crud.add_index(
+                            name=tag, id=tag.strip().lower()
+                        )
+                except Exception:
+                    self.session.rollback()
+                    continue
+
+                if asset_index not in symbol.asset_indices:
+                    symbol.asset_indices.append(asset_index)
+                    symbol.description = data["an"]
+
+            self.session.add(symbol)
+            self.session.commit()
+
+        self.session.close()
