@@ -1,6 +1,5 @@
-import logging
 from databases.crud.asset_index_crud import AssetIndexCrud
-from databases.models.asset_index_table import AssetIndexTable
+from databases.models.asset_index_table import AssetIndexTable, SymbolIndexLink
 from databases.utils import independent_session
 from sqlmodel import Session, select
 from databases.models.symbol_table import SymbolTable
@@ -9,10 +8,12 @@ from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
 from symbols.models import SymbolPayload
 from decimal import Decimal
-from time import time
-from typing import Sequence, cast
-from sqlalchemy.orm import selectinload
-from sqlalchemy.orm import QueryableAttribute
+from time import time, sleep
+from typing import cast
+from sqlalchemy.orm import selectinload, QueryableAttribute
+from sqlalchemy.sql import delete
+import logging
+from databases.utils import engine
 
 
 class SymbolsCrud:
@@ -63,7 +64,7 @@ class SymbolsCrud:
 
     def get_all(
         self, active: Optional[bool] = None, index_id: Optional[str] = None
-    ) -> Sequence[SymbolTable]:
+    ) -> list[SymbolTable]:
         """
         Get all symbols
 
@@ -86,17 +87,15 @@ class SymbolsCrud:
         if no results are found, returns empty list
         """
 
-        statement = select(SymbolTable)
+        statement = select(SymbolTable).options(
+            selectinload(cast(QueryableAttribute, SymbolTable.asset_indices))
+        )
 
         if index_id is not None:
             # cast here is used to avoid mypy complaining
-            statement = (
-                statement.join(cast(QueryableAttribute, SymbolTable.asset_indices))
-                .where(AssetIndexTable.id == index_id)
-                .options(
-                    selectinload(cast(QueryableAttribute, SymbolTable.asset_indices))
-                )
-            )
+            statement = statement.join(
+                cast(QueryableAttribute, SymbolTable.asset_indices)
+            ).where(AssetIndexTable.id == index_id)
 
         if active is not None:
             statement = statement.where(SymbolTable.active == active)
@@ -108,7 +107,8 @@ class SymbolsCrud:
             )
 
         results = self.session.exec(statement).unique().all()
-        return results
+        self.session.close()
+        return list(results)
 
     def get_symbol(self, symbol: str) -> SymbolTable:
         """
@@ -122,6 +122,7 @@ class SymbolsCrud:
             self.session.close()
             return result
         else:
+            self.session.close()
             raise BinbotErrors("Symbol not found")
 
     def add_symbol(
@@ -202,6 +203,19 @@ class SymbolsCrud:
         self.session.close()
         return symbol_model
 
+    def delete_all(self):
+        """
+        Only used for cleanup and initialisation
+        do not use for normal operations
+
+        Many systems rely on this list of symbols
+        """
+        with Session(engine) as session:
+            session.execute(delete(SymbolIndexLink))
+            session.commit()
+            session.execute(delete(SymbolTable))
+            session.commit()
+
     def base_asset(self, symbol: str):
         """
         Finds base asset using Symbols database
@@ -211,17 +225,62 @@ class SymbolsCrud:
         base_asset = self.session.exec(query).first()
         return base_asset
 
-    def symbols_table_ingestion(self):
+    def ingest_indeces(self):
+        """
+        Ingest tags from Binance
+        """
+        logging.debug("Ingesting indeces")
+        binance_api = BinanceApi()
+
+        active_symbols = self.get_all(active=True)
+
+        for symbol in active_symbols:
+            data = binance_api.get_tags(symbol.id)
+            if not data:
+                continue
+
+            for tag in data["tags"]:
+                try:
+                    asset_index = self.session.exec(
+                        select(AssetIndexTable).where(
+                            AssetIndexTable.id == tag.strip().lower()
+                        )
+                    ).first()
+                except Exception:
+                    self.session.rollback()
+                    continue
+
+                if not asset_index:
+                    asset_index_model = AssetIndexTable(
+                        id=tag.strip().lower(), name=tag
+                    )
+                    symbol.asset_indices.append(asset_index_model)
+                    symbol.description = data["an"]
+
+            self.session.add(symbol)
+            self.session.commit()
+
+        self.session.close()
+
+    def etl_symbols_and_indexes(self):
         """
         Full data ingestions of symbol (e.g. ETHUSDC)
         for the symbols table
 
-        This populates the table with Binance pairs
+        This populates the table with Binance pairs from exchange_info
         future: if additional exchanges are added,
         symbol pairs should be consolidated in this table
+
+        It also resets and repopulates indexes associated with these symbols
         """
         binance_api = BinanceApi()
         exchange_info_data = binance_api.exchange_info()
+
+        # Reset symbols table (this should reset link tables)
+        self.delete_all()
+        # Delete index tables, these will be refilled later
+        asset_index_crud = AssetIndexCrud()
+        asset_index_crud.delete_all()
 
         for item in exchange_info_data["symbols"]:
             # Only store fiat market exclude other fiats.
@@ -252,47 +311,23 @@ class SymbolsCrud:
                     is_margin_trading_allowed=item["isMarginTradingAllowed"],
                 )
                 self.session.add(symbol)
+
+                tags_data = binance_api.get_tags(item["symbol"])
+                if tags_data:
+                    for tag in tags_data["tags"]:
+                        tag_id = tag.strip().lower()
+                        asset_index = self.session.exec(
+                            select(AssetIndexTable).where(AssetIndexTable.id == tag_id)
+                        ).first()
+                        if not asset_index:
+                            asset_index = AssetIndexTable(id=tag_id, name=tag)
+                            self.session.add(asset_index)
+                            self.session.commit()
+                            self.session.refresh(asset_index)
+                        if asset_index not in symbol.asset_indices:
+                            symbol.asset_indices.append(asset_index)
+
+                sleep(0.1)  # To avoid hitting rate limits
+
                 self.session.commit()
-        self.session.close()
-
-    def ingest_indeces(self):
-        """
-        Ingest tags from Binance
-        """
-        binance_api = BinanceApi()
-        asset_index_crud = AssetIndexCrud()
-
-        active_symbols = self.get_all(active=True)
-
-        if len(active_symbols[0].asset_indices) > 0:
-            logging.info("Asset indices already exist for active symbols.")
-            return
-
-        for symbol in active_symbols:
-            data = binance_api.get_tags(symbol.id)
-            if not data:
-                continue
-
-            for tag in data["tags"]:
-                try:
-                    asset_index = self.session.exec(
-                        select(AssetIndexTable).where(
-                            AssetIndexTable.id == tag.strip().lower()
-                        )
-                    ).first()
-                    if not asset_index:
-                        asset_index = asset_index_crud.add_index(
-                            name=tag, id=tag.strip().lower()
-                        )
-                except Exception:
-                    self.session.rollback()
-                    continue
-
-                if asset_index not in symbol.asset_indices:
-                    symbol.asset_indices.append(asset_index)
-                    symbol.description = data["an"]
-
-            self.session.add(symbol)
-            self.session.commit()
-
         self.session.close()

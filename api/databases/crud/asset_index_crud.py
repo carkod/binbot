@@ -2,6 +2,8 @@ from databases.utils import independent_session
 from sqlmodel import Session, select
 from databases.models.asset_index_table import AssetIndexTable
 from typing import Optional, Sequence
+from sqlalchemy.sql import delete
+from databases.utils import engine
 
 
 class AssetIndexCrud:
@@ -56,3 +58,8 @@ class AssetIndexCrud:
         self.session.commit()
         self.session.close()
         return index
+
+    def delete_all(self):
+        with Session(engine) as session:
+            session.execute(delete(AssetIndexTable))
+            session.commit()

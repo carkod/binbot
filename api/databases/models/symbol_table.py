@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from databases.utils import timestamp
 from sqlalchemy import BigInteger, Column
 from pydantic import field_validator
-from databases.models.symbol_index_link import SymbolIndexLink
+from databases.models.asset_index_table import SymbolIndexLink
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -44,7 +44,11 @@ class SymbolTable(SQLModel, table=True):
     asset_indices: list["AssetIndexTable"] = Relationship(
         back_populates="symbols",
         link_model=SymbolIndexLink,
-        sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
+        sa_relationship_kwargs={
+            "lazy": "joined",
+            "single_parent": True,
+            "cascade": "all, delete, delete-orphan",
+        },
     )
 
     class Config:

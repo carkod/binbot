@@ -1,6 +1,5 @@
 import logging
 import os
-from tools.exceptions import BinbotErrors
 from databases.models.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.models.deal_table import DealTable
 from databases.models.order_table import ExchangeOrderTable
@@ -21,8 +20,8 @@ from alembic import command
 from databases.utils import engine
 from account.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
+from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.db import setup_kafka_db
-from datetime import datetime, timedelta
 
 
 class ApiDb:
@@ -33,6 +32,7 @@ class ApiDb:
     def __init__(self):
         self.session = Session(engine)
         self.symbols = SymbolsCrud(self.session)
+        self.asset_indexes = AssetIndexCrud(self.session)
         self.kafka_db = setup_kafka_db()
         pass
 
@@ -270,22 +270,14 @@ class ApiDb:
 
         First check if symbols have been updated in the last 24 hours.
         """
+        # Complete reset
+        self.symbols.etl_symbols_and_indexes()
+        # try:
+        #     symbol_info = self.symbols.get_symbol("BTCUSDC")
+        # except BinbotErrors:
+        #     self.symbols.symbols_table_ingestion()
+        #     pass
 
-        try:
-            symbol_info = self.symbols.get_symbol("BTCUSDC")
-        except BinbotErrors:
-            self.symbols.symbols_table_ingestion()
-            pass
-
-        if (
-            symbol_info
-            and symbol_info.updated_at
-            and symbol_info.updated_at
-            < int((datetime.now() - timedelta(hours=24)).timestamp() * 1000)
-        ):
-            return
-
-        self.symbols.symbols_table_ingestion()
         pass
 
     def init_balances(self):
