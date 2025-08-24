@@ -270,13 +270,9 @@ class ApiDb:
 
         First check if symbols have been updated in the last 24 hours.
         """
-        # Complete reset
-        self.symbols.etl_symbols_and_indexes()
-        # try:
-        #     symbol_info = self.symbols.get_symbol("BTCUSDC")
-        # except BinbotErrors:
-        #     self.symbols.symbols_table_ingestion()
-        #     pass
+        symbol_info = self.symbols.get_symbol("BTCUSDC")
+        if not symbol_info:
+            self.symbols.etl_symbols_and_indexes()
 
         pass
 
