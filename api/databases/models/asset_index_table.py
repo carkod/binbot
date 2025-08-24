@@ -8,6 +8,8 @@ if TYPE_CHECKING:
 
 
 class SymbolIndexLink(SQLModel, table=True):
+    __tablename__ = "symbol_index_link"
+
     symbol_id: str = Field(
         sa_column=Column(
             String, ForeignKey("symbol.id", ondelete="CASCADE"), primary_key=True
@@ -32,6 +34,5 @@ class AssetIndexTable(SQLModel, table=True):
         sa_relationship_kwargs={
             "lazy": "joined",
             "single_parent": True,
-            "cascade": "all, delete, delete-orphan",
         },
     )

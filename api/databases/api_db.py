@@ -269,12 +269,13 @@ class ApiDb:
         Heavy operation, only execute if db is empty
 
         First check if symbols have been updated in the last 24 hours.
+        Use BNBUSDC, because db init will add BTCUSDC
         """
-        symbol_info = self.symbols.get_symbol("BTCUSDC")
-        if not symbol_info:
+        try:
+            self.symbols.get_symbol("BROCCOLI714USDC")
+        except Exception:
+            logging.error("Symbols are missing, re-populating symbols")
             self.symbols.etl_symbols_and_indexes()
-
-        pass
 
     def init_balances(self):
         statement = select(UserTable)

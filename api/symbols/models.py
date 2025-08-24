@@ -84,4 +84,10 @@ class SymbolPayload(BaseModel):
     blacklist_reason: str = ""
     active: bool = True
     cooldown: int = 0
-    cooldown_start_ts: int = 0
+    cooldown_start_ts: int = Field(
+        default=0,
+        description="Timestamp to indicate when cooldown should start in milliseconds. Combined with cooldown this will put the symbol in inactive for that period of time.",
+    )
+    asset_indices: list[AssetIndexModel] = Field(
+        default=[], description="List of asset index IDs"
+    )

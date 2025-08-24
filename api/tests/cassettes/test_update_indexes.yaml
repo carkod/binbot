@@ -1,0 +1,32 @@
+interactions:
+- request:
+    body: '{"id":"DOGEUSDC","asset_indeces":[{"id":"meme","name":"Meme coin"}]}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '68'
+      content-type:
+      - application/json
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: PUT
+    uri: http://testserver/symbol/asset-index
+  response:
+    body:
+      string: '{"message":"Symbol asset index updated","error":0,"data":{"updated_at":1756033915648,"description":"","is_margin_trading_allowed":true,"base_asset":"DOGE","qty_precision":0,"cooldown":0,"created_at":1756033936713,"id":"DOGEUSDC","active":true,"blacklist_reason":"","quote_asset":"USDC","price_precision":5,"min_notional":1.0,"cooldown_start_ts":0}}'
+    headers:
+      content-length:
+      - '348'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

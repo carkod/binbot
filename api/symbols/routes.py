@@ -56,6 +56,24 @@ def create_indexes(session: Session = Depends(get_session)):
         )
 
 
+@symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
+def update_indexes(
+    data: SymbolPayload,
+    session: Session = Depends(get_session),
+):
+    """
+    Modify a symbol's asset index
+
+    check commit 942c623 in binbot-notebooks
+    """
+    try:
+        data = SymbolsCrud(session=session).update_symbol_indexes(data)
+    except Exception as e:
+        return StandardResponse(message=str(e), error=1)
+
+    return GetOneSymbolResponse(message="Symbol asset index updated", data=data)
+
+
 @symbols_blueprint.get(
     "/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
 )

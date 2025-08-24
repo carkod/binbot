@@ -47,7 +47,6 @@ class SymbolTable(SQLModel, table=True):
         sa_relationship_kwargs={
             "lazy": "joined",
             "single_parent": True,
-            "cascade": "all, delete, delete-orphan",
         },
     )
 

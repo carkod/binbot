@@ -8,7 +8,7 @@ from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
 from symbols.models import SymbolPayload
 from decimal import Decimal
-from time import time, sleep
+from time import time
 from typing import cast
 from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql import delete
@@ -166,7 +166,7 @@ class SymbolsCrud:
         data: SymbolPayload,
     ):
         """
-        Edit a blacklisted item.
+        Edit a symbol item (previously known as blacklisted)
 
         Editable fields are different from SymbolTable
         fields like qty_precision, price_precision, etc.
@@ -188,6 +188,40 @@ class SymbolsCrud:
             symbol_model.cooldown_start_ts = data.cooldown_start_ts
 
         self.session.add(symbol_model)
+        self.session.commit()
+        self.session.refresh(symbol_model)
+        self.session.close()
+        return symbol_model
+
+    def update_symbol_indexes(self, data: SymbolPayload):
+        """
+        Update the asset indices (tags) for a symbol.
+        Only updates the link table, so multiple symbols can share the same asset index.
+        """
+        symbol_model = self.get_symbol(data.id)
+
+        # Remove all existing links for this symbol
+        stmt = delete(SymbolIndexLink).where(
+            SymbolIndexLink.symbol_id == symbol_model.id  # type: ignore[arg-type]
+        )
+        self.session.execute(stmt)
+        self.session.commit()
+
+        # Add new links
+        for index_id in data.asset_indices:
+            asset_index = self.session.exec(
+                select(AssetIndexTable).where(AssetIndexTable.id == index_id.id)
+            ).first()
+            if not asset_index:
+                asset_index = AssetIndexTable(id=index_id.id, name=index_id.name)
+                self.session.add(asset_index)
+                self.session.commit()
+            # Create the link
+            link = SymbolIndexLink(
+                symbol_id=symbol_model.id, asset_index_id=asset_index.id
+            )
+            self.session.add(link)
+
         self.session.commit()
         self.session.refresh(symbol_model)
         self.session.close()
@@ -271,7 +305,7 @@ class SymbolsCrud:
         future: if additional exchanges are added,
         symbol pairs should be consolidated in this table
 
-        It also resets and repopulates indexes associated with these symbols
+        Indexes are populated by the binbot-notebooks
         """
         binance_api = BinanceApi()
         exchange_info_data = binance_api.exchange_info()
@@ -285,7 +319,7 @@ class SymbolsCrud:
         for item in exchange_info_data["symbols"]:
             # Only store fiat market exclude other fiats.
             # Only store pairs that are actually traded
-            if item["status"] != "TRADING" and item["symbol"].startswith(
+            if item["status"] != "TRADING" or item["symbol"].startswith(
                 ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
             ):
                 continue
@@ -311,23 +345,6 @@ class SymbolsCrud:
                     is_margin_trading_allowed=item["isMarginTradingAllowed"],
                 )
                 self.session.add(symbol)
-
-                tags_data = binance_api.get_tags(item["symbol"])
-                if tags_data:
-                    for tag in tags_data["tags"]:
-                        tag_id = tag.strip().lower()
-                        asset_index = self.session.exec(
-                            select(AssetIndexTable).where(AssetIndexTable.id == tag_id)
-                        ).first()
-                        if not asset_index:
-                            asset_index = AssetIndexTable(id=tag_id, name=tag)
-                            self.session.add(asset_index)
-                            self.session.commit()
-                            self.session.refresh(asset_index)
-                        if asset_index not in symbol.asset_indices:
-                            symbol.asset_indices.append(asset_index)
-
-                sleep(0.1)  # To avoid hitting rate limits
-
                 self.session.commit()
+
         self.session.close()
