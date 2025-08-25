@@ -4,6 +4,7 @@ from pydantic import field_validator
 from sqlalchemy import JSON, Column, Enum
 from databases.utils import timestamp
 from tools.enum_definitions import (
+    BaseAssets,
     BinanceKlineIntervals,
     CloseConditions,
     Status,
@@ -24,6 +25,7 @@ class BotTable(SQLModel, table=True):
     )
     pair: str = Field(index=True)
     fiat: str = Field(default="USDC", index=True)
+    base_asset: BaseAssets = Field(default=BaseAssets.USDC)
     base_order_size: float = Field(
         default=15, description="Min Binance 0.0001 BNB approx 15USD"
     )

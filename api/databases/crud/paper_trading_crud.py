@@ -4,7 +4,7 @@ from tools.exceptions import BinbotErrors, SaveBotError
 from databases.models.bot_table import PaperTradingTable
 from bots.models import BotModel, BotBase
 from databases.utils import independent_session
-from tools.enum_definitions import BinbotEnums, Status
+from tools.enum_definitions import Status
 from collections.abc import Sequence
 from uuid import UUID
 from databases.models.deal_table import DealTable
@@ -79,7 +79,7 @@ class PaperTradingTableCrud:
         """
         statement = select(PaperTradingTable)
 
-        if status and status in BinbotEnums.statuses:
+        if status and status in list(Status):
             statement = statement.where(PaperTradingTable.status == status)
 
         if start_date:

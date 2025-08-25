@@ -6,9 +6,18 @@ from sqlalchemy import pool
 from alembic import context
 from databases.utils import db_url
 from databases.models import SQLModel
+from dotenv import load_dotenv
+from pathlib import Path
 
 
-# Configure logging level and format from environment variables
+# Determine .env location based on environment
+ENV = os.getenv("ENVIRONMENT", "development").lower()
+if ENV == "production":
+    env_path = Path(__file__).parent.parent.parent / ".env"
+else:
+    env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 logger = logging.getLogger(__name__)

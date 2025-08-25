@@ -1,6 +1,7 @@
 from typing import List, Optional
 from uuid import uuid4, UUID
 from tools.enum_definitions import (
+    BaseAssets,
     BinanceKlineIntervals,
     CloseConditions,
     Status,
@@ -73,6 +74,7 @@ class OrderModel(BaseModel):
 class BotBase(BaseModel):
     pair: str
     fiat: str = Field(default="USDC")
+    base_asset: BaseAssets = Field(default=BaseAssets.USDC)
     base_order_size: Amount = Field(
         default=15, ge=0, description="Min Binance 0.0001 BNB approx 15USD"
     )
