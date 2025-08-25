@@ -170,3 +170,17 @@ def test_delete_symbol(client: TestClient):
     assert response.status_code == 200
     content = response.json()
     assert content["message"] == "Symbol deleted"
+
+
+@mark.vcr("cassettes/test_update_indexes.yaml")
+def test_update_indexes(client: TestClient):
+    payload = {"id": "DOGEUSDC", "asset_indeces": [{"id": "meme", "name": "Meme coin"}]}
+    response = client.put("/symbol/asset-index", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["message"] == "Symbol asset index updated"
+    assert data["data"] is not None
+
+
+test_symbol = "BOMEUSDC"
+test_error_symbol = "BTCUSDT"

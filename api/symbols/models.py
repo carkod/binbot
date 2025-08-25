@@ -2,6 +2,51 @@ from typing import Optional, Sequence
 from tools.handle_error import StandardResponse
 from databases.models.symbol_table import SymbolTable
 from pydantic import Field, BaseModel
+from time import time
+
+
+class AssetIndexModel(BaseModel):
+    id: str = Field(description="Unique ID")
+    name: str = Field(default="", description="Name of the index")
+
+
+class SymbolsModel(BaseModel):
+    """
+    Pydantic model for SymbolTable.
+    This model has to be kept identical with databases.models.SymbolTable
+
+    It's harder to manage SymbolTable,
+    closing session will remove the nested children objects
+    missing Pydantic methods
+    """
+
+    id: str = Field(description="Symbol/Pair")
+    created_at: int = Field(default_factory=lambda: int(time() * 1000))
+    updated_at: int = Field(default_factory=lambda: int(time() * 1000))
+    active: bool = Field(default=True, description="Blacklisted items = False")
+    blacklist_reason: str = Field(default="")
+    description: str = Field(default="", description="Description of the symbol")
+    is_margin_trading_allowed: bool = Field(default=False)
+    quote_asset: str = Field(
+        default="", description="in BTCUSDC, BTC would be quote asset"
+    )
+    base_asset: str = Field(
+        default="", description="in BTCUSDC, USDC would be base asset"
+    )
+    price_precision: int = Field(
+        default=0,
+        description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
+    )
+    qty_precision: int = Field(default=0)
+    min_notional: float = Field(default=0, description="Minimum price x qty value")
+    cooldown: int = Field(default=0, description="Time in seconds between trades")
+    cooldown_start_ts: int = Field(
+        default=0,
+        description="Timestamp when cooldown started in milliseconds",
+    )
+    asset_indices: list[AssetIndexModel] = Field(
+        default=[], description="list of asset indices e.g. memecoin"
+    )
 
 
 class SymbolsResponse(StandardResponse):
@@ -39,4 +84,10 @@ class SymbolPayload(BaseModel):
     blacklist_reason: str = ""
     active: bool = True
     cooldown: int = 0
-    cooldown_start_ts: int = 0
+    cooldown_start_ts: int = Field(
+        default=0,
+        description="Timestamp to indicate when cooldown should start in milliseconds. Combined with cooldown this will put the symbol in inactive for that period of time.",
+    )
+    asset_indices: list[AssetIndexModel] = Field(
+        default=[], description="List of asset index IDs"
+    )

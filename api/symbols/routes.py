@@ -37,23 +37,22 @@ def get_all_symbols(
         return SymbolsResponse(message=f"Error retrieving active symbols: {e}", error=1)
 
 
-@symbols_blueprint.get(
-    "/symbol/create-indexes",
-    summary="Get index classification data",
-    tags=["charts"],
-)
-def create_indexes(session: Session = Depends(get_session)):
+@symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
+def update_indexes(
+    data: SymbolPayload,
+    session: Session = Depends(get_session),
+):
+    """
+    Modify a symbol's asset index
+
+    check commit 942c623 in binbot-notebooks
+    """
     try:
-        SymbolsCrud(session=session).ingest_indeces()
-        return StandardResponse(
-            message="Successfully retrieved index classification data.",
-            error=0,
-        )
-    except Exception as error:
-        return StandardResponse(
-            message=f"Failed to retrieve index classification data: {error}",
-            error=1,
-        )
+        data = SymbolsCrud(session=session).update_symbol_indexes(data)
+    except Exception as e:
+        return StandardResponse(message=str(e), error=1)
+
+    return GetOneSymbolResponse(message="Symbol asset index updated", data=data)
 
 
 @symbols_blueprint.get(
@@ -145,7 +144,7 @@ def store_symbols(session: Session = Depends(get_session)):
     Store all symbols from Binance
     """
     try:
-        SymbolsCrud(session=session).symbols_table_ingestion()
+        SymbolsCrud(session=session).etl_symbols_and_indexes()
         return GetOneSymbolResponse(message="Symbols stored!")
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
