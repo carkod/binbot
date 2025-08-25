@@ -12,7 +12,6 @@ from time import time
 from typing import cast
 from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql import delete
-import logging
 from databases.utils import engine
 
 
@@ -258,43 +257,6 @@ class SymbolsCrud:
         query = select(SymbolTable.base_asset).where(SymbolTable.id == symbol)
         base_asset = self.session.exec(query).first()
         return base_asset
-
-    def ingest_indeces(self):
-        """
-        Ingest tags from Binance
-        """
-        logging.debug("Ingesting indeces")
-        binance_api = BinanceApi()
-
-        active_symbols = self.get_all(active=True)
-
-        for symbol in active_symbols:
-            data = binance_api.get_tags(symbol.id)
-            if not data:
-                continue
-
-            for tag in data["tags"]:
-                try:
-                    asset_index = self.session.exec(
-                        select(AssetIndexTable).where(
-                            AssetIndexTable.id == tag.strip().lower()
-                        )
-                    ).first()
-                except Exception:
-                    self.session.rollback()
-                    continue
-
-                if not asset_index:
-                    asset_index_model = AssetIndexTable(
-                        id=tag.strip().lower(), name=tag
-                    )
-                    symbol.asset_indices.append(asset_index_model)
-                    symbol.description = data["an"]
-
-            self.session.add(symbol)
-            self.session.commit()
-
-        self.session.close()
 
     def etl_symbols_and_indexes(self):
         """

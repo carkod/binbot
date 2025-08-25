@@ -37,25 +37,6 @@ def get_all_symbols(
         return SymbolsResponse(message=f"Error retrieving active symbols: {e}", error=1)
 
 
-@symbols_blueprint.get(
-    "/symbol/create-indexes",
-    summary="Get index classification data",
-    tags=["charts"],
-)
-def create_indexes(session: Session = Depends(get_session)):
-    try:
-        SymbolsCrud(session=session).ingest_indeces()
-        return StandardResponse(
-            message="Successfully retrieved index classification data.",
-            error=0,
-        )
-    except Exception as error:
-        return StandardResponse(
-            message=f"Failed to retrieve index classification data: {error}",
-            error=1,
-        )
-
-
 @symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
 def update_indexes(
     data: SymbolPayload,
