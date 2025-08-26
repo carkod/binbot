@@ -27,7 +27,7 @@ def upgrade() -> None:
         "bot",
         sa.Column(
             "base_asset",
-            sa.Enum("USDC", "BTC", "BNB", name="baseassets"),
+            sa.Enum("USDC", "BTC", "BNB", name="quoteassets"),
             nullable=False,
             server_default="USDC",
         ),

@@ -1,6 +1,6 @@
 from typing import Type, Union
 from databases.models.bot_table import BotTable, PaperTradingTable
-from tools.enum_definitions import BaseAssets, DealType, Status, OrderSide, OrderStatus
+from tools.enum_definitions import QuoteAssets, DealType, Status, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.round_numbers import round_numbers, round_timestamp
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
@@ -25,7 +25,7 @@ class SpotLongDeal(SpotDealAbstract):
         """
         balances = self.get_raw_balance()
         find_balance = next(
-            (b for b in balances if b["asset"] == self.active_bot.base_asset), None
+            (b for b in balances if b["asset"] == self.active_bot.quote_asset), None
         )
         if (
             find_balance
@@ -34,7 +34,7 @@ class SpotLongDeal(SpotDealAbstract):
             return None
         else:
             response = self.buy_order(
-                symbol=f"{self.active_bot.base_asset + self.active_bot.fiat}",
+                symbol=f"{self.active_bot.quote_asset + self.active_bot.fiat}",
                 qty=self.active_bot.base_order_size,
             )
             if response:
@@ -249,7 +249,7 @@ class SpotLongDeal(SpotDealAbstract):
         - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
         """
 
-        if self.active_bot.base_asset != BaseAssets.USDC:
+        if self.active_bot.quote_asset != QuoteAssets.USDC:
             response = self.check_available_balance()
             if response:
                 order = OrderModel(

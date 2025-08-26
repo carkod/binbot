@@ -150,9 +150,9 @@ class UserRoles(str, Enum):
     customer = "customer"
 
 
-class BaseAssets(str, Enum):
+class QuoteAssets(str, Enum):
     """
-    Base assets supported by Binbot orders
+    Quote assets supported by Binbot orders
     these are not fiat (which would be real currency)
     but the different markets we trade in.
     """
