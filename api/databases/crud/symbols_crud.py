@@ -297,7 +297,7 @@ class SymbolsCrud:
             except BinbotErrors:
                 symbol = None
 
-            if item["symbol"] in list(QuoteAssets) and symbol is None:
+            if item["quoteAsset"] in list(QuoteAssets) and symbol is None:
                 price_precision, qty_precision, min_notional = (
                     self.calculate_precisions(item)
                 )
