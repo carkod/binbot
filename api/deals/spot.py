@@ -1,6 +1,6 @@
 from typing import Type, Union
 from databases.models.bot_table import BotTable, PaperTradingTable
-from tools.enum_definitions import DealType, Status, OrderSide, OrderStatus
+from tools.enum_definitions import QuoteAssets, DealType, Status, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.round_numbers import round_numbers, round_timestamp
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
@@ -18,6 +18,27 @@ class SpotLongDeal(SpotDealAbstract):
     ) -> None:
         super().__init__(bot, db_table=db_table)
         self.active_bot: BotModel = bot
+
+    def check_available_balance(self):
+        """
+        Check if the base asset is supported
+        """
+        balances = self.get_raw_balance()
+        find_balance = next(
+            (b for b in balances if b["asset"] == self.active_bot.quote_asset), None
+        )
+        if (
+            find_balance
+            and float(find_balance["free"]) > self.active_bot.base_order_size
+        ):
+            return None
+        else:
+            response = self.buy_order(
+                symbol=f"{self.active_bot.quote_asset + self.active_bot.fiat}",
+                qty=self.active_bot.base_order_size,
+            )
+            if response:
+                return response
 
     def check_failed_switch_long_bot(self) -> BotModel:
         """
@@ -227,6 +248,24 @@ class SpotLongDeal(SpotDealAbstract):
 
         - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
         """
+
+        if self.active_bot.quote_asset != QuoteAssets.USDC:
+            response = self.check_available_balance()
+            if response:
+                order = OrderModel(
+                    timestamp=int(response["transactTime"]),
+                    order_id=response["orderId"],
+                    deal_type=DealType.conversion,
+                    pair=response["symbol"],
+                    order_side=response["side"],
+                    order_type=response["type"],
+                    price=float(response["price"]),
+                    qty=float(response["origQty"]),
+                    time_in_force=response["timeInForce"],
+                    status=response["status"],
+                )
+                self.active_bot.orders.append(order)
+
         base_order = next(
             (
                 bo_deal

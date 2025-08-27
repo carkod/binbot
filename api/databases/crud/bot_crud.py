@@ -7,7 +7,7 @@ from databases.models.bot_table import BotTable
 from databases.models.deal_table import DealTable
 from databases.models.order_table import ExchangeOrderTable
 from databases.utils import independent_session, timestamp
-from tools.enum_definitions import BinbotEnums, Status, Strategy
+from tools.enum_definitions import Status, Strategy
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
@@ -129,7 +129,7 @@ class BotTableCrud:
         """
         statement = select(BotTable)
 
-        if status and status in BinbotEnums.statuses and status != Status.all:
+        if status and status in list(Status) and status != Status.all:
             statement = statement.where(BotTable.status == status)
 
         if start_date:

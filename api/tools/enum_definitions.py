@@ -15,40 +15,8 @@ class EnumDefinitions:
         "AUCTION_MATCH",
         "BREAK",
     )
-    symbol_type = "SPOT"
-    order_status = [
-        "NEW",
-        "PARTIALLY_FILLED",
-        "FILLED",
-        "CANCELED",
-        "REJECTED",
-        "EXPIRED",
-    ]
-    chart_intervals = (
-        "1m",
-        "3m",
-        "5m",
-        "15m",
-        "30m",
-        "1h",
-        "2h",
-        "4h",
-        "6h",
-        "8h",
-        "12h",
-        "1d",
-        "3d",
-        "1w",
-        "1M",
-    )
     rate_limit_intervals = ("SECOND", "MINUTE", "DAY")
     order_book_limits = ("5", "10", "20", "50", "100", "500", "1000", "5000")
-
-
-class BinbotEnums:
-    statuses = ("inactive", "active", "completed", "error", "archived")
-    mode = ("manual", "autotrade")
-    strategy = ("long", "short", "margin_long", "margin_short")
 
 
 class Status(str, Enum):
@@ -130,6 +98,7 @@ class DealType(str, Enum):
     margin_short = "margin_short"
     panic_close = "panic_close"
     trailling_profit = "trailling_profit"
+    conversion = "conversion"  # converts one crypto to another
 
 
 class BinanceKlineIntervals(str, Enum):
@@ -179,3 +148,14 @@ class UserRoles(str, Enum):
     admin = "admin"
     # Only access to funds and client website
     customer = "customer"
+
+
+class QuoteAssets(str, Enum):
+    """
+    Quote assets supported by Binbot orders
+    these are not fiat (which would be real currency)
+    but the different markets we trade in.
+    """
+
+    USDC = "USDC"
+    BTC = "BTC"

@@ -13,7 +13,7 @@ from typing import cast
 from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql import delete
 from databases.utils import engine
-
+from tools.enum_definitions import QuoteAssets
 
 class SymbolsCrud:
     """
@@ -285,11 +285,19 @@ class SymbolsCrud:
                 ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
             ):
                 continue
+
             try:
-                symbol = self.get_symbol(item["symbol"])
+                # Always prefer USDC quote pairs to avoid conversion
+                if item["quoteAsset"] == QuoteAssets.USDC:
+                    symbol = self.get_symbol(item["symbol"])
+                elif item["quoteAsset"] == QuoteAssets.BTC:
+                    symbol = self.get_symbol(f"{item['baseAsset']}USDC")
+                else:
+                    symbol = None
             except BinbotErrors:
                 symbol = None
-            if item["symbol"].endswith("USDC") and symbol is None:
+
+            if item["quoteAsset"] in list(QuoteAssets) and symbol is None:
                 price_precision, qty_precision, min_notional = (
                     self.calculate_precisions(item)
                 )
