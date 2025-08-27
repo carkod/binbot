@@ -159,4 +159,3 @@ class QuoteAssets(str, Enum):
 
     USDC = "USDC"
     BTC = "BTC"
-    BNB = "BNB"

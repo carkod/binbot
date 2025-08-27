@@ -288,9 +288,9 @@ class SymbolsCrud:
 
             try:
                 # Always prefer USDC quote pairs to avoid conversion
-                if item["quoteAsset"] == "USDC":
+                if item["quoteAsset"] == QuoteAssets.USDC:
                     symbol = self.get_symbol(item["symbol"])
-                elif item["quoteAsset"] in list(QuoteAssets):
+                elif item["quoteAsset"] == QuoteAssets.BTC:
                     symbol = self.get_symbol(f"{item['baseAsset']}USDC")
                 else:
                     symbol = None
