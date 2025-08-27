@@ -15,6 +15,7 @@ from sqlalchemy.sql import delete
 from databases.utils import engine
 from tools.enum_definitions import QuoteAssets
 
+
 class SymbolsCrud:
     """
     Database operations for SymbolTable

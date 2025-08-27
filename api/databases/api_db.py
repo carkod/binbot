@@ -24,6 +24,7 @@ from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.db import setup_kafka_db
 from tools.exceptions import BinbotErrors
 
+
 class ApiDb:
     """
     Initialization data for API SQL database

@@ -5,29 +5,11 @@ from tools.handle_error import (
     json_response_error,
 )
 from charts.controllers import MarketDominationController
-from charts.models import CandlestickResponse, AdrSeriesResponse
+from charts.models import AdrSeriesResponse
 from tools.handle_error import StandardResponse
 from databases.crud.candles_crud import CandlesCrud
 
 charts_blueprint = APIRouter()
-
-
-@charts_blueprint.get(
-    "/timeseries",
-    summary="Retrieve timeseries data",
-    response_model=CandlestickResponse,
-    tags=["charts"],
-)
-def get_timeseries(symbol: str, limit: int = 500):
-    """
-    Retrieve candlesticks data stored in DB from Binance
-    in a timeseries format by Binquant
-    """
-    data = CandlesCrud().get_timeseries(symbol, limit)
-    return {
-        "data": data,
-        "message": "Successfully retrieved timeseries data.",
-    }
 
 
 @charts_blueprint.get("/top-gainers", tags=["charts"])

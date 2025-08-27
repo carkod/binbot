@@ -75,7 +75,7 @@ class BaseStreaming:
         """
         Builds the bollinguer bands spreads without using pandas_ta
         """
-        data = self.cs.raw_klines(symbol=last_candle.symbol, limit=200)
+        data = self.cs.get_or_cache_klines(symbol=last_candle.symbol, limit=200)
         if len(data) < 200:
             return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
 
