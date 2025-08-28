@@ -13,7 +13,6 @@ from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
 from tools.exceptions import SaveBotError, BinbotErrors
 from tools.round_numbers import round_numbers, ts_to_humandate
-from sqlalchemy import text
 from base_producer import BaseProducer
 import time
 import logging
@@ -40,7 +39,9 @@ class BotTableCrud:
         self.session = session
 
     def _notify_streaming_reload(self, reason: str = "bot_crud") -> None:
-        """Notify market_updates to reload in-memory state via Kafka."""
+        """
+        Notify market_updates to reload in-memory state via Kafka.
+        """
         try:
             producer = BaseProducer().start_producer()
             action = f"{reason}-{int(time.time() * 1000)}"
@@ -48,21 +49,6 @@ class BotTableCrud:
             BaseProducer().close_producer(producer)
         except Exception as e:
             logging.error(f"Failed to emit restart_streaming: {e}", exc_info=True)
-
-    """
-    For Debugging
-    """
-
-    def _explain_query(self, statement):
-        # Print the execution plan using the session
-        explain_query = text(f"EXPLAIN {statement}")
-        explain_result = self.session.execute(explain_query)
-        import logging
-
-        for row in explain_result:
-            logging.info(row)
-
-        pass
 
     def update_logs(
         self,
