@@ -87,7 +87,6 @@ def upgrade() -> None:
         ["paper_trading_id"],
         ["id"],
         ondelete="CASCADE",
-        if_not_exists=True,
     )
     op.create_index(
         op.f("ix_paper_trading_deal_id"),

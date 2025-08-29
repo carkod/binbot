@@ -79,7 +79,7 @@ class PaperTradingTableCrud:
         """
         statement = select(PaperTradingTable)
 
-        if status and status in list(Status):
+        if status and status in list(Status) and status != Status.all:
             statement = statement.where(PaperTradingTable.status == status)
 
         if start_date:
