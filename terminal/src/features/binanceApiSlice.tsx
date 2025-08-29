@@ -44,10 +44,7 @@ export const binanceApiSlice = createApi({
           notifification("error", meta.response.statusText);
         }
 
-        const filterUSDCmarket = data.filter((item) =>
-          item.symbol.endsWith("USDC"),
-        );
-        const usdcData = filterUSDCmarket
+        const allPercentageChanges = data
           .sort(
             (a, b) =>
               parseFloat(a.priceChangePercent) -
@@ -55,7 +52,7 @@ export const binanceApiSlice = createApi({
           )
           .reverse();
 
-        return usdcData;
+        return allPercentageChanges;
       },
     }),
   }),

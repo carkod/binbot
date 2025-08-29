@@ -55,12 +55,10 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: binquant_kafka
+    hostname: kafka
+    restart: always
     networks:
       - kafka_network
-    ports:
-      - "9092:9092"
-      - "9093:9093"
-      - "9094:9094"
     environment:
       KAFKA_KRAFT_MODE: "true"
       KAFKA_NODE_ID: 1
@@ -86,19 +84,17 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
       KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
       KAFKA_MIN_INSYNC_REPLICAS: "1"
+
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic klines-store-topic --if-not-exists",
-          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic technical-indicators --if-not-exists",
-          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic signals --if-not-exists",
-          "kafka-topics.sh --bootstrap-server kafka:9092 --create --topic restart-streaming --if-not-exists",
-
+          "kafka-broker-api-versions.sh --bootstrap-server kafka:9092 || exit 1",
         ]
-      start_period: 10s
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   # kafka_producer:
   #   build: ./binquant
