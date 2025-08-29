@@ -10,12 +10,11 @@ import { useAdSeriesQuery } from "../../features/marketApiSlice";
 import { calculateTotalRevenue } from "../../utils/dashboard-computations";
 import { BotStatus } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
-import { listCssColors } from "../../utils/validations";
 import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
-import ReversalBarChart from "../components/ReversalBarChart";
 import { SpinnerContext } from "../Layout";
 import AdrCard from "../components/AdrCard";
+import { useFilteredGainerLosers } from "../filter-gainers-losers";
 
 export const DashboardPage: FC<{}> = () => {
   const { data: accountData, isLoading: loadingEstimates } =
@@ -30,8 +29,9 @@ export const DashboardPage: FC<{}> = () => {
     });
   const { data: benchmark, isLoading: loadingBenchmark } =
     useGetBenchmarkQuery();
-  const { data: gainersLosersData, isLoading: loadingGL } =
-    useGainerLosersQuery();
+
+  const { combined: combinedGainersLosers, isLoading: loadingCombined } =
+    useFilteredGainerLosers();
 
   const { data: adpSeries, isLoading: loadingAdpSeries } = useAdSeriesQuery();
 
@@ -53,7 +53,7 @@ export const DashboardPage: FC<{}> = () => {
     if (benchmark) {
       if (benchmark.benchmarkData) {
         const { revenue, percentage } = calculateTotalRevenue(
-          benchmark.benchmarkData,
+          benchmark.benchmarkData
         );
         setRevenue(revenue);
         setPercentageRevenue(percentage);
@@ -65,7 +65,7 @@ export const DashboardPage: FC<{}> = () => {
       !loadingBenchmark &&
       !loadingEstimates &&
       !loadingErrorBots &&
-      !loadingGL &&
+      !loadingCombined &&
       !loadingAdpSeries
     ) {
       setSpinner(false);
@@ -77,12 +77,12 @@ export const DashboardPage: FC<{}> = () => {
     activeBotEntities,
     errorBotEntities,
     benchmark,
-    gainersLosersData,
+    combinedGainersLosers,
     loadingActiveBots,
     loadingBenchmark,
     loadingEstimates,
     loadingErrorBots,
-    loadingGL,
+    loadingCombined,
     loadingAdpSeries,
   ]);
 
@@ -232,8 +232,8 @@ export const DashboardPage: FC<{}> = () => {
       </Row>
       <Row>
         <Col lg="6" md="12">
-          {gainersLosersData?.length > 0 && (
-            <GainersLosers data={gainersLosersData} />
+          {combinedGainersLosers?.length > 0 && (
+            <GainersLosers data={combinedGainersLosers} />
           )}
         </Col>
         <Col lg="6" md="12">

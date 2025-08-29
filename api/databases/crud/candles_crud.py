@@ -7,7 +7,7 @@ from tools.enum_definitions import BinanceKlineIntervals
 from tools.round_numbers import round_numbers
 from databases.crud.symbols_crud import SymbolsCrud
 from datetime import datetime, timezone
-
+from pymongo.errors import OperationFailure
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -30,6 +30,46 @@ class CandlesCrud:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)  # Ensure it respects the basicConfig level
 
+    def _ingest_klines(self, symbol: str, interval: BinanceKlineIntervals) -> None:
+        """
+        Ingest klines into the database.
+        """
+        self.db.drop_collection(self.collection_name)
+        self.db.create_collection(
+            self.collection_name,
+            timeseries={
+                "timeField": "timestamp",
+                "metaField": "symbol",
+                "granularity": "hours",
+            },
+            expireAfterSeconds=24 * 3600,  # 1 day
+        )
+        self.logger.info(f"✅ Created timeseries collection: {self.collection_name}")
+        # Not found, fetch from Binance
+        klines = self.binance_api.get_raw_klines(symbol=symbol, interval=interval)
+        if klines:
+            # Store in MongoDB
+            docs = []
+            for k in klines:
+                docs.append(
+                    {
+                        "symbol": symbol,
+                        "interval": interval.value,
+                        "open_time": k[0],
+                        "open": k[1],
+                        "high": k[2],
+                        "low": k[3],
+                        "close": k[4],
+                        "volume": k[5],
+                        "close_time": k[6],
+                        "timestamp": datetime.fromtimestamp(
+                            k[0] / 1000, tz=timezone.utc
+                        ),
+                    }
+                )
+            if docs:
+                self.db[self.collection_name].insert_many(docs)
+
     def get_or_cache_klines(
         self,
         symbol: str,
@@ -42,9 +82,17 @@ class CandlesCrud:
         """
         # Try to find klines in MongoDB
         query = {"symbol": symbol, "interval": interval.value}
-        cached = list(
-            self.db[self.collection_name].find(query).limit(limit).sort("timestamp", 1)
-        )
+        try:
+            cached = list(
+                self.db[self.collection_name]
+                .find(query)
+                .limit(limit)
+                .sort("timestamp", 1)
+            )
+        except OperationFailure as e:
+            self.logger.error(f"Error fetching cached klines: {e}")
+            self._ingest_klines(symbol, interval)
+
         if len(cached) > 0:
             self.logger.info(
                 f"Returning {len(cached)} cached klines for {symbol} {interval.value}"
@@ -63,43 +111,7 @@ class CandlesCrud:
                 for doc in cached
             ]
         else:
-            self.db.drop_collection(self.collection_name)
-            self.db.create_collection(
-                self.collection_name,
-                timeseries={
-                    "timeField": "timestamp",
-                    "metaField": "symbol",
-                    "granularity": "hours",
-                },
-                expireAfterSeconds=24 * 3600,  # 1 day
-            )
-            self.logger.info(
-                f"✅ Created timeseries collection: {self.collection_name}"
-            )
-            # Not found, fetch from Binance
-            klines = self.binance_api.get_raw_klines(symbol=symbol, interval=interval)
-            if klines:
-                # Store in MongoDB
-                docs = []
-                for k in klines:
-                    docs.append(
-                        {
-                            "symbol": symbol,
-                            "interval": interval.value,
-                            "open_time": k[0],
-                            "open": k[1],
-                            "high": k[2],
-                            "low": k[3],
-                            "close": k[4],
-                            "volume": k[5],
-                            "close_time": k[6],
-                            "timestamp": datetime.fromtimestamp(
-                                k[0] / 1000, tz=timezone.utc
-                            ),
-                        }
-                    )
-                if docs:
-                    self.db[self.collection_name].insert_many(docs)
+            self._ingest_klines(symbol, interval)
 
         cached = list(
             self.db[self.collection_name].find(query).limit(limit).sort("timestamp", 1)
