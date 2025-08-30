@@ -97,20 +97,6 @@ class CandlesCrud:
             self.logger.info(
                 f"Returning {len(cached)} cached klines for {symbol} {interval.value}"
             )
-            # Convert MongoDB docs to Binance format if needed
-            return [
-                [
-                    doc["open_time"],
-                    doc["open"],
-                    doc["high"],
-                    doc["low"],
-                    doc["close"],
-                    doc["volume"],
-                    doc["close_time"],
-                ]
-                for doc in cached
-            ]
-        else:
             self._ingest_klines(symbol, interval)
 
         cached = list(
@@ -132,7 +118,15 @@ class CandlesCrud:
 
         # Format asset_data DataFrame columns to match Binance API kline data
         asset_df = DataFrame(asset_data)
-        btc_df = DataFrame(btc_data)
+        btc_df = DataFrame(btc_data, columns=[
+            "open_time",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "close_time",
+        ])
 
         # Binance API kline format: [open_time, open, high, low, close, volume, close_time, ...]
         if len(asset_df.columns) >= 7:
@@ -146,21 +140,9 @@ class CandlesCrud:
                 "close_time",
             ] + [f"col_{i}" for i in range(7, len(asset_df.columns))]
 
-        if len(btc_df.columns) >= 7:
-            btc_df.columns = [
-                "open_time",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "close_time",
-            ] + [f"col_{i}" for i in range(7, len(btc_df.columns))]
-
         # Ensure close columns are numeric
-        if "close" in asset_df.columns and "close" in btc_df.columns:
+        if "close" in asset_df.columns:
             asset_df["close"] = pd.to_numeric(asset_df["close"], errors="coerce")
-            btc_df["close"] = pd.to_numeric(btc_df["close"], errors="coerce")
 
             p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
 
