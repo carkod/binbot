@@ -146,21 +146,9 @@ class CandlesCrud:
                 "close_time",
             ] + [f"col_{i}" for i in range(7, len(asset_df.columns))]
 
-        if len(btc_df.columns) >= 7:
-            btc_df.columns = [
-                "open_time",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "close_time",
-            ] + [f"col_{i}" for i in range(7, len(btc_df.columns))]
-
         # Ensure close columns are numeric
-        if "close" in asset_df.columns and "close" in btc_df.columns:
+        if "close" in asset_df.columns:
             asset_df["close"] = pd.to_numeric(asset_df["close"], errors="coerce")
-            btc_df["close"] = pd.to_numeric(btc_df["close"], errors="coerce")
 
             p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
 

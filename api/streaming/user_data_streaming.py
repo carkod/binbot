@@ -1,5 +1,4 @@
 import logging
-import json
 from exchange_apis.binance import BinanceApi
 from streaming.socket_client import SpotWebsocketStreamClient
 from databases.db import Database
@@ -67,12 +66,11 @@ class UserDataStreaming(Database, BinanceApi):
             listen_key=listen_key, action=SpotWebsocketStreamClient.subscribe
         )
 
-    def on_user_data_message(self, socket, message):
+    def on_user_data_message(self, socket, res):
         """
         Legacy, needs improvement
         """
         logging.info("Streaming user data")
-        res = json.loads(message)
 
         if "e" in res:
             if "executionReport" in res["e"]:
