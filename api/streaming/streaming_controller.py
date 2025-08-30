@@ -132,12 +132,11 @@ class StreamingController:
 
         pass
 
-    def process_klines(self, message: str) -> None:
+    def process_klines(self, data: dict) -> None:
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        data = json.loads(message)
         close_price = data["close_price"]
         open_price = data["open_price"]
         symbol = data["symbol"]

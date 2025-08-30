@@ -59,13 +59,18 @@ services:
     restart: always
     networks:
       - kafka_network
+    ports:
+      - "9092:9092"     # host can reach broker
+      - "29092:29092"   # extra port for host-only listener
     environment:
       KAFKA_KRAFT_MODE: "true"
       KAFKA_NODE_ID: 1
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
       KAFKA_PROCESS_ROLES: "broker,controller"
 
       # General defaults
@@ -74,7 +79,7 @@ services:
       KAFKA_LOG_RETENTION_HOURS: 24
       ALLOW_PLAINTEXT_LISTENER: "yes"
 
-      # Cluster ID (must be base64 UUID)
+      # Cluster ID
       CLUSTER_ID: "hTzWlZq0S--NoF0U9H7uQA"
 
       # Single-broker safe replication configs
@@ -86,11 +91,7 @@ services:
       KAFKA_MIN_INSYNC_REPLICAS: "1"
 
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "kafka-broker-api-versions.sh --bootstrap-server kafka:9092 || exit 1",
-        ]
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server kafka:9092 || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 10

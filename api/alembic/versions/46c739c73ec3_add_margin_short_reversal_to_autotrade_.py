@@ -23,8 +23,8 @@ def upgrade() -> None:
     # Add 'autoswitch' column to 'autotrade' if it does not exist
     conn = op.get_bind()
     inspector = sa.inspect(conn)
-    columns = [col['name'] for col in inspector.get_columns('autotrade')]
-    if 'autoswitch' not in columns:
+    columns = [col["name"] for col in inspector.get_columns("autotrade")]
+    if "autoswitch" not in columns:
         op.add_column(
             "autotrade",
             sa.Column(
@@ -34,8 +34,8 @@ def upgrade() -> None:
                 server_default=sa.false(),
             ),
         )
-    columns_test = [col['name'] for col in inspector.get_columns('test_autotrade')]
-    if 'autoswitch' not in columns_test:
+    columns_test = [col["name"] for col in inspector.get_columns("test_autotrade")]
+    if "autoswitch" not in columns_test:
         op.add_column(
             "test_autotrade",
             sa.Column(
