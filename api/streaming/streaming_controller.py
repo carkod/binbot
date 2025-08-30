@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import datetime
 from typing import Type, Union, no_type_check
@@ -385,13 +384,12 @@ class BbspreadsUpdater:
 
     # To find a better interface for bb_xx once mature
     @no_type_check
-    def dynamic_trailling(self, message) -> None:
+    def dynamic_trailling(self, data) -> None:
         """
         Update bot with dynamic trailling enabled to update
         take_profit and trailling according to bollinguer bands
         dynamic movements in the market
         """
-        data = json.loads(message)
         single_candle = SingleCandle.model_validate(data)
 
         # Check if it matches any active bots
