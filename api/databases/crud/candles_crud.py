@@ -118,15 +118,18 @@ class CandlesCrud:
 
         # Format asset_data DataFrame columns to match Binance API kline data
         asset_df = DataFrame(asset_data)
-        btc_df = DataFrame(btc_data, columns=[
-            "open_time",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "close_time",
-        ])
+        btc_df = DataFrame(
+            btc_data,
+            columns=[
+                "open_time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "close_time",
+            ],
+        )
 
         # Binance API kline format: [open_time, open, high, low, close, volume, close_time, ...]
         if len(asset_df.columns) >= 7:

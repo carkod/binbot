@@ -1,7 +1,10 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query";
 import { Bounce, toast } from "react-toastify";
 import { getToken } from "./login";
-import { useGetOneSymbolQuery, type SymbolPayload } from "../features/symbolsApiSlice";
+import {
+  useGetOneSymbolQuery,
+  type SymbolPayload,
+} from "../features/symbolsApiSlice";
 
 export function buildBackUrl() {
   let base = window.location.hostname.split(".");
@@ -59,22 +62,11 @@ export const notifification = (type: NotificationType, message: string) => {
   });
 };
 
-/**
- * Given a bot, return the quote asset and fiat for the bot
- * This saves Binance API calls
- * @param bot
- * @returns
- */
-export const getQuoteAsset = (symbol: SymbolPayload | undefined) => {
-  const quoteAsset = symbol?.quote_asset;
-  return quoteAsset;
-};
-
 // Filter by base asset (fiat) provided by autotrade settings
 // This is done in the front-end because it doesn't matter in the back-end, we always get the full list of symbols
 export const filterSymbolByBaseAsset = (
   options: string[],
-  baseAsset: string
+  baseAsset: string,
 ): string[] => {
   return options.filter((item) => item.endsWith(baseAsset));
 };

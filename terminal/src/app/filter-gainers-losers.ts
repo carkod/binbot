@@ -4,13 +4,15 @@ import { useGetSymbolsQuery } from "../features/symbolsApiSlice";
 
 // Memoized hook to get filtered gainer losers based on VITE_TICKER_25
 export function useFilteredGainerLosers() {
-  const { data: gainerLosers = [], isLoading: loadingGL } = useGainerLosersQuery();
-  const { data: apiSymbols = [], isLoading: loadingSymbols } = useGetSymbolsQuery();
-    const combined = useMemo(() => {
-    const symbolMap = new Map(apiSymbols.map(sym => [sym.id, sym]));
+  const { data: gainerLosers = [], isLoading: loadingGL } =
+    useGainerLosersQuery();
+  const { data: apiSymbols = [], isLoading: loadingSymbols } =
+    useGetSymbolsQuery();
+  const combined = useMemo(() => {
+    const symbolMap = new Map(apiSymbols.map((sym) => [sym.id, sym]));
     return gainerLosers
-      .filter(gl => symbolMap.has(gl.symbol))
-      .map(gl => ({
+      .filter((gl) => symbolMap.has(gl.symbol))
+      .map((gl) => ({
         ...gl,
         apiSymbol: symbolMap.get(gl.symbol),
       }));

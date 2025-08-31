@@ -9,8 +9,7 @@ export default function spotTrading(
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
   let totalOrderLines: OrderLine[] = [];
-  const price =
-    bot.deal?.opening_price > 0 || currentPrice > 0 || bot.deal.current_price;
+  bot.deal?.opening_price > 0 || currentPrice > 0 || bot.deal.current_price;
 
   if (bot.base_order_size > 0 && currentPrice) {
     const qtyText =

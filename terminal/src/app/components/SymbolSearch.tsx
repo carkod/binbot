@@ -33,17 +33,8 @@ const SymbolSearch: FC<{
     if (value) {
       setState(value);
     }
-    // BTCUSDC, BTCUSDC, BTCETH, ETHUSDT, ETHUSDC -> BTCUSDC
-    // check test for examples
     if (options && options.length > 0) {
-      let updatedOptions = options;
-      if (autotradeSettings?.fiat) {
-        updatedOptions = filterSymbolByBaseAsset(
-          options,
-          autotradeSettings.fiat,
-        );
-      }
-      setOptionsState(updatedOptions);
+      setOptionsState(options);
     }
   }, [value, options, autotradeSettings?.fiat]);
 

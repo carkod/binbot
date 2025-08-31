@@ -56,13 +56,15 @@ export const symbolsApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    getOneSymbol: build.query<ISymbol , string>({
+    getOneSymbol: build.query<ISymbol, string>({
       query: (pair) => ({
         url: `${import.meta.env.VITE_SYMBOL}/${pair}`,
-        providesTags: [{
-          type: "symbol",
-          id: pair,
-        }],
+        providesTags: [
+          {
+            type: "symbol",
+            id: pair,
+          },
+        ],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -112,4 +114,5 @@ export const {
   useGetOneSymbolQuery,
   useUpdateSymbolMutation,
   useDeleteSymbolMutation,
+  useLazyGetOneSymbolQuery,
 } = symbolsApiSlice;
