@@ -2,13 +2,12 @@ import { type Bot } from "../../features/bots/botInitialState";
 import { BotStatus } from "../enums";
 import { dealColors } from "../../utils/charting/index";
 import type { OrderLine } from "./index.d";
-import { getQuoteAsset } from "../api";
 
 export default function marginTrading(
   bot: Bot,
   currentPrice: number,
 ): OrderLine[] {
-  const quoteAsset = getQuoteAsset(bot);
+  const quoteAsset = bot.quote_asset;
   let totalOrderLines: OrderLine[] = [];
   const qtyText = bot.deal ? String(bot.deal.opening_qty) : "";
   const price =

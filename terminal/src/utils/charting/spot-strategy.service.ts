@@ -1,14 +1,13 @@
 import { type OrderLine } from "./index.d";
 import { type Bot } from "../../features/bots/botInitialState";
 import { dealColors } from "../../utils/charting/index";
-import { getQuoteAsset } from "../api";
 import { BotStatus } from "../enums";
 
 export default function spotTrading(
   bot: Bot,
   currentPrice: number = 0,
 ): OrderLine[] {
-  const quoteAsset = getQuoteAsset(bot);
+  const quoteAsset = bot.quote_asset;
   let totalOrderLines: OrderLine[] = [];
   const price =
     bot.deal?.opening_price > 0 || currentPrice > 0 || bot.deal.current_price;

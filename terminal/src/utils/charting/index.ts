@@ -3,7 +3,6 @@ import marginTrading from "./margin-short.service";
 import { type Bot } from "../../features/bots/botInitialState";
 import { type TimescaleMark } from "./index.d";
 import { BotStrategy, DealType } from "../enums";
-import { getQuoteAsset } from "../api";
 
 const dealColors = {
   base_order: "#1f77d0",
@@ -47,7 +46,7 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
   let totalTimescaleMarks: TimescaleMark[] = [];
   let color = "blue";
   let label = "B";
-  const quoteAsset = getQuoteAsset(bot);
+  const quoteAsset = bot.quote_asset;
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach((order) => {
       // If base_order and margin_short

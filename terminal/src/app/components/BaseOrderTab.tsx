@@ -4,7 +4,6 @@ import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
-import { getQuoteAsset } from "../../utils/api";
 import { BotStatus, BotStrategy, BotType, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
@@ -12,7 +11,7 @@ import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
-import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
+import { type SymbolPayload, useGetOneSymbolQuery, useGetSymbolsQuery } from "../../features/symbolsApiSlice";
 import {
   selectTestBot,
   setTestBotField,
@@ -101,9 +100,9 @@ const BaseOrderTab: FC<{
       setSymbolsList(pairs);
     }
 
-    if (bot.pair !== quoteAsset) {
-      const newQuoteAsset = getQuoteAsset(bot, autotradeSettings?.fiat);
-      setQuoteAsset(newQuoteAsset);
+    if (bot.pair) {
+      const { data: symbol } = useGetOneSymbolQuery(bot.pair);
+      setQuoteAsset(symbol?.quote_asset);
     }
 
     if (symbol && !id) {
@@ -141,7 +140,7 @@ const BaseOrderTab: FC<{
     }
 
     return () => unsubscribe();
-  }, [symbols, symbolsList, bot, reset, dispatch, watch]);
+  }, [symbol, symbols, symbolsList, bot, reset, dispatch, watch]);
 
   return (
     <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">

@@ -1,12 +1,10 @@
 import React, { type FC } from "react";
 import { Badge, Button, Card, Col, Container, Row } from "react-bootstrap";
-import { useLocation, useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { type Bot } from "../../features/bots/botInitialState";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
-import { BotStatus } from "../../utils/enums";
 import { formatTimestamp, renderDuration } from "../../utils/time";
-import { getQuoteAsset } from "../../utils/api";
 
 type handleCallback = (id: string) => void;
 
@@ -173,7 +171,7 @@ const BotCard: FC<BotCardProps> = ({
                 <p className="small">Interests</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">{`${bot.deal.total_interests} ${getQuoteAsset(bot)}`}</p>
+                <p className="small">{`${bot.deal.total_interests} ${bot.quote_asset}`}</p>
               </Col>
             </Row>
           )}

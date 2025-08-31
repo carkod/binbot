@@ -67,3 +67,9 @@ export enum BotType {
   BOTS = "bots",
   PAPER_TRADING = "paper-trading",
 }
+
+export enum QuoteAsset {
+  USDC = "USDC",
+  BTC = "BTC",
+  ETH = "ETH",
+}
