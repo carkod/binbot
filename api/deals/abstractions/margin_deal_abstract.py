@@ -135,7 +135,7 @@ class MarginDealAbstract(DealAbstract):
         2. Carry on with usual base_order
         """
         initial_price = self.matching_engine(
-            self.active_bot.pair, True, qty=self.active_bot.base_order_size
+            self.active_bot.pair, True, qty=self.active_bot.deal.base_order_size
         )
 
         if isinstance(self.controller, BotTableCrud):
@@ -323,7 +323,7 @@ class MarginDealAbstract(DealAbstract):
         # Given USDC amount we want to buy,
         # how much can we buy?
         qty = round_numbers_ceiling(
-            (float(self.active_bot.base_order_size) / float(initial_price)),
+            (float(self.active_bot.deal.base_order_size) / float(initial_price)),
             self.qty_precision,
         )
 
@@ -336,7 +336,7 @@ class MarginDealAbstract(DealAbstract):
                 self.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.fiat,
                     symbol=self.active_bot.pair,
-                    amount=self.active_bot.base_order_size,
+                    amount=self.active_bot.deal.base_order_size,
                 )
             except BinanceErrors as error:
                 self.controller.update_logs(error.message, self.active_bot)

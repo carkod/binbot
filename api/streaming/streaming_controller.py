@@ -21,6 +21,7 @@ from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.maths import round_numbers
 from typing import Sequence
 from copy import deepcopy
+from tools.enum_definitions import BinanceKlineIntervals
 
 
 class BaseStreaming:
@@ -74,11 +75,25 @@ class BaseStreaming:
         """
         Builds the bollinguer bands spreads without using pandas_ta
         """
-        data = self.cs.get_or_cache_klines(symbol=last_candle.symbol, limit=200)
+        data = self.cs.binance_api.get_raw_klines(
+            symbol=last_candle.symbol,
+            interval=BinanceKlineIntervals.fifteen_minutes.value,
+            limit=200,
+        )
         if len(data) < 200:
             return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
 
         df = pd.DataFrame(data)
+        df.columns = [
+            "open_time",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "close_time",
+        ] + [f"col_{i}" for i in range(7, len(df.columns))]
+
         close_prices = df["close"]
         rolling_mean = close_prices.rolling(window=20).mean()
         rolling_std = close_prices.rolling(window=20).std()
@@ -170,6 +185,14 @@ class StreamingController:
                     )
                 else:
                     return
+            except BinbotErrors as err:
+                if current_test_bot:
+                    logging.error(err, current_test_bot.id)
+                if current_bot:
+                    logging.error(err, current_bot.id)
+                else:
+                    logging.error(err)
+                return
             except BinanceErrors as error:
                 if error.code in (-2010, -1013):
                     if current_bot:
@@ -235,7 +258,7 @@ class BbspreadsUpdater:
         return interests, open_total, close_total
 
     def compute_single_bot_profit(self, bot: BotModel, current_price: float) -> float:
-        if bot.deal and bot.base_order_size > 0:
+        if bot.deal and bot.deal.base_order_size > 0:
             price = (
                 bot.deal.closing_price if bot.deal.closing_price > 0 else current_price
             )

@@ -1,6 +1,7 @@
 import { BotStatus, BotStrategy, QuoteAsset } from "../../utils/enums";
 
 export interface Deal {
+  base_order_size: number;
   current_price?: number;
   trailling_stop_loss_price?: number;
   trailling_profit_price?: number;
@@ -22,7 +23,7 @@ export interface Bot {
   pair: string;
   fiat?: string;
   quote_asset: QuoteAsset;
-  base_order_size: number;
+  fiat_order_size: number;
   candle_interval?: string;
   close_condition?: string;
   dynamic_trailling: boolean;
@@ -58,7 +59,7 @@ export const singleBot: Bot = {
   id: "",
   status: BotStatus.INACTIVE,
   balance_available: 0,
-  base_order_size: 50,
+  fiat_order_size: 50,
   fiat: "USDC",
   quote_asset: QuoteAsset.USDC,
   logs: [],
@@ -71,6 +72,7 @@ export const singleBot: Bot = {
   trailling_profit: 2.3,
   dynamic_trailling: false,
   deal: {
+    base_order_size: 0,
     current_price: 0,
     trailling_stop_loss_price: 0,
     trailling_profit_price: 0,

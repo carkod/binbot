@@ -13,7 +13,9 @@ export default function marginTrading(
   const price =
     bot.deal?.opening_price || currentPrice || bot.deal.current_price;
 
-  if (bot.base_order_size > 0 && currentPrice) {
+  const baseOrderSize = bot.deal.base_order_size > 0 ? bot.deal.base_order_size : bot.fiat_order_size;
+
+  if (baseOrderSize > 0 && currentPrice) {
     if (bot.deal.closing_price > 0) {
       // Completed bot
       totalOrderLines.push({
@@ -91,7 +93,7 @@ export default function marginTrading(
         id: "trailling_stop_loss",
         text: `Trailling stop loss -${bot.trailling_deviation}%`,
         tooltip: [bot.status, " Sell order when prices drop here"],
-        quantity: `${bot.deal.opening_qty || bot.base_order_size} ${quoteAsset}`,
+        quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
         price: bot.deal.trailling_stop_loss_price,
         color: dealColors.take_profit,
       });
@@ -117,7 +119,7 @@ export default function marginTrading(
           id: "trailling_stop_loss",
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${bot.deal.opening_qty || bot.base_order_size} ${quoteAsset}`,
+          quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
           price:
             bot.deal?.trailling_profit_price ||
             traillingProfitPrice * (1 + bot.trailling_deviation / 100),

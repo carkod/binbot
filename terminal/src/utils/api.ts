@@ -1,10 +1,6 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query";
 import { Bounce, toast } from "react-toastify";
 import { getToken } from "./login";
-import {
-  useGetOneSymbolQuery,
-  type SymbolPayload,
-} from "../features/symbolsApiSlice";
 
 export function buildBackUrl() {
   let base = window.location.hostname.split(".");

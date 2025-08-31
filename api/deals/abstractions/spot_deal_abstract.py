@@ -199,6 +199,22 @@ class SpotDealAbstract(DealAbstract):
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 
+        res = self.sell_quote_asset()
+        stop_loss_order = OrderModel(
+            timestamp=int(res["transactTime"]),
+            deal_type=DealType.conversion,
+            order_id=int(res["orderId"]),
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=price,
+            qty=float(res["origQty"]),
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
+
+        self.active_bot.orders.append(stop_loss_order)
+
         return self.active_bot
 
     def trailling_profit(self) -> BotModel | None:
@@ -286,8 +302,24 @@ class SpotDealAbstract(DealAbstract):
         self.active_bot.logs.append(
             "Completed take profit after failing to break trailling"
         )
-
         self.controller.save(self.active_bot)
+
+        res = self.sell_quote_asset()
+        stop_loss_order = OrderModel(
+            timestamp=int(res["transactTime"]),
+            deal_type=DealType.conversion,
+            order_id=int(res["orderId"]),
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=price,
+            qty=float(res["origQty"]),
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
+
+        self.active_bot.orders.append(stop_loss_order)
+
         return self.active_bot
 
     def close_conditions(self, current_price):

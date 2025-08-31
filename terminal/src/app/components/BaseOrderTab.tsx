@@ -1,6 +1,6 @@
 import React, { type FC, useContext, useEffect, useState } from "react";
 import { Col, Container, Form, InputGroup, Row, Tab } from "react-bootstrap";
-import { type FieldValues, set, useForm } from "react-hook-form";
+import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
@@ -8,7 +8,6 @@ import {
   BotStatus,
   BotStrategy,
   BotType,
-  QuoteAsset,
   TabsKeys,
 } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
@@ -18,7 +17,6 @@ import SymbolSearch from "./SymbolSearch";
 import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
 import {
-  useGetOneSymbolQuery,
   useGetSymbolsQuery,
   useLazyGetOneSymbolQuery,
 } from "../../features/symbolsApiSlice";
@@ -64,7 +62,7 @@ const BaseOrderTab: FC<{
     reValidateMode: "onBlur",
     defaultValues: {
       name: bot.name,
-      base_order_size: bot.base_order_size,
+      fiat_order_size: bot.fiat_order_size,
       strategy: bot.strategy,
     },
   });
@@ -117,7 +115,7 @@ const BaseOrderTab: FC<{
     if (symbol && !id) {
       reset({
         name: bot.name,
-        base_order_size: bot.base_order_size,
+        fiat_order_size: bot.fiat_order_size,
         strategy: bot.strategy,
         pair: symbol,
         quote_asset: bot.quote_asset,
@@ -132,7 +130,7 @@ const BaseOrderTab: FC<{
     if (id && !symbol) {
       reset({
         name: bot.name,
-        base_order_size: bot.base_order_size,
+        fiat_order_size: bot.fiat_order_size,
         strategy: bot.strategy,
         pair: id,
         quote_asset: bot.quote_asset,
@@ -225,36 +223,36 @@ const BaseOrderTab: FC<{
           <Col md="6" sm="12">
             <InputGroup className="mb-1">
               <InputTooltip
-                name="base_order_size"
+                name="fiat_order_size"
                 tooltip={
                   "This is the amount of fiat (Minimum USDC 15) you want to spend, while asset amount (quote asset) indicates the intermediary crypto used to buy, because it may not available in USDC"
                 }
-                label="Base order size"
+                label="Fiat order size"
                 errors={errors}
                 required={true}
                 secondaryText={autotradeSettings?.fiat}
               >
                 <Form.Control
                   type="number"
-                  name="base_order_size"
+                  name="fiat_order_size"
                   autoComplete="off"
                   required
                   disabled={
                     bot.status === BotStatus.ACTIVE ||
                     bot.status === BotStatus.COMPLETED
                   }
-                  {...register("base_order_size", {
-                    required: "Base order size is required",
+                  {...register("fiat_order_size", {
+                    required: "Fiat order size is required",
                     valueAsNumber: true,
                     min: {
                       value: 15,
-                      message: "Minimum base order size is 15",
+                      message: "Minimum fiat order size is 15",
                     },
                   })}
                 />
-                {errors.base_order_size && (
+                {errors.fiat_order_size && (
                   <Form.Control.Feedback type="invalid">
-                    {errors.base_order_size.message as string}
+                    {errors.fiat_order_size.message as string}
                   </Form.Control.Feedback>
                 )}
               </InputTooltip>
@@ -273,7 +271,7 @@ const BaseOrderTab: FC<{
                 name="quote_asset"
                 autoComplete="off"
                 disabled={true}
-                value={bot.base_order_size * currentPrice}
+                value={bot.fiat_order_size * currentPrice}
               />
             </InputTooltip>
           </Col>

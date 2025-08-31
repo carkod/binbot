@@ -136,12 +136,19 @@ class OrderController(Account):
         }
         return order
 
-    def sell_order(self, symbol: str, qty: float):
+    def sell_order(
+        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
+    ):
         """
         If price is not provided by matching engine,
         sell at market price
         """
         price = float(self.matching_engine(symbol, True, qty))
+        if price_precision == 0:
+            price_precision = self.price_precision
+        if qty_precision == 0:
+            qty_precision = self.qty_precision
+
         if price > 0:
             payload = {
                 "symbol": symbol,
@@ -166,8 +173,16 @@ class OrderController(Account):
 
         return data
 
-    def buy_order(self, symbol: str, qty: float):
+    def buy_order(
+        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
+    ):
         book_price = self.matching_engine(symbol, False, qty)
+
+        # this gives flexibility to use quote values
+        if price_precision == 0:
+            price_precision = self.price_precision
+        if qty_precision == 0:
+            qty_precision = self.qty_precision
 
         if book_price > 0:
             payload = {
@@ -175,14 +190,14 @@ class OrderController(Account):
                 "side": OrderSide.buy,
                 "type": OrderType.limit,
                 "timeInForce": TimeInForce.fok,
-                "price": supress_notation(book_price, self.price_precision),
-                "quantity": supress_notation(qty, self.qty_precision),
+                "price": supress_notation(book_price, price_precision),
+                "quantity": supress_notation(qty, qty_precision),
             }
             # If price is not provided by matching engine,
             # create iceberg orders
             if not book_price:
                 payload["iceberg_qty"] = zero_remainder(qty)
-                payload["price"] = supress_notation(book_price, self.price_precision)
+                payload["price"] = supress_notation(book_price, price_precision)
 
         else:
             # Use market price if matching engine can't find a price
@@ -190,13 +205,13 @@ class OrderController(Account):
                 "symbol": symbol,
                 "side": OrderSide.buy,
                 "type": OrderType.market,
-                "quantity": supress_notation(qty, self.qty_precision),
+                "quantity": supress_notation(qty, qty_precision),
             }
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
 
         if data["status"] == OrderStatus.EXPIRED.value:
-            self.buy_order(symbol=symbol, qty=round_numbers(qty, self.qty_precision))
+            self.buy_order(symbol=symbol, qty=round_numbers(qty, qty_precision))
 
         return data
 

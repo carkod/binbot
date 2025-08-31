@@ -11,11 +11,13 @@ export default function spotTrading(
   let totalOrderLines: OrderLine[] = [];
   bot.deal?.opening_price > 0 || currentPrice > 0 || bot.deal.current_price;
 
-  if (bot.base_order_size > 0 && currentPrice) {
+  const baseOrderSize = bot.deal.base_order_size > 0 ? bot.deal.base_order_size : bot.fiat_order_size;
+
+  if (baseOrderSize > 0 && currentPrice) {
     const qtyText =
       bot.deal.opening_qty > 0
         ? String(bot.deal.opening_qty)
-        : String(bot.base_order_size);
+        : String(baseOrderSize);
     if (bot.deal.closing_price > 0) {
       // If there is closing_price, it means it's completed
       totalOrderLines.push({
@@ -114,9 +116,7 @@ export default function spotTrading(
           id: "trailling_stop_loss",
           text: `Trailling stop loss -${bot.trailling_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${bot.deal.opening_qty || bot.base_order_size} ${
-            quoteAsset
-          }`,
+          quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
           price: traillingProfitPrice * (1 - bot.trailling_deviation / 100),
           color: dealColors.take_profit,
         });

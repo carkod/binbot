@@ -6,7 +6,7 @@ class BinanceErrors(Exception):
         return None
 
     def __str__(self) -> str:
-        return f"Binance Error: {self.code} {self.message}"
+        return f"{self.code} {self.message}"
 
 
 class InvalidSymbol(BinanceErrors):
@@ -25,7 +25,7 @@ class BinbotErrors(Exception):
         return None
 
     def __str__(self) -> str:
-        return f"Binbot error: {self.message}"
+        return f"{self.message}"
 
 
 class DealFactoryError(BinbotErrors):

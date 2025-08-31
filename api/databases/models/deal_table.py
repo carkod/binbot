@@ -10,6 +10,13 @@ if TYPE_CHECKING:
 
 
 class DealBase(SQLModel):
+    """
+    Database schema for deals
+
+    It should match DealModel
+    """
+
+    base_order_size: float = Field(default=0, gt=-1, sa_column=Column(Float()))
     current_price: float = Field(default=0)
     take_profit_price: float = Field(
         default=0,

@@ -8,6 +8,7 @@ class DealModel(BaseModel):
     so it should all be numbers (int or float)
     """
 
+    base_order_size: Amount = Field(default=0, gt=-1)
     current_price: Amount = Field(default=0)
     take_profit_price: Amount = Field(default=0)
     trailling_stop_loss_price: Amount = Field(

@@ -26,8 +26,8 @@ class BotTable(SQLModel, table=True):
     pair: str = Field(index=True)
     fiat: str = Field(default="USDC", index=True)
     quote_asset: QuoteAssets = Field(default=QuoteAssets.USDC)
-    base_order_size: float = Field(
-        default=15, description="Min Binance 0.0001 BNB approx 15USD"
+    fiat_order_size: float = Field(
+        default=15, ge=0, description="Min Binance 0.0001 BNB approx 15USD"
     )
     candlestick_interval: BinanceKlineIntervals = Field(
         default=BinanceKlineIntervals.fifteen_minutes,
@@ -121,8 +121,9 @@ class PaperTradingTable(SQLModel, table=True):
     )
     pair: str = Field(index=True)
     fiat: str = Field(default="USDC", index=True)
-    base_order_size: float = Field(
-        default=15, description="Min Binance 0.0001 BNB approx 15USD"
+    quote_asset: QuoteAssets = Field(default=QuoteAssets.USDC)
+    fiat_order_size: float = Field(
+        default=15, ge=0, description="Min Binance 0.0001 BNB approx 15USD"
     )
     candlestick_interval: BinanceKlineIntervals = Field(
         default=BinanceKlineIntervals.fifteen_minutes,
