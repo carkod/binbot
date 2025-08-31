@@ -30,6 +30,7 @@ dependencies = [
     "psycopg",
     "pybit",
     "pydantic-settings>=2.10.1",
+    "confluent-kafka>=2.11.1",
 ]
 
 [project.optional-dependencies]

@@ -54,20 +54,23 @@ def top_losers():
     "/btc-correlation", response_model=StandardResponse, tags=["charts"]
 )
 def get_btc_correlation(symbol: str):
-    corr, btc_price = CandlesCrud().get_btc_correlation(asset_symbol=symbol)
-    if corr:
-        return json_response(
-            {
-                "data": {
-                    "correlation": corr,
-                    "24hr_price_change": btc_price,
-                },
-                "message": "Successfully retrieved BTC correlation data.",
-                "error": 0,
-            }
-        )
-    else:
-        raise HTTPException(404, detail="Not enough one day candlestick data")
+    try:
+        corr, btc_price = CandlesCrud().get_btc_correlation(asset_symbol=symbol)
+        if corr:
+            return json_response(
+                {
+                    "data": {
+                        "correlation": corr,
+                        "24hr_price_change": btc_price,
+                    },
+                    "message": "Successfully retrieved BTC correlation data.",
+                    "error": 0,
+                }
+            )
+        else:
+            raise HTTPException(404, detail="Not enough one day candlestick data")
+    except Exception as error:
+        return json_response_error(f"Failed to retrieve BTC correlation data: {error}")
 
 
 @charts_blueprint.get(
