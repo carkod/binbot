@@ -12,7 +12,7 @@ from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
 from tools.exceptions import SaveBotError, BinbotErrors
-from tools.round_numbers import round_numbers, ts_to_humandate
+from tools.maths import round_numbers, ts_to_humandate
 from base_producer import BaseProducer
 from databases.crud.symbols_crud import SymbolsCrud
 import time

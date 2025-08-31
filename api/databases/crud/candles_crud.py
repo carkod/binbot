@@ -4,7 +4,7 @@ from databases.db import setup_kafka_db
 from pandas import DataFrame
 import pandas as pd
 from tools.enum_definitions import BinanceKlineIntervals
-from tools.round_numbers import round_numbers
+from tools.maths import round_numbers
 from databases.crud.symbols_crud import SymbolsCrud
 from datetime import datetime, timezone
 from pymongo.errors import OperationFailure
