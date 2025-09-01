@@ -93,7 +93,7 @@ class CandlesCrud:
             self.logger.error(f"Error fetching cached klines: {e}")
             self._ingest_klines(symbol, interval)
 
-        if len(cached) > 0:
+        if len(cached) == 0:
             self.logger.info(
                 f"Returning {len(cached)} cached klines for {symbol} {interval.value}"
             )
@@ -104,7 +104,7 @@ class CandlesCrud:
         )
         return cached
 
-    def get_btc_correlation(self, asset_symbol: str):
+    def get_btc_correlation(self, asset_symbol: str) -> tuple[float, float]:
         """
         Get BTC correlation data for 1 day interval
         """
