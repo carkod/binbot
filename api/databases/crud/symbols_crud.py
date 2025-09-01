@@ -335,8 +335,9 @@ class SymbolsCrud:
             if item["status"] != "TRADING":
                 continue
 
-            existing_symbol = self.get_symbol(item["symbol"])
-            if not existing_symbol:
+            try:
+                self.get_symbol(item["symbol"])
+            except BinbotErrors:
                 price_filter = next(
                     (m for m in item["filters"] if m["filterType"] == "PRICE_FILTER"),
                     None,
