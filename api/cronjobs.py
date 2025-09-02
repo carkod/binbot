@@ -2,6 +2,7 @@ import logging
 import os
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.assets import Assets
+from databases.crud.symbols_crud import SymbolsCrud
 from charts.controllers import MarketDominationController
 from databases.utils import independent_session
 
@@ -18,11 +19,21 @@ def main():
     scheduler = BlockingScheduler()
     assets = Assets(session=independent_session())
     market_domination = MarketDominationController()
+    symbols_crud = SymbolsCrud()
     timezone = "Europe/London"
 
     # Jobs should be distributed as far as possible from each other
     # to avoid overloading RAM and also avoid hitting rate limits due to high weight
     # that's why they are placed at midnight
+    scheduler.add_job(
+        func=symbols_crud.etl_exchange_info_update,
+        trigger="cron",
+        timezone=timezone,
+        day_of_week="sat",
+        hour=11,
+        minute=0,
+        id="update_symbols",
+    )
     scheduler.add_job(
         func=assets.store_balance,
         trigger="cron",

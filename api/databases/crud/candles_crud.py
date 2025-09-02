@@ -4,7 +4,7 @@ from databases.db import setup_kafka_db
 from pandas import DataFrame
 import pandas as pd
 from tools.enum_definitions import BinanceKlineIntervals
-from tools.round_numbers import round_numbers
+from tools.maths import round_numbers
 from databases.crud.symbols_crud import SymbolsCrud
 from datetime import datetime, timezone
 from pymongo.errors import OperationFailure
@@ -93,7 +93,7 @@ class CandlesCrud:
             self.logger.error(f"Error fetching cached klines: {e}")
             self._ingest_klines(symbol, interval)
 
-        if len(cached) > 0:
+        if len(cached) == 0:
             self.logger.info(
                 f"Returning {len(cached)} cached klines for {symbol} {interval.value}"
             )
@@ -104,7 +104,7 @@ class CandlesCrud:
         )
         return cached
 
-    def get_btc_correlation(self, asset_symbol: str):
+    def get_btc_correlation(self, asset_symbol: str) -> tuple[float, float]:
         """
         Get BTC correlation data for 1 day interval
         """
@@ -118,15 +118,18 @@ class CandlesCrud:
 
         # Format asset_data DataFrame columns to match Binance API kline data
         asset_df = DataFrame(asset_data)
-        btc_df = DataFrame(btc_data, columns=[
-            "open_time",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "close_time",
-        ])
+        btc_df = DataFrame(
+            btc_data,
+            columns=[
+                "open_time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "close_time",
+            ],
+        )
 
         # Binance API kline format: [open_time, open, high, low, close, volume, close_time, ...]
         if len(asset_df.columns) >= 7:

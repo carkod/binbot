@@ -1,5 +1,5 @@
 import React, { type FC } from "react";
-import { Form, InputGroup } from "react-bootstrap";
+import { Form, InputGroup, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { type FieldErrors } from "react-hook-form";
 import { type Bot } from "../../features/bots/botInitialState";
 
@@ -23,18 +23,24 @@ export const InputTooltip: FC<InputTooltipProps> = ({
   secondaryText = undefined,
 }) => {
   return (
-    <Form.Group className="position-relative">
-      <Form.Label htmlFor={name}>
-        {label}
-        {required && <span className="u-required">*</span>}
-      </Form.Label>
+    <Form.Group>
+      <OverlayTrigger
+        placement="right"
+        overlay={
+          <Tooltip placement="top" className="in">
+            {tooltip}
+          </Tooltip>
+        }
+      >
+        <Form.Label htmlFor={name}>
+          {label}
+          {required && <span className="u-required">*</span>}
+        </Form.Label>
+      </OverlayTrigger>
       <InputGroup>
         {children}
         {secondaryText && <InputGroup.Text>{secondaryText}</InputGroup.Text>}
       </InputGroup>
-      <Form.Control.Feedback tooltip>
-        <small>{tooltip}</small>
-      </Form.Control.Feedback>
       {errors[name] && (
         <Form.Control.Feedback type="invalid">
           {errors[name]?.message}

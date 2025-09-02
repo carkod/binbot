@@ -7,13 +7,14 @@ from databases.models.bot_table import BotTable
 from databases.models.deal_table import DealTable
 from databases.models.order_table import ExchangeOrderTable
 from databases.utils import independent_session, timestamp
-from tools.enum_definitions import Status, Strategy
+from tools.enum_definitions import QuoteAssets, Status, Strategy
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
 from tools.exceptions import SaveBotError, BinbotErrors
-from tools.round_numbers import round_numbers, ts_to_humandate
+from tools.maths import round_numbers, ts_to_humandate
 from base_producer import BaseProducer
+from databases.crud.symbols_crud import SymbolsCrud
 import time
 import logging
 
@@ -211,6 +212,18 @@ class BotTableCrud:
         """
         # due to incompatibility of SQLModel and Pydantic
         initial_bot = self.get_one(bot_id=str(data.id))
+
+        # new quote_asset field sync
+        composed_pair = (
+            data.pair.replace(data.quote_asset.value, "") + data.quote_asset.value
+        )
+        if data.pair != composed_pair:
+            # need a new session so we don't interfere in current
+            symbol_crud = SymbolsCrud()
+            symbol_data = symbol_crud.get_symbol(data.pair)
+            if symbol_data:
+                data.quote_asset = QuoteAssets[symbol_data.quote_asset]
+
         deal_id = initial_bot.deal_id
         initial_bot.sqlmodel_update(data.model_dump())
 

@@ -5,7 +5,7 @@ from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from orders.controller import OrderController
-from tools.round_numbers import round_numbers, round_numbers_ceiling
+from tools.maths import round_numbers, round_numbers_ceiling
 from tools.exceptions import (
     BinanceErrors,
     DealCreationError,

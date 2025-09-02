@@ -53,7 +53,7 @@ export const DashboardPage: FC<{}> = () => {
     if (benchmark) {
       if (benchmark.benchmarkData) {
         const { revenue, percentage } = calculateTotalRevenue(
-          benchmark.benchmarkData
+          benchmark.benchmarkData,
         );
         setRevenue(revenue);
         setPercentageRevenue(percentage);

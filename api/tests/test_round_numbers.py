@@ -1,4 +1,4 @@
-from tools.round_numbers import supress_notation
+from tools.maths import supress_notation
 
 
 def test_supress_notation():

@@ -4,7 +4,7 @@ from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import DealType, OrderSide, Status
 from tools.exceptions import TakeProfitError
-from tools.round_numbers import round_numbers, round_timestamp
+from tools.maths import round_numbers, round_timestamp
 from deals.abstractions.base import BaseDeal
 from deals.models import DealModel
 from databases.crud.paper_trading_crud import PaperTradingTableCrud

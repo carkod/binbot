@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 from databases.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType, OrderStatus
-from tools.round_numbers import ts_to_humandate
+from tools.maths import ts_to_humandate
 from databases.models.bot_table import BotTable, PaperTradingTable
 from databases.models.deal_table import DealTable
 from databases.models.order_table import ExchangeOrderTable

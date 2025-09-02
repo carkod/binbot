@@ -1,7 +1,10 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query";
 import { Bounce, toast } from "react-toastify";
 import { getToken } from "./login";
-import { type Bot } from "../features/bots/botInitialState";
+import {
+  useGetOneSymbolQuery,
+  type SymbolPayload,
+} from "../features/symbolsApiSlice";
 
 export function buildBackUrl() {
   let base = window.location.hostname.split(".");
@@ -57,17 +60,6 @@ export const notifification = (type: NotificationType, message: string) => {
     theme: "colored",
     transition: Bounce,
   });
-};
-
-/**
- * Given a bot, return the quote asset
- * This saves Binance API calls
- * @param bot
- * @returns
- */
-export const getQuoteAsset = (bot: Bot, fiat?: string) => {
-  fiat = bot.fiat;
-  return bot.pair.replace(fiat, "");
 };
 
 // Filter by base asset (fiat) provided by autotrade settings

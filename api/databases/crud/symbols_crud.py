@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql import delete
 from databases.utils import engine
 from tools.enum_definitions import QuoteAssets
+from tools.maths import round_numbers
 
 
 class SymbolsCrud:
@@ -293,6 +294,9 @@ class SymbolsCrud:
                     symbol = self.get_symbol(item["symbol"])
                 elif item["quoteAsset"] == QuoteAssets.BTC:
                     symbol = self.get_symbol(f"{item['baseAsset']}USDC")
+                elif item["quoteAsset"] == QuoteAssets.ETH:
+                    symbol = self.get_symbol(f"{item['baseAsset']}USDC")
+                    symbol = self.get_symbol(f"{item['baseAsset']}BTC")
                 else:
                     symbol = None
             except BinbotErrors:
@@ -319,3 +323,47 @@ class SymbolsCrud:
                 self.session.commit()
 
         self.session.close()
+
+    def etl_exchange_info_update(self):
+        """
+        Update the symbols table with the latest exchange information
+        """
+        binance_api = BinanceApi()
+        exchange_info_data = binance_api.exchange_info()
+
+        for item in exchange_info_data["symbols"]:
+            if item["status"] != "TRADING":
+                continue
+
+            try:
+                self.get_symbol(item["symbol"])
+            except BinbotErrors:
+                price_filter = next(
+                    (m for m in item["filters"] if m["filterType"] == "PRICE_FILTER"),
+                    None,
+                )
+                quantity_filter = next(
+                    (m for m in item["filters"] if m["filterType"] == "LOT_SIZE"), None
+                )
+                min_notional_filter = next(
+                    (m for m in item["filters"] if m["filterType"] == "NOTIONAL"), None
+                )
+                symbol = SymbolTable(
+                    id=item["symbol"],
+                    active=True,
+                    price_precision=round_numbers(price_filter["tickSize"])
+                    if price_filter
+                    else 0,
+                    qty_precision=round_numbers(quantity_filter["stepSize"])
+                    if quantity_filter
+                    else 0,
+                    min_notional=round_numbers(min_notional_filter["minNotional"])
+                    if min_notional_filter
+                    else 0,
+                    quote_asset=item["quoteAsset"],
+                    base_asset=item["baseAsset"],
+                    is_margin_trading_allowed=item["isMarginTradingAllowed"],
+                    asset_indices=[],
+                )
+                self.session.add(symbol)
+        self.session.commit()

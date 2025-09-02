@@ -18,7 +18,7 @@ from kafka import KafkaConsumer
 from streaming.models import BollinguerSpread, SingleCandle
 from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors
-from tools.round_numbers import round_numbers
+from tools.maths import round_numbers
 from typing import Sequence
 from copy import deepcopy
 

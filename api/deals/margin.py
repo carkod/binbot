@@ -5,7 +5,7 @@ from tools.enum_definitions import QuoteAssets, DealType, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors
-from tools.round_numbers import (
+from tools.maths import (
     round_timestamp,
 )
 from deals.abstractions.margin_deal_abstract import MarginDealAbstract

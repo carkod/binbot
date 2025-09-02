@@ -6,7 +6,7 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from deals.abstractions.factory import DealAbstract
 from tools.handle_error import json_response, json_response_message
-from tools.round_numbers import (
+from tools.maths import (
     round_numbers,
     ts_to_day,
 )

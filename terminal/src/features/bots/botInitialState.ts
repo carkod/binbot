@@ -1,4 +1,4 @@
-import { BotStatus, BotStrategy } from "../../utils/enums";
+import { BotStatus, BotStrategy, QuoteAsset } from "../../utils/enums";
 
 export interface Deal {
   current_price?: number;
@@ -21,6 +21,7 @@ export interface Bot {
   id: string;
   pair: string;
   fiat?: string;
+  quote_asset: QuoteAsset;
   base_order_size: number;
   candle_interval?: string;
   close_condition?: string;
@@ -59,9 +60,10 @@ export const singleBot: Bot = {
   balance_available: 0,
   base_order_size: 50,
   fiat: "USDC",
+  quote_asset: QuoteAsset.USDC,
   logs: [],
   mode: "manual",
-  name: `terminal_${new Date().getTime().toString()}`,
+  name: `terminal`,
   pair: "",
   take_profit: 2.3,
   trailling: false,

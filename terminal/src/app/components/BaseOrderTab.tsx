@@ -1,18 +1,27 @@
 import React, { type FC, useContext, useEffect, useState } from "react";
 import { Col, Container, Form, InputGroup, Row, Tab } from "react-bootstrap";
-import { type FieldValues, useForm } from "react-hook-form";
+import { type FieldValues, set, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
-import { getQuoteAsset } from "../../utils/api";
-import { BotStatus, BotStrategy, BotType, TabsKeys } from "../../utils/enums";
+import {
+  BotStatus,
+  BotStrategy,
+  BotType,
+  QuoteAsset,
+  TabsKeys,
+} from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
-import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
+import {
+  useGetOneSymbolQuery,
+  useGetSymbolsQuery,
+  useLazyGetOneSymbolQuery,
+} from "../../features/symbolsApiSlice";
 import {
   selectTestBot,
   setTestBotField,
@@ -37,7 +46,11 @@ const BaseOrderTab: FC<{
 
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
-  const [quoteAsset, setQuoteAsset] = useState<string>("");
+
+  const [triggerGetOneSymbol, { data: symbolData, isLoading }] =
+    useLazyGetOneSymbolQuery();
+
+  const [quoteAsset, setQuoteAsset] = useState<string>(bot.quote_asset || "");
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
   const [symbolsList, setSymbolsList] = useImmer<string[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
@@ -101,17 +114,13 @@ const BaseOrderTab: FC<{
       setSymbolsList(pairs);
     }
 
-    if (bot.pair !== quoteAsset) {
-      const newQuoteAsset = getQuoteAsset(bot, autotradeSettings?.fiat);
-      setQuoteAsset(newQuoteAsset);
-    }
-
     if (symbol && !id) {
       reset({
         name: bot.name,
         base_order_size: bot.base_order_size,
         strategy: bot.strategy,
         pair: symbol,
+        quote_asset: bot.quote_asset,
       });
       if (botType === BotType.PAPER_TRADING) {
         dispatch(setTestBotField({ name: "pair", value: symbol }));
@@ -126,6 +135,7 @@ const BaseOrderTab: FC<{
         base_order_size: bot.base_order_size,
         strategy: bot.strategy,
         pair: id,
+        quote_asset: bot.quote_asset,
       });
     }
 
@@ -136,12 +146,59 @@ const BaseOrderTab: FC<{
       setCurrentPrice(bot.deal.current_price);
     }
 
+    if (symbolData && symbolData?.id !== bot?.pair) {
+      setQuoteAsset(symbolData.quote_asset);
+      if (botType === BotType.PAPER_TRADING) {
+        dispatch(
+          setTestBotField({
+            name: "quote_asset",
+            value: symbolData.quote_asset,
+          }),
+        );
+      } else {
+        dispatch(
+          setField({ name: "quote_asset", value: symbolData.quote_asset }),
+        );
+      }
+    }
+
     if (!loadingSettings && autotradeSettings) {
       setSpinner(false);
     }
 
+    if (quoteAsset !== bot.quote_asset) {
+      setQuoteAsset(bot.quote_asset);
+      dispatch(setField({ name: "quote_asset", value: bot.quote_asset }));
+    }
+
+    // Keep pair in sync with quote_asset
+
+    if (bot.pair) {
+      const composedPair =
+        bot.pair.replace(bot.quote_asset, "") + bot.quote_asset;
+      if (bot.pair !== composedPair) {
+        triggerGetOneSymbol(bot.pair)
+          .unwrap()
+          .then((data) => {
+            setQuoteAsset(data.quote_asset);
+            dispatch(
+              setField({ name: "quote_asset", value: data.quote_asset }),
+            );
+          });
+      }
+    }
+
     return () => unsubscribe();
-  }, [symbols, symbolsList, bot, reset, dispatch, watch]);
+  }, [
+    quoteAsset,
+    symbolData,
+    symbols,
+    symbolsList,
+    bot,
+    reset,
+    dispatch,
+    watch,
+  ]);
 
   return (
     <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
@@ -169,7 +226,9 @@ const BaseOrderTab: FC<{
             <InputGroup className="mb-1">
               <InputTooltip
                 name="base_order_size"
-                tooltip={"Minimum 15 USD"}
+                tooltip={
+                  "This is the amount of fiat (Minimum USDC 15) you want to spend, while asset amount (quote asset) indicates the intermediary crypto used to buy, because it may not available in USDC"
+                }
                 label="Base order size"
                 errors={errors}
                 required={true}
@@ -203,7 +262,7 @@ const BaseOrderTab: FC<{
           </Col>
           <Col md="6" sm="12" className="my-6">
             <InputTooltip
-              name="base_order_size"
+              name="quote_asset"
               tooltip={"Amount of asset to trade"}
               label="Asset amount"
               errors={errors}
@@ -211,7 +270,7 @@ const BaseOrderTab: FC<{
             >
               <Form.Control
                 type="number"
-                name="base_order_size"
+                name="quote_asset"
                 autoComplete="off"
                 disabled={true}
                 value={bot.base_order_size * currentPrice}
