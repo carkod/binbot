@@ -75,8 +75,8 @@ class BotBase(BaseModel):
     pair: str
     fiat: str = Field(default="USDC")
     quote_asset: QuoteAssets = Field(default=QuoteAssets.USDC)
-    base_order_size: Amount = Field(
-        default=15, ge=0, description="Min Binance 0.0001 BNB approx 15USD"
+    fiat_order_size: Amount = Field(
+        default=0, ge=0, description="Min Binance 0.0001 BNB approx 15USD"
     )
     candlestick_interval: BinanceKlineIntervals = Field(
         default=BinanceKlineIntervals.fifteen_minutes,
@@ -201,6 +201,8 @@ class BotModel(BotBase):
         """
         if isinstance(bot, BotTable) or isinstance(bot, PaperTradingTable):
             model = BotModel.model_construct(**bot.model_dump())
+            if not bot.deal.base_order_size:
+                bot.deal.base_order_size = 0
             deal_model = DealModel.model_validate(bot.deal.model_dump())
             order_models = [
                 OrderModel.model_construct(**order.model_dump()) for order in bot.orders

@@ -38,6 +38,15 @@ def round_numbers_ceiling(value, decimals=6):
     return float(result)
 
 
+def round_numbers_floor(value, decimals=6):
+    decimal_points = 10 ** int(decimals)
+    number = float(value)
+    result = math.floor(number * decimal_points) / decimal_points
+    if decimals == 0:
+        result = int(result)
+    return float(result)
+
+
 def supress_notation(num: float, precision: int = 0) -> str:
     """
     Supress scientific notation

@@ -246,6 +246,11 @@ class BinanceApi:
         data = self.request(url=self.ticker24_url, params=params)
         return data
 
+    def last_ticker_price(self, symbol: str):
+        url = f"{self.ticker_price_url}"
+        data = self.request(url=url, params={"symbol": symbol})
+        return data
+
     def get_raw_klines(
         self, symbol, interval, limit=500, start_time=None, end_time=None
     ):

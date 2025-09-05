@@ -48,6 +48,12 @@ class BaseDeal(OrderController):
         self.market_domination_reversal: bool | None = None
         self.price_precision = self.calculate_price_precision(bot.pair)
         self.qty_precision = self.calculate_qty_precision(bot.pair)
+        if bot.quote_asset != self.active_bot.fiat:
+            self.quote_qty_precision = self.calculate_qty_precision(
+                bot.quote_asset.value + self.active_bot.fiat
+            )
+        else:
+            self.quote_qty_precision = self.calculate_qty_precision(bot.pair)
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
         self.symbols_crud = SymbolsCrud()
@@ -113,7 +119,7 @@ class BaseDeal(OrderController):
     def replace_order(self, cancel_order_id):
         payload = {
             "symbol": self.active_bot.pair,
-            "quantity": self.active_bot.base_order_size,
+            "quantity": self.active_bot.deal.base_order_size,
             "cancelOrderId": cancel_order_id,
             "type": "MARKET",
             "side": "SELL",

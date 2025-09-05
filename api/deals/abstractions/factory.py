@@ -2,9 +2,14 @@ from typing import Type, Union
 from databases.models.bot_table import BotTable, PaperTradingTable
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
-from tools.enum_definitions import DealType, OrderSide, Status
-from tools.exceptions import TakeProfitError
-from tools.maths import round_numbers, round_timestamp
+from tools.enum_definitions import DealType, OrderSide, Status, QuoteAssets
+from tools.exceptions import BinanceErrors, TakeProfitError
+from tools.maths import (
+    round_numbers,
+    round_timestamp,
+    round_numbers_floor,
+    round_numbers_ceiling,
+)
 from deals.abstractions.base import BaseDeal
 from deals.models import DealModel
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
@@ -45,6 +50,133 @@ class DealAbstract(BaseDeal):
             total_qty += float(fill["qty"])
             total_price += float(fill["price"]) * float(fill["qty"])
         return total_price / total_qty
+
+    def check_available_balance(self):
+        """
+        Check if the base asset is supported
+
+        For quote asset transactions we always want to round down (floor)
+        to avoid insufficient balance errors
+
+        1. Do we have quote asset?
+            1.1 we do have quote asset but not enough - buy the difference
+            1.2 we do have quote asset and we do have enough - don't do anything
+
+        2. we don't have quote asset, buy the full fiat amount
+            2.1. convert available fiat to quote
+            2.2. buy base asset
+        """
+        balances = self.get_raw_balance()
+        symbol = self.active_bot.quote_asset.value + self.active_bot.fiat
+        is_quote_balance = next(
+            (
+                float(b["free"])
+                for b in balances
+                if b["asset"] == self.active_bot.quote_asset
+            ),
+            None,
+        )
+        if is_quote_balance:
+            quote_balance = round_numbers_floor(
+                is_quote_balance, self.quote_qty_precision
+            )
+            # pessimistic price so that we can actually buy more
+            quote_fiat_price = self.matching_engine(symbol=symbol, order_side=True)
+            total_qty_available = quote_fiat_price * quote_balance
+            # always set deal.base_order_size
+            self.active_bot.deal.base_order_size = round_numbers_floor(
+                self.active_bot.fiat_order_size / quote_fiat_price
+            )
+
+            if total_qty_available > self.active_bot.fiat_order_size:
+                return None
+            else:
+                amount_missing = self.active_bot.fiat_order_size - total_qty_available
+                # Min exchange
+                if amount_missing < 15:
+                    qty = round_numbers_ceiling(15 / quote_fiat_price)
+                    response = self.buy_order(
+                        symbol=symbol,
+                        qty=qty,
+                        qty_precision=self.quote_qty_precision,
+                    )
+                    return response
+                else:
+                    # here we need ceiling to buy as much as we can
+                    quote_amount_needed = round_numbers_ceiling(
+                        amount_missing / float(quote_fiat_price)
+                    )
+
+                    response = self.buy_order(
+                        symbol=symbol,
+                        qty=quote_amount_needed,
+                        qty_precision=self.quote_qty_precision,
+                    )
+
+                return response
+
+        quote_fiat_price = self.last_ticker_price(symbol)
+        quote_asset_qty = round_numbers_floor(
+            self.active_bot.fiat_order_size / quote_fiat_price,
+            self.quote_qty_precision,
+        )
+        total_qty_available_buy = round_numbers_floor(
+            quote_fiat_price * quote_asset_qty,
+            self.quote_qty_precision,
+        )
+
+        # USDC (current price * estimated qty) > USDC
+        if total_qty_available_buy > self.active_bot.fiat_order_size:
+            self.active_bot.deal.base_order_size = quote_asset_qty
+            return None
+        else:
+            response = self.buy_order(
+                symbol=symbol,
+                qty=quote_asset_qty,
+                qty_precision=self.quote_qty_precision,
+            )
+            if response:
+                return response
+
+    def sell_quote_asset(self):
+        """
+        Sell quote asset back to fiat (hedge cyrpto)
+
+        1. Do we have quote asset?
+            1.1 we do have quote asset sell
+            1.2. we don't have quote asset
+        """
+        balances = self.get_raw_balance()
+        symbol = self.active_bot.quote_asset.value + self.active_bot.fiat
+        is_quote_balance = next(
+            (
+                float(b["free"])
+                for b in balances
+                if b["asset"] == self.active_bot.quote_asset
+            ),
+            None,
+        )
+        if is_quote_balance:
+            quote_balance = round_numbers_floor(
+                is_quote_balance, self.quote_qty_precision
+            )
+            # pessimistic price so that we can actually buy more
+            quote_fiat_price = self.matching_engine(symbol=symbol, order_side=True)
+            # sell everything that is on the account clean
+            # this is to hedge from market fluctuations that make affect portfolio value
+            total_qty_available = quote_fiat_price * quote_balance
+            if total_qty_available < 15:
+                # can't sell such a small amount
+                return None
+            else:
+                self.active_bot.deal.base_order_size = quote_balance
+            response = self.buy_order(
+                symbol=symbol,
+                qty=total_qty_available,
+                qty_precision=self.quote_qty_precision,
+            )
+            if response:
+                return response
 
     def take_profit_order(self) -> BotModel:
         """
@@ -116,25 +248,44 @@ class DealAbstract(BaseDeal):
         Other orders require this to execute,
         therefore should fail if not successful
 
-        1. Initial base purchase
+        1. Initial base purchase (0 qty)
+            1.1 if not enough quote asset to purchase, redo it with exact qty needed
         2. Set take_profit
         """
 
+        if self.active_bot.quote_asset != QuoteAssets.USDC:
+            response = self.check_available_balance()
+            if response:
+                order = OrderModel(
+                    timestamp=int(response["transactTime"]),
+                    order_id=response["orderId"],
+                    deal_type=DealType.conversion,
+                    pair=response["symbol"],
+                    order_side=response["side"],
+                    order_type=response["type"],
+                    price=float(response["price"]),
+                    qty=float(response["origQty"]),
+                    time_in_force=response["timeInForce"],
+                    status=response["status"],
+                )
+                self.active_bot.orders.append(order)
+
+        else:
+            self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
+
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
-        price = float(
-            self.matching_engine(
-                self.active_bot.pair, True, qty=self.active_bot.base_order_size
-            )
+        # taker's fee is 0.1% x2 so substract it
+        last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+        price = float(last_ticker_price["price"])
+
+        size = self.active_bot.deal.base_order_size - (
+            self.active_bot.deal.base_order_size * 0.002
         )
-        qty = round_numbers(
-            (float(self.active_bot.base_order_size) / float(price)),
+        qty = round_numbers_floor(
+            (float(size) / float(price)),
             self.qty_precision,
         )
-        # setup stop_loss_price
-        stop_loss_price: float = 0
-        if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
 
         if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_order(
@@ -142,10 +293,14 @@ class DealAbstract(BaseDeal):
                 OrderSide.buy,
             )
         else:
-            res = self.buy_order(
-                symbol=self.active_bot.pair,
-                qty=qty,
-            )
+            try:
+                res = self.buy_order(
+                    symbol=self.active_bot.pair,
+                    qty=qty,
+                )
+            except BinanceErrors as error:
+                if error.code == -2010:
+                    print(error.message)
 
         price = float(res["price"])
         if price == 0:
@@ -166,6 +321,10 @@ class DealAbstract(BaseDeal):
         )
 
         self.active_bot.orders.append(order_data)
+        # setup stop_loss_price
+        stop_loss_price = 0.0
+        if float(self.active_bot.stop_loss) > 0:
+            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
         tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
 
         self.active_bot.deal = DealModel(

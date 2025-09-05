@@ -44,7 +44,9 @@ class CandlesCrud:
             },
             expireAfterSeconds=24 * 3600,  # 1 day
         )
-        self.logger.info(f"✅ Created timeseries collection: {self.collection_name}")
+        self.logger.info(
+            f"✅ Created timeseries collection: {self.collection_name} for {symbol}"
+        )
         # Not found, fetch from Binance
         klines = self.binance_api.get_raw_klines(symbol=symbol, interval=interval)
         if klines:

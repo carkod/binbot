@@ -1,7 +1,7 @@
 .PHONY: up down test migrate format delete-revision
 
-ifneq (,$(wildcard ./.env))
-    include .env
+ifneq (,$(wildcard ../.env))
+    include ../.env
     export
 endif
 
@@ -38,5 +38,6 @@ delete-revision:  ## Delete a specific Alembic revision from the database
 		echo "ERROR: You must provide a revision. Usage: make delete-revision revision=<revision>"; \
 		exit 1; \
 	fi
+	@echo "POSTGRES_PASSWORD: $(POSTGRES_PASSWORD)"
 	@echo "Deleting revision $(revision) from alembic_version table..."
 	docker exec -ti binbot_api_db sh -c "PGPASSWORD=$(POSTGRES_PASSWORD) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c \"DELETE FROM alembic_version WHERE version_num = '$(revision)';\""
