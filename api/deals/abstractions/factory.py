@@ -138,14 +138,19 @@ class DealAbstract(BaseDeal):
             if response:
                 return response
 
-    def sell_quote_asset(self):
+    def sell_quote_asset(self) -> BotModel:
         """
         Sell quote asset back to fiat (hedge cyrpto)
 
-        1. Do we have quote asset?
+        1. Are we using a quote asset that is not fiat?
+        2. Do we have quote asset?
             1.1 we do have quote asset sell
             1.2. we don't have quote asset
         """
+        if self.active_bot.quote_asset.value == self.active_bot.fiat:
+            return self.active_bot
+
+        self.controller.update_logs("Selling quote asset.", self.active_bot)
         balances = self.get_raw_balance()
         symbol = self.active_bot.quote_asset.value + self.active_bot.fiat
         is_quote_balance = next(
@@ -156,7 +161,7 @@ class DealAbstract(BaseDeal):
             ),
             None,
         )
-        if is_quote_balance:
+        if is_quote_balance and is_quote_balance > 0:
             quote_balance = round_numbers_floor(
                 is_quote_balance, self.quote_qty_precision
             )
@@ -164,19 +169,33 @@ class DealAbstract(BaseDeal):
             quote_fiat_price = self.matching_engine(symbol=symbol, order_side=True)
             # sell everything that is on the account clean
             # this is to hedge from market fluctuations that make affect portfolio value
-            total_qty_available = quote_fiat_price * quote_balance
+            total_qty_available = round_numbers_floor(quote_fiat_price * quote_balance)
             if total_qty_available < 15:
                 # can't sell such a small amount
-                return None
-            else:
-                self.active_bot.deal.base_order_size = quote_balance
-            response = self.buy_order(
+                return self.active_bot
+
+            res = self.sell_order(
                 symbol=symbol,
-                qty=total_qty_available,
+                qty=is_quote_balance,
                 qty_precision=self.quote_qty_precision,
             )
-            if response:
-                return response
+            if res:
+                quote_order = OrderModel(
+                    timestamp=int(res["transactTime"]),
+                    order_id=int(res["orderId"]),
+                    deal_type=DealType.conversion,
+                    pair=res["symbol"],
+                    order_side=res["side"],
+                    order_type=res["type"],
+                    price=float(res["price"]),
+                    qty=float(res["origQty"]),
+                    time_in_force=res["timeInForce"],
+                    status=res["status"],
+                )
+                self.active_bot.orders.append(quote_order)
+                self.controller.save(self.active_bot)
+
+        return self.active_bot
 
     def take_profit_order(self) -> BotModel:
         """
@@ -238,8 +257,9 @@ class DealAbstract(BaseDeal):
 
         bot = self.controller.save(self.active_bot)
         bot = BotModel.model_construct(**bot.model_dump())
-        self.controller.update_logs("Completed take profit", self.active_bot)
+        self.controller.update_logs("Completed take profit.", self.active_bot)
 
+        self.sell_quote_asset()
         return bot
 
     def base_order(self) -> BotModel:
