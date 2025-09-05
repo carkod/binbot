@@ -185,14 +185,6 @@ class StreamingController:
                     )
                 else:
                     return
-            except BinbotErrors as err:
-                if current_test_bot:
-                    logging.error(err, current_test_bot.id)
-                if current_bot:
-                    logging.error(err, current_bot.id)
-                else:
-                    logging.error(err)
-                return
             except BinanceErrors as error:
                 if error.code in (-2010, -1013):
                     if current_bot:
@@ -235,6 +227,9 @@ class BbspreadsUpdater:
                     current_test_bot_payload
                 )
         except ValueError:
+            pass
+        except Exception as e:
+            logging.error(e)
             pass
 
     def get_interests_short_margin(self, bot: BotModel) -> tuple[float, float, float]:
