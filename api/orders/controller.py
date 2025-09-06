@@ -155,21 +155,21 @@ class OrderController(Account):
                 "side": OrderSide.sell,
                 "type": OrderType.limit,
                 "timeInForce": TimeInForce.fok,
-                "price": supress_notation(price, self.price_precision),
-                "quantity": supress_notation(qty, self.qty_precision),
+                "price": supress_notation(price, price_precision),
+                "quantity": supress_notation(qty, qty_precision),
             }
         else:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
                 "type": OrderType.market,
-                "quantity": supress_notation(qty, self.qty_precision),
+                "quantity": supress_notation(qty, qty_precision),
             }
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         # Fixed expired orders
         if data["status"] == OrderStatus.EXPIRED.value:
-            self.sell_order(symbol=symbol, qty=round_numbers(qty, self.qty_precision))
+            self.sell_order(symbol=symbol, qty=round_numbers(qty, qty_precision))
 
         return data
 
