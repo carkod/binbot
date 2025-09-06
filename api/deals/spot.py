@@ -226,7 +226,7 @@ class SpotLongDeal(SpotDealAbstract):
                     # continue execution to clean quote asset
                     pass
 
-        self.sell_quote_asset()
+        self.active_bot = self.sell_quote_asset()
 
         return self.active_bot
 

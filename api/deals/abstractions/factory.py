@@ -81,7 +81,7 @@ class DealAbstract(BaseDeal):
                 is_quote_balance, self.quote_qty_precision
             )
             # pessimistic price so that we can actually buy more
-            quote_fiat_price = self.matching_engine(symbol=symbol, order_side=True)
+            quote_fiat_price = self.get_book_order_deep(symbol, True)
             total_qty_available = quote_fiat_price * quote_balance
             # always set deal.base_order_size
             self.active_bot.deal.base_order_size = round_numbers_floor(
@@ -115,7 +115,7 @@ class DealAbstract(BaseDeal):
 
                 return response
 
-        quote_fiat_price = self.last_ticker_price(symbol)
+        quote_fiat_price = self.get_book_order_deep(symbol, True)
         quote_asset_qty = round_numbers_floor(
             self.active_bot.fiat_order_size / quote_fiat_price,
             self.quote_qty_precision,
@@ -278,7 +278,7 @@ class DealAbstract(BaseDeal):
             if response:
                 order = OrderModel(
                     timestamp=int(response["transactTime"]),
-                    order_id=response["orderId"],
+                    order_id=int(response["orderId"]),
                     deal_type=DealType.conversion,
                     pair=response["symbol"],
                     order_side=response["side"],
@@ -293,17 +293,17 @@ class DealAbstract(BaseDeal):
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
 
+        # make sure base_order_size is saved
+        self.controller.save(self.active_bot)
+
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
         # taker's fee is 0.1% x2 so substract it
-        last_ticker_price = self.last_ticker_price(self.active_bot.pair)
-        price = float(last_ticker_price["price"])
+        last_ticker_price = self.get_book_order_deep(self.active_bot.pair, False)
+        price = float(last_ticker_price)
 
-        size = self.active_bot.deal.base_order_size - (
-            self.active_bot.deal.base_order_size * 0.002
-        )
         qty = round_numbers_floor(
-            (float(size) / float(price)),
+            (float(self.active_bot.deal.base_order_size) / float(price)),
             self.qty_precision,
         )
 
