@@ -278,7 +278,7 @@ class DealAbstract(BaseDeal):
             if response:
                 order = OrderModel(
                     timestamp=int(response["transactTime"]),
-                    order_id=response["orderId"],
+                    order_id=int(response["orderId"]),
                     deal_type=DealType.conversion,
                     pair=response["symbol"],
                     order_side=response["side"],
@@ -292,6 +292,9 @@ class DealAbstract(BaseDeal):
 
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
+
+        # make sure base_order_size is saved
+        self.controller.save(self.active_bot)
 
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match

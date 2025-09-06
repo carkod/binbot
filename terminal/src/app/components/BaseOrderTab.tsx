@@ -4,12 +4,7 @@ import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
-import {
-  BotStatus,
-  BotStrategy,
-  BotType,
-  TabsKeys,
-} from "../../utils/enums";
+import { BotStatus, BotStrategy, BotType, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
@@ -151,11 +146,11 @@ const BaseOrderTab: FC<{
           setTestBotField({
             name: "quote_asset",
             value: symbolData.quote_asset,
-          }),
+          })
         );
       } else {
         dispatch(
-          setField({ name: "quote_asset", value: symbolData.quote_asset }),
+          setField({ name: "quote_asset", value: symbolData.quote_asset })
         );
       }
     }
@@ -180,7 +175,7 @@ const BaseOrderTab: FC<{
           .then((data) => {
             setQuoteAsset(data.quote_asset);
             dispatch(
-              setField({ name: "quote_asset", value: data.quote_asset }),
+              setField({ name: "quote_asset", value: data.quote_asset })
             );
           });
       }
@@ -258,25 +253,6 @@ const BaseOrderTab: FC<{
               </InputTooltip>
             </InputGroup>
           </Col>
-          <Col md="6" sm="12" className="my-6">
-            <InputTooltip
-              name="quote_asset"
-              tooltip={"Amount of asset to trade"}
-              label="Asset amount"
-              errors={errors}
-              secondaryText={quoteAsset}
-            >
-              <Form.Control
-                type="number"
-                name="quote_asset"
-                autoComplete="off"
-                disabled={true}
-                value={bot.fiat_order_size * currentPrice}
-              />
-            </InputTooltip>
-          </Col>
-        </Row>
-        <Row>
           <Col md="6" sm="12">
             <Form.Group>
               <Form.Label htmlFor="strategy">Strategy</Form.Label>
@@ -295,6 +271,44 @@ const BaseOrderTab: FC<{
               )}
             </Form.Group>
           </Col>
+          {bot.deal?.base_order_size > 0 && (
+            <Row>
+              <Col md="6" sm="12" className="my-6">
+                <InputTooltip
+                  name="base_order_size"
+                  tooltip={"Amount of base asset to trade"}
+                  label="Base order size"
+                  errors={errors}
+                  secondaryText={bot.quote_asset}
+                >
+                  <Form.Control
+                    type="number"
+                    name="base_order_size"
+                    autoComplete="off"
+                    disabled={true}
+                    value={bot.deal.base_order_size}
+                  />
+                </InputTooltip>
+              </Col>
+              <Col md="6" sm="12" className="my-6">
+                <InputTooltip
+                  name="total_asset_amount"
+                  tooltip={"Amount of asset to trade"}
+                  label="Asset amount"
+                  errors={errors}
+                  secondaryText={bot.pair.replace(quoteAsset, "")}
+                >
+                  <Form.Control
+                    type="number"
+                    name="total_asset_amount"
+                    autoComplete="off"
+                    disabled={true}
+                    value={bot.deal.base_order_size * currentPrice}
+                  />
+                </InputTooltip>
+              </Col>
+            </Row>
+          )}
         </Row>
       </Container>
     </Tab.Pane>
