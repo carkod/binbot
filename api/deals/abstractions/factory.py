@@ -97,7 +97,7 @@ class DealAbstract(BaseDeal):
                     qty = round_numbers_ceiling(15 / quote_fiat_price)
                     response = self.buy_order(
                         symbol=symbol,
-                        qty=qty,
+                        qty=qty * 1.045,
                         qty_precision=self.quote_qty_precision,
                     )
                     return response
@@ -109,7 +109,7 @@ class DealAbstract(BaseDeal):
 
                     response = self.buy_order(
                         symbol=symbol,
-                        qty=quote_amount_needed,
+                        qty=quote_amount_needed * 1.045,
                         qty_precision=self.quote_qty_precision,
                     )
 
@@ -130,9 +130,10 @@ class DealAbstract(BaseDeal):
             self.active_bot.deal.base_order_size = quote_asset_qty
             return None
         else:
+            # subtract roughly 0.45% to account for fees and price movements
             response = self.buy_order(
                 symbol=symbol,
-                qty=quote_asset_qty,
+                qty=quote_asset_qty * 1.045,
                 qty_precision=self.quote_qty_precision,
             )
             if response:
@@ -299,7 +300,7 @@ class DealAbstract(BaseDeal):
         # Long position does not need qty in take_profit
         # initial price with 1 qty should return first match
         # taker's fee is 0.1% x2 so substract it
-        last_ticker_price = self.get_book_order_deep(self.active_bot.pair, False)
+        last_ticker_price = self.get_book_order_deep(self.active_bot.pair, True)
         price = float(last_ticker_price)
 
         qty = round_numbers_floor(
