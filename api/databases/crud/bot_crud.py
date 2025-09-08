@@ -271,7 +271,7 @@ class BotTableCrud:
         resulted_bot = initial_bot
         return resulted_bot
 
-    def delete(self, bot_ids: List[str] = Query(...)):
+    def delete(self, bot_ids: List[str] = Query(...)) -> List[str]:
         """
         Delete by multiple ids.
         For a single id, pass one id in a list

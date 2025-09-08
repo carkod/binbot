@@ -1,17 +1,37 @@
 import { type OrderLine } from "./index.d";
 import { type Bot } from "../../features/bots/botInitialState";
 import { dealColors } from "../../utils/charting/index";
-import { BotStatus } from "../enums";
+import { BotStatus, DealType, QuoteAsset } from "../enums";
+
+const getBaseOrderQuoteAsset = (bot: Bot): number => {
+  let baseOrderSize = 0;
+  bot.orders.forEach((element) => {
+    if (element.deal_type === DealType.CONVERSION) {
+      baseOrderSize = element.qty;
+    }
+  });
+  return baseOrderSize;
+};
 
 export default function spotTrading(
   bot: Bot,
-  currentPrice: number = 0,
+  currentPrice: number = 0
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
   let totalOrderLines: OrderLine[] = [];
-  bot.deal?.opening_price > 0 || currentPrice > 0 || bot.deal.current_price;
+  let baseOrderSize = 0;
 
-  const baseOrderSize = bot.deal.base_order_size > 0 ? bot.deal.base_order_size : bot.fiat_order_size;
+  if (quoteAsset === QuoteAsset.USDC) {
+    baseOrderSize =
+      bot.deal.base_order_size > 0
+        ? bot.deal.base_order_size
+        : bot.fiat_order_size;
+  } else {
+    baseOrderSize =
+      bot.deal.base_order_size > 0
+        ? bot.deal.base_order_size
+        : getBaseOrderQuoteAsset(bot);
+  }
 
   if (baseOrderSize > 0 && currentPrice) {
     const qtyText =

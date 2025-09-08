@@ -1,3 +1,4 @@
+from time import sleep
 from typing import Type, Union
 from databases.models.bot_table import BotTable, PaperTradingTable
 from databases.crud.symbols_crud import SymbolsCrud
@@ -11,7 +12,6 @@ from tools.maths import (
     round_numbers_ceiling,
 )
 from deals.abstractions.base import BaseDeal
-from deals.models import DealModel
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 
 
@@ -39,6 +39,7 @@ class DealAbstract(BaseDeal):
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
+        self.conversion_threshold = 1.05
 
     def calculate_avg_price(self, fills: list[dict]) -> float:
         """
@@ -83,10 +84,6 @@ class DealAbstract(BaseDeal):
             # pessimistic price so that we can actually buy more
             quote_fiat_price = self.get_book_order_deep(symbol, True)
             total_qty_available = quote_fiat_price * quote_balance
-            # always set deal.base_order_size
-            self.active_bot.deal.base_order_size = round_numbers_floor(
-                self.active_bot.fiat_order_size / quote_fiat_price
-            )
 
             if total_qty_available > self.active_bot.fiat_order_size:
                 return None
@@ -97,7 +94,7 @@ class DealAbstract(BaseDeal):
                     qty = round_numbers_ceiling(15 / quote_fiat_price)
                     response = self.buy_order(
                         symbol=symbol,
-                        qty=qty * 1.045,
+                        qty=qty * self.conversion_threshold,
                         qty_precision=self.quote_qty_precision,
                     )
                     return response
@@ -109,7 +106,7 @@ class DealAbstract(BaseDeal):
 
                     response = self.buy_order(
                         symbol=symbol,
-                        qty=quote_amount_needed * 1.045,
+                        qty=quote_amount_needed * self.conversion_threshold,
                         qty_precision=self.quote_qty_precision,
                     )
 
@@ -127,13 +124,12 @@ class DealAbstract(BaseDeal):
 
         # USDC (current price * estimated qty) > USDC
         if total_qty_available_buy > self.active_bot.fiat_order_size:
-            self.active_bot.deal.base_order_size = quote_asset_qty
             return None
         else:
             # subtract roughly 0.45% to account for fees and price movements
             response = self.buy_order(
                 symbol=symbol,
-                qty=quote_asset_qty * 1.045,
+                qty=quote_asset_qty * self.conversion_threshold,
                 qty_precision=self.quote_qty_precision,
             )
             if response:
@@ -258,12 +254,14 @@ class DealAbstract(BaseDeal):
 
         bot = self.controller.save(self.active_bot)
         bot = BotModel.model_construct(**bot.model_dump())
-        self.controller.update_logs("Completed take profit.", self.active_bot)
+        self.controller.update_logs(
+            bot=self.active_bot, log_message="Completed take profit."
+        )
 
         self.sell_quote_asset()
         return bot
 
-    def base_order(self) -> BotModel:
+    def base_order(self, repurchase_multiplier: float = 0.95) -> BotModel:
         """
         Required initial order to trigger long strategy bot.
         Other orders require this to execute,
@@ -290,23 +288,35 @@ class DealAbstract(BaseDeal):
                     status=response["status"],
                 )
                 self.active_bot.orders.append(order)
+                self.controller.update_logs(
+                    bot=self.active_bot, log_message="Quote asset purchase successful."
+                )
+                # give some time for order to complete
+                sleep(3)
+
+            # Long position does not need qty in take_profit
+            # initial price with 1 qty should return first match
+            last_ticker_price = self.get_book_order_deep(self.active_bot.pair, True)
+            price = float(last_ticker_price)
+
+            # Use all available quote asset balance
+            # this avoids diffs in ups and downs in prices and fees
+            available_quote_asset = self.get_single_raw_balance(
+                self.active_bot.quote_asset
+            )
+            qty = round_numbers_floor(
+                (available_quote_asset / float(price)),
+                self.qty_precision,
+            )
 
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
-
-        # make sure base_order_size is saved
-        self.controller.save(self.active_bot)
-
-        # Long position does not need qty in take_profit
-        # initial price with 1 qty should return first match
-        # taker's fee is 0.1% x2 so substract it
-        last_ticker_price = self.get_book_order_deep(self.active_bot.pair, True)
-        price = float(last_ticker_price)
-
-        qty = round_numbers_floor(
-            (float(self.active_bot.deal.base_order_size) / float(price)),
-            self.qty_precision,
-        )
+            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            price = float(last_ticker_price["price"])
+            qty = round_numbers_floor(
+                (self.active_bot.deal.base_order_size / price),
+                self.qty_precision,
+            )
 
         if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_order(
@@ -317,16 +327,34 @@ class DealAbstract(BaseDeal):
             try:
                 res = self.buy_order(
                     symbol=self.active_bot.pair,
-                    qty=qty,
+                    qty=(qty * repurchase_multiplier),
                 )
             except BinanceErrors as error:
                 if error.code == -2010:
-                    print(error.message)
+                    self.controller.update_logs(
+                        bot=self.active_bot,
+                        log_message="Base asset purchase failed! Not enough funds.",
+                    )
+                    if repurchase_multiplier > 0.80:
+                        self.base_order(
+                            repurchase_multiplier=repurchase_multiplier - 0.05
+                        )
+                    return self.active_bot
 
-        price = float(res["price"])
-        if price == 0:
+        res_price = float(res["price"])
+        self.controller.update_logs(
+            bot=self.active_bot, log_message="Base order executed."
+        )
+
+        # cater for missing non USDC base orders
+        if self.active_bot.deal.base_order_size == 0:
+            self.active_bot.deal.base_order_size = round_numbers(
+                qty, self.quote_qty_precision
+            )
+
+        if res_price == 0:
             # Market orders return 0
-            price = self.calculate_avg_price(res["fills"])
+            res_price = self.calculate_avg_price(res["fills"])
 
         order_data = OrderModel(
             timestamp=int(res["transactTime"]),
@@ -348,13 +376,15 @@ class DealAbstract(BaseDeal):
             stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
         tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
 
-        self.active_bot.deal = DealModel(
-            opening_timestamp=int(res["transactTime"]),
-            opening_price=price,
-            opening_qty=float(res["origQty"]),
-            current_price=float(res["price"]),
-            take_profit_price=round_numbers(tp_price, self.price_precision),
-            stop_loss_price=round_numbers(stop_loss_price, self.price_precision),
+        self.active_bot.deal.opening_timestamp = int(res["transactTime"])
+        self.active_bot.deal.opening_price = price
+        self.active_bot.deal.opening_qty = float(res["origQty"])
+        self.active_bot.deal.current_price = float(res["price"])
+        self.active_bot.deal.take_profit_price = round_numbers(
+            tp_price, self.price_precision
+        )
+        self.active_bot.deal.stop_loss_price = round_numbers(
+            stop_loss_price, self.price_precision
         )
 
         # temporary measures to keep deal up to date

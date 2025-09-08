@@ -8,7 +8,6 @@ from tools.maths import (
     supress_notation,
     zero_remainder,
     round_timestamp,
-    round_numbers,
 )
 from databases.crud.symbols_crud import SymbolsCrud
 
@@ -169,7 +168,16 @@ class OrderController(Account):
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
         # Fixed expired orders
         if data["status"] == OrderStatus.EXPIRED.value:
-            self.sell_order(symbol=symbol, qty=round_numbers(qty, qty_precision))
+            # do a market order, otherwise we could enter into a Expired infinite loop
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.sell,
+                "type": OrderType.market,
+                "quantity": supress_notation(qty, qty_precision),
+            }
+            data = self.signed_request(
+                url=self.order_url, method="POST", payload=payload
+            )
 
         return data
 
@@ -211,7 +219,15 @@ class OrderController(Account):
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
 
         if data["status"] == OrderStatus.EXPIRED.value:
-            self.buy_order(symbol=symbol, qty=round_numbers(qty, qty_precision))
+            payload = {
+                "symbol": symbol,
+                "side": OrderSide.buy,
+                "type": OrderType.market,
+                "quantity": supress_notation(qty, qty_precision),
+            }
+            data = self.signed_request(
+                url=self.order_url, method="POST", payload=payload
+            )
 
         return data
 
