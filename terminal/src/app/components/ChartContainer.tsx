@@ -1,6 +1,6 @@
 import React, { useEffect, useState, type FC } from "react";
 import { Badge, Card, Col, Row } from "react-bootstrap";
-import { useAppDispatch, useAppSelector } from "../hooks";
+import { useAppDispatch } from "../hooks";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
 import { useImmer } from "use-immer";
@@ -12,6 +12,7 @@ import { type ResolutionString } from "../../../charting_library/charting_librar
 import { type AppDispatch } from "../store";
 import { type Bot } from "../../features/bots/botInitialState";
 import { type PayloadActionCreator } from "@reduxjs/toolkit";
+import { BotStatus } from "../../utils/enums";
 
 const ChartContainer: FC<{
   bot: Bot;
@@ -33,7 +34,7 @@ const ChartContainer: FC<{
   };
 
   const handleInitialPrice = (price) => {
-    if (!bot.deal.opening_price && bot.status !== "active") {
+    if (!bot.deal.opening_price && bot.status !== BotStatus.ACTIVE) {
       setCurrentChartPrice(price);
     }
     const newOrderLines = updateOrderLines(bot, price);
@@ -90,11 +91,11 @@ const ChartContainer: FC<{
               </Badge>{" "}
               <Badge
                 bg={
-                  bot.status === "active"
+                  bot.status === BotStatus.ACTIVE
                     ? "success"
-                    : bot.status === "error"
+                    : bot.status === BotStatus.ERROR
                       ? "warning"
-                      : bot.status === "completed"
+                      : bot.status === BotStatus.COMPLETED
                         ? "info"
                         : "secondary"
                 }
