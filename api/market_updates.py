@@ -73,7 +73,7 @@ def main():
             else raw_value
         )
         if topic == KafkaTopics.restart_streaming.value:
-            payload = json.loads(value)
+            payload = json.loads(json.loads(value))
             if latest_restart_action != payload.get("action", None):
                 bs.load_data_on_start()
                 latest_restart_action = payload.get("action", None)

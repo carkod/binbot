@@ -348,9 +348,7 @@ class DealAbstract(BaseDeal):
 
         # cater for missing non USDC base orders
         if self.active_bot.deal.base_order_size == 0:
-            self.active_bot.deal.base_order_size = round_numbers(
-                qty, self.quote_qty_precision
-            )
+            self.active_bot.deal.base_order_size = float(res["origQty"])
 
         if res_price == 0:
             # Market orders return 0
