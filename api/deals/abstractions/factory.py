@@ -85,7 +85,8 @@ class DealAbstract(BaseDeal):
             quote_fiat_price = self.get_book_order_deep(symbol, True)
             total_qty_available = quote_fiat_price * quote_balance
 
-            if total_qty_available > self.active_bot.fiat_order_size:
+            # check total balance and a bit more (conversion causes us to lose a bit from market fluctuations and fees)
+            if total_qty_available > self.active_bot.fiat_order_size * self.conversion_threshold:
                 return None
             else:
                 amount_missing = self.active_bot.fiat_order_size - total_qty_available
@@ -291,6 +292,7 @@ class DealAbstract(BaseDeal):
                 self.controller.update_logs(
                     bot=self.active_bot, log_message="Quote asset purchase successful."
                 )
+                self.active_bot.deal.base_order_size = float(response["origQty"])
                 # give some time for order to complete
                 sleep(3)
 
@@ -345,10 +347,6 @@ class DealAbstract(BaseDeal):
         self.controller.update_logs(
             bot=self.active_bot, log_message="Base order executed."
         )
-
-        # cater for missing non USDC base orders
-        if self.active_bot.deal.base_order_size == 0:
-            self.active_bot.deal.base_order_size = float(res["origQty"])
 
         if res_price == 0:
             # Market orders return 0
