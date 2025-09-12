@@ -348,6 +348,9 @@ class DealAbstract(BaseDeal):
             bot=self.active_bot, log_message="Base order executed."
         )
 
+        if self.active_bot.deal.base_order_size == 0:
+            self.active_bot.deal.base_order_size = float(res["origQty"]) * res_price
+
         if res_price == 0:
             # Market orders return 0
             res_price = self.calculate_avg_price(res["fills"])

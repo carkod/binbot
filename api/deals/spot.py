@@ -6,7 +6,7 @@ from tools.maths import round_numbers, round_timestamp
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.exceptions import BinanceErrors
-
+import logging
 
 class SpotLongDeal(SpotDealAbstract):
     """
@@ -38,6 +38,8 @@ class SpotLongDeal(SpotDealAbstract):
         return self.active_bot
 
     def streaming_updates(self, close_price: float, open_price: float):
+        logging.info(f"Spot long streaming updates for {self.active_bot.pair}")
+
         current_price = float(close_price)
 
         self.check_failed_switch_long_bot()
