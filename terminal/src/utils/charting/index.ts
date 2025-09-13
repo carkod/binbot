@@ -49,6 +49,10 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
   const quoteAsset = bot.quote_asset;
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach((order) => {
+      // Skip conversion orders
+      if (order.deal_type === DealType.CONVERSION) {
+        return;
+      }
       // If base_order and margin_short
       if (bot.strategy === BotStrategy.MARGIN_SHORT) {
         label = "S";

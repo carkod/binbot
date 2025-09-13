@@ -22,6 +22,7 @@ export enum BotStrategy {
 }
 
 export enum DealType {
+  CONVERSION = "conversion",
   BASE_ORDER = "base_order",
   TAKE_PROFIT = "take_profit",
   STOP_LOSS = "stop_loss",

@@ -59,6 +59,21 @@ class Account(BinbotApi):
         symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), 0)
         return symbol_balance
 
+    def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
+        """
+        Get deepest price to avoid market movements causing orders to fail
+        which means bid/ask are flipped
+
+        Buy order = get bid prices = True
+        Sell order = get ask prices = False
+        """
+        data = self.get_book_depth(symbol)
+        if order_side:
+            price, _ = data["bids"][0]
+        else:
+            price, _ = data["asks"][0]
+        return float(price)
+
     def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
         """
         Match quantity with available 100% fill order price,

@@ -5,7 +5,8 @@ from bots.models import BotModel, OrderModel
 from tools.maths import round_numbers, round_timestamp
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-
+from tools.exceptions import BinanceErrors
+import logging
 
 class SpotLongDeal(SpotDealAbstract):
     """
@@ -37,6 +38,8 @@ class SpotLongDeal(SpotDealAbstract):
         return self.active_bot
 
     def streaming_updates(self, close_price: float, open_price: float):
+        logging.info(f"Spot long streaming updates for {self.active_bot.pair}")
+
         current_price = float(close_price)
 
         self.check_failed_switch_long_bot()
@@ -62,8 +65,6 @@ class SpotLongDeal(SpotDealAbstract):
                 self.base_producer.update_required(
                     self.producer, "EXECUTE_SWITCH_MARGIN_SHORT"
                 )
-
-            return
 
         # Trailling profit
         if self.active_bot.trailling and self.active_bot.deal.opening_price > 0:
@@ -148,7 +149,8 @@ class SpotLongDeal(SpotDealAbstract):
             # Take profit
             if current_price >= self.active_bot.deal.take_profit_price:
                 self.take_profit_order()
-                return
+
+        return self.active_bot
 
     def close_all(self) -> BotModel:
         """
@@ -188,32 +190,46 @@ class SpotLongDeal(SpotDealAbstract):
                 side=OrderSide.sell,
             )
         else:
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
+            try:
+                res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
+                price = float(res["price"])
+                if price == 0:
+                    price = self.calculate_avg_price(res["fills"])
 
-        price = float(res["price"])
-        if price == 0:
-            price = self.calculate_avg_price(res["fills"])
+                order_data = OrderModel(
+                    timestamp=int(res["transactTime"]),
+                    order_id=res["orderId"],
+                    deal_type=DealType.take_profit,
+                    pair=res["symbol"],
+                    order_side=res["side"],
+                    order_type=res["type"],
+                    price=price,
+                    qty=float(res["origQty"]),
+                    time_in_force=res["timeInForce"],
+                    status=res["status"],
+                )
 
-        order_data = OrderModel(
-            timestamp=int(res["transactTime"]),
-            order_id=res["orderId"],
-            deal_type=DealType.take_profit,
-            pair=res["symbol"],
-            order_side=res["side"],
-            order_type=res["type"],
-            price=price,
-            qty=float(res["origQty"]),
-            time_in_force=res["timeInForce"],
-            status=res["status"],
-        )
+                self.active_bot.orders.append(order_data)
+                self.active_bot.deal.closing_price = price
+                self.active_bot.deal.closing_qty = float(res["origQty"])
+                self.active_bot.deal.closing_timestamp = round_timestamp(
+                    res["transactTime"]
+                )
+                self.active_bot.logs.append(
+                    "Panic sell triggered. All active orders closed"
+                )
+                self.active_bot.status = Status.completed
+                self.controller.save(self.active_bot)
 
-        self.active_bot.orders.append(order_data)
-        self.active_bot.deal.closing_price = price
-        self.active_bot.deal.closing_qty = float(res["origQty"])
-        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
-        self.active_bot.logs.append("Panic sell triggered. All active orders closed")
-        self.active_bot.status = Status.completed
-        self.controller.save(self.active_bot)
+            except BinanceErrors as error:
+                if error.code == -1013:
+                    # This probs means qty is too low to sell_order
+                    # we can ignore because the cronjob will clean dust
+                    # continue execution to clean quote asset
+                    pass
+
+        self.active_bot = self.sell_quote_asset()
+
         return self.active_bot
 
     def open_deal(self) -> BotModel:
