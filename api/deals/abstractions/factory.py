@@ -86,7 +86,10 @@ class DealAbstract(BaseDeal):
             total_qty_available = quote_fiat_price * quote_balance
 
             # check total balance and a bit more (conversion causes us to lose a bit from market fluctuations and fees)
-            if total_qty_available > self.active_bot.fiat_order_size * self.conversion_threshold:
+            if (
+                total_qty_available
+                > self.active_bot.fiat_order_size * self.conversion_threshold
+            ):
                 return None
             else:
                 amount_missing = self.active_bot.fiat_order_size - total_qty_available
