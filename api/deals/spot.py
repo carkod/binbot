@@ -8,10 +8,6 @@ from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.exceptions import BinanceErrors
 import logging
 
-logger = logging.getLogger(__name__)
-logger.info("message")
-
-
 class SpotLongDeal(SpotDealAbstract):
     """
     Spot (non-margin, no borrowing) long bot deal updates

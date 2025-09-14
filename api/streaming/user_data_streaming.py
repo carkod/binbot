@@ -4,6 +4,9 @@ from streaming.socket_client import SpotWebsocketStreamClient
 from databases.db import Database
 from databases.crud.bot_crud import BotTableCrud
 from databases.utils import independent_session
+from tools.logging_config import configure_logging
+
+configure_logging(force=True)
 
 
 class UserDataStreaming(Database, BinanceApi):
