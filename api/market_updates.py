@@ -3,7 +3,6 @@ import logging
 import os
 import time
 import uuid
-
 from confluent_kafka import Consumer, TopicPartition, OFFSET_END
 from streaming.streaming_controller import (
     BbspreadsUpdater,
@@ -11,16 +10,11 @@ from streaming.streaming_controller import (
     BaseStreaming,
 )
 from tools.enum_definitions import KafkaTopics
-
-logging.basicConfig(
-    level=os.environ["LOG_LEVEL"],
-    filename=None,
-    format="%(asctime)s.%(msecs)03d UTC %(levelname)s %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+from tools.logging_config import configure_logging
 
 
 def main():
+    configure_logging(force=True)
     consumer = Consumer(
         {
             "bootstrap.servers": f"{os.environ['KAFKA_HOST']}:{os.environ['KAFKA_PORT']}",

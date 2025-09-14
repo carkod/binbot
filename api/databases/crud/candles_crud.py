@@ -9,10 +9,6 @@ from databases.crud.symbols_crud import SymbolsCrud
 from datetime import datetime, timezone
 from pymongo.errors import OperationFailure
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
 
 class CandlesCrud:
     """

@@ -13,11 +13,11 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "type-check": "tsc --noEmit",
-    "install:clean": "rm -rf dist node_modules package-lock.json && npm install"
+    "install:clean": "rm -rf dist node_modules package-lock.json && npm i"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.0.1",
-    "binbot-charts": "^0.6.10",
+    "binbot-charts": "^0.7.3",
     "bootstrap": "5.2.2",
     "chart.js": "^4.4.4",
     "moment": "^2.29.1",

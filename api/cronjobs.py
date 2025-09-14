@@ -1,21 +1,15 @@
-import logging
 import os
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from charts.controllers import MarketDominationController
 from databases.utils import independent_session
-
-logging.basicConfig(
-    level=os.environ["LOG_LEVEL"],
-    filename=None,
-    format="%(asctime)s.%(msecs)03d UTC %(levelname)s %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-timezone = os.environ["TIMEZONE"]
+from tools.logging_config import configure_logging
 
 
 def main():
+    timezone = os.environ["TIMEZONE"]
+    configure_logging(force=True)
     scheduler = BlockingScheduler()
     assets = Assets(session=independent_session())
     market_domination = MarketDominationController()

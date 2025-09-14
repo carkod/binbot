@@ -5,6 +5,10 @@ import globals from "globals";
 import js from "@eslint/js";
 import { FlatCompat } from "@eslint/eslintrc";
 
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const compat = new FlatCompat({
   recommendedConfig: js.configs.recommended,
   allConfig: js.configs.all,
@@ -41,7 +45,7 @@ export default [
       sourceType: "script",
       parserOptions: {
         project: true,
-        tsconfigRootDir: "./",
+        tsconfigRootDir: _dirname,
       },
     },
 
