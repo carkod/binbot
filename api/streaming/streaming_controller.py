@@ -114,9 +114,10 @@ class StreamingController:
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
+        symbol = self.symbol
+        logging.info(f"Processing klines for {symbol}")
         close_price = float(self.klines[-1][4])
         open_price = float(self.klines[-1][1])
-        symbol = self.symbol
 
         if symbol in self.active_bot_pairs or symbol in self.paper_trading_active_bots:
             current_bot = self.base_streaming.get_current_bot(symbol)
