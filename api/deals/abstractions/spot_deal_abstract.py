@@ -183,7 +183,7 @@ class SpotDealAbstract(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
             res["fills"]
         )
 
@@ -267,7 +267,7 @@ class SpotDealAbstract(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
             res["fills"]
         )
 

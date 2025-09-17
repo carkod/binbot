@@ -204,7 +204,7 @@ class MarginDealAbstract(DealAbstract):
                         log_message="Base asset purchase failed! Not enough funds.",
                     )
                     if repurchase_multiplier > 0.80:
-                        self.base_order(
+                        self.margin_short_base_order(
                             repurchase_multiplier=repurchase_multiplier - 0.05
                         )
                     return self.active_bot
@@ -233,7 +233,7 @@ class MarginDealAbstract(DealAbstract):
             status=order_res["status"],
         )
 
-        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
             order_res["fills"]
         )
 
@@ -448,8 +448,8 @@ class MarginDealAbstract(DealAbstract):
         if price == 0:
             price = self.calculate_avg_price(res["fills"])
 
-        if not res:
-            self.active_bot.logs.append(f"Unable to complete stop loss {res}")
+        if "code" in res:
+            self.active_bot.logs.append(f"Unable to complete stop loss {res['msg']}")
             return self.active_bot
 
         stop_loss_order = OrderModel(
@@ -465,7 +465,7 @@ class MarginDealAbstract(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
             res["fills"]
         )
 
@@ -538,7 +538,7 @@ class MarginDealAbstract(DealAbstract):
                 status=res["status"],
             )
 
-            self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+            self.active_bot.deal.total_commissions += self.calculate_total_commissions(
                 res["fills"]
             )
 

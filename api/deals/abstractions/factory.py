@@ -246,7 +246,7 @@ class DealAbstract(BaseDeal):
             status=res["status"],
         )
 
-        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
             res["fills"]
         )
 
@@ -373,26 +373,14 @@ class DealAbstract(BaseDeal):
         )
 
         self.active_bot.orders.append(order_data)
-        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
             res["fills"]
         )
-
-        # setup stop_loss_price
-        stop_loss_price = 0.0
-        if float(self.active_bot.stop_loss) > 0:
-            stop_loss_price = price - (price * (float(self.active_bot.stop_loss) / 100))
-        tp_price = float(res["price"]) * 1 + (float(self.active_bot.take_profit) / 100)
 
         self.active_bot.deal.opening_timestamp = int(res["transactTime"])
         self.active_bot.deal.opening_price = price
         self.active_bot.deal.opening_qty = float(res["origQty"])
         self.active_bot.deal.current_price = float(res["price"])
-        self.active_bot.deal.take_profit_price = round_numbers(
-            tp_price, self.price_precision
-        )
-        self.active_bot.deal.stop_loss_price = round_numbers(
-            stop_loss_price, self.price_precision
-        )
 
         # temporary measures to keep deal up to date
         # once bugs are fixed, this can be removed to improve efficiency
