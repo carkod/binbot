@@ -20,4 +20,10 @@ describe("roundDecimals", () => {
     expect(roundDecimals(0)).toBe(0);
     expect(roundDecimals(-0.12345, 3)).toBe(-0.123);
   });
+
+  it("should remove trailing zeroes", () => {
+    expect(roundDecimals(56.0000000000001, 2)).toBe(56);
+    expect(roundDecimals(56.1000000000001, 2)).toBe(56.1);
+    expect(roundDecimals(56.1200000000001, 2)).toBe(56.12);
+  });
 });

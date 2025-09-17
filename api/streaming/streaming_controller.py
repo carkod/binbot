@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Type, Union, no_type_check
+from typing import Type, Union
 
 import pandas as pd
 from bots.models import BotModel
@@ -14,40 +14,32 @@ from deals.abstractions.factory import DealAbstract
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from exchange_apis.binance import BinanceApi
-from kafka import KafkaConsumer
-from streaming.models import BollinguerSpread, SingleCandle
+from streaming.models import BollinguerSpread
 from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.maths import round_numbers
-from typing import Sequence
 from copy import deepcopy
 from tools.enum_definitions import BinanceKlineIntervals
 
 
 class BaseStreaming:
+    """
+    Static data that doesn't change often, loaded once on startup
+    and used across the application
+    """
+
     def __init__(self) -> None:
         self.binance_api = BinanceApi()
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_controller = SymbolsCrud()
         self.cs = CandlesCrud()
-        self.active_bot_pairs: Sequence = []
-        self.paper_trading_active_bots: Sequence = []
-        self.load_data_on_start()
-
-    def load_data_on_start(self):
-        """
-        Load data on start and on update_required
-        """
-        logging.info(
-            "Loading controller, active bots and available symbols (not blacklisted)..."
-        )
-        # self.autotrade_settings: dict = self.get_autotrade_settings()
-        self.active_bot_pairs = self.bot_controller.get_active_pairs()
-        self.paper_trading_active_bots = (
+        # Always have it active
+        self.active_bot_pairs: list = list(self.bot_controller.get_active_pairs())
+        self.active_bot_pairs.extend(["BTCUSDC", "ETHUSDC"])
+        self.paper_trading_active_bots: list = list(
             self.paper_trading_controller.get_active_pairs()
         )
-        pass
 
     def get_current_bot(self, symbol: str) -> BotModel | None:
         try:
@@ -71,61 +63,32 @@ class BaseStreaming:
             bot = None
             return bot
 
-    def build_bb_spreads(self, last_candle: SingleCandle) -> BollinguerSpread:
-        """
-        Builds the bollinguer bands spreads without using pandas_ta
-        """
-        data = self.cs.binance_api.get_raw_klines(
-            symbol=last_candle.symbol,
+
+class StreamingController:
+    def __init__(self, base: BaseStreaming, symbol: str) -> None:
+        super().__init__()
+        # Gets any signal to restart streaming
+        self.autotrade_controller = AutotradeCrud()
+        self.base_streaming = base
+        self.symbol = symbol
+        self.klines = self.base_streaming.binance_api.get_raw_klines(
+            symbol=self.symbol,
             interval=BinanceKlineIntervals.fifteen_minutes.value,
             limit=200,
         )
-        if len(data) < 200:
-            return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
-
-        df = pd.DataFrame(data)
-        df.columns = [
-            "open_time",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "close_time",
-        ] + [f"col_{i}" for i in range(7, len(df.columns))]
-
-        close_prices = df["close"]
-        rolling_mean = close_prices.rolling(window=20).mean()
-        rolling_std = close_prices.rolling(window=20).std()
-
-        df["bb_high"] = rolling_mean + (rolling_std * 2)
-        df["bb_mid"] = rolling_mean
-        df["bb_low"] = rolling_mean - (rolling_std * 2)
-
-        df.reset_index(drop=True, inplace=True)
-
-        bb_spreads = BollinguerSpread(
-            bb_high=df["bb_high"].iloc[-1],
-            bb_mid=df["bb_mid"].iloc[-1],
-            bb_low=df["bb_low"].iloc[-1],
+        self.active_bot_pairs: list = list(base.bot_controller.get_active_pairs())
+        self.active_bot_pairs.extend(["BTCUSDC", "ETHUSDC"])
+        self.paper_trading_active_bots: list = (
+            base.paper_trading_controller.get_active_pairs()
         )
-
-        return bb_spreads
-
-
-class StreamingController:
-    def __init__(self, base: BaseStreaming, consumer: KafkaConsumer) -> None:
-        super().__init__()
-        # Gets any signal to restart streaming
-        self.consumer = consumer
-        self.autotrade_controller = AutotradeCrud()
-        self.base_streaming = base
+        self.current_bot: BotModel | None = None
+        self.current_test_bot: BotModel | None = None
 
     def execute_strategies(
         self,
         current_bot: BotModel,
-        close_price: str,
-        open_price: str,
+        close_price: float,
+        open_price: float,
         db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ) -> None:
         """
@@ -146,19 +109,17 @@ class StreamingController:
 
         pass
 
-    def process_klines(self, data: dict) -> None:
+    def process_klines(self) -> None:
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        close_price = data["close_price"]
-        open_price = data["open_price"]
-        symbol = data["symbol"]
+        symbol = self.symbol
+        logging.info(f"Processing klines for {symbol}")
+        close_price = float(self.klines[-1][4])
+        open_price = float(self.klines[-1][1])
 
-        if (
-            symbol in self.base_streaming.active_bot_pairs
-            or symbol in self.base_streaming.paper_trading_active_bots
-        ):
+        if symbol in self.active_bot_pairs or symbol in self.paper_trading_active_bots:
             current_bot = self.base_streaming.get_current_bot(symbol)
             current_test_bot = self.base_streaming.get_current_test_bot(symbol)
 
@@ -200,21 +161,6 @@ class StreamingController:
 
         return
 
-
-class BbspreadsUpdater:
-    """
-    Base Streaming instance have the collection of network calls, so they should be called once.
-
-    However, BbspreadsUpdater can be created as many times as needed, as this is decoupled from network calls
-    and needs to create a clean instance so that there's no overriding from previous data
-
-    """
-
-    def __init__(self, base: BaseStreaming) -> None:
-        self.base_streaming = base
-        self.current_bot: BotModel | None = None
-        self.current_test_bot: BotModel | None = None
-
     def load_current_bots(self, symbol: str) -> None:
         try:
             current_bot_payload = self.base_streaming.get_current_bot(symbol)
@@ -226,11 +172,49 @@ class BbspreadsUpdater:
                 self.current_test_bot = BotModel.model_validate(
                     current_test_bot_payload
                 )
+
         except ValueError:
             pass
         except Exception as e:
             logging.error(e)
             pass
+
+    def build_bb_spreads(self) -> BollinguerSpread:
+        """
+        Builds the bollinguer bands spreads without using pandas_ta
+        """
+        data = self.klines
+        if len(data) < 200:
+            return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
+
+        df = pd.DataFrame(data)
+        df.columns = [
+            "open_time",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "close_time",
+        ] + [f"col_{i}" for i in range(7, len(df.columns))]
+
+        close_prices = df["close"]
+        rolling_mean = close_prices.rolling(window=20).mean()
+        rolling_std = close_prices.rolling(window=20).std()
+
+        df["bb_high"] = rolling_mean + (rolling_std * 2)
+        df["bb_mid"] = rolling_mean
+        df["bb_low"] = rolling_mean - (rolling_std * 2)
+
+        df.reset_index(drop=True, inplace=True)
+
+        bb_spreads = BollinguerSpread(
+            bb_high=df["bb_high"].iloc[-1],
+            bb_mid=df["bb_mid"].iloc[-1],
+            bb_low=df["bb_low"].iloc[-1],
+        )
+
+        return bb_spreads
 
     def get_interests_short_margin(self, bot: BotModel) -> tuple[float, float, float]:
         close_timestamp = bot.deal.closing_timestamp
@@ -400,27 +384,26 @@ class BbspreadsUpdater:
             # reactivate includes saving
             margin_deal.open_deal()
 
-    # To find a better interface for bb_xx once mature
-    @no_type_check
-    def dynamic_trailling(self, data) -> None:
+    def dynamic_trailling(self) -> None:
         """
         Update bot with dynamic trailling enabled to update
         take_profit and trailling according to bollinguer bands
         dynamic movements in the market
         """
-        single_candle = SingleCandle.model_validate(data)
+        symbol = self.symbol
+        close_price = float(self.klines[-1][4])
 
         # Check if it matches any active bots
-        self.load_current_bots(single_candle.symbol)
+        self.load_current_bots(symbol)
 
-        bb_spreads = self.base_streaming.build_bb_spreads(single_candle)
+        bb_spreads = self.build_bb_spreads()
 
         if self.current_bot and self.current_bot.dynamic_trailling:
             self.update_bots_parameters(
                 bot=self.current_bot,
                 bb_spreads=bb_spreads,
                 db_table=BotTable,
-                current_price=single_candle.close_price,
+                current_price=close_price,
             )
 
         if self.current_test_bot and self.current_test_bot.dynamic_trailling:
@@ -428,6 +411,6 @@ class BbspreadsUpdater:
                 bot=self.current_test_bot,
                 bb_spreads=bb_spreads,
                 db_table=PaperTradingTable,
-                current_price=single_candle.close_price,
+                current_price=close_price,
             )
         pass
