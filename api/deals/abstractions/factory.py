@@ -346,10 +346,11 @@ class DealAbstract(BaseDeal):
                         )
                     return self.active_bot
 
-        res_price = float(res["price"])
         self.controller.update_logs(
             bot=self.active_bot, log_message="Base order executed."
         )
+
+        res_price = float(res["price"])
 
         if self.active_bot.deal.base_order_size == 0:
             self.active_bot.deal.base_order_size = float(res["origQty"]) * res_price
@@ -372,6 +373,10 @@ class DealAbstract(BaseDeal):
         )
 
         self.active_bot.orders.append(order_data)
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+            res["fills"]
+        )
+
         # setup stop_loss_price
         stop_loss_price = 0.0
         if float(self.active_bot.stop_loss) > 0:

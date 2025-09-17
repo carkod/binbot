@@ -3,6 +3,7 @@ import logging
 from typing import Type, Union
 from urllib.error import HTTPError
 from bots.models import BotBase, BotModel, OrderModel
+from time import sleep
 from databases.crud.bot_crud import BotTableCrud
 from databases.models.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
@@ -11,6 +12,7 @@ from tools.enum_definitions import (
     CloseConditions,
     DealType,
     OrderSide,
+    QuoteAssets,
     Status,
     Strategy,
 )
@@ -18,6 +20,7 @@ from tools.exceptions import BinanceErrors, MarginShortError
 from tools.maths import (
     round_numbers,
     round_numbers_ceiling,
+    round_numbers_floor,
     round_timestamp,
 )
 from databases.crud.symbols_crud import SymbolsCrud
@@ -126,7 +129,7 @@ class MarginDealAbstract(DealAbstract):
         )
         return self.active_bot
 
-    def margin_short_base_order(self) -> BotModel:
+    def margin_short_base_order(self, repurchase_multiplier: float = 0.95) -> BotModel:
         """
         Same functionality as usual base_order
         with a few more fields. This is used during open_deal
@@ -134,28 +137,88 @@ class MarginDealAbstract(DealAbstract):
         1. Check margin account balance
         2. Carry on with usual base_order
         """
-        initial_price = self.matching_engine(
-            self.active_bot.pair, True, qty=self.active_bot.deal.base_order_size
-        )
 
-        if isinstance(self.controller, BotTableCrud):
-            self.init_margin_short(initial_price)
-            # init_margin_short will set opening_qty
-            order_res = self.sell_margin_order(
-                symbol=self.active_bot.pair,
-                qty=self.active_bot.deal.opening_qty,
+        if self.active_bot.quote_asset != QuoteAssets.USDC:
+            response = self.check_available_balance()
+            if response:
+                order = OrderModel(
+                    timestamp=int(response["transactTime"]),
+                    order_id=int(response["orderId"]),
+                    deal_type=DealType.conversion,
+                    pair=response["symbol"],
+                    order_side=response["side"],
+                    order_type=response["type"],
+                    price=float(response["price"]),
+                    qty=float(response["origQty"]),
+                    time_in_force=response["timeInForce"],
+                    status=response["status"],
+                )
+                self.active_bot.orders.append(order)
+                self.controller.update_logs(
+                    bot=self.active_bot, log_message="Quote asset purchase successful."
+                )
+                self.active_bot.deal.base_order_size = float(response["origQty"])
+                # give some time for order to complete
+                sleep(3)
+
+            # Long position does not need qty in take_profit
+            # initial price with 1 qty should return first match
+            last_ticker_price = self.get_book_order_deep(self.active_bot.pair, True)
+            price = float(last_ticker_price)
+
+            # Use all available quote asset balance
+            # this avoids diffs in ups and downs in prices and fees
+            available_quote_asset = self.get_single_raw_balance(
+                self.active_bot.quote_asset
             )
-            self.controller.save(self.active_bot)
+            qty = round_numbers_floor(
+                (available_quote_asset / float(price)),
+                self.qty_precision,
+            )
         else:
+            self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
+            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            price = float(last_ticker_price["price"])
+            qty = round_numbers_floor(
+                (self.active_bot.deal.base_order_size / price),
+                self.qty_precision,
+            )
+
+        if isinstance(self.controller, PaperTradingTableCrud):
             order_res = self.simulate_margin_order(
                 pair=self.active_bot.pair, side=OrderSide.sell
             )
 
+        else:
+            self.init_margin_short(price)
+            try:
+                # init_margin_short will set opening_qty
+                order_res = self.sell_margin_order(
+                    symbol=self.active_bot.pair,
+                    qty=(qty * repurchase_multiplier),
+                )
+            except BinanceErrors as error:
+                if error.code == -2010:
+                    self.controller.update_logs(
+                        bot=self.active_bot,
+                        log_message="Base asset purchase failed! Not enough funds.",
+                    )
+                    if repurchase_multiplier > 0.80:
+                        self.base_order(
+                            repurchase_multiplier=repurchase_multiplier - 0.05
+                        )
+                    return self.active_bot
+
+        self.controller.update_logs(
+            bot=self.active_bot, log_message="Base order executed."
+        )
+
         price = float(order_res["price"])
+        if self.active_bot.deal.base_order_size == 0:
+            self.active_bot.deal.base_order_size = float(order_res["origQty"]) * price
+
         if price == 0:
             price = self.calculate_avg_price(order_res["fills"])
-
-        self.controller.update_logs("Populating order model", self.active_bot)
 
         order_data = OrderModel(
             timestamp=order_res["transactTime"],
@@ -385,39 +448,39 @@ class MarginDealAbstract(DealAbstract):
         if price == 0:
             price = self.calculate_avg_price(res["fills"])
 
-        if res:
-            stop_loss_order = OrderModel(
-                timestamp=int(res["transactTime"]),
-                deal_type=DealType.stop_loss,
-                order_id=int(res["orderId"]),
-                pair=res["symbol"],
-                order_side=res["side"],
-                order_type=res["type"],
-                price=price,
-                qty=float(res["origQty"]),
-                time_in_force=res["timeInForce"],
-                status=res["status"],
-            )
+        if not res:
+            self.active_bot.logs.append(f"Unable to complete stop loss {res}")
+            return self.active_bot
 
-            self.active_bot.deal.total_commissions = self.calculate_total_commissions(
-                res["fills"]
-            )
+        stop_loss_order = OrderModel(
+            timestamp=int(res["transactTime"]),
+            deal_type=DealType.stop_loss,
+            order_id=int(res["orderId"]),
+            pair=res["symbol"],
+            order_side=res["side"],
+            order_type=res["type"],
+            price=price,
+            qty=float(res["origQty"]),
+            time_in_force=res["timeInForce"],
+            status=res["status"],
+        )
 
-            self.active_bot.orders.append(stop_loss_order)
+        self.active_bot.deal.total_commissions = self.calculate_total_commissions(
+            res["fills"]
+        )
 
-            self.active_bot.deal.closing_price = price
-            self.active_bot.deal.closing_qty = float(res["origQty"])
-            self.active_bot.deal.closing_timestamp = round_timestamp(
-                res["transactTime"]
-            )
+        self.active_bot.orders.append(stop_loss_order)
 
-            self.active_bot.logs.append("Completed Stop loss order")
-            self.active_bot.status = Status.completed
-        else:
-            self.active_bot.logs.append("Unable to complete stop loss")
+        self.active_bot.deal.closing_price = price
+        self.active_bot.deal.closing_qty = float(res["origQty"])
+        self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
+
+        self.active_bot.status = Status.completed
+        self.active_bot.logs.append("Completed Stop loss order")
 
         self.controller.save(self.active_bot)
 
+        self.sell_quote_asset()
         return self.active_bot
 
     def execute_take_profit(
