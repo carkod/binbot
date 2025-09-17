@@ -55,11 +55,12 @@ const replaceZeros = (value) => {
   return value.replace(/^0+/, "");
 };
 
-const roundDecimals = (num: number, decimals: number = 2) => {
+const roundDecimals = (num: number, decimals: number = 2): number => {
   // Use Number.EPSILON to avoid floating point issues
   if (num < 0) return -roundDecimals(-num, decimals);
   const factor = Math.pow(10, decimals);
-  return Math.round((num + Number.EPSILON) * factor) / factor;
+  const rounding = Math.round((num + Number.EPSILON) * factor) / factor;
+  return parseFloat(rounding.toFixed(decimals));
 };
 
 export {
