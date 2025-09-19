@@ -25,7 +25,7 @@ async def process_klines():
         sc = StreamingController(bs, symbol)
         sc.process_klines()
         index += 1
-        await asyncio.sleep(30)
+        await asyncio.sleep(10)
 
 
 async def dynamic_trailing():
@@ -39,7 +39,7 @@ async def dynamic_trailing():
         sc = StreamingController(bs, symbol)
         sc.dynamic_trailling()
         index += 1
-        await asyncio.sleep(30)
+        await asyncio.sleep(10)
 
 
 async def main():
