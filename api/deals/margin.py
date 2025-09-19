@@ -1,7 +1,7 @@
 from typing import Type, Union
 from databases.models.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from tools.enum_definitions import QuoteAssets, DealType, OrderSide, OrderStatus
+from tools.enum_definitions import DealType, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors
@@ -189,7 +189,7 @@ class MarginDeal(MarginDealAbstract):
                     status=res["status"],
                 )
 
-                self.active_bot.deal.total_commissions = (
+                self.active_bot.deal.total_commissions += (
                     self.calculate_total_commissions(res["fills"])
                 )
 
@@ -226,11 +226,6 @@ class MarginDeal(MarginDealAbstract):
 
         - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
         """
-        if self.active_bot.quote_asset != QuoteAssets.USDC:
-            raise ValueError(
-                "Margin short bots only support USDC as quotes asset at the moment"
-            )
-
         base_order_deal = next(
             (
                 bo_deal
