@@ -275,7 +275,7 @@ class ApiDb:
         try:
             self.symbols.get_symbol("DASHBTC")
         except BinbotErrors:
-            self.symbols.etl_symbols_and_indexes()
+            self.symbols.etl_symbols_ingestion()
 
         pass
 
