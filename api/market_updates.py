@@ -7,11 +7,11 @@ from tools.logging_config import configure_logging
 
 # initialization data
 bs = BaseStreaming()
-total_count = len(bs.active_bot_pairs)
 configure_logging(force=True)
 
 
 async def process_klines():
+    total_count = len(bs.active_bot_pairs)
     index = 0
     while True:
         if index >= total_count:
@@ -19,6 +19,7 @@ async def process_klines():
             # because we are no longer loading them by demand with restart_streaming
             # we need to check once in a while in case new bots were created
             bs.get_all_active_pairs()
+            total_count = len(bs.active_bot_pairs)
             index = 0
 
         symbol = bs.active_bot_pairs[index]
@@ -29,10 +30,12 @@ async def process_klines():
 
 
 async def dynamic_trailing():
+    total_count = len(bs.active_bot_pairs)
     index = 0
     while True:
         if index >= total_count:
             bs.get_all_active_pairs()
+            total_count = len(bs.active_bot_pairs)
             index = 0
 
         symbol = bs.active_bot_pairs[index]
