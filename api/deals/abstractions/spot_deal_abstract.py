@@ -141,13 +141,13 @@ class SpotDealAbstract(DealAbstract):
             if not closed_orders:
                 order = self.verify_deal_close_order()
                 if order:
-                    self.active_bot.logs.append(
+                    self.active_bot.add_log(
                         "Execute stop loss previous order found! Appending..."
                     )
                     self.active_bot.orders.append(order)
                     self.controller.save(self.active_bot)
                 else:
-                    self.active_bot.logs.append(
+                    self.active_bot.add_log(
                         "No quantity in balance, no closed orders. Cannot execute update stop limit."
                     )
                     self.active_bot.status = Status.error
@@ -195,7 +195,7 @@ class SpotDealAbstract(DealAbstract):
         if self.active_bot.margin_short_reversal:
             msg += " Scheduled to switch strategy"
 
-        self.active_bot.logs.append(msg)
+        self.active_bot.add_log(msg)
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
 
@@ -218,13 +218,13 @@ class SpotDealAbstract(DealAbstract):
                 if not closed_orders:
                     order = self.verify_deal_close_order()
                     if order:
-                        self.active_bot.logs.append(
+                        self.active_bot.add_log(
                             "Execute trailling profit previous order found! Appending..."
                         )
                         self.active_bot.orders.append(order)
                         self.controller.save(self.active_bot)
                     else:
-                        self.active_bot.logs.append(
+                        self.active_bot.add_log(
                             "No quantity in balance, no closed orders. Cannot execute update trailling profit."
                         )
                         self.active_bot.status = Status.error
@@ -285,7 +285,7 @@ class SpotDealAbstract(DealAbstract):
         self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
 
         self.active_bot.status = Status.completed
-        self.active_bot.logs.append(
+        self.active_bot.add_log(
             "Completed take profit after failing to break trailling"
         )
         self.controller.save(self.active_bot)
@@ -353,7 +353,7 @@ class SpotDealAbstract(DealAbstract):
             self.active_bot.deal.take_profit_price = take_profit_price
 
         self.active_bot.status = Status.active
-        self.active_bot.logs.append("Bot activated")
+        self.active_bot.add_log("Bot activated")
         self.controller.save(self.active_bot)
         return self.active_bot
 

@@ -62,14 +62,14 @@ class MarginDealAbstract(DealAbstract):
 
         """
         if float(self.isolated_balance[0]["quoteAsset"]["borrowed"]) > 0:
-            self.active_bot.logs.append(
+            self.active_bot.add_log(
                 f"Borrowed {self.isolated_balance[0]['quoteAsset']['asset']} still remaining, please clear out manually"
             )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
 
         if float(self.isolated_balance[0]["baseAsset"]["borrowed"]) > 0:
-            self.active_bot.logs.append(
+            self.active_bot.add_log(
                 f"Borrowed {self.isolated_balance[0]['baseAsset']['asset']} still remaining, please clear out manually"
             )
             self.active_bot.status = Status.error
@@ -341,9 +341,9 @@ class MarginDealAbstract(DealAbstract):
                 # do not set trailling_stop_loss_price until trailling_profit_price is broken
 
         if self.active_bot.status == Status.inactive:
-            self.active_bot.logs.append("Bot activated")
+            self.active_bot.add_log("Bot activated")
         else:
-            self.active_bot.logs.append("Bot deal updated")
+            self.active_bot.add_log("Bot deal updated")
 
         self.controller.save(self.active_bot)
         return self.active_bot
@@ -449,7 +449,7 @@ class MarginDealAbstract(DealAbstract):
             price = self.calculate_avg_price(res["fills"])
 
         if "code" in res:
-            self.active_bot.logs.append(f"Unable to complete stop loss {res['msg']}")
+            self.active_bot.add_log(f"Unable to complete stop loss {res['msg']}")
             return self.active_bot
 
         stop_loss_order = OrderModel(
@@ -476,7 +476,7 @@ class MarginDealAbstract(DealAbstract):
         self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
 
         self.active_bot.status = Status.completed
-        self.active_bot.logs.append("Completed Stop loss order")
+        self.active_bot.add_log("Completed Stop loss order")
 
         self.controller.save(self.active_bot)
 
@@ -514,7 +514,7 @@ class MarginDealAbstract(DealAbstract):
             try:
                 res = self.margin_liquidation(self.active_bot.pair)
             except BinanceErrors as error:
-                self.active_bot.logs.append(error.message)
+                self.active_bot.add_log(error.message)
                 self.active_bot.status = Status.error
                 self.controller.save(self.active_bot)
                 return self.active_bot
@@ -548,11 +548,11 @@ class MarginDealAbstract(DealAbstract):
                 res["transactTime"]
             )
             self.active_bot.deal.closing_qty = float(res["origQty"])
-            self.active_bot.logs.append("Completed Take profit!")
+            self.active_bot.add_log("Completed Take profit!")
             self.active_bot.status = Status.completed
 
         else:
-            self.active_bot.logs.append("Unable to complete take profit")
+            self.active_bot.add_log("Unable to complete take profit")
 
         self.controller.save(self.active_bot)
 
@@ -620,7 +620,7 @@ class MarginDealAbstract(DealAbstract):
                 self.active_bot.deal.trailling_stop_loss_price = (
                     stop_loss_trailling_price
                 )
-                self.active_bot.logs.append(
+                self.active_bot.add_log(
                     f"{self.active_bot.pair} below opening_price, setting trailling_stop_loss (margin_short)"
                 )
                 self.controller.save(self.active_bot)

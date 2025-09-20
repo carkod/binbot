@@ -8,6 +8,17 @@ However, to work with database, we need to adhere to the SQLAlchemy model, which
 BotModel creates consistency and it is the default way of FastAPI data guards. However, it does not work well with SQLAlchemy (I wish I could just use BotModel and store in the DB but that caused a lot of problems)
 
 
+## Bot logs
+The BotModel Pydantic Model has a field `logs` which is what we use to display milestone events in the bot's life. For example, when trailings are updated (trailing stop loss or trailling profits) or when an stop loss is executed or a take profit is executed.
+
+These logs or event logs are specially helpful to debug the lifecycle of the bot, because if there's a bug and the streaming service is stuck somehow, you'll see that bot doesn't get updated for a long time, or if the market volume is so low that we don't receive price updates in a long time, first indication would be these logs (you may not even notice this in Grafana)
+
+Each of these log messages have a timestamp automatically appended, to avoid duplicated work and convience for the developer. This comes in 3 flavors:
+- the endpoint `/paper-trading/errors/` and `/bots/errors`. These are network requests, often used by services or external clients, *not to* be used by bintbot API internally for obvious reasons, you are calling the same host to make a log update. As an example, Binquant uses this and the terminal React app uses this too.
+- self.controller.update_logs which is an independent database call, that pushes/appends the log message to the existing stack of messages. This is the default way to update event logs in a completely isolated way.
+- most performant way is to use the `BotModel.add_log`, this is built-in to the BotModel pydantic model, but requires saving using `controller.save` which is a BotCrud method. If you are updating multiple logs multiple times, this can be the most performance way.
+
+
 # Profit canibalization
 
 ## Context

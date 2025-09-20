@@ -2,11 +2,10 @@ from typing import Type, Union
 from databases.models.bot_table import BotTable, PaperTradingTable
 from tools.enum_definitions import DealType, Status, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
-from tools.maths import round_numbers, round_timestamp
+from tools.maths import round_numbers, round_timestamp, supress_notation
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.exceptions import BinanceErrors
-import logging
 
 
 class SpotLongDeal(SpotDealAbstract):
@@ -30,7 +29,7 @@ class SpotLongDeal(SpotDealAbstract):
             self.active_bot.status == Status.active
             and self.active_bot.deal.opening_qty == 0
         ):
-            self.active_bot.logs.append(
+            self.active_bot.add_log(
                 "Switch to long possibly failed. Reopening margin short bot."
             )
             self.open_deal()
@@ -39,12 +38,8 @@ class SpotLongDeal(SpotDealAbstract):
         return self.active_bot
 
     def streaming_updates(self, close_price: float, open_price: float):
-        logging.info(f"Spot long streaming updates for {self.active_bot.pair}")
-
         current_price = float(close_price)
-
         self.check_failed_switch_long_bot()
-
         self.close_conditions(current_price)
 
         self.active_bot.deal.current_price = current_price
@@ -116,7 +111,7 @@ class SpotLongDeal(SpotDealAbstract):
                     old_trailling_stop_loss
                     != self.active_bot.deal.trailling_stop_loss_price
                 ):
-                    self.active_bot.logs.append(
+                    self.active_bot.add_log(
                         f"Updated trailling_stop_loss_price to {self.active_bot.deal.trailling_stop_loss_price}"
                     )
 
@@ -124,8 +119,8 @@ class SpotLongDeal(SpotDealAbstract):
                     old_trailling_profit_price
                     != self.active_bot.deal.trailling_profit_price
                 ):
-                    self.active_bot.logs.append(
-                        f"Updated trailling_profit_price to {self.active_bot.deal.trailling_profit_price}"
+                    self.active_bot.add_log(
+                        f"Updated trailling_profit_price to {supress_notation(self.active_bot.deal.trailling_profit_price)}"
                     )
 
                 self.controller.save(self.active_bot)
@@ -183,7 +178,7 @@ class SpotLongDeal(SpotDealAbstract):
             qty = round_numbers(balance, self.qty_precision)
         else:
             self.active_bot.status = Status.error
-            self.active_bot.logs.append("No balance found. Skipping panic sell")
+            self.active_bot.add_log("No balance found. Skipping panic sell")
 
         if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_order(
@@ -216,7 +211,7 @@ class SpotLongDeal(SpotDealAbstract):
                 self.active_bot.deal.closing_timestamp = round_timestamp(
                     res["transactTime"]
                 )
-                self.active_bot.logs.append(
+                self.active_bot.add_log(
                     "Panic sell triggered. All active orders closed"
                 )
                 self.active_bot.status = Status.completed

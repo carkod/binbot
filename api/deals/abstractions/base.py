@@ -148,7 +148,7 @@ class BaseDeal(OrderController):
                 for bot_order in self.active_bot.orders:
                     if bot_order.order_id == order["orderId"]:
                         self.active_bot.orders.remove(order)
-                        self.active_bot.logs.append(
+                        self.active_bot.add_log(
                             "base_order not executed, therefore cancelled"
                         )
                         self.active_bot.status = Status.error
