@@ -35,11 +35,21 @@ class BaseStreaming:
         self.symbols_controller = SymbolsCrud()
         self.cs = CandlesCrud()
         # Always have it active
-        self.active_bot_pairs: list = list(self.bot_controller.get_active_pairs())
-        self.active_bot_pairs.extend(["BTCUSDC", "ETHUSDC"])
-        self.paper_trading_active_bots: list = list(
+        self.active_bot_pairs: list = self.get_all_active_pairs()
+
+    def get_all_active_pairs(self) -> list:
+        """
+        Reused by children classes
+        so it needs to be reassigned to self.active_bot_pairs
+        """
+        bot_active_pairs = list(self.bot_controller.get_active_pairs())
+        paper_trading_active_pairs = list(
             self.paper_trading_controller.get_active_pairs()
         )
+        active_pairs = list(set(bot_active_pairs + paper_trading_active_pairs))
+        active_pairs.extend(["BTCUSDC", "ETHUSDC"])
+        self.active_bot_pairs = active_pairs
+        return active_pairs
 
     def get_current_bot(self, symbol: str) -> BotModel | None:
         try:
@@ -75,11 +85,6 @@ class StreamingController:
             symbol=self.symbol,
             interval=BinanceKlineIntervals.fifteen_minutes.value,
             limit=200,
-        )
-        self.active_bot_pairs: list = list(base.bot_controller.get_active_pairs())
-        self.active_bot_pairs.extend(["BTCUSDC", "ETHUSDC"])
-        self.paper_trading_active_bots: list = (
-            base.paper_trading_controller.get_active_pairs()
         )
         self.current_bot: BotModel | None = None
         self.current_test_bot: BotModel | None = None
@@ -119,7 +124,7 @@ class StreamingController:
         close_price = float(self.klines[-1][4])
         open_price = float(self.klines[-1][1])
 
-        if symbol in self.active_bot_pairs or symbol in self.paper_trading_active_bots:
+        if symbol in self.base_streaming.active_bot_pairs:
             current_bot = self.base_streaming.get_current_bot(symbol)
             current_test_bot = self.base_streaming.get_current_test_bot(symbol)
 

@@ -260,7 +260,7 @@ class SymbolsCrud:
         base_asset = self.session.exec(query).first()
         return base_asset
 
-    def etl_symbols_and_indexes(self):
+    def etl_symbols_and_indexes(self, delete_existing: bool = False):
         """
         Full data ingestions of symbol (e.g. ETHUSDC)
         for the symbols table
@@ -273,12 +273,14 @@ class SymbolsCrud:
         """
         binance_api = BinanceApi()
         exchange_info_data = binance_api.exchange_info()
+        symbol = None
 
-        # Reset symbols table (this should reset link tables)
-        self.delete_all()
-        # Delete index tables, these will be refilled later
-        asset_index_crud = AssetIndexCrud()
-        asset_index_crud.delete_all()
+        if delete_existing:
+            # Reset symbols table (this should reset link tables)
+            self.delete_all()
+            # Delete index tables, these will be refilled later
+            asset_index_crud = AssetIndexCrud()
+            asset_index_crud.delete_all()
 
         for item in exchange_info_data["symbols"]:
             # Only store fiat market exclude other fiats.
@@ -291,36 +293,41 @@ class SymbolsCrud:
             try:
                 # Always prefer USDC quote pairs to avoid conversion
                 if item["quoteAsset"] == QuoteAssets.USDC:
+                    # throws error if it doesn't exist
                     symbol = self.get_symbol(item["symbol"])
-                elif item["quoteAsset"] == QuoteAssets.BTC:
+                    continue
+
+                if item["quoteAsset"] == QuoteAssets.BTC:
                     symbol = self.get_symbol(f"{item['baseAsset']}USDC")
-                elif item["quoteAsset"] == QuoteAssets.ETH:
+                    continue
+
+                if item["quoteAsset"] == QuoteAssets.ETH:
                     symbol = self.get_symbol(f"{item['baseAsset']}USDC")
                     symbol = self.get_symbol(f"{item['baseAsset']}BTC")
-                else:
-                    symbol = None
+                    continue
+
             except BinbotErrors:
                 symbol = None
-
-            if item["quoteAsset"] in list(QuoteAssets) and symbol is None:
-                price_precision, qty_precision, min_notional = (
-                    self.calculate_precisions(item)
-                )
-                active = True
-                if item["symbol"] in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
-                    active = False
-                symbol = SymbolTable(
-                    id=item["symbol"],
-                    active=active,
-                    price_precision=price_precision,
-                    qty_precision=qty_precision,
-                    min_notional=min_notional,
-                    quote_asset=item["quoteAsset"],
-                    base_asset=item["baseAsset"],
-                    is_margin_trading_allowed=item["isMarginTradingAllowed"],
-                )
-                self.session.add(symbol)
-                self.session.commit()
+                if item["quoteAsset"] in list(QuoteAssets) and symbol is None:
+                    price_precision, qty_precision, min_notional = (
+                        self.calculate_precisions(item)
+                    )
+                    active = True
+                    if item["symbol"] in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
+                        active = False
+                    symbol = SymbolTable(
+                        id=item["symbol"],
+                        active=active,
+                        price_precision=price_precision,
+                        qty_precision=qty_precision,
+                        min_notional=min_notional,
+                        quote_asset=item["quoteAsset"],
+                        base_asset=item["baseAsset"],
+                        is_margin_trading_allowed=item["isMarginTradingAllowed"],
+                    )
+                    self.session.add(symbol)
+                    self.session.commit()
+                    pass
 
         self.session.close()
 

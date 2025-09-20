@@ -37,6 +37,20 @@ def get_all_symbols(
         return SymbolsResponse(message=f"Error retrieving active symbols: {e}", error=1)
 
 
+@symbols_blueprint.get("/symbol/store", tags=["Symbols"])
+def store_symbols(
+    session: Session = Depends(get_session), delete_existing: bool = False
+):
+    """
+    Store all symbols from Binance
+    """
+    try:
+        SymbolsCrud(session=session).etl_symbols_and_indexes(delete_existing)
+        return GetOneSymbolResponse(message="Symbols stored!")
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+
+
 @symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
 def update_indexes(
     data: SymbolPayload,
@@ -65,13 +79,13 @@ def get_one_symbol(pair: str, session: Session = Depends(get_session)):
     Args:
     - Active: includes symbols set as True and also cooldown delta is negative
     """
-    data = SymbolsCrud(session=session).get_symbol(symbol=pair)
-    if data:
+    try:
+        data = SymbolsCrud(session=session).get_symbol(symbol=pair)
         return GetOneSymbolResponse(
             message="Successfully retrieved active symbols", data=data
         )
-    else:
-        return GetOneSymbolResponse(message="No symbol found", error=1)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
 
 
 @symbols_blueprint.post(
@@ -136,15 +150,3 @@ def edit_symbol(
     data = SymbolsCrud(session=session).edit_symbol_item(data)
 
     return GetOneSymbolResponse(message="Symbol edited and candles removed", data=data)
-
-
-@symbols_blueprint.get("/store", tags=["Symbols"])
-def store_symbols(session: Session = Depends(get_session)):
-    """
-    Store all symbols from Binance
-    """
-    try:
-        SymbolsCrud(session=session).etl_symbols_and_indexes()
-        return GetOneSymbolResponse(message="Symbols stored!")
-    except BinbotErrors as e:
-        return StandardResponse(message=str(e), error=1)
