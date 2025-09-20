@@ -79,13 +79,13 @@ def get_one_symbol(pair: str, session: Session = Depends(get_session)):
     Args:
     - Active: includes symbols set as True and also cooldown delta is negative
     """
-    data = SymbolsCrud(session=session).get_symbol(symbol=pair)
-    if data:
+    try:
+        data = SymbolsCrud(session=session).get_symbol(symbol=pair)
         return GetOneSymbolResponse(
             message="Successfully retrieved active symbols", data=data
         )
-    else:
-        return GetOneSymbolResponse(message="No symbol found", error=1)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
 
 
 @symbols_blueprint.post(

@@ -1,0 +1,28 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/symbol/BBTCUSDC
+  response:
+    body:
+      string: '{"message":"Symbol not found","error":1,"data":null}'
+    headers:
+      content-length:
+      - '52'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

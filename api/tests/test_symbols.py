@@ -71,6 +71,16 @@ def test_one_symbol(client: TestClient):
     }
 
 
+@mark.vcr("cassettes/test_one_symbol_not_found.yaml")
+def test_get_one_symbol_not_found(client: TestClient):
+    response = client.get("/symbol/BBTCUSDC")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["message"] == "Symbol not found"
+    assert content["error"] == 1
+
+
 @mark.vcr("cassettes/test_one_symbol_error.yaml")
 def test_one_symbol_error(client: TestClient):
     response = client.get(f"/symbol/{test_error_symbol}")
