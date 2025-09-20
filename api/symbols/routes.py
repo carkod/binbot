@@ -38,12 +38,14 @@ def get_all_symbols(
 
 
 @symbols_blueprint.get("/symbol/store", tags=["Symbols"])
-def store_symbols(session: Session = Depends(get_session)):
+def store_symbols(
+    session: Session = Depends(get_session), delete_existing: bool = False
+):
     """
     Store all symbols from Binance
     """
     try:
-        SymbolsCrud(session=session).etl_symbols_and_indexes()
+        SymbolsCrud(session=session).etl_symbols_and_indexes(delete_existing)
         return GetOneSymbolResponse(message="Symbols stored!")
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)

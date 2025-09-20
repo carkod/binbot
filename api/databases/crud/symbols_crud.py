@@ -260,7 +260,7 @@ class SymbolsCrud:
         base_asset = self.session.exec(query).first()
         return base_asset
 
-    def etl_symbols_and_indexes(self, delete_existing: bool = True):
+    def etl_symbols_and_indexes(self, delete_existing: bool = False):
         """
         Full data ingestions of symbol (e.g. ETHUSDC)
         for the symbols table
