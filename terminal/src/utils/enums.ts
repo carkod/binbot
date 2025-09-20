@@ -73,4 +73,5 @@ export enum QuoteAsset {
   USDC = "USDC",
   BTC = "BTC",
   ETH = "ETH",
+  TRY = "TRY",
 }

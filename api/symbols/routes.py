@@ -45,7 +45,7 @@ def store_symbols(
     Store all symbols from Binance
     """
     try:
-        SymbolsCrud(session=session).etl_symbols_and_indexes(delete_existing)
+        SymbolsCrud(session=session).etl_symbols_ingestion(delete_existing)
         return GetOneSymbolResponse(message="Symbols stored!")
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
