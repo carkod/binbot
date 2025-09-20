@@ -42,7 +42,7 @@ class MarginDeal(MarginDealAbstract):
             self.active_bot.status == Status.active
             and self.active_bot.deal.opening_qty == 0
         ):
-            self.active_bot.logs.append(
+            self.active_bot.add_log(
                 "Switch to long possibly failed. Reopening margin short bot."
             )
             self.open_deal()
@@ -201,15 +201,15 @@ class MarginDeal(MarginDealAbstract):
                     res["transactTime"]
                 )
 
-                self.active_bot.logs.append("Completed Stop loss order")
+                self.active_bot.add_log("Completed Stop loss order")
                 self.active_bot.status = Status.completed
             else:
                 self.active_bot.status = Status.error
-                self.active_bot.logs.append("Unable to complete stop loss")
+                self.active_bot.add_log("Unable to complete stop loss")
 
         else:
             self.active_bot.status = Status.error
-            self.active_bot.logs.append("No balance found. Skipping panic sell")
+            self.active_bot.add_log("No balance found. Skipping panic sell")
 
         self.controller.save(self.active_bot)
         self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_PANIC_CLOSE")

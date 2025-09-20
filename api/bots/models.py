@@ -126,21 +126,14 @@ class BotBase(BaseModel):
         assert v != "", "Pair field must be filled."
         return v
 
-    # prepend timestamp to logs
-    @field_validator("logs", mode="before")
-    def prepend_timestamp(cls, v):
-        if isinstance(v, list):
-            new_logs = []
-            for log in v:
-                ts = ts_to_humandate(timestamp())
-                new_logs.append(f"[{ts}] {log}")
+    def add_log(self, message: str) -> str:
+        """Convenience helper for adding a single log entry.
 
-            return new_logs
-
-        if isinstance(v, str):
-            return [f"[{ts_to_humandate(timestamp())}] {v}"]
-
-        return v
+        Returns the formatted log string (with timestamp) for immediate reuse/testing.
+        """
+        timestamped_message = f"[{ts_to_humandate(timestamp())}] {message}"
+        self.logs.append(timestamped_message)
+        return self.logs[-1]
 
 
 class BotModel(BotBase):
