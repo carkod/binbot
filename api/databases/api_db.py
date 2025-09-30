@@ -40,9 +40,9 @@ class ApiDb:
     def init_db(self):
         SQLModel.metadata.create_all(engine)
         # self.run_migrations()
-        self.init_users()
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
+        self.init_users()
         self.create_dummy_bot()
         self.init_symbols()
         # Depends on autotrade settings
@@ -52,6 +52,8 @@ class ApiDb:
 
     def run_migrations(self):
         alembic_cfg = Config("alembic.ini")
+        # Go all the way down, then back up (forces all migrations to run)
+        command.downgrade(alembic_cfg, "base")
         command.upgrade(alembic_cfg, "head")
 
     def drop_db(self):
@@ -61,12 +63,15 @@ class ApiDb:
         """
         Dummy data for testing autotrade_settings table
         """
+        print("Initializing autotrade settings")
         statement = select(AutotradeTable).where(
             AutotradeTable.id == AutotradeSettingsDocument.settings
         )
         results = self.session.exec(statement)
         if results.first():
             return
+
+        print("Initializing autotrade data")
 
         autotrade_data = AutotradeTable(
             id=AutotradeSettingsDocument.settings,
