@@ -38,8 +38,6 @@ class ApiDb:
         pass
 
     def init_db(self):
-        SQLModel.metadata.create_all(engine)
-        self.run_migrations()
         self.init_users()
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()

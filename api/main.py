@@ -23,8 +23,8 @@ from databases.models import *  # noqa
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        # api_db = ApiDb()
-        # api_db.init_db()
+        api_db = ApiDb()
+        api_db.init_db()
         pass
     except Exception as error:
         logging.error(f"Error initializing database: {error}")
