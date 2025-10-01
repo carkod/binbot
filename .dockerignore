@@ -12,9 +12,13 @@ mongo_data.old
 .DS_Store
 *.pyc
 api/main/config/*.cfg
+api/tests
 db.dump
 __pycache__
 kafka_data
 pg_data
 !terminal/.env
 !.python-version
+.coverage
+.flake8
+mypy.ini
