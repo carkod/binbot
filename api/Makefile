@@ -12,10 +12,10 @@ cmd-exists-%:
 		(echo "ERROR: '$(*)' must be installed and available on your PATH."; exit 1)
 
 up:  ## Run Docker Compose services
-	docker compose up --pull always -d --build 
+	docker compose up -f ../compose.yml --pull always -d --build
 
 down:  ## Shutdown Docker Compose services
-	docker compose down --volumes --remove-orphans
+	docker compose down -f ../compose.yml --volumes --remove-orphans
 
 test:  ## Run tests
 	uv run pytest -v --tb=short --disable-warnings --maxfail=1
