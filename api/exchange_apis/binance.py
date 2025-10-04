@@ -588,4 +588,4 @@ class BinanceApi:
         response = self.request(self.tags_url, params={"symbol": symbol})
         if response["success"]:
             return response["data"]
-        raise HTTPError(response["message"])
+        raise HTTPError(response["message"], response=response)
