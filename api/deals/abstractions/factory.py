@@ -16,6 +16,7 @@ from databases.crud.paper_trading_crud import PaperTradingTableCrud
 
 
 class DealAbstract(BaseDeal):
+    MIN_EXCHANGE_AMOUNT = 15
     """
     Centralized deal controller.
 
@@ -41,6 +42,67 @@ class DealAbstract(BaseDeal):
         self.symbols_crud = SymbolsCrud()
         self.conversion_threshold = 1.05
 
+    def handle_existing_quote_balance(self, symbol: str, is_quote_balance: float):
+        """Handle case when we have existing quote balance"""
+        quote_balance = round_numbers_floor(is_quote_balance, self.quote_qty_precision)
+        quote_fiat_price = self.get_book_order_deep(
+            symbol, not self.active_bot.quote_asset.is_fiat()
+        )
+        total_qty_available = quote_fiat_price * quote_balance
+
+        if self.active_bot.quote_asset.is_fiat():
+            return quote_balance / quote_fiat_price
+
+        # Check if we have enough balance (with conversion threshold buffer)
+        required_amount = self.active_bot.fiat_order_size * self.conversion_threshold
+        if total_qty_available > required_amount:
+            return None
+
+        # Calculate amount missing and buy the difference
+        amount_missing = self.active_bot.fiat_order_size - total_qty_available
+        return self.buy_missing_amount(symbol, amount_missing, quote_fiat_price)
+
+    def handle_no_quote_balance(self, symbol: str):
+        """
+        Handle case when we have no quote balance
+        """
+        quote_fiat_price = self.get_book_order_deep(symbol, True)
+        quote_asset_qty = round_numbers_floor(
+            self.active_bot.fiat_order_size / quote_fiat_price,
+            self.quote_qty_precision,
+        )
+        total_qty_available_buy = round_numbers_floor(
+            quote_fiat_price * quote_asset_qty,
+            self.quote_qty_precision,
+        )
+
+        # Check if calculated amount exceeds required amount
+        if total_qty_available_buy > self.active_bot.fiat_order_size:
+            return None
+
+        # Buy the calculated amount with conversion threshold
+        return self.buy_order(
+            symbol=symbol,
+            qty=quote_asset_qty * self.conversion_threshold,
+            qty_precision=self.quote_qty_precision,
+        )
+
+    def buy_missing_amount(
+        self, symbol: str, amount_missing: float, quote_fiat_price: float
+    ):
+        if amount_missing < self.MIN_EXCHANGE_AMOUNT:
+            # Use minimum exchange amount
+            qty = round_numbers_ceiling(self.MIN_EXCHANGE_AMOUNT / quote_fiat_price)
+        else:
+            # Buy the exact amount needed
+            qty = round_numbers_ceiling(amount_missing / float(quote_fiat_price))
+
+        return self.buy_order(
+            symbol=symbol,
+            qty=qty * self.conversion_threshold,
+            qty_precision=self.quote_qty_precision,
+        )
+
     def calculate_avg_price(self, fills: list[dict]) -> float:
         """
         Calculate average price of fills
@@ -51,6 +113,58 @@ class DealAbstract(BaseDeal):
             total_qty += float(fill["qty"])
             total_price += float(fill["price"]) * float(fill["qty"])
         return total_price / total_qty
+
+    def check_available_balance_fiat(self, balances: list[dict]):
+        """
+        Handle fiat quote asset balance checking and conversion.
+        This is for when the quote asset itself is a fiat currency (e.g., TRY, EUR).
+        """
+        symbol = self.active_bot.fiat + self.active_bot.quote_asset.value
+        price = self.get_book_order_deep(symbol, False)
+
+        # Get current quote asset balance
+        conversion_qty = next(
+            (
+                float(b["free"])
+                for b in balances
+                if b["asset"] == self.active_bot.quote_asset.value
+            ),
+            None,
+        )
+
+        if not conversion_qty:
+            return None
+
+        total_available = conversion_qty / price if conversion_qty else 0
+        amount_missing = self.active_bot.fiat_order_size - total_available
+
+        # Only proceed if we have quote asset but total available is 0 or insufficient
+        if conversion_qty and (total_available == 0 or amount_missing > 0):
+            return self.handle_fiat_conversion_sell(symbol, amount_missing, price)
+
+        return None
+
+    def handle_fiat_conversion_sell(
+        self, symbol: str, amount_missing: float, price: float
+    ):
+        """Handle selling fiat quote asset to get base fiat currency"""
+        precision = self.calculate_qty_precision(symbol)
+
+        # Determine quantity to sell
+        qty = (
+            self.MIN_EXCHANGE_AMOUNT
+            if amount_missing <= self.MIN_EXCHANGE_AMOUNT
+            else amount_missing
+        )
+
+        # Apply conversion threshold and round up
+        qty = round_numbers_ceiling(qty * self.conversion_threshold, precision)
+
+        return self.sell_order(
+            symbol=symbol,
+            qty=qty,
+            qty_precision=precision,
+        )
 
     def check_available_balance(self):
         """
@@ -76,7 +190,7 @@ class DealAbstract(BaseDeal):
         symbol = self.active_bot.quote_asset.value + self.active_bot.fiat
 
         if self.active_bot.quote_asset.is_fiat():
-            symbol = self.active_bot.fiat + self.active_bot.quote_asset.value
+            return self.check_available_balance_fiat(balances)
 
         is_quote_balance = next(
             (
@@ -90,52 +204,25 @@ class DealAbstract(BaseDeal):
             quote_balance = round_numbers_floor(
                 is_quote_balance, self.quote_qty_precision
             )
-            # pessimistic price so that we can actually buy more
-            quote_fiat_price = self.get_book_order_deep(symbol, True)
+            quote_fiat_price = self.get_book_order_deep(
+                symbol, not self.active_bot.quote_asset.is_fiat()
+            )
             total_qty_available = quote_fiat_price * quote_balance
 
-            # check total balance and a bit more (conversion causes us to lose a bit from market fluctuations and fees)
-            if (
-                total_qty_available
-                > self.active_bot.fiat_order_size * self.conversion_threshold
-            ):
+            if self.active_bot.quote_asset.is_fiat():
+                return quote_balance / quote_fiat_price
+
+            # Check if we have enough balance (with conversion threshold buffer)
+            required_amount = (
+                self.active_bot.fiat_order_size * self.conversion_threshold
+            )
+            if total_qty_available > required_amount:
                 return None
-            else:
-                amount_missing = self.active_bot.fiat_order_size - total_qty_available
-                # Min exchange
-                if amount_missing < 15:
-                    qty = round_numbers_ceiling(15 / quote_fiat_price)
-                    response = self.buy_order(
-                        symbol=symbol,
-                        qty=qty * self.conversion_threshold,
-                        qty_precision=self.quote_qty_precision,
-                    )
-                    return response
-                else:
-                    # here we need ceiling to buy as much as we can
-                    quote_amount_needed = round_numbers_ceiling(
-                        amount_missing / float(quote_fiat_price)
-                    )
 
-                    response = self.buy_order(
-                        symbol=symbol,
-                        qty=quote_amount_needed * self.conversion_threshold,
-                        qty_precision=self.quote_qty_precision,
-                    )
+            # Calculate amount missing and buy the difference
+            amount_missing = self.active_bot.fiat_order_size - total_qty_available
+            return self.buy_missing_amount(symbol, amount_missing, quote_fiat_price)
 
-                return response
-
-        if self.active_bot.quote_asset.is_fiat():
-            quote_fiat_price = self.get_book_order_deep(symbol, False)
-
-            quote_asset_qty = round_numbers_floor(
-                self.active_bot.fiat_order_size * quote_fiat_price,
-                self.quote_qty_precision,
-            )
-            total_qty_available_buy = round_numbers_floor(
-                quote_fiat_price / quote_asset_qty,
-                self.quote_qty_precision,
-            )
         else:
             quote_fiat_price = self.get_book_order_deep(symbol, True)
             quote_asset_qty = round_numbers_floor(
@@ -147,26 +234,16 @@ class DealAbstract(BaseDeal):
                 self.quote_qty_precision,
             )
 
-        # USDC (current price * estimated qty) > USDC
-        if total_qty_available_buy > self.active_bot.fiat_order_size:
-            return None
-        else:
-            if self.active_bot.quote_asset.is_fiat():
-                response = self.sell_order(
-                    symbol=symbol,
-                    qty=quote_asset_qty * self.conversion_threshold,
-                    qty_precision=self.quote_qty_precision,
-                )
+            # Check if calculated amount exceeds required amount
+            if total_qty_available_buy > self.active_bot.fiat_order_size:
+                return None
 
-            else:
-                # subtract roughly 0.45% to account for fees and price movements
-                response = self.buy_order(
-                    symbol=symbol,
-                    qty=quote_asset_qty * self.conversion_threshold,
-                    qty_precision=self.quote_qty_precision,
-                )
-            if response:
-                return response
+            # Buy the calculated amount with conversion threshold
+            return self.buy_order(
+                symbol=symbol,
+                qty=quote_asset_qty * self.conversion_threshold,
+                qty_precision=self.quote_qty_precision,
+            )
 
     def sell_quote_asset(self) -> BotModel:
         """
@@ -324,6 +401,10 @@ class DealAbstract(BaseDeal):
                     bot=self.active_bot, log_message="Quote asset purchase successful."
                 )
                 self.active_bot.deal.base_order_size = float(response["origQty"])
+                if self.active_bot.quote_asset.is_fiat():
+                    self.active_bot.deal.base_order_size = (
+                        float(response["origQty"]) * float(response["price"])
+                    )
                 # give some time for order to complete
                 sleep(3)
 
