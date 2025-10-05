@@ -49,19 +49,16 @@ class BaseDeal(OrderController):
         self.symbol_info = self.symbols_crud.get_symbol(bot.pair)
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
-        if bot.quote_asset != bot.fiat:
-            try:
-                self.symbols_crud.get_symbol(bot.quote_asset.value + bot.fiat)
-                self.quote_qty_precision = self.calculate_qty_precision(
-                    bot.quote_asset.value + bot.fiat
-                )
-            except BinanceErrors as error:
-                if error.message == "Symbol not found":
-                    # If quote asset + fiat pair is not found
-                    # it means that the quote asset is the fiat e.g. USDC/TRY vs BTC/USDC
-                    self.quote_qty_precision = self.calculate_qty_precision(
-                        bot.fiat + bot.quote_asset.value
-                    )
+
+        if bot.quote_asset.is_fiat():
+            self.quote_qty_precision = self.calculate_qty_precision(
+                bot.fiat + bot.quote_asset.value
+            )
+
+        elif bot.quote_asset != bot.fiat:
+            self.quote_qty_precision = self.calculate_qty_precision(
+                bot.quote_asset.value + bot.fiat
+            )
         else:
             self.quote_qty_precision = self.calculate_qty_precision(bot.pair)
         self.base_producer = BaseProducer()
