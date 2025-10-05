@@ -17,7 +17,7 @@ from symbols.routes import symbols_blueprint
 from user.routes import user_blueprint
 from asset_index.routes import asset_index_blueprint
 
-from databases.models import *  # noqa
+from databases.tables import *  # noqa
 
 
 @asynccontextmanager

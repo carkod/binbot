@@ -5,7 +5,7 @@ from urllib.error import HTTPError
 from bots.models import BotBase, BotModel, OrderModel
 from time import sleep
 from databases.crud.bot_crud import BotTableCrud
-from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from deals.abstractions.factory import DealAbstract
 from tools.enum_definitions import (

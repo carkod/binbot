@@ -1,6 +1,6 @@
 from time import sleep
 from typing import Type, Union
-from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import DealType, OrderSide, Status, QuoteAssets
@@ -52,12 +52,17 @@ class DealAbstract(BaseDeal):
             total_price += float(fill["price"]) * float(fill["qty"])
         return total_price / total_qty
 
-    def check_available_balance(self):
+    def check_available_balance(self, fiat_conversion: bool = False):
         """
         Check if the base asset is supported
 
         For quote asset transactions we always want to round down (floor)
         to avoid insufficient balance errors
+
+        Args:
+        - fiat_conversion: if True, we are converting from e.g. TRY/EUR/USDC to USDC
+            if False, we are converting from e.g. BTC to USDC
+            fiat can also be a quote asset, that's why we need this check
 
         1. Do we have quote asset?
             1.1 we do have quote asset but not enough - buy the difference
@@ -69,6 +74,10 @@ class DealAbstract(BaseDeal):
         """
         balances = self.get_raw_balance()
         symbol = self.active_bot.quote_asset.value + self.active_bot.fiat
+
+        if fiat_conversion:
+            symbol = self.active_bot.quote_asset.value + self.active_bot.fiat
+
         is_quote_balance = next(
             (
                 float(b["free"])
@@ -276,7 +285,10 @@ class DealAbstract(BaseDeal):
         2. Set take_profit
         """
 
-        if self.active_bot.quote_asset != QuoteAssets.USDC:
+        if self.active_bot.quote_asset == QuoteAssets.TRY:
+            response = self.check_available_balance()
+
+        elif self.active_bot.quote_asset != QuoteAssets.USDC:
             response = self.check_available_balance()
             if response:
                 order = OrderModel(

@@ -153,11 +153,22 @@ class UserRoles(str, Enum):
 class QuoteAssets(str, Enum):
     """
     Quote assets supported by Binbot orders
-    these are not fiat (which would be real currency)
-    but the different markets we trade in.
+    Includes both crypto assets and fiat currencies
     """
 
+    # Crypto assets
     USDC = "USDC"
     BTC = "BTC"
     ETH = "ETH"
+
+    # Fiat currencies
     TRY = "TRY"
+
+    def is_fiat(self) -> bool:
+        """Check if the asset is a fiat currency"""
+        return self.value in ["TRY", "EUR", "USD"]
+
+    @classmethod
+    def get_fiat_currencies(cls) -> list["QuoteAssets"]:
+        """Get all fiat currencies"""
+        return [asset for asset in cls if asset.is_fiat()]

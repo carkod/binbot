@@ -1,5 +1,5 @@
 from typing import Type, Union
-from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from tools.enum_definitions import DealType, Status, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.maths import round_numbers, round_timestamp, supress_notation

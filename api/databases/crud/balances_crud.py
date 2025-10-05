@@ -1,6 +1,6 @@
 import os
 from typing import Sequence, Union, Type
-from databases.models.account_balances import (
+from databases.tables.account_balances import (
     BalancesTable,
     ConsolidatedBalancesTable,
     StagingBalancesTable,

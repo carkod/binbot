@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from pydantic import TypeAdapter, ValidationError
 from tools.enum_definitions import Status, Strategy
-from databases.models.bot_table import PaperTradingTable
+from databases.tables.bot_table import PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.utils import get_session
 from tools.exceptions import BinanceErrors, BinbotErrors

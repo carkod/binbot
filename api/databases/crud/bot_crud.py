@@ -3,9 +3,9 @@ from uuid import UUID
 from fastapi import Query
 from sqlmodel import Session, asc, desc, select, case
 from bots.models import BotModel
-from databases.models.bot_table import BotTable
-from databases.models.deal_table import DealTable
-from databases.models.order_table import ExchangeOrderTable
+from databases.tables.bot_table import BotTable
+from databases.tables.deal_table import DealTable
+from databases.tables.order_table import ExchangeOrderTable
 from databases.utils import independent_session, timestamp
 from tools.enum_definitions import QuoteAssets, Status, Strategy
 from bots.models import BotBase

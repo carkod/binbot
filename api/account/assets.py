@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from account.account import Account
 from databases.crud.balances_crud import BalancesCrud
-from databases.models.bot_table import BotTable
+from databases.tables.bot_table import BotTable
 from databases.crud.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from deals.abstractions.factory import DealAbstract

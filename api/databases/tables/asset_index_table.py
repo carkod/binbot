@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, ForeignKey
 
 
 if TYPE_CHECKING:
-    from databases.models.symbol_table import SymbolTable
+    from databases.tables.symbol_table import SymbolTable
 
 
 class SymbolIndexLink(SQLModel, table=True):

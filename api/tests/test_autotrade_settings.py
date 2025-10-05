@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 from pytest import fixture
 from databases.utils import get_session
 from tests.conftest import MockAsyncBaseProducer
-from databases.models.autotrade_table import AutotradeTable
+from databases.tables.autotrade_table import AutotradeTable
 from main import app
 
 mocked_db_data = AutotradeTable(
