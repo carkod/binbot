@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 from tools.handle_error import StandardResponse
-from databases.models.symbol_table import SymbolTable
+from databases.tables.symbol_table import SymbolTable
 from pydantic import Field, BaseModel
 from time import time
 
@@ -13,7 +13,7 @@ class AssetIndexModel(BaseModel):
 class SymbolsModel(BaseModel):
     """
     Pydantic model for SymbolTable.
-    This model has to be kept identical with databases.models.SymbolTable
+    This model has to be kept identical with databases.tables.SymbolTable
 
     It's harder to manage SymbolTable,
     closing session will remove the nested children objects

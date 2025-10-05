@@ -6,7 +6,7 @@ from tools.handle_error import StandardResponse
 from uuid import UUID, uuid4
 from databases.utils import timestamp
 from typing import Sequence
-from databases.models.user_table import UserTable
+from databases.tables.user_table import UserTable
 
 
 class UserDetails(BaseModel):

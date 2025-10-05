@@ -1,6 +1,6 @@
 from typing import Tuple, Type, Union
 from bots.models import BotModel
-from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
@@ -14,7 +14,6 @@ from tools.exceptions import (
 )
 from tools.enum_definitions import Status, Strategy, OrderStatus
 from base_producer import BaseProducer
-
 
 # To be removed one day en commission endpoint found that provides this value
 ESTIMATED_COMMISSIONS_RATE = 0.0075
@@ -45,18 +44,25 @@ class BaseDeal(OrderController):
 
         self.controller = db_controller()
         self.active_bot = bot
+        self.symbols_crud = SymbolsCrud()
         self.market_domination_reversal: bool | None = None
-        self.price_precision = self.calculate_price_precision(bot.pair)
-        self.qty_precision = self.calculate_qty_precision(bot.pair)
-        if bot.quote_asset != self.active_bot.fiat:
+        self.symbol_info = self.symbols_crud.get_symbol(bot.pair)
+        self.price_precision = self.symbol_info.price_precision
+        self.qty_precision = self.symbol_info.qty_precision
+
+        if bot.quote_asset.is_fiat():
             self.quote_qty_precision = self.calculate_qty_precision(
-                bot.quote_asset.value + self.active_bot.fiat
+                bot.fiat + bot.quote_asset.value
+            )
+
+        elif bot.quote_asset != bot.fiat:
+            self.quote_qty_precision = self.calculate_qty_precision(
+                bot.quote_asset.value + bot.fiat
             )
         else:
             self.quote_qty_precision = self.calculate_qty_precision(bot.pair)
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
-        self.symbols_crud = SymbolsCrud()
 
         if self.active_bot.strategy == Strategy.margin_short:
             self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)

@@ -1,8 +1,8 @@
 from databases.crud.asset_index_crud import AssetIndexCrud
-from databases.models.asset_index_table import AssetIndexTable, SymbolIndexLink
+from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 from databases.utils import independent_session
 from sqlmodel import Session, select
-from databases.models.symbol_table import SymbolTable
+from databases.tables.symbol_table import SymbolTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi

@@ -1,5 +1,5 @@
 from typing import Type, Union
-from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.enum_definitions import DealType, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel

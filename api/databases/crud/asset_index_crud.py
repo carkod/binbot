@@ -1,6 +1,6 @@
 from databases.utils import independent_session
 from sqlmodel import Session, select
-from databases.models.asset_index_table import AssetIndexTable
+from databases.tables.asset_index_table import AssetIndexTable
 from typing import Optional, Sequence
 from sqlalchemy.sql import delete
 from databases.utils import engine

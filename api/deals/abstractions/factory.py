@@ -1,6 +1,6 @@
 from time import sleep
 from typing import Type, Union
-from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import DealType, OrderSide, Status, QuoteAssets
@@ -59,6 +59,11 @@ class DealAbstract(BaseDeal):
         For quote asset transactions we always want to round down (floor)
         to avoid insufficient balance errors
 
+        Args:
+        - fiat_conversion: if True, we are converting from e.g. TRY/EUR/USDC to USDC
+            if False, we are converting from e.g. BTC to USDC
+            fiat can also be a quote asset, that's why we need this check
+
         1. Do we have quote asset?
             1.1 we do have quote asset but not enough - buy the difference
             1.2 we do have quote asset and we do have enough - don't do anything
@@ -69,6 +74,10 @@ class DealAbstract(BaseDeal):
         """
         balances = self.get_raw_balance()
         symbol = self.active_bot.quote_asset.value + self.active_bot.fiat
+
+        if self.active_bot.quote_asset.is_fiat():
+            symbol = self.active_bot.fiat + self.active_bot.quote_asset.value
+
         is_quote_balance = next(
             (
                 float(b["free"])
@@ -116,26 +125,46 @@ class DealAbstract(BaseDeal):
 
                 return response
 
-        quote_fiat_price = self.get_book_order_deep(symbol, True)
-        quote_asset_qty = round_numbers_floor(
-            self.active_bot.fiat_order_size / quote_fiat_price,
-            self.quote_qty_precision,
-        )
-        total_qty_available_buy = round_numbers_floor(
-            quote_fiat_price * quote_asset_qty,
-            self.quote_qty_precision,
-        )
+        if self.active_bot.quote_asset.is_fiat():
+            quote_fiat_price = self.get_book_order_deep(symbol, False)
+
+            quote_asset_qty = round_numbers_floor(
+                self.active_bot.fiat_order_size * quote_fiat_price,
+                self.quote_qty_precision,
+            )
+            total_qty_available_buy = round_numbers_floor(
+                quote_fiat_price / quote_asset_qty,
+                self.quote_qty_precision,
+            )
+        else:
+            quote_fiat_price = self.get_book_order_deep(symbol, True)
+            quote_asset_qty = round_numbers_floor(
+                self.active_bot.fiat_order_size / quote_fiat_price,
+                self.quote_qty_precision,
+            )
+            total_qty_available_buy = round_numbers_floor(
+                quote_fiat_price * quote_asset_qty,
+                self.quote_qty_precision,
+            )
 
         # USDC (current price * estimated qty) > USDC
         if total_qty_available_buy > self.active_bot.fiat_order_size:
             return None
         else:
-            # subtract roughly 0.45% to account for fees and price movements
-            response = self.buy_order(
-                symbol=symbol,
-                qty=quote_asset_qty * self.conversion_threshold,
-                qty_precision=self.quote_qty_precision,
-            )
+            if self.active_bot.quote_asset.is_fiat():
+                response = self.sell_order(
+                    symbol=symbol,
+                    qty=quote_asset_qty * self.conversion_threshold,
+                    qty_precision=self.quote_qty_precision,
+                )
+
+            else:
+                # subtract roughly 0.45% to account for fees and price movements
+                response = self.buy_order(
+                    symbol=symbol,
+                    qty=quote_asset_qty * self.conversion_threshold,
+                    qty_precision=self.quote_qty_precision,
+                )
             if response:
                 return response
 
@@ -275,7 +304,6 @@ class DealAbstract(BaseDeal):
             1.1 if not enough quote asset to purchase, redo it with exact qty needed
         2. Set take_profit
         """
-
         if self.active_bot.quote_asset != QuoteAssets.USDC:
             response = self.check_available_balance()
             if response:

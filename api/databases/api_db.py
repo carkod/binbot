@@ -1,10 +1,10 @@
 import logging
 import os
-from databases.models.autotrade_table import AutotradeTable, TestAutotradeTable
-from databases.models.deal_table import DealTable
-from databases.models.order_table import ExchangeOrderTable
-from databases.models.user_table import UserTable
-from databases.models.bot_table import BotTable, PaperTradingTable
+from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
+from databases.tables.deal_table import DealTable
+from databases.tables.order_table import ExchangeOrderTable
+from databases.tables.user_table import UserTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from sqlmodel import Session, SQLModel, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,

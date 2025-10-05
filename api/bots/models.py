@@ -13,9 +13,9 @@ from databases.utils import timestamp
 from tools.handle_error import IResponseBase
 from tools.enum_definitions import DealType, OrderType, OrderStatus
 from tools.maths import ts_to_humandate
-from databases.models.bot_table import BotTable, PaperTradingTable
-from databases.models.deal_table import DealTable
-from databases.models.order_table import ExchangeOrderTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from databases.tables.deal_table import DealTable
+from databases.tables.order_table import ExchangeOrderTable
 from databases.utils import Amount
 
 

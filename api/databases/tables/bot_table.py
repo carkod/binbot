@@ -11,8 +11,8 @@ from tools.enum_definitions import (
     Strategy,
 )
 from sqlmodel import Relationship, SQLModel, Field
-from databases.models.order_table import ExchangeOrderTable, FakeOrderTable
-from databases.models.deal_table import DealTable
+from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
+from databases.tables.deal_table import DealTable
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
 
