@@ -37,7 +37,17 @@ class Account(BinbotApi):
                 balances.append(item)
         return balances
 
+    def get_single_spot_balance(self, asset) -> float:
+        data = self.get_account_balance()
+        for x in data["balances"]:
+            if x["asset"] == asset:
+                return float(x["free"])
+        return 0
+
     def get_single_raw_balance(self, asset, fiat="USDC") -> float:
+        """
+        Get both SPOT balance and ISOLATED MARGIN balance
+        """
         data = self.get_account_balance()
         for x in data["balances"]:
             if x["asset"] == asset:

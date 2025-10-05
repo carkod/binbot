@@ -173,7 +173,7 @@ class SpotLongDeal(SpotDealAbstract):
         # Sell everything
         pair = self.active_bot.pair
         base_asset = self.symbols_crud.base_asset(pair)
-        balance = self.get_single_raw_balance(base_asset)
+        balance = self.get_single_spot_balance(base_asset)
         if balance > 0:
             qty = round_numbers(balance, self.qty_precision)
         else:

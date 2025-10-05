@@ -73,7 +73,7 @@ class BaseDeal(OrderController):
         """
 
         asset = self.symbols_crud.base_asset(pair)
-        balance = self.get_single_raw_balance(asset)
+        balance = self.get_single_spot_balance(asset)
         if balance == 0 and self.active_bot.strategy == Strategy.margin_short:
             # If spot balance is not found
             # try to get isolated margin balance
