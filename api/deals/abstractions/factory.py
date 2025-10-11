@@ -120,6 +120,10 @@ class DealAbstract(BaseDeal):
         This is for when the quote asset itself is a fiat currency (e.g., TRY, EUR).
         """
         symbol = self.active_bot.fiat + self.active_bot.quote_asset.value
+
+        if isinstance(self.controller, PaperTradingTableCrud):
+            return self.simulate_order(symbol, OrderSide.buy)
+
         price = self.get_book_order_deep(symbol, False)
 
         # Get current quote asset balance
@@ -191,6 +195,10 @@ class DealAbstract(BaseDeal):
 
         if self.active_bot.quote_asset.is_fiat():
             return self.check_available_balance_fiat(balances)
+
+        # we don't need to continue if it's a fake bot
+        if isinstance(self.controller, PaperTradingTableCrud):
+            return self.simulate_order(symbol, OrderSide.buy)
 
         is_quote_balance = next(
             (
