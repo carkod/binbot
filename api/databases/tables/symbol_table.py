@@ -24,10 +24,10 @@ class SymbolTable(SQLModel, table=True):
     description: str = Field(default="", description="Description of the symbol")
     is_margin_trading_allowed: bool = Field(default=False)
     quote_asset: str = Field(
-        default="", description="in BTCUSDC, BTC would be quote asset"
+        default="", description="in DOGEUSDC, DOGE would be quote asset"
     )
     base_asset: str = Field(
-        default="", description="in BTCUSDC, USDC would be base asset"
+        default="", description="in DOGEUSDC, USDC would be base asset"
     )
     price_precision: int = Field(
         default=0,

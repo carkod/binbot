@@ -133,20 +133,20 @@ class DealAbstract(BaseDeal):
         )
 
         if not conversion_qty:
-            return None
+            return self.handle_fiat_conversion_sell(
+                symbol=symbol, amount_missing=self.active_bot.fiat_order_size
+            )
 
         total_available = conversion_qty / price if conversion_qty else 0
         amount_missing = self.active_bot.fiat_order_size - total_available
 
         # Only proceed if we have quote asset but total available is 0 or insufficient
         if conversion_qty and (total_available == 0 or amount_missing > 0):
-            return self.handle_fiat_conversion_sell(symbol, amount_missing, price)
+            return self.handle_fiat_conversion_sell(symbol, amount_missing)
 
         return None
 
-    def handle_fiat_conversion_sell(
-        self, symbol: str, amount_missing: float, price: float
-    ):
+    def handle_fiat_conversion_sell(self, symbol: str, amount_missing: float):
         """Handle selling fiat quote asset to get base fiat currency"""
         precision = self.calculate_qty_precision(symbol)
 
