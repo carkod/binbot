@@ -43,7 +43,8 @@ const BaseOrderTab: FC<{
   const [triggerGetOneSymbol, { data: symbolData, isLoading }] =
     useLazyGetOneSymbolQuery();
 
-  const [quoteAsset, setQuoteAsset] = useState<string>(bot.quote_asset || "");
+  const [quoteAsset, setQuoteAsset] = useState<string>("");
+  const [baseAsset, setBaseAsset] = useState<string>("");
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
   const [symbolsList, setSymbolsList] = useImmer<string[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
@@ -81,6 +82,13 @@ const BaseOrderTab: FC<{
       });
     }
   };
+
+  // Memoize composedPair to avoid unnecessary recalculation
+  const composedPair = React.useMemo(() => {
+    return bot.pair
+      ? bot.pair.replace(bot.quote_asset, "") + bot.quote_asset
+      : "";
+  }, [bot.pair, bot.quote_asset]);
 
   // Data
   useEffect(() => {
@@ -141,6 +149,7 @@ const BaseOrderTab: FC<{
 
     if (symbolData && symbolData?.id !== bot?.pair) {
       setQuoteAsset(symbolData.quote_asset);
+      setBaseAsset(symbolData.base_asset);
       if (botType === BotType.PAPER_TRADING) {
         dispatch(
           setTestBotField({
@@ -165,25 +174,20 @@ const BaseOrderTab: FC<{
     }
 
     // Keep pair in sync with quote_asset
-
-    if (bot.pair) {
-      const composedPair =
-        bot.pair.replace(bot.quote_asset, "") + bot.quote_asset;
-      if (bot.pair !== composedPair) {
-        triggerGetOneSymbol(bot.pair)
-          .unwrap()
-          .then((data) => {
-            setQuoteAsset(data.quote_asset);
-            dispatch(
-              setField({ name: "quote_asset", value: data.quote_asset }),
-            );
-          });
-      }
+    if (bot.pair && bot.pair !== composedPair) {
+      triggerGetOneSymbol(bot.pair)
+        .unwrap()
+        .then((data) => {
+          setQuoteAsset(data.quote_asset);
+          setBaseAsset(data.base_asset);
+          dispatch(setField({ name: "quote_asset", value: data.quote_asset }));
+        });
     }
 
     return () => unsubscribe();
   }, [
     quoteAsset,
+    baseAsset,
     symbolData,
     symbols,
     symbolsList,
@@ -191,6 +195,8 @@ const BaseOrderTab: FC<{
     reset,
     dispatch,
     watch,
+    bot.pair,
+    bot.quote_asset,
   ]);
 
   return (
@@ -271,7 +277,7 @@ const BaseOrderTab: FC<{
               )}
             </Form.Group>
           </Col>
-          {bot.deal?.base_order_size > 0 && (
+          {bot.pair && (
             <Row>
               <Col md="6" sm="12" className="my-6">
                 <InputTooltip
@@ -279,7 +285,7 @@ const BaseOrderTab: FC<{
                   tooltip={"Amount of base asset to trade"}
                   label="Base order size"
                   errors={errors}
-                  secondaryText={bot.quote_asset}
+                  secondaryText={quoteAsset}
                 >
                   <Form.Control
                     type="number"
@@ -296,7 +302,7 @@ const BaseOrderTab: FC<{
                   tooltip={"Amount of asset to trade"}
                   label="Asset amount"
                   errors={errors}
-                  secondaryText={bot.pair.replace(quoteAsset, "")}
+                  secondaryText={baseAsset}
                 >
                   <Form.Control
                     type="number"
