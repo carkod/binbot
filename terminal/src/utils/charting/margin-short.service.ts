@@ -13,7 +13,10 @@ export default function marginTrading(
   const price =
     bot.deal?.opening_price || currentPrice || bot.deal.current_price;
 
-  const baseOrderSize = bot.deal.base_order_size > 0 ? bot.deal.base_order_size : bot.fiat_order_size;
+  const baseOrderSize =
+    bot.deal.base_order_size > 0
+      ? bot.deal.base_order_size
+      : bot.fiat_order_size;
 
   if (baseOrderSize > 0 && currentPrice) {
     if (bot.deal.closing_price > 0) {
