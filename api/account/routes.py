@@ -95,7 +95,7 @@ def clean_balance(bypass: bool = False, session: Session = Depends(get_session))
     except LowBalanceCleanupError as error:
         return json_response_error(f"Failed to clean balance: {error}")
     except BinanceErrors as error:
-        return json_response_error(f"Failed to clean balance: {error}")
+        return json_response_error(f"Failed to clean balance: {error.message}")
 
 
 @account_blueprint.get(

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from account.account import Account
+from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.balances_crud import BalancesCrud
 from databases.tables.bot_table import BotTable
 from databases.crud.autotrade_crud import AutotradeCrud
@@ -27,6 +28,7 @@ class Assets(Account):
         self.exception_list.append(self.fiat)
         self.bot_controller = BotTableCrud(session=session)
         self.balances_controller = BalancesCrud(session=session)
+        self.symbols_crud = SymbolsCrud(session=session)
 
     def get_pnl(self, days=7):
         current_time = datetime.now()
@@ -219,7 +221,16 @@ class Assets(Account):
             )
         else:
             try:
-                self.transfer_dust(assets)
+                all_symbols = self.symbols_crud.get_all()
+                all_symbol_ids = {s.base_asset for s in all_symbols}
+                idle_assets = [
+                    a
+                    for a in (all_symbol_ids & set(assets))
+                    if a not in self.exception_list
+                ]
+                if self.fiat in idle_assets:
+                    idle_assets.remove(self.fiat)
+                self.transfer_dust(idle_assets)
             except BinanceErrors as error:
                 if error.code == -5005:
                     for asset in assets:
@@ -228,7 +239,8 @@ class Assets(Account):
                                 self.exception_list.append(asset)
                                 break
                     self.clean_balance_assets(bypass=bypass)
-                    pass
+                else:
+                    raise error
 
         return assets
 

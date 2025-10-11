@@ -3,7 +3,7 @@ from typing import Type, Union
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
-from tools.enum_definitions import DealType, OrderSide, Status, QuoteAssets
+from tools.enum_definitions import DealType, OrderSide, Status, QuoteAssets, Strategy
 from tools.exceptions import BinanceErrors, TakeProfitError
 from tools.maths import (
     round_numbers,
@@ -133,20 +133,20 @@ class DealAbstract(BaseDeal):
         )
 
         if not conversion_qty:
-            return None
+            return self.handle_fiat_conversion_sell(
+                symbol=symbol, amount_missing=self.active_bot.fiat_order_size
+            )
 
         total_available = conversion_qty / price if conversion_qty else 0
         amount_missing = self.active_bot.fiat_order_size - total_available
 
         # Only proceed if we have quote asset but total available is 0 or insufficient
         if conversion_qty and (total_available == 0 or amount_missing > 0):
-            return self.handle_fiat_conversion_sell(symbol, amount_missing, price)
+            return self.handle_fiat_conversion_sell(symbol, amount_missing)
 
         return None
 
-    def handle_fiat_conversion_sell(
-        self, symbol: str, amount_missing: float, price: float
-    ):
+    def handle_fiat_conversion_sell(self, symbol: str, amount_missing: float):
         """Handle selling fiat quote asset to get base fiat currency"""
         precision = self.calculate_qty_precision(symbol)
 
@@ -402,9 +402,9 @@ class DealAbstract(BaseDeal):
                 )
                 self.active_bot.deal.base_order_size = float(response["origQty"])
                 if self.active_bot.quote_asset.is_fiat():
-                    self.active_bot.deal.base_order_size = (
-                        float(response["origQty"]) * float(response["price"])
-                    )
+                    self.active_bot.deal.base_order_size = float(
+                        response["origQty"]
+                    ) * float(response["price"])
                 # give some time for order to complete
                 sleep(3)
 
@@ -413,11 +413,17 @@ class DealAbstract(BaseDeal):
             last_ticker_price = self.get_book_order_deep(self.active_bot.pair, True)
             price = float(last_ticker_price)
 
-            # Use all available quote asset balance
-            # this avoids diffs in ups and downs in prices and fees
-            available_quote_asset = self.get_single_raw_balance(
-                self.active_bot.quote_asset
-            )
+            if self.active_bot.strategy == Strategy.margin_short:
+                # Use all available quote asset balance
+                # this avoids diffs in ups and downs in prices and fees
+                available_quote_asset = self.get_single_raw_balance(
+                    self.active_bot.quote_asset
+                )
+            else:
+                available_quote_asset = self.get_single_spot_balance(
+                    self.active_bot.quote_asset
+                )
+
             qty = round_numbers_floor(
                 (available_quote_asset / float(price)),
                 self.qty_precision,
