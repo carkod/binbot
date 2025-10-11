@@ -146,11 +146,11 @@ const BaseOrderTab: FC<{
           setTestBotField({
             name: "quote_asset",
             value: symbolData.quote_asset,
-          })
+          }),
         );
       } else {
         dispatch(
-          setField({ name: "quote_asset", value: symbolData.quote_asset })
+          setField({ name: "quote_asset", value: symbolData.quote_asset }),
         );
       }
     }
@@ -175,7 +175,7 @@ const BaseOrderTab: FC<{
           .then((data) => {
             setQuoteAsset(data.quote_asset);
             dispatch(
-              setField({ name: "quote_asset", value: data.quote_asset })
+              setField({ name: "quote_asset", value: data.quote_asset }),
             );
           });
       }

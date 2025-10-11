@@ -15,7 +15,7 @@ const getBaseOrderQuoteAsset = (bot: Bot): number => {
 
 export default function spotTrading(
   bot: Bot,
-  currentPrice: number = 0
+  currentPrice: number = 0,
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
   let totalOrderLines: OrderLine[] = [];
