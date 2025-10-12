@@ -12,7 +12,7 @@ from tools.maths import (
     ts_to_day,
 )
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
-from tools.enum_definitions import Strategy
+from tools.enum_definitions import Status, Strategy
 from databases.crud.bot_crud import BotTableCrud
 from account.schemas import BalanceSeries
 from tools.enum_definitions import BinanceKlineIntervals
@@ -24,7 +24,7 @@ class Assets(Account):
     def __init__(self, session):
         self.usd_balance = 0
         self.fiat = AutotradeCrud().get_settings().fiat
-        self.exception_list = ["NFT", "BNB"]
+        self.exception_list: list[str] = ["NFT", "BNB"]
         self.exception_list.append(self.fiat)
         self.bot_controller = BotTableCrud(session=session)
         self.balances_controller = BalancesCrud(session=session)
@@ -204,12 +204,12 @@ class Assets(Account):
         transfer to BNB
         """
         data = self.get_account_balance()
+        all_symbols = self.symbols_crud.get_all()
         assets = []
 
-        active_bots: Sequence[str] = self.bot_controller.get_active_pairs()
+        active_bots: Sequence[BotTable] = self.bot_controller.get(status=Status.active)
         for pair in active_bots:
-            quote_asset = pair.replace(self.fiat, "")
-            self.exception_list.append(quote_asset)
+            self.exception_list.append(pair.quote_asset)
 
         for item in data["balances"]:
             if item["asset"] not in self.exception_list and float(item["free"]) > 0:
@@ -221,7 +221,6 @@ class Assets(Account):
             )
         else:
             try:
-                all_symbols = self.symbols_crud.get_all()
                 all_symbol_ids = {s.base_asset for s in all_symbols}
                 idle_assets = [
                     a
