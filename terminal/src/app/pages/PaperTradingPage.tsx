@@ -19,7 +19,6 @@ import { BotStatus } from "../../utils/enums";
 
 export const PaperTradingPage: FC = () => {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const currentTs = new Date().getTime();
   const oneWeekAgo = weekAgo();
   const { spinner, setSpinner } = useContext(SpinnerContext);
@@ -45,7 +44,7 @@ export const PaperTradingPage: FC = () => {
     endDate,
   });
 
-  const handleSelection = (id) => {
+  const handleSelection = (id: string) => {
     let newCards = [];
     if (selectedCards.includes(id)) {
       newCards = selectedCards.filter((x) => x !== id);

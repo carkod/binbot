@@ -50,7 +50,8 @@ const PaperTradingDetailTabs: FC = () => {
   };
 
   const onSubmit = async () => {
-    if (id && paperTrading.status !== BotStatus.COMPLETED) {
+    if (!id) return;
+    if (paperTrading.status !== BotStatus.COMPLETED) {
       const submitData = {
         ...paperTrading,
         deal: undefined,
@@ -62,7 +63,6 @@ const PaperTradingDetailTabs: FC = () => {
       const submitData = { ...paperTrading, id: undefined };
       await createBot(submitData);
       setEnableActivation(true);
-      navigate(`/paper-trading/edit/${id}`);
     }
   };
 

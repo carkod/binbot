@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-from account.account import Account
+from time import sleep
+from orders.controller import OrderController
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.balances_crud import BalancesCrud
 from databases.tables.bot_table import BotTable
@@ -12,7 +13,7 @@ from tools.maths import (
     ts_to_day,
 )
 from tools.exceptions import BinanceErrors, LowBalanceCleanupError
-from tools.enum_definitions import Strategy
+from tools.enum_definitions import Status, Strategy
 from databases.crud.bot_crud import BotTableCrud
 from account.schemas import BalanceSeries
 from tools.enum_definitions import BinanceKlineIntervals
@@ -20,11 +21,22 @@ from tools.exceptions import BinbotErrors
 from typing import Sequence
 
 
-class Assets(Account):
+class Assets(OrderController):
+    """
+    Assets class inherits from OrderController
+    which inherits from Account class
+
+    These are entities that are dependent on Binance's account API.
+
+    The reason why we started to need OrderController
+    is because clean_balance_assets needs to execute
+    orders now to clean BNB dust. Assets class was previously using only the Account class
+    """
+
     def __init__(self, session):
         self.usd_balance = 0
         self.fiat = AutotradeCrud().get_settings().fiat
-        self.exception_list = ["NFT", "BNB"]
+        self.exception_list: list[str] = ["NFT", "BNB"]
         self.exception_list.append(self.fiat)
         self.bot_controller = BotTableCrud(session=session)
         self.balances_controller = BalancesCrud(session=session)
@@ -197,19 +209,19 @@ class Assets(Account):
             usdc=balances_series_diff, btc=balance_btc_diff, dates=balances_series_dates
         )
 
-    def clean_balance_assets(self, bypass=False):
+    def clean_balance_assets(self, bypass=False) -> list[str]:
         """
         Check if there are many small assets (0.000.. BTC)
         if there are more than 5 (number of bots)
         transfer to BNB
         """
         data = self.get_account_balance()
+        all_symbols = self.symbols_crud.get_all()
         assets = []
 
-        active_bots: Sequence[str] = self.bot_controller.get_active_pairs()
+        active_bots: Sequence[BotTable] = self.bot_controller.get(status=Status.active)
         for pair in active_bots:
-            quote_asset = pair.replace(self.fiat, "")
-            self.exception_list.append(quote_asset)
+            self.exception_list.append(pair.quote_asset)
 
         for item in data["balances"]:
             if item["asset"] not in self.exception_list and float(item["free"]) > 0:
@@ -221,7 +233,6 @@ class Assets(Account):
             )
         else:
             try:
-                all_symbols = self.symbols_crud.get_all()
                 all_symbol_ids = {s.base_asset for s in all_symbols}
                 idle_assets = [
                     a
@@ -231,6 +242,24 @@ class Assets(Account):
                 if self.fiat in idle_assets:
                     idle_assets.remove(self.fiat)
                 self.transfer_dust(idle_assets)
+
+                # Pause to make sure dust transfer is processed
+                sleep(3)
+                data = self.get_account_balance()
+                available_bnb = next(
+                    (
+                        float(item["free"])
+                        for item in data["balances"]
+                        if item["asset"] == "BNB"
+                    ),
+                    0,
+                )
+
+                if available_bnb == 0:
+                    return assets
+
+                # Transfer dust endpoint always converts to BNB
+                self.buy_order(symbol=f"BNB{self.fiat}", qty=available_bnb)
             except BinanceErrors as error:
                 if error.code == -5005:
                     for asset in assets:
