@@ -134,26 +134,6 @@ class SpotDealAbstract(DealAbstract):
         else:
             qty = self.compute_qty(self.active_bot.pair)
 
-        # If for some reason, the bot has been closed already (e.g. transacted on Binance)
-        # Inactivate bot
-        if qty == 0:
-            closed_orders = self.close_open_orders(self.active_bot.pair)
-            if not closed_orders:
-                order = self.verify_deal_close_order()
-                if order:
-                    self.active_bot.add_log(
-                        "Execute stop loss previous order found! Appending..."
-                    )
-                    self.active_bot.orders.append(order)
-                    self.controller.save(self.active_bot)
-                else:
-                    self.active_bot.add_log(
-                        "No quantity in balance, no closed orders. Cannot execute update stop limit."
-                    )
-                    self.active_bot.status = Status.error
-                    self.controller.save(self.active_bot)
-                    return self.active_bot
-
         # Dispatch fake order
         if isinstance(self.controller, PaperTradingTableCrud):
             res = self.simulate_order(pair=self.active_bot.pair, side=OrderSide.sell)
