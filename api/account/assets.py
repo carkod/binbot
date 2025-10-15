@@ -220,8 +220,9 @@ class Assets(OrderController):
         assets = []
 
         active_bots: Sequence[BotTable] = self.bot_controller.get(status=Status.active)
-        for pair in active_bots:
-            self.exception_list.append(pair.quote_asset)
+        for bot in active_bots:
+            base_asset = bot.pair.replace(bot.quote_asset, "")
+            self.exception_list.append(base_asset)
 
         for item in data["balances"]:
             if item["asset"] not in self.exception_list and float(item["free"]) > 0:
