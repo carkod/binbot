@@ -296,15 +296,21 @@ class DealAbstract(BaseDeal):
                 return self.active_bot
 
             if self.active_bot.quote_asset.is_fiat():
+                base_balance = round_numbers_floor(
+                    quote_balance / quote_fiat_price, self.quote_qty_precision
+                )
+                if base_balance < 15:
+                    return self.active_bot
+
                 res = self.buy_order(
                     symbol=symbol,
-                    qty=is_quote_balance,
+                    qty=base_balance,
                     qty_precision=self.quote_qty_precision,
                 )
             else:
                 res = self.sell_order(
                     symbol=symbol,
-                    qty=is_quote_balance,
+                    qty=quote_balance,
                     qty_precision=self.quote_qty_precision,
                 )
             if res:
