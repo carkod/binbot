@@ -147,6 +147,17 @@ const BaseOrderTab: FC<{
       setCurrentPrice(bot.deal.current_price);
     }
 
+    // Keep pair in sync with quote_asset
+    if (bot.pair && bot.pair !== composedPair) {
+      triggerGetOneSymbol(bot.pair)
+        .unwrap()
+        .then((data) => {
+          setQuoteAsset(data.quote_asset);
+          setBaseAsset(data.base_asset);
+          dispatch(setField({ name: "quote_asset", value: data.quote_asset }));
+        });
+    }
+
     if (symbolData && symbolData?.id !== bot?.pair) {
       setQuoteAsset(symbolData.quote_asset);
       setBaseAsset(symbolData.base_asset);
@@ -166,22 +177,6 @@ const BaseOrderTab: FC<{
 
     if (!loadingSettings && autotradeSettings) {
       setSpinner(false);
-    }
-
-    if (quoteAsset !== bot.quote_asset) {
-      setQuoteAsset(bot.quote_asset);
-      dispatch(setField({ name: "quote_asset", value: bot.quote_asset }));
-    }
-
-    // Keep pair in sync with quote_asset
-    if (bot.pair && bot.pair !== composedPair) {
-      triggerGetOneSymbol(bot.pair)
-        .unwrap()
-        .then((data) => {
-          setQuoteAsset(data.quote_asset);
-          setBaseAsset(data.base_asset);
-          dispatch(setField({ name: "quote_asset", value: data.quote_asset }));
-        });
     }
 
     return () => unsubscribe();
