@@ -14,7 +14,7 @@ async def process_klines():
     total_count = len(bs.active_bot_pairs)
     index = 0
     while True:
-        if index >= total_count:
+        if index == total_count - 1:
             # Refresh active pairs list
             # because we are no longer loading them by demand with restart_streaming
             # we need to check once in a while in case new bots were created
@@ -33,7 +33,7 @@ async def dynamic_trailing():
     total_count = len(bs.active_bot_pairs)
     index = 0
     while True:
-        if index >= total_count:
+        if index == total_count - 1:
             bs.get_all_active_pairs()
             total_count = len(bs.active_bot_pairs)
             index = 0
