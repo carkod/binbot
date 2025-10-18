@@ -14,6 +14,7 @@ import { SpinnerContext } from "../Layout";
 import {
   useGetSymbolsQuery,
   useGetOneSymbolQuery,
+  useLazyGetOneSymbolQuery,
 } from "../../features/symbolsApiSlice";
 import {
   selectTestBot,
@@ -46,6 +47,8 @@ const BaseOrderTab: FC<{
     refetch: refetchSymbolData,
   } = useGetOneSymbolQuery(bot.pair, { skip: !bot.pair });
 
+  const [triggerGetOneSymbol] = useLazyGetOneSymbolQuery();
+
   const [quoteAsset, setQuoteAsset] = useState<string>("");
   const [baseAsset, setBaseAsset] = useState<string>("");
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
@@ -68,7 +71,6 @@ const BaseOrderTab: FC<{
   const { spinner, setSpinner } = useContext(SpinnerContext);
 
   const handlePairBlur = (e) => {
-    refetchSymbolData();
     // Only when selected not typed in
     // this way we avoid any errors
     if (e.target.value) {
@@ -80,6 +82,12 @@ const BaseOrderTab: FC<{
       setErrorsState((draft) => {
         delete draft["pair"];
       });
+      triggerGetOneSymbol(bot.pair)
+        .unwrap()
+        .then((data) => {
+          setQuoteAsset(data.quote_asset);
+          setBaseAsset(data.base_asset);
+        });
     } else {
       setErrorsState((draft) => {
         draft["pair"] = "Please select a pair";
@@ -160,11 +168,11 @@ const BaseOrderTab: FC<{
           setTestBotField({
             name: "quote_asset",
             value: symbolData.quote_asset,
-          }),
+          })
         );
       } else {
         dispatch(
-          setField({ name: "quote_asset", value: symbolData.quote_asset }),
+          setField({ name: "quote_asset", value: symbolData.quote_asset })
         );
       }
     }
