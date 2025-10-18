@@ -64,9 +64,6 @@ class BaseDeal(OrderController):
         self.base_producer = BaseProducer()
         self.producer = self.base_producer.start_producer()
 
-        if self.active_bot.strategy == Strategy.margin_short:
-            self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-
     def __repr__(self) -> str:
         """
         To check that BaseDeal works for all children classes

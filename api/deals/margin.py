@@ -84,14 +84,17 @@ class MarginDeal(MarginDealAbstract):
             self.base_producer.update_required(
                 self.producer, "EXECUTE_MARGIN_STOP_LOSS"
             )
-            if self.active_bot.margin_short_reversal and self.symbol_info.is_margin_trading_allowed:
+            if self.active_bot.margin_short_reversal:
+                if not self.symbol_info.is_margin_trading_allowed:
+                    self.controller.update_logs(
+                        bot=self.active_bot,
+                        log_message="Margin trading not allowed on this symbol, cannot switch to long bot.",
+                    )
+                    return self.active_bot
+
                 self.switch_to_long_bot()
                 self.base_producer.update_required(
                     self.producer, "EXECUTE_MARGIN_SWITCH_TO_LONG"
-                )
-            elif not self.symbol_info.is_margin_trading_allowed:
-                self.active_bot.add_log(
-                    "Margin trading not allowed on this symbol, cannot switch to long bot."
                 )
 
             self.controller.save(self.active_bot)

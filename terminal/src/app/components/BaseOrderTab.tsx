@@ -13,6 +13,7 @@ import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
 import {
   useGetSymbolsQuery,
+  useGetOneSymbolQuery,
   useLazyGetOneSymbolQuery,
 } from "../../features/symbolsApiSlice";
 import {
@@ -40,8 +41,7 @@ const BaseOrderTab: FC<{
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
 
-  const [triggerGetOneSymbol, { data: symbolData, isLoading }] =
-    useLazyGetOneSymbolQuery();
+  const [triggerGetOneSymbol] = useLazyGetOneSymbolQuery();
 
   const [quoteAsset, setQuoteAsset] = useState<string>("");
   const [baseAsset, setBaseAsset] = useState<string>("");
@@ -76,6 +76,7 @@ const BaseOrderTab: FC<{
       setErrorsState((draft) => {
         delete draft["pair"];
       });
+      updateQuoteBaseState(bot.pair);
     } else {
       setErrorsState((draft) => {
         draft["pair"] = "Please select a pair";
@@ -84,11 +85,14 @@ const BaseOrderTab: FC<{
   };
 
   // Memoize composedPair to avoid unnecessary recalculation
-  const composedPair = React.useMemo(() => {
-    return bot.pair
-      ? bot.pair.replace(bot.quote_asset, "") + bot.quote_asset
-      : "";
-  }, [bot.pair, bot.quote_asset]);
+  const updateQuoteBaseState = (pair) => {
+    triggerGetOneSymbol(pair)
+      .unwrap()
+      .then((data) => {
+        setQuoteAsset(data.quote_asset);
+        setBaseAsset(data.base_asset);
+      });
+  };
 
   // Data
   useEffect(() => {
@@ -140,39 +144,15 @@ const BaseOrderTab: FC<{
       });
     }
 
+    if (bot.pair && !(Boolean(quoteAsset) || Boolean(baseAsset))) {
+      updateQuoteBaseState(bot.pair);
+    }
+
     if (
       bot.deal?.current_price !== currentPrice &&
       bot.deal?.closing_price === 0
     ) {
       setCurrentPrice(bot.deal.current_price);
-    }
-
-    // Keep pair in sync with quote_asset
-    if (bot.pair && bot.pair !== composedPair) {
-      triggerGetOneSymbol(bot.pair)
-        .unwrap()
-        .then((data) => {
-          setQuoteAsset(data.quote_asset);
-          setBaseAsset(data.base_asset);
-          dispatch(setField({ name: "quote_asset", value: data.quote_asset }));
-        });
-    }
-
-    if (symbolData && symbolData?.id !== bot?.pair) {
-      setQuoteAsset(symbolData.quote_asset);
-      setBaseAsset(symbolData.base_asset);
-      if (botType === BotType.PAPER_TRADING) {
-        dispatch(
-          setTestBotField({
-            name: "quote_asset",
-            value: symbolData.quote_asset,
-          }),
-        );
-      } else {
-        dispatch(
-          setField({ name: "quote_asset", value: symbolData.quote_asset }),
-        );
-      }
     }
 
     if (!loadingSettings && autotradeSettings) {
@@ -183,7 +163,6 @@ const BaseOrderTab: FC<{
   }, [
     quoteAsset,
     baseAsset,
-    symbolData,
     symbols,
     symbolsList,
     bot,

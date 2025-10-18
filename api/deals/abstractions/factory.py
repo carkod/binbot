@@ -40,6 +40,7 @@ class DealAbstract(BaseDeal):
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
+        self.symbol_info = self.symbols_crud.get_symbol(self.active_bot.pair)
         self.conversion_threshold = 1.05
 
     def handle_existing_quote_balance(self, symbol: str, is_quote_balance: float):
@@ -177,11 +178,6 @@ class DealAbstract(BaseDeal):
         For quote asset transactions we always want to round down (floor)
         to avoid insufficient balance errors
 
-        Args:
-        - fiat_conversion: if True, we are converting from e.g. TRY/EUR/USDC to USDC
-            if False, we are converting from e.g. BTC to USDC
-            fiat can also be a quote asset, that's why we need this check
-
         1. Do we have quote asset?
             1.1 we do have quote asset but not enough - buy the difference
             1.2 we do have quote asset and we do have enough - don't do anything
@@ -229,7 +225,12 @@ class DealAbstract(BaseDeal):
 
             # Calculate amount missing and buy the difference
             amount_missing = self.active_bot.fiat_order_size - total_qty_available
-            return self.buy_missing_amount(symbol, amount_missing, quote_fiat_price)
+            if self.active_bot.strategy == Strategy.margin_short:
+                qty = (amount_missing / float(quote_fiat_price)) * self.conversion_threshold
+            else:
+                qty = amount_missing
+            
+            return self.buy_missing_amount(symbol, qty, quote_fiat_price)
 
         else:
             quote_fiat_price = self.get_book_order_deep(symbol, True)
