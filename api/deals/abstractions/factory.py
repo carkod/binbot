@@ -40,6 +40,7 @@ class DealAbstract(BaseDeal):
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
+        self.symbol_info = self.symbols_crud.get_symbol(self.active_bot.pair)
         self.conversion_threshold = 1.05
 
     def handle_existing_quote_balance(self, symbol: str, is_quote_balance: float):
@@ -176,11 +177,6 @@ class DealAbstract(BaseDeal):
 
         For quote asset transactions we always want to round down (floor)
         to avoid insufficient balance errors
-
-        Args:
-        - fiat_conversion: if True, we are converting from e.g. TRY/EUR/USDC to USDC
-            if False, we are converting from e.g. BTC to USDC
-            fiat can also be a quote asset, that's why we need this check
 
         1. Do we have quote asset?
             1.1 we do have quote asset but not enough - buy the difference

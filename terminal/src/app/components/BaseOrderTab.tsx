@@ -13,7 +13,7 @@ import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
 import {
   useGetSymbolsQuery,
-  useLazyGetOneSymbolQuery,
+  useGetOneSymbolQuery,
 } from "../../features/symbolsApiSlice";
 import {
   selectTestBot,
@@ -40,8 +40,11 @@ const BaseOrderTab: FC<{
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
 
-  const [triggerGetOneSymbol, { data: symbolData, isLoading }] =
-    useLazyGetOneSymbolQuery();
+  const {
+    data: symbolData,
+    isFetching: fetchingSymbol,
+    refetch: refetchSymbolData,
+  } = useGetOneSymbolQuery(bot.pair, { skip: !bot.pair });
 
   const [quoteAsset, setQuoteAsset] = useState<string>("");
   const [baseAsset, setBaseAsset] = useState<string>("");
@@ -65,6 +68,7 @@ const BaseOrderTab: FC<{
   const { spinner, setSpinner } = useContext(SpinnerContext);
 
   const handlePairBlur = (e) => {
+    refetchSymbolData();
     // Only when selected not typed in
     // this way we avoid any errors
     if (e.target.value) {
@@ -147,18 +151,8 @@ const BaseOrderTab: FC<{
       setCurrentPrice(bot.deal.current_price);
     }
 
-    // Keep pair in sync with quote_asset
-    if (bot.pair && bot.pair !== composedPair) {
-      triggerGetOneSymbol(bot.pair)
-        .unwrap()
-        .then((data) => {
-          setQuoteAsset(data.quote_asset);
-          setBaseAsset(data.base_asset);
-          dispatch(setField({ name: "quote_asset", value: data.quote_asset }));
-        });
-    }
-
-    if (symbolData && symbolData?.id !== bot?.pair) {
+    // Update local assets when freshly fetched symbol matches current pair
+    if (symbolData && symbolData?.id === bot?.pair) {
       setQuoteAsset(symbolData.quote_asset);
       setBaseAsset(symbolData.base_asset);
       if (botType === BotType.PAPER_TRADING) {
