@@ -226,10 +226,12 @@ class DealAbstract(BaseDeal):
             # Calculate amount missing and buy the difference
             amount_missing = self.active_bot.fiat_order_size - total_qty_available
             if self.active_bot.strategy == Strategy.margin_short:
-                qty = (amount_missing / float(quote_fiat_price)) * self.conversion_threshold
+                qty = (
+                    amount_missing / float(quote_fiat_price)
+                ) * self.conversion_threshold
             else:
                 qty = amount_missing
-            
+
             return self.buy_missing_amount(symbol, qty, quote_fiat_price)
 
         else:

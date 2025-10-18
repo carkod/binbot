@@ -5,7 +5,7 @@ from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
 from databases.tables.user_table import UserTable
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import Session, select
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
@@ -23,7 +23,6 @@ from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.db import setup_kafka_db
 from tools.exceptions import BinbotErrors
-from sqlalchemy import text
 
 
 class ApiDb:
@@ -39,7 +38,6 @@ class ApiDb:
         pass
 
     def init_db(self):
-        self.drop_alembic_version_table()
         self.init_users()
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
@@ -53,34 +51,6 @@ class ApiDb:
     def run_migrations(self):
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
-
-    def drop_db(self):
-        SQLModel.metadata.drop_all(engine)
-
-    def drop_alembic_version_table(self):
-        """Drop ONLY Alembic's version table, preserving all application data tables.
-
-        This forgets the migration history so a future "alembic upgrade head" would
-        attempt to re-run all migrations. Use with care; prefer `alembic stamp <rev>`
-        if you just want to realign without replaying migrations.
-        """
-        try:
-            with engine.begin() as conn:
-                # Quick existence check (Postgres specific helper); returns None if absent
-                exists = conn.execute(
-                    text("SELECT to_regclass('public.alembic_version')")
-                ).scalar()
-                if not exists:
-                    logging.info(
-                        "alembic_version table does not exist; nothing to drop"
-                    )
-                    return False
-                conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
-            logging.warning("Dropped alembic_version table (migration history reset)")
-            return True
-        except Exception as exc:
-            logging.error(f"Failed to drop alembic_version table: {exc}")
-            return False
 
     def init_autotrade_settings(self):
         """

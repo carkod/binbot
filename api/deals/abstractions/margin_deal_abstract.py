@@ -48,6 +48,7 @@ class MarginDealAbstract(DealAbstract):
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
+        self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
 
     """
     Reusable utility functions
