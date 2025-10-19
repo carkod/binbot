@@ -290,7 +290,9 @@ class DealAbstract(BaseDeal):
                 is_quote_balance, self.quote_qty_precision
             )
             # pessimistic price so that we can actually buy more
-            quote_fiat_price = self.matching_engine(symbol=symbol, order_side=True)
+            quote_fiat_price = self.match_qty_engine(
+                symbol=symbol, order_side=True, qty=1
+            )
             # sell everything that is on the account clean
             # this is to hedge from market fluctuations that make affect portfolio value
             total_qty_available = round_numbers_floor(quote_fiat_price * quote_balance)

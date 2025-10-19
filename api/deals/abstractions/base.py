@@ -235,7 +235,9 @@ class BaseDeal(OrderController):
                         qty = round_numbers_ceiling(
                             repay_amount - free, self.qty_precision
                         )
-                        price = float(self.matching_engine(pair, True, qty))
+                        price = self.match_qty_engine(
+                            symbol=pair, order_side=True, qty=qty
+                        )
                         usdc_notional = price * qty
                         if usdc_notional < 15:
                             qty = round_numbers_ceiling(15 / price)

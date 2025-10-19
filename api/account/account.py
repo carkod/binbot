@@ -84,18 +84,53 @@ class Account(BinbotApi):
             price, _ = data["asks"][0]
         return float(price)
 
-    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+    def match_qty_engine(self, symbol: str, order_side: bool, qty: float = 1) -> float:
         """
-        Match quantity with available 100% fill order price,
-        so that order can immediately buy/sell
-        If it doesn't match, do split order
+        Similar to matching_engine,
+        it is used to find a price that matches the quantity provided
+        so qty != 0
+
         @param: order_side -
             Buy order = get bid prices = False
             Sell order = get ask prices = True
         @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
         data = self.get_book_depth(symbol)
+        if order_side:
+            total_length = len(data["asks"])
+        else:
+            total_length = len(data["bids"])
 
+        price, base_qty = self._get_price_from_book_order(data, order_side, 0)
+
+        buyable_qty = float(qty) / float(price)
+        if buyable_qty < base_qty:
+            return base_qty
+        else:
+            for i in range(1, total_length):
+                price, base_qty = self._get_price_from_book_order(data, order_side, i)
+                if buyable_qty > base_qty:
+                    return base_qty
+                else:
+                    continue
+            raise Exception("Not enough liquidity to match the order quantity")
+
+    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+        """
+        Match quantity with available 100% fill order price,
+        so that order can immediately buy/sell
+
+        _get_price_from_book_order previously did max 100 ask/bid levels,
+        however that causes trading price to be too far from market price,
+        therefore incurring in impossible sell or losses.
+        Setting it to 10 levels max to avoid drifting too much from market price.
+
+        @param: order_side -
+            Buy order = get bid prices = False
+            Sell order = get ask prices = True
+        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
+        """
+        data = self.get_book_depth(symbol)
         price, base_qty = self._get_price_from_book_order(data, order_side, 0)
 
         if qty == 0:
@@ -105,8 +140,7 @@ class Account(BinbotApi):
             if buyable_qty < base_qty:
                 return price
             else:
-                total_length = len(data["bids"])
-                for i in range(1, total_length):
+                for i in range(1, 11):
                     price, base_qty = self._get_price_from_book_order(
                         data, order_side, i
                     )
@@ -114,9 +148,8 @@ class Account(BinbotApi):
                         return price
                     else:
                         continue
-                raise ValueError(
-                    "Unable to match base_order_size with available order prices"
-                )
+                # caller to use market price
+                return 0
 
     def calculate_total_commissions(self, fills: dict) -> float:
         """
