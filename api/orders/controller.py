@@ -6,7 +6,6 @@ from tools.enum_definitions import OrderType, TimeInForce, OrderSide, OrderStatu
 from tools.handle_error import json_response, json_response_message
 from tools.maths import (
     supress_notation,
-    zero_remainder,
     round_timestamp,
 )
 from databases.crud.symbols_crud import SymbolsCrud
@@ -64,7 +63,7 @@ class OrderController(Account):
         Price is determined by market
         to help trigger the order immediately
         """
-        price = float(self.matching_engine(pair, True, qty))
+        price = self.matching_engine(pair, True, 0)
         order = {
             "symbol": pair,
             "orderId": self.generate_short_id(),
@@ -84,7 +83,7 @@ class OrderController(Account):
         return order
 
     def simulate_response_order(self, pair: str, side: OrderSide, qty=1):
-        price = float(self.matching_engine(pair, True, qty))
+        price = self.matching_engine(pair, True, qty)
         response_order = {
             "symbol": pair,
             "orderId": self.generate_short_id(),
@@ -142,19 +141,19 @@ class OrderController(Account):
         If price is not provided by matching engine,
         sell at market price
         """
-        price = float(self.matching_engine(symbol, True, qty))
+        book_price = float(self.matching_engine(symbol, True, qty))
         if price_precision == 0:
             price_precision = self.price_precision
         if qty_precision == 0:
             qty_precision = self.qty_precision
 
-        if price > 0:
+        if book_price > 0:
             payload = {
                 "symbol": symbol,
                 "side": OrderSide.sell,
                 "type": OrderType.limit,
                 "timeInForce": TimeInForce.fok,
-                "price": supress_notation(price, price_precision),
+                "price": supress_notation(book_price, price_precision),
                 "quantity": supress_notation(qty, qty_precision),
             }
         else:
@@ -166,6 +165,7 @@ class OrderController(Account):
             }
 
         data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+
         # Fixed expired orders
         if data["status"] == OrderStatus.EXPIRED.value:
             # do a market order, otherwise we could enter into a Expired infinite loop
@@ -201,12 +201,6 @@ class OrderController(Account):
                 "price": supress_notation(book_price, price_precision),
                 "quantity": supress_notation(qty, qty_precision),
             }
-            # If price is not provided by matching engine,
-            # create iceberg orders
-            if not book_price:
-                payload["iceberg_qty"] = zero_remainder(qty)
-                payload["price"] = supress_notation(book_price, price_precision)
-
         else:
             # Use market price if matching engine can't find a price
             payload = {

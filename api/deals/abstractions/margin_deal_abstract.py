@@ -48,6 +48,7 @@ class MarginDealAbstract(DealAbstract):
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
+        self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
 
     """
     Reusable utility functions
@@ -419,7 +420,7 @@ class MarginDealAbstract(DealAbstract):
             # System does not have enough money to lend
             # transfer back and left client know (raise exception again)
             if error.code == -3045:
-                self.controller.update_logs("Not enough money to lend", self.active_bot)
+                self.controller.update_logs(error.message, self.active_bot)
                 self.terminate_failed_transactions()
                 raise BinanceErrors(error.message, error.code)
 
