@@ -55,7 +55,6 @@ class SpotLongDeal(SpotDealAbstract):
             and self.active_bot.deal.stop_loss_price > current_price
         ):
             self.execute_stop_loss()
-            self.base_producer.update_required(self.producer, "EXECUTE_SPOT_STOP_LOSS")
             if self.active_bot.margin_short_reversal:
                 if not self.symbol_info.is_margin_trading_allowed:
                     self.controller.update_logs(
@@ -65,9 +64,6 @@ class SpotLongDeal(SpotDealAbstract):
                     return self.active_bot
 
                 self.switch_to_margin_short()
-                self.base_producer.update_required(
-                    self.producer, "EXECUTE_SWITCH_MARGIN_SHORT"
-                )
 
         # Trailling profit
         if self.active_bot.trailling and self.active_bot.deal.opening_price > 0:
@@ -272,5 +268,4 @@ class SpotLongDeal(SpotDealAbstract):
             self.active_bot = self.long_open_deal_trailling_parameters()
 
         self.controller.save(self.active_bot)
-        self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")
         return self.active_bot

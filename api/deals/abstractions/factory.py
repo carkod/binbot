@@ -555,6 +555,4 @@ class DealAbstract(BaseDeal):
         self.active_bot.status = Status.active
         self.controller.save(self.active_bot)
 
-        # Only signal for the whole activation
-        self.base_producer.update_required(self.producer, "EXECUTE_SPOT_OPEN_DEAL")
         return self.active_bot

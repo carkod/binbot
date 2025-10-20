@@ -1,6 +1,8 @@
 import logging
+import json
+import asyncio
 from exchange_apis.binance import BinanceApi
-from streaming.socket_client import SpotWebsocketStreamClient
+from streaming.socket_client import AsyncSpotWebsocketStreamClient
 from databases.db import Database
 from databases.crud.bot_crud import BotTableCrud
 from databases.utils import independent_session
@@ -14,11 +16,10 @@ class UserDataStreaming(Database, BinanceApi):
         self.streaming_db = self._db
         self.session = independent_session()
         self.bot_controller = BotTableCrud(session=self.session)
-        pass
+        self.user_data_client: AsyncSpotWebsocketStreamClient | None = None
 
     def on_error(self, socket, error):
         logging.error(f"User data streaming error: {error}")
-        pass
 
     def update_order_data(self, result):
         """
@@ -60,27 +61,37 @@ class UserDataStreaming(Database, BinanceApi):
 
         return order_result
 
-    def get_user_data(self):
+    async def start(self):
         listen_key = self.get_listen_key()
-        self.user_data_client = SpotWebsocketStreamClient(
-            on_message=self.on_user_data_message, on_error=self.on_error
+        self.user_data_client = AsyncSpotWebsocketStreamClient(
+            on_message=self.on_user_data_message,
+            on_error=self.on_error,
         )
-        self.user_data_client.user_data(
-            listen_key=listen_key, action=SpotWebsocketStreamClient.subscribe
-        )
+        await self.user_data_client.connect()
+        await self.user_data_client.user_data(listen_key)
+        logging.info("User data WebSocket connected")
 
-    def on_user_data_message(self, socket, res):
-        """
-        Legacy, needs improvement
-        """
-        logging.info("Streaming user data")
+    async def run_forever(self):
+        if not self.user_data_client:
+            await self.start()
+        while True:
+            await asyncio.sleep(60)
 
-        if "e" in res:
-            if "executionReport" in res["e"]:
+    def on_user_data_message(self, socket, raw):
+        try:
+            res = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+        except Exception:
+            logging.error(f"Invalid user data payload: {raw}")
+            return
+        event = res.get("e")
+        if not event:
+            return
+        if event == "executionReport":
+            try:
                 self.update_order_data(res)
-                return
-
-            elif "outboundAccountPosition" in res["e"]:
-                logging.info(f"Assets changed {res['e']}")
-            elif "balanceUpdate" in res["e"]:
-                logging.info(f"Funds transferred {res['e']}")
+            except Exception as e:
+                logging.error(f"Failed updating order: {e}")
+        elif event == "outboundAccountPosition":
+            logging.debug("Outbound account position update")
+        elif event == "balanceUpdate":
+            logging.debug("Balance update event")

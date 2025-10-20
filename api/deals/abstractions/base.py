@@ -13,7 +13,6 @@ from tools.exceptions import (
     MarginLoanNotFound,
 )
 from tools.enum_definitions import Status, Strategy, OrderStatus
-from base_producer import BaseProducer
 
 # To be removed one day en commission endpoint found that provides this value
 ESTIMATED_COMMISSIONS_RATE = 0.0075
@@ -61,8 +60,6 @@ class BaseDeal(OrderController):
             )
         else:
             self.quote_qty_precision = self.calculate_qty_precision(bot.pair)
-        self.base_producer = BaseProducer()
-        self.producer = self.base_producer.start_producer()
 
     def __repr__(self) -> str:
         """
@@ -286,10 +283,6 @@ class BaseDeal(OrderController):
             self.disable_isolated_margin_account(pair)
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
-        # Restart streaming
-        self.base_producer.update_required(
-            self.base_producer, "EXECUTE_MARGIN_LIQUIDATION"
-        )
         return buy_margin_response
 
     def spot_liquidation(self, pair: str):

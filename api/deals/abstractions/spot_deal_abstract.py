@@ -286,9 +286,6 @@ class SpotDealAbstract(DealAbstract):
                 and current_price < self.active_bot.deal.opening_price
             ):
                 self.execute_stop_loss()
-                self.base_producer.update_required(
-                    self.producer, "EXECUTE_SPOT_CLOSE_CONDITION_STOP_LOSS"
-                )
 
         pass
 

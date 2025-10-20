@@ -9,7 +9,6 @@ from tools.maths import (
     round_timestamp,
 )
 from deals.abstractions.margin_deal_abstract import MarginDealAbstract
-from base_producer import BaseProducer
 
 
 class MarginDeal(MarginDealAbstract):
@@ -30,8 +29,6 @@ class MarginDeal(MarginDealAbstract):
         super().__init__(bot, db_table)
         self.active_bot = bot
         self.db_table = db_table
-        self.base_producer = BaseProducer()
-        self.producer = self.base_producer.start_producer()
 
     def check_failed_switch_long_bot(self) -> BotModel:
         """
@@ -81,9 +78,6 @@ class MarginDeal(MarginDealAbstract):
                 self.active_bot,
             )
             self.execute_stop_loss()
-            self.base_producer.update_required(
-                self.producer, "EXECUTE_MARGIN_STOP_LOSS"
-            )
             if self.active_bot.margin_short_reversal:
                 if not self.symbol_info.is_margin_trading_allowed:
                     self.controller.update_logs(
@@ -93,9 +87,6 @@ class MarginDeal(MarginDealAbstract):
                     return self.active_bot
 
                 self.switch_to_long_bot()
-                self.base_producer.update_required(
-                    self.producer, "EXECUTE_MARGIN_SWITCH_TO_LONG"
-                )
 
             self.controller.save(self.active_bot)
 
@@ -121,9 +112,6 @@ class MarginDeal(MarginDealAbstract):
                 )
                 # since price is given by matching engine
                 self.execute_take_profit(DealType.trailling_profit)
-                self.base_producer.update_required(
-                    self.producer, "EXECUTE_MARGIN_TRAILLING_PROFIT"
-                )
 
         if not self.active_bot.trailling and self.active_bot.deal.take_profit_price > 0:
             # Not a trailling bot, just simple take profit
@@ -133,9 +121,6 @@ class MarginDeal(MarginDealAbstract):
                     self.active_bot,
                 )
                 self.execute_take_profit()
-                self.base_producer.update_required(
-                    self.producer, "EXECUTE_MARGIN_TAKE_PROFIT"
-                )
 
         return self.active_bot
 
@@ -219,7 +204,6 @@ class MarginDeal(MarginDealAbstract):
             self.active_bot.add_log("No balance found. Skipping panic sell")
 
         self.controller.save(self.active_bot)
-        self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_PANIC_CLOSE")
         return self.active_bot
 
     def open_deal(self) -> BotModel:
@@ -260,5 +244,4 @@ class MarginDeal(MarginDealAbstract):
             self.active_bot = self.short_open_deal_trailling_parameters()
 
         self.controller.save(self.active_bot)
-        self.base_producer.update_required(self.producer, "EXECUTE_MARGIN_OPEN_DEAL")
         return self.active_bot

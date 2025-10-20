@@ -13,10 +13,7 @@ from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
 from tools.exceptions import SaveBotError, BinbotErrors
 from tools.maths import round_numbers, ts_to_humandate
-from base_producer import BaseProducer
 from databases.crud.symbols_crud import SymbolsCrud
-import time
-import logging
 
 
 class BotTableCrud:
@@ -38,18 +35,6 @@ class BotTableCrud:
         if session is None:
             session = independent_session()
         self.session = session
-
-    def _notify_streaming_reload(self, reason: str = "bot_crud") -> None:
-        """
-        Notify market_updates to reload in-memory state via Kafka.
-        """
-        try:
-            producer = BaseProducer().start_producer()
-            action = f"{reason}-{int(time.time() * 1000)}"
-            BaseProducer.update_required(producer, action=action)
-            BaseProducer().close_producer(producer)
-        except Exception as e:
-            logging.error(f"Failed to emit restart_streaming: {e}", exc_info=True)
 
     def update_logs(
         self,
@@ -198,8 +183,6 @@ class BotTableCrud:
         self.session.add(new_bot)
         self.session.commit()
         self.session.refresh(new_bot)
-        # notify reload
-        self._notify_streaming_reload(reason="bot-create")
         resulted_bot = new_bot
         return resulted_bot
 
@@ -266,8 +249,6 @@ class BotTableCrud:
 
         self.session.commit()
         self.session.refresh(initial_bot)
-        # notify reload
-        self._notify_streaming_reload(reason="bot-save")
         resulted_bot = initial_bot
         return resulted_bot
 
@@ -282,8 +263,6 @@ class BotTableCrud:
             self.session.delete(bot)
 
         self.session.commit()
-        # notify reload
-        self._notify_streaming_reload(reason="bot-delete")
         self.session.close()
         return bot_ids
 
