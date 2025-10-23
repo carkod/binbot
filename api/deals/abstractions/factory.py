@@ -265,10 +265,11 @@ class DealAbstract(BaseDeal):
             1.1 we do have quote asset sell
             1.2. we don't have quote asset
         """
+
         if self.active_bot.quote_asset.value == self.active_bot.fiat:
             return self.active_bot
 
-        self.controller.update_logs("Selling quote asset.", self.active_bot)
+        self.controller.update_logs("Selling quote asset...", self.active_bot)
         balances = self.get_raw_balance()
 
         if self.active_bot.quote_asset.is_fiat():
@@ -289,30 +290,50 @@ class DealAbstract(BaseDeal):
             quote_balance = round_numbers_floor(
                 is_quote_balance, self.quote_qty_precision
             )
-            # pessimistic price so that we can actually buy more
-            quote_fiat_price = self.match_qty_engine(
-                symbol=symbol, order_side=True, qty=1
-            )
-            # sell everything that is on the account clean
-            # this is to hedge from market fluctuations that make affect portfolio value
-            total_qty_available = round_numbers_floor(quote_fiat_price * quote_balance)
-            if total_qty_available < 15:
-                # can't sell such a small amount
-                return self.active_bot
 
             if self.active_bot.quote_asset.is_fiat():
+                # pessimistic price so that we can actually buy more
+                quote_fiat_price = self.match_qty_engine(
+                    symbol=symbol, order_side=True, qty=1
+                )
+                # sell everything that is on the account clean
+                # this is to hedge from market fluctuations that make affect portfolio value
+                total_qty_available = round_numbers_floor(
+                    quote_fiat_price * quote_balance
+                )
+                if total_qty_available < 15:
+                    # can't sell such a small amount
+                    return self.active_bot
                 base_balance = round_numbers_floor(
-                    quote_balance / quote_fiat_price, self.quote_qty_precision
+                    quote_fiat_price / quote_balance, self.quote_qty_precision
                 )
                 if base_balance < 15:
+                    self.controller.update_logs(
+                        "Can't sell quote asset, it's too small", self.active_bot
+                    )
                     return self.active_bot
 
+                sell_qty = round_numbers_floor(
+                    base_balance - (base_balance * (self.conversion_threshold - 1)),
+                    self.qty_precision,
+                )
                 res = self.buy_order(
                     symbol=symbol,
-                    qty=base_balance,
-                    qty_precision=self.quote_qty_precision,
+                    qty=sell_qty,
+                    qty_precision=self.qty_precision,
                 )
             else:
+                quote_fiat_price = self.matching_engine(
+                    symbol=symbol, order_side=False, qty=1
+                )
+
+                total_qty_available = round_numbers_floor(
+                    quote_fiat_price * quote_balance
+                )
+                if total_qty_available < 15:
+                    # can't sell such a small amount
+                    return self.active_bot
+
                 res = self.sell_order(
                     symbol=symbol,
                     qty=quote_balance,

@@ -10,7 +10,7 @@ services:
     networks:
       - kafka_network
     volumes:
-      - pg_data:/var/lib/postgresql/pgdata
+      - pg_data:/var/lib/postgresql
     env_file:
       - .env
     ports:
@@ -195,3 +195,4 @@ services:
 
 volumes:
   mongo_data:
+  pg_data:
