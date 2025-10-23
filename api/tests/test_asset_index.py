@@ -19,14 +19,13 @@ def test_get_all_asset_indices():
 
 @mark.vcr("cassettes/test_add_asset_index.yaml")
 def test_add_asset_index():
-    payload = asset_index_payload()
     response = client.post(
-        "/asset-index/", params={"id": "new-index", "name": payload["name"]}
+        "/asset-index/", params={"id": "trump", "name": "virtual reality"}
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == "new-index"
-    assert data["name"] == payload["name"]
+    assert data["id"] == "trump"
+    assert data["name"] == "virtual reality"
 
 
 @mark.vcr("cassettes/test_get_asset_index.yaml")
