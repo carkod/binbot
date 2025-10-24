@@ -684,8 +684,5 @@ class MarginDealAbstract(DealAbstract):
                     self.active_bot,
                 )
                 self.execute_stop_loss()
-                self.base_producer.update_required(
-                    self.producer, "EXECUTE_CLOSE_CONDITION_STOP_LOSS"
-                )
 
         pass

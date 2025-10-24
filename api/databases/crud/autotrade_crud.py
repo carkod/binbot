@@ -1,6 +1,5 @@
 import typing
 
-from base_producer import AsyncBaseProducer
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.utils import independent_session
 from sqlmodel import Session, select
@@ -69,10 +68,6 @@ class AutotradeCrud:
         self.session.add(settings)
         self.session.commit()
         self.session.refresh(settings)
-
-        # end of db operations
-        # update the producer to reload streaming data
-        AsyncBaseProducer().update_required("UPDATE_AUTOTRADE_SETTINGS")
         self.session.close()
         return settings
 

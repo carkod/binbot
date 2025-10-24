@@ -1,67 +1,58 @@
-from streaming.socket_manager import BinanceWebsocketClient
+from __future__ import annotations
+from typing import Callable, Optional, Sequence
+from streaming.socket_manager import AsyncBinanceWebsocketClient
 
 
-class SpotWebsocketStreamClient(BinanceWebsocketClient):
-    ACTION_SUBSCRIBE = "SUBSCRIBE"
-    ACTION_UNSUBSCRIBE = "UNSUBSCRIBE"
-
+class AsyncSpotWebsocketStreamClient(AsyncBinanceWebsocketClient):
     def __init__(
         self,
-        stream_url="wss://stream.binance.com:443",
-        on_message=None,
-        on_open=None,
-        on_close=None,
-        on_error=None,
-        on_ping=None,
-        on_pong=None,
-        is_combined=False,
-    ):
-        if is_combined:
-            stream_url = stream_url + "/stream"
-        else:
-            stream_url = stream_url + "/ws"
+        stream_url: str = "wss://stream.binance.com:443",
+        on_message: Optional[Callable] = None,
+        on_open: Optional[Callable] = None,
+        on_close: Optional[Callable] = None,
+        on_error: Optional[Callable] = None,
+        on_ping: Optional[Callable] = None,
+        on_pong: Optional[Callable] = None,
+        is_combined: bool = False,
+        **kwargs,
+    ) -> None:
+        base = stream_url.rstrip("/")
+        suffix = "/stream" if is_combined else "/ws"
         super().__init__(
-            stream_url,
+            stream_url=f"{base}{suffix}",
             on_message=on_message,
             on_open=on_open,
             on_close=on_close,
             on_error=on_error,
             on_ping=on_ping,
             on_pong=on_pong,
+            **kwargs,
         )
 
-    def klines(self, markets: list, interval: str, id=None, action=None):
-        """Kline/Candlestick Streams
-        The Kline/Candlestick Stream push updates to the current klines/candlestick every second.
-        Stream Name: <symbol>@kline_<interval>
-        interval:
-        m -> minutes; h -> hours; d -> days; w -> weeks; M -> months
-        - 1m
-        - 3m
-        - 5m
-        - 15m
-        - 30m
-        - 1h
-        - 2h
-        - 4h
-        - 6h
-        - 8h
-        - 12h
-        - 1d
-        - 3d
-        - 1w
-        - 1M
-        Update Speed: 2000ms
+    async def klines(
+        self,
+        markets: Sequence[str],
+        interval: str,
+        id: Optional[int] = None,
+        action: Optional[str] = None,
+    ) -> None:
+        """Subscribe/unsubscribe to kline streams.
+
+        Each market produces a stream name: <symbol>@kline_<interval>
+        If markets empty, a dummy market is added to keep stream active.
         """
-        params = []
-        if len(markets) == 0:
-            # Listen to dummy stream to always trigger streaming
-            markets.append("BNBBTC")
-        for market in markets:
-            params.append(f"{market.lower()}@kline_{interval}")
+        streams = []
+        if not markets:
+            markets = ["BNBBTC"]
+        for m in markets:
+            streams.append(f"{m.lower()}@kline_{interval}")
+        await self.send_message_to_server(streams, action=action, id=id)
 
-        self.send_message_to_server(params, action=action, id=id)
-
-    def user_data(self, listen_key: str, id=None, action=None, **kwargs):
-        """Listen to user data by using the provided listen_key"""
-        self.send_message_to_server(listen_key, action=action, id=id)
+    async def user_data(
+        self,
+        listen_key: str,
+        id: Optional[int] = None,
+        action: Optional[str] = None,
+    ) -> None:
+        """Stream user data using provided listen key."""
+        await self.send_message_to_server(listen_key, action=action, id=id)
