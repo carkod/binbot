@@ -1,0 +1,152 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api3.binance.com/api/v3/time
+  response:
+    body:
+      string: '{"serverTime":1761268106402}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '28'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Fri, 24 Oct 2025 01:08:26 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      x-mbx-used-weight:
+      - '1'
+      x-mbx-used-weight-1m:
+      - '1'
+      x-mbx-uuid:
+      - 784eed43-3f8c-4064-81bd-e4269a459668
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api1.binance.com/api/v3/account?omitZeroBalances=true&recvWindow=9000&timestamp=1761268106402&signature=ea4c1801a22c7e8972895aa1634ecec7513eb3fe9984d07919f7bb6a63c04ac1
+  response:
+    body:
+      string: '{"makerCommission":10,"takerCommission":10,"buyerCommission":0,"sellerCommission":0,"commissionRates":{"maker":"0.00100000","taker":"0.00100000","buyer":"0.00000000","seller":"0.00000000"},"canTrade":true,"canWithdraw":true,"canDeposit":true,"brokered":false,"requireSelfTradePrevention":false,"preventSor":false,"updateTime":1761264531957,"accountType":"SPOT","balances":[{"asset":"BTC","free":"0.00000996","locked":"0.00000000"},{"asset":"BNB","free":"0.01970551","locked":"0.00000000"},{"asset":"USDC","free":"9.34323824","locked":"0.00000000"},{"asset":"TRY","free":"78.11419767","locked":"0.00000000"},{"asset":"EGLD","free":"0.00850000","locked":"0.00000000"},{"asset":"BAKE","free":"0.00680000","locked":"0.00000000"},{"asset":"LPT","free":"3.75000000","locked":"0.00000000"},{"asset":"NFT","free":"31205.975795","locked":"0.000000"},{"asset":"1000SATS","free":"0.18","locked":"0.00"},{"asset":"BMT","free":"472.20000000","locked":"0.00000000"},{"asset":"ZKC","free":"84.20000000","locked":"0.00000000"}],"permissions":["LEVERAGED","TRD_GRP_002","TRD_GRP_009"],"uid":28078583}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '419'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Fri, 24 Oct 2025 01:08:27 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      content-encoding:
+      - gzip
+      x-mbx-used-weight:
+      - '21'
+      x-mbx-used-weight-1m:
+      - '21'
+      x-mbx-uuid:
+      - 30ebccba-b807-4eee-99d3-90976b521661
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/account/balance/raw
+  response:
+    body:
+      string: '{"data":[{"asset":"BTC","free":"0.00000996","locked":"0.00000000"},{"asset":"BNB","free":"0.01970551","locked":"0.00000000"},{"asset":"USDC","free":"9.34323824","locked":"0.00000000"},{"asset":"TRY","free":"78.11419767","locked":"0.00000000"},{"asset":"EGLD","free":"0.00850000","locked":"0.00000000"},{"asset":"BAKE","free":"0.00680000","locked":"0.00000000"},{"asset":"LPT","free":"3.75000000","locked":"0.00000000"},{"asset":"NFT","free":"31205.975795","locked":"0.000000"},{"asset":"1000SATS","free":"0.18","locked":"0.00"},{"asset":"BMT","free":"472.20000000","locked":"0.00000000"},{"asset":"ZKC","free":"84.20000000","locked":"0.00000000"}]}'
+    headers:
+      content-length:
+      - '648'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1

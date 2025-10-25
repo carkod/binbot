@@ -13,6 +13,7 @@ class AsyncProducer:
 
     Hardcoded configuration applied at start(); no __init__, no env overrides.
     """
+
     linger_ms: int = 5
     acks: str | int = 1
     max_in_flight: int = 5

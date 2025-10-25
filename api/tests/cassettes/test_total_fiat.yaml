@@ -1,0 +1,221 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api3.binance.com/api/v3/time
+  response:
+    body:
+      string: '{"serverTime":1761268108694}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '28'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Fri, 24 Oct 2025 01:08:28 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      x-mbx-used-weight:
+      - '22'
+      x-mbx-used-weight-1m:
+      - '22'
+      x-mbx-uuid:
+      - a6d168ee-1202-4dd6-96eb-bbe3d62c1d0a
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api.binance.com/sapi/v1/asset/wallet/balance?recvWindow=9000&timestamp=1761268108694&signature=04433e509c0f034f1492651e82cf09aaf9a8e1aae70f3602e1a544de70afa08a
+  response:
+    body:
+      string: "[{\"activate\":true,\"balance\":\"0.00085356\",\"walletName\":\"Spot\"},{\"activate\":true,\"balance\":\"0\",\"walletName\":\"Funding\"},{\"activate\":true,\"balance\":\"0\",\"walletName\":\"Cross
+        Margin\"},{\"activate\":true,\"balance\":\"0\",\"walletName\":\"Isolated Margin\"},{\"activate\":true,\"balance\":\"0\",\"walletName\":\"USD\u24C8-M
+        Futures\"},{\"activate\":true,\"balance\":\"0\",\"walletName\":\"COIN-M Futures\"},{\"activate\":true,\"balance\":\"0\",\"walletName\":\"Earn\"},{\"activate\":false,\"balance\":\"0\",\"walletName\":\"Options\"},{\"activate\":false,\"balance\":\"0\",\"walletName\":\"Trading
+        Bots\"},{\"activate\":true,\"balance\":\"0\",\"walletName\":\"Copy Trading\"}]"
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 24 Oct 2025 01:08:29 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept-Encoding
+      Via:
+      - 1.1 d96c6a517450b169095d23aff6d646a4.cloudfront.net (CloudFront)
+      X-Amz-Cf-Id:
+      - n42HRYGBe3jTG8vrPaXAelGE5CwqucDFXYKG-xKgaizmP-JnaonnMQ==
+      X-Amz-Cf-Pop:
+      - LHR3-C2
+      X-Cache:
+      - Miss from cloudfront
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-SAPI-USED-IP-WEIGHT-1M:
+      - '1'
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: ''
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDC
+  response:
+    body:
+      string: '{"symbol":"BTCUSDC","price":"110668.34000000"}'
+    headers:
+      Access-Control-Allow-Methods:
+      - GET, HEAD, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Cache-Control:
+      - no-cache, no-store, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '46'
+      Content-Security-Policy:
+      - default-src 'self'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Fri, 24 Oct 2025 01:08:30 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Security-Policy:
+      - default-src 'self'
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-WebKit-CSP:
+      - default-src 'self'
+      X-Xss-Protection:
+      - 1; mode=block
+      x-mbx-used-weight:
+      - '24'
+      x-mbx-used-weight-1m:
+      - '24'
+      x-mbx-uuid:
+      - 565b4110-72c3-45a4-9c52-0cf7881c67da
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - testserver
+      user-agent:
+      - testclient
+    method: GET
+    uri: http://testserver/account/fiat
+  response:
+    body:
+      string: '{"data":94.4620682904}'
+    headers:
+      content-length:
+      - '22'
+      content-type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+version: 1
