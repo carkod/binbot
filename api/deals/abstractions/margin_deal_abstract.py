@@ -54,35 +54,6 @@ class MarginDealAbstract(DealAbstract):
     Reusable utility functions
     """
 
-    def get_remaining_assets(self) -> tuple[float, float]:
-        """
-        Get remaining isolated account assets
-        given current isolated balance of isolated pair
-
-        if account has borrowed assets yet, it should also return the amount borrowed
-
-        """
-        if float(self.isolated_balance[0]["quoteAsset"]["borrowed"]) > 0:
-            self.active_bot.add_log(
-                f"Borrowed {self.isolated_balance[0]['quoteAsset']['asset']} still remaining, please clear out manually"
-            )
-            self.active_bot.status = Status.error
-            self.controller.save(self.active_bot)
-
-        if float(self.isolated_balance[0]["baseAsset"]["borrowed"]) > 0:
-            self.active_bot.add_log(
-                f"Borrowed {self.isolated_balance[0]['baseAsset']['asset']} still remaining, please clear out manually"
-            )
-            self.active_bot.status = Status.error
-            self.controller.save(self.active_bot)
-
-        quote_asset = float(self.isolated_balance[0]["quoteAsset"]["free"])
-        base_asset = float(self.isolated_balance[0]["baseAsset"]["free"])
-
-        return round_numbers(quote_asset, self.qty_precision), round_numbers(
-            base_asset, self.qty_precision
-        )
-
     def cancel_open_orders(self, deal_type: DealType) -> BotModel:
         """
         Given an order deal_type i.e. take_profit, stop_loss etc

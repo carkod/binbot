@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type FC } from "react";
+import { useEffect, useState, type FC } from "react";
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
 import {
@@ -25,7 +25,7 @@ const BotDetailTabs: FC = () => {
   const [createBot] = useCreateBotMutation();
   const [
     trigger,
-    { isLoading: isActivating, isError, data: refetchedBot, error },
+    { isLoading: isActivating, isError, data, error },
   ] = useLazyActivateBotQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
@@ -33,10 +33,10 @@ const BotDetailTabs: FC = () => {
   // Activate and get bot again
   // Deals and orders information need to come from the server
   const handleActivation = async (id: string) => {
-    await updateBot({ body: bot, id });
+    const { data } = await updateBot({ body: bot, id });
     const result = await trigger(id);
-    if (!isActivating && result.data) {
-      dispatch(setBot(result.data));
+    if (!isActivating && data) {
+      navigate(`/bot/edit/${id}`);
     }
   };
   const handlePanicSell = async (id: string) => {
