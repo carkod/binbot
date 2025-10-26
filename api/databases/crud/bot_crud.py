@@ -145,6 +145,7 @@ class BotTableCrud:
                 raise BinbotErrors("Bot not found")
             return bot
         elif symbol:
+            status = None if status == Status.all else status
             if status:
                 bot = self.session.exec(
                     select(BotTable).where(

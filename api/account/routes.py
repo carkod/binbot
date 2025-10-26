@@ -17,6 +17,7 @@ from sqlmodel import Session
 
 from databases.utils import get_session
 from databases.crud.balances_crud import BalancesCrud
+from typing import Literal
 
 account_blueprint = APIRouter()
 
@@ -133,15 +134,22 @@ def check_isolated_symbol(symbol: str, session: Session = Depends(get_session)):
     return isolated_account
 
 
-@account_blueprint.get("/one-click-liquidation/{market}/{asset}", tags=["account"])
+@account_blueprint.get(
+    "/one-click-liquidation/{bot_strategy}/{asset}", tags=["account"]
+)
 def one_click_liquidation(
-    asset: str, market: str = "margin", session: Session = Depends(get_session)
+    asset: str,
+    bot_strategy: Literal["margin", "spot"],
+    session: Session = Depends(get_session),
 ):
     try:
-        liquidated = Assets(session=session).one_click_liquidation(asset, market)
+        liquidated = Assets(session=session).one_click_liquidation(
+            pair=asset, bot_strategy=bot_strategy
+        )
         if not liquidated:
             raise HTTPException(
-                status_code=404, detail="Could not liquidate asset that doesn't exist."
+                status_code=404,
+                detail=f"Could not liquidate {asset} that doesn't exist.",
             )
         return json_response_message(f"Successfully liquidated {asset}")
     except MarginLoanNotFound as error:
