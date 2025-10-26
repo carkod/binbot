@@ -11,6 +11,7 @@ from tools.exceptions import (
     DealCreationError,
     InsufficientBalance,
     MarginLoanNotFound,
+    BinbotErrors,
 )
 from tools.enum_definitions import Status, Strategy, OrderStatus
 
@@ -187,6 +188,9 @@ class BaseDeal(OrderController):
         reduce number of requests to avoid rate limit.
         """
         self.isolated_balance = self.get_isolated_balance(pair)
+        if not self.isolated_balance:
+            raise BinbotErrors("No isolated margin found for pair")
+
         base = self.isolated_balance[0]["baseAsset"]["asset"]
         quote = self.isolated_balance[0]["quoteAsset"]["asset"]
         # Check margin account balance first

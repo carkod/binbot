@@ -77,7 +77,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: import.meta.env.VITE_GET_BOTS,
         method: "POST",
         body: body,
-        providesTags: (result) => [{ type: "bot", id: body.id }],
+        invalidatesTags: (result) => [{ type: "bot", id: result.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -95,11 +95,13 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}`,
         method: "PUT",
         body: body,
-        invalidatesTags: (result) => [{ type: "bot", id: id }],
+        invalidatesTags: (result) => [{ type: "bot", id: result.id }],
       }),
       transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
+          // Let UI know so we don't navigate
+          return null;
         } else {
           notifification("success", message);
         }
@@ -135,16 +137,14 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message);
         }
-        return {
-          bot: data,
-        };
+        return data;
       },
     }),
     deactivateBot: build.mutation<SingleBotResponse, string>({
       query: (id: string) => ({
         url: `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}`,
         method: "DELETE",
-        invalidatesTags: (result) => [{ type: "bot", id: id }],
+        invalidatesTags: (result) => [{ type: "bot", id: result.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -152,14 +152,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message);
         }
-        if (data) {
-          return {
-            bot: data,
-          };
-        }
-        return {
-          bot: null,
-        };
+        return data;
       },
     }),
   }),
