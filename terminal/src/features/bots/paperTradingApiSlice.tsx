@@ -3,6 +3,7 @@ import { userApiSlice } from "../userApiSlice";
 import type { Bot } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
 import type {
+  BotDetailsState,
   CreateBotResponse,
   DefaultBotsResponse,
   EditBotParams,
@@ -52,7 +53,7 @@ export const papertradingApiSlice = userApiSlice.injectEndpoints({
         };
       },
     }),
-    createTestBot: build.mutation<CreateBotResponse, Bot>({
+    createTestBot: build.mutation<SingleBotResponse, Bot>({
       query: (body) => ({
         url: import.meta.env.VITE_TEST_BOT,
         method: "POST",
@@ -67,7 +68,9 @@ export const papertradingApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message);
         }
-        return data;
+        return {
+          bot: data,
+        };
       },
     }),
     editTestBot: build.mutation<CreateBotResponse, EditBotParams>({
@@ -75,7 +78,7 @@ export const papertradingApiSlice = userApiSlice.injectEndpoints({
         url: `${import.meta.env.VITE_TEST_BOT}/${id}`,
         method: "PUT",
         body: body,
-        invalidatesTags: (result) => [{ type: "paper-trading", id: id }],
+        invalidatesTags: (result) => [{ type: "paper-trading", id: result.id }],
       }),
       transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -106,11 +109,11 @@ export const papertradingApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    activateTestBot: build.query<DefaultBotsResponse, string>({
+    activateTestBot: build.query<BotDetailsState, string>({
       query: (id) => ({
         url: `${import.meta.env.VITE_ACTIVATE_TEST_BOT}/${id}`,
         method: "GET",
-        invalidatesTags: (result) => [{ type: "paper-trading", id: id }],
+        invalidatesTags: (result) => [{ type: "paper-trading", id: result.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -121,11 +124,11 @@ export const papertradingApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    deactivateTestBot: build.mutation<DefaultBotsResponse, string>({
+    deactivateTestBot: build.mutation<BotDetailsState, string>({
       query: (id: string) => ({
         url: `${import.meta.env.VITE_DEACTIVATE_TEST_BOT}/${id}`,
         method: "DELETE",
-        invalidatesTags: (result) => [{ type: "paper-trading", id: id }],
+        invalidatesTags: (result) => [{ type: "paper-trading", id: result.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {

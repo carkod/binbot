@@ -1,17 +1,13 @@
-import React, { useEffect, useState, type FC } from "react";
+import { useEffect, useState, type FC } from "react";
 import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
-import { useLazyActivateBotQuery } from "../../features/bots/botsApiSlice";
 import {
   papertradingApiSlice,
   useCreateTestBotMutation,
   useEditTestBotMutation,
   useLazyActivateTestBotQuery,
 } from "../../features/bots/paperTradingApiSlice";
-import {
-  selectTestBot,
-  setTestBot,
-} from "../../features/bots/paperTradingSlice";
+import { selectTestBot } from "../../features/bots/paperTradingSlice";
 import { setSpinner } from "../../features/layoutSlice";
 import { BotStatus, BotType, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
@@ -50,8 +46,7 @@ const PaperTradingDetailTabs: FC = () => {
   };
 
   const onSubmit = async () => {
-    if (!id) return;
-    if (paperTrading.status !== BotStatus.COMPLETED) {
+    if (id && paperTrading.status !== BotStatus.COMPLETED) {
       const submitData = {
         ...paperTrading,
         deal: undefined,
@@ -61,8 +56,9 @@ const PaperTradingDetailTabs: FC = () => {
       navigate(`/paper-trading/edit/${id}`);
     } else {
       const submitData = { ...paperTrading, id: undefined };
-      await createBot(submitData);
+      const { data } = await createBot(submitData);
       setEnableActivation(true);
+      navigate(`/paper-trading/edit/${data.bot.id}`);
     }
   };
 
