@@ -1,5 +1,44 @@
 [![Test Production](https://github.com/carkod/binbot/actions/workflows/pr.yml/badge.svg)](https://github.com/carkod/binbot/actions/workflows/pr.yml)
 
+architecture-beta
+    group databases(cloud)[Databases]
+        service postgres(database)[API Database (Postgres)] in databases
+        service mongo(database)[Time Series Data (MongoDB)] in databases
+
+    group thirdparty(cloud)[Third-party Services]
+        service binance(api)[Binance API] in thirdparty
+
+    group binbot_backend(server)[Binbot Back-end]
+        service streaming(service)[Streaming Service] in binbot_backend
+        service cronjobs(service)[Cronjobs] in binbot_backend
+        service restapi(service)[Rest API] in binbot_backend
+
+    group binquant(server)[Binquant]
+        service kafka(server)[Kafka Server] in binquant
+        service producer(service)[Kafka Producer] in binquant
+        service consumer(service)[Kafka Consumer (analytics.py)] in binquant
+        service autotrade(service)[autotrade.py] in binquant
+
+    group binbot_frontend(client)[Binbot Front-end]
+        service terminal(client)[Binbot Terminal (React App)] in binbot_frontend
+
+    service telegram(bot)[Telegram Bot]
+
+    postgres:L -- R:restapi
+    mongo:L -- R:restapi
+    restapi:T -- B:terminal
+    restapi:T -- B:producer
+    kafka:L -- R:consumer
+    producer:L -- R:kafka
+    cronjobs:L -- R:restapi
+    streaming:L -- R:restapi
+    streaming:T -- B:binance
+    binance:L -- R:restapi
+    restapi:B -- T:postgres
+    restapi:B -- T:mongo
+    consumer:L -- R:telegram
+    consumer:L -- R:autotrade
+
 # Development instructions
 
 ## Requirements
