@@ -37,8 +37,7 @@ class SpotLongDeal(SpotDealAbstract):
 
         return self.active_bot
 
-    def streaming_updates(self, close_price: float, open_price: float):
-        current_price = float(close_price)
+    def streaming_updates(self, current_price: float, open_price: float):
         self.check_failed_switch_long_bot()
         self.close_conditions(current_price)
 
@@ -244,10 +243,10 @@ class SpotLongDeal(SpotDealAbstract):
         """
         if not self.symbol_info.is_margin_trading_allowed:
             self.active_bot.margin_short_reversal = False
-            self.controller.update_logs(
-                f"Disabled auto short bot reversal. Exchange doesn't support margin trading for {self.active_bot.pair}.",
-                self.active_bot,
+            self.active_bot.add_log(
+                "Auto short bot reversal disabled. Exchange doesn't support margin trading for this pair."
             )
+            self.controller.save(self.active_bot)
 
         base_order = next(
             (

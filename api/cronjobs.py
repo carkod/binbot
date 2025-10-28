@@ -44,14 +44,14 @@ def main():
         minute=1,
         id="disable_isolated_accounts",
     )
-    # scheduler.add_job(
-    #     func=assets.clean_balance_assets,
-    #     trigger="cron",
-    #     timezone=timezone,
-    #     hour=3,
-    #     minute=27,
-    #     id="clean_balance_assets",
-    # )
+    scheduler.add_job(
+        func=assets.clean_balance_assets,
+        trigger="cron",
+        timezone=timezone,
+        hour=3,
+        minute=27,
+        id="clean_balance_assets",
+    )
     scheduler.add_job(
         func=market_domination.ingest_adp_data,
         trigger="interval",
