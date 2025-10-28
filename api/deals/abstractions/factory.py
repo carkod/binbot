@@ -294,7 +294,7 @@ class DealAbstract(BaseDeal):
             if self.active_bot.quote_asset.is_fiat():
                 # pessimistic price so that we can actually buy more
                 quote_fiat_price = self.match_qty_engine(
-                    symbol=symbol, order_side=True, qty=1
+                    symbol=symbol, order_side=True
                 )
                 # sell everything that is on the account clean
                 # this is to hedge from market fluctuations that make affect portfolio value
@@ -313,18 +313,18 @@ class DealAbstract(BaseDeal):
                     )
                     return self.active_bot
 
-                sell_qty = round_numbers_floor(
+                buy_qty = round_numbers_floor(
                     base_balance - (base_balance * (self.conversion_threshold - 1)),
                     self.qty_precision,
                 )
                 res = self.buy_order(
                     symbol=symbol,
-                    qty=sell_qty,
+                    qty=buy_qty,
                     qty_precision=self.qty_precision,
                 )
             else:
                 quote_fiat_price = self.matching_engine(
-                    symbol=symbol, order_side=False, qty=1
+                    symbol=symbol, order_side=False
                 )
 
                 total_qty_available = round_numbers_floor(

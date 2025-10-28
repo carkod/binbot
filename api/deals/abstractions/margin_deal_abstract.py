@@ -332,8 +332,11 @@ class MarginDealAbstract(DealAbstract):
         self.controller.update_logs(
             "Initializating margin_short tasks", self.active_bot
         )
-        # Check margin account balance first
-        balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
+        balance = 0.0
+        if len(self.isolated_balance) > 0:
+            # Check margin account balance first
+            balance = float(self.isolated_balance[0]["quoteAsset"]["free"])
+
         asset = self.active_bot.pair.replace(self.active_bot.fiat, "")
         # always enable, it doesn't cause errors
         try:
