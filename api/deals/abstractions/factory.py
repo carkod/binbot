@@ -293,9 +293,7 @@ class DealAbstract(BaseDeal):
 
             if self.active_bot.quote_asset.is_fiat():
                 # pessimistic price so that we can actually buy more
-                quote_fiat_price = self.match_qty_engine(
-                    symbol=symbol, order_side=True, qty=1
-                )
+                quote_fiat_price = self.matching_engine(symbol=symbol, order_side=True)
                 # sell everything that is on the account clean
                 # this is to hedge from market fluctuations that make affect portfolio value
                 total_qty_available = round_numbers_floor(
@@ -304,28 +302,20 @@ class DealAbstract(BaseDeal):
                 if total_qty_available < 15:
                     # can't sell such a small amount
                     return self.active_bot
-                base_balance = round_numbers_floor(
-                    quote_fiat_price / quote_balance, self.quote_qty_precision
-                )
+                base_balance = round_numbers_floor(quote_balance / quote_fiat_price)
                 if base_balance < 15:
                     self.controller.update_logs(
                         "Can't sell quote asset, it's too small", self.active_bot
                     )
                     return self.active_bot
 
-                sell_qty = round_numbers_floor(
-                    base_balance - (base_balance * (self.conversion_threshold - 1)),
-                    self.qty_precision,
-                )
                 res = self.buy_order(
                     symbol=symbol,
-                    qty=sell_qty,
-                    qty_precision=self.qty_precision,
+                    qty=base_balance,
+                    qty_precision=self.quote_qty_precision,
                 )
             else:
-                quote_fiat_price = self.matching_engine(
-                    symbol=symbol, order_side=False, qty=1
-                )
+                quote_fiat_price = self.matching_engine(symbol=symbol, order_side=False)
 
                 total_qty_available = round_numbers_floor(
                     quote_fiat_price * quote_balance

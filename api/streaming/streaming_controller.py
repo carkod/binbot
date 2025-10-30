@@ -160,7 +160,7 @@ class StreamingController:
                     else:
                         return
 
-                    bot.logs.append(error.message)
+                    bot.add_log(error.message)
                     bot.status = Status.error
                     create_deal_controller.controller.save(bot)
 

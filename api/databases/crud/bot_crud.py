@@ -71,7 +71,7 @@ class BotTableCrud:
 
         elif isinstance(log_message, str):
             msg = f"[{generated_ts}] {log_message}"
-            bot_result.logs.insert(0, msg)
+            bot_result.logs.append(msg)
 
         # Update logs as an SQLAlchemy list
         flag_modified(bot_result, "logs")
@@ -145,6 +145,7 @@ class BotTableCrud:
                 raise BinbotErrors("Bot not found")
             return bot
         elif symbol:
+            status = None if status == Status.all else status
             if status:
                 bot = self.session.exec(
                     select(BotTable).where(

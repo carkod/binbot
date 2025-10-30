@@ -344,7 +344,9 @@ class Assets(OrderController):
 
         return json_response_message(msg)
 
-    def one_click_liquidation(self, pair: str, market: str = "margin") -> BotTable:
+    def one_click_liquidation(
+        self, pair: str, bot_strategy: str = "margin", bypass_check: bool = False
+    ) -> BotTable | None:
         """
         Emulate Binance Dashboard
         One click liquidation function
@@ -359,9 +361,11 @@ class Assets(OrderController):
         pairs in both MARGIN and SPOT markets.
         """
 
-        strategy = Strategy.margin_short if market == "margin" else Strategy.long
+        strategy = Strategy.margin_short if bot_strategy == "margin" else Strategy.long
 
-        bot = self.bot_controller.get_one(symbol=pair, strategy=strategy)
+        bot = self.bot_controller.get_one(
+            symbol=pair, strategy=strategy, status=Status.all
+        )
 
         if not bot:
             return bot
@@ -369,7 +373,7 @@ class Assets(OrderController):
         active_bot = BotModel.dump_from_table(bot)
         deal = DealAbstract(active_bot, db_table=BotTable)
 
-        if market == "margin":
+        if strategy == Strategy.margin_short:
             deal.margin_liquidation(pair)
         else:
             deal.spot_liquidation(pair)

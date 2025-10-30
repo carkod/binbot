@@ -1,6 +1,6 @@
 [![Test Production](https://github.com/carkod/binbot/actions/workflows/pr.yml/badge.svg)](https://github.com/carkod/binbot/actions/workflows/pr.yml)
 
-<img width="1666" height="1798" alt="Binbot architecture-2025-10-26-020258" src="https://github.com/user-attachments/assets/4bd49ec0-c337-4653-aa9d-58cefc505327" />
+<img width="2067" height="1885" alt="Binbot architecture-2025-10-26-144727" src="https://github.com/user-attachments/assets/cd3b76a4-0653-421c-b8e0-24685b7d6dd8" />
 
 # Development instructions
 
