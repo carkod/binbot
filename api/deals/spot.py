@@ -241,13 +241,6 @@ class SpotLongDeal(SpotDealAbstract):
 
         - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
         """
-        if not self.symbol_info.is_margin_trading_allowed:
-            self.active_bot.margin_short_reversal = False
-            self.active_bot.add_log(
-                "Auto short bot reversal disabled. Exchange doesn't support margin trading for this pair."
-            )
-            self.controller.save(self.active_bot)
-
         base_order = next(
             (
                 bo_deal
@@ -258,9 +251,17 @@ class SpotLongDeal(SpotDealAbstract):
         )
 
         if not base_order:
+            if not self.symbol_info.is_margin_trading_allowed:
+                self.active_bot.margin_short_reversal = False
+                self.active_bot.add_log(
+                    "Auto short bot reversal disabled. Exchange doesn't support margin trading for this pair."
+                )
+
             self.controller.update_logs(
                 f"Opening new spot deal for {self.active_bot.pair}...", self.active_bot
             )
+            self.controller.save(self.active_bot)
+
             self.base_order()
 
         # Update bot no activation required
