@@ -302,7 +302,9 @@ class DealAbstract(BaseDeal):
                 if total_qty_available < 15:
                     # can't sell such a small amount
                     return self.active_bot
+
                 base_balance = round_numbers_floor(quote_balance / quote_fiat_price)
+
                 if base_balance < 15:
                     self.controller.update_logs(
                         "Can't sell quote asset, it's too small", self.active_bot
