@@ -264,11 +264,11 @@ class SpotLongDeal(SpotDealAbstract):
 
             self.base_order()
 
-        # Update bot no activation required
         if (
             self.active_bot.status == Status.active
             or self.active_bot.deal.opening_price > 0
         ):
+            # Update bot no activation required
             self.active_bot = self.long_update_deal_trailling_parameters()
         else:
             # Activation required
