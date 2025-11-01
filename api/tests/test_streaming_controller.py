@@ -39,7 +39,9 @@ def streaming_controller_with_klines(monkeypatch):
     # Patch out any bot table queries to avoid hitting the real DB
     # Patch get_active_pairs on both controllers to return an empty list
     monkeypatch.setattr(base.bot_controller, "get_active_pairs", lambda *a, **kw: [])
-    monkeypatch.setattr(base.paper_trading_controller, "get_active_pairs", lambda *a, **kw: [])
+    monkeypatch.setattr(
+        base.paper_trading_controller, "get_active_pairs", lambda *a, **kw: []
+    )
     controller = StreamingController(base, symbol="BTCUSDT")
     return controller
 
