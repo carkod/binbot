@@ -301,38 +301,6 @@ class SymbolsCrud:
             ):
                 continue
 
-            # Always prefer USDC quote pairs to avoid conversion
-            if item["quoteAsset"] == QuoteAssets.USDC:
-                # throws error if it doesn't exist
-                symbol = self._get_symbol(item["symbol"])
-
-            if not symbol and item["quoteAsset"] == QuoteAssets.BTC:
-                symbol = self._get_symbol(
-                    f"{item['baseAsset']}{QuoteAssets.USDC.value}"
-                )
-                symbol = self._get_symbol(f"{item['symbol']}")
-                if symbol:
-                    continue
-
-            if not symbol and item["quoteAsset"] == QuoteAssets.TRY:
-                symbol = self._get_symbol(
-                    f"{item['baseAsset']}{QuoteAssets.USDC.value}"
-                )
-                symbol = self._get_symbol(f"{item['baseAsset']}{QuoteAssets.BTC.value}")
-                symbol = self._get_symbol(f"{item['symbol']}")
-                if symbol:
-                    continue
-
-            if not symbol and item["quoteAsset"] == QuoteAssets.ETH:
-                symbol = self._get_symbol(
-                    f"{item['baseAsset']}{QuoteAssets.USDC.value}"
-                )
-                symbol = self._get_symbol(f"{item['baseAsset']}{QuoteAssets.BTC.value}")
-                symbol = self._get_symbol(f"{item['baseAsset']}{QuoteAssets.TRY.value}")
-                symbol = self._get_symbol(f"{item['symbol']}")
-                if symbol:
-                    continue
-
             if item["quoteAsset"] in list(QuoteAssets) and symbol is None:
                 price_precision, qty_precision, min_notional = (
                     self.calculate_precisions(item)
@@ -351,7 +319,7 @@ class SymbolsCrud:
                     base_asset=item["baseAsset"],
                     is_margin_trading_allowed=item["isMarginTradingAllowed"],
                 )
-                self.session.add(data)
+                self.session.merge(data)
                 self.session.commit()
                 pass
 
