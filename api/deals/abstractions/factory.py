@@ -269,7 +269,6 @@ class DealAbstract(BaseDeal):
         if self.active_bot.quote_asset.value == self.active_bot.fiat:
             return self.active_bot
 
-        self.controller.update_logs("Selling quote asset...", self.active_bot)
         balances = self.get_raw_balance()
 
         if self.active_bot.quote_asset.is_fiat():
@@ -311,9 +310,20 @@ class DealAbstract(BaseDeal):
                     )
                     return self.active_bot
 
+                # Calculate buy quantity with conversion threshold
+                # avoids LOT_SIZE failures
+                buy_qty = round_numbers_floor(
+                    base_balance - (base_balance * (self.conversion_threshold - 1)),
+                    self.quote_qty_precision,
+                )
+                self.controller.update_logs(
+                    f"Buying {buy_qty} of {self.active_bot.quote_asset.value} for conversion",
+                    self.active_bot,
+                )
+
                 res = self.buy_order(
                     symbol=symbol,
-                    qty=base_balance,
+                    qty=buy_qty,
                     qty_precision=self.quote_qty_precision,
                 )
             else:
@@ -326,9 +336,17 @@ class DealAbstract(BaseDeal):
                     # can't sell such a small amount
                     return self.active_bot
 
+                sell_qty = round_numbers_floor(
+                    quote_balance - (quote_balance * (self.conversion_threshold - 1)),
+                    self.quote_qty_precision,
+                )
+                self.controller.update_logs(
+                    f"Selling {sell_qty} of {self.active_bot.quote_asset.value} for conversion",
+                    self.active_bot,
+                )
                 res = self.sell_order(
                     symbol=symbol,
-                    qty=quote_balance,
+                    qty=sell_qty,
                     qty_precision=self.quote_qty_precision,
                 )
             if res:

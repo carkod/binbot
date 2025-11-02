@@ -35,7 +35,8 @@ const BotDetailTabs: FC = () => {
   const handleActivation = async (id: string) => {
     const { data } = await updateBot({ body: bot, id });
     const result = await trigger(id);
-    if (!isActivating && data) {
+    if (id && data) {
+      console.log("Activation result:", result);
       navigate(`/bot/edit/${id}`);
     }
   };

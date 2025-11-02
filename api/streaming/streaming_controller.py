@@ -75,6 +75,21 @@ class BaseStreaming:
 
 
 class StreamingController:
+
+    def __init__(self, base: BaseStreaming, symbol: str) -> None:
+        super().__init__()
+        # Gets any signal to restart streaming
+        self.autotrade_controller = AutotradeCrud()
+        self.base_streaming = base
+        self.symbol = symbol
+        self.klines = self.base_streaming.binance_api.get_raw_klines(
+            symbol=self.symbol,
+            interval=BinanceKlineIntervals.fifteen_minutes.value,
+            limit=200,
+        )
+        self.current_bot: BotModel | None = None
+        self.current_test_bot: BotModel | None = None
+
     def calc_quantile_volatility(
         self, window: int = 100, quantile: float = 0.9
     ) -> float:
@@ -101,20 +116,6 @@ class StreamingController:
             return 0.0
         quantile_value = float(rolling_vol.quantile(quantile))
         return quantile_value
-
-    def __init__(self, base: BaseStreaming, symbol: str) -> None:
-        super().__init__()
-        # Gets any signal to restart streaming
-        self.autotrade_controller = AutotradeCrud()
-        self.base_streaming = base
-        self.symbol = symbol
-        self.klines = self.base_streaming.binance_api.get_raw_klines(
-            symbol=self.symbol,
-            interval=BinanceKlineIntervals.fifteen_minutes.value,
-            limit=200,
-        )
-        self.current_bot: BotModel | None = None
-        self.current_test_bot: BotModel | None = None
 
     def execute_strategies(
         self,
