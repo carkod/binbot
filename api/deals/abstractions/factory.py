@@ -313,12 +313,8 @@ class DealAbstract(BaseDeal):
                 # Calculate buy quantity with conversion threshold
                 # avoids LOT_SIZE failures
                 buy_qty = round_numbers_floor(
-                    base_balance - (base_balance * (self.conversion_threshold - 1)),
+                    base_balance,
                     self.quote_qty_precision,
-                )
-                self.controller.update_logs(
-                    f"Buying {buy_qty} of {self.active_bot.quote_asset.value} for conversion",
-                    self.active_bot,
                 )
 
                 res = self.buy_order(
@@ -337,12 +333,8 @@ class DealAbstract(BaseDeal):
                     return self.active_bot
 
                 sell_qty = round_numbers_floor(
-                    quote_balance - (quote_balance * (self.conversion_threshold - 1)),
+                    quote_balance,
                     self.quote_qty_precision,
-                )
-                self.controller.update_logs(
-                    f"Selling {sell_qty} of {self.active_bot.quote_asset.value} for conversion",
-                    self.active_bot,
                 )
                 res = self.sell_order(
                     symbol=symbol,
