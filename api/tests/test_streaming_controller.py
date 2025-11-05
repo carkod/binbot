@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from streaming.streaming_controller import StreamingController, BaseStreaming
-from streaming.models import BollinguerSpread
+from streaming.models import HABollinguerSpread
 from tools.enum_definitions import Strategy
 
 
@@ -56,7 +56,7 @@ def test_calc_quantile_volatility_typical(streaming_controller_with_klines):
 def test_update_bots_parameters_long(monkeypatch, streaming_controller_with_klines):
     controller = streaming_controller_with_klines
     bot = DummyBot(strategy=Strategy.long)
-    bb_spreads = BollinguerSpread(bb_high=110, bb_mid=105, bb_low=100)
+    bb_spreads = HABollinguerSpread(bb_high=110, bb_mid=105, bb_low=100)
     # Patch compute_single_bot_profit to return a fixed value
     monkeypatch.setattr(controller, "compute_single_bot_profit", lambda bot, price: 2)
     # Patch controller.save and SpotLongDeal
@@ -79,7 +79,7 @@ def test_update_bots_parameters_margin_short(
 ):
     controller = streaming_controller_with_klines
     bot = DummyBot(strategy=Strategy.margin_short)
-    bb_spreads = BollinguerSpread(bb_high=110, bb_mid=105, bb_low=100)
+    bb_spreads = HABollinguerSpread(bb_high=110, bb_mid=105, bb_low=100)
     # Patch compute_single_bot_profit to return a fixed value
     monkeypatch.setattr(controller, "compute_single_bot_profit", lambda bot, price: 2)
     # Patch controller.save and MarginDeal

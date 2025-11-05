@@ -14,7 +14,7 @@ from deals.abstractions.factory import DealAbstract
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from exchange_apis.binance import BinanceApi
-from streaming.models import BollinguerSpread
+from streaming.models import HABollinguerSpread
 from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.maths import round_numbers
@@ -75,7 +75,6 @@ class BaseStreaming:
 
 
 class StreamingController:
-
     def __init__(self, base: BaseStreaming, symbol: str) -> None:
         super().__init__()
         # Gets any signal to restart streaming
@@ -212,13 +211,13 @@ class StreamingController:
             logging.error(e)
             pass
 
-    def build_bb_spreads(self) -> BollinguerSpread:
+    def build_bb_spreads(self) -> HABollinguerSpread:
         """
         Builds the bollinguer bands spreads without using pandas_ta
         """
         data = self.klines
         if len(data) < 200:
-            return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
+            return HABollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
 
         df = pd.DataFrame(data)
         df.columns = [
@@ -241,7 +240,7 @@ class StreamingController:
 
         df.reset_index(drop=True, inplace=True)
 
-        bb_spreads = BollinguerSpread(
+        bb_spreads = HABollinguerSpread(
             bb_high=df["bb_high"].iloc[-1],
             bb_mid=df["bb_mid"].iloc[-1],
             bb_low=df["bb_low"].iloc[-1],
@@ -316,7 +315,7 @@ class StreamingController:
         bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]],
         current_price: float,
-        bb_spreads: BollinguerSpread,
+        bb_spreads: HABollinguerSpread,
     ) -> None:
         controller: Union[PaperTradingTableCrud | BotTableCrud] = (
             self.base_streaming.bot_controller

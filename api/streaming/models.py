@@ -43,7 +43,7 @@ class SingleCandle(BaseModel):
             raise ValueError("must be a float or 0")
 
 
-class BollinguerSpread(BaseModel):
+class HABollinguerSpread(BaseModel):
     """
     Pydantic model for the Bollinguer spread.
     (optional)
@@ -67,7 +67,7 @@ class SignalsConsumer(BaseModel):
     symbol: str
     algo: str
     bot_strategy: Strategy = Field(default=Strategy.long)
-    bb_spreads: Optional[BollinguerSpread]
+    bb_spreads: Optional[HABollinguerSpread]
     autotrade: bool = Field(default=True, description="If it is in testing mode, False")
 
     model_config = ConfigDict(
