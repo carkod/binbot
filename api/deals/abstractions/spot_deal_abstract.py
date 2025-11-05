@@ -178,7 +178,7 @@ class SpotDealAbstract(DealAbstract):
         self.active_bot.add_log(msg)
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
-
+        self.controller.update_logs("Selling quote asset...", self.active_bot)
         self.sell_quote_asset()
 
         return self.active_bot

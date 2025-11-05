@@ -2,6 +2,13 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 
+from sqlmodel import SQLModel
+from databases.utils import engine
+
+# The import below is required to register all models for SQLModel metadata. Do not remove!
+import databases.tables  # noqa: F401
+
+
 @pytest.fixture(scope="module")
 def vcr_config():
     return {
@@ -22,6 +29,15 @@ class MockAsyncBaseProducer:
 
     def update_required(self, action):
         return action
+
+
+# Ensure all tables are created before any tests run
+@pytest.fixture(scope="session", autouse=True)
+def create_test_tables():
+    SQLModel.metadata.create_all(engine)
+    yield
+    # Optionally, drop tables after tests (uncomment if needed):
+    # SQLModel.metadata.drop_all(engine)
 
 
 @pytest.fixture(scope="session")

@@ -75,6 +75,7 @@ class BaseStreaming:
 
 
 class StreamingController:
+
     def __init__(self, base: BaseStreaming, symbol: str) -> None:
         super().__init__()
         # Gets any signal to restart streaming
@@ -88,6 +89,33 @@ class StreamingController:
         )
         self.current_bot: BotModel | None = None
         self.current_test_bot: BotModel | None = None
+
+    def calc_quantile_volatility(
+        self, window: int = 100, quantile: float = 0.9
+    ) -> float:
+        """
+        Calculate rolling quantile-based volatility for stop loss adaptation.
+        Returns the specified quantile of rolling absolute returns over the window.
+        Uses absolute returns instead of log returns, larger window, and higher quantile.
+        """
+        if not self.klines or len(self.klines) < window:
+            return 0.0
+
+        # Extract close prices from klines
+        close_prices = [float(k[4]) for k in self.klines[-window:]]
+        prices = pd.Series(close_prices)
+
+        # Use absolute returns instead of log returns
+        abs_returns = prices.pct_change().abs().dropna()
+        if len(abs_returns) < 5:
+            return 0.0
+        rolling_vol = (
+            abs_returns.rolling(window=min(40, len(abs_returns) // 2)).mean().dropna()
+        )
+        if len(rolling_vol) < 5:
+            return 0.0
+        quantile_value = float(rolling_vol.quantile(quantile))
+        return quantile_value
 
     def execute_strategies(
         self,
@@ -300,6 +328,13 @@ class StreamingController:
         # Avoid duplicate updates
         original_bot = deepcopy(bot)
 
+        # --- Use quantile-based volatility for stop_loss only ---
+        quantile_vol = self.calc_quantile_volatility(window=40, quantile=0.8)
+        # fallback if not enough data
+        if quantile_vol == 0:
+            quantile_vol = 0.01  # 1% default
+
+        # --- BB logic for trailing profit/deviation ---
         # not enough data
         if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0 or bb_spreads.bb_mid == 0:
             return
@@ -332,21 +367,20 @@ class StreamingController:
         bot.trailling = True
         # reset values to avoid too much risk when there's profit
         bot_profit = self.compute_single_bot_profit(bot, current_price)
+        # Use quantile-based volatility for stop_loss (as percent, more aggressive scaling)
         # when prices go up only
         if bot.strategy == Strategy.long:
             # Only when TD_2 > TD_1
             bot.trailling_profit = top_spread if top_spread > 1 else 1
             # too much risk, reduce stop loss
             bot.trailling_deviation = bottom_spread if bottom_spread > 1 else 1
-            # avoid stop_loss being too small
-            bot.stop_loss = whole_spread if whole_spread > 3 else 3
-            # Already decent profit, do not increase risk
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
                 bot.trailling_deviation = 2.6
                 bot.stop_loss = 3.2
 
-            # check we are not duplicating the update
+            bot.stop_loss = max(quantile_vol * 200, 3.0)
+
             if (
                 bot.trailling_profit == original_bot.trailling_profit
                 and bot.stop_loss == original_bot.stop_loss
@@ -367,7 +401,7 @@ class StreamingController:
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
                 bot.trailling_deviation = 2.6
-                bot.stop_loss = 3.6
+                bot.stop_loss = 3.2
 
             # Decrease risk for margin shorts
             # as volatility is higher, we want to keep parameters tighter
