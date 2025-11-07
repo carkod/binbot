@@ -204,7 +204,7 @@ class DealAbstract(BaseDeal):
             ),
             None,
         )
-        if is_quote_balance:
+        if is_quote_balance and is_quote_balance > 0:
             quote_balance = round_numbers_floor(
                 is_quote_balance, self.quote_qty_precision
             )
@@ -212,9 +212,6 @@ class DealAbstract(BaseDeal):
                 symbol, not self.active_bot.quote_asset.is_fiat()
             )
             total_qty_available = quote_fiat_price * quote_balance
-
-            if self.active_bot.quote_asset.is_fiat():
-                return quote_balance / quote_fiat_price
 
             # Check if we have enough balance (with conversion threshold buffer)
             required_amount = (

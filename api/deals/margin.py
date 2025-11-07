@@ -217,13 +217,6 @@ class MarginDeal(MarginDealAbstract):
 
         - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
         """
-        if not self.symbol_info.is_margin_trading_allowed:
-            self.active_bot.margin_short_reversal = False
-            self.controller.update_logs(
-                f"Disabled auto long bot reversal. Exchange doesn't support margin trading for {self.active_bot.pair}.",
-                self.active_bot,
-            )
-
         base_order_deal = next(
             (
                 bo_deal
@@ -234,6 +227,13 @@ class MarginDeal(MarginDealAbstract):
         )
 
         if not base_order_deal:
+            if not self.symbol_info.is_margin_trading_allowed:
+                self.active_bot.margin_short_reversal = False
+                self.controller.update_logs(
+                    f"Disabled auto long bot reversal. Exchange doesn't support margin trading for {self.active_bot.pair}.",
+                    self.active_bot,
+                )
+
             self.controller.update_logs(
                 f"Opening new margin deal for {self.active_bot.pair}...",
                 self.active_bot,

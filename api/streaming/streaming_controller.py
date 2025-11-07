@@ -328,10 +328,10 @@ class StreamingController:
         original_bot = deepcopy(bot)
 
         # --- Use quantile-based volatility for stop_loss only ---
-        quantile_vol = self.calc_quantile_volatility(window=40, quantile=0.8)
+        quantile_vol = self.calc_quantile_volatility(window=40, quantile=0.95)
         # fallback if not enough data
         if quantile_vol == 0:
-            quantile_vol = 0.01  # 1% default
+            quantile_vol = 0.02  # 2% default
 
         # --- BB logic for trailing profit/deviation ---
         # not enough data
@@ -378,7 +378,10 @@ class StreamingController:
                 bot.trailling_deviation = 2.6
                 bot.stop_loss = 3.2
 
-            bot.stop_loss = max(quantile_vol * 200, 3.0)
+            # Calculate stop_loss as a percent, clamp between 2% and 7%
+            stop_loss_percent = quantile_vol * 100
+            stop_loss_percent = max(2.0, min(stop_loss_percent, 7.0))
+            bot.stop_loss = stop_loss_percent
 
             if (
                 bot.trailling_profit == original_bot.trailling_profit
