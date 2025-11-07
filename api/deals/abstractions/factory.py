@@ -505,8 +505,11 @@ class DealAbstract(BaseDeal):
                 if error.code == -2010:
                     self.controller.update_logs(
                         bot=self.active_bot,
-                        log_message="Base asset purchase failed! Not enough funds.",
+                        log_message=error.message,
                     )
+                    if error.message == 'This symbol is not permitted for this account.':
+                        return self.active_bot
+
                     if repurchase_multiplier > 0.80:
                         self.base_order(
                             repurchase_multiplier=repurchase_multiplier - 0.05
