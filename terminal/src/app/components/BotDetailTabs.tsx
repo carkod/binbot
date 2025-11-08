@@ -23,10 +23,8 @@ const BotDetailTabs: FC = () => {
 
   const [updateBot] = useEditBotMutation();
   const [createBot] = useCreateBotMutation();
-  const [
-    trigger,
-    { isLoading: isActivating, isError, data, error },
-  ] = useLazyActivateBotQuery();
+  const [trigger, { isLoading: isActivating, isError, data, error }] =
+    useLazyActivateBotQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
 

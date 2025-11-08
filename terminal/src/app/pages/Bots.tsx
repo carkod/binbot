@@ -5,6 +5,7 @@ import {
   useDeactivateBotMutation,
   useDeleteBotMutation,
   useGetBotsQuery,
+  useGetOneBySymbolQuery,
 } from "../../features/bots/botsApiSlice";
 import { weekAgo } from "../../utils/time";
 import BotCard from "../components/BotCard";
@@ -14,6 +15,8 @@ import ConfirmModal from "../components/ConfirmModal";
 import { useAppDispatch } from "../hooks";
 import { BotStatus } from "../../utils/enums";
 import { SpinnerContext } from "../Layout";
+import SymbolSearch from "../components/SymbolSearch";
+import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
 
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch();
@@ -35,13 +38,50 @@ export const BotsPage: FC<{}> = () => {
   const [startDate, setStartDate] = useState(oneWeekAgo);
   const [endDate, setEndDate] = useState(currentTs);
   const [filterStatus, setFilterStatus] = useState<BotStatus>(BotStatus.ALL);
+  const [symbolState, setSymbolState] = useState<string>("");
 
-  // Fetch bots which require filter dependencies
-  const { refetch, data, error, isFetching } = useGetBotsQuery({
-    status: filterStatus,
-    startDate,
-    endDate,
-  });
+  // Fetch bots or single bot by symbol
+  const {
+    refetch: refetchBots,
+    data: botsData,
+    error: botsError,
+    isFetching: isFetchingBots,
+  } = useGetBotsQuery(
+    {
+      status: filterStatus,
+      startDate,
+      endDate,
+    },
+    { skip: Boolean(symbolState) },
+  );
+
+  const {
+    refetch: refetchSymbol,
+    data: symbolData,
+    error: symbolError,
+    isFetching: isFetchingSymbol,
+  } = useGetOneBySymbolQuery(symbolState, { skip: !symbolState });
+
+  // Unified data and refetch
+  const data = symbolState
+    ? {
+        bots: {
+          ids: symbolData?.bot ? [symbolData.bot.id] : [],
+          entities: symbolData?.bot
+            ? { [symbolData.bot.id]: symbolData.bot }
+            : {},
+        },
+        totalProfit: 0,
+      }
+    : botsData;
+  const refetch = symbolState ? refetchSymbol : refetchBots;
+  const error = symbolState ? symbolError : botsError;
+  const isFetching = symbolState ? isFetchingSymbol : isFetchingBots;
+
+  // Symbols search dependencies
+  const [symbolsList, setSymbolsList] = useImmer<string[]>([]);
+  const { data: allSymbols, isFetching: isFetchingSymbols } =
+    useGetSymbolsQuery();
 
   const handleSelection = (id: string) => {
     let newCards = [];
@@ -111,12 +151,43 @@ export const BotsPage: FC<{}> = () => {
     }
   };
 
+  /**
+   * refetch will work without params
+   * if we set all the states correctly before refetching (spinner, startDate, endDate, filterStatus)
+   *
+   */
+  const handleSearchBySymbol = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const pair = e.target.value;
+    if (pair && pair.length > 0) {
+      setSymbolState(pair);
+      setSpinner(true);
+      setFilterStatus(BotStatus.ALL);
+      // beginning of time
+      setStartDate(new Date("1970-01-01").getTime());
+      // tomorrow
+      setEndDate(new Date(Date.now() + 24 * 60 * 60 * 1000).getTime());
+      dispatch(() => refetch());
+      setSpinner(false);
+    }
+  };
+
   useEffect(() => {
     if (isFetching || isDeactivating || isDeleting) {
       setSpinner(true);
     }
     if (data?.bots || isDeleted || isDeactivated) {
       setSpinner(false);
+    }
+
+    // Get symbols for symbol search field
+    if (isFetchingSymbols) {
+      setSpinner(true);
+    }
+
+    if (allSymbols?.length > 0 && !isFetchingSymbols) {
+      setSpinner(false);
+      const pairs = allSymbols.map((symbol) => symbol.id);
+      setSymbolsList(pairs);
     }
   }, [
     data?.bots?.ids,
@@ -129,6 +200,8 @@ export const BotsPage: FC<{}> = () => {
     isDeleting,
     isDeleted,
     isDeactivated,
+    allSymbols,
+    isFetchingSymbols,
   ]);
 
   return (
@@ -147,6 +220,18 @@ export const BotsPage: FC<{}> = () => {
             </h4>
           </div>
           <div id="filters" className="mx-3 d-flex flex-column flex-md-row">
+            <Stack
+              direction="horizontal"
+              className="mx-3 d-flex flex-column flex-md-row mt-3 mt-md-0"
+            >
+              <SymbolSearch
+                name="pair"
+                options={symbolsList}
+                defaultValue=""
+                placeholder="Search by pair"
+                onBlur={handleSearchBySymbol}
+              />
+            </Stack>
             <Stack
               direction="horizontal"
               className="mx-3 d-flex flex-column flex-md-row"

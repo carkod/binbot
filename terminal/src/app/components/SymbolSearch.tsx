@@ -3,27 +3,30 @@ import { Typeahead } from "react-bootstrap-typeahead";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import Form from "react-bootstrap/Form";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
-import { filterSymbolByBaseAsset } from "../../utils/api";
 
-const SymbolSearch: FC<{
+type SymbolSearchProps = {
   name: string;
-  label: string;
+  label?: string;
   options: string[];
   value?: string;
   defaultValue?: string;
   required?: boolean;
   disabled?: boolean;
+  placeholder?: string;
   onBlur?: (e: ChangeEvent<HTMLInputElement>) => void;
   errors?: object;
-}> = ({
+};
+
+const SymbolSearch: FC<SymbolSearchProps> = ({
   name,
-  label,
+  label = null,
   options,
   value,
   onBlur,
   required = false,
   disabled = false,
   errors = {},
+  placeholder = "",
 }) => {
   const [state, setState] = useState<string>(value);
   const [optionsState, setOptionsState] = useState<string[]>(options);
@@ -40,14 +43,18 @@ const SymbolSearch: FC<{
 
   return (
     <Form.Group>
-      <Form.Label>
-        {label}
-        {required && <span className="u-required">*</span>}
-      </Form.Label>
+      {label && (
+        <Form.Label>
+          {label}
+          {required && <span className="u-required">*</span>}
+        </Form.Label>
+      )}
       <Typeahead
         id={name}
         options={optionsState}
-        isInvalid={Boolean(errors?.[name]) || Boolean(value) === false}
+        {...(required
+          ? { isInvalid: Boolean(errors?.[name]) || Boolean(value) === false }
+          : {})}
         disabled={disabled}
         selected={state ? [state] : []}
         onChange={(selected) => {
@@ -59,6 +66,7 @@ const SymbolSearch: FC<{
           setState(value);
         }}
         onBlur={(e) => onBlur(e)}
+        placeholder={placeholder}
       />
 
       {errors[name] && (

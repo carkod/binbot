@@ -65,4 +65,19 @@ describe("BotsPage", () => {
       testingScreen.getByText(/To close orders, please deactivate/i),
     ).toBeInTheDocument();
   });
+
+  it("filters bots by symbol when searching", () => {
+    const setSpinnerMock = vi.fn();
+    render(
+      <Provider store={store}>
+        <SpinnerContext.Provider value={{ spinner: false, setSpinner: setSpinnerMock }}>
+          <BotsPage />
+        </SpinnerContext.Provider>
+      </Provider>
+    );
+    const input = testingScreen.getByPlaceholderText(/Search by pair/i);
+    fireEvent.change(input, { target: { value: "ARBTC" } });
+    expect(input).toHaveValue("ARBTC");
+    expect(setSpinnerMock).toHaveBeenCalledWith(true);
+  });
 });
