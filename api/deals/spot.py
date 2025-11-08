@@ -2,7 +2,7 @@ from typing import Type, Union
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from tools.enum_definitions import DealType, Status, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
-from tools.maths import round_numbers, round_timestamp, supress_notation
+from tools.maths import round_numbers, round_timestamp
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.exceptions import BinanceErrors
@@ -77,9 +77,11 @@ class SpotLongDeal(SpotDealAbstract):
                     self.active_bot.deal.trailling_stop_loss_price
                 ) * (1 + (self.active_bot.trailling_profit / 100))
 
-            self.active_bot.deal.trailling_profit_price = trailling_price
+            self.active_bot.deal.trailling_profit_price = round_numbers(
+                trailling_price, self.price_precision
+            )
             # Direction 1 (upward): breaking the current trailling
-            if current_price >= float(trailling_price):
+            if current_price >= trailling_price:
                 new_take_profit = current_price * (
                     1 + ((self.active_bot.trailling_profit) / 100)
                 )
@@ -122,7 +124,7 @@ class SpotLongDeal(SpotDealAbstract):
                     != self.active_bot.deal.trailling_profit_price
                 ):
                     self.active_bot.add_log(
-                        f"Updated trailling_profit_price to {supress_notation(self.active_bot.deal.trailling_profit_price)}"
+                        f"Updated trailling_profit_price to {round_numbers(self.active_bot.deal.trailling_profit_price, self.price_precision)}"
                     )
 
                 self.controller.save(self.active_bot)
@@ -261,7 +263,6 @@ class SpotLongDeal(SpotDealAbstract):
                 f"Opening new spot deal for {self.active_bot.pair}...", self.active_bot
             )
             self.controller.save(self.active_bot)
-
             self.base_order()
 
         if (

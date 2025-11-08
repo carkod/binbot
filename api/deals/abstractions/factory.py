@@ -204,7 +204,7 @@ class DealAbstract(BaseDeal):
             ),
             None,
         )
-        if is_quote_balance:
+        if is_quote_balance and is_quote_balance > 0:
             quote_balance = round_numbers_floor(
                 is_quote_balance, self.quote_qty_precision
             )
@@ -212,9 +212,6 @@ class DealAbstract(BaseDeal):
                 symbol, not self.active_bot.quote_asset.is_fiat()
             )
             total_qty_available = quote_fiat_price * quote_balance
-
-            if self.active_bot.quote_asset.is_fiat():
-                return quote_balance / quote_fiat_price
 
             # Check if we have enough balance (with conversion threshold buffer)
             required_amount = (
@@ -508,8 +505,11 @@ class DealAbstract(BaseDeal):
                 if error.code == -2010:
                     self.controller.update_logs(
                         bot=self.active_bot,
-                        log_message="Base asset purchase failed! Not enough funds.",
+                        log_message=error.message,
                     )
+                    if error.message == 'This symbol is not permitted for this account.':
+                        return self.active_bot
+
                     if repurchase_multiplier > 0.80:
                         self.base_order(
                             repurchase_multiplier=repurchase_multiplier - 0.05

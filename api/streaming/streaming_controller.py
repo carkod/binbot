@@ -14,7 +14,7 @@ from deals.abstractions.factory import DealAbstract
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from exchange_apis.binance import BinanceApi
-from streaming.models import BollinguerSpread
+from streaming.models import HABollinguerSpread
 from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.maths import round_numbers
@@ -75,7 +75,6 @@ class BaseStreaming:
 
 
 class StreamingController:
-
     def __init__(self, base: BaseStreaming, symbol: str) -> None:
         super().__init__()
         # Gets any signal to restart streaming
@@ -212,13 +211,13 @@ class StreamingController:
             logging.error(e)
             pass
 
-    def build_bb_spreads(self) -> BollinguerSpread:
+    def build_bb_spreads(self) -> HABollinguerSpread:
         """
         Builds the bollinguer bands spreads without using pandas_ta
         """
         data = self.klines
         if len(data) < 200:
-            return BollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
+            return HABollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
 
         df = pd.DataFrame(data)
         df.columns = [
@@ -241,7 +240,7 @@ class StreamingController:
 
         df.reset_index(drop=True, inplace=True)
 
-        bb_spreads = BollinguerSpread(
+        bb_spreads = HABollinguerSpread(
             bb_high=df["bb_high"].iloc[-1],
             bb_mid=df["bb_mid"].iloc[-1],
             bb_low=df["bb_low"].iloc[-1],
@@ -316,7 +315,7 @@ class StreamingController:
         bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]],
         current_price: float,
-        bb_spreads: BollinguerSpread,
+        bb_spreads: HABollinguerSpread,
     ) -> None:
         controller: Union[PaperTradingTableCrud | BotTableCrud] = (
             self.base_streaming.bot_controller
@@ -329,10 +328,10 @@ class StreamingController:
         original_bot = deepcopy(bot)
 
         # --- Use quantile-based volatility for stop_loss only ---
-        quantile_vol = self.calc_quantile_volatility(window=40, quantile=0.8)
+        quantile_vol = self.calc_quantile_volatility(window=40, quantile=0.99)
         # fallback if not enough data
         if quantile_vol == 0:
-            quantile_vol = 0.01  # 1% default
+            quantile_vol = 0.03  # 3% default
 
         # --- BB logic for trailing profit/deviation ---
         # not enough data
@@ -377,9 +376,10 @@ class StreamingController:
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
                 bot.trailling_deviation = 2.6
-                bot.stop_loss = 3.2
 
-            bot.stop_loss = max(quantile_vol * 200, 3.0)
+            # Calculate stop_loss as a percent, clamp between 2% and 7%
+            stop_loss_percent = max(3.0, min(quantile_vol * 100, 7.0))
+            bot.stop_loss = stop_loss_percent
 
             if (
                 bot.trailling_profit == original_bot.trailling_profit
@@ -401,7 +401,6 @@ class StreamingController:
             if bot_profit > 6:
                 bot.trailling_profit = 2.8
                 bot.trailling_deviation = 2.6
-                bot.stop_loss = 3.2
 
             # Decrease risk for margin shorts
             # as volatility is higher, we want to keep parameters tighter
