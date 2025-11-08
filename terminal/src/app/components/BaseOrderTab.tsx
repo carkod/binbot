@@ -13,7 +13,6 @@ import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
 import {
   useGetSymbolsQuery,
-  useGetOneSymbolQuery,
   useLazyGetOneSymbolQuery,
 } from "../../features/symbolsApiSlice";
 import {

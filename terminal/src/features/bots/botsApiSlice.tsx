@@ -39,11 +39,22 @@ export const botsAdapter = createEntityAdapter<Bot>({
 export const botsApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
     getBots: build.query<GetBotsResponse, Partial<GetBotsParams>>({
-      query: ({ status, startDate, endDate }) => ({
-        url: `${import.meta.env.VITE_GET_BOTS}` || "/bots",
-        params: { status, start_date: startDate, end_date: endDate },
-        providesTags: ["bots"],
-      }),
+      query: ({
+        status = BotStatus.ALL,
+        startDate = undefined,
+        endDate = undefined,
+      } = {}) => {
+        const params = {
+          status,
+          ...(startDate != null ? { start_date: startDate } : {}),
+          ...(endDate != null ? { end_date: endDate } : {}),
+        };
+        return {
+          url: `${import.meta.env.VITE_GET_BOTS}` || "/bots",
+          params,
+          providesTags: ["bots"],
+        };
+      },
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
@@ -54,6 +65,22 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         const bots = botsAdapter.setAll(botsAdapter.getInitialState(), data);
 
         return { bots: bots, totalProfit: totalProfit };
+      },
+    }),
+    getOneBySymbol: build.query<SingleBotResponse, string>({
+      query: (symbol) => ({
+        url: `${import.meta.env.VITE_GET_BOTS}/symbol/${symbol}`,
+        method: "GET",
+        providesTags: (result) => [{ type: "bot", id: result.bot.id }],
+      }),
+      transformResponse: ({ data, message, error }, meta, arg) => {
+        if (error && error === 1) {
+          notifification("error", message);
+        }
+
+        return {
+          bot: data,
+        };
       },
     }),
     getSingleBot: build.query<SingleBotResponse, string>({
@@ -167,4 +194,5 @@ export const {
   useDeleteBotMutation,
   useLazyActivateBotQuery,
   useDeactivateBotMutation,
+  useGetOneBySymbolQuery,
 } = botsApiSlice;

@@ -16,6 +16,7 @@ export interface GetBotsParams {
   status?: BotStatus;
   startDate?: number;
   endDate?: number;
+  symbol?: string;
 }
 
 export interface SingleBotResponse {
