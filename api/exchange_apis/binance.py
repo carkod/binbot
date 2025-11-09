@@ -517,19 +517,12 @@ class BinanceApi:
             payload={"symbol": symbol, "orderId": order_id},
         )
 
-    def get_book_depth(self, symbol: str, order_side: bool):
+    def get_book_depth(self, symbol: str) -> dict:
         """
         Get order book for a given symbol
-
-        Buy order = get bid prices = True
-        Sell order = get ask prices = False
         """
-        data = self.request(url=f"{self.order_book_url}", params={"symbol": symbol})
-        if order_side:
-            price, _ = data["bids"][0]
-        else:
-            price, _ = data["asks"][0]
-        return float(price)
+        data = self.request(url=f"{self.order_book_url}?symbol={symbol}")
+        return data
 
     def get_user_asset(self, asset: str, need_btc_valuation: bool = False):
         """

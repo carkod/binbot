@@ -46,7 +46,7 @@ class DealAbstract(BaseDeal):
     def handle_existing_quote_balance(self, symbol: str, is_quote_balance: float):
         """Handle case when we have existing quote balance"""
         quote_balance = round_numbers_floor(is_quote_balance, self.quote_qty_precision)
-        quote_fiat_price = self.get_book_depth(
+        quote_fiat_price = self.get_book_order_deep(
             symbol=symbol, order_side=not self.active_bot.quote_asset.is_fiat()
         )
         total_qty_available = quote_fiat_price * quote_balance
@@ -67,7 +67,7 @@ class DealAbstract(BaseDeal):
         """
         Handle case when we have no quote balance
         """
-        quote_fiat_price = self.get_book_depth(symbol=symbol, order_side=True)
+        quote_fiat_price = self.get_book_order_deep(symbol=symbol, order_side=True)
         quote_asset_qty = round_numbers_floor(
             self.active_bot.fiat_order_size / quote_fiat_price,
             self.quote_qty_precision,
@@ -125,7 +125,7 @@ class DealAbstract(BaseDeal):
         if isinstance(self.controller, PaperTradingTableCrud):
             return self.simulate_order(symbol, OrderSide.buy)
 
-        price = self.get_book_depth(symbol=symbol, order_side=False)
+        price = self.get_book_order_deep(symbol=symbol, order_side=False)
 
         # Get current quote asset balance
         conversion_qty = next(
@@ -208,7 +208,7 @@ class DealAbstract(BaseDeal):
             quote_balance = round_numbers_floor(
                 is_quote_balance, self.quote_qty_precision
             )
-            quote_fiat_price = self.get_book_depth(
+            quote_fiat_price = self.get_book_order_deep(
                 symbol=symbol, order_side=not self.active_bot.quote_asset.is_fiat()
             )
             total_qty_available = quote_fiat_price * quote_balance
@@ -232,7 +232,7 @@ class DealAbstract(BaseDeal):
             return self.buy_missing_amount(symbol, qty, quote_fiat_price)
 
         else:
-            quote_fiat_price = self.get_book_depth(symbol=symbol, order_side=True)
+            quote_fiat_price = self.get_book_order_deep(symbol=symbol, order_side=True)
             quote_asset_qty = round_numbers_floor(
                 self.active_bot.fiat_order_size / quote_fiat_price,
                 self.quote_qty_precision,

@@ -20,6 +20,21 @@ class Account(BinbotApi):
 
         return float(price), float(base_qty)
 
+    def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
+        """
+        Get deepest price to avoid market movements causing orders to fail
+        which means bid/ask are flipped
+
+        Buy order = get bid prices = True
+        Sell order = get ask prices = False
+        """
+        data = self.get_book_depth(symbol)
+        if order_side:
+            price, _ = data["bids"][0]
+        else:
+            price, _ = data["asks"][0]
+        return float(price)
+
     def get_ticker_price(self, symbol: str):
         params = {"symbol": symbol}
         res = requests.get(url=self.ticker_price_url, params=params)
@@ -80,7 +95,7 @@ class Account(BinbotApi):
             Sell order = get ask prices = True
         @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_book_depth(symbol=symbol, order_side=order_side)
+        data = self.get_book_depth(symbol)
         if order_side:
             total_length = len(data["asks"])
         else:
@@ -115,7 +130,7 @@ class Account(BinbotApi):
             Sell order = get ask prices = True
         @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_book_depth(symbol=symbol, order_side=order_side)
+        data = self.get_book_depth(symbol)
         price, base_qty = self._get_price_from_book_order(data, order_side, 0)
 
         if qty == 0:
