@@ -46,8 +46,8 @@ class DealAbstract(BaseDeal):
     def handle_existing_quote_balance(self, symbol: str, is_quote_balance: float):
         """Handle case when we have existing quote balance"""
         quote_balance = round_numbers_floor(is_quote_balance, self.quote_qty_precision)
-        quote_fiat_price = self.get_book_order_deep(
-            symbol, not self.active_bot.quote_asset.is_fiat()
+        quote_fiat_price = self.get_book_depth(
+            symbol=symbol, order_side=not self.active_bot.quote_asset.is_fiat()
         )
         total_qty_available = quote_fiat_price * quote_balance
 
@@ -67,7 +67,7 @@ class DealAbstract(BaseDeal):
         """
         Handle case when we have no quote balance
         """
-        quote_fiat_price = self.get_book_order_deep(symbol, True)
+        quote_fiat_price = self.get_book_depth(symbol=symbol, order_side=True)
         quote_asset_qty = round_numbers_floor(
             self.active_bot.fiat_order_size / quote_fiat_price,
             self.quote_qty_precision,
@@ -125,7 +125,7 @@ class DealAbstract(BaseDeal):
         if isinstance(self.controller, PaperTradingTableCrud):
             return self.simulate_order(symbol, OrderSide.buy)
 
-        price = self.get_book_order_deep(symbol, False)
+        price = self.get_book_depth(symbol=symbol, order_side=False)
 
         # Get current quote asset balance
         conversion_qty = next(
@@ -208,8 +208,8 @@ class DealAbstract(BaseDeal):
             quote_balance = round_numbers_floor(
                 is_quote_balance, self.quote_qty_precision
             )
-            quote_fiat_price = self.get_book_order_deep(
-                symbol, not self.active_bot.quote_asset.is_fiat()
+            quote_fiat_price = self.get_book_depth(
+                symbol=symbol, order_side=not self.active_bot.quote_asset.is_fiat()
             )
             total_qty_available = quote_fiat_price * quote_balance
 
@@ -232,7 +232,7 @@ class DealAbstract(BaseDeal):
             return self.buy_missing_amount(symbol, qty, quote_fiat_price)
 
         else:
-            quote_fiat_price = self.get_book_order_deep(symbol, True)
+            quote_fiat_price = self.get_book_depth(symbol=symbol, order_side=True)
             quote_asset_qty = round_numbers_floor(
                 self.active_bot.fiat_order_size / quote_fiat_price,
                 self.quote_qty_precision,
@@ -462,8 +462,7 @@ class DealAbstract(BaseDeal):
 
             # Long position does not need qty in take_profit
             # initial price with 1 qty should return first match
-            last_ticker_price = self.get_book_order_deep(self.active_bot.pair, True)
-            price = float(last_ticker_price)
+            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
 
             if self.active_bot.strategy == Strategy.margin_short:
                 # Use all available quote asset balance
@@ -477,16 +476,16 @@ class DealAbstract(BaseDeal):
                 )
 
             qty = round_numbers_floor(
-                (available_quote_asset / float(price)),
+                (available_quote_asset / last_ticker_price),
                 self.qty_precision,
             )
 
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
             last_ticker_price = self.last_ticker_price(self.active_bot.pair)
-            price = float(last_ticker_price["price"])
+
             qty = round_numbers_floor(
-                (self.active_bot.deal.base_order_size / price),
+                (self.active_bot.deal.base_order_size / last_ticker_price),
                 self.qty_precision,
             )
 
@@ -507,7 +506,10 @@ class DealAbstract(BaseDeal):
                         bot=self.active_bot,
                         log_message=error.message,
                     )
-                    if error.message == 'This symbol is not permitted for this account.':
+                    if (
+                        error.message
+                        == "This symbol is not permitted for this account."
+                    ):
                         return self.active_bot
 
                     if repurchase_multiplier > 0.80:
@@ -536,7 +538,7 @@ class DealAbstract(BaseDeal):
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
-            price=price,
+            price=res_price,
             qty=float(res["origQty"]),
             time_in_force=res["timeInForce"],
             status=res["status"],
@@ -548,7 +550,7 @@ class DealAbstract(BaseDeal):
         )
 
         self.active_bot.deal.opening_timestamp = int(res["transactTime"])
-        self.active_bot.deal.opening_price = price
+        self.active_bot.deal.opening_price = res_price
         self.active_bot.deal.opening_qty = float(res["origQty"])
         self.active_bot.deal.current_price = float(res["price"])
 

@@ -135,7 +135,9 @@ class MarginDealAbstract(DealAbstract):
 
             # Long position does not need qty in take_profit
             # initial price with 1 qty should return first match
-            last_ticker_price = self.get_book_order_deep(self.active_bot.pair, True)
+            last_ticker_price = self.get_book_depth(
+                symbol=self.active_bot.pair, order_side=True
+            )
             price = float(last_ticker_price)
 
             # Use all available quote asset balance
@@ -150,9 +152,8 @@ class MarginDealAbstract(DealAbstract):
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
             last_ticker_price = self.last_ticker_price(self.active_bot.pair)
-            price = float(last_ticker_price["price"])
             qty = round_numbers_floor(
-                (self.active_bot.deal.base_order_size / price),
+                (self.active_bot.deal.base_order_size / last_ticker_price),
                 self.qty_precision,
             )
 

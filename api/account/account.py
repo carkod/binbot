@@ -69,21 +69,6 @@ class Account(BinbotApi):
         symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), 0)
         return symbol_balance
 
-    def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
-        """
-        Get deepest price to avoid market movements causing orders to fail
-        which means bid/ask are flipped
-
-        Buy order = get bid prices = True
-        Sell order = get ask prices = False
-        """
-        data = self.get_book_depth(symbol)
-        if order_side:
-            price, _ = data["bids"][0]
-        else:
-            price, _ = data["asks"][0]
-        return float(price)
-
     def match_qty_engine(self, symbol: str, order_side: bool, qty: float = 1) -> float:
         """
         Similar to matching_engine,
@@ -95,7 +80,7 @@ class Account(BinbotApi):
             Sell order = get ask prices = True
         @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_book_depth(symbol)
+        data = self.get_book_depth(symbol=symbol, order_side=order_side)
         if order_side:
             total_length = len(data["asks"])
         else:
@@ -130,7 +115,7 @@ class Account(BinbotApi):
             Sell order = get ask prices = True
         @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_book_depth(symbol)
+        data = self.get_book_depth(symbol=symbol, order_side=order_side)
         price, base_qty = self._get_price_from_book_order(data, order_side, 0)
 
         if qty == 0:
