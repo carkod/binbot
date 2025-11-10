@@ -72,14 +72,7 @@ const ChartContainer: FC<{
                       : "secondary"
                 }
               >
-                {botProfit ?? botProfit + "%"}
-                {botProfit !== 0 && (
-                  <small className="fs-6 fw-light">
-                    {bot.deal?.total_commissions ??
-                      `- (${roundDecimals(botProfit - bot.deal.total_commissions)} 
-                        "%")`}
-                  </small>
-                )}
+                {botProfit ? botProfit + "% " : " "}
               </Badge>{" "}
               <Badge
                 bg={

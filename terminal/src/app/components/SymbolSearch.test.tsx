@@ -26,7 +26,7 @@ describe("SymbolSearch component", () => {
 
   it("renders label if passed", () => {
     render(
-      <SymbolSearch name="pair" label="Select pair" options={["BTCUSDT"]} />
+      <SymbolSearch name="pair" label="Select pair" options={["BTCUSDT"]} />,
     );
     expect(rtlScreen.getByText("Select pair")).toBeInTheDocument();
   });
@@ -37,10 +37,10 @@ describe("SymbolSearch component", () => {
         name="pair"
         options={["BTCUSDT"]}
         placeholder="Search by pair"
-      />
+      />,
     );
     expect(
-      rtlScreen.getByPlaceholderText("Search by pair")
+      rtlScreen.getByPlaceholderText("Search by pair"),
     ).toBeInTheDocument();
   });
 
@@ -51,7 +51,7 @@ describe("SymbolSearch component", () => {
         options={["BTCUSDT"]}
         errors={{ pair: "Invalid symbol" }}
         required={true}
-      />
+      />,
     );
     expect(rtlScreen.getByText("Invalid symbol")).toBeInTheDocument();
   });
