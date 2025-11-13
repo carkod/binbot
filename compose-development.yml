@@ -53,7 +53,7 @@ services:
       start_period: 40s
 
   kafka:
-    image: bitnami/kafka:3.9
+    image: soldevelo/kafka:3.9
     container_name: binquant_kafka
     networks:
       - kafka_network
