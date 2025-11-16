@@ -246,10 +246,9 @@ class BinanceApi:
         data = self.request(url=self.ticker24_url, params=params)
         return data
 
-    def last_ticker_price(self, symbol: str):
-        url = f"{self.ticker_price_url}"
-        data = self.request(url=url, params={"symbol": symbol})
-        return data
+    def last_ticker_price(self, symbol: str) -> float:
+        data = self.request(url=f"{self.ticker_price_url}", params={"symbol": symbol})
+        return float(data["price"])
 
     def get_raw_klines(
         self, symbol, interval, limit=500, start_time=None, end_time=None
@@ -518,7 +517,7 @@ class BinanceApi:
             payload={"symbol": symbol, "orderId": order_id},
         )
 
-    def get_book_depth(self, symbol: str):
+    def get_book_depth(self, symbol: str) -> dict:
         """
         Get order book for a given symbol
         """

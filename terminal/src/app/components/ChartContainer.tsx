@@ -19,10 +19,9 @@ const ChartContainer: FC<{
   setCurrentPrice: PayloadActionCreator<number>;
 }> = ({ bot, setCurrentPrice }) => {
   const dispatch: AppDispatch = useAppDispatch();
-  const initialBotProfit = computeSingleBotProfit(bot);
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0);
   const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([]);
-  const [botProfit, setBotProfit] = useState<number>(Number(initialBotProfit));
+  const [botProfit, setBotProfit] = useState<number>(Number(0));
 
   const updatedPrice = (price) => {
     price = roundDecimals(price, 4);
@@ -42,7 +41,8 @@ const ChartContainer: FC<{
   };
 
   useEffect(() => {
-    if (initialBotProfit) {
+    if (bot.id && bot.deal.opening_price > 0) {
+      const initialBotProfit = computeSingleBotProfit(bot);
       setBotProfit(initialBotProfit);
     }
 
@@ -54,14 +54,7 @@ const ChartContainer: FC<{
         dispatch(setCurrentPrice(currentChartPrice));
       }
     }
-  }, [
-    currentChartPrice,
-    bot,
-    setBotProfit,
-    botProfit,
-    dispatch,
-    initialBotProfit,
-  ]);
+  }, [currentChartPrice, bot, setBotProfit, botProfit]);
 
   return (
     <Card style={{ minHeight: "650px" }}>
@@ -79,15 +72,7 @@ const ChartContainer: FC<{
                       : "secondary"
                 }
               >
-                {botProfit > 0 ? botProfit + "%" : "0%"}
-                {botProfit > 0 &&
-                  bot.deal?.total_commissions > 0 &&
-                  botProfit - bot.deal.total_commissions > 0 && (
-                    <small className="fs-6 fw-light">
-                      {` (${roundDecimals(botProfit - bot.deal.total_commissions)} 
-                        "%")`}
-                    </small>
-                  )}
+                {botProfit ? botProfit + "% " : " "}
               </Badge>{" "}
               <Badge
                 bg={

@@ -70,10 +70,12 @@ describe("BotsPage", () => {
     const setSpinnerMock = vi.fn();
     render(
       <Provider store={store}>
-        <SpinnerContext.Provider value={{ spinner: false, setSpinner: setSpinnerMock }}>
+        <SpinnerContext.Provider
+          value={{ spinner: false, setSpinner: setSpinnerMock }}
+        >
           <BotsPage />
         </SpinnerContext.Provider>
-      </Provider>
+      </Provider>,
     );
     const input = testingScreen.getByPlaceholderText(/Search by pair/i);
     fireEvent.change(input, { target: { value: "ARBTC" } });
