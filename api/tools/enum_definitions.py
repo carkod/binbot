@@ -172,3 +172,8 @@ class QuoteAssets(str, Enum):
     def get_fiat_currencies(cls) -> list["QuoteAssets"]:
         """Get all fiat currencies"""
         return [asset for asset in cls if asset.is_fiat()]
+
+
+class ExchangeId(str, Enum):
+    KUCOIN = "kucoin"
+    BINANCE = "binance"

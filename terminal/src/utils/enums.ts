@@ -75,3 +75,8 @@ export enum QuoteAsset {
   ETH = "ETH",
   TRY = "TRY",
 }
+
+export enum ExchangeId {
+  KUCOIN = "kucoin",
+  BINANCE = "binance",
+}

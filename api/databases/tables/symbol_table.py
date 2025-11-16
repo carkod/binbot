@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from databases.tables.asset_index_table import AssetIndexTable
+    from databases.tables.symbol_exchange_table import SymbolExchangeTable
 
 
 class SymbolTable(SQLModel, table=True):
@@ -22,24 +23,25 @@ class SymbolTable(SQLModel, table=True):
     active: bool = Field(default=True, description="Blacklisted items = False")
     blacklist_reason: str = Field(default="")
     description: str = Field(default="", description="Description of the symbol")
-    is_margin_trading_allowed: bool = Field(default=False)
     quote_asset: str = Field(
         default="", description="in DOGEUSDC, DOGE would be quote asset"
     )
     base_asset: str = Field(
         default="", description="in DOGEUSDC, USDC would be base asset"
     )
-    price_precision: int = Field(
-        default=0,
-        description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
-    )
-    qty_precision: int = Field(default=0)
-    min_notional: float = Field(default=0, description="Minimum price x qty value")
     cooldown: int = Field(default=0, description="Time in seconds between trades")
     cooldown_start_ts: int = Field(
         default=0,
         description="Timestamp when cooldown started in milliseconds",
         sa_type=BigInteger,
+    )
+    exchange_value: "SymbolExchangeTable" = Relationship(
+        back_populates="symbol",
+        sa_relationship_kwargs={
+            "lazy": "joined",
+            "single_parent": True,
+            "uselist": False,
+        },
     )
     asset_indices: list["AssetIndexTable"] = Relationship(
         back_populates="symbols",

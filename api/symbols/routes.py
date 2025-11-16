@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from tools.enum_definitions import ExchangeId
 from databases.crud.symbols_crud import SymbolsCrud
 from symbols.models import SymbolsResponse, GetOneSymbolResponse
 from databases.utils import get_session
@@ -15,6 +16,7 @@ def get_all_symbols(
     active: Optional[bool] = None,
     index: Optional[str] = None,
     session: Session = Depends(get_session),
+    exchange_id: ExchangeId = ExchangeId.BINANCE,
 ):
     """
     Get all symbols/pairs
@@ -29,7 +31,7 @@ def get_all_symbols(
     """
     try:
         response_model = SymbolsCrud(session=session).get_all(
-            active=active, index_id=index
+            active=active, index_id=index, exchange_id=exchange_id
         )
         data = SymbolsResponse.dump_from_table(response_model)
         return {"message": "Successfully retrieved active symbols", "data": data}
@@ -72,7 +74,11 @@ def update_indexes(
 @symbols_blueprint.get(
     "/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
 )
-def get_one_symbol(pair: str, session: Session = Depends(get_session)):
+def get_one_symbol(
+    pair: str,
+    session: Session = Depends(get_session),
+    exchange_id: ExchangeId = ExchangeId.BINANCE,
+):
     """
     Get all symbols/pairs
 
@@ -80,7 +86,9 @@ def get_one_symbol(pair: str, session: Session = Depends(get_session)):
     - Active: includes symbols set as True and also cooldown delta is negative
     """
     try:
-        data = SymbolsCrud(session=session).get_symbol(symbol=pair)
+        data = SymbolsCrud(session=session).get_symbol(
+            symbol=pair, exchange_id=exchange_id
+        )
         return GetOneSymbolResponse(
             message="Successfully retrieved active symbols", data=data
         )
@@ -101,6 +109,7 @@ def add_symbol(
     reason: str = "",
     active: bool = True,
     session: Session = Depends(get_session),
+    exchange_id: ExchangeId = ExchangeId.BINANCE,
 ):
     """
     Create a new symbol/pair.
@@ -116,6 +125,7 @@ def add_symbol(
         min_notional=min_notional,
         price_precision=price_precision,
         qty_precision=qty_precision,
+        exchange_id=exchange_id,
     )
     return GetOneSymbolResponse(message="Symbols found!", data=data)
 
@@ -148,5 +158,4 @@ def edit_symbol(
     Modify a blacklisted item
     """
     data = SymbolsCrud(session=session).edit_symbol_item(data)
-
     return GetOneSymbolResponse(message="Symbol edited and candles removed", data=data)

@@ -1,8 +1,10 @@
+from exchange_apis.kucoin import KucoinApi
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 from databases.utils import independent_session
-from sqlmodel import Session, select
+from sqlmodel import Session, select, SQLModel
 from databases.tables.symbol_table import SymbolTable
+from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
@@ -13,8 +15,10 @@ from typing import cast
 from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql import delete
 from databases.utils import engine
-from tools.enum_definitions import QuoteAssets
-from tools.maths import round_numbers
+from tools.enum_definitions import QuoteAssets, ExchangeId
+from sqlalchemy.sql.expression import ColumnElement
+from sqlalchemy import text
+from sqlalchemy.orm import RelationshipProperty
 
 
 class SymbolsCrud:
@@ -33,17 +37,6 @@ class SymbolsCrud:
         self.session = session
         self.binance_api = BinanceApi()
 
-    def _get_symbol(self, symbol: str) -> SymbolTable | None:
-        """
-        Soft check that returns None if not found
-        the other get_symbol raises an exception
-
-        Avoids nested try/except blocks
-        """
-        statement = select(SymbolTable).where(SymbolTable.id == symbol)
-        result = self.session.exec(statement).unique().first()
-        return result
-
     """
     Convert binance tick/step sizes to decimal
     object for calculations
@@ -56,6 +49,64 @@ class SymbolsCrud:
         decimal = Decimal(parsed_value).as_tuple()
         exponent = abs(int(decimal.exponent))
         return exponent
+
+    def _exchange_combined_statement(self, exchange_id: ExchangeId = ExchangeId.KUCOIN):
+        """
+        Multi-exchange support
+
+        Query becomes quite complex and we always need to do this
+        only to be used in this CRUD class
+        """
+        statement = (
+            select(SymbolTable)
+            .options(
+                selectinload(cast(QueryableAttribute, SymbolTable.asset_indices)),
+                selectinload(cast(QueryableAttribute, SymbolTable.exchange_value)),
+            )
+            .where(
+                cast(RelationshipProperty, SymbolTable.exchange_value).has(
+                    SymbolExchangeTable.exchange_id == exchange_id
+                )
+            )
+        )
+        return statement
+
+    def _add_exchange_link_if_not_exists(
+        self,
+        symbol: str,
+        exchange_id: str,
+        min_notional: float,
+        price_precision: int,
+        qty_precision: int,
+        quote_asset: str,
+        base_asset: str,
+        is_margin_trading_allowed: bool,
+    ):
+        """
+        Add SymbolExchangeTable entry if it does not already exist for the given symbol and exchange.
+        """
+        existing_exchange_link = self.session.exec(
+            select(SymbolExchangeTable).where(
+                (SymbolExchangeTable.symbol_id == symbol)
+                & (SymbolExchangeTable.exchange_id == exchange_id)
+            )
+        ).first()
+        if not existing_exchange_link:
+            exchange_link = SymbolExchangeTable(
+                symbol_id=symbol,
+                exchange_id=exchange_id,
+                min_notional=min_notional,
+                price_precision=price_precision,
+                qty_precision=qty_precision,
+                quote_asset=quote_asset,
+                base_asset=base_asset,
+                is_margin_trading_allowed=is_margin_trading_allowed,
+            )
+            self.session.add(exchange_link)
+            self.session.commit()
+            self.session.refresh(exchange_link)
+            return exchange_link
+        return existing_exchange_link
 
     def calculate_precisions(self, item) -> tuple[int, int, float]:
         price_precision = 0
@@ -75,7 +126,10 @@ class SymbolsCrud:
         return price_precision, qty_precision, min_notional
 
     def get_all(
-        self, active: Optional[bool] = None, index_id: Optional[str] = None
+        self,
+        active: Optional[bool] = None,
+        index_id: Optional[str] = None,
+        exchange_id: ExchangeId = ExchangeId.BINANCE,
     ) -> list[SymbolTable]:
         """
         Get all symbols
@@ -99,9 +153,7 @@ class SymbolsCrud:
         if no results are found, returns empty list
         """
 
-        statement = select(SymbolTable).options(
-            selectinload(cast(QueryableAttribute, SymbolTable.asset_indices))
-        )
+        statement = self._exchange_combined_statement(exchange_id=exchange_id)
 
         if index_id is not None:
             # cast here is used to avoid mypy complaining
@@ -122,13 +174,18 @@ class SymbolsCrud:
         self.session.close()
         return list(results)
 
-    def get_symbol(self, symbol: str) -> SymbolTable:
+    def get_symbol(
+        self, symbol: str, exchange_id: ExchangeId = ExchangeId.BINANCE
+    ) -> SymbolTable:
         """
         Get single symbol
 
         Returns a single symbol dict
         """
-        statement = select(SymbolTable).where(SymbolTable.id == symbol)
+        statement = self._exchange_combined_statement(exchange_id=exchange_id).where(
+            SymbolTable.id == symbol
+        )
+
         result = self.session.exec(statement).first()
         if result:
             self.session.close()
@@ -142,6 +199,7 @@ class SymbolsCrud:
         symbol: str,
         quote_asset: str,
         base_asset: str,
+        exchange_id: str,
         active: bool = True,
         reason: Optional[str] = "",
         price_precision: int = 0,
@@ -150,28 +208,36 @@ class SymbolsCrud:
         cooldown: int = 0,
         cooldown_start_ts: int = 0,
         is_margin_trading_allowed: bool = False,
-    ):
+    ) -> SymbolExchangeTable:
         """
-        Add a new symbol
+        Add a new symbol and its exchange-specific data
         """
-        symbol = SymbolTable(
+        symbol_table = SymbolTable(
             id=symbol,
             blacklist_reason=reason,
             active=active,
-            price_precision=price_precision,
-            qty_precision=qty_precision,
-            min_notional=min_notional,
-            quote_asset=quote_asset,
-            base_asset=base_asset,
             cooldown=cooldown,
             cooldown_start_ts=cooldown_start_ts,
+        )
+        self.session.add(symbol_table)
+        self.session.commit()
+        self.session.refresh(symbol_table)
+        # Add exchange-specific data
+        exchange_link = SymbolExchangeTable(
+            symbol_id=symbol,
+            exchange_id=exchange_id,
+            min_notional=min_notional,
+            price_precision=price_precision,
+            qty_precision=qty_precision,
+            quote_asset=quote_asset,
+            base_asset=base_asset,
             is_margin_trading_allowed=is_margin_trading_allowed,
         )
-        self.session.add(symbol)
+        self.session.add(exchange_link)
         self.session.commit()
-        self.session.refresh(symbol)
+        self.session.refresh(exchange_link)
         self.session.close()
-        return symbol
+        return exchange_link
 
     def edit_symbol_item(
         self,
@@ -214,7 +280,7 @@ class SymbolsCrud:
 
         # Remove all existing links for this symbol
         stmt = delete(SymbolIndexLink).where(
-            SymbolIndexLink.symbol_id == symbol_model.id  # type: ignore[arg-type]
+            cast(ColumnElement, SymbolIndexLink.symbol_id == symbol_model.id)
         )
         self.session.execute(stmt)
         self.session.commit()
@@ -262,7 +328,7 @@ class SymbolsCrud:
             session.execute(delete(SymbolTable))
             session.commit()
 
-    def base_asset(self, symbol: str):
+    def base_asset(self, symbol: str) -> Optional[str]:
         """
         Finds base asset using Symbols database
         e.g. BTCUSDC -> BTC
@@ -270,60 +336,6 @@ class SymbolsCrud:
         query = select(SymbolTable.base_asset).where(SymbolTable.id == symbol)
         base_asset = self.session.exec(query).first()
         return base_asset
-
-    def etl_symbols_ingestion(self, delete_existing: bool = False):
-        """
-        Full data ingestions of symbol (e.g. ETHUSDC)
-        for the symbols table
-
-        This populates the table with Binance pairs from exchange_info
-        future: if additional exchanges are added,
-        symbol pairs should be consolidated in this table
-
-        Indexes are populated by the binbot-notebooks
-        """
-        binance_api = BinanceApi()
-        exchange_info_data = binance_api.exchange_info()
-
-        if delete_existing:
-            # Reset symbols table (this should reset link tables)
-            self.delete_all()
-            # Delete index tables, these will be refilled later
-            asset_index_crud = AssetIndexCrud()
-            asset_index_crud.delete_all()
-
-        for item in exchange_info_data["symbols"]:
-            symbol = None
-            # Only store fiat market exclude other fiats.
-            # Only store pairs that are actually traded
-            if item["status"] != "TRADING" or item["symbol"].startswith(
-                ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
-            ):
-                continue
-
-            if item["quoteAsset"] in list(QuoteAssets) and symbol is None:
-                price_precision, qty_precision, min_notional = (
-                    self.calculate_precisions(item)
-                )
-                active = True
-                if item["symbol"] in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
-                    active = False
-
-                data = SymbolTable(
-                    id=item["symbol"],
-                    active=active,
-                    price_precision=price_precision,
-                    qty_precision=qty_precision,
-                    min_notional=min_notional,
-                    quote_asset=item["quoteAsset"],
-                    base_asset=item["baseAsset"],
-                    is_margin_trading_allowed=item["isMarginTradingAllowed"],
-                )
-                self.session.merge(data)
-                self.session.commit()
-                pass
-
-        self.session.close()
 
     def etl_exchange_info_update(self):
         """
@@ -352,13 +364,9 @@ class SymbolsCrud:
                 symbol = SymbolTable(
                     id=item["symbol"],
                     active=True,
-                    price_precision=round_numbers(price_filter["tickSize"])
-                    if price_filter
-                    else 0,
-                    qty_precision=round_numbers(quantity_filter["stepSize"])
-                    if quantity_filter
-                    else 0,
-                    min_notional=round_numbers(min_notional_filter["minNotional"])
+                    price_precision=price_filter["tickSize"] if price_filter else 0,
+                    qty_precision=quantity_filter["stepSize"] if quantity_filter else 0,
+                    min_notional=min_notional_filter["minNotional"]
                     if min_notional_filter
                     else 0,
                     quote_asset=item["quoteAsset"],
@@ -368,3 +376,136 @@ class SymbolsCrud:
                 )
                 self.session.add(symbol)
         self.session.commit()
+
+    def binance_symbols_ingestion(self):
+        """
+        Full data ingestions of symbol (e.g. ETHUSDC)
+        for the symbols table
+
+        This populates the table with Binance pairs from exchange_info
+        future: if additional exchanges are added,
+        symbol pairs should be consolidated in this table
+
+        Indexes are populated by the binbot-notebooks
+        """
+        binance_api = BinanceApi()
+        exchange_info_data = binance_api.exchange_info()
+        for item in exchange_info_data["symbols"]:
+            symbol = None
+            # Only store fiat market exclude other fiats.
+            # Only store pairs that are actually traded
+            if item["status"] != "TRADING" or item["symbol"].startswith(
+                ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
+            ):
+                continue
+
+            if item["quoteAsset"] in list(QuoteAssets) and symbol is None:
+                active = True
+                if item["symbol"] in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
+                    active = False
+
+                # Calculate exchange-specific fields
+                price_precision, qty_precision, min_notional = (
+                    self.calculate_precisions(item)
+                )
+                self.add_symbol(
+                    symbol=item["symbol"],
+                    quote_asset=item["quoteAsset"],
+                    base_asset=item["baseAsset"],
+                    exchange_id=ExchangeId.BINANCE,
+                    active=active,
+                    price_precision=price_precision,
+                    qty_precision=qty_precision,
+                    min_notional=min_notional,
+                )
+
+        self.session.close()
+
+    def kucoin_symbols_ingestion(self):
+        """
+        Full data ingestions of symbol (e.g. BTC-USDT)
+        for the symbols table from Kucoin exchange
+        """
+        kucoin_api = KucoinApi()
+        exchange_info_data = kucoin_api.get_all_symbols()
+
+        for item in exchange_info_data.data:
+            # Only store fiat market exclude other fiats.
+            # Only store pairs that are actually traded
+            if item.enable_trading is not True or item.symbol.startswith(
+                ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
+            ):
+                continue
+
+            active = True
+            if item.symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
+                active = False
+
+            if item.quote_currency in list(QuoteAssets):
+                symbol = item.symbol.replace("-", "")
+                price_precision = item.price_increment.find("1") - 2
+                qty_precision = item.base_increment.find("1") - 2
+                min_notional = float(item.base_min_size)
+
+                try:
+                    self.get_symbol(symbol=symbol)
+                    self._add_exchange_link_if_not_exists(
+                        symbol=symbol,
+                        exchange_id=ExchangeId.KUCOIN,
+                        min_notional=min_notional,
+                        price_precision=price_precision,
+                        qty_precision=qty_precision,
+                        quote_asset=item.quote_currency,
+                        base_asset=item.base_currency,
+                        is_margin_trading_allowed=item.is_margin_enabled,
+                    )
+
+                except BinbotErrors as error:
+                    if "Symbol not found" in str(error):
+                        self.add_symbol(
+                            symbol=symbol,
+                            quote_asset=item.quote_currency,
+                            base_asset=item.base_currency,
+                            exchange_id=ExchangeId.KUCOIN,
+                            active=active,
+                            price_precision=price_precision,
+                            qty_precision=qty_precision,
+                            min_notional=min_notional,
+                        )
+
+                        self._add_exchange_link_if_not_exists(
+                            symbol=symbol,
+                            exchange_id=ExchangeId.KUCOIN,
+                            min_notional=min_notional,
+                            price_precision=price_precision,
+                            qty_precision=qty_precision,
+                            quote_asset=item.quote_currency,
+                            base_asset=item.base_currency,
+                            is_margin_trading_allowed=item.is_margin_enabled,
+                        )
+
+                except Exception as error:
+                    print(f"Error adding symbol {symbol}: {error}")
+                    # Create SymbolTable entry
+
+                    pass
+
+        self.session.close()
+
+    def etl_symbols_ingestion(self, delete_existing: bool = False):
+        """
+        ETL process to ingest symbols from multiple exchanges
+        Populates both SymbolTable and SymbolExchangeTable
+        """
+        if delete_existing:
+            with engine.connect() as conn:
+                conn.execute(text("DROP TABLE IF EXISTS symbol CASCADE"))
+                conn.execute(text("DROP TABLE IF EXISTS symbol_exchange CASCADE"))
+                conn.commit()
+                SQLModel.metadata.create_all(engine)
+                # Delete index tables, these will be refilled later
+                asset_index_crud = AssetIndexCrud()
+                asset_index_crud.delete_all()
+
+        self.binance_symbols_ingestion()
+        self.kucoin_symbols_ingestion()

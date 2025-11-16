@@ -22,7 +22,6 @@ from account.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.db import setup_kafka_db
-from tools.exceptions import BinbotErrors
 
 
 class ApiDb:
@@ -267,10 +266,12 @@ class ApiDb:
         First check if symbols have been updated in the last 24 hours.
         Use BNBUSDC, because db init will add BTCUSDC
         """
-        try:
-            self.symbols.get_symbol("DASHBTC")
-        except BinbotErrors:
-            self.symbols.etl_symbols_ingestion()
+        # try:
+        #     self.symbols.get_symbol("DASHBTC")
+        # except BinbotErrors:
+        #     self.symbols.etl_symbols_ingestion(delete_existing=True)
+
+        self.symbols.etl_symbols_ingestion(delete_existing=True)
 
         pass
 

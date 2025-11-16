@@ -7,3 +7,4 @@ from .autotrade_table import *  # noqa
 from .account_balances import *  # noqa
 from .symbol_table import *  # noqa
 from .asset_index_table import *  # noqa
+from .symbol_exchange_table import *  # noqa
