@@ -154,6 +154,7 @@ dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "httpx" },
     { name = "kafka-python" },
+    { name = "kucoin-universal-sdk" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "passlib" },
@@ -201,6 +202,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.115.6" },
     { name = "httpx" },
     { name = "kafka-python", specifier = ">=2.0.2" },
+    { name = "kucoin-universal-sdk", specifier = ">=1.3.0" },
     { name = "numpy", specifier = "==2.2.0" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "passlib" },
@@ -661,6 +663,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/fd/ac/c62cbbe6cb1c20eda5e4ab3fea4ab44ac0e8faa48e4c9e58032c3605fb22/kafka_python-2.2.10.tar.gz", hash = "sha256:0411d2631719dae53a81716c8be8af13e47470123ba49914d7faba317379e85b", size = 347079, upload-time = "2025-05-22T21:24:11.14Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/56/1a/8422696068fc1d2172e9c48c57533b788aed5039daed68e63390ee2064ba/kafka_python-2.2.10-py2.py3-none-any.whl", hash = "sha256:cfca1af8d6277f31d135496587c64f1de0b4021cada8d6376589e8572484068c", size = 309345, upload-time = "2025-05-22T21:24:08.664Z" },
+]
+
+[[package]]
+name = "kucoin-universal-sdk"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "requests" },
+    { name = "typing-extensions" },
+    { name = "websocket-client" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/77/e8ba73550b6f84ff2bbaa8c4901e662eb08445d15926939c988217353a45/kucoin_universal_sdk-1.3.0.tar.gz", hash = "sha256:89a3da888881ae3d3a4d2c7a75888c080b7ed14732f738d48673e9a4a5eb5668", size = 441856, upload-time = "2025-06-12T01:38:09.644Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/59/43/838d7e9211801a756be2620755f08a4020dd89e2e20b5eac00cc1b0bfbe2/kucoin_universal_sdk-1.3.0-py3-none-any.whl", hash = "sha256:b8ba340b1e27683dc1259aa05d794492ec0117e173cc9a7b8a5eab58260f6d6f", size = 1173680, upload-time = "2025-06-12T01:38:08.208Z" },
 ]
 
 [[package]]

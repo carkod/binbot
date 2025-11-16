@@ -33,6 +33,7 @@ dependencies = [
     "pydantic-settings>=2.10.1",
     "confluent-kafka>=2.11.1",
     "aiokafka>=0.12.0",
+    "kucoin-universal-sdk>=1.3.0",
 ]
 
 [project.urls]

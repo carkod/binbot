@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from databases.api_db import ApiDb
+from exchange_apis.kucoin import KucoinApi
 from account.routes import account_blueprint
 from autotrade.routes import autotrade_settings_blueprint
 from bots.routes import bot_blueprint
@@ -50,6 +51,21 @@ async def root():
     Check app works. Can be used for healthchecks
     """
     return {"message": "online"}
+
+
+@app.get("/kucoin-test")
+async def kucoin_test():
+    """
+    Test Kucoin API connection
+    """
+    kucoin_api = KucoinApi()
+    response = kucoin_api.get_part_order_book("BTC-USDT", "20")
+    return {
+        "time": response.time,
+        "sequence": response.sequence,
+        "bids": response.bids,
+        "asks": response.asks,
+    }
 
 
 app.include_router(user_blueprint)
