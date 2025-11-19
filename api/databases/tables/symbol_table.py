@@ -35,12 +35,11 @@ class SymbolTable(SQLModel, table=True):
         description="Timestamp when cooldown started in milliseconds",
         sa_type=BigInteger,
     )
-    exchange_value: "SymbolExchangeTable" = Relationship(
+    exchange_values: list["SymbolExchangeTable"] = Relationship(
         back_populates="symbol",
         sa_relationship_kwargs={
             "lazy": "joined",
             "single_parent": True,
-            "uselist": False,
         },
     )
     asset_indices: list["AssetIndexTable"] = Relationship(

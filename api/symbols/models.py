@@ -1,4 +1,5 @@
 from typing import Optional, Sequence
+from tools.enum_definitions import ExchangeId
 from tools.handle_error import StandardResponse
 from databases.tables.symbol_table import SymbolTable
 from pydantic import Field, BaseModel
@@ -70,13 +71,13 @@ class SymbolsResponse(StandardResponse):
                 for asset in s.asset_indices:
                     symbol["asset_indices"].append(asset.model_dump())
 
+            if len(s.exchange_values) > 0:
+                exchange = s.exchange_values[0]
+                symbol.update(exchange.model_dump())
+
             new_data.append(symbol)
 
         return new_data
-
-
-class GetOneSymbolResponse(StandardResponse):
-    data: Optional[SymbolTable] = Field(default=None)
 
 
 class SymbolPayload(BaseModel):
@@ -88,6 +89,18 @@ class SymbolPayload(BaseModel):
         default=0,
         description="Timestamp to indicate when cooldown should start in milliseconds. Combined with cooldown this will put the symbol in inactive for that period of time.",
     )
+    exchange_id: ExchangeId = Field(
+        description="Exchange name where this symbol belongs to",
+    )
+    symbol_id: str = Field(description="Symbol/Pair")
+    min_notional: float = 0
+    is_margin_trading_allowed: bool = False
+    price_precision: int = 0
+    qty_precision: int = 0
     asset_indices: list[AssetIndexModel] = Field(
         default=[], description="List of asset index IDs"
     )
+
+
+class GetOneSymbolResponse(StandardResponse):
+    data: Optional[SymbolPayload] = Field(default=None)

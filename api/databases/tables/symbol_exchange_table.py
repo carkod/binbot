@@ -23,4 +23,4 @@ class SymbolExchangeTable(SQLModel, table=True):
         description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
     )
     qty_precision: int = Field(default=0)
-    symbol: "SymbolTable" = Relationship(back_populates="exchange_value")
+    symbol: "SymbolTable" = Relationship(back_populates="exchange_values")

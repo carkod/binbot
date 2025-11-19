@@ -89,9 +89,16 @@ def get_one_symbol(
         data = SymbolsCrud(session=session).get_symbol(
             symbol=pair, exchange_id=exchange_id
         )
-        return GetOneSymbolResponse(
-            message="Successfully retrieved active symbols", data=data
-        )
+
+        symbol_data = data.model_dump()
+        exchange = data.exchange_values[0] if data.exchange_values else None
+        if exchange:
+            symbol_data.update(exchange.model_dump(exclude={"id"}))
+
+        return {
+            "message": "Successfully retrieved symbols!",
+            "data": symbol_data,
+        }
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
 

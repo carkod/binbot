@@ -60,14 +60,11 @@ class SymbolsCrud:
         statement = (
             select(SymbolTable)
             .options(
+                selectinload(cast(QueryableAttribute, SymbolTable.exchange_values)),
                 selectinload(cast(QueryableAttribute, SymbolTable.asset_indices)),
-                selectinload(cast(QueryableAttribute, SymbolTable.exchange_value)),
             )
-            .where(
-                cast(RelationshipProperty, SymbolTable.exchange_value).has(
-                    SymbolExchangeTable.exchange_id == exchange_id
-                )
-            )
+            .join(SymbolExchangeTable)
+            .where(SymbolExchangeTable.exchange_id == exchange_id)
         )
         return statement
 
@@ -366,9 +363,9 @@ class SymbolsCrud:
                     active=True,
                     price_precision=price_filter["tickSize"] if price_filter else 0,
                     qty_precision=quantity_filter["stepSize"] if quantity_filter else 0,
-                    min_notional=min_notional_filter["minNotional"]
-                    if min_notional_filter
-                    else 0,
+                    min_notional=(
+                        min_notional_filter["minNotional"] if min_notional_filter else 0
+                    ),
                     quote_asset=item["quoteAsset"],
                     base_asset=item["baseAsset"],
                     is_margin_trading_allowed=item["isMarginTradingAllowed"],
