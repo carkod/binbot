@@ -151,6 +151,7 @@ services:
     ports:
       - 8007:80
       - 8008:8006
+    command: ["uvicorn", "main:app", "--port", "8008"]
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8006/health || exit 1"]
       interval: 30s

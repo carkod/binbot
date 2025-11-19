@@ -55,7 +55,7 @@ class SpotLongDeal(SpotDealAbstract):
         ):
             self.execute_stop_loss()
             if self.active_bot.margin_short_reversal:
-                if not self.symbol_info.exchange_value.is_margin_trading_allowed:
+                if not self.symbol_info.is_margin_trading_allowed:
                     self.controller.update_logs(
                         bot=self.active_bot,
                         log_message=f"Exchange doesn't support margin trading for {self.active_bot.pair}. Cannot switch to margin short bot.",
@@ -253,7 +253,7 @@ class SpotLongDeal(SpotDealAbstract):
         )
 
         if not base_order:
-            if not self.symbol_info.exchange_value.is_margin_trading_allowed:
+            if not self.symbol_info.is_margin_trading_allowed:
                 self.active_bot.margin_short_reversal = False
                 self.active_bot.add_log(
                     "Auto short bot reversal disabled. Exchange doesn't support margin trading for this pair."

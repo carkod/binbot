@@ -11,7 +11,7 @@ class AssetIndexModel(BaseModel):
     name: str = Field(default="", description="Name of the index")
 
 
-class SymbolsModel(BaseModel):
+class SymbolModel(BaseModel):
     """
     Pydantic model for SymbolTable.
     This model has to be kept identical with databases.tables.SymbolTable
@@ -44,6 +44,9 @@ class SymbolsModel(BaseModel):
     cooldown_start_ts: int = Field(
         default=0,
         description="Timestamp when cooldown started in milliseconds",
+    )
+    exchange_id: ExchangeId = Field(
+        description="Exchange name where this symbol belongs to",
     )
     asset_indices: list[AssetIndexModel] = Field(
         default=[], description="list of asset indices e.g. memecoin"
@@ -103,4 +106,4 @@ class SymbolPayload(BaseModel):
 
 
 class GetOneSymbolResponse(StandardResponse):
-    data: Optional[SymbolPayload] = Field(default=None)
+    data: Optional[SymbolModel] = Field(default=None)

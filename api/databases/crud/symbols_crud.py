@@ -8,7 +8,7 @@ from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
-from symbols.models import SymbolPayload
+from symbols.models import SymbolModel, SymbolPayload
 from decimal import Decimal
 from time import time
 from typing import cast
@@ -18,7 +18,6 @@ from databases.utils import engine
 from tools.enum_definitions import QuoteAssets, ExchangeId
 from sqlalchemy.sql.expression import ColumnElement
 from sqlalchemy import text
-from sqlalchemy.orm import RelationshipProperty
 
 
 class SymbolsCrud:
@@ -127,7 +126,7 @@ class SymbolsCrud:
         active: Optional[bool] = None,
         index_id: Optional[str] = None,
         exchange_id: ExchangeId = ExchangeId.BINANCE,
-    ) -> list[SymbolTable]:
+    ) -> list[SymbolModel]:
         """
         Get all symbols
 
@@ -168,12 +167,36 @@ class SymbolsCrud:
             )
 
         results = self.session.exec(statement).unique().all()
+        # Normalise data
+        list_results = []
+        for result in results:
+            data = SymbolModel(
+                active=result.active,
+                blacklist_reason=result.blacklist_reason,
+                cooldown=result.cooldown,
+                cooldown_start_ts=result.cooldown_start_ts,
+                id=result.id,
+                exchange_id=result.exchange_values[0].exchange_id,
+                quote_asset=result.quote_asset,
+                base_asset=result.base_asset,
+                asset_indices=[
+                    AssetIndexTable(id=index.id, name=index.name)
+                    for index in result.asset_indices
+                ],
+                min_notional=result.exchange_values[0].min_notional,
+                price_precision=result.exchange_values[0].price_precision,
+                qty_precision=result.exchange_values[0].qty_precision,
+                is_margin_trading_allowed=result.exchange_values[
+                    0
+                ].is_margin_trading_allowed,
+            )
+            list_results.append(data)
         self.session.close()
-        return list(results)
+        return list_results
 
     def get_symbol(
         self, symbol: str, exchange_id: ExchangeId = ExchangeId.BINANCE
-    ) -> SymbolTable:
+    ) -> SymbolModel:
         """
         Get single symbol
 
@@ -185,8 +208,30 @@ class SymbolsCrud:
 
         result = self.session.exec(statement).first()
         if result:
+            # normalise data
+            data = SymbolModel(
+                active=result.active,
+                blacklist_reason=result.blacklist_reason,
+                cooldown=result.cooldown,
+                cooldown_start_ts=result.cooldown_start_ts,
+                id=result.id,
+                exchange_id=result.exchange_values[0].exchange_id,
+                quote_asset=result.quote_asset,
+                base_asset=result.base_asset,
+                asset_indices=[
+                    AssetIndexTable(id=index.id, name=index.name)
+                    for index in result.asset_indices
+                ],
+                min_notional=result.exchange_values[0].min_notional,
+                price_precision=result.exchange_values[0].price_precision,
+                qty_precision=result.exchange_values[0].qty_precision,
+                is_margin_trading_allowed=result.exchange_values[
+                    0
+                ].is_margin_trading_allowed,
+            )
+
             self.session.close()
-            return result
+            return data
         else:
             self.session.close()
             raise BinbotErrors("Symbol not found")

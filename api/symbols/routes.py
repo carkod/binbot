@@ -33,8 +33,10 @@ def get_all_symbols(
         response_model = SymbolsCrud(session=session).get_all(
             active=active, index_id=index, exchange_id=exchange_id
         )
-        data = SymbolsResponse.dump_from_table(response_model)
-        return {"message": "Successfully retrieved active symbols", "data": data}
+        return {
+            "message": "Successfully retrieved active symbols",
+            "data": response_model,
+        }
     except Exception as e:
         return SymbolsResponse(message=f"Error retrieving active symbols: {e}", error=1)
 
@@ -89,15 +91,9 @@ def get_one_symbol(
         data = SymbolsCrud(session=session).get_symbol(
             symbol=pair, exchange_id=exchange_id
         )
-
-        symbol_data = data.model_dump()
-        exchange = data.exchange_values[0] if data.exchange_values else None
-        if exchange:
-            symbol_data.update(exchange.model_dump(exclude={"id"}))
-
         return {
             "message": "Successfully retrieved symbols!",
-            "data": symbol_data,
+            "data": data,
         }
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
