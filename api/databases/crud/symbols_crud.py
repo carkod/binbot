@@ -215,6 +215,8 @@ class SymbolsCrud:
             active=active,
             cooldown=cooldown,
             cooldown_start_ts=cooldown_start_ts,
+            quote_asset=quote_asset,
+            base_asset=base_asset,
         )
         self.session.add(symbol_table)
         self.session.commit()
@@ -226,8 +228,6 @@ class SymbolsCrud:
             min_notional=min_notional,
             price_precision=price_precision,
             qty_precision=qty_precision,
-            quote_asset=quote_asset,
-            base_asset=base_asset,
             is_margin_trading_allowed=is_margin_trading_allowed,
         )
         self.session.add(exchange_link)
@@ -414,6 +414,7 @@ class SymbolsCrud:
                     price_precision=price_precision,
                     qty_precision=qty_precision,
                     min_notional=min_notional,
+                    is_margin_trading_allowed=item["isMarginTradingAllowed"],
                 )
 
         self.session.close()

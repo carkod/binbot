@@ -131,26 +131,32 @@ services:
   #     - .env
   #   command: ["python3", "-m", "consumer"]
 
-  # api:
-  #   build: .
-  #   networks:
-  #     - kafka_network
-  #   restart: on-failure
-  #   container_name: binbot
-  #   depends_on:
-  #     api_db:
-  #       condition: service_healthy
-  #       restart: true
-  #     data_db:
-  #       condition: service_healthy
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     - MONGO_HOSTNAME=localhost
-  #     - POSTGRES_HOSTNAME=api_db
-  #   ports:
-  #     - 8007:80
-  #     - 8008:8006
+  api:
+    build: .
+    networks:
+      - kafka_network
+    restart: on-failure
+    container_name: binbot
+    depends_on:
+      api_db:
+        condition: service_healthy
+        restart: true
+      data_db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - MONGO_HOSTNAME=localhost
+      - POSTGRES_HOSTNAME=api_db
+    ports:
+      - 8007:80
+      - 8008:8006
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8006/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   # streaming:
   #   build:
