@@ -3,15 +3,17 @@ WORKDIR /app
 COPY /terminal/ /app/
 RUN npm install && npm run build
 
-FROM unit:1.33.0-python3.11
+FROM python:3.11
+RUN apt-get update && \
+    apt-get install -y libpq-dev nginx && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 COPY api api
 WORKDIR api
-RUN python3 -m pip install uv
-ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
-RUN uv sync --no-cache --locked --no-dev
-RUN rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/*.list
-COPY ./config.json /docker-entrypoint.d/config.json
+RUN pip install uv uvicorn fastapi \
+    && uv sync --no-dev --locked --no-cache
+COPY nginx.conf /etc/nginx/nginx.conf
 
 STOPSIGNAL SIGTERM
-EXPOSE 80 443 8006 5432 8007 81
+EXPOSE 80 443 8000 5432 81

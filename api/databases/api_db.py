@@ -41,7 +41,7 @@ class ApiDb:
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
         self.create_dummy_bot()
-        self.init_symbols()
+        # self.init_symbols()
         # Depends on autotrade settings
         self.init_balances()
 
@@ -269,7 +269,7 @@ class ApiDb:
         # try:
         #     self.symbols.get_symbol("DASHBTC")
         # except BinbotErrors:
-        self.symbols.etl_symbols_ingestion(delete_existing=True)
+        # self.symbols.etl_symbols_ingestion(delete_existing=True)
 
         pass
 

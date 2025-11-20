@@ -55,9 +55,9 @@ jobs:
         run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d binbot
 
       - name: Test back-end
-        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost:8006
+        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost:8008
       - name: Test front-end
-        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost
+        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost:8007
       - name: Tag image
         if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
