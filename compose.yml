@@ -135,7 +135,7 @@ services:
     build: .
     networks:
       - kafka_network
-    restart: on-failure
+    restart: no
     container_name: binbot
     depends_on:
       api_db:
@@ -148,40 +148,38 @@ services:
     environment:
       - MONGO_HOSTNAME=localhost
       - POSTGRES_HOSTNAME=api_db
-    ports:
-      - 8007:80
-      - 8008:8006
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8008"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8008/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://api:8000/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 20s
 
-  api-nginx:
+  api_nginx:
     image: nginx:alpine
     networks:
       - kafka_network
     restart: on-failure
     container_name: binbot_nginx
+    ports:
+      - 8008:8000
+      - 8007:80
     depends_on:
       - api
     env_file:
       - .env
 
-  # streaming:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.streaming
-  #   image: binbot_streaming
-  #   env_file:
-  #     - .env
-  #   restart: on-failure
-  #   container_name: binbot_streaming
-  #   depends_on:
-  #     - api
-  #     - db
+  streaming:
+    build:
+      context: .
+      dockerfile: Dockerfile.streaming
+    image: binbot_streaming
+    env_file:
+      - .env
+    restart: on-failure
+    container_name: binbot_streaming
+    depends_on:
+      - api
 
   # crobjobs:
   #   build:

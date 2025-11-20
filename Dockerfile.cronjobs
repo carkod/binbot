@@ -1,9 +1,11 @@
 FROM python:3.11
-COPY api api
-WORKDIR api
-RUN python3 -m pip install uv
-ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
-RUN uv sync --no-cache --locked --no-dev
-ENTRYPOINT ["python3", "-u", "cronjobs.py"]
+RUN apt-get update && \
+    apt-get install -y libpq-dev nginx && \
+    rm -rf /var/lib/apt/lists/*
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY api/ /api/
+WORKDIR /api
+RUN uv sync --frozen --no-cache
 STOPSIGNAL SIGTERM
+ENTRYPOINT ["uv", "run", "cronjobs.py"]
