@@ -36,7 +36,8 @@ class SymbolsCrud:
             session = independent_session()
         self.session = session
         self.binance_api = BinanceApi()
-        self.autotrade_settings = AutotradeCrud(session=session).get_settings()
+        autotrade_crud = AutotradeCrud()
+        self.autotrade_settings = autotrade_crud.get_settings()
         self.exchange_id = self.autotrade_settings.exchange_id
 
     """
@@ -183,13 +184,13 @@ class SymbolsCrud:
                 cooldown=result.cooldown,
                 cooldown_start_ts=result.cooldown_start_ts,
                 id=result.id,
-                exchange_id=result.exchange_values[0].exchange_id,
                 quote_asset=result.quote_asset,
                 base_asset=result.base_asset,
                 asset_indices=[
                     AssetIndexTable(id=index.id, name=index.name)
                     for index in result.asset_indices
                 ],
+                exchange_id=result.exchange_values[0].exchange_id,
                 is_margin_trading_allowed=result.exchange_values[
                     0
                 ].is_margin_trading_allowed,
@@ -224,6 +225,7 @@ class SymbolsCrud:
                     AssetIndexTable(id=index.id, name=index.name)
                     for index in result.asset_indices
                 ],
+                exchange_id=result.exchange_values[0].exchange_id,
                 is_margin_trading_allowed=result.exchange_values[
                     0
                 ].is_margin_trading_allowed,
@@ -252,7 +254,7 @@ class SymbolsCrud:
         cooldown: int = 0,
         cooldown_start_ts: int = 0,
         is_margin_trading_allowed: bool = False,
-    ) -> SymbolExchangeTable:
+    ) -> SymbolModel:
         """
         Add a new symbol and its exchange-specific data
         """
@@ -281,7 +283,8 @@ class SymbolsCrud:
         self.session.commit()
         self.session.refresh(exchange_link)
         self.session.close()
-        return exchange_link
+        # Return the full symbol with exchange data
+        return self.get_symbol(symbol)
 
     def edit_symbol_item(
         self,
@@ -297,23 +300,30 @@ class SymbolsCrud:
         the entire API.
         """
 
-        symbol_model = self.get_symbol(data.id)
-        symbol_model.active = data.active
+        # Get the actual database table object
+        statement = select(SymbolTable).where(SymbolTable.id == data.id)
+        symbol_table = self.session.exec(statement).first()
+
+        if not symbol_table:
+            raise BinbotErrors("Symbol not found")
+
+        symbol_table.active = data.active
 
         if data.blacklist_reason:
-            symbol_model.blacklist_reason = data.blacklist_reason
+            symbol_table.blacklist_reason = data.blacklist_reason
 
         if data.cooldown:
-            symbol_model.cooldown = data.cooldown
+            symbol_table.cooldown = data.cooldown
 
         if data.cooldown_start_ts:
-            symbol_model.cooldown_start_ts = data.cooldown_start_ts
+            symbol_table.cooldown_start_ts = data.cooldown_start_ts
 
-        self.session.add(symbol_model)
+        self.session.add(symbol_table)
         self.session.commit()
-        self.session.refresh(symbol_model)
+        self.session.refresh(symbol_table)
         self.session.close()
-        return symbol_model
+        # Return as SymbolModel
+        return self.get_symbol(data.id)
 
     def update_symbol_indexes(self, data: SymbolRequestPayload):
         """
@@ -351,10 +361,19 @@ class SymbolsCrud:
 
     def delete_symbol(self, symbol: str):
         """
-        Delete a blacklisted item
+        Delete a symbol (cascade deletes SymbolExchangeTable entries automatically)
         """
+        # Get the symbol model for return value before deletion
         symbol_model = self.get_symbol(symbol)
-        self.session.delete(symbol_model)
+
+        # Delete the symbol (cascade will handle exchange links)
+        statement = select(SymbolTable).where(SymbolTable.id == symbol)
+        symbol_table = self.session.exec(statement).first()
+
+        if not symbol_table:
+            raise BinbotErrors("Symbol not found")
+
+        self.session.delete(symbol_table)
         self.session.commit()
         self.session.close()
         return symbol_model

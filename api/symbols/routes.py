@@ -115,18 +115,23 @@ def add_symbol(
 
     If active=False, the pair is blacklisted
     """
-    data = SymbolsCrud(session=session).add_symbol(
-        symbol=symbol,
-        reason=reason,
-        active=active,
-        quote_asset=quote_asset,
-        base_asset=base_asset,
-        min_notional=min_notional,
-        price_precision=price_precision,
-        qty_precision=qty_precision,
-        exchange_id=exchange_id,
-    )
-    return GetOneSymbolResponse(message="Symbols found!", data=data)
+    try:
+        data = SymbolsCrud(session=session).add_symbol(
+            symbol=symbol,
+            reason=reason,
+            active=active,
+            quote_asset=quote_asset,
+            base_asset=base_asset,
+            min_notional=min_notional,
+            price_precision=price_precision,
+            qty_precision=qty_precision,
+            exchange_id=exchange_id,
+        )
+        return GetOneSymbolResponse(message="Symbols found!", data=data)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+    except Exception as e:
+        return StandardResponse(message=f"Error adding symbol: {str(e)}", error=1)
 
 
 @symbols_blueprint.delete(
@@ -144,8 +149,13 @@ def delete_symbol(pair: str, session: Session = Depends(get_session)):
     If need to blacklist, simply
     set active=False
     """
-    data = SymbolsCrud(session=session).delete_symbol(pair)
-    return GetOneSymbolResponse(message="Symbol deleted", data=data)
+    try:
+        data = SymbolsCrud(session=session).delete_symbol(pair)
+        return GetOneSymbolResponse(message="Symbol deleted", data=data)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+    except Exception as e:
+        return StandardResponse(message=f"Error deleting symbol: {str(e)}", error=1)
 
 
 @symbols_blueprint.put("/symbol", response_model=GetOneSymbolResponse, tags=["Symbols"])
@@ -156,5 +166,12 @@ def edit_symbol(
     """
     Modify a blacklisted item
     """
-    data = SymbolsCrud(session=session).edit_symbol_item(data)
-    return GetOneSymbolResponse(message="Symbol edited and candles removed", data=data)
+    try:
+        data = SymbolsCrud(session=session).edit_symbol_item(data)
+        return GetOneSymbolResponse(
+            message="Symbol edited and candles removed", data=data
+        )
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+    except Exception as e:
+        return StandardResponse(message=f"Error editing symbol: {str(e)}", error=1)

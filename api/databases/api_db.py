@@ -33,8 +33,6 @@ class ApiDb:
 
     def __init__(self):
         self.session = Session(engine)
-        self.symbols = SymbolsCrud(self.session)
-        self.asset_indexes = AssetIndexCrud(self.session)
         self.kafka_db = setup_kafka_db()
         pass
 
@@ -92,7 +90,7 @@ class ApiDb:
             trailling_profit=2.3,
             autotrade=True,
             autoswitch=False,
-            exchange_id=ExchangeId.BINANCE.value,
+            exchange_id=ExchangeId.BINANCE,
         )
 
         self.session.add(autotrade_data)
@@ -123,7 +121,7 @@ class ApiDb:
             trailling_deviation=1.63,
             trailling_profit=2.3,
             autotrade=False,
-            exchange_id=ExchangeId.BINANCE.value,
+            exchange_id=ExchangeId.BINANCE,
         )
         self.session.add(test_autotrade_data)
         self.session.commit()
@@ -286,6 +284,9 @@ class ApiDb:
         First check if symbols have been updated in the last 24 hours.
         Use BNBUSDC, because db init will add BTCUSDC
         """
+        self.symbols = SymbolsCrud(self.session)
+        self.asset_indexes = AssetIndexCrud(self.session)
+
         try:
             self.symbols.get_symbol("DASHBTC")
         except BinbotErrors:

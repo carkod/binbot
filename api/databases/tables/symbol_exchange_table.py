@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, Enum, Float
+from sqlalchemy import Column, Enum, Float, ForeignKey
 from tools.enum_definitions import ExchangeId
 from databases.tables.symbol_table import SymbolTable
 
@@ -11,7 +11,9 @@ class SymbolExchangeTable(SQLModel, table=True):
     exchange_id: ExchangeId = Field(
         sa_column=Column(Enum(ExchangeId, name="exchange_id_enum"))
     )
-    symbol_id: str = Field(foreign_key="symbol.id")
+    symbol_id: str = Field(
+        sa_column=Column(ForeignKey("symbol.id", ondelete="CASCADE"))
+    )
     min_notional: float = Field(
         default=0,
         sa_column=Column(Float),

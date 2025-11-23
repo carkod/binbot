@@ -18,7 +18,10 @@ down:  ## Shutdown Docker Compose services
 	docker compose down -f ../compose.yml --volumes --remove-orphans
 
 test:  ## Run tests
-	uv run pytest -v --tb=short --disable-warnings --maxfail=1
+	uv run pytest tests/ -v
+
+dump-fixtures:  ## Dump test fixtures from database (requires DB to be running)
+	uv run python tests/fixtures/dump_fixtures.py
 
 migrate:  ## Apply latest alembic migrations
 	uv run alembic upgrade head

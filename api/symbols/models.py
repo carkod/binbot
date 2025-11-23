@@ -41,6 +41,9 @@ class SymbolModel(BaseModel):
     asset_indices: list[AssetIndexModel] = Field(
         default=[], description="list of asset indices e.g. memecoin"
     )
+    exchange_id: ExchangeId = Field(
+        description="Exchange name where the exchange-specific values belong to (below)"
+    )
     is_margin_trading_allowed: bool = Field(default=False)
     price_precision: int = Field(
         default=0,
