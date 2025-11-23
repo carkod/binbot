@@ -15,6 +15,7 @@ from tools.enum_definitions import (
     UserRoles,
     OrderStatus,
 )
+from tools.exceptions import BinbotErrors
 from alembic.config import Config
 from alembic import command
 from databases.utils import engine
@@ -22,7 +23,6 @@ from account.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.db import setup_kafka_db
-from tools.exceptions import BinbotErrors
 
 
 class ApiDb:
@@ -270,7 +270,7 @@ class ApiDb:
         try:
             self.symbols.get_symbol("DASHBTC")
         except BinbotErrors:
-            self.symbols.etl_symbols_ingestion()
+            self.symbols.etl_symbols_ingestion(delete_existing=True)
 
         pass
 

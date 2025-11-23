@@ -1,0 +1,151 @@
+name: Deployment checks
+on:
+  pull_request:
+  workflow_dispatch:
+env:
+  ACTIONS_RUNNER_DEBUG: false
+  SECRET_KEY: test
+  ENV: ci
+  FRONTEND_DOMAIN: http://localhost
+  MONGO_AUTH_USERNAME: root
+  MONGO_AUTH_PASSWORD: rootPassXXX
+  MONGO_APP_DATABASE: binbot
+  MONGO_KAFKA_DATABASE: kafka
+  MONGO_AUTH_DATABASE: admin
+  MONGO_HOSTNAME: data_db
+  MONGO_PORT: 27017
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  POSTGRES_DB: "postgres"
+
+jobs:
+  deploy_api:
+    name: API
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      data_db:
+        image: mongo:latest
+        options: >-
+          --health-cmd mongosh
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        env:
+          MONGO_INITDB_ROOT_USERNAME: ${{ env.MONGO_AUTH_USERNAME }}
+          MONGO_INITDB_ROOT_PASSWORD: ${{ env.MONGO_AUTH_PASSWORD }}
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+      - name: Build image
+        run: |
+          docker build -t carloswufei/binbot:${{ github.sha }} -t carloswufei/binbot:latest -f api/Dockerfile api
+      - name: Run docker container
+        run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d carloswufei/binbot:${{ github.sha }}
+
+      - name: Test back-end
+        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost:8000
+      - name: Push to Docker Hub
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push carloswufei/binbot:${{ github.sha }}
+          docker push carloswufei/binbot:latest
+
+  deploy_terminal:
+    name: Terminal
+    runs-on: ubuntu-latest
+    services:
+      nginx:
+        image: nginx:alpine
+        ports:
+          - 80:80
+        options: >-
+          --health-cmd "curl -f http://localhost || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+      - name: Build image
+        run: |
+          docker build -t carloswufei/binbot_nginx:${{ github.sha }} -t carloswufei/binbot_nginx:latest .
+
+      - name: Test front-end
+        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost
+      - name: Push to Docker Hub
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push carloswufei/binbot_nginx:${{ github.sha }}
+          docker push carloswufei/binbot_nginx:latest
+
+  deploy_streaming:
+    name: Streaming
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Build image
+        run: |
+          docker build -t carloswufei/binbot_streaming:${{ github.sha }} -t carloswufei/binbot_streaming:latest -f api/Dockerfile.streaming api
+      - name: Test run script
+        run: |
+          docker run --network host --name binbot_streaming \
+          -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
+          -e MONGO_PORT=${{ env.MONGO_PORT }} \
+          -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
+          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
+          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
+          -e PYTHONUNBUFFERED=TRUE \
+          -e ENV=ci -d carloswufei/binbot_streaming:${{ github.sha }}
+
+      - name: Push to Docker Hub
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push carloswufei/binbot_streaming:${{ github.sha }}
+          docker push carloswufei/binbot_streaming:latest
+
+  deploy_cronjobs:
+    name: Cronjobs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+      - name: Build image
+        run: |
+          docker build -t carloswufei/binbot_cronjobs:${{ github.sha }} -t carloswufei/binbot_cronjobs:latest -f api/Dockerfile.cronjobs api
+      - name: Test run script
+        run: |
+          docker run --network host --name binbot_cronjobs \
+          -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
+          -e MONGO_PORT=${{ env.MONGO_PORT }} \
+          -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
+          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
+          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
+          -e PYTHONUNBUFFERED=TRUE \
+          -e ENV=ci -d carloswufei/binbot_cronjobs:${{ github.sha }}
+
+      - name: Push to Docker Hub
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push carloswufei/binbot_cronjobs:${{ github.sha }}
+          docker push carloswufei/binbot_cronjobs:latest

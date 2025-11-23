@@ -1,9 +1,0 @@
-FROM python:3.11
-COPY api api
-WORKDIR api
-RUN python3 -m pip install uv
-ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
-RUN uv sync --no-cache --locked --no-dev
-ENTRYPOINT ["python3", "-u", "cronjobs.py"]
-
-STOPSIGNAL SIGTERM
