@@ -57,7 +57,7 @@ class OrderController(Account):
         taking data from API db
         """
         symbol_info = self.symbols_crud.get_symbol(symbol)
-        return symbol_info.exchange_values[self.exchange_id].price_precision
+        return symbol_info.price_precision
 
     def calculate_qty_precision(self, symbol: str) -> int:
         """
@@ -65,7 +65,7 @@ class OrderController(Account):
         taking data from API db
         """
         symbol_info = self.symbols_crud.get_symbol(symbol)
-        return symbol_info.exchange_values[self.exchange_id].qty_precision
+        return symbol_info.qty_precision
 
     def simulate_order(self, pair: str, side: OrderSide, qty=1):
         """

@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Sequence
+from typing import Optional, Sequence
 from tools.enum_definitions import ExchangeId
 from tools.handle_error import StandardResponse
 from databases.tables.symbol_table import SymbolTable
@@ -9,23 +9,6 @@ from time import time
 class AssetIndexModel(BaseModel):
     id: str = Field(description="Unique ID")
     name: str = Field(default="", description="Name of the index")
-
-
-class ExchangeValueModel(BaseModel):
-    """
-    Pydantic model for ExchangeValueTable.
-
-    This model has to be kept identical with databases.tables.ExchangeValueTable
-    but instead it's attached as an object inside SymbolModel
-    """
-
-    is_margin_trading_allowed: bool = Field(default=False)
-    price_precision: int = Field(
-        default=0,
-        description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
-    )
-    qty_precision: int = Field(default=0)
-    min_notional: float = Field(default=0, description="Minimum price x qty value")
 
 
 class SymbolModel(BaseModel):
@@ -55,13 +38,16 @@ class SymbolModel(BaseModel):
         default=0,
         description="Timestamp when cooldown started in milliseconds",
     )
-    exchange_values: Dict[ExchangeId, ExchangeValueModel] = Field(
-        default_factory=dict,
-        description="Exchange values associated with this symbol",
-    )
     asset_indices: list[AssetIndexModel] = Field(
         default=[], description="list of asset indices e.g. memecoin"
     )
+    is_margin_trading_allowed: bool = Field(default=False)
+    price_precision: int = Field(
+        default=0,
+        description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
+    )
+    qty_precision: int = Field(default=0)
+    min_notional: float = Field(default=0, description="Minimum price x qty value")
 
 
 class SymbolsResponse(StandardResponse):
@@ -86,8 +72,12 @@ class SymbolsResponse(StandardResponse):
                     symbol["asset_indices"].append(asset.model_dump())
 
             if len(s.exchange_values) > 0:
-                exchange = s.exchange_values[0]
-                symbol.update(exchange.model_dump())
+                symbol["is_margin_trading_allowed"] = s.exchange_values[
+                    0
+                ].is_margin_trading_allowed
+                symbol["price_precision"] = s.exchange_values[0].price_precision
+                symbol["qty_precision"] = s.exchange_values[0].qty_precision
+                symbol["min_notional"] = s.exchange_values[0].min_notional
 
             new_data.append(symbol)
 

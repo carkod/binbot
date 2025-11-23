@@ -47,12 +47,8 @@ class BaseDeal(OrderController):
         self.symbols_crud = SymbolsCrud()
         self.market_domination_reversal: bool | None = None
         self.symbol_info = self.symbols_crud.get_symbol(bot.pair)
-        self.price_precision = self.symbol_info.exchange_values[
-            self.exchange_id
-        ].price_precision
-        self.qty_precision = self.symbol_info.exchange_values[
-            self.exchange_id
-        ].qty_precision
+        self.price_precision = self.symbol_info.price_precision
+        self.qty_precision = self.symbol_info.qty_precision
 
         if bot.quote_asset.is_fiat():
             self.quote_qty_precision = self.calculate_qty_precision(

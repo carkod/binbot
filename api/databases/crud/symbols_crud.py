@@ -1,5 +1,6 @@
 from exchange_apis.kucoin import KucoinApi
 from databases.crud.asset_index_crud import AssetIndexCrud
+from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 from databases.utils import independent_session
 from sqlmodel import Session, select, SQLModel
@@ -8,7 +9,7 @@ from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
-from symbols.models import SymbolModel, SymbolRequestPayload, ExchangeValueModel
+from symbols.models import SymbolModel, SymbolRequestPayload
 from decimal import Decimal
 from time import time
 from typing import cast
@@ -35,6 +36,8 @@ class SymbolsCrud:
             session = independent_session()
         self.session = session
         self.binance_api = BinanceApi()
+        self.autotrade_settings = AutotradeCrud(session=session).get_settings()
+        self.exchange_id = self.autotrade_settings.exchange_id
 
     """
     Convert binance tick/step sizes to decimal
@@ -68,6 +71,7 @@ class SymbolsCrud:
                     ColumnElement, SymbolExchangeTable.symbol_id == SymbolTable.id
                 ),
             )
+            .where(SymbolExchangeTable.exchange_id == self.exchange_id)
         )
         return statement
 
@@ -186,15 +190,12 @@ class SymbolsCrud:
                     AssetIndexTable(id=index.id, name=index.name)
                     for index in result.asset_indices
                 ],
-                exchange_values={
-                    ev.exchange_id: ExchangeValueModel(
-                        is_margin_trading_allowed=ev.is_margin_trading_allowed,
-                        price_precision=ev.price_precision,
-                        qty_precision=ev.qty_precision,
-                        min_notional=ev.min_notional,
-                    )
-                    for ev in result.exchange_values
-                },
+                is_margin_trading_allowed=result.exchange_values[
+                    0
+                ].is_margin_trading_allowed,
+                price_precision=result.exchange_values[0].price_precision,
+                qty_precision=result.exchange_values[0].qty_precision,
+                min_notional=result.exchange_values[0].min_notional,
             )
             list_results.append(data)
         self.session.close()
@@ -223,15 +224,12 @@ class SymbolsCrud:
                     AssetIndexTable(id=index.id, name=index.name)
                     for index in result.asset_indices
                 ],
-                exchange_values={
-                    ev.exchange_id: ExchangeValueModel(
-                        is_margin_trading_allowed=ev.is_margin_trading_allowed,
-                        price_precision=ev.price_precision,
-                        qty_precision=ev.qty_precision,
-                        min_notional=ev.min_notional,
-                    )
-                    for ev in result.exchange_values
-                },
+                is_margin_trading_allowed=result.exchange_values[
+                    0
+                ].is_margin_trading_allowed,
+                price_precision=result.exchange_values[0].price_precision,
+                qty_precision=result.exchange_values[0].qty_precision,
+                min_notional=result.exchange_values[0].min_notional,
             )
 
             self.session.close()

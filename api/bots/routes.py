@@ -157,9 +157,7 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
     bot_model = BotModel.dump_from_table(bot)
     if bot_model.strategy == Strategy.margin_short:
         deal_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(bot_model)
-        if not deal_instance.symbol_info.exchange_values[
-            deal_instance.exchange_id
-        ].is_margin_trading_allowed:
+        if not deal_instance.symbol_info.is_margin_trading_allowed:
             return BotResponse(
                 message=f"Margin trading is not allowed for {bot_model.pair}. Cannot activate margin_short bot.",
                 data=bot_model,

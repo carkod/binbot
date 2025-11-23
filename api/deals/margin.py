@@ -79,9 +79,7 @@ class MarginDeal(MarginDealAbstract):
             )
             self.execute_stop_loss()
             if self.active_bot.margin_short_reversal:
-                if not self.symbol_info.exchange_values[
-                    self.exchange_id
-                ].is_margin_trading_allowed:
+                if not self.symbol_info.is_margin_trading_allowed:
                     self.active_bot.add_log(
                         f"Margin trading not allowed for {self.active_bot.pair}. Cannot switch to long bot."
                     )
@@ -229,9 +227,7 @@ class MarginDeal(MarginDealAbstract):
         )
 
         if not base_order_deal:
-            if not self.symbol_info.exchange_values[
-                self.exchange_id
-            ].is_margin_trading_allowed:
+            if not self.symbol_info.is_margin_trading_allowed:
                 self.active_bot.margin_short_reversal = False
                 self.controller.update_logs(
                     f"Disabled auto long bot reversal. Exchange doesn't support margin trading for {self.active_bot.pair}.",
