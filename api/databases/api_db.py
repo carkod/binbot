@@ -267,10 +267,10 @@ class ApiDb:
         First check if symbols have been updated in the last 24 hours.
         Use BNBUSDC, because db init will add BTCUSDC
         """
-        try:
-            self.symbols.get_symbol("DASHBTC")
-        except BinbotErrors:
-            self.symbols.etl_symbols_ingestion(delete_existing=True)
+        # try:
+        #     self.symbols.get_symbol("DASHBTC")
+        # except BinbotErrors:
+        self.symbols.etl_symbols_ingestion(delete_existing=True)
 
         pass
 

@@ -2,7 +2,7 @@ import { notifification } from "../utils/api";
 import { type StandardResponse } from "../utils/api.types";
 import { userApiSlice } from "./userApiSlice";
 
-export interface SymbolPayload {
+export interface SymbolRequestPayload {
   id: string;
   // If symbols blacklisted active = false
   active: boolean;
@@ -89,7 +89,7 @@ export const symbolsApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    updateSymbol: build.mutation<void, SymbolPayload>({
+    updateSymbol: build.mutation<void, SymbolRequestPayload>({
       query: (body) => ({
         url: `${import.meta.env.VITE_SYMBOL}`,
         method: "PUT",

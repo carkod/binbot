@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Dict, Optional, Sequence
 from tools.enum_definitions import ExchangeId
 from tools.handle_error import StandardResponse
 from databases.tables.symbol_table import SymbolTable
@@ -9,6 +9,23 @@ from time import time
 class AssetIndexModel(BaseModel):
     id: str = Field(description="Unique ID")
     name: str = Field(default="", description="Name of the index")
+
+
+class ExchangeValueModel(BaseModel):
+    """
+    Pydantic model for ExchangeValueTable.
+
+    This model has to be kept identical with databases.tables.ExchangeValueTable
+    but instead it's attached as an object inside SymbolModel
+    """
+
+    is_margin_trading_allowed: bool = Field(default=False)
+    price_precision: int = Field(
+        default=0,
+        description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
+    )
+    qty_precision: int = Field(default=0)
+    min_notional: float = Field(default=0, description="Minimum price x qty value")
 
 
 class SymbolModel(BaseModel):
@@ -27,26 +44,20 @@ class SymbolModel(BaseModel):
     active: bool = Field(default=True, description="Blacklisted items = False")
     blacklist_reason: str = Field(default="")
     description: str = Field(default="", description="Description of the symbol")
-    is_margin_trading_allowed: bool = Field(default=False)
     quote_asset: str = Field(
         default="", description="in BTCUSDC, BTC would be quote asset"
     )
     base_asset: str = Field(
         default="", description="in BTCUSDC, USDC would be base asset"
     )
-    price_precision: int = Field(
-        default=0,
-        description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
-    )
-    qty_precision: int = Field(default=0)
-    min_notional: float = Field(default=0, description="Minimum price x qty value")
     cooldown: int = Field(default=0, description="Time in seconds between trades")
     cooldown_start_ts: int = Field(
         default=0,
         description="Timestamp when cooldown started in milliseconds",
     )
-    exchange_id: ExchangeId = Field(
-        description="Exchange name where this symbol belongs to",
+    exchange_values: Dict[ExchangeId, ExchangeValueModel] = Field(
+        default_factory=dict,
+        description="Exchange values associated with this symbol",
     )
     asset_indices: list[AssetIndexModel] = Field(
         default=[], description="list of asset indices e.g. memecoin"
@@ -83,7 +94,7 @@ class SymbolsResponse(StandardResponse):
         return new_data
 
 
-class SymbolPayload(BaseModel):
+class SymbolRequestPayload(BaseModel):
     id: str
     blacklist_reason: str = ""
     active: bool = True

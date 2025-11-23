@@ -8,7 +8,7 @@ from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
 from exchange_apis.binance import BinanceApi
-from symbols.models import SymbolModel, SymbolPayload
+from symbols.models import SymbolModel, SymbolRequestPayload, ExchangeValueModel
 from decimal import Decimal
 from time import time
 from typing import cast
@@ -49,7 +49,7 @@ class SymbolsCrud:
         exponent = abs(int(decimal.exponent))
         return exponent
 
-    def _exchange_combined_statement(self, exchange_id: ExchangeId = ExchangeId.KUCOIN):
+    def _exchange_combined_statement(self):
         """
         Multi-exchange support
 
@@ -62,8 +62,7 @@ class SymbolsCrud:
                 selectinload(cast(QueryableAttribute, SymbolTable.exchange_values)),
                 selectinload(cast(QueryableAttribute, SymbolTable.asset_indices)),
             )
-            .join(SymbolExchangeTable)
-            .where(SymbolExchangeTable.exchange_id == exchange_id)
+            .join(SymbolExchangeTable, SymbolExchangeTable.symbol_id == SymbolTable.id)
         )
         return statement
 
@@ -125,7 +124,6 @@ class SymbolsCrud:
         self,
         active: Optional[bool] = None,
         index_id: Optional[str] = None,
-        exchange_id: ExchangeId = ExchangeId.BINANCE,
     ) -> list[SymbolModel]:
         """
         Get all symbols
@@ -149,7 +147,7 @@ class SymbolsCrud:
         if no results are found, returns empty list
         """
 
-        statement = self._exchange_combined_statement(exchange_id=exchange_id)
+        statement = self._exchange_combined_statement()
 
         if index_id is not None:
             # cast here is used to avoid mypy complaining
@@ -183,28 +181,27 @@ class SymbolsCrud:
                     AssetIndexTable(id=index.id, name=index.name)
                     for index in result.asset_indices
                 ],
-                min_notional=result.exchange_values[0].min_notional,
-                price_precision=result.exchange_values[0].price_precision,
-                qty_precision=result.exchange_values[0].qty_precision,
-                is_margin_trading_allowed=result.exchange_values[
-                    0
-                ].is_margin_trading_allowed,
+                exchange_values={
+                    ev.exchange_id: ExchangeValueModel(
+                        is_margin_trading_allowed=ev.is_margin_trading_allowed,
+                        price_precision=ev.price_precision,
+                        qty_precision=ev.qty_precision,
+                        min_notional=ev.min_notional,
+                    )
+                    for ev in result.exchange_values
+                },
             )
             list_results.append(data)
         self.session.close()
         return list_results
 
-    def get_symbol(
-        self, symbol: str, exchange_id: ExchangeId = ExchangeId.BINANCE
-    ) -> SymbolModel:
+    def get_symbol(self, symbol: str) -> SymbolModel:
         """
         Get single symbol
 
         Returns a single symbol dict
         """
-        statement = self._exchange_combined_statement(exchange_id=exchange_id).where(
-            SymbolTable.id == symbol
-        )
+        statement = self._exchange_combined_statement().where(SymbolTable.id == symbol)
 
         result = self.session.exec(statement).first()
         if result:
@@ -283,7 +280,7 @@ class SymbolsCrud:
 
     def edit_symbol_item(
         self,
-        data: SymbolPayload,
+        data: SymbolRequestPayload,
     ):
         """
         Edit a symbol item (previously known as blacklisted)
@@ -313,7 +310,7 @@ class SymbolsCrud:
         self.session.close()
         return symbol_model
 
-    def update_symbol_indexes(self, data: SymbolPayload):
+    def update_symbol_indexes(self, data: SymbolRequestPayload):
         """
         Update the asset indices (tags) for a symbol.
         Only updates the link table, so multiple symbols can share the same asset index.

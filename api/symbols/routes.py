@@ -5,7 +5,7 @@ from symbols.models import SymbolsResponse, GetOneSymbolResponse
 from databases.utils import get_session
 from sqlmodel import Session
 from tools.handle_error import StandardResponse, BinbotErrors
-from symbols.models import SymbolPayload
+from symbols.models import SymbolRequestPayload
 from typing import Optional
 
 symbols_blueprint = APIRouter()
@@ -16,7 +16,6 @@ def get_all_symbols(
     active: Optional[bool] = None,
     index: Optional[str] = None,
     session: Session = Depends(get_session),
-    exchange_id: ExchangeId = ExchangeId.BINANCE,
 ):
     """
     Get all symbols/pairs
@@ -31,7 +30,7 @@ def get_all_symbols(
     """
     try:
         response_model = SymbolsCrud(session=session).get_all(
-            active=active, index_id=index, exchange_id=exchange_id
+            active=active, index_id=index
         )
         return {
             "message": "Successfully retrieved active symbols",
@@ -57,7 +56,7 @@ def store_symbols(
 
 @symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
 def update_indexes(
-    data: SymbolPayload,
+    data: SymbolRequestPayload,
     session: Session = Depends(get_session),
 ):
     """
@@ -154,7 +153,7 @@ def delete_symbol(pair: str, session: Session = Depends(get_session)):
 
 @symbols_blueprint.put("/symbol", response_model=GetOneSymbolResponse, tags=["Symbols"])
 def edit_symbol(
-    data: SymbolPayload,
+    data: SymbolRequestPayload,
     session: Session = Depends(get_session),
 ):
     """
