@@ -15,6 +15,7 @@ from tools.enum_definitions import (
     UserRoles,
     OrderStatus,
 )
+from tools.exceptions import BinbotErrors
 from alembic.config import Config
 from alembic import command
 from databases.utils import engine
@@ -41,7 +42,7 @@ class ApiDb:
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
         self.create_dummy_bot()
-        # self.init_symbols()
+        self.init_symbols()
         # Depends on autotrade settings
         self.init_balances()
 
@@ -266,10 +267,10 @@ class ApiDb:
         First check if symbols have been updated in the last 24 hours.
         Use BNBUSDC, because db init will add BTCUSDC
         """
-        # try:
-        #     self.symbols.get_symbol("DASHBTC")
-        # except BinbotErrors:
-        # self.symbols.etl_symbols_ingestion(delete_existing=True)
+        try:
+            self.symbols.get_symbol("DASHBTC")
+        except BinbotErrors:
+            self.symbols.etl_symbols_ingestion(delete_existing=True)
 
         pass
 

@@ -21,4 +21,3 @@ pg_data
 .coverage
 .flake8
 mypy.ini
-.*_cache

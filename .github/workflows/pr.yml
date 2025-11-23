@@ -1,5 +1,7 @@
 name: PR checks
-on: pull_request
+on:
+  pull_request:
+
 env:
   ACTIONS_RUNNER_DEBUG: false
   SECRET_KEY: test
@@ -17,128 +19,6 @@ env:
   POSTGRES_DB: "postgres"
 
 jobs:
-  push_to_registry:
-    name: Test and deploy binbot
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432/tcp
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      data_db:
-        image: mongo:latest
-        options: >-
-          --health-cmd mongosh
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        env:
-          MONGO_INITDB_ROOT_USERNAME: ${{ env.MONGO_AUTH_USERNAME }}
-          MONGO_INITDB_ROOT_PASSWORD: ${{ env.MONGO_AUTH_PASSWORD }}
-        ports:
-          - 27017:27017
-
-      nginx:
-        image: nginx:alpine
-        ports:
-          - 80:80
-        options: >-
-          --health-cmd "curl -f http://localhost || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v4
-      - name: Build image
-        run: docker build --tag binbot .
-      - name: Run docker container
-        run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d binbot
-
-      - name: Test back-end
-        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost:8000
-      - name: Test front-end
-        run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost
-      - name: Tag image
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        run: |
-          docker commit binbot_api carloswufei/binbot &
-          docker tag binbot carloswufei/binbot
-      - name: Push to Docker Hub
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        run: |
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push carloswufei/binbot
-
-  deploy_streaming:
-    name: Deploy streaming
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v3
-      - name: Build image
-        run: docker build --tag binbot_streaming -f Dockerfile.streaming .
-      - name: Test run script
-        run: |
-          docker run --network host --name binbot_streaming \
-          -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
-          -e MONGO_PORT=${{ env.MONGO_PORT }} \
-          -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
-          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
-          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
-          -e PYTHONUNBUFFERED=TRUE \
-          -e ENV=ci -d binbot_streaming
-
-      - name: Tag image
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        run: |
-          docker commit binbot_streaming carloswufei/binbot_streaming &
-          docker tag binbot_streaming carloswufei/binbot_streaming
-      - name: Push to Docker Hub
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        run: |
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push carloswufei/binbot_streaming
-
-  deploy_cronjobs:
-    name: Deploy cronjobs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v4
-      - name: Build image
-        run: docker build --tag binbot_cronjobs -f Dockerfile.cronjobs .
-      - name: Test run script
-        run: |
-          docker run --network host --name binbot_cronjobs \
-          -e MONGO_HOSTNAME=${{ env.MONGO_HOSTNAME }} \
-          -e MONGO_PORT=${{ env.MONGO_PORT }} \
-          -e MONGO_APP_DATABASE=${{ env.MONGO_APP_DATABASE }} \
-          -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
-          -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
-          -e PYTHONUNBUFFERED=TRUE \
-          -e ENV=ci -d binbot_cronjobs
-
-      - name: Tag image
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        run: |
-          docker commit binbot_cronjobs carloswufei/binbot_cronjobs &
-          docker tag binbot_cronjobs carloswufei/binbot_cronjobs
-      - name: Push to Docker Hub
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        run: |
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push carloswufei/binbot_cronjobs
-
   python-tests:
     name: Python code tests
     runs-on: ubuntu-latest
