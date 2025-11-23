@@ -132,7 +132,9 @@ services:
   #   command: ["python3", "-m", "consumer"]
 
   api:
-    build: .
+    build:
+      context: api/
+      dockerfile: Dockerfile
     networks:
       - kafka_network
     restart: no
@@ -156,11 +158,13 @@ services:
       start_period: 20s
 
   api_nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: binbot_nginx
+    restart: unless-stopped
     networks:
       - kafka_network
-    restart: on-failure
-    container_name: binbot_nginx
     ports:
       - 8008:8000
       - 8007:80
@@ -168,10 +172,16 @@ services:
       - api
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8008 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   streaming:
     build:
-      context: .
+      context: api/
       dockerfile: Dockerfile.streaming
     image: binbot_streaming
     env_file:
@@ -181,18 +191,17 @@ services:
     depends_on:
       - api
 
-  # crobjobs:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.cronjobs
-  #   image: binbot_cronjobs
-  #   env_file:
-  #     - .env
-  #   restart: on-failure
-  #   container_name: binbot_cronjobs
-  #   depends_on:
-  #     # - api
-  #     - db
+  crobjobs:
+    build:
+      context: api/
+      dockerfile: Dockerfile.cronjobs
+    image: binbot_cronjobs
+    env_file:
+      - .env
+    restart: on-failure
+    container_name: binbot_cronjobs
+    depends_on:
+      - api
 
   # grafana:
   #   build:
