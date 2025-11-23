@@ -17,13 +17,14 @@ const SymbolsPage: FC = () => {
   const [deleteSymbol] = useDeleteSymbolMutation();
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
 
-  const [seletedSymbolsItem, setSeletedSymbolsItem] = useState<SymbolRequestPayload>({
-    id: "",
-    blacklist_reason: "",
-    active: true,
-    cooldown: 0,
-    cooldown_start_ts: 0,
-  });
+  const [seletedSymbolsItem, setSeletedSymbolsItem] =
+    useState<SymbolRequestPayload>({
+      id: "",
+      blacklist_reason: "",
+      active: true,
+      cooldown: 0,
+      cooldown_start_ts: 0,
+    });
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
 
   const {

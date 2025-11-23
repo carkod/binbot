@@ -5,11 +5,12 @@ from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
 from databases.tables.user_table import UserTable
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from sqlmodel import Session, select
+from sqlmodel import SQLModel, Session, select, text
 from tools.enum_definitions import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     DealType,
+    ExchangeId,
     Status,
     Strategy,
     UserRoles,
@@ -39,8 +40,8 @@ class ApiDb:
 
     def init_db(self):
         self.init_users()
-        self.init_autotrade_settings()
-        self.init_test_autotrade_settings()
+        self.init_autotrade_settings(delete_existing=True)
+        self.init_test_autotrade_settings(delete_existing=True)
         self.create_dummy_bot()
         self.init_symbols()
         # Depends on autotrade settings
@@ -52,10 +53,23 @@ class ApiDb:
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
 
-    def init_autotrade_settings(self):
+    def delete_autotrade_settings_table(self, table_name: str):
+        """
+        Delete autotrade settings table
+        Used for testing purposes
+        """
+        with engine.connect() as conn:
+            conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
+            conn.commit()
+            SQLModel.metadata.create_all(engine)
+
+    def init_autotrade_settings(self, delete_existing: bool = False):
         """
         Dummy data for testing autotrade_settings table
         """
+        if delete_existing:
+            self.delete_autotrade_settings_table("autotrade")
+
         statement = select(AutotradeTable).where(
             AutotradeTable.id == AutotradeSettingsDocument.settings
         )
@@ -78,12 +92,16 @@ class ApiDb:
             trailling_profit=2.3,
             autotrade=True,
             autoswitch=False,
+            exchange_id=ExchangeId.BINANCE.value,
         )
 
         self.session.add(autotrade_data)
         pass
 
-    def init_test_autotrade_settings(self):
+    def init_test_autotrade_settings(self, delete_existing: bool = False):
+        if delete_existing:
+            self.delete_autotrade_settings_table("test_autotrade")
+
         statement = select(TestAutotradeTable).where(
             TestAutotradeTable.id == AutotradeSettingsDocument.test_autotrade_settings
         )
@@ -105,6 +123,7 @@ class ApiDb:
             trailling_deviation=1.63,
             trailling_profit=2.3,
             autotrade=False,
+            exchange_id=ExchangeId.BINANCE.value,
         )
         self.session.add(test_autotrade_data)
         self.session.commit()
@@ -267,10 +286,10 @@ class ApiDb:
         First check if symbols have been updated in the last 24 hours.
         Use BNBUSDC, because db init will add BTCUSDC
         """
-        # try:
-        #     self.symbols.get_symbol("DASHBTC")
-        # except BinbotErrors:
-        self.symbols.etl_symbols_ingestion(delete_existing=True)
+        try:
+            self.symbols.get_symbol("DASHBTC")
+        except BinbotErrors:
+            self.symbols.etl_symbols_ingestion(delete_existing=True)
 
         pass
 

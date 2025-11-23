@@ -16,6 +16,7 @@ def vcr_config():
             ("X-MBX-APIKEY", "DUMMY"),
             ("authorization", "DUMMY"),
         ],
+        "record_mode": "new_episodes",  # or use "all" to always re-record
     }
 
 

@@ -1,8 +1,15 @@
 from time import time
 from uuid import uuid4
 from account.account import Account
+from databases.crud.autotrade_crud import AutotradeCrud
 from tools.exceptions import DeleteOrderError
-from tools.enum_definitions import OrderType, TimeInForce, OrderSide, OrderStatus
+from tools.enum_definitions import (
+    ExchangeId,
+    OrderType,
+    TimeInForce,
+    OrderSide,
+    OrderStatus,
+)
 from tools.handle_error import json_response, json_response_message
 from tools.maths import (
     supress_notation,
@@ -27,6 +34,8 @@ class OrderController(Account):
         self.price_precision: int
         self.qty_precision: int
         self.symbols_crud = SymbolsCrud()
+        self.autotrade_settings = AutotradeCrud().get_settings()
+        self.exchange_id: ExchangeId = self.autotrade_settings.exchange_id
         pass
 
     def generate_id(self):
@@ -48,7 +57,7 @@ class OrderController(Account):
         taking data from API db
         """
         symbol_info = self.symbols_crud.get_symbol(symbol)
-        return symbol_info.price_precision
+        return symbol_info.exchange_values[self.exchange_id].price_precision
 
     def calculate_qty_precision(self, symbol: str) -> int:
         """
@@ -56,7 +65,7 @@ class OrderController(Account):
         taking data from API db
         """
         symbol_info = self.symbols_crud.get_symbol(symbol)
-        return symbol_info.qty_precision
+        return symbol_info.exchange_values[self.exchange_id].qty_precision
 
     def simulate_order(self, pair: str, side: OrderSide, qty=1):
         """

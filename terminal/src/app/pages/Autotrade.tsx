@@ -24,7 +24,7 @@ import LightSwitch from "../components/LightSwitch";
 import SettingsInput from "../components/SettingsInput";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
-import { BinanceKlineintervals } from "../../utils/enums";
+import { BinanceKlineintervals, ExchangeId } from "../../utils/enums";
 
 export const AutotradePage: FC<{}> = () => {
   const { data } = useGetSettingsQuery();
@@ -54,6 +54,7 @@ export const AutotradePage: FC<{}> = () => {
       trailling_deviation: settings.trailling_deviation,
       trailling_profit: settings.trailling_profit,
       autoswitch: settings.autoswitch,
+      exchange_id: settings.exchange_id,
     },
   });
 
@@ -104,6 +105,7 @@ export const AutotradePage: FC<{}> = () => {
         trailling_deviation: settings.trailling_deviation,
         trailling_profit: settings.trailling_profit,
         autoswitch: settings.autoswitch,
+        exchange_id: settings.exchange_id,
       });
     }
 
@@ -134,43 +136,41 @@ export const AutotradePage: FC<{}> = () => {
                 <Row>
                   <Col md="3">
                     <Form.Group>
-                      <Form.Label htmlFor="candlestick_interval">
-                        {"Candlestick interval"}
+                      <Form.Label htmlFor="exchange_id">
+                        Select Exchange
                       </Form.Label>
                       <Form.Select
-                        id="candlestick_interval"
-                        name="candlestick_interval"
+                        id="exchange_id"
+                        name="exchange_id"
                         onChange={(e) => {
                           const { value } = e.target;
                           dispatch(
                             setSettingsField({
-                              name: "candlestick_interval",
+                              name: "exchange_id",
                               value,
                             }),
                           );
                         }}
                         onBlur={handleBlur}
-                        {...register("candlestick_interval", {
+                        {...register("exchange_id", {
                           required: true,
                         })}
                       >
-                        {Object.values(BinanceKlineintervals).map(
-                          (interval, i) => (
-                            <option key={i} value={interval.toString()}>
-                              {interval.toString()}
-                            </option>
-                          ),
-                        )}
+                        {Object.values(ExchangeId).map((exchange, i) => (
+                          <option key={i} value={exchange.toString()}>
+                            {exchange.toString()}
+                          </option>
+                        ))}
                       </Form.Select>
-                      {errors.candlestick_interval && (
+                      {errors.exchange_id && (
                         <Form.Control.Feedback>
-                          {errors.candlestick_interval.message as string}
+                          {errors.exchange_id.message as string}
                         </Form.Control.Feedback>
                       )}
                       <Form.Control.Feedback tooltip>
-                        Autotrade uses this interval to get candlestick data for
-                        technical analysis and decides to trade using this
-                        horizon.
+                        <strong>Attention:</strong> Critical setting.
+                        If this is changed bots, balances, symbols/charts will be set to use
+                        this exchange&apos;s data
                       </Form.Control.Feedback>
                     </Form.Group>
                   </Col>
@@ -220,6 +220,33 @@ export const AutotradePage: FC<{}> = () => {
                         {settings.autotrade ? "On" : "Off"}
                       </ToggleButton>
                     </ButtonGroup>
+                  </Col>
+                  <Col md="3">
+                    <Form.Select
+                      id="candlestick_interval"
+                      name="candlestick_interval"
+                      onChange={(e) => {
+                        const { value } = e.target;
+                        dispatch(
+                          setSettingsField({
+                            name: "candlestick_interval",
+                            value,
+                          }),
+                        );
+                      }}
+                      onBlur={handleBlur}
+                      {...register("candlestick_interval", {
+                        required: true,
+                      })}
+                    >
+                      {Object.values(BinanceKlineintervals).map(
+                        (interval, i) => (
+                          <option key={i} value={interval.toString()}>
+                            {interval.toString()}
+                          </option>
+                        ),
+                      )}
+                    </Form.Select>
                   </Col>
                   <Col md="3">
                     <SettingsInput

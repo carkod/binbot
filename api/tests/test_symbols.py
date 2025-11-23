@@ -13,7 +13,6 @@ test_symbol = "BOMEUSDC"
 test_error_symbol = "BTCUSDT"
 
 
-@mark.vcr("cassettes/get_all_symbols.yaml")
 def test_get_all_symbols(client: TestClient):
     # Test filter by active=True
     response = client.get("/symbols", params={"active": True})

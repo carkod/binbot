@@ -78,7 +78,6 @@ def update_indexes(
 def get_one_symbol(
     pair: str,
     session: Session = Depends(get_session),
-    exchange_id: ExchangeId = ExchangeId.BINANCE,
 ):
     """
     Get all symbols/pairs
@@ -87,9 +86,7 @@ def get_one_symbol(
     - Active: includes symbols set as True and also cooldown delta is negative
     """
     try:
-        data = SymbolsCrud(session=session).get_symbol(
-            symbol=pair, exchange_id=exchange_id
-        )
+        data = SymbolsCrud(session=session).get_symbol(symbol=pair)
         return {
             "message": "Successfully retrieved symbols!",
             "data": data,

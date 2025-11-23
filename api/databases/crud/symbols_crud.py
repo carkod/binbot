@@ -62,7 +62,12 @@ class SymbolsCrud:
                 selectinload(cast(QueryableAttribute, SymbolTable.exchange_values)),
                 selectinload(cast(QueryableAttribute, SymbolTable.asset_indices)),
             )
-            .join(SymbolExchangeTable, SymbolExchangeTable.symbol_id == SymbolTable.id)
+            .join(
+                SymbolExchangeTable,
+                onclause=cast(
+                    ColumnElement, SymbolExchangeTable.symbol_id == SymbolTable.id
+                ),
+            )
         )
         return statement
 
@@ -212,19 +217,21 @@ class SymbolsCrud:
                 cooldown=result.cooldown,
                 cooldown_start_ts=result.cooldown_start_ts,
                 id=result.id,
-                exchange_id=result.exchange_values[0].exchange_id,
                 quote_asset=result.quote_asset,
                 base_asset=result.base_asset,
                 asset_indices=[
                     AssetIndexTable(id=index.id, name=index.name)
                     for index in result.asset_indices
                 ],
-                min_notional=result.exchange_values[0].min_notional,
-                price_precision=result.exchange_values[0].price_precision,
-                qty_precision=result.exchange_values[0].qty_precision,
-                is_margin_trading_allowed=result.exchange_values[
-                    0
-                ].is_margin_trading_allowed,
+                exchange_values={
+                    ev.exchange_id: ExchangeValueModel(
+                        is_margin_trading_allowed=ev.is_margin_trading_allowed,
+                        price_precision=ev.price_precision,
+                        qty_precision=ev.qty_precision,
+                        min_notional=ev.min_notional,
+                    )
+                    for ev in result.exchange_values
+                },
             )
 
             self.session.close()
@@ -400,21 +407,86 @@ class SymbolsCrud:
                 min_notional_filter = next(
                     (m for m in item["filters"] if m["filterType"] == "NOTIONAL"), None
                 )
-                symbol = SymbolTable(
-                    id=item["symbol"],
+                self.add_symbol(
+                    symbol=item["symbol"],
+                    quote_asset=item["quoteAsset"],
+                    base_asset=item["baseAsset"],
+                    exchange_id=ExchangeId.BINANCE,
                     active=True,
                     price_precision=price_filter["tickSize"] if price_filter else 0,
                     qty_precision=quantity_filter["stepSize"] if quantity_filter else 0,
-                    min_notional=(
-                        min_notional_filter["minNotional"] if min_notional_filter else 0
-                    ),
-                    quote_asset=item["quoteAsset"],
-                    base_asset=item["baseAsset"],
+                    min_notional=min_notional_filter["minNotional"]
+                    if min_notional_filter
+                    else 0,
                     is_margin_trading_allowed=item["isMarginTradingAllowed"],
-                    asset_indices=[],
                 )
-                self.session.add(symbol)
-        self.session.commit()
+
+    def kucoin_symbols_updates(self):
+        kucoin_api = KucoinApi()
+        exchange_info_data = kucoin_api.get_all_symbols()
+
+        for item in exchange_info_data.data:
+            # Only store fiat market exclude other fiats.
+            # Only store pairs that are actually traded
+            if item.enable_trading is not True or item.symbol.startswith(
+                ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
+            ):
+                continue
+
+            active = True
+            if item.symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
+                active = False
+
+            if item.quote_currency in list(QuoteAssets):
+                symbol = item.symbol.replace("-", "")
+                price_precision = item.price_increment.find("1") - 2
+                qty_precision = item.base_increment.find("1") - 2
+                min_notional = float(item.base_min_size)
+
+                try:
+                    self.get_symbol(symbol=symbol)
+                    self._add_exchange_link_if_not_exists(
+                        symbol=symbol,
+                        exchange_id=ExchangeId.KUCOIN,
+                        min_notional=min_notional,
+                        price_precision=price_precision,
+                        qty_precision=qty_precision,
+                        quote_asset=item.quote_currency,
+                        base_asset=item.base_currency,
+                        is_margin_trading_allowed=item.is_margin_enabled,
+                    )
+
+                except BinbotErrors as error:
+                    if "Symbol not found" in str(error):
+                        self.add_symbol(
+                            symbol=symbol,
+                            quote_asset=item.quote_currency,
+                            base_asset=item.base_currency,
+                            exchange_id=ExchangeId.KUCOIN,
+                            active=active,
+                            price_precision=price_precision,
+                            qty_precision=qty_precision,
+                            min_notional=min_notional,
+                        )
+
+                        self._add_exchange_link_if_not_exists(
+                            symbol=symbol,
+                            exchange_id=ExchangeId.KUCOIN,
+                            min_notional=min_notional,
+                            price_precision=price_precision,
+                            qty_precision=qty_precision,
+                            quote_asset=item.quote_currency,
+                            base_asset=item.base_currency,
+                            is_margin_trading_allowed=item.is_margin_enabled,
+                        )
+
+                except Exception as error:
+                    print(f"Error adding symbol {symbol}: {error}")
+                    # Create SymbolTable entry
+
+                    pass
+
+        self.session.close()
 
     def binance_symbols_ingestion(self):
         """

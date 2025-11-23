@@ -6,6 +6,7 @@ from tools.enum_definitions import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     CloseConditions,
+    ExchangeId,
 )
 
 
@@ -30,6 +31,10 @@ class SettingsDocument(SQLModel):
     autoswitch: bool = Field(
         default=True,
         description="Automatically switch between long bot or short bot based on stop loss a.k.a. margin_short_reversal in bots",
+    )
+    exchange_id: ExchangeId = Field(
+        default=ExchangeId.BINANCE,
+        description="Exchange where autotrade bots will operate",
     )
 
 
@@ -78,6 +83,7 @@ class AutotradeTable(SettingsDocument, table=True):
                     "telegram_signals": True,
                     "max_active_autotrade_bots": 1,
                     "close_condition": "dynamic_trailling",
+                    "exchange_id": "binance",
                 }
             ],
         },
@@ -127,6 +133,7 @@ class TestAutotradeTable(SettingsDocument, table=True):
                     "telegram_signals": True,
                     "max_active_autotrade_bots": 1,
                     "close_condition": "dynamic_trailling",
+                    "exchange_id": "binance",
                 }
             ],
         },

@@ -1,4 +1,8 @@
-import { BinanceKlineintervals, CloseConditions } from "../utils/enums";
+import {
+  BinanceKlineintervals,
+  CloseConditions,
+  ExchangeId,
+} from "../utils/enums";
 import { createAppSlice } from "../app/createAppSlice";
 import { type AutotradeSettings } from "./autotradeApiSlice";
 import { type PayloadAction } from "@reduxjs/toolkit";
@@ -21,6 +25,7 @@ export const initialAutotradeSettings: AutotradeSettings = {
   updated_at: 0,
   close_condition: CloseConditions.DYNAMIC_TRAILLING,
   autoswitch: false,
+  exchange_id: ExchangeId.BINANCE,
 };
 
 export interface AutotradeSettingsFormField {

@@ -2,6 +2,7 @@ import { notifification } from "../utils/api";
 import {
   type CloseConditions,
   type BinanceKlineintervals,
+  type ExchangeId,
 } from "../utils/enums";
 import { userApiSlice } from "./userApiSlice";
 
@@ -23,6 +24,7 @@ export interface AutotradeSettings {
   updated_at: number;
   close_condition: CloseConditions;
   autoswitch: boolean;
+  exchange_id: ExchangeId;
 }
 
 export const autotradeApiSlice = userApiSlice.injectEndpoints({
