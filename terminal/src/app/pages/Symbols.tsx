@@ -2,7 +2,7 @@ import React, { type FC, useEffect, useState } from "react";
 import { Button, Card, Col, Row, Form } from "react-bootstrap";
 import SymbolSearch from "../components/SymbolSearch";
 import {
-  type SymbolPayload,
+  type SymbolRequestPayload,
   useDeleteSymbolMutation,
   useUpdateSymbolMutation,
   useGetSymbolsQuery,
@@ -17,7 +17,7 @@ const SymbolsPage: FC = () => {
   const [deleteSymbol] = useDeleteSymbolMutation();
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
 
-  const [seletedSymbolsItem, setSeletedSymbolsItem] = useState<SymbolPayload>({
+  const [seletedSymbolsItem, setSeletedSymbolsItem] = useState<SymbolRequestPayload>({
     id: "",
     blacklist_reason: "",
     active: true,
