@@ -1,71 +1,34 @@
-from time import time
-from uuid import uuid4
-from account.account import Account
-from databases.crud.autotrade_crud import AutotradeCrud
+from orders.abstract import OrderControllerAbstract
 from tools.exceptions import DeleteOrderError
 from tools.enum_definitions import (
-    ExchangeId,
     OrderType,
     TimeInForce,
     OrderSide,
     OrderStatus,
 )
 from tools.handle_error import json_response, json_response_message
-from tools.maths import (
-    supress_notation,
-    round_timestamp,
-)
-from databases.crud.symbols_crud import SymbolsCrud
+from tools.maths import supress_notation
+from account.factory import account_factory
+from account.account_abstract import AccountAbstract
+
+AccountBase: AccountAbstract = account_factory()
 
 
-class OrderController(Account):
+class OrderController(OrderControllerAbstract, AccountBase):
     """
+    Binance-specific implementation of OrderController.
+
     Always GTC and limit orders
     limit/market orders will be decided by matching_engine
     PRICE_FILTER decimals
 
-    Methods and attributes here are all unrelated to database operations
-    this is highly tied to the Binance API
+    Inherits common methods from OrderControllerAbstract
+    and Binance-specific account methods from Account
     """
 
     def __init__(self) -> None:
-        super().__init__()
-        # Inherted attributes
-        self.price_precision: int
-        self.qty_precision: int
-        self.symbols_crud = SymbolsCrud()
-        self.autotrade_settings = AutotradeCrud().get_settings()
-        self.exchange_id: ExchangeId = self.autotrade_settings.exchange_id
-        pass
-
-    def generate_id(self):
-        return uuid4()
-
-    def generate_short_id(self):
-        id = uuid4().int
-        return int(str(id)[:8])
-
-    def get_ts(self):
-        """
-        Get timestamp in milliseconds
-        """
-        return round_timestamp(time() * 1000)
-
-    def calculate_price_precision(self, symbol: str) -> int:
-        """
-        Calculate the price precision for the symbol
-        taking data from API db
-        """
-        symbol_info = self.symbols_crud.get_symbol(symbol)
-        return symbol_info.price_precision
-
-    def calculate_qty_precision(self, symbol: str) -> int:
-        """
-        Calculate the quantity precision for the symbol
-        taking data from API db
-        """
-        symbol_info = self.symbols_crud.get_symbol(symbol)
-        return symbol_info.qty_precision
+        OrderControllerAbstract.__init__(self)
+        AccountBase.__init__(self)
 
     def simulate_order(self, pair: str, side: OrderSide, qty=1):
         """
