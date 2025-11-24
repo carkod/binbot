@@ -1,24 +1,17 @@
-import requests
 from apis import BinbotApi
-from tools.handle_error import handle_binance_errors
-from tools.maths import round_numbers
+from account.account_abstract import AccountAbstract
 
 
-class Account(BinbotApi):
+class BinanceAccount(AccountAbstract, BinbotApi):
+    """
+    Binance-specific implementation of AccountAbstract.
+
+    Inherits common methods from AccountAbstract and
+    Binance API methods from BinbotApi.
+    """
+
     def __init__(self):
-        pass
-
-    def _get_price_from_book_order(self, data: dict, order_side: bool, index: int):
-        """
-        Buy order = get bid prices = True
-        Sell order = get ask prices = False
-        """
-        if order_side:
-            price, base_qty = data["bids"][index]
-        else:
-            price, base_qty = data["asks"][index]
-
-        return float(price), float(base_qty)
+        BinbotApi.__init__(self)
 
     def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
         """
@@ -34,12 +27,6 @@ class Account(BinbotApi):
         else:
             price, _ = data["asks"][0]
         return float(price)
-
-    def get_ticker_price(self, symbol: str):
-        params = {"symbol": symbol}
-        res = requests.get(url=self.ticker_price_url, params=params)
-        data = handle_binance_errors(res)
-        return data["price"]
 
     def get_raw_balance(self) -> list:
         """
@@ -150,12 +137,3 @@ class Account(BinbotApi):
                         continue
                 # caller to use market price
                 return 0
-
-    def calculate_total_commissions(self, fills: dict) -> float:
-        """
-        Calculate total commissions for a given order
-        """
-        total_commission: float = 0
-        for chunk in fills:
-            total_commission += round_numbers(float(chunk["commission"]))
-        return total_commission
