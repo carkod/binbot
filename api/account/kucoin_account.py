@@ -1,8 +1,8 @@
 from exchange_apis.kucoin import KucoinApi
-from account.account_abstract import AccountAbstract
+from account.abstract import AccountAbstract
 
 
-class KucoinAccount(AccountAbstract, KucoinApi):
+class KucoinAccount(AccountAbstract):
     """
     KuCoin-specific implementation of AccountAbstract.
 
@@ -11,7 +11,7 @@ class KucoinAccount(AccountAbstract, KucoinApi):
     """
 
     def __init__(self):
-        KucoinApi.__init__(self)
+        self.api = KucoinApi()
 
     def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
         """
@@ -22,7 +22,7 @@ class KucoinAccount(AccountAbstract, KucoinApi):
         Sell order = get ask prices = False
         """
         # KuCoin uses size "20" or "100" for order book depth
-        data = self.get_part_order_book(symbol, "20")
+        data = self.api.get_part_order_book(symbol, "20")
         if order_side:
             price, _ = data["bids"][0]
         else:
@@ -91,7 +91,7 @@ class KucoinAccount(AccountAbstract, KucoinApi):
             Sell order = get ask prices = True
         @param: qty - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_part_order_book(symbol, "100")
+        data = self.api.get_part_order_book(symbol, "100")
         if order_side:
             total_length = len(data["asks"])
         else:
@@ -126,7 +126,7 @@ class KucoinAccount(AccountAbstract, KucoinApi):
             Sell order = get ask prices = True
         @param: qty - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_part_order_book(symbol, "20")
+        data = self.api.get_part_order_book(symbol, "20")
         price, base_qty = self._get_price_from_book_order(data, order_side, 0)
 
         if qty == 0:

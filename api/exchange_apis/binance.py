@@ -4,6 +4,8 @@ import os
 from decimal import Decimal
 from random import randrange
 from urllib.parse import urlencode
+from tools.enum_definitions import OrderSide, OrderType, TimeInForce
+from tools.maths import supress_notation
 from tools.exceptions import IsolateBalanceError
 from requests import Session, request
 from tools.handle_error import handle_binance_errors
@@ -296,6 +298,73 @@ class BinanceApi:
         data = self.signed_request(self.wallet_balance_url)
         return data
 
+    def buy_isolated_margin_order(
+        self,
+        symbol: str,
+        qty: float,
+        order_type: OrderType,
+        price: float,
+        time_in_force: TimeInForce | None,
+    ):
+        qty_precision = self._calculate_qty_precision(symbol)
+        price_precision = self._calculate_price_precision(symbol)
+
+        payload = {
+            "symbol": symbol,
+            "side": OrderSide.buy,
+            "type": order_type,
+            "quantity": supress_notation(qty, qty_precision),
+            "isIsolated": "TRUE",
+        }
+
+        if price > 0:
+            if price_precision >= 0:
+                payload["price"] = supress_notation(price, price_precision)
+            else:
+                payload["price"] = supress_notation(
+                    price, self._calculate_price_precision(symbol)
+                )
+
+        if time_in_force:
+            payload["timeInForce"] = time_in_force
+
+        return self.signed_request(
+            url=self.margin_order, method="POST", payload=payload
+        )
+
+    def sell_isolated_margin_order(
+        self,
+        symbol: str,
+        qty: float,
+        price: float,
+        order_type: OrderType,
+        time_in_force: TimeInForce = TimeInForce.gtc,
+        qty_precision: int = 0,
+        price_precision: int = 0,
+    ):
+        payload = {
+            "symbol": symbol,
+            "side": OrderSide.sell,
+            "type": order_type,
+            "quantity": supress_notation(qty, qty_precision),
+            "isIsolated": "TRUE",
+        }
+
+        if price > 0:
+            if price_precision >= 0:
+                payload["price"] = supress_notation(price, price_precision)
+            else:
+                payload["price"] = supress_notation(
+                    price, self._calculate_price_precision(symbol)
+                )
+
+        if time_in_force:
+            payload["timeInForce"] = time_in_force
+
+        return self.signed_request(
+            url=self.margin_order, method="POST", payload=payload
+        )
+
     def cancel_margin_order(self, symbol: str, order_id: int):
         return self.signed_request(
             self.margin_order,
@@ -511,6 +580,74 @@ class BinanceApi:
                 "At least one of order_id or (start_time and end_time) must be sent"
             )
 
+    def post_sell_order(
+        self,
+        symbol: str,
+        side: OrderSide,
+        qty: float,
+        order_type: OrderType,
+        qty_precision: int,
+        price: float,
+        time_in_force: TimeInForce,
+        price_precision: int,
+    ):
+        """
+        Execute a sell order on the exchange.
+        Exchange-specific implementation required.
+        """
+
+        payload = {
+            "symbol": symbol,
+            "side": side,
+            "type": order_type,
+            "quantity": supress_notation(qty, qty_precision),
+        }
+
+        if price > 0:
+            payload["price"] = supress_notation(price, price_precision)
+
+        if order_type == OrderType.limit:
+            payload["timeInForce"] = time_in_force
+
+        if price_precision >= 0:
+            payload["price"] = supress_notation(price, price_precision)
+
+        return self.signed_request(url=self.order_url, method="POST", payload=payload)
+
+    def post_buy_order(
+        self,
+        symbol: str,
+        side: OrderSide,
+        qty: float,
+        order_type: OrderType,
+        qty_precision: int,
+        price: float,
+        time_in_force: TimeInForce,
+        price_precision: int,
+    ):
+        """
+        Execute a buy order on the exchange.
+        Exchange-specific implementation required.
+        """
+
+        payload = {
+            "symbol": symbol,
+            "side": side,
+            "type": order_type,
+            "quantity": supress_notation(qty, qty_precision),
+        }
+
+        if price > 0:
+            payload["price"] = supress_notation(price, price_precision)
+
+        if order_type == OrderType.limit:
+            payload["timeInForce"] = time_in_force
+
+        if price_precision >= 0:
+            payload["price"] = supress_notation(price, price_precision)
+
+        return self.signed_request(url=self.order_url, method="POST", payload=payload)
+
     def delete_opened_order(self, symbol, order_id):
         """
         Cancel single order
@@ -520,6 +657,26 @@ class BinanceApi:
             method="DELETE",
             payload={"symbol": symbol, "orderId": order_id},
         )
+
+    def delete_order(self, symbol: str, order_id: int):
+        """
+        Cancel a single order.
+        Exchange-specific implementation required.
+        """
+        payload = {"symbol": symbol, "orderId": order_id}
+        data = self.signed_request(url=self.order_url, method="DELETE", payload=payload)
+        return data
+
+    def close_all_orders(self, symbol: str):
+        """
+        Cancel all open orders for a symbol.
+        Exchange-specific implementation required.
+        """
+        payload = {"symbol": symbol}
+        data = self.signed_request(
+            url=self.open_orders, method="DELETE", payload=payload
+        )
+        return data
 
     def get_book_depth(self, symbol: str) -> dict:
         """

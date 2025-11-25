@@ -1,9 +1,4 @@
-from databases.crud.autotrade_crud import AutotradeCrud
-from orders.binance_controller import BinanceOrderController
-from orders.kucoin_controller import KucoinOrderController
-from tools.enum_definitions import ExchangeId
 from orders.abstract import OrderControllerAbstract
-from tools.exceptions import DeleteOrderError
 from tools.enum_definitions import (
     OrderType,
     TimeInForce,
@@ -11,24 +6,15 @@ from tools.enum_definitions import (
     OrderStatus,
 )
 from tools.handle_error import json_response, json_response_message
-from tools.maths import supress_notation
-from account.factory import account_factory
-from account.account_abstract import AccountAbstract
-
-AccountBase: AccountAbstract = account_factory()
+from account.binance_account import BinanceAccount
+from apis import BinbotApi
 
 
-class OrderController(OrderControllerAbstract, AccountBase):
-    """
-    Multi-exchange implementation of OrderController.
-
-    Delegates all trading methods to a concrete exchange-specific controller
-    chosen based on autotrade settings.
-    """
-
+class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
     def __init__(self) -> None:
         OrderControllerAbstract.__init__(self)
-        AccountBase.__init__(self)
+        BinanceAccount.__init__(self)
+        self.api = BinbotApi()
 
     def simulate_order(self, pair: str, side: OrderSide, qty=1):
         """
@@ -113,42 +99,44 @@ class OrderController(OrderControllerAbstract, AccountBase):
         If price is not provided by matching engine,
         sell at market price
         """
-        book_price = float(self.matching_engine(symbol, True, qty))
+        book_price = self.matching_engine(symbol, True, qty)
         if price_precision == 0:
             price_precision = self.price_precision
         if qty_precision == 0:
             qty_precision = self.qty_precision
 
         if book_price > 0:
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.sell,
-                "type": OrderType.limit,
-                "timeInForce": TimeInForce.fok,
-                "price": supress_notation(book_price, price_precision),
-                "quantity": supress_notation(qty, qty_precision),
-            }
+            side = OrderSide.sell
+            order_type = OrderType.limit
+            time_in_force = TimeInForce.gtc
         else:
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.sell,
-                "type": OrderType.market,
-                "quantity": supress_notation(qty, qty_precision),
-            }
+            side = OrderSide.sell
+            order_type = OrderType.market
+            time_in_force = TimeInForce.fok
 
-        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        data = self.api.post_sell_order(
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            price_precision=price_precision,
+            qty_precision=qty_precision,
+            order_type=order_type,
+            price=book_price,
+            time_in_force=time_in_force,
+        )
 
         # Fixed expired orders
         if data["status"] == OrderStatus.EXPIRED.value:
             # do a market order, otherwise we could enter into a Expired infinite loop
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.sell,
-                "type": OrderType.market,
-                "quantity": supress_notation(qty, qty_precision),
-            }
-            data = self.signed_request(
-                url=self.order_url, method="POST", payload=payload
+            data = self.api.post_sell_order(
+                symbol=symbol,
+                side=OrderSide.sell,
+                qty=qty,
+                price=book_price,
+                time_in_force=time_in_force,
+                price_precision=price_precision,
+                qty_precision=qty_precision,
+                order_type=OrderType.market,
             )
 
         return data
@@ -165,55 +153,41 @@ class OrderController(OrderControllerAbstract, AccountBase):
             qty_precision = self.qty_precision
 
         if book_price > 0:
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.buy,
-                "type": OrderType.limit,
-                "timeInForce": TimeInForce.fok,
-                "price": supress_notation(book_price, price_precision),
-                "quantity": supress_notation(qty, qty_precision),
-            }
+            side = OrderSide.buy
+            order_type = OrderType.limit
+            time_in_force = TimeInForce.gtc
         else:
             # Use market price if matching engine can't find a price
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.buy,
-                "type": OrderType.market,
-                "quantity": supress_notation(qty, qty_precision),
-            }
+            side = OrderSide.buy
+            order_type = OrderType.market
+            time_in_force = TimeInForce.fok
 
-        data = self.signed_request(url=self.order_url, method="POST", payload=payload)
+        data = self.api.post_buy_order(
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            price_precision=price_precision,
+            qty_precision=qty_precision,
+            order_type=order_type,
+            price=book_price,
+            time_in_force=time_in_force,
+        )
 
         if data["status"] == OrderStatus.EXPIRED.value:
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.buy,
-                "type": OrderType.market,
-                "quantity": supress_notation(qty, qty_precision),
-            }
-            data = self.signed_request(
-                url=self.order_url, method="POST", payload=payload
+            side = OrderSide.buy
+            order_type = OrderType.market
+
+            data = self.api.post_buy_order(
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                price=book_price,
+                time_in_force=time_in_force,
+                price_precision=price_precision,
+                qty_precision=qty_precision,
+                order_type=order_type,
             )
 
-        return data
-
-    def delete_order(self, symbol: str, order_id: int):
-        """
-        Cancels single order by symbol
-        - Optimal for open orders table
-        """
-        if not symbol:
-            raise DeleteOrderError("Missing symbol parameter")
-        if not order_id:
-            raise DeleteOrderError("Missing order_id parameter")
-
-        payload = {
-            "symbol": symbol,
-            "orderId": order_id,
-        }
-        data = self.signed_request(
-            url=f"{self.order_url}", method="DELETE", payload=payload
-        )
         return data
 
     def delete_all_orders(self, symbol):
@@ -221,13 +195,7 @@ class OrderController(OrderControllerAbstract, AccountBase):
         Delete All orders by symbol
         - Optimal for open orders table
         """
-        data = self.signed_request(
-            url=self.order_url,
-            method="DELETE",
-            payload={
-                "symbol": symbol,
-            },
-        )
+        data = self.api.close_all_orders(symbol)
 
         if data and len(data) > 0:
             resp = json_response({"message": "Orders deleted", "data": data})
@@ -242,26 +210,18 @@ class OrderController(OrderControllerAbstract, AccountBase):
         price = self.matching_engine(symbol, False, qty)
 
         if price > 0:
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.buy,
-                "type": OrderType.limit,
-                "timeInForce": TimeInForce.gtc,
-                "quantity": qty,
-                "price": price,
-                "isIsolated": "TRUE",
-            }
+            order_type = OrderType.limit
+            time_in_force = TimeInForce.gtc
         else:
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.buy,
-                "type": OrderType.market,
-                "quantity": qty,
-                "isIsolated": "TRUE",
-            }
+            order_type = OrderType.market
+            time_in_force = TimeInForce.fok
 
-        data = self.signed_request(
-            url=self.margin_order, method="POST", payload=payload
+        data = self.api.buy_isolated_margin_order(
+            symbol=symbol,
+            qty=qty,
+            order_type=order_type,
+            price=price,
+            time_in_force=time_in_force,
         )
 
         return data
@@ -273,26 +233,18 @@ class OrderController(OrderControllerAbstract, AccountBase):
         price = self.matching_engine(symbol, True, qty)
 
         if price > 0:
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.sell,
-                "type": OrderType.limit,
-                "timeInForce": TimeInForce.gtc,
-                "quantity": supress_notation(qty, self.qty_precision),
-                "price": price,
-                "isIsolated": "TRUE",
-            }
+            order_type = OrderType.limit
+            time_in_force = TimeInForce.gtc
         else:
-            payload = {
-                "symbol": symbol,
-                "side": OrderSide.sell,
-                "type": OrderType.market,
-                "quantity": supress_notation(qty, self.qty_precision),
-                "isIsolated": "TRUE",
-            }
+            order_type = OrderType.market
+            time_in_force = TimeInForce.fok
 
-        data = self.signed_request(
-            url=self.margin_order, method="POST", payload=payload
+        data = self.api.sell_isolated_margin_order(
+            symbol=symbol,
+            qty=qty,
+            order_type=order_type,
+            price=price,
+            time_in_force=time_in_force,
         )
 
         if float(data["price"]) == 0:

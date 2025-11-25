@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from time import time
 from uuid import uuid4
 from databases.crud.autotrade_crud import AutotradeCrud
-from tools.enum_definitions import ExchangeId, OrderSide
+from tools.enum_definitions import OrderSide
 from tools.maths import round_timestamp
 from databases.crud.symbols_crud import SymbolsCrud
 
@@ -21,20 +21,25 @@ class OrderControllerAbstract(ABC):
         self.qty_precision: int
         self.symbols_crud = SymbolsCrud()
         self.autotrade_settings = AutotradeCrud().get_settings()
-        self.exchange_id: ExchangeId = self.autotrade_settings.exchange_id
 
     # Exchange-agnostic utility methods
     def generate_id(self):
-        """Generate a UUID for order tracking"""
+        """
+        Generate a UUID for order tracking
+        """
         return uuid4()
 
     def generate_short_id(self):
-        """Generate a short numeric ID"""
+        """
+        Generate a short numeric ID
+        """
         id = uuid4().int
         return int(str(id)[:8])
 
     def get_ts(self):
-        """Get timestamp in milliseconds"""
+        """
+        Get timestamp in milliseconds
+        """
         return round_timestamp(time() * 1000)
 
     def calculate_price_precision(self, symbol: str) -> int:
@@ -78,22 +83,6 @@ class OrderControllerAbstract(ABC):
     ):
         """
         Execute a sell order on the exchange.
-        Exchange-specific implementation required.
-        """
-        pass
-
-    @abstractmethod
-    def delete_order(self, symbol: str, order_id: int):
-        """
-        Cancel a single order.
-        Exchange-specific implementation required.
-        """
-        pass
-
-    @abstractmethod
-    def delete_all_orders(self, symbol: str):
-        """
-        Cancel all open orders for a symbol.
         Exchange-specific implementation required.
         """
         pass
