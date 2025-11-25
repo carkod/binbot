@@ -27,30 +27,30 @@ class SymbolModel(BaseModel):
     active: bool = Field(default=True, description="Blacklisted items = False")
     blacklist_reason: str = Field(default="")
     description: str = Field(default="", description="Description of the symbol")
-    is_margin_trading_allowed: bool = Field(default=False)
     quote_asset: str = Field(
         default="", description="in BTCUSDC, BTC would be quote asset"
     )
     base_asset: str = Field(
         default="", description="in BTCUSDC, USDC would be base asset"
     )
+    cooldown: int = Field(default=0, description="Time in seconds between trades")
+    cooldown_start_ts: int = Field(
+        default=0,
+        description="Timestamp when cooldown started in milliseconds",
+    )
+    asset_indices: list[AssetIndexModel] = Field(
+        default=[], description="list of asset indices e.g. memecoin"
+    )
+    exchange_id: ExchangeId = Field(
+        description="Exchange name where the exchange-specific values belong to (below)"
+    )
+    is_margin_trading_allowed: bool = Field(default=False)
     price_precision: int = Field(
         default=0,
         description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
     )
     qty_precision: int = Field(default=0)
     min_notional: float = Field(default=0, description="Minimum price x qty value")
-    cooldown: int = Field(default=0, description="Time in seconds between trades")
-    cooldown_start_ts: int = Field(
-        default=0,
-        description="Timestamp when cooldown started in milliseconds",
-    )
-    exchange_id: ExchangeId = Field(
-        description="Exchange name where this symbol belongs to",
-    )
-    asset_indices: list[AssetIndexModel] = Field(
-        default=[], description="list of asset indices e.g. memecoin"
-    )
 
 
 class SymbolsResponse(StandardResponse):
@@ -75,15 +75,19 @@ class SymbolsResponse(StandardResponse):
                     symbol["asset_indices"].append(asset.model_dump())
 
             if len(s.exchange_values) > 0:
-                exchange = s.exchange_values[0]
-                symbol.update(exchange.model_dump())
+                symbol["is_margin_trading_allowed"] = s.exchange_values[
+                    0
+                ].is_margin_trading_allowed
+                symbol["price_precision"] = s.exchange_values[0].price_precision
+                symbol["qty_precision"] = s.exchange_values[0].qty_precision
+                symbol["min_notional"] = s.exchange_values[0].min_notional
 
             new_data.append(symbol)
 
         return new_data
 
 
-class SymbolPayload(BaseModel):
+class SymbolRequestPayload(BaseModel):
     id: str
     blacklist_reason: str = ""
     active: bool = True

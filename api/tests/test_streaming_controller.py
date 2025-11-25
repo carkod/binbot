@@ -24,25 +24,28 @@ class DummyBot:
 
 @pytest.fixture
 def streaming_controller_with_klines(monkeypatch):
-    base = BaseStreaming()
-    # Patch binance_api.get_raw_klines to return synthetic klines using monkeypatch to avoid mypy error
-    monkeypatch.setattr(
-        base.binance_api,
-        "get_raw_klines",
-        MagicMock(
-            return_value=[
-                [i * 1000, 100 + i, 101 + i, 99 + i, 100 + i, 1000, (i + 1) * 1000]
-                for i in range(200)
-            ]
-        ),
+    # Create a mock BaseStreaming that doesn't connect to DB
+    mock_base = MagicMock(spec=BaseStreaming)
+    mock_base.binance_api = MagicMock()
+    mock_base.bot_controller = MagicMock()
+    mock_base.paper_trading_controller = MagicMock()
+    mock_base.symbols_controller = MagicMock()
+    mock_base.cs = MagicMock()
+    mock_base.active_bot_pairs = []
+
+    # Patch binance_api.get_raw_klines to return synthetic klines
+    mock_base.binance_api.get_raw_klines = MagicMock(
+        return_value=[
+            [i * 1000, 100 + i, 101 + i, 99 + i, 100 + i, 1000, (i + 1) * 1000]
+            for i in range(200)
+        ]
     )
-    # Patch out any bot table queries to avoid hitting the real DB
-    # Patch get_active_pairs on both controllers to return an empty list
-    monkeypatch.setattr(base.bot_controller, "get_active_pairs", lambda *a, **kw: [])
-    monkeypatch.setattr(
-        base.paper_trading_controller, "get_active_pairs", lambda *a, **kw: []
-    )
-    controller = StreamingController(base, symbol="BTCUSDT")
+
+    # Patch get_active_pairs to return empty lists
+    mock_base.bot_controller.get_active_pairs = MagicMock(return_value=[])
+    mock_base.paper_trading_controller.get_active_pairs = MagicMock(return_value=[])
+
+    controller = StreamingController(mock_base, symbol="BTCUSDT")
     return controller
 
 

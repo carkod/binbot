@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""
+Script to dump test fixtures from the actual database.
+
+This script connects to your PostgreSQL database, fetches the current data,
+and generates the symbol_fixtures.py file with Python code that can be used
+to seed the test database.
+
+Usage:
+    python tests/fixtures/dump_fixtures.py
+    # Or via make:
+    make dump-fixtures
+
+Requirements:
+    - Database must be running
+    - Environment variables must be set (POSTGRES_USER, POSTGRES_PASSWORD, etc.)
+"""
+
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import from project
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from sqlmodel import Session, select
+from databases.utils import engine
+from databases.tables.symbol_table import SymbolTable
+from databases.tables.symbol_exchange_table import SymbolExchangeTable
+from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
+
+
+def dump_symbols(session: Session, limit: int = 10):
+    """Dump symbol data from database"""
+    statement = select(SymbolTable).limit(limit)
+    symbols = session.exec(statement).unique().all()
+
+    output = []
+    output.append("def get_test_symbols():")
+    output.append(
+        '    """Returns list of test symbol records with their exchange values"""'
+    )
+    output.append("    return [")
+
+    for symbol in symbols:
+        # Get exchange values for this symbol
+        exchange_values = (
+            session.exec(
+                select(SymbolExchangeTable).where(
+                    SymbolExchangeTable.symbol_id == symbol.id
+                )
+            )
+            .unique()
+            .all()
+        )
+
+        output.append("        {")
+        output.append('            "symbol": SymbolTable(')
+        output.append(f'                id="{symbol.id}",')
+        output.append(f"                active={symbol.active},")
+        output.append(f'                blacklist_reason="{symbol.blacklist_reason}",')
+        output.append(f'                quote_asset="{symbol.quote_asset}",')
+        output.append(f'                base_asset="{symbol.base_asset}",')
+        output.append(f"                cooldown={symbol.cooldown},")
+        output.append(f"                cooldown_start_ts={symbol.cooldown_start_ts},")
+        output.append(f'                description="{symbol.description}",')
+        output.append(f"                created_at={symbol.created_at},")
+        output.append(f"                updated_at={symbol.updated_at},")
+        output.append("            ),")
+        output.append('            "exchange_values": [')
+
+        for ev in exchange_values:
+            output.append("                SymbolExchangeTable(")
+            output.append(
+                f"                    exchange_id=ExchangeId.{ev.exchange_id.value.upper()},"
+            )
+            output.append(f'                    symbol_id="{ev.symbol_id}",')
+            output.append(f"                    min_notional={ev.min_notional},")
+            output.append(
+                f"                    is_margin_trading_allowed={ev.is_margin_trading_allowed},"
+            )
+            output.append(f"                    price_precision={ev.price_precision},")
+            output.append(f"                    qty_precision={ev.qty_precision},")
+            output.append("                ),")
+
+        output.append("            ],")
+        output.append("        },")
+
+    output.append("    ]")
+    output.append("\n")
+    return "\n".join(output)
+
+
+def dump_asset_indices(session: Session, limit: int = 20):
+    """Dump asset index data from database"""
+    statement = select(AssetIndexTable).limit(limit)
+    indices = session.exec(statement).unique().all()
+
+    output = []
+    output.append("def get_test_asset_indices():")
+    output.append('    """Returns test asset index data"""')
+    output.append("    return [")
+    for idx in indices:
+        output.append(f'        AssetIndexTable(id="{idx.id}", name="{idx.name}"),')
+    output.append("    ]")
+    output.append("\n")
+    return "\n".join(output)
+
+
+def dump_symbol_index_links(session: Session, limit: int = 50):
+    """Dump symbol-to-index associations from database"""
+    statement = select(SymbolIndexLink).limit(limit)
+    links = session.exec(statement).unique().all()
+
+    output = []
+    output.append("def get_test_symbol_index_links():")
+    output.append('    """Returns symbol-to-index associations"""')
+    output.append("    return [")
+    for link in links:
+        output.append(
+            f'        SymbolIndexLink(symbol_id="{link.symbol_id}", asset_index_id="{link.asset_index_id}"),'
+        )
+    output.append("    ]")
+    output.append("\n")
+    return "\n".join(output)
+
+
+def generate_fixture_file(
+    symbols_limit: int = 10, indices_limit: int = 20, links_limit: int = 50
+):
+    """Generate the complete fixture file"""
+
+    header = '''"""
+Test fixtures for symbol data.
+This file was auto-generated by dump_fixtures.py
+To regenerate: make dump-fixtures
+"""
+
+from databases.tables.symbol_table import SymbolTable
+from databases.tables.symbol_exchange_table import SymbolExchangeTable
+from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
+from tools.enum_definitions import ExchangeId
+
+
+'''
+
+    with Session(engine) as session:
+        symbols_code = dump_symbols(session, symbols_limit)
+        indices_code = dump_asset_indices(session, indices_limit)
+        links_code = dump_symbol_index_links(session, links_limit)
+
+    output = header + symbols_code + "\n" + indices_code + "\n" + links_code
+
+    # Write to file
+    fixture_file = Path(__file__).parent / "symbol_fixtures.py"
+    fixture_file.write_text(output)
+
+    print(f"✅ Fixtures dumped to {fixture_file}")
+    print(f"   - Symbols: {symbols_limit} (with exchange values)")
+    print(f"   - Asset indices: {indices_limit}")
+    print(f"   - Symbol-index links: {links_limit}")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Dump test fixtures from database")
+    parser.add_argument(
+        "--symbols", type=int, default=10, help="Number of symbols to dump"
+    )
+    parser.add_argument(
+        "--indices", type=int, default=20, help="Number of asset indices to dump"
+    )
+    parser.add_argument(
+        "--links", type=int, default=50, help="Number of symbol-index links to dump"
+    )
+
+    args = parser.parse_args()
+
+    try:
+        generate_fixture_file(args.symbols, args.indices, args.links)
+    except Exception as e:
+        print(f"❌ Error dumping fixtures: {e}")
+        sys.exit(1)

@@ -1,7 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
-
-
+from unittest.mock import patch
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
 from databases.utils import get_session
@@ -19,63 +17,40 @@ from tests.fixtures.symbol_fixtures import (
 
 
 # Global variable to store test engine for use in patches
-_test_engine = None
+_test_engine_symbols = None
 
 
-@pytest.fixture(scope="module")
-def vcr_config():
-    return {
-        "filter_headers": [
-            ("X-MBX-APIKEY", "DUMMY"),
-            ("authorization", "DUMMY"),
-        ],
-        "record_mode": "new_episodes",
-    }
+@pytest.fixture(scope="module", autouse=True)
+def create_symbol_test_tables():
+    """
+    Completely isolated test database setup ONLY for symbol tests.
+    This prevents interference from other test files.
+    """
+    global _test_engine_symbols
 
-
-class MockAsyncBaseProducer:
-    def __init__(self):
-        pass
-
-    def start_producer(self):
-        producer = MagicMock()
-        return producer
-
-    def update_required(self, action):
-        return action
-
-
-# Ensure all tables are created before any tests run
-@pytest.fixture(scope="session", autouse=True)
-def create_test_tables():
-    global _test_engine
-
-    # Use in-memory SQLite database for tests instead of real PostgreSQL
+    # Use a separate in-memory SQLite database just for symbol tests
     test_engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    _test_engine = test_engine
+    _test_engine_symbols = test_engine
     SQLModel.metadata.create_all(test_engine)
 
-    # Override get_session to use test database
+    # Override get_session to use this isolated test database
     def get_test_session():
         with Session(test_engine) as session:
             yield session
 
     app.dependency_overrides[get_session] = get_test_session
 
-    # Patch independent_session to also use test database
-    # This ensures AutotradeCrud() without session parameter uses test DB
-    # IMPORTANT: Return a NEW session each time to avoid session conflicts
-    # when different CRUD instances close their sessions
+    # Patch independent_session to also use this isolated test database
     def mock_independent_session():
         return Session(test_engine, expire_on_commit=False)
 
     # Seed test database with fixtures
     with Session(test_engine) as session:
-        # Add mock autotrade settings
+        # Add mock autotrade settings with exchange_id = "binance"
         mock_autotrade = AutotradeTable(
             id="autotrade_settings",
             base_order_size=15.0,
@@ -93,7 +68,7 @@ def create_test_tables():
             take_profit=2.3,
             max_request=500,
             max_active_autotrade_bots=1,
-            exchange_id="binance",
+            exchange_id="binance",  # Fixed to binance for symbol tests
         )
         session.add(mock_autotrade)
 
@@ -113,8 +88,7 @@ def create_test_tables():
 
         session.commit()
 
-    # Start patching independent_session for the entire test session
-    # Patch in all locations where it's imported
+    # Start patching independent_session for symbol tests only
     patcher1 = patch(
         "databases.utils.independent_session", side_effect=mock_independent_session
     )
@@ -138,9 +112,3 @@ def create_test_tables():
     patcher3.stop()
     app.dependency_overrides.clear()
     SQLModel.metadata.drop_all(test_engine)
-
-
-@pytest.fixture(scope="session")
-def mock_lifespan():
-    with patch("main.lifespan") as mock_lifespan:
-        yield mock_lifespan
