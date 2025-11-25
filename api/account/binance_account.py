@@ -1,8 +1,8 @@
 from apis import BinbotApi
-from account.account_abstract import AccountAbstract
+from account.abstract import AccountAbstract
 
 
-class BinanceAccount(AccountAbstract, BinbotApi):
+class BinanceAccount(AccountAbstract):
     """
     Binance-specific implementation of AccountAbstract.
 
@@ -11,7 +11,7 @@ class BinanceAccount(AccountAbstract, BinbotApi):
     """
 
     def __init__(self):
-        BinbotApi.__init__(self)
+        self.api = BinbotApi()
 
     def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
         """
@@ -21,7 +21,7 @@ class BinanceAccount(AccountAbstract, BinbotApi):
         Buy order = get bid prices = True
         Sell order = get ask prices = False
         """
-        data = self.get_book_depth(symbol)
+        data = self.api.get_book_depth(symbol)
         if order_side:
             price, _ = data["bids"][0]
         else:
@@ -32,7 +32,7 @@ class BinanceAccount(AccountAbstract, BinbotApi):
         """
         Unrestricted balance
         """
-        data = self.get_account_balance()
+        data = self.api.get_account_balance()
         balances = []
         for item in data["balances"]:
             if float(item["free"]) > 0 or float(item["locked"]) > 0:
@@ -40,7 +40,7 @@ class BinanceAccount(AccountAbstract, BinbotApi):
         return balances
 
     def get_single_spot_balance(self, asset) -> float:
-        data = self.get_account_balance()
+        data = self.api.get_account_balance()
         for x in data["balances"]:
             if x["asset"] == asset:
                 return float(x["free"])
@@ -50,13 +50,13 @@ class BinanceAccount(AccountAbstract, BinbotApi):
         """
         Get both SPOT balance and ISOLATED MARGIN balance
         """
-        data = self.get_account_balance()
+        data = self.api.get_account_balance()
         for x in data["balances"]:
             if x["asset"] == asset:
                 return float(x["free"])
         else:
             symbol = asset + fiat
-            data = self.get_isolated_balance(symbol)
+            data = self.api.get_isolated_balance(symbol)
             if len(data) > 0:
                 qty = float(data[0]["baseAsset"]["free"]) + float(
                     data[0]["baseAsset"]["borrowed"]
@@ -67,7 +67,7 @@ class BinanceAccount(AccountAbstract, BinbotApi):
 
     def get_margin_balance(self, symbol="BTC") -> float:
         # Response after request
-        data = self.get_isolated_balance(symbol)
+        data = self.api.get_isolated_balance(symbol)
         symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), 0)
         return symbol_balance
 
@@ -82,7 +82,7 @@ class BinanceAccount(AccountAbstract, BinbotApi):
             Sell order = get ask prices = True
         @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_book_depth(symbol)
+        data = self.api.get_book_depth(symbol)
         if order_side:
             total_length = len(data["asks"])
         else:
@@ -117,7 +117,7 @@ class BinanceAccount(AccountAbstract, BinbotApi):
             Sell order = get ask prices = True
         @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_book_depth(symbol)
+        data = self.api.get_book_depth(symbol)
         price, base_qty = self._get_price_from_book_order(data, order_side, 0)
 
         if qty == 0:
