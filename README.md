@@ -104,5 +104,6 @@ where 113eb73ebba8 is the supposed last "good" migration that you want to revert
 
 ## Detailed documentation
 
-https://carkod.github.io/binbot/
+- [API Documentation](https://carkod.github.io/binbot/)
+- [Authentication Guide](docs/authentication.md) - JWT authentication setup and usage
 
