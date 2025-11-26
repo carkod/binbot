@@ -29,4 +29,5 @@ class OrderController:
         Pretty much equivalent to inheritance OrderController(KubcoinOrderController) or
         OrderController(BinanceOrderController) based on exchange_id.
         """
-        return getattr(self._delegate, name)
+        attribute = getattr(self._delegate, name)
+        return attribute

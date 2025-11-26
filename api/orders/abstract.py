@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from time import time
 from uuid import uuid4
 from databases.crud.autotrade_crud import AutotradeCrud
-from tools.enum_definitions import OrderSide
 from tools.maths import round_timestamp
 from databases.crud.symbols_crud import SymbolsCrud
 
@@ -57,56 +56,3 @@ class OrderControllerAbstract(ABC):
         """
         symbol_info = self.symbols_crud.get_symbol(symbol)
         return symbol_info.qty_precision
-
-    # Abstract methods that MUST be implemented by exchange-specific controllers
-    @abstractmethod
-    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
-        """
-        Match quantity with available order price.
-        Exchange-specific implementation required.
-        """
-        pass
-
-    @abstractmethod
-    def buy_order(
-        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
-    ):
-        """
-        Execute a buy order on the exchange.
-        Exchange-specific implementation required.
-        """
-        pass
-
-    @abstractmethod
-    def sell_order(
-        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
-    ):
-        """
-        Execute a sell order on the exchange.
-        Exchange-specific implementation required.
-        """
-        pass
-
-    @abstractmethod
-    def simulate_order(self, pair: str, side: OrderSide, qty=1):
-        """
-        Simulate an order without executing it.
-        Exchange-specific implementation required.
-        """
-        pass
-
-    @abstractmethod
-    def buy_margin_order(self, symbol: str, qty: float):
-        """
-        Execute a margin buy order.
-        Exchange-specific implementation required (if supported).
-        """
-        pass
-
-    @abstractmethod
-    def sell_margin_order(self, symbol: str, qty: float):
-        """
-        Execute a margin sell order.
-        Exchange-specific implementation required (if supported).
-        """
-        pass

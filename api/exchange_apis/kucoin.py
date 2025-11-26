@@ -1,6 +1,4 @@
 import os
-import uuid
-
 from kucoin_universal_sdk.api import DefaultClient
 from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
@@ -13,6 +11,9 @@ from kucoin_universal_sdk.generate.spot.order import (
     CancelAllOrdersBySymbolReqBuilder,
     GetOrderByOrderIdReqBuilder,
     GetOpenOrdersReqBuilder,
+)
+from kucoin_universal_sdk.generate.margin.order import (
+    AddOrderReqBuilder as MarginAddOrderReqBuilder,
 )
 from kucoin_universal_sdk.model import ClientOptionBuilder
 from kucoin_universal_sdk.model import (
@@ -54,11 +55,11 @@ class KucoinApi:
         self.spot_market_api = (
             self.kucoin_rest_service.get_spot_service().get_market_api()
         )
-        self.margin_market_api = (
-            self.kucoin_rest_service.get_margin_service().get_market_api()
-        )
         self.spot_order_api = (
             self.kucoin_rest_service.get_spot_service().get_order_api()
+        )
+        self.margin_order_api = (
+            self.kucoin_rest_service.get_margin_service().get_order_api()
         )
 
     def get_server_time(self):
@@ -75,23 +76,22 @@ class KucoinApi:
         response = self.spot_market_api.get_all_symbols(request)
         return response
 
-    def place_order(
+    def add_order(
         self,
         symbol: str,
-        side: str,
-        order_type: str,
-        size: str = None,
-        price: str = None,
-        time_in_force: str = "GTC",
-        client_oid: str = None,
+        side: AddOrderReq.SideEnum,
+        order_type: AddOrderReq.TypeEnum,
+        size: float,
+        price: float = 0,
+        time_in_force: AddOrderReq.TimeInForceEnum = AddOrderReq.TimeInForceEnum.GTC,
     ):
         """
         Place an order on KuCoin using the SDK
 
         Args:
             symbol: Trading pair (e.g., "BTC-USDT")
-            side: "buy" or "sell"
-            order_type: "limit" or "market"
+            side: AddOrderReq.SideEnum.BUY or AddOrderReq.SideEnum.SELL
+            order_type: AddOrderReq.TypeEnum.LIMIT or AddOrderReq.TypeEnum.MARKET
             size: Order size (amount of base currency)
             price: Order price (required for limit orders)
             time_in_force: GTC, GTT, IOC, or FOK
@@ -99,44 +99,23 @@ class KucoinApi:
 
         Returns:
             Order response with orderId
+            maps to Binance format
         """
         builder = AddOrderReqBuilder()
         builder.set_symbol(symbol)
-        builder.set_side(
-            AddOrderReq.SideEnum.BUY
-            if side.lower() == "buy"
-            else AddOrderReq.SideEnum.SELL
-        )
-        builder.set_type(
-            AddOrderReq.TypeEnum.LIMIT
-            if order_type.lower() == "limit"
-            else AddOrderReq.TypeEnum.MARKET
-        )
+        builder.set_side(side)
+        builder.set_type(order_type)
+        builder.set_time_in_force(time_in_force)
+        builder.set_size(str(size))
 
-        if client_oid:
-            builder.set_client_oid(client_oid)
-        else:
-            builder.set_client_oid(str(uuid.uuid4()))
-
-        if size:
-            builder.set_size(str(size))
-
-        if order_type.lower() == "limit" and price:
+        if price > 0:
             builder.set_price(str(price))
-            if time_in_force == "GTC":
-                builder.set_time_in_force(AddOrderReq.TimeInForceEnum.GTC)
-            elif time_in_force == "GTT":
-                builder.set_time_in_force(AddOrderReq.TimeInForceEnum.GTT)
-            elif time_in_force == "IOC":
-                builder.set_time_in_force(AddOrderReq.TimeInForceEnum.IOC)
-            elif time_in_force == "FOK":
-                builder.set_time_in_force(AddOrderReq.TimeInForceEnum.FOK)
+        else:
+            builder.set_type(AddOrderReq.TypeEnum.MARKET)
 
         req = builder.build()
-        resp = self.spot_order_api.add_order(req)
-
-        # Convert response to dict format
-        return {"orderId": resp.order_id, "clientOid": resp.client_oid}
+        resp = self.spot_order_api.add_order_sync(req)
+        return resp
 
     def cancel_order(self, order_id: str):
         """Cancel an order by order ID using SDK"""
@@ -226,3 +205,49 @@ class KucoinApi:
         if hasattr(resp, "data"):
             return resp.data
         return []
+
+    def add_margin_order(
+        self,
+        symbol: str,
+        side: AddOrderReq.SideEnum,
+        order_type: AddOrderReq.TypeEnum,
+        size: float,
+        price: float = 0,
+        time_in_force: AddOrderReq.TimeInForceEnum = AddOrderReq.TimeInForceEnum.GTC,
+    ) -> MarginAddOrderReqBuilder:
+        """
+        Place a margin order on KuCoin using the SDK
+
+        Args:
+            symbol: Trading pair (e.g., "BTC-USDT")
+            side: AddOrderReq.SideEnum.BUY or AddOrderReq.SideEnum.SELL
+            order_type: AddOrderReq.TypeEnum.LIMIT or AddOrderReq.TypeEnum.MARKET
+            size: Order size (amount of base currency)
+            price: Order price (required for limit orders)
+            time_in_force: GTC, GTT, IOC, or FOK
+            client_oid: Client order ID
+        Returns:
+            Order response with orderId
+            maps to Binance format
+        """
+        builder = AddOrderReqBuilder()
+        builder.set_symbol(symbol)
+        builder.set_side(side)
+        builder.set_type(order_type)
+        builder.set_size(str(size))
+        builder.set_time_in_force(time_in_force)
+
+        if order_type == AddOrderReq.TypeEnum.LIMIT and price:
+            builder.set_price(str(price))
+
+        req = builder.build()
+        resp = self.margin_order_api.add_order(req)
+        return resp
+
+    def get_margin_order(self, order_id: int):
+        """Get margin order details by order ID using SDK"""
+        builder = GetOrderByOrderIdReqBuilder()
+        builder.set_order_id(order_id)
+        req = builder.build()
+        resp = self.margin_order_api.get_order_by_order_id(req)
+        return resp

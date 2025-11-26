@@ -48,7 +48,7 @@ class MarginDealAbstract(DealAbstract):
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
-        self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
+        self.isolated_balance = self.api.get_isolated_balance(self.active_bot.pair)
 
     """
     Reusable utility functions
@@ -92,9 +92,9 @@ class MarginDealAbstract(DealAbstract):
         Transfer back from isolated account to spot account
         Disable isolated pair (so we don't reach the limit)
         """
-        self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
+        self.isolated_balance = self.api.get_isolated_balance(self.active_bot.pair)
         qty = self.isolated_balance[0]["quoteAsset"]["free"]
-        self.transfer_isolated_margin_to_spot(
+        self.api.transfer_isolated_margin_to_spot(
             asset=self.active_bot.fiat,
             symbol=self.active_bot.pair,
             amount=qty,

@@ -187,7 +187,7 @@ class BaseDeal(OrderController):
         - qty_precision: to round numbers for Binance  Passed optionally to
         reduce number of requests to avoid rate limit.
         """
-        self.isolated_balance = self.get_isolated_balance(pair)
+        self.isolated_balance = self.api.get_isolated_balance(pair)
         if not self.isolated_balance:
             raise BinbotErrors("No isolated margin found for pair")
 
@@ -261,7 +261,7 @@ class BaseDeal(OrderController):
             )
 
             # get new balance
-            self.isolated_balance = self.get_isolated_balance(pair)
+            self.isolated_balance = self.api.get_isolated_balance(pair)
 
         if float(self.isolated_balance[0]["quoteAsset"]["free"]) != 0:
             # transfer back to SPOT account

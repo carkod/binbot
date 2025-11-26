@@ -2,6 +2,7 @@ from exchange_apis.kucoin import KucoinApi
 from orders.abstract import OrderControllerAbstract
 from tools.enum_definitions import OrderSide
 from account.kucoin_account import KucoinAccount
+from kucoin_universal_sdk.generate.spot.order import AddOrderReq
 
 
 class KucoinOrderController(OrderControllerAbstract, KucoinAccount):
@@ -17,50 +18,86 @@ class KucoinOrderController(OrderControllerAbstract, KucoinAccount):
         KucoinAccount.__init__(self)
         self.api = KucoinApi()
 
-    def simulate_order(self, pair: str, side: OrderSide, qty=1):
+    def _get_price_from_book_order(self, data, order_side: bool, index: int):
         """
-        Simulate a KuCoin order without executing
-        Note: KuCoin order structure may differ from Binance
+        Helper to extract price and base quantity from order book data
         """
-        price = self.matching_engine(pair, True, 0)
-        order = {
-            "symbol": pair,
-            "orderId": self.generate_short_id(),
-            "orderListId": -1,
-            "clientOrderId": self.generate_id().hex,
-            "transactTime": self.get_ts(),
-            "price": price,
-            "origQty": qty,
-            "executedQty": qty,
-            "cummulativeQuoteQty": qty,
-            "status": "FILLED",
-            "timeInForce": "GTC",
-            "type": "LIMIT",
-            "side": side,
-            "fills": [],
+        if order_side:
+            price, base_qty = data["bids"][index]
+        else:
+            price, base_qty = data["asks"][index]
+        return float(price), float(base_qty)
+
+    def _convert_to_kucoin_symbol(self, binance_symbol: str) -> str:
+        """
+        Convert Binance symbol format to KuCoin format
+        Example: BTCUSDT -> BTC-USDT
+        """
+        # Common quote currencies
+        quote_currencies = ["USDT", "USDC", "BTC", "ETH", "BNB", "BUSD"]
+
+        for quote in quote_currencies:
+            if binance_symbol.endswith(quote):
+                base = binance_symbol[: -len(quote)]
+                return f"{base}-{quote}"
+
+        # If no common quote found, assume last 4 chars are quote
+        return f"{binance_symbol[:-4]}-{binance_symbol[-4:]}"
+
+    def _map_to_binance_format(self, order_details: dict) -> dict:
+        """
+        Map KuCoin order response to Binance-like Binance format.
+
+        Uses fields from KuCoin's get_order response, e.g.:
+        id, symbol, type, side, price, size, dealSize, dealFunds, fee,
+        feeCurrency, timeInForce, createdAt, clientOid, status, etc.
+        """
+        return {
+            "symbol": order_details["symbol"],
+            "orderId": order_details["id"],
+            "clientOrderId": order_details["clientOid"],
+            "transactTime": int(order_details["createdAt"]),
+            "price": str(order_details["price"]),
+            "origQty": str(order_details["size"]),
+            "executedQty": str(order_details["dealSize"]),
+            "cummulativeQuoteQty": str(order_details["dealFunds"]),
+            "status": order_details["status"],
+            "timeInForce": order_details["timeInForce"],
+            "type": order_details["type"],
+            "side": order_details["side"],
+            "commission": str(order_details["fee"]),
+            "commissionAsset": order_details["feeCurrency"],
         }
-        return order
 
     def simulate_response_order(self, pair: str, side: OrderSide, qty=1):
         """Simulate response order for KuCoin"""
-        price = self.matching_engine(pair, True, qty)
-        response_order = {
+        price = float(self.matching_engine(pair, False, qty))
+        order_id = self.generate_id().hex
+        client_order_id = self.generate_id().hex
+        ts = self.get_ts()
+
+        return {
             "symbol": pair,
-            "orderId": self.generate_short_id(),
-            "orderListId": -1,
-            "clientOrderId": self.generate_id().hex,
-            "transactTime": self.get_ts(),
-            "price": price,
-            "origQty": qty,
-            "executedQty": qty,
-            "cummulativeQuoteQty": qty,
+            "orderId": order_id,
+            "clientOrderId": client_order_id,
+            "transactTime": ts,
+            "price": str(price),
+            "origQty": str(qty),
+            "executedQty": str(qty),
+            "cummulativeQuoteQty": str(price * qty),
             "status": "FILLED",
             "timeInForce": "GTC",
             "type": "LIMIT",
             "side": side,
-            "fills": [],
+            "fills": [
+                {
+                    "price": str(price),
+                    "qty": str(qty),
+                    "commission": "0",
+                    "commissionAsset": "USDT",
+                }
+            ],
         }
-        return response_order
 
     def simulate_margin_order(self, pair, side: OrderSide):
         """
@@ -95,161 +132,98 @@ class KucoinOrderController(OrderControllerAbstract, KucoinAccount):
         KuCoin implementation of matching engine
         Delegates to KucoinAccount's matching_engine
         """
-        return super().matching_engine(symbol, order_side, qty)
+        data = self.api.get_part_order_book(symbol=symbol, size=str(qty))[0][0]
+        price, base_qty = self._get_price_from_book_order(data, order_side, 0)
 
-    def sell_order(
-        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
-    ):
+        if qty == 0:
+            return price
+        else:
+            buyable_qty = float(qty) / float(price)
+            if buyable_qty < base_qty:
+                return price
+            else:
+                for i in range(1, 11):
+                    price, base_qty = self._get_price_from_book_order(
+                        data, order_side, i
+                    )
+                    if buyable_qty > base_qty:
+                        return price
+                    else:
+                        continue
+                # caller to use market price
+                return 0
+
+    def sell_order(self, symbol: str, qty: float):
         """
         KuCoin sell order implementation
         Places a market sell order and maps response to Binance format
         """
         # Convert symbol from Binance format (BTCUSDT) to KuCoin format (BTC-USDT)
-        kucoin_symbol = self._convert_to_kucoin_symbol(symbol)
+        book_price = self.matching_engine(symbol, order_side=False, qty=qty)
 
-        # Place market sell order
-        kucoin_response = self.place_order(
-            symbol=kucoin_symbol, side="sell", order_type="market", size=str(qty)
-        )
+        if book_price > 0:
+            # Place market sell order
+            response = self.api.add_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.SELL,
+                order_type=AddOrderReq.TypeEnum.LIMIT,
+                size=qty,
+            )
+        else:
+            response = self.api.add_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.SELL,
+                order_type=AddOrderReq.TypeEnum.MARKET,
+                size=qty,
+            )
+
+        order_details = self.api.get_order(response["orderId"])
 
         # Map KuCoin response to Binance format
-        return self._map_to_binance_format(kucoin_response, symbol, "SELL", qty)
+        return self._map_to_binance_format(order_details)
 
     def buy_order(
-        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
+        self,
+        symbol: str,
+        qty: float,
+        price: float,
     ):
         """
         KuCoin buy order implementation
         Places a market buy order and maps response to Binance format
         """
-        # Convert symbol from Binance format (BTCUSDT) to KuCoin format (BTC-USDT)
-        kucoin_symbol = self._convert_to_kucoin_symbol(symbol)
+        book_price = self.matching_engine(symbol, order_side=False)
 
-        # Place market buy order
-        kucoin_response = self.place_order(
-            symbol=kucoin_symbol, side="buy", order_type="market", size=str(qty)
-        )
+        if book_price > 0:
+            # Place market buy order with price
+            kucoin_response = self.api.add_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.BUY,
+                order_type=AddOrderReq.TypeEnum.LIMIT,
+                size=qty,
+                price=price,
+                time_in_force=AddOrderReq.TimeInForceEnum.GTC,
+            )
+        else:
+            kucoin_response = self.api.add_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.BUY,
+                order_type=AddOrderReq.TypeEnum.MARKET,
+                size=qty,
+                time_in_force=AddOrderReq.TimeInForceEnum.FOK,
+            )
+
+        order_details = self.api.get_order(kucoin_response["orderId"])
 
         # Map KuCoin response to Binance format
-        return self._map_to_binance_format(kucoin_response, symbol, "BUY", qty)
-
-    def _convert_to_kucoin_symbol(self, binance_symbol: str) -> str:
-        """
-        Convert Binance symbol format to KuCoin format
-        Example: BTCUSDT -> BTC-USDT
-        """
-        # Common quote currencies
-        quote_currencies = ["USDT", "USDC", "BTC", "ETH", "BNB", "BUSD"]
-
-        for quote in quote_currencies:
-            if binance_symbol.endswith(quote):
-                base = binance_symbol[: -len(quote)]
-                return f"{base}-{quote}"
-
-        # If no common quote found, assume last 4 chars are quote
-        return f"{binance_symbol[:-4]}-{binance_symbol[-4:]}"
-
-    def _map_to_binance_format(
-        self, kucoin_response: dict, symbol: str, side: str, qty: float
-    ) -> dict:
-        """
-        Map KuCoin order response to Binance format
-
-        KuCoin response: {"orderId": "..."}
-        Binance format: {symbol, orderId, clientOrderId, transactTime, price, origQty,
-                        executedQty, status, timeInForce, type, side, fills}
-        """
-        # Get order details from KuCoin
-        order_id = kucoin_response.get("orderId")
-
-        # For market orders, we need to fetch the order details to get execution info
-        try:
-            order_details = self.get_order(order_id)
-
-            return {
-                "symbol": symbol,
-                "orderId": order_id,
-                "orderListId": -1,
-                "clientOrderId": order_details.get("clientOid", ""),
-                "transactTime": int(order_details.get("createdAt", 0)),
-                "price": str(order_details.get("price", "0")),
-                "origQty": str(order_details.get("size", qty)),
-                "executedQty": str(order_details.get("dealSize", "0")),
-                "cummulativeQuoteQty": str(order_details.get("dealFunds", "0")),
-                "status": self._map_order_status(order_details.get("status", "active")),
-                "timeInForce": self._map_time_in_force(
-                    order_details.get("timeInForce", "GTC")
-                ),
-                "type": order_details.get("type", "market").upper(),
-                "side": side,
-                "fills": self._extract_fills(order_details),
-            }
-        except Exception:
-            # Fallback to basic response if order fetch fails
-            return {
-                "symbol": symbol,
-                "orderId": order_id,
-                "orderListId": -1,
-                "clientOrderId": "",
-                "transactTime": self.get_ts(),
-                "price": "0",
-                "origQty": str(qty),
-                "executedQty": "0",
-                "cummulativeQuoteQty": "0",
-                "status": "NEW",
-                "timeInForce": "GTC",
-                "type": "MARKET",
-                "side": side,
-                "fills": [],
-            }
-
-    def _map_order_status(self, kucoin_status: str) -> str:
-        """
-        Map KuCoin order status to Binance format
-        KuCoin: active, done
-        Binance: NEW, PARTIALLY_FILLED, FILLED, CANCELED, EXPIRED
-        """
-        status_map = {
-            "active": "NEW",
-            "done": "FILLED",
-        }
-        return status_map.get(kucoin_status, "NEW")
-
-    def _map_time_in_force(self, kucoin_tif: str) -> str:
-        """Map KuCoin time in force to Binance format"""
-        tif_map = {
-            "GTC": "GTC",
-            "GTT": "GTT",
-            "IOC": "IOC",
-            "FOK": "FOK",
-        }
-        return tif_map.get(kucoin_tif, "GTC")
-
-    def _extract_fills(self, order_details: dict) -> list:
-        """
-        Extract fills from KuCoin order details
-        Binance fills format: [{price, qty, commission, commissionAsset}]
-        """
-        # KuCoin doesn't provide fill-by-fill data in the same way
-        # Return a single fill if the order has executed
-        if float(order_details.get("dealSize", 0)) > 0:
-            return [
-                {
-                    "price": str(order_details.get("price", "0")),
-                    "qty": str(order_details.get("dealSize", "0")),
-                    "commission": str(order_details.get("fee", "0")),
-                    "commissionAsset": order_details.get("feeCurrency", "USDT"),
-                }
-            ]
-        return []
+        return self._map_to_binance_format(order_details)
 
     def delete_order(self, symbol: str, order_id: int):
         """
         Cancel single KuCoin order
         Returns Binance-compatible response
         """
-        # KuCoin cancel_order returns: {"cancelledOrderIds": ["order_id"]}
-        self.cancel_order(str(order_id))
+        self.api.cancel_order(str(order_id))
 
         return {
             "symbol": symbol,
@@ -272,11 +246,7 @@ class KucoinOrderController(OrderControllerAbstract, KucoinAccount):
         Delete all KuCoin orders for a symbol
         Returns list of cancelled order IDs
         """
-        # Convert to KuCoin symbol format
-        kucoin_symbol = self._convert_to_kucoin_symbol(symbol)
-
-        # KuCoin returns: {"cancelledOrderIds": ["id1", "id2", ...]}
-        kucoin_response = self.cancel_all_orders(kucoin_symbol)
+        kucoin_response = self.api.cancel_all_orders(symbol=symbol)
 
         # Return list of cancelled order IDs (Binance compatible)
         cancelled_ids = kucoin_response.get("cancelledOrderIds", [])
@@ -285,17 +255,55 @@ class KucoinOrderController(OrderControllerAbstract, KucoinAccount):
     def buy_margin_order(self, symbol: str, qty: float):
         """
         KuCoin margin buy order
-        TODO: Implement KuCoin-specific margin order placement
+        Places a margin buy order and maps response to Binance format
         """
-        raise NotImplementedError(
-            "KuCoin buy_margin_order needs to be implemented with KuCoin SDK"
-        )
+        book_price = self.matching_engine(symbol, order_side=True)
+        if book_price > 0:
+            kucoin_response = self.api.add_margin_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.BUY,
+                order_type=AddOrderReq.TypeEnum.LIMIT,
+                size=qty,
+                price=book_price,
+                time_in_force=AddOrderReq.TimeInForceEnum.GTC,
+            )
+        else:
+            kucoin_response = self.api.add_margin_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.BUY,
+                order_type=AddOrderReq.TypeEnum.MARKET,
+                size=qty,
+                time_in_force=AddOrderReq.TimeInForceEnum.FOK,
+            )
+
+        order_details = self.api.get_margin_order(kucoin_response["orderId"])
+
+        return self._map_to_binance_format(order_details)
 
     def sell_margin_order(self, symbol: str, qty: float):
         """
         KuCoin margin sell order
-        TODO: Implement KuCoin-specific margin order placement
+        Places a margin sell order and maps response to Binance format
         """
-        raise NotImplementedError(
-            "KuCoin sell_margin_order needs to be implemented with KuCoin SDK"
-        )
+        book_price = self.matching_engine(symbol, order_side=False)
+        if book_price > 0:
+            kucoin_response = self.api.add_margin_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.SELL,
+                order_type=AddOrderReq.TypeEnum.LIMIT,
+                size=qty,
+                price=book_price,
+                time_in_force=AddOrderReq.TimeInForceEnum.GTC,
+            )
+        else:
+            kucoin_response = self.api.add_margin_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.SELL,
+                order_type=AddOrderReq.TypeEnum.MARKET,
+                size=qty,
+                time_in_force=AddOrderReq.TimeInForceEnum.FOK,
+            )
+
+        order_details = self.api.get_margin_order(kucoin_response["orderId"])
+
+        return self._map_to_binance_format(order_details)
