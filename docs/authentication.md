@@ -200,7 +200,8 @@ async function login(email, password) {
   const data = await response.json();
   
   if (data.error === 0) {
-    // Store token securely (e.g., in memory, sessionStorage, or secure cookie)
+    // Store token (example uses localStorage for simplicity)
+    // For production, consider more secure options like httpOnly cookies
     localStorage.setItem('access_token', data.data.access_token);
     return data.data.access_token;
   }
@@ -276,9 +277,11 @@ bots = client.get_bots()
 
 1. **HTTPS in Production**: Always use HTTPS in production to prevent token interception
 2. **Token Storage**: 
-   - Avoid localStorage in web apps if possible (vulnerable to XSS)
-   - Consider httpOnly cookies for web applications
-   - Use secure storage mechanisms in mobile apps
+   - **Web Apps**: The example above uses localStorage for simplicity, but consider these more secure alternatives:
+     - **httpOnly cookies**: Most secure for web apps (not accessible via JavaScript)
+     - **sessionStorage**: Cleared when tab closes, better than localStorage
+     - **In-memory only**: Most secure but lost on page refresh
+   - **Mobile Apps**: Use platform-specific secure storage (Keychain, Keystore)
 3. **Token Rotation**: Implement token refresh mechanism for long-running sessions
 4. **CORS Configuration**: The API currently allows all origins (`allow_origins=["*"]`). Restrict this in production.
 5. **Password Requirements**: Enforce strong passwords (min 8 characters as currently configured)
