@@ -11,12 +11,17 @@ from autotrade.schemas import (
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
 from tools.handle_error import json_response, json_response_error
+from user.services.auth import decode_access_token
 
 autotrade_settings_blueprint = APIRouter()
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-@autotrade_settings_blueprint.put("/bots", tags=["autotrade settings"])
+@autotrade_settings_blueprint.put(
+    "/bots",
+    dependencies=[Depends(decode_access_token)],
+    tags=["autotrade settings"],
+)
 def edit_settings(
     item: AutotradeSettingsSchema, session: Session = Depends(get_session)
 ):
@@ -37,7 +42,11 @@ def edit_settings(
         return resp
 
 
-@autotrade_settings_blueprint.get("/bots", tags=["autotrade settings"])
+@autotrade_settings_blueprint.get(
+    "/bots",
+    dependencies=[Depends(decode_access_token)],
+    tags=["autotrade settings"],
+)
 def get_settings(session: Session = Depends(get_session)):
     try:
         deserialized_data = AutotradeCrud(session=session).get_settings()
@@ -53,6 +62,7 @@ def get_settings(session: Session = Depends(get_session)):
 
 @autotrade_settings_blueprint.get(
     "/paper-trading",
+    dependencies=[Depends(decode_access_token)],
     response_model=TestAutotradeSettingsSchema,
     tags=["autotrade settings"],
 )
@@ -74,7 +84,11 @@ def get_test_autotrade_settings(
         return json_response_error(f"Error getting settings: {error}")
 
 
-@autotrade_settings_blueprint.put("/paper-trading", tags=["autotrade settings"])
+@autotrade_settings_blueprint.put(
+    "/paper-trading",
+    dependencies=[Depends(decode_access_token)],
+    tags=["autotrade settings"],
+)
 def edit_test_autotrade_settings(
     item: TestAutotradeSettingsSchema,
     session: Session = Depends(get_session),

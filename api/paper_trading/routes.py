@@ -12,6 +12,7 @@ from typing import List, Union, Optional
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from bots.models import BotModelResponse, ErrorsRequestBody
+from user.services.auth import decode_access_token
 
 
 paper_trading_blueprint = APIRouter()
@@ -19,7 +20,10 @@ ta = TypeAdapter(list[BotModelResponse])
 
 
 @paper_trading_blueprint.get(
-    "/paper-trading", response_model=BotListResponse, tags=["paper trading"]
+    "/paper-trading",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotListResponse,
+    tags=["paper trading"],
 )
 def get(
     status: Status = Status.all,
@@ -44,7 +48,11 @@ def get(
         return BotResponse(message="Failed to find bots!", data=error.json(), error=1)
 
 
-@paper_trading_blueprint.get("/paper-trading/active-pairs", tags=["paper trading"])
+@paper_trading_blueprint.get(
+    "/paper-trading/active-pairs",
+    dependencies=[Depends(decode_access_token)],
+    tags=["paper trading"],
+)
 def get_active_pairs(session: Session = Depends(get_session)):
     try:
         pairs = PaperTradingTableCrud(session=session).get_active_pairs()
@@ -56,7 +64,10 @@ def get_active_pairs(session: Session = Depends(get_session)):
 
 
 @paper_trading_blueprint.get(
-    "/paper-trading/{id}", response_model=BotResponse, tags=["paper trading"]
+    "/paper-trading/{id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotResponse,
+    tags=["paper trading"],
 )
 def get_one(
     id: str,
@@ -75,7 +86,10 @@ def get_one(
 
 
 @paper_trading_blueprint.get(
-    "/paper-trading/symbol/{symbol}", response_model=BotResponse, tags=["bots"]
+    "/paper-trading/symbol/{symbol}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotResponse,
+    tags=["bots"],
 )
 def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
     try:
@@ -88,7 +102,11 @@ def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
         return StandardResponse(message=error.message, error=1)
 
 
-@paper_trading_blueprint.post("/paper-trading", tags=["paper trading"])
+@paper_trading_blueprint.post(
+    "/paper-trading",
+    dependencies=[Depends(decode_access_token)],
+    tags=["paper trading"],
+)
 def create(bot_item: BotBase, session: Session = Depends(get_session)):
     try:
         bot = PaperTradingTableCrud(session=session).create(bot_item)
@@ -98,7 +116,11 @@ def create(bot_item: BotBase, session: Session = Depends(get_session)):
         return BotResponse(message=error.message, error=1)
 
 
-@paper_trading_blueprint.put("/paper-trading/{id}", tags=["paper trading"])
+@paper_trading_blueprint.put(
+    "/paper-trading/{id}",
+    dependencies=[Depends(decode_access_token)],
+    tags=["paper trading"],
+)
 def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
     try:
         controller = PaperTradingTableCrud(session=session)
@@ -116,7 +138,11 @@ def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
         return BotResponse(message=error.message, error=1)
 
 
-@paper_trading_blueprint.delete("/paper-trading", tags=["paper trading"])
+@paper_trading_blueprint.delete(
+    "/paper-trading",
+    dependencies=[Depends(decode_access_token)],
+    tags=["paper trading"],
+)
 def delete(id: List[str], session: Session = Depends(get_session)):
     """
     Receives a list of `id=a1b2c3&id=b2c3d4`
@@ -128,7 +154,11 @@ def delete(id: List[str], session: Session = Depends(get_session)):
         return BotResponse(message=error.message, error=1)
 
 
-@paper_trading_blueprint.get("/paper-trading/activate/{id}", tags=["paper trading"])
+@paper_trading_blueprint.get(
+    "/paper-trading/activate/{id}",
+    dependencies=[Depends(decode_access_token)],
+    tags=["paper trading"],
+)
 def activate(id: str, session: Session = Depends(get_session)):
     bot = PaperTradingTableCrud(session=session).get_one(bot_id=id)
     if not bot:
@@ -156,7 +186,9 @@ def activate(id: str, session: Session = Depends(get_session)):
 
 
 @paper_trading_blueprint.delete(
-    "/paper-trading/deactivate/{id}", tags=["paper trading"]
+    "/paper-trading/deactivate/{id}",
+    dependencies=[Depends(decode_access_token)],
+    tags=["paper trading"],
 )
 def deactivate(id: str, session: Session = Depends(get_session)):
     """
@@ -188,7 +220,10 @@ def deactivate(id: str, session: Session = Depends(get_session)):
 
 
 @paper_trading_blueprint.post(
-    "/paper-trading/errors/{bot_id}", response_model=BotResponse, tags=["bots"]
+    "/paper-trading/errors/{bot_id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotResponse,
+    tags=["bots"],
 )
 def bot_errors(
     bot_id: str, bot_errors: ErrorsRequestBody, session: Session = Depends(get_session)

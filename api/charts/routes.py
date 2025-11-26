@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from tools.handle_error import (
     json_response,
@@ -8,11 +8,16 @@ from charts.controllers import MarketDominationController
 from charts.models import AdrSeriesResponse
 from tools.handle_error import StandardResponse
 from databases.crud.candles_crud import CandlesCrud
+from user.services.auth import decode_access_token
 
 charts_blueprint = APIRouter()
 
 
-@charts_blueprint.get("/top-gainers", tags=["charts"])
+@charts_blueprint.get(
+    "/top-gainers",
+    dependencies=[Depends(decode_access_token)],
+    tags=["charts"],
+)
 def top_gainers():
     try:
         gainers, losers = MarketDominationController().gainers_losers()
@@ -31,7 +36,11 @@ def top_gainers():
         return json_response_error(f"Failed to retrieve top gainers data: {error}")
 
 
-@charts_blueprint.get("/top-losers", tags=["charts"])
+@charts_blueprint.get(
+    "/top-losers",
+    dependencies=[Depends(decode_access_token)],
+    tags=["charts"],
+)
 def top_losers():
     try:
         gainers, losers = MarketDominationController().gainers_losers()
@@ -51,7 +60,10 @@ def top_losers():
 
 
 @charts_blueprint.get(
-    "/btc-correlation", response_model=StandardResponse, tags=["charts"]
+    "/btc-correlation",
+    dependencies=[Depends(decode_access_token)],
+    response_model=StandardResponse,
+    tags=["charts"],
 )
 def get_btc_correlation(symbol: str):
     try:
@@ -75,6 +87,7 @@ def get_btc_correlation(symbol: str):
 
 @charts_blueprint.get(
     "/adr-series",
+    dependencies=[Depends(decode_access_token)],
     tags=["charts"],
     summary="Similar to market_domination, renamed and lighter data size",
     response_model=AdrSeriesResponse,
@@ -99,6 +112,7 @@ def get_adr_series(size: int = 14):
 
 @charts_blueprint.get(
     "/algorithm-performance",
+    dependencies=[Depends(decode_access_token)],
     tags=["charts"],
     summary="Get algorithm profit and loss",
     response_model=AdrSeriesResponse,

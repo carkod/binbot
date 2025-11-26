@@ -18,12 +18,18 @@ from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
 from bots.models import BotModelResponse
 from tools.handle_error import StandardResponse
+from user.services.auth import decode_access_token
 
 bot_blueprint = APIRouter()
 bot_ta = TypeAdapter(BotModelResponse)
 
 
-@bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
+@bot_blueprint.get(
+    "/bot",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotListResponse,
+    tags=["bots"],
+)
 def get(
     status: Status = Status.all,
     start_date: Optional[int] = None,
@@ -45,7 +51,12 @@ def get(
         return BotResponse(message="Failed to find bots!", data=error.json(), error=1)
 
 
-@bot_blueprint.get("/bot/active-pairs", response_model=BotListResponse, tags=["bots"])
+@bot_blueprint.get(
+    "/bot/active-pairs",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotListResponse,
+    tags=["bots"],
+)
 def get_active_pairs(session: Session = Depends(get_session)):
     """
     Get pairs/symbols that have active bots
@@ -62,7 +73,12 @@ def get_active_pairs(session: Session = Depends(get_session)):
         return BotResponse(message=error.message, error=1)
 
 
-@bot_blueprint.get("/bot/{id}", response_model=BotResponse, tags=["bots"])
+@bot_blueprint.get(
+    "/bot/{id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotResponse,
+    tags=["bots"],
+)
 def get_one_by_id(id: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=id)
@@ -74,7 +90,11 @@ def get_one_by_id(id: str, session: Session = Depends(get_session)):
         return StandardResponse(message=error.message, error=1)
 
 
-@bot_blueprint.get("/bot/symbol/{symbol}", tags=["bots"])
+@bot_blueprint.get(
+    "/bot/symbol/{symbol}",
+    dependencies=[Depends(decode_access_token)],
+    tags=["bots"],
+)
 def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=None, symbol=symbol)
@@ -86,7 +106,12 @@ def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
         return StandardResponse(message=error.message, error=1)
 
 
-@bot_blueprint.post("/bot", tags=["bots"], response_model=BotResponse)
+@bot_blueprint.post(
+    "/bot",
+    dependencies=[Depends(decode_access_token)],
+    tags=["bots"],
+    response_model=BotResponse,
+)
 def create(
     bot_item: BotBase,
     session: Session = Depends(get_session),
@@ -99,7 +124,12 @@ def create(
         return BotResponse(message=f"Failed to create new bot {error.json()}", error=1)
 
 
-@bot_blueprint.put("/bot/{id}", response_model=BotResponse, tags=["bots"])
+@bot_blueprint.put(
+    "/bot/{id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotResponse,
+    tags=["bots"],
+)
 def edit(
     id: str,
     bot_item: BotBase,
@@ -126,7 +156,12 @@ def edit(
         return BotResponse(message=error.message, error=1)
 
 
-@bot_blueprint.delete("/bot", response_model=IResponseBase, tags=["bots"])
+@bot_blueprint.delete(
+    "/bot",
+    dependencies=[Depends(decode_access_token)],
+    response_model=IResponseBase,
+    tags=["bots"],
+)
 def delete(
     id: List[str],
     session: Session = Depends(get_session),
@@ -141,7 +176,12 @@ def delete(
         return BotResponse(message="Failed to delete bot", data=error.json(), error=1)
 
 
-@bot_blueprint.get("/bot/activate/{id}", response_model=BotResponse, tags=["bots"])
+@bot_blueprint.get(
+    "/bot/activate/{id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotResponse,
+    tags=["bots"],
+)
 def activate_by_id(id: str, session: Session = Depends(get_session)):
     """
     Activate bot
@@ -182,7 +222,12 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
         return BotResponse(data=bot_model, message=error.message, error=1)
 
 
-@bot_blueprint.delete("/bot/deactivate/{id}", response_model=BotResponse, tags=["bots"])
+@bot_blueprint.delete(
+    "/bot/deactivate/{id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotResponse,
+    tags=["bots"],
+)
 def deactivation(id: str, session: Session = Depends(get_session)):
     """
     Deactivation means closing all deals and selling to
@@ -209,7 +254,12 @@ def deactivation(id: str, session: Session = Depends(get_session)):
         return BotResponse(data=response_data, message=error.message, error=1)
 
 
-@bot_blueprint.post("/bot/errors/{bot_id}", response_model=BotResponse, tags=["bots"])
+@bot_blueprint.post(
+    "/bot/errors/{bot_id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=BotResponse,
+    tags=["bots"],
+)
 def bot_errors(
     bot_id: str, bot_errors: ErrorsRequestBody, session: Session = Depends(get_session)
 ):

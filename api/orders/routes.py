@@ -1,24 +1,37 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from tools.exceptions import BinanceErrors
 from tools.handle_error import json_response, json_response_error
 from orders.controller import OrderController
 from orders.schemas import OrderParams
+from user.services.auth import decode_access_token
 
 
 order_blueprint = APIRouter()
 
 
-@order_blueprint.post("/buy", tags=["orders"])
+@order_blueprint.post(
+    "/buy",
+    dependencies=[Depends(decode_access_token)],
+    tags=["orders"],
+)
 def create_buy_order(item: OrderParams):
     return OrderController().buy_order(symbol=item.pair, qty=item.qty)
 
 
-@order_blueprint.post("/sell", tags=["orders"])
+@order_blueprint.post(
+    "/sell",
+    dependencies=[Depends(decode_access_token)],
+    tags=["orders"],
+)
 def create_sell_order(item: OrderParams):
     return OrderController().sell_order(symbol=item.pair, qty=item.qty)
 
 
-@order_blueprint.delete("/close/{symbol}/{orderid}", tags=["orders"])
+@order_blueprint.delete(
+    "/close/{symbol}/{orderid}",
+    dependencies=[Depends(decode_access_token)],
+    tags=["orders"],
+)
 def delete_order(symbol, orderid):
     try:
         data = OrderController().delete_order(symbol, orderid)
@@ -30,12 +43,20 @@ def delete_order(symbol, orderid):
     return resp
 
 
-@order_blueprint.get("/margin/sell/{symbol}/{qty}", tags=["orders"])
+@order_blueprint.get(
+    "/margin/sell/{symbol}/{qty}",
+    dependencies=[Depends(decode_access_token)],
+    tags=["orders"],
+)
 def margin_sell(symbol, qty):
     return OrderController().sell_margin_order(symbol, qty)
 
 
-@order_blueprint.get("/all-orders", tags=["orders"])
+@order_blueprint.get(
+    "/all-orders",
+    dependencies=[Depends(decode_access_token)],
+    tags=["orders"],
+)
 def get_all_orders(symbol, order_id=0, start_time=None):
     try:
         data = OrderController().get_all_orders(

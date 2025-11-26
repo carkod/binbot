@@ -4,12 +4,17 @@ from databases.utils import get_session
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.tables.asset_index_table import AssetIndexTable
 from typing import List, Optional
+from user.services.auth import decode_access_token
 
 
 asset_index_blueprint = APIRouter(tags=["asset-index"])
 
 
-@asset_index_blueprint.get("/", response_model=List[AssetIndexTable])
+@asset_index_blueprint.get(
+    "/",
+    dependencies=[Depends(decode_access_token)],
+    response_model=List[AssetIndexTable],
+)
 def get_all_asset_indices(session: Session = Depends(get_session)):
     try:
         return AssetIndexCrud(session=session).get_all()
@@ -17,7 +22,11 @@ def get_all_asset_indices(session: Session = Depends(get_session)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@asset_index_blueprint.get("/{index_id}", response_model=AssetIndexTable)
+@asset_index_blueprint.get(
+    "/{index_id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=AssetIndexTable,
+)
 def get_asset_index(index_id: str, session: Session = Depends(get_session)):
     try:
         return AssetIndexCrud(session=session).get_index(index_id)
@@ -27,7 +36,11 @@ def get_asset_index(index_id: str, session: Session = Depends(get_session)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@asset_index_blueprint.post("/", response_model=AssetIndexTable)
+@asset_index_blueprint.post(
+    "/",
+    dependencies=[Depends(decode_access_token)],
+    response_model=AssetIndexTable,
+)
 def add_asset_index(id: str, name: str, session: Session = Depends(get_session)):
     try:
         return AssetIndexCrud(session=session).add_index(id=id, name=name)
@@ -35,7 +48,11 @@ def add_asset_index(id: str, name: str, session: Session = Depends(get_session))
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@asset_index_blueprint.put("/{index_id}", response_model=AssetIndexTable)
+@asset_index_blueprint.put(
+    "/{index_id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=AssetIndexTable,
+)
 def edit_asset_index(
     index_id: str,
     name: Optional[str] = None,
@@ -49,7 +66,11 @@ def edit_asset_index(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@asset_index_blueprint.delete("/{index_id}", response_model=AssetIndexTable)
+@asset_index_blueprint.delete(
+    "/{index_id}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=AssetIndexTable,
+)
 def delete_asset_index(index_id: str, session: Session = Depends(get_session)):
     try:
         return AssetIndexCrud(session=session).delete_index(index_id=index_id)

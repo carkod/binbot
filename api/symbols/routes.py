@@ -7,11 +7,16 @@ from sqlmodel import Session
 from tools.handle_error import StandardResponse, BinbotErrors
 from symbols.models import SymbolRequestPayload
 from typing import Optional
+from user.services.auth import decode_access_token
 
 symbols_blueprint = APIRouter()
 
 
-@symbols_blueprint.get("/symbols", tags=["Symbols"])
+@symbols_blueprint.get(
+    "/symbols",
+    dependencies=[Depends(decode_access_token)],
+    tags=["Symbols"],
+)
 def get_all_symbols(
     active: Optional[bool] = None,
     index: Optional[str] = None,
@@ -40,7 +45,11 @@ def get_all_symbols(
         return SymbolsResponse(message=f"Error retrieving active symbols: {e}", error=1)
 
 
-@symbols_blueprint.get("/symbol/store", tags=["Symbols"])
+@symbols_blueprint.get(
+    "/symbol/store",
+    dependencies=[Depends(decode_access_token)],
+    tags=["Symbols"],
+)
 def store_symbols(
     session: Session = Depends(get_session), delete_existing: bool = False
 ):
@@ -54,7 +63,11 @@ def store_symbols(
         return StandardResponse(message=str(e), error=1)
 
 
-@symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
+@symbols_blueprint.put(
+    "/symbol/asset-index",
+    dependencies=[Depends(decode_access_token)],
+    tags=["Symbols"],
+)
 def update_indexes(
     data: SymbolRequestPayload,
     session: Session = Depends(get_session),
@@ -73,7 +86,10 @@ def update_indexes(
 
 
 @symbols_blueprint.get(
-    "/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
+    "/symbol/{pair}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=GetOneSymbolResponse,
+    tags=["Symbols"],
 )
 def get_one_symbol(
     pair: str,
@@ -96,7 +112,10 @@ def get_one_symbol(
 
 
 @symbols_blueprint.post(
-    "/symbol", response_model=GetOneSymbolResponse, tags=["Symbols"]
+    "/symbol",
+    dependencies=[Depends(decode_access_token)],
+    response_model=GetOneSymbolResponse,
+    tags=["Symbols"],
 )
 def add_symbol(
     symbol: str,
@@ -135,7 +154,10 @@ def add_symbol(
 
 
 @symbols_blueprint.delete(
-    "/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
+    "/symbol/{pair}",
+    dependencies=[Depends(decode_access_token)],
+    response_model=GetOneSymbolResponse,
+    tags=["Symbols"],
 )
 def delete_symbol(pair: str, session: Session = Depends(get_session)):
     """
@@ -158,7 +180,12 @@ def delete_symbol(pair: str, session: Session = Depends(get_session)):
         return StandardResponse(message=f"Error deleting symbol: {str(e)}", error=1)
 
 
-@symbols_blueprint.put("/symbol", response_model=GetOneSymbolResponse, tags=["Symbols"])
+@symbols_blueprint.put(
+    "/symbol",
+    dependencies=[Depends(decode_access_token)],
+    response_model=GetOneSymbolResponse,
+    tags=["Symbols"],
+)
 def edit_symbol(
     data: SymbolRequestPayload,
     session: Session = Depends(get_session),
