@@ -125,7 +125,7 @@ def test_binance_symbols_ingestion_excludes_try(
         all_symbols = crud.get_all()
         symbol_ids = [s.id for s in all_symbols]
 
-        # BTCUSDC and ETHBTC should be ingested
+        # BTCUSDC and ETHBTC should be ingested (ETHBTC may already exist from fixtures)
         assert "BTCUSDC" in symbol_ids
         assert "ETHBTC" in symbol_ids
 
@@ -148,7 +148,7 @@ def test_kucoin_symbols_ingestion_excludes_try(
         all_symbols = crud.get_all()
         symbol_ids = [s.id for s in all_symbols]
 
-        # BTCUSDC and ETHBTC should be ingested
+        # BTCUSDC and ETHBTC should be ingested (ETHBTC may already exist from fixtures)
         assert "BTCUSDC" in symbol_ids
         assert "ETHBTC" in symbol_ids
 
@@ -171,7 +171,7 @@ def test_etl_exchange_info_update_excludes_try(
         all_symbols = crud.get_all()
         symbol_ids = [s.id for s in all_symbols]
 
-        # BTCUSDC and ETHBTC should be ingested
+        # BTCUSDC should be added (ETHBTC already exists in fixtures)
         assert "BTCUSDC" in symbol_ids
         assert "ETHBTC" in symbol_ids
 
@@ -194,7 +194,7 @@ def test_kucoin_symbols_updates_excludes_try(
         all_symbols = crud.get_all()
         symbol_ids = [s.id for s in all_symbols]
 
-        # BTCUSDC and ETHBTC should be ingested
+        # BTCUSDC should be added (ETHBTC already exists in fixtures)
         assert "BTCUSDC" in symbol_ids
         assert "ETHBTC" in symbol_ids
 
