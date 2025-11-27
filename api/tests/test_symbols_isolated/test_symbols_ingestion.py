@@ -1,5 +1,5 @@
 """
-Tests for symbol ingestion functions to verify TRY symbols are excluded
+Tests for symbol ingestion functions to verify TRY symbols are excluded from Binance only
 """
 import pytest
 from unittest.mock import Mock, patch
@@ -65,7 +65,7 @@ def mock_binance_exchange_info():
 
 @pytest.fixture
 def mock_kucoin_symbols():
-    """Mock KuCoin symbols response with TRY symbols"""
+    """Mock KuCoin symbols response with TRY symbols (which should be ingested)"""
     btc_usdc = Mock()
     btc_usdc.symbol = "BTC-USDC"
     btc_usdc.enable_trading = True
@@ -76,7 +76,7 @@ def mock_kucoin_symbols():
     btc_usdc.base_increment = "0.00001"
     btc_usdc.base_min_size = "10.0"
 
-    btc_try = Mock()  # Should be excluded
+    btc_try = Mock()  # Should be ingested (only Binance excludes TRY)
     btc_try.symbol = "BTC-TRY"
     btc_try.enable_trading = True
     btc_try.base_currency = "BTC"
@@ -86,7 +86,7 @@ def mock_kucoin_symbols():
     btc_try.base_increment = "0.00001"
     btc_try.base_min_size = "10.0"
 
-    eth_try = Mock()  # Should be excluded
+    eth_try = Mock()  # Should be ingested (only Binance excludes TRY)
     eth_try.symbol = "ETH-TRY"
     eth_try.enable_trading = True
     eth_try.base_currency = "ETH"
@@ -137,7 +137,7 @@ def test_binance_symbols_ingestion_excludes_try(
 def test_kucoin_symbols_ingestion_excludes_try(
     create_symbol_test_tables, mock_kucoin_symbols
 ):
-    """Test that kucoin_symbols_ingestion excludes symbols with TRY as quote asset"""
+    """Test that kucoin_symbols_ingestion does NOT exclude TRY symbols (only Binance excludes them)"""
     with patch("databases.crud.symbols_crud.KucoinApi") as mock_api:
         mock_api.return_value.get_all_symbols.return_value = mock_kucoin_symbols
 
@@ -152,9 +152,9 @@ def test_kucoin_symbols_ingestion_excludes_try(
         assert "BTCUSDC" in symbol_ids
         assert "ETHBTC" in symbol_ids
 
-        # BTCTRY and ETHTRY should NOT be ingested
-        assert "BTCTRY" not in symbol_ids
-        assert "ETHTRY" not in symbol_ids
+        # BTCTRY and ETHTRY SHOULD be ingested for KuCoin (only Binance excludes TRY)
+        assert "BTCTRY" in symbol_ids
+        assert "ETHTRY" in symbol_ids
 
 
 def test_etl_exchange_info_update_excludes_try(
@@ -183,7 +183,7 @@ def test_etl_exchange_info_update_excludes_try(
 def test_kucoin_symbols_updates_excludes_try(
     create_symbol_test_tables, mock_kucoin_symbols
 ):
-    """Test that kucoin_symbols_updates excludes symbols with TRY as quote asset"""
+    """Test that kucoin_symbols_updates does NOT exclude TRY symbols (only Binance excludes them)"""
     with patch("databases.crud.symbols_crud.KucoinApi") as mock_api:
         mock_api.return_value.get_all_symbols.return_value = mock_kucoin_symbols
 
@@ -198,6 +198,6 @@ def test_kucoin_symbols_updates_excludes_try(
         assert "BTCUSDC" in symbol_ids
         assert "ETHBTC" in symbol_ids
 
-        # BTCTRY and ETHTRY should NOT be ingested
-        assert "BTCTRY" not in symbol_ids
-        assert "ETHTRY" not in symbol_ids
+        # BTCTRY and ETHTRY SHOULD be ingested for KuCoin (only Binance excludes TRY)
+        assert "BTCTRY" in symbol_ids
+        assert "ETHTRY" in symbol_ids

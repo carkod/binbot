@@ -458,10 +458,6 @@ class SymbolsCrud:
             if item.symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
                 active = False
 
-            # Skip symbols with TRY as quote asset (symbols ending with TRY)
-            if item.quote_currency == "TRY":
-                continue
-
             if item.quote_currency in list(QuoteAssets):
                 symbol = item.symbol.replace("-", "")
                 price_precision = item.price_increment.find("1") - 2
@@ -581,10 +577,6 @@ class SymbolsCrud:
             active = True
             if item.symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
                 active = False
-
-            # Skip symbols with TRY as quote asset (symbols ending with TRY)
-            if item.quote_currency == "TRY":
-                continue
 
             if item.quote_currency in list(QuoteAssets):
                 symbol = item.symbol.replace("-", "")
