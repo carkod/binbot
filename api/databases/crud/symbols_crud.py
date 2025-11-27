@@ -411,6 +411,10 @@ class SymbolsCrud:
             if item["status"] != "TRADING":
                 continue
 
+            # Skip symbols with TRY as quote asset (symbols ending with TRY)
+            if item["quoteAsset"] == "TRY":
+                continue
+
             try:
                 self.get_symbol(item["symbol"])
             except BinbotErrors:
@@ -453,6 +457,10 @@ class SymbolsCrud:
             active = True
             if item.symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
                 active = False
+
+            # Skip symbols with TRY as quote asset (symbols ending with TRY)
+            if item.quote_currency == "TRY":
+                continue
 
             if item.quote_currency in list(QuoteAssets):
                 symbol = item.symbol.replace("-", "")
@@ -527,6 +535,10 @@ class SymbolsCrud:
             ):
                 continue
 
+            # Skip symbols with TRY as quote asset (symbols ending with TRY)
+            if item["quoteAsset"] == "TRY":
+                continue
+
             if item["quoteAsset"] in list(QuoteAssets) and symbol is None:
                 active = True
                 if item["symbol"] in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
@@ -569,6 +581,10 @@ class SymbolsCrud:
             active = True
             if item.symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
                 active = False
+
+            # Skip symbols with TRY as quote asset (symbols ending with TRY)
+            if item.quote_currency == "TRY":
+                continue
 
             if item.quote_currency in list(QuoteAssets):
                 symbol = item.symbol.replace("-", "")
