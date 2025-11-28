@@ -67,7 +67,7 @@ def test_binance_symbols_ingestion_excludes_try(
     create_symbol_test_tables, mock_binance_exchange_info
 ):
     """Test that binance_symbols_ingestion excludes symbols with TRY as quote asset"""
-    with patch("exchange_apis.binance.BinanceApi") as MockBinanceApi:
+    with patch("databases.crud.symbols_crud.BinanceApi") as MockBinanceApi:
         # Create a mock instance
         mock_instance = MagicMock()
         mock_instance.exchange_info.return_value = mock_binance_exchange_info
@@ -93,7 +93,7 @@ def test_etl_exchange_info_update_excludes_try(
     create_symbol_test_tables, mock_binance_exchange_info
 ):
     """Test that etl_exchange_info_update excludes symbols with TRY as quote asset"""
-    with patch("exchange_apis.binance.BinanceApi") as MockBinanceApi:
+    with patch("databases.crud.symbols_crud.BinanceApi") as MockBinanceApi:
         # Create a mock instance
         mock_instance = MagicMock()
         mock_instance.exchange_info.return_value = mock_binance_exchange_info
