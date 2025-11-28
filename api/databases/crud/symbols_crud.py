@@ -411,6 +411,10 @@ class SymbolsCrud:
             if item["status"] != "TRADING":
                 continue
 
+            # Skip symbols with TRY as quote asset (symbols ending with TRY)
+            if item["quoteAsset"] == "TRY":
+                continue
+
             try:
                 self.get_symbol(item["symbol"])
             except BinbotErrors:
@@ -525,6 +529,10 @@ class SymbolsCrud:
             if item["status"] != "TRADING" or item["symbol"].startswith(
                 ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
             ):
+                continue
+
+            # Skip symbols with TRY as quote asset (symbols ending with TRY)
+            if item["quoteAsset"] == "TRY":
                 continue
 
             if item["quoteAsset"] in list(QuoteAssets) and symbol is None:
