@@ -13,6 +13,7 @@ from tools.maths import (
 )
 from deals.abstractions.base import BaseDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from orders.abstract import OrderControllerAbstract
 
 
 class DealAbstract(BaseDeal):
@@ -42,11 +43,12 @@ class DealAbstract(BaseDeal):
         self.symbols_crud = SymbolsCrud()
         self.symbol_info = self.symbols_crud.get_symbol(self.active_bot.pair)
         self.conversion_threshold = 1.05
+        self.order: OrderControllerAbstract
 
     def handle_existing_quote_balance(self, symbol: str, is_quote_balance: float):
         """Handle case when we have existing quote balance"""
         quote_balance = round_numbers_floor(is_quote_balance, self.quote_qty_precision)
-        quote_fiat_price = self.get_book_order_deep(
+        quote_fiat_price = self.order.get_book_order_deep(
             symbol=symbol, order_side=not self.active_bot.quote_asset.is_fiat()
         )
         total_qty_available = quote_fiat_price * quote_balance
@@ -67,7 +69,9 @@ class DealAbstract(BaseDeal):
         """
         Handle case when we have no quote balance
         """
-        quote_fiat_price = self.get_book_order_deep(symbol=symbol, order_side=True)
+        quote_fiat_price = self.order.get_book_order_deep(
+            symbol=symbol, order_side=True
+        )
         quote_asset_qty = round_numbers_floor(
             self.active_bot.fiat_order_size / quote_fiat_price,
             self.quote_qty_precision,
@@ -82,7 +86,7 @@ class DealAbstract(BaseDeal):
             return None
 
         # Buy the calculated amount with conversion threshold
-        return self.buy_order(
+        return self.order.buy_order(
             symbol=symbol,
             qty=quote_asset_qty * self.conversion_threshold,
             qty_precision=self.quote_qty_precision,
@@ -98,22 +102,11 @@ class DealAbstract(BaseDeal):
             # Buy the exact amount needed
             qty = round_numbers_ceiling(amount_missing / float(quote_fiat_price))
 
-        return self.buy_order(
+        return self.order.buy_order(
             symbol=symbol,
             qty=qty * self.conversion_threshold,
             qty_precision=self.quote_qty_precision,
         )
-
-    def calculate_avg_price(self, fills: list[dict]) -> float:
-        """
-        Calculate average price of fills
-        """
-        total_qty: float = 0
-        total_price: float = 0
-        for fill in fills:
-            total_qty += float(fill["qty"])
-            total_price += float(fill["price"]) * float(fill["qty"])
-        return total_price / total_qty
 
     def check_available_balance_fiat(self, balances: list[dict]):
         """
@@ -123,9 +116,9 @@ class DealAbstract(BaseDeal):
         symbol = self.active_bot.fiat + self.active_bot.quote_asset.value
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            return self.simulate_order(symbol, OrderSide.buy)
+            return self.order.simulate_order(symbol, OrderSide.buy)
 
-        price = self.get_book_order_deep(symbol=symbol, order_side=False)
+        price = self.order.get_book_order_deep(symbol=symbol, order_side=False)
 
         # Get current quote asset balance
         conversion_qty = next(
@@ -153,7 +146,7 @@ class DealAbstract(BaseDeal):
 
     def handle_fiat_conversion_sell(self, symbol: str, amount_missing: float):
         """Handle selling fiat quote asset to get base fiat currency"""
-        precision = self.calculate_qty_precision(symbol)
+        precision = self.order.calculate_qty_precision(symbol)
 
         # Determine quantity to sell
         qty = (
@@ -165,7 +158,7 @@ class DealAbstract(BaseDeal):
         # Apply conversion threshold and round up
         qty = round_numbers_ceiling(qty * self.conversion_threshold, precision)
 
-        return self.sell_order(
+        return self.order.sell_order(
             symbol=symbol,
             qty=qty,
             qty_precision=precision,
@@ -186,7 +179,7 @@ class DealAbstract(BaseDeal):
             2.1. convert available fiat to quote
             2.2. buy base asset
         """
-        balances = self.get_raw_balance()
+        balances = self.order.get_raw_balance()
         symbol = self.active_bot.quote_asset.value + self.active_bot.fiat
 
         if self.active_bot.quote_asset.is_fiat():
@@ -194,7 +187,7 @@ class DealAbstract(BaseDeal):
 
         # we don't need to continue if it's a fake bot
         if isinstance(self.controller, PaperTradingTableCrud):
-            return self.simulate_order(symbol, OrderSide.buy)
+            return self.order.simulate_order(symbol, OrderSide.buy)
 
         is_quote_balance = next(
             (
@@ -208,7 +201,7 @@ class DealAbstract(BaseDeal):
             quote_balance = round_numbers_floor(
                 is_quote_balance, self.quote_qty_precision
             )
-            quote_fiat_price = self.get_book_order_deep(
+            quote_fiat_price = self.order.get_book_order_deep(
                 symbol=symbol, order_side=not self.active_bot.quote_asset.is_fiat()
             )
             total_qty_available = quote_fiat_price * quote_balance
@@ -232,7 +225,9 @@ class DealAbstract(BaseDeal):
             return self.buy_missing_amount(symbol, qty, quote_fiat_price)
 
         else:
-            quote_fiat_price = self.get_book_order_deep(symbol=symbol, order_side=True)
+            quote_fiat_price = self.order.get_book_order_deep(
+                symbol=symbol, order_side=True
+            )
             quote_asset_qty = round_numbers_floor(
                 self.active_bot.fiat_order_size / quote_fiat_price,
                 self.quote_qty_precision,
@@ -247,7 +242,7 @@ class DealAbstract(BaseDeal):
                 return None
 
             # Buy the calculated amount with conversion threshold
-            return self.buy_order(
+            return self.order.buy_order(
                 symbol=symbol,
                 qty=quote_asset_qty * self.conversion_threshold,
                 qty_precision=self.quote_qty_precision,
@@ -266,7 +261,7 @@ class DealAbstract(BaseDeal):
         if self.active_bot.quote_asset.value == self.active_bot.fiat:
             return self.active_bot
 
-        balances = self.get_raw_balance()
+        balances = self.order.get_raw_balance()
 
         if self.active_bot.quote_asset.is_fiat():
             # If USDC/TRY buy back not sell
@@ -289,7 +284,9 @@ class DealAbstract(BaseDeal):
 
             if self.active_bot.quote_asset.is_fiat():
                 # pessimistic price so that we can actually buy more
-                quote_fiat_price = self.matching_engine(symbol=symbol, order_side=True)
+                quote_fiat_price = self.order.matching_engine(
+                    symbol=symbol, order_side=True
+                )
                 # sell everything that is on the account clean
                 # this is to hedge from market fluctuations that make affect portfolio value
                 total_qty_available = round_numbers_floor(
@@ -314,13 +311,15 @@ class DealAbstract(BaseDeal):
                     self.quote_qty_precision,
                 )
 
-                res = self.buy_order(
+                res = self.order.buy_order(
                     symbol=symbol,
                     qty=buy_qty,
                     qty_precision=self.quote_qty_precision,
                 )
             else:
-                quote_fiat_price = self.matching_engine(symbol=symbol, order_side=False)
+                quote_fiat_price = self.order.matching_engine(
+                    symbol=symbol, order_side=False
+                )
 
                 total_qty_available = round_numbers_floor(
                     quote_fiat_price * quote_balance
@@ -333,7 +332,7 @@ class DealAbstract(BaseDeal):
                     quote_balance,
                     self.quote_qty_precision,
                 )
-                res = self.sell_order(
+                res = self.order.sell_order(
                     symbol=symbol,
                     qty=sell_qty,
                     qty_precision=self.quote_qty_precision,
@@ -376,20 +375,15 @@ class DealAbstract(BaseDeal):
         price = round_numbers(price, self.price_precision)
 
         if self.db_table == PaperTradingTable:
-            res = self.simulate_order(self.active_bot.pair, OrderSide.sell)
+            res = self.order.simulate_order(self.active_bot.pair, OrderSide.sell)
         else:
             qty = round_numbers(qty, self.qty_precision)
             price = round_numbers(price, self.price_precision)
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
+            res = self.order.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
             raise TakeProfitError(res["error"])
-
-        price = float(res["price"])
-        if price == 0:
-            # Market orders return 0
-            price = self.calculate_avg_price(res["fills"])
 
         order_data = OrderModel(
             timestamp=int(res["transactTime"]),
@@ -404,9 +398,7 @@ class DealAbstract(BaseDeal):
             status=res["status"],
         )
 
-        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
-            res["fills"]
-        )
+        self.active_bot.deal.total_commissions += res["commissions"]
 
         self.active_bot.orders.append(order_data)
         self.active_bot.deal.closing_price = price
@@ -462,16 +454,16 @@ class DealAbstract(BaseDeal):
 
             # Long position does not need qty in take_profit
             # initial price with 1 qty should return first match
-            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.api.last_ticker_price(self.active_bot.pair)
 
             if self.active_bot.strategy == Strategy.margin_short:
                 # Use all available quote asset balance
                 # this avoids diffs in ups and downs in prices and fees
-                available_quote_asset = self.get_single_raw_balance(
+                available_quote_asset = self.order.get_single_raw_balance(
                     self.active_bot.quote_asset
                 )
             else:
-                available_quote_asset = self.get_single_spot_balance(
+                available_quote_asset = self.order.get_single_spot_balance(
                     self.active_bot.quote_asset
                 )
 
@@ -482,7 +474,7 @@ class DealAbstract(BaseDeal):
 
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
-            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.api.last_ticker_price(self.active_bot.pair)
 
             qty = round_numbers_floor(
                 (self.active_bot.deal.base_order_size / last_ticker_price),
@@ -490,13 +482,13 @@ class DealAbstract(BaseDeal):
             )
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_order(
+            res = self.order.simulate_order(
                 self.active_bot.pair,
                 OrderSide.buy,
             )
         else:
             try:
-                res = self.buy_order(
+                res = self.order.buy_order(
                     symbol=self.active_bot.pair,
                     qty=(qty * repurchase_multiplier),
                 )
@@ -527,10 +519,6 @@ class DealAbstract(BaseDeal):
         if self.active_bot.deal.base_order_size == 0:
             self.active_bot.deal.base_order_size = float(res["origQty"]) * res_price
 
-        if res_price == 0:
-            # Market orders return 0
-            res_price = self.calculate_avg_price(res["fills"])
-
         order_data = OrderModel(
             timestamp=int(res["transactTime"]),
             order_id=res["orderId"],
@@ -545,9 +533,7 @@ class DealAbstract(BaseDeal):
         )
 
         self.active_bot.orders.append(order_data)
-        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
-            res["fills"]
-        )
+        self.active_bot.deal.total_commissions += res["commissions"]
 
         self.active_bot.deal.opening_timestamp = int(res["transactTime"])
         self.active_bot.deal.opening_price = res_price

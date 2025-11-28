@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from tools.maths import round_numbers
 
 
 class AccountAbstract(ABC):
@@ -27,22 +26,6 @@ class AccountAbstract(ABC):
 
         return float(price), float(base_qty)
 
-    def calculate_total_commissions(self, fills: dict) -> float:
-        """
-        Calculate total commissions for a given order.
-
-        Works for both exchanges with fallback for different field names
-        (Binance uses 'commission', KuCoin uses 'fee')
-        """
-        total_commission: float = 0
-        for chunk in fills:
-            # Handle both 'fee' (KuCoin) and 'commission' (Binance)
-            total_commission += round_numbers(
-                float(chunk.get("fee", chunk.get("commission", 0)))
-            )
-        return total_commission
-
-    # Abstract methods that MUST be implemented by exchange-specific classes
     @abstractmethod
     def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
         """
@@ -95,6 +78,14 @@ class AccountAbstract(ABC):
     def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
         """
         Match quantity with available 100% fill order price.
+        Exchange-specific implementation required.
+        """
+        pass
+
+    @abstractmethod
+    def close_open_order(self, symbol: str, order_id: str) -> None:
+        """
+        Close a specific open order by its ID.
         Exchange-specific implementation required.
         """
         pass

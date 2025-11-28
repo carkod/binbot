@@ -70,7 +70,9 @@ class MarginDealAbstract(DealAbstract):
         if order_id:
             try:
                 # First cancel old order to unlock balance
-                self.cancel_margin_order(symbol=self.active_bot.pair, order_id=order_id)
+                self.api.cancel_margin_order(
+                    symbol=self.active_bot.pair, order_id=order_id
+                )
                 self.controller.update_logs(
                     "Old take profit order cancelled", self.active_bot
                 )
@@ -137,11 +139,11 @@ class MarginDealAbstract(DealAbstract):
             # initial price with 1 qty should return first match
             # also use always last_ticker_price rather than book depth
             # because bid/ask prices wicks can go way out of the candle
-            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.api.last_ticker_price(self.active_bot.pair)
 
             # Use all available quote asset balance
             # this avoids diffs in ups and downs in prices and fees
-            available_quote_asset = self.get_single_raw_balance(
+            available_quote_asset = self.order.get_single_raw_balance(
                 self.active_bot.quote_asset
             )
             qty = round_numbers_floor(
@@ -150,14 +152,14 @@ class MarginDealAbstract(DealAbstract):
             )
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
-            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.api.last_ticker_price(self.active_bot.pair)
             qty = round_numbers_floor(
                 (self.active_bot.deal.base_order_size / last_ticker_price),
                 self.qty_precision,
             )
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            order_res = self.simulate_margin_order(
+            order_res = self.order.simulate_margin_order(
                 pair=self.active_bot.pair, side=OrderSide.sell
             )
 
@@ -165,7 +167,7 @@ class MarginDealAbstract(DealAbstract):
             self.init_margin_short(last_ticker_price)
             try:
                 # init_margin_short will set opening_qty
-                order_res = self.sell_margin_order(
+                order_res = self.order.sell_margin_order(
                     symbol=self.active_bot.pair,
                     qty=(qty * repurchase_multiplier),
                 )
@@ -189,9 +191,6 @@ class MarginDealAbstract(DealAbstract):
         if self.active_bot.deal.base_order_size == 0:
             self.active_bot.deal.base_order_size = float(order_res["origQty"]) * price
 
-        if price == 0:
-            price = self.calculate_avg_price(order_res["fills"])
-
         order_data = OrderModel(
             timestamp=order_res["transactTime"],
             order_id=int(order_res["orderId"]),
@@ -205,9 +204,7 @@ class MarginDealAbstract(DealAbstract):
             status=order_res["status"],
         )
 
-        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
-            order_res["fills"]
-        )
+        self.active_bot.deal.total_commissions += order_res["commissions"]
 
         self.active_bot.orders.append(order_data)
 
@@ -340,8 +337,8 @@ class MarginDealAbstract(DealAbstract):
         asset = self.active_bot.pair.replace(self.active_bot.fiat, "")
         # always enable, it doesn't cause errors
         try:
-            self.enable_isolated_margin_account(symbol=self.active_bot.pair)
-            borrow_res = self.get_max_borrow(
+            self.api.enable_isolated_margin_account(symbol=self.active_bot.pair)
+            borrow_res = self.api.get_max_borrow(
                 asset=asset, isolated_symbol=self.active_bot.pair
             )
             error_msg = f"Checking borrowable amount: {borrow_res['amount']} (amount), {borrow_res['borrowLimit']} (limit)"
@@ -350,12 +347,12 @@ class MarginDealAbstract(DealAbstract):
             self.controller.update_logs(error.message, self.active_bot)
             if error.code == -11001 or error.code == -3052:
                 # Isolated margin account needs to be activated with a transfer
-                self.transfer_spot_to_isolated_margin(
+                self.api.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.fiat,
                     symbol=self.active_bot.pair,
                     amount=1,
                 )
-                self.enable_isolated_margin_account(symbol=self.active_bot.pair)
+                self.api.enable_isolated_margin_account(symbol=self.active_bot.pair)
                 pass
 
         # Given USDC amount we want to buy,
@@ -371,7 +368,7 @@ class MarginDealAbstract(DealAbstract):
         if balance <= 1:
             try:
                 # transfer
-                self.transfer_spot_to_isolated_margin(
+                self.api.transfer_spot_to_isolated_margin(
                     asset=self.active_bot.fiat,
                     symbol=self.active_bot.pair,
                     amount=self.active_bot.deal.base_order_size,
@@ -386,7 +383,7 @@ class MarginDealAbstract(DealAbstract):
                     raise MarginShortError("Isolated margin not available")
 
         try:
-            loan_created = self.create_margin_loan(
+            loan_created = self.api.create_margin_loan(
                 asset=asset, symbol=self.active_bot.pair, amount=qty
             )
             self.controller.update_logs("Loan created", self.active_bot)
@@ -413,15 +410,13 @@ class MarginDealAbstract(DealAbstract):
         """
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_margin_order(
+            res = self.order.simulate_margin_order(
                 self.active_bot.deal.opening_qty, OrderSide.buy
             )
         else:
             res = self.margin_liquidation(self.active_bot.pair)
 
         price = float(res["price"])
-        if price == 0:
-            price = self.calculate_avg_price(res["fills"])
 
         if "code" in res:
             self.active_bot.add_log(f"Unable to complete stop loss {res['msg']}")
@@ -440,9 +435,7 @@ class MarginDealAbstract(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
-            res["fills"]
-        )
+        self.active_bot.deal.total_commissions += res["commissions"]
 
         self.active_bot.orders.append(stop_loss_order)
 
@@ -481,7 +474,7 @@ class MarginDealAbstract(DealAbstract):
 
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_margin_order(
+            res = self.order.simulate_margin_order(
                 self.active_bot.deal.opening_qty, OrderSide.buy
             )
         else:
@@ -496,9 +489,6 @@ class MarginDealAbstract(DealAbstract):
 
         if res:
             price = float(res["price"])
-            if price == 0:
-                price = self.calculate_avg_price(res["fills"])
-
             # No res means it wasn't properly closed/completed
             take_profit_order = OrderModel(
                 timestamp=res["transactTime"],
@@ -513,9 +503,7 @@ class MarginDealAbstract(DealAbstract):
                 status=res["status"],
             )
 
-            self.active_bot.deal.total_commissions += self.calculate_total_commissions(
-                res["fills"]
-            )
+            self.active_bot.deal.total_commissions += res["commissions"]
 
             self.active_bot.orders.append(take_profit_order)
             self.active_bot.deal.closing_price = price
@@ -562,13 +550,13 @@ class MarginDealAbstract(DealAbstract):
         # Create new bot
         created_bot = self.controller.create(new_bot)
 
-        url = self.bb_activate_bot_url
+        url = self.binbot_api.bb_activate_bot_url
         if isinstance(self.controller, PaperTradingTableCrud):
-            url = self.bb_paper_trading_activate_url
+            url = self.binbot_api.bb_paper_trading_activate_url
 
         # to avoid circular imports make network request
         # This class is already imported for switch_to_margin_short
-        bot_id = self.request(url=url, payload={"id": str(created_bot.id)})
+        bot_id = self.binbot_api.request(url=url, payload={"id": str(created_bot.id)})
         self.controller.update_logs(
             f"Switched margin_short to long strategy. New bot id: {bot_id}",
             self.active_bot,

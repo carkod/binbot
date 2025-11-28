@@ -3,9 +3,13 @@ from orders.binance_controller import BinanceOrderController
 from orders.kucoin_controller import KucoinOrderController
 from tools.enum_definitions import ExchangeId
 from orders.abstract import OrderControllerAbstract
+from account.abstract import AccountAbstract
+from account.binance_account import BinanceAccount
+from account.kucoin_account import KucoinAccount
+from exchange_apis.api_protocol import ExchangeApiProtocol
 
 
-class OrderController:
+class OrderFactory:
     """
     Multi-exchange implementation of OrderController.
 
@@ -15,19 +19,18 @@ class OrderController:
 
     def __init__(self) -> None:
         autotrade_settings = AutotradeCrud().get_settings()
-        exchange_id: ExchangeId = autotrade_settings.exchange_id
-        self._delegate: OrderControllerAbstract
-        if exchange_id == ExchangeId.KUCOIN:
-            self._delegate = KucoinOrderController()
+        self.exchange_id: ExchangeId = autotrade_settings.exchange_id
+
+    def get_account_controller(self) -> tuple[AccountAbstract, ExchangeApiProtocol]:
+        if self.exchange_id == ExchangeId.KUCOIN:
+            account = KucoinAccount()
+            return account, account.api
         else:
-            self._delegate = BinanceOrderController()
+            account = BinanceAccount()
+            return account, account.api
 
-    def __getattr__(self, name):
-        """
-        Delegate missing attributes to the underlying exchange-specific controller.
-
-        Pretty much equivalent to inheritance OrderController(KubcoinOrderController) or
-        OrderController(BinanceOrderController) based on exchange_id.
-        """
-        attribute = getattr(self._delegate, name)
-        return attribute
+    def get_order_controller(self) -> OrderControllerAbstract:
+        if self.exchange_id == ExchangeId.KUCOIN:
+            return KucoinOrderController()
+        else:
+            return BinanceOrderController()

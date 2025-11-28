@@ -4,6 +4,9 @@ from uuid import uuid4
 from databases.crud.autotrade_crud import AutotradeCrud
 from tools.maths import round_timestamp
 from databases.crud.symbols_crud import SymbolsCrud
+from abc import abstractmethod
+from typing import Any, Dict, List
+from tools.enum_definitions import OrderSide
 
 
 class OrderControllerAbstract(ABC):
@@ -56,3 +59,86 @@ class OrderControllerAbstract(ABC):
         """
         symbol_info = self.symbols_crud.get_symbol(symbol)
         return symbol_info.qty_precision
+
+    @abstractmethod
+    def close_open_order(self, symbol: str, order_id: str) -> None:
+        """
+        Close a specific open order by its ID.
+        Exchange-specific implementation required.
+        """
+        raise NotImplementedError
+
+    # --- Order operations (Binance & KuCoin) ---
+    @abstractmethod
+    def simulate_order(
+        self, pair: str, side: OrderSide, qty: float = 1
+    ) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def simulate_response_order(
+        self, pair: str, side: OrderSide, qty: float = 1
+    ) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def simulate_margin_order(self, pair: str, side: OrderSide) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def sell_order(
+        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
+    ) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def buy_order(
+        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
+    ) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_order(self, symbol: str, order_id: int) -> Dict[str, Any]:
+        """Cancel single order (KuCoin implementation)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_all_orders(self, symbol: str) -> Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def buy_margin_order(self, symbol: str, qty: float) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def sell_margin_order(self, symbol: str, qty: float) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    # --- Account related helpers used via order controller ---
+    @abstractmethod
+    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    def match_qty_engine(self, symbol: str, order_side: bool, qty: float = 1) -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_raw_balance(self) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_single_spot_balance(self, asset) -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_single_raw_balance(self, asset, fiat: str = "USDC") -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_margin_balance(self, symbol: str = "BTC") -> float:
+        raise NotImplementedError

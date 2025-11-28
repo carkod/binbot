@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from time import sleep
-from orders.controller import OrderController
+from exchange_apis.api_protocol import ExchangeApiProtocol
+from orders.controller import OrderFactory
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.balances_crud import BalancesCrud
 from databases.tables.bot_table import BotTable
@@ -21,7 +22,7 @@ from tools.exceptions import BinbotErrors
 from typing import Sequence
 
 
-class Assets(OrderController):
+class Assets:
     """
     Assets class inherits from OrderController
     which inherits from Account class
@@ -41,6 +42,10 @@ class Assets(OrderController):
         self.bot_controller = BotTableCrud(session=session)
         self.balances_controller = BalancesCrud(session=session)
         self.symbols_crud = SymbolsCrud(session=session)
+        account, api = OrderFactory().get_account_controller()
+        self.account = account
+        self.api: ExchangeApiProtocol = api
+        self.order = OrderFactory().get_order_controller()
 
     def get_pnl(self, days=7):
         current_time = datetime.now()
@@ -74,10 +79,10 @@ class Assets(OrderController):
         - the result of total_usdc is pretty much the same, the difference is in 0.001 USDC
         - however we don't need a loop and we decreased one network request (also added one, because we still need the raw_balance to display charts)
         """
-        wallet_balance = self.get_wallet_balance()
-        itemized_balance = self.get_raw_balance()
+        wallet_balance = self.api.get_wallet_balance()
+        itemized_balance = self.account.get_raw_balance()
 
-        rate = self.get_ticker_price(f"BTC{self.fiat}")
+        rate = self.api.get_ticker_price(f"BTC{self.fiat}")
 
         total_wallet_balance: float = 0
         for item in wallet_balance:
@@ -94,12 +99,12 @@ class Assets(OrderController):
         """
         Estimated balance in given fiat coin
         """
-        balances = self.get_raw_balance()
+        balances = self.account.get_raw_balance()
         total_fiat: float = 0
         left_to_allocate: float = 0
         total_isolated_margin: float = 0
-        btc_rate = self.get_ticker_price(f"BTC{self.fiat}")
-        wallet_balance = self.get_wallet_balance()
+        btc_rate = self.api.get_ticker_price(f"BTC{self.fiat}")
+        wallet_balance = self.api.get_wallet_balance()
         for item in wallet_balance:
             if item["walletName"] == "Spot":
                 total_fiat += float(item["balance"]) * float(btc_rate)
@@ -124,7 +129,7 @@ class Assets(OrderController):
         """
         Create and return a ranking with gainers vs losers data
         """
-        data = self.ticker_24()
+        data = self.api.ticker_24()
         gainers_losers_list = [
             item for item in data if item["symbol"].endswith(market_asset)
         ]
@@ -176,7 +181,7 @@ class Assets(OrderController):
             )
             * 1000
         )
-        klines = self.get_raw_klines(
+        klines = self.api.get_raw_klines(
             limit=len(balance_series),
             symbol="BTCUSDC",
             interval=BinanceKlineIntervals.one_day,
@@ -215,7 +220,7 @@ class Assets(OrderController):
         if there are more than 5 (number of bots)
         transfer to BNB
         """
-        data = self.get_account_balance()
+        data = self.api.get_account_balance()
         all_symbols = self.symbols_crud.get_all()
         assets = []
 
@@ -242,11 +247,11 @@ class Assets(OrderController):
                 ]
                 if self.fiat in idle_assets:
                     idle_assets.remove(self.fiat)
-                self.transfer_dust(idle_assets)
+                self.api.transfer_dust(idle_assets)
 
                 # Pause to make sure dust transfer is processed
                 sleep(3)
-                data = self.get_account_balance()
+                data = self.api.get_account_balance()
                 available_bnb = next(
                     (
                         float(item["free"])
@@ -260,7 +265,7 @@ class Assets(OrderController):
                     return assets
 
                 # Transfer dust endpoint always converts to BNB
-                self.buy_order(symbol=f"BNB{self.fiat}", qty=available_bnb)
+                self.order.buy_order(symbol=f"BNB{self.fiat}", qty=available_bnb)
             except BinanceErrors as error:
                 if error.code == -5005:
                     for asset in assets:
@@ -282,8 +287,8 @@ class Assets(OrderController):
             float: total BTC estimated in the SPOT wallet
             then converted into USDC
         """
-        wallet_balance = self.get_wallet_balance()
-        get_usdc_btc_rate = self.get_ticker_price(symbol=f"BTC{self.fiat}")
+        wallet_balance = self.api.get_wallet_balance()
+        get_usdc_btc_rate = self.api.get_ticker_price(symbol=f"BTC{self.fiat}")
         total_balance: float = 0
         rate = float(get_usdc_btc_rate)
         for item in wallet_balance:
@@ -309,7 +314,7 @@ class Assets(OrderController):
         Returns:
             str: total USDC available to
         """
-        total_balance = self.get_raw_balance()
+        total_balance = self.order.get_raw_balance()
         for item in total_balance:
             if item["asset"] == self.fiat:
                 return float(item["free"])
@@ -320,26 +325,26 @@ class Assets(OrderController):
         """
         Check and disable isolated accounts
         """
-        info = self.signed_request(url=self.isolated_account_url, payload={})
+        info = self.api.get_isolated_balance()
         msg = "Disabling isolated margin account not required yet."
         for item in info["assets"]:
             # Liquidate price = 0 guarantees there is no loan unpaid
             if float(item["liquidatePrice"]) == 0:
                 if float(item["baseAsset"]["free"]) > 0:
-                    self.transfer_isolated_margin_to_spot(
+                    self.api.transfer_isolated_margin_to_spot(
                         asset=item["baseAsset"]["asset"],
                         symbol=item["symbol"],
                         amount=float(item["baseAsset"]["free"]),
                     )
 
                 if float(item["quoteAsset"]["free"]) > 0:
-                    self.transfer_isolated_margin_to_spot(
+                    self.api.transfer_isolated_margin_to_spot(
                         asset=item["quoteAsset"]["asset"],
                         symbol=item["symbol"],
                         amount=float(item["quoteAsset"]["free"]),
                     )
 
-                self.disable_isolated_margin_account(item["symbol"])
+                self.api.disable_isolated_margin_account(item["symbol"])
                 msg = "Sucessfully finished disabling isolated margin accounts."
 
         return json_response_message(msg)

@@ -1,4 +1,3 @@
-from exchange_apis.kucoin import KucoinApi
 from orders.abstract import OrderControllerAbstract
 from tools.enum_definitions import OrderSide
 from account.kucoin_account import KucoinAccount
@@ -16,7 +15,6 @@ class KucoinOrderController(OrderControllerAbstract, KucoinAccount):
     def __init__(self) -> None:
         OrderControllerAbstract.__init__(self)
         KucoinAccount.__init__(self)
-        self.api = KucoinApi()
 
     def _get_price_from_book_order(self, data, order_side: bool, index: int):
         """

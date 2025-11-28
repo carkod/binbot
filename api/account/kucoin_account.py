@@ -13,6 +13,15 @@ class KucoinAccount(AccountAbstract):
     def __init__(self):
         self.api = KucoinApi()
 
+    def calculate_total_commissions(self, fee: str) -> float:
+        """
+        Calculate total commissions for a given order.
+
+        Works for both exchanges with fallback for different field names
+        (Binance uses 'commission', KuCoin uses 'fee')
+        """
+        return float(fee)
+
     def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
         """
         Get deepest price to avoid market movements causing orders to fail

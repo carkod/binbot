@@ -1,6 +1,6 @@
 from typing import Type, Union
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from tools.enum_definitions import DealType, Status, OrderSide, OrderStatus
+from tools.enum_definitions import DealType, Status, OrderSide
 from bots.models import BotModel, OrderModel
 from tools.maths import round_numbers, round_timestamp
 from deals.abstractions.spot_deal_abstract import SpotDealAbstract
@@ -159,25 +159,11 @@ class SpotLongDeal(SpotDealAbstract):
         2. Sell Coins
         3. Delete bot
         """
-        orders = self.active_bot.orders
-
-        # Close all active orders
-        if isinstance(self.controller, PaperTradingTableCrud) and len(orders) > 0:
-            for d in orders:
-                if (
-                    d.status == OrderStatus.NEW
-                    or d.status == OrderStatus.PARTIALLY_FILLED
-                ):
-                    self.controller.update_logs(
-                        "Failed to close all active orders (status NEW), retrying...",
-                        self.active_bot,
-                    )
-                    self.replace_order(d.order_id)
 
         # Sell everything
         pair = self.active_bot.pair
         base_asset = self.symbols_crud.base_asset(pair)
-        balance = self.get_single_spot_balance(base_asset)
+        balance = self.account.get_single_spot_balance(base_asset)
         if balance > 0:
             qty = round_numbers(balance, self.qty_precision)
         else:
@@ -185,16 +171,14 @@ class SpotLongDeal(SpotDealAbstract):
             self.active_bot.add_log("No balance found. Skipping panic sell")
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_order(
+            res = self.order.simulate_order(
                 pair=self.active_bot.pair,
                 side=OrderSide.sell,
             )
         else:
             try:
-                res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
+                res = self.order.sell_order(symbol=self.active_bot.pair, qty=qty)
                 price = float(res["price"])
-                if price == 0:
-                    price = self.calculate_avg_price(res["fills"])
 
                 order_data = OrderModel(
                     timestamp=int(res["transactTime"]),

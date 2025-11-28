@@ -16,6 +16,17 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
         BinanceAccount.__init__(self)
         self.api = BinbotApi()
 
+    def calculate_avg_price(self, fills: list[dict]) -> float:
+        """
+        Calculate average price of fills
+        """
+        total_qty: float = 0
+        total_price: float = 0
+        for fill in fills:
+            total_qty += float(fill["qty"])
+            total_price += float(fill["price"]) * float(fill["qty"])
+        return total_price / total_qty
+
     def simulate_order(self, pair: str, side: OrderSide, qty=1):
         """
         Price is determined by market
@@ -139,6 +150,10 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
                 order_type=OrderType.market,
             )
 
+        if float(data["price"]) == 0:
+            data["price"] = self.calculate_avg_price(data["fills"])
+
+        data["commissions"] = self.calculate_total_commissions(data["fills"])
         return data
 
     def buy_order(
@@ -188,6 +203,10 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
                 order_type=order_type,
             )
 
+        if float(data["price"]) == 0:
+            data["price"] = self.calculate_avg_price(data["fills"])
+
+        data["commissions"] = self.calculate_total_commissions(data["fills"])
         return data
 
     def delete_all_orders(self, symbol):
@@ -224,6 +243,10 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
             time_in_force=time_in_force,
         )
 
+        if float(data["price"]) == 0:
+            data["price"] = self.calculate_avg_price(data["fills"])
+
+        data["commissions"] = self.calculate_total_commissions(data["fills"])
         return data
 
     def sell_margin_order(self, symbol: str, qty: float):
@@ -248,6 +271,7 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
         )
 
         if float(data["price"]) == 0:
-            data["price"] = data["fills"][0]["price"]
+            data["price"] = self.calculate_avg_price(data["fills"])
 
+        data["commissions"] = self.calculate_total_commissions(data["fills"])
         return data

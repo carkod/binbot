@@ -1,25 +1,27 @@
 from typing import Tuple, Type, Union
+from exchange_apis.api_protocol import ExchangeApiProtocol
+from orders.abstract import OrderControllerAbstract
 from bots.models import BotModel
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from orders.controller import OrderController
+from orders.controller import OrderFactory
 from tools.maths import round_numbers, round_numbers_ceiling
 from tools.exceptions import (
     BinanceErrors,
-    DealCreationError,
     InsufficientBalance,
     MarginLoanNotFound,
     BinbotErrors,
 )
 from tools.enum_definitions import Status, Strategy, OrderStatus
+from apis import BinbotApi
 
 # To be removed one day en commission endpoint found that provides this value
 ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 
-class BaseDeal(OrderController):
+class BaseDeal:
     """
     Base Deal class to unify common functionality for
     both DealAbstract and MarginDeal/SpotDeal.
@@ -37,6 +39,11 @@ class BaseDeal(OrderController):
     ):
         super().__init__()
         db_controller: Type[Union[PaperTradingTableCrud, BotTableCrud]]
+        self.order: OrderControllerAbstract = OrderFactory().get_order_controller()
+        account, api = OrderFactory().get_account_controller()
+        self.account = account
+        self.api: ExchangeApiProtocol = api
+        self.binbot_api = BinbotApi()
         if db_table == PaperTradingTable:
             db_controller = PaperTradingTableCrud
         else:
@@ -51,16 +58,16 @@ class BaseDeal(OrderController):
         self.qty_precision = self.symbol_info.qty_precision
 
         if bot.quote_asset.is_fiat():
-            self.quote_qty_precision = self.calculate_qty_precision(
+            self.quote_qty_precision = self.order.calculate_qty_precision(
                 bot.fiat + bot.quote_asset.value
             )
 
         elif bot.quote_asset != bot.fiat:
-            self.quote_qty_precision = self.calculate_qty_precision(
+            self.quote_qty_precision = self.order.calculate_qty_precision(
                 bot.quote_asset.value + bot.fiat
             )
         else:
-            self.quote_qty_precision = self.calculate_qty_precision(bot.pair)
+            self.quote_qty_precision = self.order.calculate_qty_precision(bot.pair)
 
     def __repr__(self) -> str:
         """
@@ -74,11 +81,11 @@ class BaseDeal(OrderController):
         """
 
         asset = self.symbols_crud.base_asset(pair)
-        balance = self.get_single_spot_balance(asset)
+        balance = self.account.get_single_spot_balance(asset)
         if balance == 0 and self.active_bot.strategy == Strategy.margin_short:
             # If spot balance is not found
             # try to get isolated margin balance
-            balance = self.get_margin_balance(asset)
+            balance = self.account.get_margin_balance(asset)
             if not balance or balance == 0:
                 return 0
 
@@ -117,35 +124,14 @@ class BaseDeal(OrderController):
 
         return qty, free
 
-    def replace_order(self, cancel_order_id):
-        payload = {
-            "symbol": self.active_bot.pair,
-            "quantity": self.active_bot.deal.base_order_size,
-            "cancelOrderId": cancel_order_id,
-            "type": "MARKET",
-            "side": "SELL",
-            "cancelReplaceMode": "ALLOW_FAILURE",
-        }
-        response = self.signed_request(
-            url=self.cancel_replace_url, method="POST", payload=payload
-        )
-        if "code" in response:
-            raise DealCreationError(response["msg"], response["data"])
-
-        return response["newOrderResponse"]
-
     def close_open_orders(self, symbol):
         """
         Check open orders and replace with new
         """
-        open_orders = self.query_open_orders(symbol)
+        open_orders = self.api.query_open_orders(symbol)
         for order in open_orders:
             if order["status"] == OrderStatus.NEW:
-                self.signed_request(
-                    self.order_url,
-                    method="DELETE",
-                    payload={"symbol": symbol, "orderId": order["orderId"]},
-                )
+                self.account.close_open_order(symbol, order["orderId"])
                 for bot_order in self.active_bot.orders:
                     if bot_order.order_id == order["orderId"]:
                         self.active_bot.orders.remove(order)
@@ -164,7 +150,7 @@ class BaseDeal(OrderController):
         Check if deal is closed by checking
         if there are any SELL orders
         """
-        all_orders = self.get_all_orders(
+        all_orders = self.api.get_all_orders(
             self.active_bot.pair,
             start_time=int(self.active_bot.deal.opening_timestamp),
         )
@@ -206,7 +192,7 @@ class BaseDeal(OrderController):
             if free == 0 or free < repay_amount:
                 try:
                     qty = round_numbers_ceiling(repay_amount - free, self.qty_precision)
-                    buy_margin_response = self.buy_margin_order(
+                    buy_margin_response = self.order.buy_margin_order(
                         symbol=pair,
                         qty=qty,
                     )
@@ -216,16 +202,16 @@ class BaseDeal(OrderController):
                         # Not enough funds in isolated pair
                         # transfer from wallet
                         transfer_diff_qty = round_numbers_ceiling(repay_amount - free)
-                        available_balance = self.get_single_raw_balance(quote)
+                        available_balance = self.account.get_single_raw_balance(quote)
                         amount_to_transfer: float = 15  # Min amount
                         if available_balance < 15:
                             amount_to_transfer = available_balance
-                        self.transfer_spot_to_isolated_margin(
+                        self.api.transfer_spot_to_isolated_margin(
                             asset=quote,
                             symbol=pair,
                             amount=amount_to_transfer,
                         )
-                        buy_margin_response = self.buy_margin_order(
+                        buy_margin_response = self.order.buy_margin_order(
                             pair,
                             round_numbers(transfer_diff_qty, self.qty_precision),
                         )
@@ -236,14 +222,14 @@ class BaseDeal(OrderController):
                         qty = round_numbers_ceiling(
                             repay_amount - free, self.qty_precision
                         )
-                        price = self.match_qty_engine(
+                        price = self.order.match_qty_engine(
                             symbol=pair, order_side=True, qty=qty
                         )
                         usdc_notional = price * qty
                         if usdc_notional < 15:
                             qty = round_numbers_ceiling(15 / price)
 
-                        buy_margin_response = self.buy_margin_order(
+                        buy_margin_response = self.order.buy_margin_order(
                             pair, round_numbers(qty, self.qty_precision)
                         )
                         repay_amount, free = self.compute_margin_buy_back()
@@ -253,7 +239,7 @@ class BaseDeal(OrderController):
                 self.controller.update_logs(msg, self.active_bot)
                 raise MarginLoanNotFound(msg)
 
-            self.repay_margin_loan(
+            self.api.repay_margin_loan(
                 asset=base,
                 symbol=pair,
                 amount=repay_amount,
@@ -265,13 +251,13 @@ class BaseDeal(OrderController):
 
         if float(self.isolated_balance[0]["quoteAsset"]["free"]) != 0:
             # transfer back to SPOT account
-            self.transfer_isolated_margin_to_spot(
+            self.api.transfer_isolated_margin_to_spot(
                 asset=quote,
                 symbol=pair,
                 amount=self.isolated_balance[0]["quoteAsset"]["free"],
             )
         if float(self.isolated_balance[0]["baseAsset"]["free"]) != 0:
-            self.transfer_isolated_margin_to_spot(
+            self.api.transfer_isolated_margin_to_spot(
                 asset=base,
                 symbol=pair,
                 amount=self.isolated_balance[0]["baseAsset"]["free"],
@@ -284,7 +270,7 @@ class BaseDeal(OrderController):
             if hasattr(self, "active_bot"):
                 self.active_bot.status = Status.completed
 
-            self.disable_isolated_margin_account(pair)
+            self.api.disable_isolated_margin_account(pair)
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
         return buy_margin_response
@@ -292,7 +278,7 @@ class BaseDeal(OrderController):
     def spot_liquidation(self, pair: str):
         qty = self.compute_qty(pair)
         if qty > 0:
-            order_res = self.sell_order(pair, qty)
+            order_res = self.order.sell_order(pair, qty)
             return order_res
         else:
             raise InsufficientBalance(

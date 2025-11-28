@@ -1,5 +1,6 @@
 from apis import BinbotApi
 from account.abstract import AccountAbstract
+from tools.maths import round_numbers
 
 
 class BinanceAccount(AccountAbstract):
@@ -137,3 +138,12 @@ class BinanceAccount(AccountAbstract):
                         continue
                 # caller to use market price
                 return 0
+
+    def calculate_total_commissions(self, fills: dict) -> float:
+        """
+        Calculate total commissions for a given order
+        """
+        total_commission: float = 0
+        for chunk in fills:
+            total_commission += round_numbers(float(chunk["commission"]))
+        return total_commission

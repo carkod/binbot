@@ -18,6 +18,7 @@ from sqlmodel import Session
 from databases.utils import get_session
 from databases.crud.balances_crud import BalancesCrud
 from typing import Literal
+from orders.controller import OrderFactory
 
 account_blueprint = APIRouter()
 
@@ -129,8 +130,8 @@ def disable_isolated(session: Session = Depends(get_session)):
 
 
 @account_blueprint.get("/isolated", tags=["account"])
-def check_isolated_symbol(symbol: str, session: Session = Depends(get_session)):
-    isolated_account = Assets(session=session).get_isolated_account(symbol)
+def check_isolated_symbol(symbol: str):
+    isolated_account = OrderFactory().check_isolated_symbol(symbol=symbol)
     return isolated_account
 
 

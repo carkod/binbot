@@ -146,7 +146,7 @@ class MarginDeal(MarginDealAbstract):
                         self.active_bot,
                     )
                     try:
-                        self.cancel_margin_order(
+                        self.api.cancel_margin_order(
                             symbol=self.active_bot.pair, order_id=d.order_id
                         )
                     except BinanceErrors:
@@ -154,18 +154,14 @@ class MarginDeal(MarginDealAbstract):
 
         # Sell everything
         base_asset = self.symbols_crud.base_asset(self.active_bot.pair)
-        balance = self.get_single_raw_balance(base_asset)
+        balance = self.order.get_single_raw_balance(base_asset)
         if balance > 0:
             if isinstance(self.controller, PaperTradingTableCrud):
-                res = self.simulate_margin_order(
-                    self.active_bot.deal.opening_qty, OrderSide.buy
+                res = self.order.simulate_margin_order(
+                    self.active_bot.pair, OrderSide.buy
                 )
             else:
                 res = self.margin_liquidation(self.active_bot.pair)
-
-            price = float(res["price"])
-            if price == 0:
-                price = self.calculate_avg_price(res["fills"])
 
             if res:
                 order = OrderModel(
@@ -175,19 +171,17 @@ class MarginDeal(MarginDealAbstract):
                     pair=res["symbol"],
                     order_side=res["side"],
                     order_type=res["type"],
-                    price=price,
+                    price=float(res["price"]),
                     qty=float(res["origQty"]),
                     time_in_force=res["timeInForce"],
                     status=res["status"],
                 )
 
-                self.active_bot.deal.total_commissions += (
-                    self.calculate_total_commissions(res["fills"])
-                )
+                self.active_bot.deal.total_commissions += res["commissions"]
 
                 self.active_bot.orders.append(order)
 
-                self.active_bot.deal.closing_price = price
+                self.active_bot.deal.closing_price = float(res["price"])
                 self.active_bot.deal.closing_qty = float(res["origQty"])
                 self.active_bot.deal.closing_timestamp = round_timestamp(
                     res["transactTime"]

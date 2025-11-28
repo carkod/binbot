@@ -49,7 +49,7 @@ class SpotDealAbstract(DealAbstract):
         for order in self.active_bot.orders:
             if order.status == OrderStatus.NEW:
                 try:
-                    self.delete_order(
+                    self.order.delete_order(
                         symbol=self.active_bot.pair, order_id=order.order_id
                     )
                 except HTTPError:
@@ -60,9 +60,13 @@ class SpotDealAbstract(DealAbstract):
                     pass
 
                 if order.order_side == OrderSide.buy:
-                    res = self.buy_order(symbol=self.active_bot.pair, qty=order.qty)
+                    res = self.order.buy_order(
+                        symbol=self.active_bot.pair, qty=order.qty
+                    )
                 else:
-                    res = self.sell_order(symbol=self.active_bot.pair, qty=order.qty)
+                    res = self.order.sell_order(
+                        symbol=self.active_bot.pair, qty=order.qty
+                    )
 
                 # update with new order
                 order.status = res["status"]
@@ -136,7 +140,9 @@ class SpotDealAbstract(DealAbstract):
 
         # Dispatch fake order
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_order(pair=self.active_bot.pair, side=OrderSide.sell)
+            res = self.order.simulate_order(
+                pair=self.active_bot.pair, side=OrderSide.sell
+            )
 
         else:
             self.controller.update_logs(
@@ -144,12 +150,9 @@ class SpotDealAbstract(DealAbstract):
                 self.active_bot,
             )
             # Dispatch real order
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
+            res = self.order.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         price = float(res["price"])
-        if price == 0:
-            price = self.calculate_avg_price(res["fills"])
-
         stop_loss_order = OrderModel(
             timestamp=int(res["transactTime"]),
             deal_type=DealType.stop_loss,
@@ -163,12 +166,10 @@ class SpotDealAbstract(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
-            res["fills"]
-        )
+        self.active_bot.deal.total_commissions += res["commissions"]
 
         self.active_bot.orders.append(stop_loss_order)
-        self.active_bot.deal.closing_price = price
+        self.active_bot.deal.closing_price = float(res["price"])
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
         msg = "Completed Stop loss."
@@ -213,7 +214,7 @@ class SpotDealAbstract(DealAbstract):
 
         # Dispatch fake order
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_order(
+            res = self.order.simulate_order(
                 self.active_bot.pair,
                 OrderSide.sell,
             )
@@ -225,7 +226,7 @@ class SpotDealAbstract(DealAbstract):
             )
             # Dispatch real order
             # No price means market order
-            res = self.sell_order(
+            res = self.order.sell_order(
                 symbol=self.active_bot.pair,
                 qty=round_numbers(qty, self.qty_precision),
             )
@@ -247,9 +248,7 @@ class SpotDealAbstract(DealAbstract):
             status=res["status"],
         )
 
-        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
-            res["fills"]
-        )
+        self.active_bot.deal.total_commissions += res["commissions"]
 
         self.active_bot.orders.append(order_data)
 
