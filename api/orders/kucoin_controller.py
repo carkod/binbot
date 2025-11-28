@@ -184,7 +184,6 @@ class KucoinOrderController(OrderControllerAbstract, KucoinAccount):
         self,
         symbol: str,
         qty: float,
-        price: float,
     ):
         """
         KuCoin buy order implementation
@@ -199,7 +198,7 @@ class KucoinOrderController(OrderControllerAbstract, KucoinAccount):
                 side=AddOrderReq.SideEnum.BUY,
                 order_type=AddOrderReq.TypeEnum.LIMIT,
                 size=qty,
-                price=price,
+                price=book_price,
                 time_in_force=AddOrderReq.TimeInForceEnum.GTC,
             )
         else:
@@ -221,30 +220,16 @@ class KucoinOrderController(OrderControllerAbstract, KucoinAccount):
         Cancel single KuCoin order
         Returns Binance-compatible response
         """
-        self.api.cancel_order(str(order_id))
+        order = self.api.delete_order(str(order_id))
 
-        return {
-            "symbol": symbol,
-            "origClientOrderId": "",
-            "orderId": order_id,
-            "orderListId": -1,
-            "clientOrderId": "",
-            "price": "0",
-            "origQty": "0",
-            "executedQty": "0",
-            "cummulativeQuoteQty": "0",
-            "status": "CANCELED",
-            "timeInForce": "GTC",
-            "type": "LIMIT",
-            "side": "SELL",
-        }
+        return order
 
-    def delete_all_orders(self, symbol: str):
+    def close_all_orders(self, symbol: str):
         """
         Delete all KuCoin orders for a symbol
         Returns list of cancelled order IDs
         """
-        kucoin_response = self.api.cancel_all_orders(symbol=symbol)
+        kucoin_response = self.api.close_all_orders(symbol=symbol)
 
         # Return list of cancelled order IDs (Binance compatible)
         cancelled_ids = kucoin_response.get("cancelledOrderIds", [])

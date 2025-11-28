@@ -60,15 +60,7 @@ class OrderControllerAbstract(ABC):
         symbol_info = self.symbols_crud.get_symbol(symbol)
         return symbol_info.qty_precision
 
-    @abstractmethod
-    def close_open_order(self, symbol: str, order_id: str) -> None:
-        """
-        Close a specific open order by its ID.
-        Exchange-specific implementation required.
-        """
-        raise NotImplementedError
-
-    # --- Order operations (Binance & KuCoin) ---
+    # --- Order operations that combine all Exchange interfaces ---
     @abstractmethod
     def simulate_order(
         self, pair: str, side: OrderSide, qty: float = 1
@@ -86,33 +78,26 @@ class OrderControllerAbstract(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def sell_order(
-        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
-    ) -> Dict[str, Any]:
+    def sell_order(self, symbol: str, qty: float) -> Dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
-    def buy_order(
-        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
-    ) -> Dict[str, Any]:
+    def buy_order(self, symbol: str, qty: float) -> Dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
-    def delete_order(self, symbol: str, order_id: int) -> Dict[str, Any]:
-        """Cancel single order (KuCoin implementation)."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def delete_all_orders(self, symbol: str) -> Any:
+    def close_all_orders(self, symbol: str) -> Any:
         raise NotImplementedError
 
     @abstractmethod
     def buy_margin_order(self, symbol: str, qty: float) -> Dict[str, Any]:
-        raise NotImplementedError
+        """Optional: override in margin-capable controllers."""
+        raise NotImplementedError("Margin not supported for this controller")
 
     @abstractmethod
     def sell_margin_order(self, symbol: str, qty: float) -> Dict[str, Any]:
-        raise NotImplementedError
+        """Optional: override in margin-capable controllers."""
+        raise NotImplementedError("Margin not supported for this controller")
 
     # --- Account related helpers used via order controller ---
     @abstractmethod

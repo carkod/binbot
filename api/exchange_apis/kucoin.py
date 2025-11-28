@@ -117,7 +117,16 @@ class KucoinApi:
         resp = self.spot_order_api.add_order_sync(req)
         return resp
 
-    def cancel_order(self, order_id: str):
+    # --- Common protocol alias methods ---
+    def cancel_order(self, order_id: str) -> dict:
+        """Alias to match common protocol, delegates to delete_order."""
+        return self.delete_order(order_id)
+
+    def cancel_all_orders(self, symbol: str | None = None) -> dict:
+        """Alias to match common protocol, delegates to close_all_orders."""
+        return self.close_all_orders(symbol)
+
+    def delete_order(self, order_id: str):
         """Cancel an order by order ID using SDK"""
         builder = CancelOrderByOrderIdReqBuilder()
         builder.set_order_id(order_id)
@@ -130,7 +139,7 @@ class KucoinApi:
             else [order_id]
         }
 
-    def cancel_all_orders(self, symbol: str = None):
+    def close_all_orders(self, symbol: str = None):
         """
         Cancel all orders using SDK
 

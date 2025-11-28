@@ -1,3 +1,4 @@
+from databases.crud.symbols_crud import SymbolsCrud
 from orders.abstract import OrderControllerAbstract
 from tools.enum_definitions import (
     OrderType,
@@ -6,15 +7,35 @@ from tools.enum_definitions import (
     OrderStatus,
 )
 from tools.handle_error import json_response, json_response_message
-from account.binance_account import BinanceAccount
+from exchange_apis.binance.account import BinanceAccount
 from apis import BinbotApi
+from tools.maths import round_numbers
 
 
 class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
+    """
+    Combines all Binance's API controller operations
+    and other dependencies into one single interface shared everywhere
+
+    Exchange-specific implementations should sit in their respective base.py
+    anything that requires processing between Exchange API and our application
+    logic should be implemented here.
+
+    This provides a easy plug and play interface for the rest of the application,
+    keeps classes not too complex and adheres to a Single Responsibility Principle (one place for all).
+
+    That allows routes to do the json responses independently
+    and reusability for everyone else.
+
+    TODO: maybe better naming conventions instead of Order, because it sounds like it only covers orders
+    """
+
     def __init__(self) -> None:
+        super().__init__()
         OrderControllerAbstract.__init__(self)
         BinanceAccount.__init__(self)
         self.api = BinbotApi()
+        self.symbols_crud = SymbolsCrud()
 
     def calculate_avg_price(self, fills: list[dict]) -> float:
         """
@@ -26,6 +47,97 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
             total_qty += float(fill["qty"])
             total_price += float(fill["price"]) * float(fill["qty"])
         return total_price / total_qty
+
+    def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
+        """
+        Get deepest price to avoid market movements causing orders to fail
+        which means bid/ask are flipped
+
+        Buy order = get bid prices = True
+        Sell order = get ask prices = False
+        """
+        data = self.api.get_book_depth(symbol)
+        if order_side:
+            price, _ = data["bids"][0]
+        else:
+            price, _ = data["asks"][0]
+        return float(price)
+
+    def match_qty_engine(self, symbol: str, order_side: bool, qty: float = 1) -> float:
+        """
+        Similar to matching_engine,
+        it is used to find a price that matches the quantity provided
+        so qty != 0
+
+        @param: order_side -
+            Buy order = get bid prices = False
+            Sell order = get ask prices = True
+        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
+        """
+        data = self.api.get_book_depth(symbol)
+        if order_side:
+            total_length = len(data["asks"])
+        else:
+            total_length = len(data["bids"])
+
+        price, base_qty = self._get_price_from_book_order(data, order_side, 0)
+
+        buyable_qty = float(qty) / float(price)
+        if buyable_qty < base_qty:
+            return base_qty
+        else:
+            for i in range(1, total_length):
+                price, base_qty = self._get_price_from_book_order(data, order_side, i)
+                if buyable_qty > base_qty:
+                    return base_qty
+                else:
+                    continue
+            raise Exception("Not enough liquidity to match the order quantity")
+
+    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+        """
+        Match quantity with available 100% fill order price,
+        so that order can immediately buy/sell
+
+        _get_price_from_book_order previously did max 100 ask/bid levels,
+        however that causes trading price to be too far from market price,
+        therefore incurring in impossible sell or losses.
+        Setting it to 10 levels max to avoid drifting too much from market price.
+
+        @param: order_side -
+            Buy order = get bid prices = False
+            Sell order = get ask prices = True
+        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
+        """
+        data = self.api.get_book_depth(symbol)
+        price, base_qty = self._get_price_from_book_order(data, order_side, 0)
+
+        if qty == 0:
+            return price
+        else:
+            buyable_qty = float(qty) / float(price)
+            if buyable_qty < base_qty:
+                return price
+            else:
+                for i in range(1, 11):
+                    price, base_qty = self._get_price_from_book_order(
+                        data, order_side, i
+                    )
+                    if buyable_qty > base_qty:
+                        return price
+                    else:
+                        continue
+                # caller to use market price
+                return 0
+
+    def calculate_total_commissions(self, fills: dict) -> float:
+        """
+        Calculate total commissions for a given order
+        """
+        total_commission: float = 0
+        for chunk in fills:
+            total_commission += round_numbers(float(chunk["commission"]))
+        return total_commission
 
     def simulate_order(self, pair: str, side: OrderSide, qty=1):
         """
@@ -129,8 +241,6 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
             symbol=symbol,
             side=side,
             qty=qty,
-            price_precision=price_precision,
-            qty_precision=qty_precision,
             order_type=order_type,
             price=book_price,
             time_in_force=time_in_force,
@@ -145,8 +255,6 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
                 qty=qty,
                 price=book_price,
                 time_in_force=time_in_force,
-                price_precision=price_precision,
-                qty_precision=qty_precision,
                 order_type=OrderType.market,
             )
 
@@ -156,16 +264,8 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
         data["commissions"] = self.calculate_total_commissions(data["fills"])
         return data
 
-    def buy_order(
-        self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0
-    ):
+    def buy_order(self, symbol: str, qty: float):
         book_price = self.matching_engine(symbol, False, qty)
-
-        # this gives flexibility to use quote values
-        if price_precision == 0:
-            price_precision = self.price_precision
-        if qty_precision == 0:
-            qty_precision = self.qty_precision
 
         if book_price > 0:
             side = OrderSide.buy
@@ -181,8 +281,6 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
             symbol=symbol,
             side=side,
             qty=qty,
-            price_precision=price_precision,
-            qty_precision=qty_precision,
             order_type=order_type,
             price=book_price,
             time_in_force=time_in_force,
@@ -198,8 +296,6 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
                 qty=qty,
                 price=book_price,
                 time_in_force=time_in_force,
-                price_precision=price_precision,
-                qty_precision=qty_precision,
                 order_type=order_type,
             )
 
@@ -209,7 +305,7 @@ class BinanceOrderController(OrderControllerAbstract, BinanceAccount):
         data["commissions"] = self.calculate_total_commissions(data["fills"])
         return data
 
-    def delete_all_orders(self, symbol):
+    def close_all_orders(self, symbol):
         """
         Delete All orders by symbol
         - Optimal for open orders table

@@ -410,9 +410,7 @@ class MarginDealAbstract(DealAbstract):
         """
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.order.simulate_margin_order(
-                self.active_bot.deal.opening_qty, OrderSide.buy
-            )
+            res = self.order.simulate_margin_order(self.active_bot.pair, OrderSide.buy)
         else:
             res = self.margin_liquidation(self.active_bot.pair)
 
@@ -474,9 +472,7 @@ class MarginDealAbstract(DealAbstract):
 
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.order.simulate_margin_order(
-                self.active_bot.deal.opening_qty, OrderSide.buy
-            )
+            res = self.order.simulate_margin_order(self.active_bot.pair, OrderSide.buy)
         else:
             self.controller.update_logs("Attempting to liquidate loan", self.active_bot)
             try:

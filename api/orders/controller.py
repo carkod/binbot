@@ -1,12 +1,8 @@
 from databases.crud.autotrade_crud import AutotradeCrud
-from orders.binance_controller import BinanceOrderController
 from orders.kucoin_controller import KucoinOrderController
 from tools.enum_definitions import ExchangeId
 from orders.abstract import OrderControllerAbstract
-from account.abstract import AccountAbstract
-from account.binance_account import BinanceAccount
-from account.kucoin_account import KucoinAccount
-from exchange_apis.api_protocol import ExchangeApiProtocol
+from exchange_apis.binance.orders import BinanceOrderController
 
 
 class OrderFactory:
@@ -21,16 +17,10 @@ class OrderFactory:
         autotrade_settings = AutotradeCrud().get_settings()
         self.exchange_id: ExchangeId = autotrade_settings.exchange_id
 
-    def get_account_controller(self) -> tuple[AccountAbstract, ExchangeApiProtocol]:
+    def get_controller(self) -> OrderControllerAbstract:
         if self.exchange_id == ExchangeId.KUCOIN:
-            account = KucoinAccount()
-            return account, account.api
+            controller = KucoinOrderController()
+            return controller, controller.api
         else:
-            account = BinanceAccount()
-            return account, account.api
-
-    def get_order_controller(self) -> OrderControllerAbstract:
-        if self.exchange_id == ExchangeId.KUCOIN:
-            return KucoinOrderController()
-        else:
-            return BinanceOrderController()
+            controller = BinanceOrderController()
+            return controller, controller.api

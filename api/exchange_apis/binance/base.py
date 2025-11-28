@@ -586,15 +586,15 @@ class BinanceApi:
         side: OrderSide,
         qty: float,
         order_type: OrderType,
-        qty_precision: int,
         price: float,
         time_in_force: TimeInForce,
-        price_precision: int,
     ):
         """
         Execute a sell order on the exchange.
         Exchange-specific implementation required.
         """
+        qty_precision = self._calculate_qty_precision(symbol)
+        price_precision = self._calculate_price_precision(symbol)
 
         payload = {
             "symbol": symbol,
@@ -620,15 +620,15 @@ class BinanceApi:
         side: OrderSide,
         qty: float,
         order_type: OrderType,
-        qty_precision: int,
         price: float,
         time_in_force: TimeInForce,
-        price_precision: int,
     ):
         """
         Execute a buy order on the exchange.
         Exchange-specific implementation required.
         """
+        qty_precision = self._calculate_qty_precision(symbol)
+        price_precision = self._calculate_price_precision(symbol)
 
         payload = {
             "symbol": symbol,

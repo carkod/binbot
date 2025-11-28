@@ -1,7 +1,7 @@
 import logging
 import json
 import asyncio
-from exchange_apis.binance import BinanceApi
+from exchange_apis.binance.base import BinanceApi
 from streaming.socket_client import AsyncSpotWebsocketStreamClient
 from databases.db import Database
 from databases.crud.bot_crud import BotTableCrud

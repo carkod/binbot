@@ -1,7 +1,6 @@
 from time import sleep
 from typing import Type, Union
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import DealType, OrderSide, Status, QuoteAssets, Strategy
 from tools.exceptions import BinanceErrors, TakeProfitError
@@ -40,8 +39,6 @@ class DealAbstract(BaseDeal):
         super().__init__(bot, db_table)
         self.active_bot = bot
         self.db_table = db_table
-        self.symbols_crud = SymbolsCrud()
-        self.symbol_info = self.symbols_crud.get_symbol(self.active_bot.pair)
         self.conversion_threshold = 1.05
         self.order: OrderControllerAbstract
 
@@ -89,7 +86,6 @@ class DealAbstract(BaseDeal):
         return self.order.buy_order(
             symbol=symbol,
             qty=quote_asset_qty * self.conversion_threshold,
-            qty_precision=self.quote_qty_precision,
         )
 
     def buy_missing_amount(
@@ -105,7 +101,6 @@ class DealAbstract(BaseDeal):
         return self.order.buy_order(
             symbol=symbol,
             qty=qty * self.conversion_threshold,
-            qty_precision=self.quote_qty_precision,
         )
 
     def check_available_balance_fiat(self, balances: list[dict]):
@@ -161,7 +156,6 @@ class DealAbstract(BaseDeal):
         return self.order.sell_order(
             symbol=symbol,
             qty=qty,
-            qty_precision=precision,
         )
 
     def check_available_balance(self):
@@ -245,7 +239,6 @@ class DealAbstract(BaseDeal):
             return self.order.buy_order(
                 symbol=symbol,
                 qty=quote_asset_qty * self.conversion_threshold,
-                qty_precision=self.quote_qty_precision,
             )
 
     def sell_quote_asset(self) -> BotModel:
@@ -314,7 +307,6 @@ class DealAbstract(BaseDeal):
                 res = self.order.buy_order(
                     symbol=symbol,
                     qty=buy_qty,
-                    qty_precision=self.quote_qty_precision,
                 )
             else:
                 quote_fiat_price = self.order.matching_engine(
@@ -335,7 +327,6 @@ class DealAbstract(BaseDeal):
                 res = self.order.sell_order(
                     symbol=symbol,
                     qty=sell_qty,
-                    qty_precision=self.quote_qty_precision,
                 )
             if res:
                 quote_order = OrderModel(

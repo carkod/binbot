@@ -27,14 +27,6 @@ class AccountAbstract(ABC):
         return float(price), float(base_qty)
 
     @abstractmethod
-    def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
-        """
-        Get deepest price to avoid market movements causing orders to fail.
-        Exchange-specific implementation required.
-        """
-        pass
-
-    @abstractmethod
     def get_raw_balance(self) -> list:
         """
         Get unrestricted balance from exchange.
@@ -78,14 +70,6 @@ class AccountAbstract(ABC):
     def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
         """
         Match quantity with available 100% fill order price.
-        Exchange-specific implementation required.
-        """
-        pass
-
-    @abstractmethod
-    def close_open_order(self, symbol: str, order_id: str) -> None:
-        """
-        Close a specific open order by its ID.
         Exchange-specific implementation required.
         """
         pass

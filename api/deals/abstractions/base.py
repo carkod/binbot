@@ -39,10 +39,8 @@ class BaseDeal:
     ):
         super().__init__()
         db_controller: Type[Union[PaperTradingTableCrud, BotTableCrud]]
-        self.order: OrderControllerAbstract = OrderFactory().get_order_controller()
-        account, api = OrderFactory().get_account_controller()
-        self.account = account
-        self.api: ExchangeApiProtocol = api
+        controller, _ = OrderFactory().get_controller()
+        self.controller = controller
         self.binbot_api = BinbotApi()
         if db_table == PaperTradingTable:
             db_controller = PaperTradingTableCrud
@@ -131,7 +129,7 @@ class BaseDeal:
         open_orders = self.api.query_open_orders(symbol)
         for order in open_orders:
             if order["status"] == OrderStatus.NEW:
-                self.account.close_open_order(symbol, order["orderId"])
+                self.api.delete_opened_order(symbol, order["orderId"])
                 for bot_order in self.active_bot.orders:
                     if bot_order.order_id == order["orderId"]:
                         self.active_bot.orders.remove(order)
@@ -270,7 +268,7 @@ class BaseDeal:
             if hasattr(self, "active_bot"):
                 self.active_bot.status = Status.completed
 
-            self.api.disable_isolated_margin_account(pair)
+            self.controller.api.disable_isolated_margin_account(pair)
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
         return buy_margin_response

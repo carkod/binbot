@@ -1,11 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
-from account.assets import Assets
-from account.schemas import (
-    BalanceResponse,
-    GainersLosersResponse,
-    BalanceSeriesResponse,
-)
 from tools.exceptions import (
     BinanceErrors,
     BinbotErrors,
@@ -18,30 +12,20 @@ from sqlmodel import Session
 from databases.utils import get_session
 from databases.crud.balances_crud import BalancesCrud
 from typing import Literal
-from orders.controller import OrderFactory
+from account.schemas import (
+    BalanceResponse,
+    GainersLosersResponse,
+    BalanceSeriesResponse,
+)
+from exchange_apis.binance.account import BinanceAccount
 
 account_blueprint = APIRouter()
 
 
 @account_blueprint.get("/balance/raw", response_model=BalanceResponse, tags=["account"])
 def raw_balance(session: Session = Depends(get_session)):
-    data = Assets(session=session).get_raw_balance()
+    data = BinanceAccount(session=session).get_raw_balance()
     return json_response({"data": data})
-
-
-@account_blueprint.get("/balance/estimate", tags=["assets"])
-def balance_estimated(session: Session = Depends(get_session)):
-    try:
-        balance = Assets(session=session).balance_estimate()
-        if balance:
-            return json_response(
-                {
-                    "data": balance,
-                    "message": "Successfully retrieved estimated balance.",
-                }
-            )
-    except BinanceErrors as error:
-        return json_response_error(f"Failed to estimate balance: {error}")
 
 
 @account_blueprint.get("/pnl", tags=["assets"])
@@ -59,7 +43,7 @@ def get_pnl(days: int = 7, session: Session = Depends(get_session)):
 @account_blueprint.get("/store-balance", tags=["assets"])
 def store_balance(session: Session = Depends(get_session)):
     try:
-        Assets(session=session).store_balance()
+        BinanceAccount(session=session).store_balance()
         response = json_response_message("Successfully stored balance.")
     except Exception as error:
         response = json_response_error(f"Failed to store balance: {error}")
@@ -70,7 +54,7 @@ def store_balance(session: Session = Depends(get_session)):
     "/gainers-losers", response_model=GainersLosersResponse, tags=["assets"]
 )
 async def retrieve_gainers_losers(session: Session = Depends(get_session)):
-    return await Assets(session=session).retrieve_gainers_losers()
+    return await BinanceAccount(session=session).retrieve_gainers_losers()
 
 
 @account_blueprint.get(
@@ -81,7 +65,7 @@ def get_portfolio_performance(session: Session = Depends(get_session)):
     month_ago = today - timedelta(30)
     start_date = int(datetime.timestamp(month_ago) * 1000)
     end_date = int(datetime.timestamp(today) * 1000)
-    data = Assets(session=session).map_balance_with_benchmark(
+    data = BinanceAccount(session=session).map_balance_with_benchmark(
         start_date=start_date, end_date=end_date
     )
     return BalanceSeriesResponse(
@@ -92,7 +76,7 @@ def get_portfolio_performance(session: Session = Depends(get_session)):
 @account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
 def clean_balance(bypass: bool = False, session: Session = Depends(get_session)):
     try:
-        Assets(session=session).clean_balance_assets(bypass=bypass)
+        BinanceAccount(session=session).clean_balance_assets(bypass=bypass)
         return json_response_message("Sucessfully cleaned balance.")
     except LowBalanceCleanupError as error:
         return json_response_error(f"Failed to clean balance: {error}")
@@ -108,7 +92,7 @@ def fiat_available(session: Session = Depends(get_session)):
     Total USDC in balance
     Calculated by Binance
     """
-    total_fiat = Assets(session=session).get_available_fiat()
+    total_fiat = BinanceAccount(session=session).get_available_fiat()
     return json_response({"data": total_fiat})
 
 
@@ -118,7 +102,7 @@ def fiat(session: Session = Depends(get_session)):
     Total USDC in balance
     Calculated by Binance
     """
-    total_fiat = Assets(session=session).get_total_fiat()
+    total_fiat = BinanceAccount(session=session).get_total_fiat()
     return json_response({"data": total_fiat})
 
 
@@ -126,13 +110,7 @@ def fiat(session: Session = Depends(get_session)):
     "/disable-isolated", response_model=BalanceSeriesResponse, tags=["account"]
 )
 def disable_isolated(session: Session = Depends(get_session)):
-    return Assets(session=session).disable_isolated_accounts()
-
-
-@account_blueprint.get("/isolated", tags=["account"])
-def check_isolated_symbol(symbol: str):
-    isolated_account = OrderFactory().check_isolated_symbol(symbol=symbol)
-    return isolated_account
+    return BinanceAccount(session=session).disable_isolated_accounts()
 
 
 @account_blueprint.get(
@@ -144,7 +122,7 @@ def one_click_liquidation(
     session: Session = Depends(get_session),
 ):
     try:
-        liquidated = Assets(session=session).one_click_liquidation(
+        liquidated = BinanceAccount(session=session).one_click_liquidation(
             pair=asset, bot_strategy=bot_strategy
         )
         if not liquidated:

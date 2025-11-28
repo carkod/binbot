@@ -2,7 +2,6 @@ import logging
 from typing import Type, Union
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.symbols_crud import SymbolsCrud
 from tools.enum_definitions import (
     CloseConditions,
     DealType,
@@ -37,7 +36,6 @@ class SpotDealAbstract(DealAbstract):
         super().__init__(bot, db_table=db_table)
         self.active_bot: BotModel = bot
         self.db_table = db_table
-        self.symbols_crud = SymbolsCrud()
 
     def update_spot_orders(self) -> BotModel:
         """
@@ -49,7 +47,7 @@ class SpotDealAbstract(DealAbstract):
         for order in self.active_bot.orders:
             if order.status == OrderStatus.NEW:
                 try:
-                    self.order.delete_order(
+                    self.api.delete_order(
                         symbol=self.active_bot.pair, order_id=order.order_id
                     )
                 except HTTPError:
@@ -232,8 +230,6 @@ class SpotDealAbstract(DealAbstract):
             )
 
         price = float(res["price"])
-        if price == 0:
-            price = self.calculate_avg_price(res["fills"])
 
         order_data = OrderModel(
             timestamp=res["transactTime"],

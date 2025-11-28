@@ -1,150 +1,52 @@
-from datetime import datetime, timedelta
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.tools.handle_error import json_response_message
+from tools.exceptions import BinbotErrors
+from account.abstract import AccountAbstract
 from time import sleep
-from exchange_apis.api_protocol import ExchangeApiProtocol
-from orders.controller import OrderFactory
+from tools.exceptions import BinanceErrors, LowBalanceCleanupError
+from typing import Sequence
+from databases.tables.bot_table import BotTable
+from tools.enum_definitions import Status
+from databases.crud.bot_crud import BotTableCrud
+from databases.utils import independent_session
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.balances_crud import BalancesCrud
-from databases.tables.bot_table import BotTable
-from databases.crud.autotrade_crud import AutotradeCrud
-from bots.models import BotModel
-from deals.abstractions.factory import DealAbstract
-from tools.handle_error import json_response, json_response_message
-from tools.maths import (
-    round_numbers,
-    ts_to_day,
-)
-from tools.exceptions import BinanceErrors, LowBalanceCleanupError
-from tools.enum_definitions import Status, Strategy
-from databases.crud.bot_crud import BotTableCrud
+from orders.controller import OrderFactory
+from exchange_apis.binance.orders import OrderControllerAbstract
+from exchange_apis.binance.base import BinanceApi
+from tools.maths import round_numbers, ts_to_day
 from account.schemas import BalanceSeries
+from datetime import datetime
 from tools.enum_definitions import BinanceKlineIntervals
-from tools.exceptions import BinbotErrors
-from typing import Sequence
 
 
-class Assets:
+class BinanceAccount(AccountAbstract):
     """
-    Assets class inherits from OrderController
-    which inherits from Account class
+    Binance-specific implementation of AccountAbstract.
 
-    These are entities that are dependent on Binance's account API.
-
-    The reason why we started to need OrderController
-    is because clean_balance_assets needs to execute
-    orders now to clean BNB dust. Assets class was previously using only the Account class
+    Inherits common methods from AccountAbstract and
+    Binance API methods from BinbotApi.
     """
 
     def __init__(self, session):
+        if session is None:
+            session = independent_session()
+
+        self.autotrade_settings = AutotradeCrud().get_settings()
+        self.fiat = self.autotrade_settings.fiat
+        self.bot_crud = BotTableCrud(session=session)
         self.usd_balance = 0
         self.fiat = AutotradeCrud().get_settings().fiat
         self.exception_list: list[str] = ["NFT", "BNB"]
         self.exception_list.append(self.fiat)
-        self.bot_controller = BotTableCrud(session=session)
+        self.bot_crud = BotTableCrud(session=session)
         self.balances_controller = BalancesCrud(session=session)
         self.symbols_crud = SymbolsCrud(session=session)
-        account, api = OrderFactory().get_account_controller()
-        self.account = account
-        self.api: ExchangeApiProtocol = api
-        self.order = OrderFactory().get_order_controller()
+        controller, _ = OrderFactory().get_controller()
+        self.controller: OrderControllerAbstract = controller
+        self.api = BinanceApi()
 
-    def get_pnl(self, days=7):
-        current_time = datetime.now()
-        start = current_time - timedelta(days=days)
-        ts = int(start.timestamp())
-        end_ts = int(current_time.timestamp())
-        data = self.balances_controller.query_balance_series(ts, end_ts)
-
-        resp = json_response({"data": data})
-        return resp
-
-    def _check_locked(self, b):
-        qty: float = 0
-        if "locked" in b:
-            qty = float(b["free"]) + float(b["locked"])
-        else:
-            qty = float(b["free"])
-        return qty
-
-    def store_balance(self) -> dict:
         """
-        Alternative PnL data that runs as a cronjob everyday once at 12:00.
-        This works outside of context.
-
-        Stores current balance in DB and estimated
-        total balance in fiat (USDC) for the day.
-
-        Better than deprecated store_balance_snapshot
-        - it doesn't required high weight
-        - it can be tweaked to have our needed format
-        - the result of total_usdc is pretty much the same, the difference is in 0.001 USDC
-        - however we don't need a loop and we decreased one network request (also added one, because we still need the raw_balance to display charts)
-        """
-        wallet_balance = self.api.get_wallet_balance()
-        itemized_balance = self.account.get_raw_balance()
-
-        rate = self.api.get_ticker_price(f"BTC{self.fiat}")
-
-        total_wallet_balance: float = 0
-        for item in wallet_balance:
-            if item["balance"] and float(item["balance"]) > 0:
-                total_wallet_balance += float(item["balance"])
-
-        total_fiat = total_wallet_balance * float(rate)
-        response = self.balances_controller.create_balance_series(
-            itemized_balance, round_numbers(total_fiat, 4)
-        )
-        return response
-
-    def balance_estimate(self):
-        """
-        Estimated balance in given fiat coin
-        """
-        balances = self.account.get_raw_balance()
-        total_fiat: float = 0
-        left_to_allocate: float = 0
-        total_isolated_margin: float = 0
-        btc_rate = self.api.get_ticker_price(f"BTC{self.fiat}")
-        wallet_balance = self.api.get_wallet_balance()
-        for item in wallet_balance:
-            if item["walletName"] == "Spot":
-                total_fiat += float(item["balance"]) * float(btc_rate)
-            if item["walletName"] == "Isolated Margin":
-                total_isolated_margin += float(item["balance"]) * float(btc_rate)
-
-        for b in balances:
-            if b["asset"] == self.fiat:
-                left_to_allocate = float(b["free"])
-                break
-
-        balance = {
-            "balances": balances,
-            "total_fiat": total_fiat + total_isolated_margin,
-            "total_isolated_margin": total_isolated_margin,
-            "fiat_left": left_to_allocate,
-            "asset": self.fiat,
-        }
-        return balance
-
-    async def retrieve_gainers_losers(self, market_asset="USDC"):
-        """
-        Create and return a ranking with gainers vs losers data
-        """
-        data = self.api.ticker_24()
-        gainers_losers_list = [
-            item for item in data if item["symbol"].endswith(market_asset)
-        ]
-        gainers_losers_list.sort(
-            reverse=True, key=lambda item: float(item["priceChangePercent"])
-        )
-
-        return json_response(
-            {
-                "message": "Successfully retrieved gainers and losers data",
-                "data": gainers_losers_list,
-            }
-        )
-
-    """
     In order to create benchmark charts,
     gaps in the balances' dates need to match with BTC dates
     """
@@ -163,6 +65,49 @@ class Assets:
                 return idx
         else:
             return None
+
+    def get_raw_balance(self) -> list:
+        """
+        Unrestricted balance
+        """
+        data = self.api.get_account_balance()
+        balances = []
+        for item in data["balances"]:
+            if float(item["free"]) > 0 or float(item["locked"]) > 0:
+                balances.append(item)
+        return balances
+
+    def get_single_spot_balance(self, asset) -> float:
+        data = self.api.get_account_balance()
+        for x in data["balances"]:
+            if x["asset"] == asset:
+                return float(x["free"])
+        return 0
+
+    def get_single_raw_balance(self, asset, fiat="USDC") -> float:
+        """
+        Get both SPOT balance and ISOLATED MARGIN balance
+        """
+        data = self.api.get_account_balance()
+        for x in data["balances"]:
+            if x["asset"] == asset:
+                return float(x["free"])
+        else:
+            symbol = asset + fiat
+            data = self.api.get_isolated_balance(symbol)
+            if len(data) > 0:
+                qty = float(data[0]["baseAsset"]["free"]) + float(
+                    data[0]["baseAsset"]["borrowed"]
+                )
+                if qty > 0:
+                    return qty
+        return 0
+
+    def get_margin_balance(self, symbol="BTC") -> float:
+        # Response after request
+        data = self.api.get_isolated_balance(symbol)
+        symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), 0)
+        return symbol_balance
 
     def map_balance_with_benchmark(self, start_date, end_date) -> BalanceSeries:
         balance_series = self.balances_controller.query_balance_series(
@@ -224,7 +169,7 @@ class Assets:
         all_symbols = self.symbols_crud.get_all()
         assets = []
 
-        active_bots: Sequence[BotTable] = self.bot_controller.get(status=Status.active)
+        active_bots: Sequence[BotTable] = self.bot_crud.get(status=Status.active)
         for bot in active_bots:
             base_asset = bot.pair.replace(bot.quote_asset, "")
             self.exception_list.append(base_asset)
@@ -314,7 +259,7 @@ class Assets:
         Returns:
             str: total USDC available to
         """
-        total_balance = self.order.get_raw_balance()
+        total_balance = self.get_raw_balance()
         for item in total_balance:
             if item["asset"] == self.fiat:
                 return float(item["free"])
@@ -348,39 +293,3 @@ class Assets:
                 msg = "Sucessfully finished disabling isolated margin accounts."
 
         return json_response_message(msg)
-
-    def one_click_liquidation(
-        self, pair: str, bot_strategy: str = "margin", bypass_check: bool = False
-    ) -> BotTable | None:
-        """
-        Emulate Binance Dashboard
-        One click liquidation function
-
-        This endpoint is different than the margin_liquidation function
-        in that it contains some clean up functionality in the cases
-        where there are are still funds in the isolated pair.
-        Therefore, it should clean all bots with provided pairs without filtering
-        by status.
-
-        market arg is required, because there can be repeated
-        pairs in both MARGIN and SPOT markets.
-        """
-
-        strategy = Strategy.margin_short if bot_strategy == "margin" else Strategy.long
-
-        bot = self.bot_controller.get_one(
-            symbol=pair, strategy=strategy, status=Status.all
-        )
-
-        if not bot:
-            return bot
-
-        active_bot = BotModel.dump_from_table(bot)
-        deal = DealAbstract(active_bot, db_table=BotTable)
-
-        if strategy == Strategy.margin_short:
-            deal.margin_liquidation(pair)
-        else:
-            deal.spot_liquidation(pair)
-
-        return bot
