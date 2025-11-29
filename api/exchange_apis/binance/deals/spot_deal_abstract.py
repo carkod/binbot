@@ -12,7 +12,7 @@ from tools.enum_definitions import (
     OrderStatus,
 )
 from bots.models import BotModel, OrderModel, BotBase
-from deals.abstractions.factory import DealAbstract
+from exchange_apis.binance.deals.factory import DealAbstract
 from deals.margin import MarginDeal
 from tools.maths import round_numbers, round_timestamp
 from urllib.error import HTTPError

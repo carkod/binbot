@@ -1,6 +1,6 @@
 import os
 from apscheduler.schedulers.blocking import BlockingScheduler
-from account.assets import Assets
+from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from charts.controllers import MarketDominationController
 from databases.utils import independent_session

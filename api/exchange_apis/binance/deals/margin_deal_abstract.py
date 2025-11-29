@@ -7,7 +7,7 @@ from time import sleep
 from databases.crud.bot_crud import BotTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from deals.abstractions.factory import DealAbstract
+
 from tools.enum_definitions import (
     CloseConditions,
     DealType,
@@ -24,6 +24,7 @@ from tools.maths import (
     round_timestamp,
 )
 from databases.crud.symbols_crud import SymbolsCrud
+from exchange_apis.binance.deals.factory import DealAbstract
 
 
 class MarginDealAbstract(DealAbstract):

@@ -20,7 +20,7 @@ from tools.exceptions import BinbotErrors
 from alembic.config import Config
 from alembic import command
 from databases.utils import engine
-from account.assets import Assets
+from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.db import setup_kafka_db

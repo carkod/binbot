@@ -8,7 +8,7 @@ from tools.exceptions import BinanceErrors
 from tools.maths import (
     round_timestamp,
 )
-from deals.abstractions.margin_deal_abstract import MarginDealAbstract
+from exchange_apis.binance.deals.margin_deal_abstract import MarginDealAbstract
 
 
 class MarginDeal(MarginDealAbstract):

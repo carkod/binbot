@@ -10,10 +10,10 @@ from databases.crud.candles_crud import CandlesCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from deals.abstractions.factory import DealAbstract
+from exchange_apis.binance.deals.factory import DealAbstract
 from deals.margin import MarginDeal
 from deals.spot import SpotLongDeal
-from exchange_apis.binance import BinanceApi
+from exchange_apis.binance.base import BinanceApi
 from streaming.models import HABollinguerSpread
 from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors

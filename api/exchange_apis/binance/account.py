@@ -4,7 +4,7 @@ from tools.handle_error import handle_binance_errors
 from tools.maths import round_numbers
 
 
-class Account(BinbotApi):
+class BinanceAccount(BinbotApi):
     def __init__(self):
         pass
 

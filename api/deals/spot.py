@@ -3,7 +3,7 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from tools.enum_definitions import DealType, Status, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.maths import round_numbers, round_timestamp
-from deals.abstractions.spot_deal_abstract import SpotDealAbstract
+from exchange_apis.binance.deals.spot_deal_abstract import SpotDealAbstract
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.exceptions import BinanceErrors
 

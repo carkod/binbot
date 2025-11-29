@@ -4,7 +4,6 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from orders.controller import OrderController
 from tools.maths import round_numbers, round_numbers_ceiling
 from tools.exceptions import (
     BinanceErrors,
@@ -14,12 +13,13 @@ from tools.exceptions import (
     BinbotErrors,
 )
 from tools.enum_definitions import Status, Strategy, OrderStatus
+from exchange_apis.binance.orders import BinanceOrderController
 
 # To be removed one day en commission endpoint found that provides this value
 ESTIMATED_COMMISSIONS_RATE = 0.0075
 
 
-class BaseDeal(OrderController):
+class BaseDeal(BinanceOrderController):
     """
     Base Deal class to unify common functionality for
     both DealAbstract and MarginDeal/SpotDeal.
